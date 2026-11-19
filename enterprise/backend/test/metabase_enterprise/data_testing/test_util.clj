@@ -107,3 +107,13 @@
   [suite-id]
   (into [] (t2/select-fn-vec (juxt :test_type :test_entity_id) :model/TestSuiteMember
                              {:where [:= :suite_id suite-id] :order-by [[:position :asc]]})))
+
+(defn refusal-type
+  "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (or (:error-type (ex-data e))
+          (throw e)))))

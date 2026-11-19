@@ -3,10 +3,12 @@
   refusals, so a caller reads what to fix from the explanation rather than from a hand-written check."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -138,13 +140,95 @@
       (let [names (map :name expectations)]
         (or (empty? names) (apply distinct? names))))]])
 
-(mr/def ::test.definition
-  "A test as a client writes it, without the subject it covers."
+(defn- ->offset-date-time
+  "`x` as an OffsetDateTime when it is one, an ISO-8601 date-time string with an offset, an Instant or a
+  ZonedDateTime; otherwise `x` unchanged, for the schema to refuse."
+  [x]
+  (cond
+    (string? x)            (try (t/offset-date-time x) (catch Exception _ x))
+    (t/instant? x)         (t/offset-date-time x (t/zone-offset 0))
+    (t/zoned-date-time? x) (t/offset-date-time x)
+    :else                  x))
+
+(def ^:private now-range
+  "The first and last moments a MySQL app DB stores in a `TIMESTAMP` column, the narrowest range of the app DBs."
+  [(t/instant "1970-01-01T00:00:01Z") (t/instant "2038-01-19T03:14:07Z")])
+
+(defn- in-now-range?
+  "Whether the moment `x` lies in [[now-range]]."
+  [x]
+  (let [[first-moment last-moment] now-range
+        moment                     (t/instant x)]
+    (not (or (t/before? moment first-moment) (t/after? moment last-moment)))))
+
+(def ^:private now-offset-message
+  "Why a `now` that names no moment is refused."
+  (deferred-tru "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"))
+
+(def ^:private now-range-message
+  "Why a `now` outside [[now-range]] is refused."
+  (let [[first-moment last-moment] (map str now-range)]
+    (deferred-tru "must be from {0} to {1}, inclusive" first-moment last-moment)))
+
+(def ^:private now-quotes-message
+  "Why a serialized `now` that is not a string is refused, such as one YAML read as a date."
+  (deferred-tru
+   "must be a quoted string, such as \"2026-10-13T00:00:00Z\": YAML reads an unquoted date-time as a date"))
+
+(defn- now-error
+  "The message for the refused `now` `value`, after decoding: the range message for a moment, else the offset one."
+  [{:keys [value]} _]
+  ;; A string, so that a message printed with the error, as an import prints it, reads as text.
+  (str (if (t/offset-date-time? value) now-range-message now-offset-message)))
+
+(mr/def ::now
+  "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
+  as `2026-10-13T00:00:00Z`, that every app DB can store. SQL the test's author writes, in inputs and expectations,
+  reads the database's own clock."
+  ;; One check, so a refused value gets one message, the one for the reason it was refused.
+  [:fn
+   {:decode/normalize ->offset-date-time
+    :json-schema      {:type "string" :format "date-time"}
+    :description      (let [[first-moment last-moment] (map str now-range)]
+                        (deferred-tru
+                         "an ISO-8601 date-time with an offset, from {0} to {1}, inclusive"
+                         first-moment last-moment))
+    :error/fn         now-error}
+   #(and (t/offset-date-time? %) (in-now-range? %))])
+
+(mr/def ::now-string
+  "A [[::now]] as serialization writes it: an ISO-8601 date-time string with an offset. YAML reads a date-time written
+  without quotes as a `java.util.Date`, at UTC when it has no offset, so the offset can no longer be checked; such a
+  value is refused, asking for quotes."
+  ;; Each check passes what the other refuses, so a refused value gets one message.
+  [:and
+   {:json-schema {:type "string" :format "date-time"}}
+   [:fn {:error/fn (fn [_ _] (str now-quotes-message))} string?]
+   [:fn {:error/fn (fn [error opts] (now-error (update error :value ->offset-date-time) opts))}
+    #(or (not (string? %)) (mr/validate ::now (->offset-date-time %)))]])
+
+(def ^:private subject-keys-with-now
+  "The subject keys of the test types that have `now`. The `segment_test` table has no `now` column."
+  #{:card_id :transform_id})
+
+(defn- with-now
+  "`map-schema`, a closed map schema of a test of the subject under `subject-key`, with an optional `now` entry of
+  schema `now-schema` when that test type has `now`."
+  [map-schema subject-key now-schema]
+  (cond-> map-schema
+    (subject-keys-with-now subject-key) (conj [:now {:optional true} [:maybe now-schema]])))
+
+(def ^:private definition
+  "A test as a client writes it, without the subject it covers or its `now`."
   [:map {:closed true}
    [:name         ::lib.schema.common/non-blank-string]
    [:description  {:optional true} [:maybe :string]]
    [:inputs       ::inputs]
    [:expectations ::expectations]])
+
+(mr/def ::test.definition
+  "A test as a client writes it, without the subject it covers. Without `now`, the subject reads the real clock."
+  (conj definition [:now {:optional true} [:maybe ::now]]))
 
 (defn- test-create
   "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
@@ -152,36 +236,38 @@
   [:merge
    [:map {:closed true}
     [subject-key subject-id-schema]]
-   ::test.definition])
+   (with-now definition subject-key ::now)])
 
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
-  hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, and
-  the expectations checked against its output."
+  hydrated under `subject`, of schema `subject-schema`, the inputs that stand in for the tables the subject reads, the
+  expectations checked against its output, and its `now` when its test type has one."
   [subject-key subject-id-schema subject subject-schema]
-  [:map {:closed true}
-   [:id           ms/PositiveInt]
-   [:entity_id    {:optional true} :string]
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   [:description  {:optional true} [:maybe :string]]
-   [:inputs       {:optional true} ::inputs]
-   [:expectations {:optional true} ::expectations]
-   [subject-key   {:optional true} subject-id-schema]
-   [subject       {:optional true} [:maybe subject-schema]]
-   [:creator_id   {:optional true} ::lib.schema.id/user]
-   [:created_at   {:optional true} ms/TemporalInstant]
-   [:updated_at   {:optional true} ms/TemporalInstant]])
+  (with-now [:map {:closed true}
+             [:id           ms/PositiveInt]
+             [:entity_id    {:optional true} :string]
+             [:name         {:optional true} ::lib.schema.common/non-blank-string]
+             [:description  {:optional true} [:maybe :string]]
+             [:inputs       {:optional true} ::inputs]
+             [:expectations {:optional true} ::expectations]
+             [subject-key   {:optional true} subject-id-schema]
+             [subject       {:optional true} [:maybe subject-schema]]
+             [:creator_id   {:optional true} ::lib.schema.id/user]
+             [:created_at   {:optional true} ms/TemporalInstant]
+             [:updated_at   {:optional true} ms/TemporalInstant]]
+    subject-key ::now))
 
 (defn- test-update
   "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
   `subject-id-schema`. Omitted fields are left unchanged."
   [subject-key subject-id-schema]
-  [:map {:closed true}
-   [subject-key   {:optional true} subject-id-schema]
-   [:name         {:optional true} ::lib.schema.common/non-blank-string]
-   [:description  {:optional true} [:maybe :string]]
-   [:inputs       {:optional true} ::inputs]
-   [:expectations {:optional true} ::expectations]])
+  (with-now [:map {:closed true}
+             [subject-key   {:optional true} subject-id-schema]
+             [:name         {:optional true} ::lib.schema.common/non-blank-string]
+             [:description  {:optional true} [:maybe :string]]
+             [:inputs       {:optional true} ::inputs]
+             [:expectations {:optional true} ::expectations]]
+    subject-key ::now))
 
 (mr/def ::transform-test.create
   "What a client sends to create a transform test."
@@ -491,13 +577,14 @@
 
 (defn- external-test
   "A saved test of schema `saved-test-schema` as serialization writes it, with references in place of ids: its subject
-  under `subject-key`."
+  under `subject-key`, and its `now` as an ISO-8601 string when its test type has one."
   [saved-test-schema subject-key]
   [:schema {:registry lib.schema.id/external-registry}
    [:merge
     [:select-keys saved-test-schema [:entity_id :name :description :inputs :expectations subject-key :creator_id]]
-    [:map {:closed true}
-     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+    (with-now [:map {:closed true}
+               [:serdes/meta {:optional true} ::models.schema/external-meta]]
+      subject-key ::now-string)]])
 
 (mr/def ::external-transform-test
   "A TransformTest as serialization writes it, with references in place of ids."

@@ -169,7 +169,15 @@ const opaqueRedirectResponse = (url: string): Response =>
 
 async function brokeredFetch(request: Request): Promise<Response> {
   const { signal } = request;
-  const body = request.body ? await request.arrayBuffer() : null;
+
+  // Read the body even when `request.body` is unset.
+  // Firefox leaves it unset for a string or buffer body when `dom.fetch.streaming_upload` is off.
+  const buffer = await request.arrayBuffer();
+
+  // Keep an empty body the request has, so the host's request matches what `fetch` sends.
+  const hasBody = request.body != null || buffer.byteLength > 0;
+  const body = hasBody ? buffer : null;
+
   const port = await untilAborted(hostPort.promise, signal);
 
   const id = nextId++;

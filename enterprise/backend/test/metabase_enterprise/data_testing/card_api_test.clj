@@ -2,9 +2,11 @@
   "`/api/ee/card-test`."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
@@ -115,6 +117,47 @@
         (is (= "card-test.missing-inputs"
                (:error-code (mt/user-http-request :crowberto :put 400 (str "ee/card-test/" test-id) {:inputs []}))))
         (is (= 1 (count (:inputs (t2/select-one :model/CardTest :id test-id)))))))))
+
+(deftest now-test
+  (mt/with-premium-features #{:transforms-testing}
+    (let [mp (mt/metadata-provider)]
+      ;; The query reads only the columns `inputs` declares.
+      (mt/with-temp [:model/Card {mbql-id :id}   {:dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                                                     (lib/with-fields [(lib.metadata/field mp (mt/id :people :id))
+                                                                                       (lib.metadata/field mp (mt/id :people :name))]))}
+                     :model/Card {native-id :id} (card)]
+        (mt/with-model-cleanup [:model/CardTest]
+          (let [created (mt/user-http-request :crowberto :post 200 "ee/card-test"
+                                              (assoc (body mbql-id) :now "2026-10-13T09:00:00+09:00"))
+                path    (str "ee/card-test/" (:id created))]
+            (testing "POST saves `now` as the moment it names"
+              (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created))))
+              (is (= (t/instant "2026-10-13T00:00:00Z")
+                     (t/instant (:now (mt/user-http-request :crowberto :get 200 path))))))
+            (testing "PUT with a null `now` returns the test to the real clock"
+              (is (=? {:now nil} (mt/user-http-request :crowberto :put 200 path {:now nil}))))
+            (let [refusals (fn [now]
+                             (-> (mt/user-http-request :crowberto :post 400 "ee/card-test" (assoc (body mbql-id) :now now))
+                                 (get-in [:specific-errors :now])
+                                 vec))]
+              (testing "a date-time without an offset is refused, since it names no moment, and only for that"
+                (let [[refusal & more] (refusals "2026-10-13T00:00:00")]
+                  (is (empty? more))
+                  (is (re-find #"with an offset" refusal))))
+              (testing "a moment an app DB cannot store is refused, and only for that"
+                (let [[refusal & more] (refusals "2040-01-01T00:00:00Z")]
+                  (is (empty? more))
+                  (is (re-find #"inclusive" refusal)))))
+            (testing "`now` on a test of a native card is refused, as it is saved"
+              (is (= "card-test.now-on-native-sql"
+                     (:error-code (mt/user-http-request :crowberto :post 501 "ee/card-test"
+                                                        (assoc (body native-id) :now "2026-10-13T00:00:00Z")))))
+              (testing "and as it is changed"
+                (mt/with-temp [:model/CardTest {native-test-id :id} {:card_id native-id :inputs inputs :expectations expectations}]
+                  (is (= "card-test.now-on-native-sql"
+                         (:error-code (mt/user-http-request :crowberto :put 501 (str "ee/card-test/" native-test-id)
+                                                            {:now "2026-10-13T00:00:00Z"}))))
+                  (is (nil? (t2/select-one-fn :now :model/CardTest :id native-test-id))))))))))))
 
 (deftest run-saved-test-test
   (mt/with-premium-features #{:transforms-testing}

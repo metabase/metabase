@@ -207,3 +207,16 @@
                   (is (= test-id (:id (mt/user-http-request :lucky :get 200 path)))))))
             (finally
               (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id))))))))
+
+(deftest segment-test-ignores-now-test
+  (testing "a segment test has no `now`: the API drops it as it drops any key a request does not declare"
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                     :model/SegmentTest {test-id :id}    {:segment_id segment-id}]
+        (let [path (str "ee/segment-test/" test-id)]
+          (mt/with-model-cleanup [:model/SegmentTest]
+            (is (not (contains? (mt/user-http-request :crowberto :post 200 "ee/segment-test"
+                                                      (assoc (body segment-id) :now "2020-06-17T12:00:00Z"))
+                                :now))))
+          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now "2020-06-17T12:00:00Z"}) :now)))
+          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now nil}) :now))))))))

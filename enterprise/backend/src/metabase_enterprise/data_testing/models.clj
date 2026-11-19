@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.models
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
@@ -41,12 +42,28 @@
   {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
    :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
 
+(def now-column
+  "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and
+  validated on its way in and normalized on its way out."
+  {:in  #(some->> % (lib/normalize ::data-testing.schema/now) (mu/validate-throw ::data-testing.schema/now))
+   :out #(some->> % (lib/normalize ::data-testing.schema/now))})
+
+(def now-transform
+  "The serialization transform of a saved test's `now`, written in UTC so that a moment exports as the same text on
+  every app DB."
+  {:export (fn [store batch values opts]
+             (serialization/export-dates store batch
+                                         (mapv #(some-> % t/instant (t/offset-date-time (t/zone-offset 0))) values)
+                                         opts))
+   :import serialization/import-dates})
+
 (methodical/defmethod t2/model-for-automagic-hydration [:model/TransformTest :transform]
   [_original-model _k]
   :model/Transform)
 
 (t2/deftransforms :model/TransformTest
-  {:inputs       (json-column ::data-testing.schema/inputs)
+  {:now          now-column
+   :inputs       (json-column ::data-testing.schema/inputs)
    :expectations (json-column ::data-testing.schema/expectations)})
 
 (mu/defn remove-deleted-test-from-suites!
@@ -222,7 +239,7 @@
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:transform_id :name :description :inputs :expectations])
+  [:transform_id :name :description :now :inputs :expectations])
 
 (defn check-revert-available
   "Throw a 402 unless the token has the premium feature that a revert of a saved test needs."
@@ -232,7 +249,8 @@
 (defn- revert-transform-test!
   [id _user-id snapshot]
   (check-revert-available)
-  (update-transform-test! id (select-keys snapshot revision-columns)))
+  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
+  (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -249,7 +267,8 @@
   {:schema              ::data-testing.schema/external-transform-test
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:transform_id (serialization/fk-transform :model/Transform)
-                         :creator_id   serialization/user-transform}
+                         :creator_id   serialization/user-transform
+                         :now          now-transform}
    :storage-paths       data-testing.serialization/transform-test-storage-paths
    :import-dependencies data-testing.serialization/transform-test-import-dependencies})
 
@@ -265,6 +284,6 @@
    :revert!   revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
-  {:track          [:transform_id :name :description]
+  {:track          [:transform_id :name :description :now]
    :track-redacted [:creator_id :expectations :inputs]
    :skip           [:entity_id]})

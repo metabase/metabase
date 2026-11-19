@@ -12,13 +12,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table-test :as describe-table-test]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    ;; Load the inherited test extensions, including the row-xform method used below.
    [metabase.test.data.postgres]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
    [metabase.test.data.sql.ddl :as ddl]
@@ -137,8 +134,34 @@
     [_driver _type]
     db-type))
 
-;; DuckDB has no SERIAL type. Use INTEGER and let row-xform generate the IDs.
+;; DuckDB has no SERIAL type. Use INTEGER; `create-table-sql` below gives the column a sequence default.
 (defmethod sql.tx/pk-sql-type :motherduck [_] "INTEGER")
+
+(def ^:private pk-sequence-start
+  "The first id a primary-key sequence hands out. The loader inserts explicit ids, which don't advance the sequence,
+  so it starts above any id a test dataset holds, and above any integer checkpoint a transform test records."
+  1000000)
+
+(defn- pk-sequence-default
+  "Rewrite the primary-key column of `create-table-sql` to default to a sequence, as MotherDuck recommends in place
+  of SERIAL, by prepending a `CREATE SEQUENCE` statement. Tests written for Postgres insert rows without an id and
+  expect the database to fill it in; without this, the NOT NULL constraint rejects them. The endpoint accepts the
+  two statements in one string. Returns `sql` unchanged when the table has no plain `id` column of the primary-key
+  type.
+
+  The sequence name keeps only the letters, digits and underscores of the table name. `nextval` misreads a doubled
+  `\"\"` inside a quoted name, so it can't find the sequence of a table named, say, `q'd\"b`."
+  [driver database-name table-name sql]
+  (let [pk-column (str (sql.tx/format-and-quote-field-name driver (sql.tx/pk-field-name driver))
+                       " " (sql.tx/pk-sql-type driver))
+        sequence  (sql.tx/qualify-and-quote driver
+                                            database-name
+                                            (str (str/replace table-name #"[^A-Za-z0-9_]" "_") "_id_seq"))]
+    (if-not (str/includes? sql pk-column)
+      sql
+      (str (format "CREATE SEQUENCE IF NOT EXISTS %s START %d; " sequence pk-sequence-start)
+           (str/replace-first sql pk-column
+                              (format "%s DEFAULT nextval('%s')" pk-column (str/replace sequence "'" "''")))))))
 
 ;; Qualify test tables with DuckDB's default schema rather than Postgres public.
 (defmethod sql.tx/session-schema :motherduck [_driver] "main")
@@ -185,7 +208,8 @@
 (defmethod sql.tx/create-table-sql :motherduck
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
   (let [fks (keep #(inline-fk-sql driver dbdef table-name %) field-definitions)
-        sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+        sql (->> ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)
+                 (pk-sequence-default driver database-name table-name))]
     (if (empty? fks)
       sql
       ;; The inherited statement ends its column list with the PRIMARY KEY clause.
@@ -233,59 +257,6 @@
 (defmethod load-data/chunk-size :motherduck
   [_driver _dbdef _tabledef]
   200)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Statement execution                                                      |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; The endpoint returns a result set for some statements, including SET and COMMENT ON, even in
-;; Metabase compatibility mode. Use Statement.execute, which accepts result sets, instead of executeUpdate.
-(defmethod execute/execute-sql! :motherduck
-  [driver ^Connection conn sql]
-  (execute/default-execute-sql!
-   driver conn sql :execute!
-   (fn [^Connection conn ^String sql]
-     (with-open [stmt (.createStatement conn)]
-       (.execute stmt sql)))))
-
-(defmethod load-data/do-insert! :motherduck
-  [driver ^Connection conn table-identifier rows]
-  ;; The inherited method uses executeUpdate for SET, which rejects the endpoint's result set.
-  ;; Set the session time zone with execute before loading rows.
-  (with-open [stmt (.createStatement conn)]
-    (.execute stmt "SET SESSION TIMEZONE TO 'UTC';"))
-  ;; Prevent parameter binding from looking up the database time zone before sync completes.
-  (mt/with-database-timezone-id nil
-    (doseq [[sql & params] (ddl/insert-rows-dml-statements driver table-identifier rows)]
-      (try
-        (with-open [stmt (.prepareStatement conn ^String sql)]
-          (when (seq params)
-            (sql-jdbc.execute/set-parameters! driver stmt params))
-          (.execute stmt))
-        (catch Throwable e
-          (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
-                          {:driver driver
-                           :sql    sql}
-                          e)))))))
-
-;; Reuse the SQL-JDBC view builders with the execution method above, which accepts result sets.
-(defmethod tx/create-view-of-table! :motherduck
-  [driver database view-name table-name options]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver (driver.u/ensure-lib-database database) {:write? true}
-   (fn [conn]
-     (->> (sql.tx/create-view-of-table-sql driver database view-name table-name options)
-          first
-          (execute/execute-sql! driver conn)))))
-
-(defmethod tx/drop-view! :motherduck
-  [driver database view-name options]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver (driver.u/ensure-lib-database database) {:write? true}
-   (fn [conn]
-     (->> (sql.tx/drop-view-sql driver database view-name options)
-          first
-          (execute/execute-sql! driver conn)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      create / load / cleanup lifecycle                                         |
