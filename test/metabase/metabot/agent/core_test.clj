@@ -2112,7 +2112,8 @@
       :rate-limit  "throttlingException"
       :unavailable "serviceUnavailableException"
       :unavailable "internalServerException"
-      :unavailable "modelTimeoutException")))
+      :unavailable "modelTimeoutException"
+      :unavailable "modelStreamErrorException")))
 
 ;;; ===================== Prometheus Metrics Tests =====================
 

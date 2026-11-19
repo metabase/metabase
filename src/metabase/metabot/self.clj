@@ -439,7 +439,8 @@
    "throttlingException"         :rate-limit
    "serviceUnavailableException" :unavailable
    "internalServerException"     :unavailable
-   "modelTimeoutException"       :unavailable})
+   "modelTimeoutException"       :unavailable
+   "modelStreamErrorException"   :unavailable})
 
 (defn- streamed-status
   "The HTTP status of a failure that the provider streamed after its 200, or nil.
@@ -468,8 +469,9 @@
           (some more-provider-failures [status error-type error-code])))))
 
 (def ^:private not-configured-error-codes
-  "The `:error-code` of each exception that says a setting of the provider connection is absent, so that Metabot sent
-  no request. A code for a setting that has an invalid value is not in this set."
+  "The `:error-code` of each exception that Metabot throws before it sends a request, because the provider connection
+  has no value that the call can use for a setting: a credential, a base URL, a model, a project, or a proxy that
+  the provider supports. A code for a value in a wrong format, such as `:invalid-region`, is not in this set."
   #{:llm-not-configured :api-key-missing :proxy-not-configured :proxy-unsupported :base-url-missing :model-missing
     :project-id-required})
 
@@ -477,7 +479,7 @@
   "The kind of provider failure that made the LLM call throw `e`, or nil when the provider is not at fault.
 
   The kinds of [[provider-failure-kind]], and two kinds for a call that got no response from the provider:
-  `:not-configured` when a setting of its connection is absent (no API key, a stale `llm-metabot-provider`), and
+  `:not-configured` for the [[not-configured-error-codes]] (no API key, a stale `llm-metabot-provider`), and
   `:request-failed` for all others, such as a provider that is unreachable or timed out. Unlike [[provider-error]],
   this is the same on the managed provider: it says whose the failure is, not what to tell the user."
   [e]
