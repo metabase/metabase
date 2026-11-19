@@ -50,6 +50,14 @@ describe("scenarios > model indexes", () => {
     cy.wait("@modelIndexCreate");
     assertIndexedValueSearchable();
 
+    // the re-created index is read back from the server on a fresh page
+    cy.reload();
+    cy.wait("@dataset");
+    editTitleMetadata();
+    getSurfaceIndividualRecordsToggle().should("be.checked");
+    cy.findByTestId("dataset-edit-bar").button("Cancel").click();
+    cy.findByTestId("dataset-edit-bar").should("not.exist");
+
     H.commandPaletteSearch("marble shoes", false);
     H.commandPalette()
       .findByRole("option", { name: "Small Marble Shoes" })
