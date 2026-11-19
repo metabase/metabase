@@ -731,7 +731,9 @@
              (t2/update! :model/DatabaseRouter :id router-id {:user_attribute "other"})
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:previous {:routing_attribute "tenant"} :new {:routing_attribute "other"}}
+                     :details  {:db_routing "enabled"
+                                :previous   {:routing_attribute "tenant"}
+                                :new        {:routing_attribute "other"}}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))

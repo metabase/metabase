@@ -33,6 +33,7 @@
    :track-redacted [:database_id :user_attribute]
    :skip           []
    :details        database-routing.audit/details
+   :state          database-routing.audit/state
    :subject        database-routing.audit/subject
    :topics         {:create :database-update
                     :update :database-update

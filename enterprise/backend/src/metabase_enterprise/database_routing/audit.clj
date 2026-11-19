@@ -5,13 +5,18 @@
 (set! *warn-on-reflection* true)
 
 (defn details
-  "The details to store for the Database Router `row` of the write `event`: whether it enables or disables the routing
-  of its Database and by which user attribute."
+  "The details to store for the Database Router `row` of the write `event`: the user attribute that it routes by, none
+  for a deletion."
   [row {:keys [operation]}]
   (if (= :delete operation)
-    {:db_routing :disabled}
-    {:db_routing        :enabled
-     :routing_attribute (:user_attribute row)}))
+    {}
+    {:routing_attribute (:user_attribute row)}))
+
+(defn state
+  "What the row of the write `event` of a Database Router stores whole: whether the routing of its Database is enabled
+  or disabled."
+  [_row {:keys [operation]}]
+  {:db_routing (if (= :delete operation) :disabled :enabled)})
 
 (defn subject
   "The `[model id]` under which the row of the Database Router `event` is recorded: its Database."
