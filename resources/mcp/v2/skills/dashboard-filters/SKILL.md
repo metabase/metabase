@@ -60,7 +60,7 @@ Two hard constraints: linked filters read **table-metadata foreign keys only** �
 - Parameters live in the header. `move_parameter` with `index` reorders; with `dashcard_id` it renders the widget **on that card** (inline). `add_card`'s `inline_parameters` does this at add time.
 - **Tabs:** a header filter appears on a tab only where it is wired to a card on *that* tab — a filter that "won't show" is usually wired only to another tab's cards.
 - A `temporal-unit` parameter binds only to a datetime column in the card query's **last** stage — after a time-bucketed summary it can't attach.
-- Two ops can drop connections: `replace_card`, and `wire_parameter` on a card with series. The write response lists them in `dropped_connections`, by filter, dashcard and card. An entry with `series: true` is a series card's connection, which only `patch_dashcard`'s `parameter_mappings` can restore.
+- Two ops can drop connections: `replace_card`, and `wire_parameter` on a card with series. The write response lists them in `dropped_connections`, by filter, dashcard and card. An entry with `series: true` is a series card's connection, which only `patch_dashcard`'s `parameter_mappings` can restore. That patch replaces the dashcard's whole list, so send every mapping it keeps, the card's own included. Connections a patch leaves out are not listed in `dropped_connections`.
 
 ## Don't
 
