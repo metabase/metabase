@@ -10,6 +10,7 @@
    [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -37,9 +38,11 @@
     (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources [{:type "dashboard" :id 1}]}))
   (testing "a non-positive id is a 400"
     (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources [{:type "card" :id 0}]}))
-  (testing "an unknown key is a 400"
-    (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources [{:type "card" :id 1 :max_rows 3}]})
-    (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources [] :parameters []}))
+  (testing "an unknown key is dropped, like on every endpoint"
+    (is (= {} (mt/user-http-request :crowberto :post 202 "dynamic-goal/values" {:sources [] :parameters []})))
+    (is (=? {:card {Integer/MAX_VALUE {:error_type "not-found"}}}
+            (mt/user-http-request :crowberto :post 202 "dynamic-goal/values"
+                                  {:sources [{:type "card" :id Integer/MAX_VALUE :max_rows 3}]}))))
   (testing "`sources` is required"
     (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {}))
   (testing "a request caps how many sources it can fan out to"
@@ -72,9 +75,11 @@
 (deftest runs-as-the-current-user-test
   (testing "a card the caller can't read fails on its own; the request still succeeds"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/Card       {hidden-id :id} {:collection_id coll-id :dataset_query (count-query :checkins)}
-                     :model/Card       {ok-id :id}     {:dataset_query (count-query :venues)}]
+      (mt/with-temp [:model/Collection {coll-id :id}    {}
+                     :model/Collection {ok-coll-id :id} {}
+                     :model/Card       {hidden-id :id}  {:collection_id coll-id :dataset_query (count-query :checkins)}
+                     :model/Card       {ok-id :id}      {:collection_id ok-coll-id :dataset_query (count-query :venues)}]
+        (perms/grant-collection-read-permissions! (perms/all-users-group) ok-coll-id)
         (is (=? {:card {hidden-id {:status "failed" :error "You don't have permissions to do that."}
                         ok-id     {:status "completed" :data {:rows [[100]]}}}}
                 (goal-values :rasta [{:type "card" :id hidden-id} {:type "card" :id ok-id}])))))))

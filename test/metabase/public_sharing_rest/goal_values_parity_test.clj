@@ -67,7 +67,6 @@
 
                   "archived card"
                   {:status 404, :setup (fn [{:keys [card-id]}] (t2/update! :model/Card :id card-id {:archived true}))}}}
-
    {:chart-route "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
     :goal-route  "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/goal-values"
     :params      (fn [{:keys [dash-uuid dashcard-id card-id]}] {:uuid dash-uuid, :dashcard-id dashcard-id, :card-id card-id})
@@ -100,7 +99,6 @@
 
                   "unknown card"
                   {:status 404, :params (fn [_ctx] {:card-id Integer/MAX_VALUE})}}}
-
    {:chart-route "/document/:uuid/card/:card-id"
     :goal-route  "/document/:uuid/card/:card-id/goal-values"
     :params      (fn [{:keys [doc-uuid doc-card-id]}] {:uuid doc-uuid, :card-id doc-card-id})

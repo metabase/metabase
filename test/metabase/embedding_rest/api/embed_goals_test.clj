@@ -52,8 +52,8 @@
   [f]
   (let [runs (atom 0)]
     (mt/with-dynamic-fn-redefs [queries/card-reads-parameters? (fn [_]
-                                                                     (swap! runs inc)
-                                                                     false)]
+                                                                 (swap! runs inc)
+                                                                 false)]
       (f runs))))
 
 (def ^:private withheld {:status "failed" :error_type "withheld"})
@@ -251,11 +251,11 @@
                                                     :card_id            card-id
                                                     :parameter_mappings [(tenant-mapping card-id)]}]
         (doseq [[label params message] [["locked param missing from the token" {}
-                                          "You must specify a value for :tenant in the JWT."]
-                                         ["disabled param in the token" {:tenant 7 :price 4}
-                                          "You're not allowed to specify a value for price."]
-                                         ["unknown param in the token" {:tenant 7 :nope 1}
-                                          "Unknown parameter nope."]]
+                                         "You must specify a value for :tenant in the JWT."]
+                                        ["disabled param in the token" {:tenant 7 :price 4}
+                                         "You're not allowed to specify a value for price."]
+                                        ["unknown param in the token" {:tenant 7 :nope 1}
+                                         "Unknown parameter nope."]]
                 [route chart-url goal-url] [["card"
                                              (embed-test/card-query-url card "" {:params params})
                                              (card-goal-url card {:params params})]

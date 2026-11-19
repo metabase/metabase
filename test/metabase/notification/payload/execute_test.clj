@@ -247,8 +247,9 @@
                    :model/DashboardCard _             {:dashboard_id dash-id :card_id (:id card)}]
       (letfn [(rendered-goal [{:keys [card dashcard result goal-values]}]
                 (let [captured (atom nil)]
-                  (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
-                                                                (reset! captured viz-settings)
+                  ;; the JS draws from the card's settings; a dashcard's empty settings shadow them in the second arg
+                  (binding [js.svg/*javascript-visualization* (fn [cards-with-data _viz-settings]
+                                                                (reset! captured (-> cards-with-data first :card :visualization_settings))
                                                                 {:type :svg :content "<svg></svg>"})]
                     (channel.render/render-pulse-card :inline nil card dashcard result
                                                       {:channel.render/goal-values goal-values}))
