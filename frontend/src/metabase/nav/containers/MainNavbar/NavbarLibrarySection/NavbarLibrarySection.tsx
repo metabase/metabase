@@ -5,6 +5,7 @@ import type { CollectionTreeItem } from "metabase/common/collections/utils";
 import {
   buildCollectionTree,
   getCollectionIcon,
+  hasLibraryContent,
   isLibraryCollection,
 } from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
@@ -17,13 +18,26 @@ import {
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";
-import type { Collection, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionContentModel,
+  CollectionType,
+} from "metabase-types/api";
 
 type LibraryCollectionSectionProps = {
   collections: Collection[];
   selectedId?: string | number;
   onItemSelect: () => void;
 };
+
+function hasModel(
+  collection: Collection,
+  model: CollectionContentModel,
+): boolean {
+  return Boolean(
+    collection.here?.includes(model) || collection.below?.includes(model),
+  );
+}
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
  *  If the user has access to the root collection, use it directly.
@@ -33,6 +47,7 @@ function buildSectionTree(
   allCollections: Collection[],
   sectionType: CollectionType,
   sectionName: string,
+  contentModel?: CollectionContentModel,
 ): CollectionTreeItem | null {
   // Look for the real root collection (has is_library_root)
   const rootCollection = libraryCollection.children?.find(
@@ -40,6 +55,9 @@ function buildSectionTree(
   );
 
   if (rootCollection) {
+    if (contentModel && !hasModel(rootCollection, contentModel)) {
+      return null;
+    }
     // User has access to the root — build its subtree normally
     const [tree] = buildCollectionTree([rootCollection]);
     return tree ?? null;
@@ -57,7 +75,11 @@ function buildSectionTree(
   );
 
   const allOrphans = [...libraryChildren, ...promotedChildren];
-  if (allOrphans.length === 0) {
+  if (
+    allOrphans.length === 0 ||
+    (contentModel &&
+      !allOrphans.some((orphan) => hasModel(orphan, contentModel)))
+  ) {
     return null;
   }
 
@@ -94,9 +116,13 @@ export function NavbarLibrarySection({
     "expand-library-in-nav",
   );
 
+  const libraryCollection = useMemo(
+    () => collections.find(isLibraryCollection),
+    [collections],
+  );
+
   const libraryTree = useMemo(() => {
-    const libraryCollection = collections.find(isLibraryCollection);
-    if (!libraryCollection) {
+    if (!libraryCollection || !hasLibraryContent(libraryCollection)) {
       return [];
     }
 
@@ -105,12 +131,14 @@ export function NavbarLibrarySection({
       collections,
       "library-data",
       t`Data`,
+      "table",
     );
     const metricsTree = buildSectionTree(
       libraryCollection,
       collections,
       "library-metrics",
       t`Metrics`,
+      "metric",
     );
     const dashboardsTree = buildSectionTree(
       libraryCollection,
@@ -122,9 +150,9 @@ export function NavbarLibrarySection({
     return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections]);
+  }, [collections, libraryCollection]);
 
-  if (libraryTree.length === 0) {
+  if (!libraryCollection || libraryTree.length === 0) {
     return null;
   }
 
@@ -132,12 +160,12 @@ export function NavbarLibrarySection({
     <SidebarSection>
       <ErrorBoundary>
         <CollapseSection
-          header={<SidebarHeading>{t`Library`}</SidebarHeading>}
+          header={<SidebarHeading>{libraryCollection.name}</SidebarHeading>}
           initialState={expandLibrary ? "expanded" : "collapsed"}
           iconPosition="right"
           iconSize={8}
           role="section"
-          aria-label={t`Library`}
+          aria-label={libraryCollection.name}
           onToggle={setExpandLibrary}
         >
           <Tree

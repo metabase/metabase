@@ -171,7 +171,7 @@ describe("EmbeddingDataPicker", () => {
       it("should show the Library without configuring `entity_types`", async () => {
         setup({ embeddingType: "full-app", hasLibrary: true });
 
-        expect(await screen.findByText("Library")).toBeInTheDocument();
+        expect(await screen.findByText("Semantic layer")).toBeInTheDocument();
         expect(screen.getByText("Models")).toBeInTheDocument();
         expect(screen.getByText("Raw Data")).toBeInTheDocument();
       });
@@ -184,7 +184,7 @@ describe("EmbeddingDataPicker", () => {
         });
 
         expect(await screen.findByText("Orders")).toBeInTheDocument();
-        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
       });
 
       it('should not show the Library when `entity_types=["model", "table"]`', async () => {
@@ -196,7 +196,7 @@ describe("EmbeddingDataPicker", () => {
 
         expect(await screen.findByText("Models")).toBeInTheDocument();
         expect(screen.getByText("Raw Data")).toBeInTheDocument();
-        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
       });
 
       it('should ignore "semantic-layer" in full-app entity_types and show the default', async () => {
@@ -206,7 +206,7 @@ describe("EmbeddingDataPicker", () => {
           entityTypes: ["semantic-layer"],
         });
 
-        expect(await screen.findByText("Library")).toBeInTheDocument();
+        expect(await screen.findByText("Semantic layer")).toBeInTheDocument();
         expect(screen.getByText("Models")).toBeInTheDocument();
         expect(screen.getByText("Raw Data")).toBeInTheDocument();
       });
@@ -228,7 +228,7 @@ describe("EmbeddingDataPicker", () => {
         setup({ embeddingType: "full-app", hasLibrary: false });
 
         expect(await screen.findByText("Models")).toBeInTheDocument();
-        expect(screen.queryByText("Library")).not.toBeInTheDocument();
+        expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
       });
 
       /**

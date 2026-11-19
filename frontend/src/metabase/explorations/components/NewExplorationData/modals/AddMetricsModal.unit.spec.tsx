@@ -45,7 +45,7 @@ function setup({
 }
 
 function libraryTab() {
-  return screen.getByRole("tab", { name: /Library/ });
+  return screen.getByRole("tab", { name: /Semantic layer/ });
 }
 
 function allTab() {
@@ -71,7 +71,7 @@ describe("AddMetricsModal", () => {
     PLUGIN_LIBRARY.isEnabled = false;
   });
 
-  it("stays on the Library tab when the library has metrics", async () => {
+  it("stays on the Semantic layer tab when the semantic layer has metrics", async () => {
     setup({ metrics: [libraryMetric, otherMetric] });
 
     expect(await screen.findByText("Revenue")).toBeInTheDocument();
@@ -79,7 +79,7 @@ describe("AddMetricsModal", () => {
     expect(screen.queryByText("Churn")).not.toBeInTheDocument();
   });
 
-  it("keeps Library selected while the metrics are loading", async () => {
+  it("keeps Semantic layer selected while the metrics are loading", async () => {
     let resolveResponse: () => void = () => {};
     fetchMock.get(
       "path:/api/exploration/dimensions",

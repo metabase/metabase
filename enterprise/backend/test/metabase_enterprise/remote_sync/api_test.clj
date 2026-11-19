@@ -320,7 +320,7 @@
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection library {:name "Library" :location "/" :type "library" :is_remote_synced true}]
         (testing "the Library keeps syncing"
-          (is (re-find #"The Library always syncs"
+          (is (re-find #"The semantic layer always syncs"
                        (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                              {:collections {(:id library) false}})))
           (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id (:id library)))))))))

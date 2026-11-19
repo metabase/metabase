@@ -1373,7 +1373,7 @@
       (ts/with-dbs [source-db dest-db]
         (ts/with-db source-db
           (collections/create-library-collection!)
-          (mt/with-mock-i18n-bundles! {"zz" {:messages {"Library" "LIBRARY" "Data" "DATA" "Metrics" "METRICS"}}}
+          (mt/with-mock-i18n-bundles! {"zz" {:messages {"Semantic layer" "LIBRARY" "Data" "DATA" "Metrics" "METRICS"}}}
             (mt/with-user-locale "zz"
               (storage/store! (into [] (extract/extract {:include-h2? true :no-settings true}))
                               (storage.files/file-writer dump-dir)))))

@@ -8,7 +8,10 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
-import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
+import {
+  getValidCollectionItemModels,
+  isLibraryOffered,
+} from "metabase/common/components/Pickers/utils";
 import {
   useGetPersonalCollection,
   useHasTokenFeature,
@@ -171,7 +174,7 @@ async function getRootItems({
   databases: Database[];
   hasDataAppsFolder: boolean;
   totalPersonalCollectionItems: number;
-  libraryCollection?: OmniPickerItem;
+  libraryCollection?: OmniPickerCollectionItem;
   namespaces: CollectionNamespace[];
   models: OmniPickerItem["model"][];
   tenantsEnabled: boolean;
@@ -193,7 +196,12 @@ async function getRootItems({
     });
   }
 
-  if (options.hasLibrary && libraryCollection && namespaces.includes(null)) {
+  if (
+    options.hasLibrary &&
+    libraryCollection &&
+    namespaces.includes(null) &&
+    isLibraryOffered(libraryCollection, models)
+  ) {
     collectionItems.push({
       ...libraryCollection,
       model: "collection",

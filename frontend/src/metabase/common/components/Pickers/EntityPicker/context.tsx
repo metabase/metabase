@@ -1,7 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
 
-import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
-
 import { useGetPathFromValue } from "./hooks/use-get-path-from-value";
 import type {
   EntityPickerProps,
@@ -35,7 +33,7 @@ export const EntityPickerProvider = ({
     value: value.value,
     options: value.options,
     namespaces,
-    models: getValidCollectionItemModels(value.models),
+    models: value.models,
     showsDataApps: shouldShowDataApps(value),
   });
 

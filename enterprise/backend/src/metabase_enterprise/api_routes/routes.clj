@@ -69,7 +69,7 @@
    :content-translation        (deferred-tru "Content translation")
    :custom-viz                 (deferred-tru "Custom Visualizations")
    :data-apps                  (deferred-tru "Data Apps")
-   :library                    (deferred-tru "Library")
+   :library                    (deferred-tru "Semantic layer")
    :dependencies               (deferred-tru "Dependency Tracking")
    :schema-viewer              (deferred-tru "Schema Viewer")
    :embedding                  (deferred-tru "Embedding")

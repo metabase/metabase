@@ -307,7 +307,7 @@
     (tru "Trash")
 
     (and (is-library? collection) (library-root-collection? collection))
-    (tru "Library")
+    (tru "Semantic layer")
 
     (and (is-library-data-collection? collection) (library-root-collection? collection))
     (tru "Data")

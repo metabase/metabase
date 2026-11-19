@@ -882,7 +882,7 @@ describe("DataSourceSelector", () => {
       expect(
         screen.queryByTestId("library-picker-back-navigation"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
     });
 
     it('should show the folder title without a back link when `entityTypes` = ["semantic-layer"] and the Library has one folder', async () => {
@@ -904,7 +904,7 @@ describe("DataSourceSelector", () => {
     it("should list the tables and the metrics published in the Library", async () => {
       setup({ ...setupOpts, libraryCollection: LIBRARY_COLLECTION });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
       await userEvent.click(await screen.findByText("Data"));
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(screen.getByText("Published Elsewhere")).toBeInTheDocument();
@@ -920,7 +920,7 @@ describe("DataSourceSelector", () => {
         libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_METRICS,
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(await screen.findByText("Revenue")).toBeInTheDocument();
       expect(
@@ -934,7 +934,7 @@ describe("DataSourceSelector", () => {
         libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_TABLES,
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(
@@ -948,7 +948,7 @@ describe("DataSourceSelector", () => {
         libraryCollection: LIBRARY_COLLECTION_WITH_UNREADABLE_DATA,
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(
         await screen.findAllByTestId("data-bucket-list-item"),
@@ -969,7 +969,7 @@ describe("DataSourceSelector", () => {
         libraryCollection: LIBRARY_COLLECTION_WITH_UNREADABLE_METRICS,
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(
         await screen.findAllByTestId("data-bucket-list-item"),
@@ -987,7 +987,7 @@ describe("DataSourceSelector", () => {
     it("should show the Library subfolders that hold tables", async () => {
       setup({ ...setupOpts, libraryCollection: LIBRARY_COLLECTION });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
       await userEvent.click(await screen.findByText("Data"));
 
       const tree = await screen.findByTestId("saved-entity-collection-tree");
@@ -1003,7 +1003,7 @@ describe("DataSourceSelector", () => {
       });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
     });
 
     it("should not offer a Library with only metrics when joining", async () => {
@@ -1022,7 +1022,7 @@ describe("DataSourceSelector", () => {
       expect(
         screen.queryByLabelText("chevronleft icon"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
+      expect(screen.queryByText("Semantic layer")).not.toBeInTheDocument();
     });
 
     it("should only list the Library's tables from the current database, without its metrics, when joining", async () => {
@@ -1036,7 +1036,7 @@ describe("DataSourceSelector", () => {
       // Go back from the table step to the bucket step
       await userEvent.click(await screen.findByLabelText("chevronleft icon"));
       await userEvent.click(await screen.findByLabelText("chevronleft icon"));
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
@@ -1174,7 +1174,7 @@ describe("DataSourceSelector", () => {
         entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
       expect(
         await screen.findByTestId("library-picker-back-navigation"),
       ).toBeInTheDocument();
@@ -1184,7 +1184,7 @@ describe("DataSourceSelector", () => {
       );
 
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();
-      expect(screen.getByText("Library")).toBeInTheDocument();
+      expect(screen.getByText("Semantic layer")).toBeInTheDocument();
       expect(
         screen.queryByTestId("library-picker-back-navigation"),
       ).not.toBeInTheDocument();
@@ -1197,7 +1197,7 @@ describe("DataSourceSelector", () => {
         entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(
         await screen.findByRole("button", { name: "Library" }),
@@ -1211,7 +1211,7 @@ describe("DataSourceSelector", () => {
         entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
       await screen.findByTestId("library-picker-back-navigation");
       // focus the "‹ Library" back link
       await userEvent.tab();
@@ -1233,7 +1233,7 @@ describe("DataSourceSelector", () => {
         hasNestedQueriesEnabled: false,
       });
 
-      await userEvent.click(await screen.findByText("Library"));
+      await userEvent.click(await screen.findByText("Semantic layer"));
 
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
       expect(screen.queryByText("Metrics")).not.toBeInTheDocument();

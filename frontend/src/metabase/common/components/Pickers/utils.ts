@@ -1,7 +1,12 @@
 import _ from "underscore";
 
+import { hasLibraryContent } from "metabase/common/collections/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionItemModel,
+} from "metabase-types/api";
 
 import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
 
@@ -53,6 +58,12 @@ export const getValidCollectionItemModels = (
   models: OmniPickerItem["model"][],
 ): CollectionItemModel[] =>
   _.uniq(models.filter(isValidCollectionItemModel).concat(["collection"]));
+
+export const isLibraryOffered = (
+  libraryCollection: Pick<Collection, "below">,
+  models: OmniPickerItem["model"][],
+): boolean =>
+  models.includes("collection") || hasLibraryContent(libraryCollection);
 
 /** Shared options for collection item requests across EntityPicker and MiniPicker. */
 export const getCollectionItemsOptions = ({

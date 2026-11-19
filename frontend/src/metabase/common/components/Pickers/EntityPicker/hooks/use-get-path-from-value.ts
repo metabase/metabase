@@ -16,6 +16,7 @@ import {
 import {
   allCollectionModels,
   getCollectionItemsOptions,
+  isLibraryOffered,
 } from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
 import { PLUGIN_DATA_APPS, PLUGIN_LIBRARY } from "metabase/plugins";
@@ -30,7 +31,6 @@ import type {
 
 import type {
   EntityPickerOptions,
-  OmniPickerCollectionItem,
   OmniPickerCollectionItemValue,
   OmniPickerDbValue,
   OmniPickerItem,
@@ -55,10 +55,14 @@ const getDefaultPath = async ({
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
-  if (libraryCollection && options.hasLibrary) {
+  if (
+    libraryCollection &&
+    options.hasLibrary &&
+    isLibraryOffered(libraryCollection, models)
+  ) {
     const libraryChildrenResponse = await dispatch(
       collectionApi.endpoints.listCollectionItems.initiate({
         id: libraryCollection.id,
@@ -106,7 +110,7 @@ export function useGetPathFromValue({
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
   showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
@@ -194,7 +198,7 @@ async function getPathFromValue({
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
   dataApps?: DataApp[];
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
     return [getFakeDbCollection()];
@@ -388,7 +392,7 @@ async function getCollectionPathFromValue({
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
-  models: OmniPickerCollectionItem["model"][];
+  models: OmniPickerItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === null || value.id === "root") {
     // if a root was passed, just return the root collection item

@@ -43,7 +43,7 @@ export const DataStudioItem = ({ value, itemRef }: OnboardingItemProps) => {
       }
     >
       <ChecklistImage
-        alt={t`A table in the Data Studio library`}
+        alt={t`A table in the Data Studio semantic layer`}
         src={onboardingDataStudioImage}
         srcSet={`${onboardingDataStudioImage2x} 2x`}
         style={ILLUSTRATION_STYLE}

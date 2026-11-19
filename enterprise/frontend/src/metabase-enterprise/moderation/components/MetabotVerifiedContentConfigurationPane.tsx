@@ -33,7 +33,7 @@ export function MetabotVerifiedContentConfigurationPane({
       <SettingHeader
         id="verified-content"
         title={t`Verified or curated content`}
-        description={t`When enabled, Metabot will only use content that's verified, in an official collection, or published to the library.`}
+        description={t`When enabled, Metabot will only use content that's verified, in an official collection, or published to the semantic layer.`}
       />
       <Switch
         label={t`Only use verified or curated content`}

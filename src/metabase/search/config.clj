@@ -114,9 +114,10 @@
    ;; Curation badges act as tie-breakers by default; the :data-picker context boosts them (to 35 each).
    :official-collection 1
    :verified            1
-   ;; Library membership is a curation signal for choosing data sources, so :library is off by default.
-   ;; The :data-picker and :metabot contexts turn it on, at a level an exact match can override.
-   :library             0
+   ;; Semantic layer content (the Library's Data and Metrics collections and their subcollections) is curated,
+   ;; so by default it ranks above official and verified content, even combined, yet below a better text match
+   ;; (:text 5). The :data-picker and :metabot contexts boost it further, at a level an exact match can override.
+   :library             3
    ;; RRF is the "Reciprocal Rank Fusion" score used by the semantic search backend to blend semantic and keyword scores
    :rrf                 500
    ;; Maps the backend's cosine distance to a [0, 1] score: 1 = identical vector, 0 = maximally distant or keyword-only hit.
