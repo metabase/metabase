@@ -38,8 +38,6 @@
 
 (def ^:private default-blocking-queue-size 1000)
 
-(def ^:private default-shutdown-timeout-ms (* 30 60 1000)) ;; 30 minutes
-
 (def ^:private default-retry-config
   {:max-retries             (if config/is-dev? 1 6)
    :initial-interval-millis 500
@@ -483,7 +481,9 @@
   such as: creator_id, active status, handlers info etc.)
   - if a notification has no queue key and no id, put it into the queue regardless (used to send unsaved notifications)
 
-  Returns a map with :dispatch-fn and :shutdown-fn."
+  Returns a map of `:dispatch-fn`; `:close-fn`, which refuses new notifications and lets the workers finish the queue;
+  and `:shutdown-fn`, which closes the dispatcher and waits up to its argument in milliseconds for the queue to empty.
+  When the wait runs out, `:shutdown-fn` interrupts the workers and returns false."
   [pool-size queue]
   (let [executor (Executors/newFixedThreadPool
                   pool-size
@@ -525,20 +525,30 @@
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
                           ::shutdown)))
+        close-fn    (fn []
+                      (.set shutdown-flag true)
+                      (.shutdown ^ThreadPoolExecutor executor))
         shutdown-fn (fn [timeout-ms]
                       (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
-                      (.set shutdown-flag true)
-                      (.shutdown ^ThreadPoolExecutor executor)
-                      (try
-                        (.awaitTermination ^ThreadPoolExecutor executor timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
-                        (log/info "Notification worker shut down successfully")
-                        (catch InterruptedException _
-                          (log/warn "Interrupted while waiting for notification executor to terminate")
-                          (.shutdownNow ^ThreadPoolExecutor executor))))]
+                      (close-fn)
+                      (if (try
+                            (.awaitTermination ^ThreadPoolExecutor executor
+                                               timeout-ms
+                                               java.util.concurrent.TimeUnit/MILLISECONDS)
+                            (catch InterruptedException _
+                              (log/warn "Interrupted while waiting for notification executor to terminate")
+                              false))
+                        (do (log/info "Notification worker shut down successfully")
+                            true)
+                        (do (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
+                                       (queue-size queue))
+                            (.shutdownNow ^ThreadPoolExecutor executor)
+                            false)))]
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))
     {:dispatch-fn dispatch-fn
+     :close-fn    close-fn
      :shutdown-fn shutdown-fn}))
 
 (defonce ^:private dedup-priority-dispatcher
@@ -611,14 +621,19 @@
             (send-notification-async! notification)))))))
 
 (defn shutdown!
-  "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."
+  "Stop every notification dispatcher that has started, letting each send what it has queued.
+   Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
   []
-  (let [workers [dedup-priority-dispatcher simple-blocking-dispatcher]]
+  ;; a dispatcher that never started has nothing to send, and starting it here would only create its threads
+  (let [workers  (into [] (comp (filter realized?) (map deref)) [dedup-priority-dispatcher simple-blocking-dispatcher])
+        deadline (+ (System/currentTimeMillis) (* 1000 (notification.settings/notification-shutdown-timeout-seconds)))]
     (log/with-context {:dispatcher-count (count workers)}
       (log/info "Shutting down notification dispatchers...")
       (try
-        (doseq [worker workers]
-          ((:shutdown-fn @worker) default-shutdown-timeout-ms))
-        (log/info "All notification workers shut down successfully")
+        ;; all of them refuse new notifications before any wait begins, so no dispatcher takes work while another drains
+        (run! #((:close-fn %)) workers)
+        ;; every dispatcher gets its wait, even after one ran out, so each one left over is interrupted
+        (when (every? true? (mapv #((:shutdown-fn %) (max 0 (- deadline (System/currentTimeMillis)))) workers))
+          (log/info "All notification workers shut down successfully"))
         (catch Exception e
           (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))
