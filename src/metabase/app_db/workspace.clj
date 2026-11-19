@@ -56,9 +56,13 @@
     (setting-sql *workspace-id*)))
 
 (defn postgres-connection?
-  "Whether `connection` is a Postgres connection."
+  "Whether `connection` is a Postgres connection. False for one that can't tell, such as a stub that leaves out
+  `isWrapperFor`, or a closed one."
   [^java.sql.Connection connection]
-  (.isWrapperFor connection org.postgresql.jdbc.PgConnection))
+  (try
+    (.isWrapperFor connection org.postgresql.jdbc.PgConnection)
+    (catch AbstractMethodError _ false)
+    (catch java.sql.SQLException _ false)))
 
 (defn- execute! [^java.sql.Connection connection ^String sql]
   (with-open [stmt (.createStatement connection)]

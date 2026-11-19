@@ -42,3 +42,8 @@
   (testing "caches by app DB do not cross workspaces"
     (is (not= (mdb/unique-identifier) (mdb/with-workspace-id 5 (mdb/unique-identifier))))
     (is (= (mdb/unique-identifier) (mdb/with-workspace-id nil (mdb/unique-identifier))))))
+
+(deftest a-connection-that-cannot-tell-its-class-is-not-postgres-test
+  (testing "a connection whose isWrapperFor is not there, as a stub's, is not a Postgres connection"
+    (let [stub (reify java.sql.Connection)]
+      (is (false? (#'metabase.app-db.workspace/postgres-connection? stub))))))
