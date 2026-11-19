@@ -14,6 +14,7 @@
    [jvm-alloc-rate-meter.core :as alloc-rate-meter]
    [jvm-hiccup-meter.core :as hiccup-meter]
    [metabase.analytics-interface.core :as analytics.interface]
+   [metabase.global-system.system :as global-system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
@@ -1066,6 +1067,13 @@
 
 (declare install-real-reporter!)
 
+(declare stop-system!)
+
+;; The running system, as a global-system component, so halting the system stops it too.
+;; Readers still use the `system` var, which the component's start and stop set, so tests can redefine it.
+(def ^:private system-component
+  (global-system/mutable-component-handle ::system (constantly nil)))
+
 (defn setup!
   "Start the prometheus metric collector and web-server. Port is optional, read from `MB_PROMETHEUS_SERVER_PORT`"
   ([] (setup! (parse (System/getenv "MB_PROMETHEUS_SERVER_PORT"))))
@@ -1073,11 +1081,14 @@
    (when (not system)
      (when-not port
        (log/info "Running prometheus metrics without a webserver"))
-     (locking #'system
-       (when-not system
-         (let [sys (make-prometheus-system port "metabase-registry")]
-           (alter-var-root #'system (constantly sys))
-           (install-real-reporter!)))))))
+     (global-system/start! system-component
+                           (fn []
+                             (let [sys (make-prometheus-system port "metabase-registry")]
+                               (alter-var-root #'system (constantly sys))
+                               (install-real-reporter!)
+                               sys))
+                           #(stop-system! %))
+     nil)))
 
 (defn observe-initial-values
   "Observe initial values. Some values need a baseline otherwise their first observed value won't register as a
@@ -1092,20 +1103,23 @@
       (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
         (prometheus/inc registry metric (qualified-vals labels) value)))))
 
+(defn- stop-system!
+  "Stop `sys`: the JVM meters, its web server and its registry, and clear the `system` var."
+  [^PrometheusSystem sys]
+  (when @jvm-hiccup-thread (@jvm-hiccup-thread))
+  (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
+  (try (stop-web-server sys)
+       (prometheus/clear (.-registry sys))
+       (alter-var-root #'system (constantly nil))
+       (log/info "Prometheus web-server shut down")
+       (catch Exception e
+         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))))
+
 (defn shutdown!
-  "Stop the prometheus metrics web-server if it is running."
+  "Stop the prometheus metrics web-server if it is running. Halting the global system stops it too."
   []
-  (when system
-    (locking #'system
-      (when system
-        (when @jvm-hiccup-thread (@jvm-hiccup-thread))
-        (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
-        (try (stop-web-server system)
-             (prometheus/clear (.-registry system))
-             (alter-var-root #'system (constantly nil))
-             (log/info "Prometheus web-server shut down")
-             (catch Exception e
-               (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
+  (global-system/stop! system-component)
+  nil)
 
 ;; Threads still working during shutdown, like notification sends, call these after [[shutdown!]] drops the registry.
 (defn observe!
