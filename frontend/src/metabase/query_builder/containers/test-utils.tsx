@@ -41,6 +41,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type {
   Bookmark,
   Card,
+  CardQueryMetadata,
   Database,
   Dataset,
   Timeline,
@@ -239,10 +240,15 @@ interface SetupOpts {
   database?: Database;
   echoQueryParameters?: boolean;
   initialRoute?: string;
+  metadata?: CardQueryMetadata;
   timelines?: Timeline[];
   timelinesResponse?: () => Promise<Timeline[]>;
   withUndos?: boolean;
   currentUser?: User;
+  /**
+   * Set to false to look at the page while the question is still loading.
+   */
+  waitForLoad?: boolean;
 }
 
 export const setup = async ({
@@ -258,6 +264,7 @@ export const setup = async ({
         ? `/${card.id}`
         : `#${serializeCardForUrl(card)}`
   }`,
+  metadata = createMockCardQueryMetadata({ databases: [database] }),
   timelines = [],
   timelinesResponse,
   withUndos = false,
@@ -267,6 +274,7 @@ export const setup = async ({
       can_create_native_queries: true,
     }),
   }),
+  waitForLoad = true,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -288,7 +296,6 @@ export const setup = async ({
     value: false,
   });
 
-  const metadata = createMockCardQueryMetadata({ databases: [database] });
   setupAdhocQueryMetadataEndpoint(metadata);
 
   if (isSavedCard(card)) {
@@ -342,14 +349,20 @@ export const setup = async ({
     },
   );
 
-  await waitForLoaderToBeRemoved();
-
-  return {
+  const result = {
     container,
     router: checkNotNull(router),
     mockEventListener,
     store,
   };
+
+  if (!waitForLoad) {
+    return result;
+  }
+
+  await waitForLoaderToBeRemoved();
+
+  return result;
 };
 
 export const triggerNativeQueryChange = async () => {
