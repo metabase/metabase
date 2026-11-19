@@ -8,7 +8,6 @@
    [medley.core :as m]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
@@ -526,7 +525,7 @@
         (mt/with-premium-features #{:audit-app}
           (mt/with-temp [:model/Database db]
             (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-            (is (= (audit/model-details db :model/Database)
+            (is (= (select-keys db [:id :name :engine])
                    (->> (mt/latest-audit-log-entry "database-delete")
                         :details
                         normalize)))))))))

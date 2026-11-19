@@ -261,14 +261,14 @@
             (is (=? {:id test-id} (mt/user-http-request :crowberto :get 200 path))))
           (testing "a run is refused, and records no run"
             (is (=? {:error-code "segment-test.archived-subject"}
-                    (mt/user-http-request :crowberto :post 400 (str path "/run"))))
+                    (mt/user-http-request :crowberto :post 422 (str path "/run"))))
             (is (not (t2/exists? :model/DataTestRun :test_type "segment" :test_id test-id))))
           (testing "a new test of the segment is refused"
             (is (=? {:error-code "segment-test.archived-subject"}
-                    (mt/user-http-request :crowberto :post 400 "ee/segment-test" (body segment-id)))))
+                    (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))
           (testing "an edit that keeps the test on the segment is refused, and changes nothing"
             (is (=? {:error-code "segment-test.archived-subject"}
-                    (mt/user-http-request :crowberto :put 400 path {:name "Renamed"})))
+                    (mt/user-http-request :crowberto :put 422 path {:name "Renamed"})))
             (is (= test-name (t2/select-one-fn :name :model/SegmentTest :id test-id))))
           (testing "after the segment is restored, the test is listed and runs"
             (t2/update! :model/Segment :id segment-id {:archived false})
@@ -279,10 +279,23 @@
             (is (=? {:segment_id active-id} (mt/user-http-request :crowberto :put 200 path {:segment_id active-id}))))
           (testing "moving the test back onto the archived segment is refused"
             (is (=? {:error-code "segment-test.archived-subject"}
-                    (mt/user-http-request :crowberto :put 400 path {:segment_id segment-id}))))
+                    (mt/user-http-request :crowberto :put 422 path {:segment_id segment-id}))))
           (testing "a test of an archived segment can be deleted"
             (t2/update! :model/SegmentTest :id test-id {:segment_id segment-id})
             (mt/user-http-request :crowberto :delete 204 path)
             (is (not (t2/exists? :model/SegmentTest :id test-id))))
           (finally
             (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id)))))))
+
+(deftest segment-test-ignores-now-test
+  (testing "a segment test has no `now`: the API drops it as it drops any key a request does not declare"
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
+                     :model/SegmentTest {test-id :id}    {:segment_id segment-id}]
+        (let [path (str "ee/segment-test/" test-id)]
+          (mt/with-model-cleanup [:model/SegmentTest]
+            (is (not (contains? (mt/user-http-request :crowberto :post 200 "ee/segment-test"
+                                                      (assoc (body segment-id) :now "2020-06-17T12:00:00Z"))
+                                :now))))
+          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now "2020-06-17T12:00:00Z"}) :now)))
+          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now nil}) :now))))))))

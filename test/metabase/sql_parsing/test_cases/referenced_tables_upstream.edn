@@ -1,0 +1,981 @@
+;; Every statement in sqlglot's tests/fixtures/identity.sql (sqlglot 30.20.0), read with no dialect, and the tables
+;; sqlglot finds in it.
+{:cases
+ [{:sql "SUM(1)" :tables []}
+  {:sql "SUM(CASE WHEN x > 1 THEN 1 ELSE 0 END) / y" :tables []}
+  {:sql "1" :tables []}
+  {:sql "(1)" :tables []}
+  {:sql "1." :tables []}
+  {:sql "(1.)" :tables []}
+  {:sql "1.0" :tables []}
+  {:sql "(1.0)" :tables []}
+  {:sql "1E2" :tables []}
+  {:sql "1E+2" :tables []}
+  {:sql "1E-2" :tables []}
+  {:sql "1.1E10" :tables []}
+  {:sql "1.12e-10" :tables []}
+  {:sql "-11.023E7 * 3" :tables []}
+  {:sql "0.2" :tables []}
+  {:sql "(1 * 2) / (3 - 5)" :tables []}
+  {:sql "((TRUE))" :tables []}
+  {:sql "''" :tables []}
+  {:sql "''''" :tables []}
+  {:sql "'x'" :tables []}
+  {:sql "'\\x'" :tables []}
+  {:sql "\"x\"" :tables []}
+  {:sql "'\\z'" :tables []}
+  {:sql "'\\\\z'" :tables []}
+  {:sql "'\\\\\\z'" :tables []}
+  {:sql "'\\\\\\\\z'" :tables []}
+  {:sql "'\\\\\\\\\\z'" :tables []}
+  {:sql "'\\\\\\\\\\\\z'" :tables []}
+  {:sql "'\\n'" :tables []}
+  {:sql "'\\\\n'" :tables []}
+  {:sql "'\\\\\\n'" :tables []}
+  {:sql "'\\\\\\\\n'" :tables []}
+  {:sql "'\\\\\\\\\\n'" :tables []}
+  {:sql "'\\\\\\\\\\\\n'" :tables []}
+  {:sql "\"\"" :tables []}
+  {:sql "\"\"\"x\"\"\"" :tables []}
+  {:sql "N'abc'" :tables []}
+  {:sql "x" :tables []}
+  {:sql "x % 1" :tables []}
+  {:sql "x < 1" :tables []}
+  {:sql "x <= 1" :tables []}
+  {:sql "x > 1" :tables []}
+  {:sql "x >= 1" :tables []}
+  {:sql "x <> 1" :tables []}
+  {:sql "x = y OR x > 1" :tables []}
+  {:sql "x & 1" :tables []}
+  {:sql "x | 1" :tables []}
+  {:sql "x ^ 1" :tables []}
+  {:sql "~x" :tables []}
+  {:sql "x << 1" :tables []}
+  {:sql "x >> 1" :tables []}
+  {:sql "x >> 1 | 1 & 1 ^ 1" :tables []}
+  {:sql "x || y" :tables []}
+  {:sql "x[:]" :tables []}
+  {:sql "x[1:]" :tables []}
+  {:sql "x[:2]" :tables []}
+  {:sql "x[1:2]" :tables []}
+  {:sql "x[-4:-1]" :tables []}
+  {:sql "1 - -1" :tables []}
+  {:sql "- -5" :tables []}
+  {:sql "dec.x + y" :tables []}
+  {:sql "a.filter" :tables []}
+  {:sql "a.b.c" :tables []}
+  {:sql "a.b.c.d" :tables []}
+  {:sql "a.b.c.d.e" :tables []}
+  {:sql "a.b.c.d.e[0]" :tables []}
+  {:sql "a.b.c.d.e[0].f" :tables []}
+  {:sql "a[0][0].b.c[1].d.e.f[1][1]" :tables []}
+  {:sql "a[0].b[1]" :tables []}
+  {:sql "a[0].b.c['d']" :tables []}
+  {:sql "a.b.C()" :tables []}
+  {:sql "a['x'].b.C()" :tables []}
+  {:sql "a.B()" :tables []}
+  {:sql "a['x'].C()" :tables []}
+  {:sql "int.x" :tables []}
+  {:sql "map.x" :tables []}
+  {:sql "SELECT update" :tables []}
+  {:sql "SELECT x.update" :tables []}
+  {:sql "SELECT call.x" :tables []}
+  {:sql "SELECT end" :tables []}
+  {:sql "a.b.INT(1.234)" :tables []}
+  {:sql "INT(x / 100)" :tables []}
+  {:sql "time * 100" :tables []}
+  {:sql "int * 100" :tables []}
+  {:sql "dec + 1" :tables []}
+  {:sql "x IN (-1, 1)" :tables []}
+  {:sql "x IN ('a', 'a''a')" :tables []}
+  {:sql "x IN ((1))" :tables []}
+  {:sql "x BETWEEN -1 AND 1" :tables []}
+  {:sql "x BETWEEN 'a' || b AND 'c' || d" :tables []}
+  {:sql "((a, b) AS c)" :tables []}
+  {:sql "NOT x IS NULL" :tables []}
+  {:sql "x IS TRUE" :tables []}
+  {:sql "x IS FALSE" :tables []}
+  {:sql "x IS TRUE IS TRUE" :tables []}
+  {:sql "x LIKE y IS TRUE" :tables []}
+  {:sql "TRIM('a' || 'b')" :tables []}
+  {:sql "MAP()" :tables []}
+  {:sql "GREATEST(x)" :tables []}
+  {:sql "LEAST(y)" :tables []}
+  {:sql "MAX(a, b)" :tables []}
+  {:sql "MIN(a, b)" :tables []}
+  {:sql "time" :tables []}
+  {:sql "zone" :tables []}
+  {:sql "ARRAY<TEXT>" :tables []}
+  {:sql "CURRENT_DATE" :tables []}
+  {:sql "CURRENT_DATE('UTC')" :tables []}
+  {:sql "CURRENT_DATE AT TIME ZONE 'UTC'" :tables []}
+  {:sql "CURRENT_DATE AT TIME ZONE zone_column" :tables []}
+  {:sql "CURRENT_DATE AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Tokio'" :tables []}
+  {:sql "f1 AT TIME ZONE INTERVAL '-10:00' AS f1" :tables []}
+  {:sql "ARRAY()" :tables []}
+  {:sql "ARRAY(1, 2)" :tables []}
+  {:sql "ARRAY(time, foo)" :tables []}
+  {:sql "ARRAY(foo, time)" :tables []}
+  {:sql "ARRAY(LENGTH(waiter_name) > 0)" :tables []}
+  {:sql "ARRAY_CONTAINS(x, 1)" :tables []}
+  {:sql "x.EXTRACT(1)" :tables []}
+  {:sql "EXTRACT(X FROM y)" :tables []}
+  {:sql "EXTRACT(DATE FROM y)" :tables []}
+  {:sql "EXTRACT(WEEK(monday) FROM created_at)" :tables []}
+  {:sql "CONCAT_WS('-', 'a', 'b')" :tables []}
+  {:sql "CONCAT_WS('-', 'a', 'b', 'c')" :tables []}
+  {:sql "POSEXPLODE(\"x\") AS (\"a\", \"b\")" :tables []}
+  {:sql "POSEXPLODE(\"x\") AS (\"a\", \"b\", \"c\")" :tables []}
+  {:sql "STR_POSITION(haystack, needle)" :tables []}
+  {:sql "STR_POSITION(haystack, needle, pos)" :tables []}
+  {:sql "LEVENSHTEIN('gumbo', 'gambol', 2, 1, 1)" :tables []}
+  {:sql "SPLIT(SPLIT(referrer, 'utm_source=')[OFFSET(1)], \"&\")[OFFSET(0)]" :tables []}
+  {:sql "x[ORDINAL(1)][SAFE_OFFSET(2)]" :tables []}
+  {:sql "x GLOB '??-*'" :tables []}
+  {:sql "x GLOB y" :tables []}
+  {:sql "ILIKE(x, 'z')" :tables []}
+  {:sql "x LIKE SUBSTRING('abc', 1, 1)" :tables []}
+  {:sql "x LIKE y" :tables []}
+  {:sql "x LIKE a.y" :tables []}
+  {:sql "x LIKE '%y%'" :tables []}
+  {:sql "x ILIKE '%y%'" :tables []}
+  {:sql "x LIKE '%y%' ESCAPE '\\'" :tables []}
+  {:sql "x ILIKE '%y%' ESCAPE '\\'" :tables []}
+  {:sql "1 AS escape" :tables []}
+  {:sql "INTERVAL '1' DAY" :tables []}
+  {:sql "INTERVAL '1' MONTH" :tables []}
+  {:sql "INTERVAL '1' YEAR" :tables []}
+  {:sql "INTERVAL '1' HOUR TO SECOND" :tables []}
+  {:sql "INTERVAL '-1' AS CURRENT_DATE" :tables []}
+  {:sql "INTERVAL '-31' CAST(GETDATE() AS DATE)" :tables []}
+  {:sql "INTERVAL (1 + 3) DAYS" :tables []}
+  {:sql "INTERVAL '1' DAY * 5" :tables []}
+  {:sql "5 * INTERVAL '1' DAY" :tables []}
+  {:sql "CASE WHEN TRUE THEN INTERVAL '15' DAYS END" :tables []}
+  {:sql "CASE WHEN TRUE THEN 1 ELSE interval END" :tables []}
+  {:sql "CASE WHEN TRUE THEN 1 ELSE \"INTERVAL\" END" :tables []}
+  {:sql "SELECT asof FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT * WHERE interval IS NULL" :tables []}
+  {:sql "SELECT * WHERE NOT interval IS NULL" :tables []}
+  {:sql "SELECT * WHERE INTERVAL \"is\" > 1" :tables []}
+  {:sql "SELECT * WHERE INTERVAL x.is > 1" :tables []}
+  {:sql "CAST('45' AS INTERVAL DAYS)" :tables []}
+  {:sql "CAST(x AS UUID)" :tables []}
+  {:sql "FILTER(a, x -> x.a.b.c.d.e.f.g)" :tables []}
+  {:sql "FILTER(a, x -> FOO(x.a.b.c.d.e.f.g) + x.a.b.c.d.e.f.g)" :tables []}
+  {:sql "TIMESTAMP_FROM_PARTS(2019, 1, 10, 2, 3, 4, 123456789, 'America/Los_Angeles')" :tables []}
+  {:sql "TIMESTAMPDIFF(CURRENT_TIMESTAMP(), 1, DAY)" :tables []}
+  {:sql "TIME_FROM_PARTS(14, 30, 45, 123456789)" :tables []}
+  {:sql "DATETIME_DIFF(CURRENT_DATE, 1, DAY)" :tables []}
+  {:sql "QUANTILE(x, 0.5)" :tables []}
+  {:sql "REGEXP_REPLACE('new york', '(\\w)(\\w*)', x -> UPPER(x[1]) || LOWER(x[2]))" :tables []}
+  {:sql "REGEXP_LIKE('new york', '.')" :tables []}
+  {:sql "REGEXP_SPLIT('new york', '.')" :tables []}
+  {:sql "SPLIT('new york', '.')" :tables []}
+  {:sql "X((y AS z)).1" :tables []}
+  {:sql "X(a.b = 1)" :tables []}
+  {:sql "(x AS y, y AS z)" :tables []}
+  {:sql "REPLACE('new york', ' ', '_')" :tables []}
+  {:sql "REPLACE('new york', ' ')" :tables []}
+  {:sql "DATE(x) = DATE(y)" :tables []}
+  {:sql "TIMESTAMP(DATE(x))" :tables []}
+  {:sql "TIMESTAMP_TRUNC(COALESCE(time_field, CURRENT_TIMESTAMP()), DAY)" :tables []}
+  {:sql "MONTHNAME(x)" :tables []}
+  {:sql "MONTHS_BETWEEN(CAST('2019-03-15' AS DATE), CAST('2019-02-15' AS DATE))" :tables []}
+  {:sql "COUNT(DISTINCT CASE WHEN DATE_TRUNC('ISOWEEK', DATE(time_field)) = DATE_TRUNC('ISOWEEK', DATE(time_field2)) THEN report_id ELSE NULL END)" :tables []}
+  {:sql "COUNT(a, b)" :tables []}
+  {:sql "x[y - 1]" :tables []}
+  {:sql "CASE WHEN SUM(x) > 3 THEN 1 END OVER (PARTITION BY x)" :tables []}
+  {:sql "ANY(x) OVER (PARTITION BY x)" :tables []}
+  {:sql "SUM(ROW() OVER (PARTITION BY x))" :tables []}
+  {:sql "SUM(ROW() OVER (PARTITION BY x + 1))" :tables []}
+  {:sql "SUM(ROW() OVER (PARTITION BY x AND y))" :tables []}
+  {:sql "SUM(x) OVER (w ORDER BY y)" :tables []}
+  {:sql "(ROW() OVER ())" :tables []}
+  {:sql "CASE WHEN (x > 1) THEN 1 ELSE 0 END" :tables []}
+  {:sql "CASE (1) WHEN 1 THEN 1 ELSE 0 END" :tables []}
+  {:sql "CASE 1 WHEN 1 THEN 1 ELSE 0 END" :tables []}
+  {:sql "CASE 1 WHEN 1 THEN timestamp ELSE date END" :tables []}
+  {:sql "x AT TIME ZONE 'UTC'" :tables []}
+  {:sql "CAST('2025-11-20 00:00:00+00' AS TIMESTAMP) AT TIME ZONE 'Africa/Cairo'" :tables []}
+  {:sql "SET x = 1" :tables []}
+  {:sql "SET x = ';'" :tables []}
+  {:sql "SET variable = value" :tables []}
+  {:sql "SET GLOBAL variable = value" :tables []}
+  {:sql "SET LOCAL variable = value" :tables []}
+  {:sql "@x" :tables []}
+  {:sql "@\"x\"" :tables []}
+  {:sql "COMMIT" :tables []}
+  {:sql "USE db" :tables [[nil nil "db"]]}
+  {:sql "USE ROLE x" :tables [[nil nil "x"]]}
+  {:sql "USE WAREHOUSE x" :tables [[nil nil "x"]]}
+  {:sql "USE DATABASE x" :tables [[nil nil "x"]]}
+  {:sql "USE SCHEMA x.y" :tables [[nil "x" "y"]]}
+  {:sql "USE CATALOG abc" :tables [[nil nil "abc"]]}
+  {:sql "NOT 1" :tables []}
+  {:sql "NOT NOT 1" :tables []}
+  {:sql "SELECT * FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM db.FOO()" :tables []}
+  {:sql "SELECT *, 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM a.b" :tables [[nil "a" "b"]]}
+  {:sql "SELECT * FROM a.b.c" :tables [["a" "b" "c"]]}
+  {:sql "SELECT * FROM table" :tables [[nil nil "table"]]}
+  {:sql "SELECT 1" :tables []}
+  {:sql "SELECT 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM a, b, (SELECT 1) AS c" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT a FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS filter" :tables []}
+  {:sql "SELECT 1 AS \"quoted alias\"" :tables []}
+  {:sql "SELECT SUM(x) AS filter" :tables []}
+  {:sql "SELECT 1 AS range FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS count FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS comment FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS numeric FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS number FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COALESCE(offset, 1)" :tables []}
+  {:sql "SELECT t.count" :tables []}
+  {:sql "SELECT DISTINCT x FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT DISTINCT x, y FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT DISTINCT TIMESTAMP_TRUNC(time_field, MONTH) AS time_value FROM \"table\"" :tables [[nil nil "table"]]}
+  {:sql "SELECT DISTINCT ON (x) x, y FROM z" :tables [[nil nil "z"]]}
+  {:sql "SELECT DISTINCT ON (x, y + 1) * FROM z" :tables [[nil nil "z"]]}
+  {:sql "SELECT DISTINCT ON (x.y) * FROM z" :tables [[nil nil "z"]]}
+  {:sql "SELECT DISTINCT FROM_SOMETHING" :tables []}
+  {:sql "SELECT top.x" :tables []}
+  {:sql "SELECT TIMESTAMP(DATE_TRUNC('MONTH', DATE(time_field))) AS time_value FROM \"table\"" :tables [[nil nil "table"]]}
+  {:sql "SELECT GREATEST((3 + 1), LEAST(3, 4))" :tables []}
+  {:sql "SELECT TRANSFORM(a, b -> b) AS x" :tables []}
+  {:sql "SELECT AGGREGATE(a, (a, b) -> a + b) AS x" :tables []}
+  {:sql "SELECT COUNT(DISTINCT a, b)" :tables []}
+  {:sql "SELECT COUNT(DISTINCT a, b + 1)" :tables []}
+  {:sql "SELECT SUM(DISTINCT x)" :tables []}
+  {:sql "SELECT TRUNC(a, b)" :tables []}
+  {:sql "SELECT ARRAY_AGG(STRUCT(x, x AS y) ORDER BY z DESC) AS x" :tables []}
+  {:sql "SELECT LAG(x) OVER (ORDER BY y) AS x" :tables []}
+  {:sql "SELECT LEAD(a) OVER (ORDER BY b) AS a" :tables []}
+  {:sql "SELECT LEAD(a, 1) OVER (PARTITION BY a ORDER BY a) AS x" :tables []}
+  {:sql "SELECT LEAD(a, 1, b) OVER (PARTITION BY a ORDER BY a) AS x" :tables []}
+  {:sql "SELECT X((a, b) -> a + b, z -> z) AS x" :tables []}
+  {:sql "SELECT X(a -> a + (\"z\" - 1))" :tables []}
+  {:sql "SELECT test.* FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT a AS b FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT \"a\".\"b\" FROM \"a\"" :tables [[nil nil "a"]]}
+  {:sql "SELECT \"a\".b FROM a" :tables [[nil nil "a"]]}
+  {:sql "SELECT a.b FROM \"a\"" :tables [[nil nil "a"]]}
+  {:sql "SELECT a.b FROM a" :tables [[nil nil "a"]]}
+  {:sql "SELECT '\"hi' AS x FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT 1 AS \"|sum\" FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT '\\\"hi' AS x FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT 1 AS b FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 AS \"b\" FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 + 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 - 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 * 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 % 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 / 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 < 2 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 <= 2 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 > 2 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 >= 2 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 <> 2 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT JSON_EXTRACT(x, '$.name')" :tables []}
+  {:sql "SELECT JSON_EXTRACT_SCALAR(x, '$.name')" :tables []}
+  {:sql "SELECT x LIKE '%x%' FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test LIMIT 100" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test LIMIT 1 + 1" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test LIMIT 100 OFFSET 200" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test LIMIT (SELECT 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test LIMIT (SELECT 1) OFFSET (SELECT 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test FETCH FIRST ROWS ONLY" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test FETCH FIRST 1 ROWS ONLY" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test ORDER BY id DESC FETCH FIRST 10 ROWS WITH TIES" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test ORDER BY id DESC FETCH FIRST 10 PERCENT ROWS WITH TIES" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test ORDER BY always DESC" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test FETCH NEXT 1 ROWS ONLY" :tables [[nil nil "test"]]}
+  {:sql "SELECT (1 > 2) AS x FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT NOT (1 > 2) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 + 2 AS x FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b, 1 < 1 FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE NOT FALSE" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a = 1" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a = 1 AND b = 2" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a IN (SELECT b FROM z)" :tables [[nil nil "test"] [nil nil "z"]]}
+  {:sql "SELECT a FROM test WHERE a IN ((SELECT 1), 2)" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM x WHERE y IN ((SELECT 1) EXCEPT (SELECT 2))" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM x WHERE y IN (SELECT 1 UNION SELECT 2)" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM x WHERE y IN ((SELECT 1 UNION SELECT 2))" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM x WHERE y IN (WITH z AS (SELECT 1) SELECT * FROM z)" :tables [[nil nil "x"]]}
+  {:sql "SELECT a FROM test WHERE (a > 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a > (SELECT 1 FROM x GROUP BY y)" :tables [[nil nil "test"] [nil nil "x"]]}
+  {:sql "SELECT a FROM test WHERE EXISTS(SELECT 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE EXISTS(SELECT * FROM x UNION SELECT * FROM Y) OR TRUE" :tables [[nil nil "Y"] [nil nil "test"] [nil nil "x"]]}
+  {:sql "SELECT a FROM test WHERE TRUE OR NOT EXISTS(SELECT * FROM x)" :tables [[nil nil "test"] [nil nil "x"]]}
+  {:sql "SELECT a AS any, b AS some, c AS all, d AS exists FROM test WHERE a = ANY (SELECT 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a > ALL (SELECT 1)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE (a, b) IN (SELECT 1, 2)" :tables [[nil nil "test"]]}
+  {:sql "SELECT X((SELECT 1) UNION (SELECT 2))" :tables []}
+  {:sql "SELECT a FROM test ORDER BY a" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test ORDER BY a, b" :tables [[nil nil "test"]]}
+  {:sql "SELECT x FROM tests ORDER BY a DESC, b DESC, c" :tables [[nil nil "tests"]]}
+  {:sql "SELECT a FROM test ORDER BY a > 1" :tables [[nil nil "test"]]}
+  {:sql "SELECT * FROM test ORDER BY DATE DESC, TIMESTAMP DESC" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b FROM test GROUP BY 1" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b FROM test GROUP BY a" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b FROM test WHERE a = 1 GROUP BY a HAVING a = 2" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b FROM test WHERE a = 1 GROUP BY a HAVING a = 2 ORDER BY a" :tables [[nil nil "test"]]}
+  {:sql "SELECT a, b FROM test WHERE a = 1 GROUP BY CASE 1 WHEN 1 THEN 1 END" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS (())" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS (x, ())" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS (x, (x, y), (x, y, z), q)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY CUBE (x)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY ROLLUP (x)" :tables [[nil nil "test"]]}
+  {:sql "SELECT t.a FROM test AS t GROUP BY ROLLUP (t.x)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS ((x, y)), ROLLUP (b)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY CUBE (x), ROLLUP (x, y, z)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS ((x)) LIMIT 5" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY ROLLUP (x) LIMIT 5" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY CUBE (x) OFFSET 5" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test GROUP BY ROLLUP (x) WINDOW w AS (ORDER BY x)" :tables [[nil nil "test"]]}
+  {:sql "SELECT CASE WHEN a < b THEN 1 WHEN a < c THEN 2 ELSE 3 END FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CASE 1 WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT CASE 1 WHEN 1 THEN MAP('a', 'b') ELSE MAP('b', 'c') END['a']" :tables []}
+  {:sql "SELECT CASE 1 + 2 WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT CASE TEST(1) + x[0] WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT CASE x[0] WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT CASE a.b WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT CASE CASE x > 1 WHEN TRUE THEN 1 END WHEN 1 THEN 1 ELSE 2 END" :tables []}
+  {:sql "SELECT a FROM (SELECT a FROM test) AS x" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM (SELECT a FROM (SELECT a FROM test) AS y) AS x" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test WHERE a IN (1, 2, 3) OR b BETWEEN 1 AND 4" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test AS x TABLESAMPLE (BUCKET 1 OUT OF 5)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5 ON x)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test TABLESAMPLE (BUCKET 1 OUT OF 5 ON RAND())" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test TABLESAMPLE (0.1 PERCENT)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test TABLESAMPLE (100 ROWS)" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test PIVOT(SUM(x) FOR y IN ('z', 'q'))" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 FROM a.b.table1 AS t UNPIVOT((c3) FOR c4 IN (a, b))" :tables [["a" "b" "table1"]]}
+  {:sql "SELECT a FROM test PIVOT(SOMEAGG(x, y, z) FOR q IN (1))" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test PIVOT(SUM(x) FOR y IN ('z', 'q')) PIVOT(MAX(b) FOR c IN ('d'))" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM (SELECT a, b FROM test) PIVOT(SUM(x) FOR y IN ('z', 'q'))" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test UNPIVOT(x FOR y IN (z, q)) AS x" :tables [[nil nil "test"]]}
+  {:sql "SELECT a FROM test PIVOT(SUM(x) FOR y IN ('z', 'q')) UNPIVOT(x FOR y IN (z, q)) AS x" :tables [[nil nil "test"]]}
+  {:sql "SELECT ABS(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT AVG(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CEIL(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CEIL(a, b) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(1) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(*) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT() FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(DISTINCT a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT EXP(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT FLOOR(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT FLOOR(a, b) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT FIRST_VALUE(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT GREATEST(a, b, c) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT LAST_VALUE(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT LAST_VALUE(a) IGNORE NULLS OVER () + 1" :tables []}
+  {:sql "SELECT LN(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT MAX(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT MIN(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT POWER(a, 2) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT QUANTILE(a, 0.95) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT ROUND(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT ROUND(a, 2) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT SUM(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT SQRT(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT STDDEV(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT STDDEV_POP(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT STDDEV_SAMP(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT VARIANCE(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT VARIANCE_POP(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS INT) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS DATETIME) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS VARCHAR) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a < 1 AS INT) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a IS NULL AS INT) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(CAST(1 < 2 AS INT)) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COUNT(CASE WHEN CAST(1 < 2 AS BOOLEAN) THEN 1 END) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS DECIMAL) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS DECIMAL(1)) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS DECIMAL(1, 2)) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS MAP<INT, INT>) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS TIMESTAMP) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS DATE) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS ARRAY<INT>) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT CAST(a AS VARIANT) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT TRY_CAST(a AS INT) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT COALESCE(a, b, c) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT ANY_VALUE(a) FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT 1 FROM a JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN b AS c ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a INNER JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a LEFT JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a RIGHT JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a CROSS JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a SEMI JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a LEFT SEMI JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a LEFT ANTI JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a RIGHT SEMI JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a RIGHT ANTI JOIN b ON a.x = b.x" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN b USING (x)" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN b USING (x, y, z)" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN (SELECT a FROM c) AS b ON a.x = b.x AND a.x < 2" :tables [[nil nil "a"] [nil nil "c"]]}
+  {:sql "SELECT 1 FROM a UNION SELECT 2 FROM b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a UNION ALL SELECT 2 FROM b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN b ON a.foo = b.bar JOIN c ON a.foo = c.bar" :tables [[nil nil "a"] [nil nil "b"] [nil nil "c"]]}
+  {:sql "SELECT 1 FROM a LEFT JOIN b ON a.foo = b.bar JOIN c ON a.foo = c.bar" :tables [[nil nil "a"] [nil nil "b"] [nil nil "c"]]}
+  {:sql "SELECT 1 FROM a LEFT INNER JOIN b ON a.foo = b.bar" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a LEFT OUTER JOIN b ON a.foo = b.bar" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a NATURAL JOIN b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a NATURAL LEFT JOIN b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a NATURAL LEFT OUTER JOIN b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a OUTER JOIN b ON a.foo = b.bar" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a FULL JOIN b ON a.foo = b.bar" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT 1 FROM a JOIN b JOIN c ON b.id = c.id ON a.id = b.id" :tables [[nil nil "a"] [nil nil "b"] [nil nil "c"]]}
+  {:sql "SELECT * FROM a JOIN b JOIN c USING (id) USING (id)" :tables [[nil nil "a"] [nil nil "b"] [nil nil "c"]]}
+  {:sql "SELECT 1 UNION ALL SELECT 2" :tables []}
+  {:sql "SELECT 1 EXCEPT SELECT 2" :tables []}
+  {:sql "SELECT 1 INTERSECT SELECT 2" :tables []}
+  {:sql "SELECT 1 AS delete, 2 AS alter" :tables []}
+  {:sql "SELECT * FROM (x)" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM ((x))" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM (((x)))" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM ((SELECT 1))" :tables []}
+  {:sql "SELECT * FROM (x CROSS JOIN foo LATERAL VIEW EXPLODE(y))" :tables [[nil nil "foo"] [nil nil "x"]]}
+  {:sql "SELECT * FROM (SELECT 1) AS x" :tables []}
+  {:sql "SELECT * FROM (SELECT 1 UNION SELECT 2) AS x" :tables []}
+  {:sql "SELECT * FROM (SELECT 1 UNION ALL SELECT 2) AS x" :tables []}
+  {:sql "SELECT * FROM (SELECT 1 UNION ALL SELECT 2)" :tables []}
+  {:sql "SELECT * FROM ((SELECT 1) AS a UNION ALL (SELECT 2) AS b)" :tables []}
+  {:sql "SELECT * FROM ((SELECT 1) AS a(b))" :tables []}
+  {:sql "SELECT * FROM ((SELECT 1) UNION (SELECT 2) UNION (SELECT 3))" :tables []}
+  {:sql "SELECT * FROM (table1 AS t1 LEFT JOIN table2 AS t2 ON 1 = 1)" :tables [[nil nil "table1"] [nil nil "table2"]]}
+  {:sql "SELECT * FROM (tbl1 LEFT JOIN tbl2 ON 1 = 1)" :tables [[nil nil "tbl1"] [nil nil "tbl2"]]}
+  {:sql "SELECT * FROM (tbl1, tbl2 JOIN tbl3 ON TRUE)" :tables [[nil nil "tbl1"] [nil nil "tbl2"] [nil nil "tbl3"]]}
+  {:sql "SELECT * FROM (tbl1 CROSS JOIN tbl2)" :tables [[nil nil "tbl1"] [nil nil "tbl2"]]}
+  {:sql "SELECT * FROM (tbl1 CROSS JOIN tbl2) AS t" :tables [[nil nil "tbl1"] [nil nil "tbl2"]]}
+  {:sql "SELECT * FROM (tbl AS tbl) AS t" :tables [[nil nil "tbl"]]}
+  {:sql "SELECT * FROM (tbl1 JOIN (tbl2 CROSS JOIN tbl3) ON bla = foo)" :tables [[nil nil "tbl1"] [nil nil "tbl2"] [nil nil "tbl3"]]}
+  {:sql "SELECT * FROM (tbl1, LATERAL (SELECT * FROM bla) AS tbl)" :tables [[nil nil "bla"] [nil nil "tbl1"]]}
+  {:sql "SELECT * FROM x AS y(a, b)" :tables [[nil nil "x"]]}
+  {:sql "SELECT * EXCEPT (a, b)" :tables []}
+  {:sql "SELECT * EXCEPT (a, b) FROM y" :tables [[nil nil "y"]]}
+  {:sql "SELECT * REPLACE (a AS b, b AS C)" :tables []}
+  {:sql "SELECT * REPLACE (a + 1 AS b, b AS C)" :tables []}
+  {:sql "SELECT * EXCEPT (a, b) REPLACE (a AS b, b AS C)" :tables []}
+  {:sql "SELECT * EXCEPT (a, b) REPLACE (a AS b, b AS C) FROM y" :tables [[nil nil "y"]]}
+  {:sql "SELECT a.* EXCEPT (a, b), b.* REPLACE (a AS b, b AS C)" :tables []}
+  {:sql "SELECT a.* EXCEPT (a, b), b.* REPLACE (a AS b, b AS C) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT A.* EXCEPT (A.COL_1) FROM TABLE_1 AS A" :tables [[nil nil "TABLE_1"]]}
+  {:sql "SELECT zoo, animals FROM (VALUES ('oakland', ARRAY('a', 'b')), ('sf', ARRAY('b', 'c'))) AS t(zoo, animals)" :tables []}
+  {:sql "SELECT zoo, animals FROM UNNEST(ARRAY(STRUCT('oakland' AS zoo, ARRAY('a', 'b') AS animals), STRUCT('sf' AS zoo, ARRAY('b', 'c') AS animals))) AS t(zoo, animals)" :tables []}
+  {:sql "WITH out AS (SELECT 1 AS c) SELECT * FROM out" :tables []}
+  {:sql "WITH a AS (SELECT 1) SELECT 1 UNION ALL SELECT 2" :tables []}
+  {:sql "WITH a AS (SELECT 1) SELECT 1 UNION SELECT 2" :tables []}
+  {:sql "WITH a AS (SELECT 1) SELECT 1 INTERSECT SELECT 2" :tables []}
+  {:sql "WITH a AS (SELECT 1) SELECT 1 EXCEPT SELECT 2" :tables []}
+  {:sql "(SELECT 1) UNION (SELECT 2)" :tables []}
+  {:sql "(SELECT 1) UNION SELECT 2" :tables []}
+  {:sql "SELECT 1 UNION (SELECT 2)" :tables []}
+  {:sql "(SELECT 1) ORDER BY x LIMIT 1 OFFSET 1" :tables []}
+  {:sql "(SELECT 1 UNION SELECT 2) UNION (SELECT 2 UNION ALL SELECT 3)" :tables []}
+  {:sql "(SELECT 1 UNION SELECT 2) ORDER BY x LIMIT 1 OFFSET 1" :tables []}
+  {:sql "SELECT 1 UNION (SELECT 2) ORDER BY x" :tables []}
+  {:sql "(SELECT 1) UNION SELECT 2 ORDER BY x" :tables []}
+  {:sql "SELECT * FROM (((SELECT 1) UNION SELECT 2) ORDER BY x LIMIT 1 OFFSET 1)" :tables []}
+  {:sql "SELECT * FROM ((SELECT 1 AS x) CROSS JOIN (SELECT 2 AS y)) AS z" :tables []}
+  {:sql "((SELECT 1) EXCEPT (SELECT 2))" :tables []}
+  {:sql "((SELECT 1)) LIMIT 1" :tables []}
+  {:sql "WITH a AS (SELECT 1) SELECT a.* FROM a" :tables []}
+  {:sql "WITH a AS (SELECT 1), b AS (SELECT 2) SELECT a.*, b.* FROM a CROSS JOIN b" :tables []}
+  {:sql "WITH a AS (WITH b AS (SELECT 1 AS x) SELECT b.x FROM b) SELECT a.x FROM a" :tables []}
+  {:sql "WITH baz AS (SELECT 1 AS col) UPDATE bar SET cid = baz.col1 FROM baz" :tables [[nil nil "bar"]]}
+  {:sql "SELECT * FROM (WITH y AS (SELECT 1 AS z) SELECT z FROM y) AS x" :tables []}
+  {:sql "SELECT RANK() OVER () FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER () AS y FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (PARTITION BY a) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (PARTITION BY a, b) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (ORDER BY a) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (ORDER BY a, b) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (PARTITION BY a ORDER BY a) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT RANK() OVER (PARTITION BY a, b ORDER BY a, b DESC) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a) AS y FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ORDER BY b ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ORDER BY b RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND CURRENT ROW)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ORDER BY b RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND INTERVAL '2' DAYS FOLLOWING)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ORDER BY b RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND UNBOUNDED FOLLOWING)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ROWS BETWEEN UNBOUNDED PRECEDING AND PRECEDING)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a RANGE BETWEEN 1 AND 3)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a RANGE BETWEEN 1 FOLLOWING AND 3)" :tables []}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a RANGE BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)" :tables []}
+  {:sql "SELECT AVG(x) OVER (ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM t" :tables [[nil nil "t"]]}
+  {:sql "SELECT SUM(x) OVER (PARTITION BY a ORDER BY date ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)" :tables []}
+  {:sql "SELECT LISTAGG(x) WITHIN GROUP (ORDER BY x) AS y" :tables []}
+  {:sql "SELECT LISTAGG(x) WITHIN GROUP (ORDER BY x DESC)" :tables []}
+  {:sql "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x)" :tables []}
+  {:sql "SELECT PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY x)" :tables []}
+  {:sql "SELECT SUM(x) FILTER(WHERE x > 1)" :tables []}
+  {:sql "SELECT SUM(x) FILTER(WHERE x > 1) OVER (ORDER BY y)" :tables []}
+  {:sql "SELECT COUNT(DISTINCT a) OVER (PARTITION BY c ORDER BY d ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING)" :tables []}
+  {:sql "SELECT a['1'], b[0], x.c[0], \"x\".d['1'] FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT ARRAY(1, 2, 3) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT ARRAY(ARRAY(1), ARRAY(2)) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT MAP[ARRAY(1), ARRAY(2)] FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT MAP(ARRAY(1), ARRAY(2)) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT MAX(ARRAY(1, 2, 3)) FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT ARRAY(ARRAY(0))[0][0] FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT MAP[ARRAY('x'), ARRAY(0)]['x'] FROM x" :tables [[nil nil "x"]]}
+  {:sql "SELECT student, score FROM tests LATERAL VIEW EXPLODE(scores)" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests LATERAL VIEW EXPLODE(scores) AS score" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests LATERAL VIEW EXPLODE(scores) t AS score" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests LATERAL VIEW EXPLODE(scores) t AS score, name" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests LATERAL VIEW OUTER EXPLODE(scores) t AS score, name" :tables [[nil nil "tests"]]}
+  {:sql "SELECT tf.* FROM (SELECT 0) AS t LATERAL VIEW STACK(1, 2) tf" :tables []}
+  {:sql "SELECT tf.* FROM (SELECT 0) AS t LATERAL VIEW STACK(1, 2) tf AS col0, col1, col2" :tables []}
+  {:sql "SELECT student, score FROM tests CROSS JOIN UNNEST(scores) AS t(score)" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests CROSS JOIN UNNEST(scores) AS t(a, b)" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests CROSS JOIN UNNEST(scores) WITH ORDINALITY AS t(a, b)" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests CROSS JOIN UNNEST(x.scores) AS t(score)" :tables [[nil nil "tests"]]}
+  {:sql "SELECT student, score FROM tests CROSS JOIN UNNEST(ARRAY(x.scores)) AS t(score)" :tables [[nil nil "tests"]]}
+  {:sql "CREATE TABLE foo AS (SELECT 1) UNION ALL (SELECT 2)" :tables [[nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (id INT PRIMARY KEY ASC)" :tables [[nil nil "foo"]]}
+  {:sql "CREATE TABLE a.b AS SELECT 1" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS SELECT 1 WITH DATA AND STATISTICS" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS SELECT 1 WITH NO DATA AND NO STATISTICS" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS (SELECT 1) NO PRIMARY INDEX" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS (SELECT 1) UNIQUE PRIMARY INDEX index1 (a) UNIQUE INDEX index2 (b)" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS (SELECT 1) PRIMARY AMP INDEX index1 (a) UNIQUE INDEX index2 (b)" :tables [[nil "a" "b"]]}
+  {:sql "CREATE TABLE a.b AS SELECT a FROM a.c" :tables [[nil "a" "b"] [nil "a" "c"]]}
+  {:sql "CREATE TABLE IF NOT EXISTS x AS SELECT a FROM d" :tables [[nil nil "d"] [nil nil "x"]]}
+  {:sql "CREATE TABLE z (a INT, b VARCHAR, c VARCHAR(100), d DECIMAL(5, 3))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (end INT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (bucket INT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (truncate INT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a ARRAY<TEXT>, b MAP<TEXT, DOUBLE>, c DECIMAL(5, 3))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT, b VARCHAR COMMENT 'z', c VARCHAR(100) COMMENT 'z', d DECIMAL(5, 3))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT(11) DEFAULT UUID())" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (n INT DEFAULT 0 NOT NULL)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT(11) DEFAULT NULL COMMENT '客户id')" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT(11) NOT NULL DEFAULT 1)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT(11) NOT NULL DEFAULT -1)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT(11) NOT NULL COLLATE utf8_bin AUTO_INCREMENT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT, PRIMARY KEY (a))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z WITH (FORMAT='parquet') AS SELECT 1" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z WITH (FORMAT='ORC', x='2') AS SELECT 1" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z WITH (TABLE_FORMAT='iceberg', FORMAT='parquet') AS SELECT 1" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z WITH (TABLE_FORMAT='iceberg', FORMAT='ORC', x='2') AS SELECT 1" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (z INT) WITH (PARTITIONED_BY=(x INT, y INT))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (z INT) WITH (PARTITIONED_BY=(x INT)) AS SELECT 1" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z AS (WITH cte AS (SELECT 1) SELECT * FROM cte)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z AS ((WITH cte AS (SELECT 1) SELECT * FROM cte))" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT UNIQUE)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT AUTO_INCREMENT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT UNIQUE AUTO_INCREMENT)" :tables [[nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT REFERENCES parent (b, c))" :tables [[nil nil "parent"] [nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT PRIMARY KEY, b INT REFERENCES foo (id))" :tables [[nil nil "foo"] [nil nil "z"]]}
+  {:sql "CREATE TABLE z (a INT, FOREIGN KEY (a) REFERENCES parent (b, c))" :tables [[nil nil "parent"] [nil nil "z"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON DELETE NO ACTION)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON DELETE CASCADE)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON DELETE SET NULL)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON DELETE SET DEFAULT)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON UPDATE NO ACTION)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON UPDATE CASCADE)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON UPDATE SET NULL)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (bar INT REFERENCES baz (baz_id) ON UPDATE SET DEFAULT)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE asd AS SELECT asd FROM asd WITH NO DATA" :tables [[nil nil "asd"]]}
+  {:sql "CREATE TABLE asd AS SELECT asd FROM asd WITH DATA" :tables [[nil nil "asd"]]}
+  {:sql "CREATE TABLE products (x INT GENERATED BY DEFAULT AS IDENTITY)" :tables [[nil nil "products"]]}
+  {:sql "CREATE TABLE products (x INT GENERATED BY DEFAULT ON NULL AS IDENTITY)" :tables [[nil nil "products"]]}
+  {:sql "CREATE TABLE products (x INT GENERATED ALWAYS AS IDENTITY)" :tables [[nil nil "products"]]}
+  {:sql "CREATE TABLE konyvszerzo (szerzo_azon INT CONSTRAINT konyvszerzo_szerzo_fk REFERENCES szerzo)" :tables [[nil nil "konyvszerzo"] [nil nil "szerzo"]]}
+  {:sql "CREATE TABLE IF NOT EXISTS customer (pk BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY (INCREMENT BY 1))" :tables [[nil nil "customer"]]}
+  {:sql "CREATE TABLE customer (pk BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 10 INCREMENT BY 1 MINVALUE -1 MAXVALUE 1 NO CYCLE))" :tables [[nil nil "customer"]]}
+  {:sql "CREATE TABLE customer (pk BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 10))" :tables [[nil nil "customer"]]}
+  {:sql "CREATE TABLE customer (pk BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY (CYCLE))" :tables [[nil nil "customer"]]}
+  {:sql "CREATE TABLE customer (period INT NOT NULL)" :tables [[nil nil "customer"]]}
+  {:sql "CREATE TABLE foo (baz_id INT REFERENCES baz (id) DEFERRABLE)" :tables [[nil nil "baz"] [nil nil "foo"]]}
+  {:sql "CREATE TABLE foo (baz CHAR(4) CHARACTER SET LATIN UPPERCASE NOT CASESPECIFIC COMPRESS 'a')" :tables [[nil nil "foo"]]}
+  {:sql "CREATE TABLE db.foo (id INT NOT NULL, valid_date DATE FORMAT 'YYYY-MM-DD', measurement INT COMPRESS)" :tables [[nil "db" "foo"]]}
+  {:sql "CREATE TABLE foo (baz DATE FORMAT 'YYYY/MM/DD' TITLE 'title' INLINE LENGTH 1 COMPRESS ('a', 'b'))" :tables [[nil nil "foo"]]}
+  {:sql "CREATE TABLE t (title TEXT)" :tables [[nil nil "t"]]}
+  {:sql "CREATE TABLE foo (baz INT, inline TEXT)" :tables [[nil nil "foo"]]}
+  {:sql "CREATE ALGORITHM=UNDEFINED DEFINER=foo@% VIEW a SQL SECURITY DEFINER AS (SELECT a FROM b)" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "CREATE TEMPORARY TABLE x AS SELECT a FROM d" :tables [[nil nil "d"] [nil nil "x"]]}
+  {:sql "CREATE TEMPORARY TABLE IF NOT EXISTS x AS SELECT a FROM d" :tables [[nil nil "d"] [nil nil "x"]]}
+  {:sql "CREATE TABLE a (b INT) ON COMMIT PRESERVE ROWS" :tables [[nil nil "a"]]}
+  {:sql "CREATE VIEW x AS SELECT a FROM b" :tables [[nil nil "b"] [nil nil "x"]]}
+  {:sql "CREATE VIEW IF NOT EXISTS x AS SELECT a FROM b" :tables [[nil nil "b"] [nil nil "x"]]}
+  {:sql "CREATE VIEW z (a, b COMMENT 'b', c COMMENT 'c') AS SELECT a, b, c FROM d" :tables [[nil nil "d"] [nil nil "z"]]}
+  {:sql "CREATE VIEW IF NOT EXISTS z (a, b COMMENT 'b', c COMMENT 'c') AS SELECT a, b, c FROM d" :tables [[nil nil "d"] [nil nil "z"]]}
+  {:sql "CREATE OR REPLACE VIEW x AS SELECT *" :tables [[nil nil "x"]]}
+  {:sql "CREATE OR REPLACE TEMPORARY VIEW x AS SELECT *" :tables [[nil nil "x"]]}
+  {:sql "CREATE TEMPORARY VIEW x AS SELECT a FROM d" :tables [[nil nil "d"] [nil nil "x"]]}
+  {:sql "CREATE TEMPORARY VIEW IF NOT EXISTS x AS SELECT a FROM d" :tables [[nil nil "d"] [nil nil "x"]]}
+  {:sql "CREATE TEMPORARY VIEW x AS WITH y AS (SELECT 1) SELECT * FROM y" :tables [[nil nil "x"]]}
+  {:sql "CREATE MATERIALIZED VIEW x.y.z AS SELECT a FROM b" :tables [[nil nil "b"] ["x" "y" "z"]]}
+  {:sql "CREATE VIEW z (a, b)" :tables [[nil nil "z"]]}
+  {:sql "CREATE VIEW z (a, b COMMENT 'b', c COMMENT 'c')" :tables [[nil nil "z"]]}
+  {:sql "CREATE VIEW z AS LOCKING ROW FOR ACCESS SELECT a FROM b" :tables [[nil nil "b"] [nil nil "z"]]}
+  {:sql "CREATE TEMPORARY FUNCTION f" :tables [[nil nil "f"]]}
+  {:sql "CREATE TEMPORARY FUNCTION f AS 'g'" :tables [[nil nil "f"]]}
+  {:sql "CREATE FUNCTION f" :tables [[nil nil "f"]]}
+  {:sql "CREATE FUNCTION f AS 'g'" :tables [[nil nil "f"]]}
+  {:sql "CREATE FUNCTION a(b INT, c VARCHAR) AS 'SELECT 1'" :tables [[nil nil "a"]]}
+  {:sql "CREATE FUNCTION a() LANGUAGE sql" :tables [[nil nil "a"]]}
+  {:sql "CREATE FUNCTION a() LANGUAGE sql RETURNS INT" :tables [[nil nil "a"]]}
+  {:sql "CREATE FUNCTION a.b(x INT) RETURNS INT AS RETURN x + 1" :tables [[nil "a" "b"]]}
+  {:sql "CREATE FUNCTION a.b(x TEXT) RETURNS TEXT CONTAINS SQL AS RETURN x" :tables [[nil "a" "b"]]}
+  {:sql "CREATE FUNCTION a.b(x TEXT) RETURNS TEXT LANGUAGE SQL MODIFIES SQL DATA AS RETURN x" :tables [[nil "a" "b"]]}
+  {:sql "CREATE FUNCTION a.b(x TEXT) LANGUAGE SQL READS SQL DATA RETURNS TEXT AS RETURN x" :tables [[nil "a" "b"]]}
+  {:sql "CREATE FUNCTION a(x INT) RETURNS INT LANGUAGE SQL CALLED ON NULL INPUT AS 'SELECT 1'" :tables [[nil nil "a"]]}
+  {:sql "CREATE FUNCTION a.b.c()" :tables [["a" "b" "c"]]}
+  {:sql "CREATE INDEX abc ON t(a)" :tables [[nil nil "t"]]}
+  {:sql "CREATE INDEX \"abc\" ON t(a)" :tables [[nil nil "t"]]}
+  {:sql "CREATE INDEX abc ON t(a, b, b)" :tables [[nil nil "t"]]}
+  {:sql "CREATE INDEX abc ON t(a NULLS LAST)" :tables [[nil nil "t"]]}
+  {:sql "CREATE INDEX pointloc ON points USING GIST(BOX(location, location))" :tables [[nil nil "points"]]}
+  {:sql "CREATE UNIQUE INDEX abc ON t(a, b, b)" :tables [[nil nil "t"]]}
+  {:sql "CREATE UNIQUE INDEX IF NOT EXISTS my_idx ON tbl(a, b)" :tables [[nil nil "tbl"]]}
+  {:sql "CREATE SCHEMA x" :tables []}
+  {:sql "CREATE SCHEMA IF NOT EXISTS y" :tables []}
+  {:sql "CREATE DATABASE x" :tables [[nil nil "x"]]}
+  {:sql "CREATE DATABASE IF NOT EXISTS y" :tables [[nil nil "y"]]}
+  {:sql "CREATE PROCEDURE IF NOT EXISTS a.b.c() AS 'DECLARE BEGIN; END'" :tables [["a" "b" "c"]]}
+  {:sql "CREATE TABLE T3 AS (SELECT DISTINCT A FROM T1 EXCEPT (SELECT A FROM T2) LIMIT 1)" :tables [[nil nil "T1"] [nil nil "T2"] [nil nil "T3"]]}
+  {:sql "DESCRIBE x" :tables [[nil nil "x"]]}
+  {:sql "DESCRIBE EXTENDED a.b" :tables [[nil "a" "b"]]}
+  {:sql "DESCRIBE FORMATTED a.b" :tables [[nil "a" "b"]]}
+  {:sql "DESCRIBE SELECT 1" :tables []}
+  {:sql "DROP INDEX a.b.c" :tables [["a" "b" "c"]]}
+  {:sql "DROP FUNCTION a.b.c (INT)" :tables [["a" "b" "c"]]}
+  {:sql "DROP MATERIALIZED VIEW x.y.z" :tables [["x" "y" "z"]]}
+  {:sql "CACHE TABLE x" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x OPTIONS('storageLevel' = 'value')" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x OPTIONS(N'storageLevel' = 'value')" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x OPTIONS('storageLevel' = 'value') AS SELECT 1" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x OPTIONS('storageLevel' = 'value') AS WITH a AS (SELECT 1) SELECT a.* FROM a" :tables [[nil nil "x"]]}
+  {:sql "CACHE LAZY TABLE x AS WITH a AS (SELECT 1) SELECT a.* FROM a" :tables [[nil nil "x"]]}
+  {:sql "CACHE TABLE x AS WITH a AS (SELECT 1) SELECT a.* FROM a" :tables [[nil nil "x"]]}
+  {:sql "CACHE TABLE x AS (SELECT 1 AS y)" :tables [[nil nil "x"]]}
+  {:sql "DROP PROCEDURE a.b.c (INT)" :tables [["a" "b" "c"]]}
+  {:sql "INSERT OVERWRITE TABLE a.b PARTITION(ds) SELECT x FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "INSERT OVERWRITE TABLE a.b PARTITION(ds = 'YYYY-MM-DD') SELECT x FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "INSERT OVERWRITE TABLE a.b PARTITION(ds, hour) SELECT x FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "INSERT OVERWRITE TABLE a.b PARTITION(ds = 'YYYY-MM-DD', hour = 'hh') SELECT x FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "INSERT INTO a.b PARTITION(DAY = '2024-04-14') (col1, col2) SELECT x FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "DELETE FROM x WHERE y > 1" :tables [[nil nil "x"]]}
+  {:sql "DELETE FROM y" :tables [[nil nil "y"]]}
+  {:sql "DELETE FROM event USING sales WHERE event.eventid = sales.eventid" :tables [[nil nil "event"] [nil nil "sales"]]}
+  {:sql "DELETE FROM event USING sales, bla WHERE event.eventid = sales.eventid" :tables [[nil nil "bla"] [nil nil "event"] [nil nil "sales"]]}
+  {:sql "DELETE FROM event USING sales AS s WHERE event.eventid = s.eventid" :tables [[nil nil "event"] [nil nil "sales"]]}
+  {:sql "DELETE FROM event AS event USING sales AS s WHERE event.eventid = s.eventid" :tables [[nil nil "event"] [nil nil "sales"]]}
+  {:sql "DROP TABLE a" :tables [[nil nil "a"]]}
+  {:sql "DROP TABLE a.b" :tables [[nil "a" "b"]]}
+  {:sql "DROP TABLE a, b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "DROP TABLE a.b, c.d" :tables [[nil "a" "b"] [nil "c" "d"]]}
+  {:sql "DROP TABLE IF EXISTS a" :tables [[nil nil "a"]]}
+  {:sql "DROP TABLE IF EXISTS a, b CASCADE" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "DROP TABLE IF EXISTS a.b" :tables [[nil "a" "b"]]}
+  {:sql "DROP TABLE a CASCADE" :tables [[nil nil "a"]]}
+  {:sql "DROP TABLE s_hajo CASCADE CONSTRAINTS" :tables [[nil nil "s_hajo"]]}
+  {:sql "DROP TABLE a PURGE" :tables [[nil nil "a"]]}
+  {:sql "DROP VIEW a" :tables [[nil nil "a"]]}
+  {:sql "DROP VIEW a.b" :tables [[nil "a" "b"]]}
+  {:sql "DROP VIEW IF EXISTS a" :tables [[nil nil "a"]]}
+  {:sql "DROP VIEW IF EXISTS a.b" :tables [[nil "a" "b"]]}
+  {:sql "BEGIN" :tables []}
+  {:sql "ROLLBACK" :tables []}
+  {:sql "ROLLBACK TO b" :tables []}
+  {:sql "INSERT INTO x SELECT * FROM y" :tables [[nil nil "x"] [nil nil "y"]]}
+  {:sql "INSERT INTO x (SELECT * FROM y)" :tables [[nil nil "x"] [nil nil "y"]]}
+  {:sql "INSERT INTO x WITH y AS (SELECT 1) SELECT * FROM y" :tables [[nil nil "x"]]}
+  {:sql "INSERT INTO x.z IF EXISTS SELECT * FROM y" :tables [[nil nil "y"] [nil "x" "z"]]}
+  {:sql "INSERT INTO x VALUES (1, 'a', 2.0)" :tables [[nil nil "x"]]}
+  {:sql "INSERT INTO x VALUES (1, 'a', 2.0), (1, 'a', 3.0), (X(), y[1], z.x)" :tables [[nil nil "x"]]}
+  {:sql "INSERT INTO y (a, b, c) SELECT a, b, c FROM x" :tables [[nil nil "x"] [nil nil "y"]]}
+  {:sql "INSERT INTO y (SELECT 1) UNION (SELECT 2)" :tables [[nil nil "y"]]}
+  {:sql "INSERT INTO result_table (WITH test AS (SELECT * FROM source_table) SELECT * FROM test)" :tables [[nil nil "result_table"] [nil nil "source_table"]]}
+  {:sql "INSERT INTO \"tests_user\" (\"username\", \"first_name\", \"last_name\") VALUES ('fiara', 'Fiara', 'Ironhide') RETURNING \"tests_user\".\"id\"" :tables [[nil nil "tests_user"]]}
+  {:sql "INSERT INTO t1 (tc1 /* tc1 */, tc2 /* tc2 */) SELECT c1 /* sc1 */, c2 /* sc2 */ FROM t" :tables [[nil nil "t"] [nil nil "t1"]]}
+  {:sql "INSERT INTO t1 (\"tc1\" /* tc1 */, \"tc2\" /* tc2 */) SELECT \"c1\" /* sc1 */, \"c2\" /* sc2 */ FROM t" :tables [[nil nil "t"] [nil nil "t1"]]}
+  {:sql "INSERT OVERWRITE TABLE x IF EXISTS SELECT * FROM y" :tables [[nil nil "x"] [nil nil "y"]]}
+  {:sql "INSERT OVERWRITE TABLE a.b IF EXISTS SELECT * FROM y" :tables [[nil nil "y"] [nil "a" "b"]]}
+  {:sql "INSERT OVERWRITE DIRECTORY 'x' SELECT 1" :tables []}
+  {:sql "INSERT OVERWRITE LOCAL DIRECTORY 'x' SELECT 1" :tables []}
+  {:sql "INSERT OVERWRITE LOCAL DIRECTORY 'x' ROW FORMAT DELIMITED FIELDS TERMINATED BY '1' COLLECTION ITEMS TERMINATED BY '2' MAP KEYS TERMINATED BY '3' LINES TERMINATED BY '4' NULL DEFINED AS '5' SELECT 1" :tables []}
+  {:sql "LOAD DATA INPATH 'x' INTO TABLE y PARTITION(ds = 'yyyy')" :tables [[nil nil "y"]]}
+  {:sql "LOAD DATA LOCAL INPATH 'x' INTO TABLE y PARTITION(ds = 'yyyy')" :tables [[nil nil "y"]]}
+  {:sql "LOAD DATA LOCAL INPATH 'x' INTO TABLE y PARTITION(ds = 'yyyy') INPUTFORMAT 'y'" :tables [[nil nil "y"]]}
+  {:sql "LOAD DATA LOCAL INPATH 'x' INTO TABLE y PARTITION(ds = 'yyyy') INPUTFORMAT 'y' SERDE 'z'" :tables [[nil nil "y"]]}
+  {:sql "LOAD DATA INPATH 'x' INTO TABLE y INPUTFORMAT 'y' SERDE 'z'" :tables [[nil nil "y"]]}
+  {:sql "LOAD DATA INPATH 'x' INTO TABLE y.b INPUTFORMAT 'y' SERDE 'z'" :tables [[nil "y" "b"]]}
+  {:sql "SELECT 1 FROM PARQUET_SCAN('/x/y/*') AS y" :tables []}
+  {:sql "UNCACHE TABLE x" :tables [[nil nil "x"]]}
+  {:sql "UNCACHE TABLE IF EXISTS x" :tables [[nil nil "x"]]}
+  {:sql "UPDATE tbl_name SET foo = 123" :tables [[nil nil "tbl_name"]]}
+  {:sql "UPDATE tbl_name SET foo = 123, bar = 345" :tables [[nil nil "tbl_name"]]}
+  {:sql "UPDATE db.tbl_name SET foo = 123 WHERE tbl_name.bar = 234" :tables [[nil "db" "tbl_name"]]}
+  {:sql "UPDATE db.tbl_name SET foo = 123, foo_1 = 234 WHERE tbl_name.bar = 234" :tables [[nil "db" "tbl_name"]]}
+  {:sql "UPDATE products SET price = price * 1.10 WHERE price <= 99.99 RETURNING name, price AS new_price" :tables [[nil nil "products"]]}
+  {:sql "UPDATE t1 AS a, t2 AS b, t3 AS c LEFT JOIN t4 AS d ON c.id = d.id SET a.id = 1" :tables [[nil nil "t1"] [nil nil "t2"] [nil nil "t3"] [nil nil "t4"]]}
+  {:sql "COMMENT ON COLUMN my_schema.my_table.my_column IS 'Employee ID number'" :tables []}
+  {:sql "COMMENT ON DATABASE my_database IS 'Development Database'" :tables [[nil nil "my_database"]]}
+  {:sql "COMMENT ON PROCEDURE my_proc(integer, integer) IS 'Runs a report'" :tables [[nil nil "my_proc"]]}
+  {:sql "COMMENT ON TABLE my_schema.my_table IS 'Employee Information'" :tables [[nil "my_schema" "my_table"]]}
+  {:sql "COMMENT ON TABLE my_schema.my_table IS N'National String'" :tables [[nil "my_schema" "my_table"]]}
+  {:sql "WITH a AS (SELECT 1) INSERT INTO b SELECT * FROM a" :tables [[nil nil "b"]]}
+  {:sql "WITH a AS (SELECT * FROM b) UPDATE a SET col = 1" :tables [[nil nil "b"]]}
+  {:sql "WITH a AS (SELECT * FROM b) CREATE TABLE b AS SELECT * FROM a" :tables [[nil nil "b"]]}
+  {:sql "WITH a AS (SELECT * FROM b) DELETE FROM a" :tables [[nil nil "b"]]}
+  {:sql "SELECT ? AS ? FROM x WHERE b BETWEEN ? AND ? GROUP BY ?, 1 LIMIT ?" :tables [[nil nil "x"]]}
+  {:sql "SELECT :hello, ? FROM x LIMIT :my_limit" :tables [[nil nil "x"]]}
+  {:sql "SELECT a FROM b WHERE c IS ?" :tables [[nil nil "b"]]}
+  {:sql "SELECT * FROM x OFFSET @skip FETCH NEXT @take ROWS ONLY" :tables [[nil nil "x"]]}
+  {:sql "WITH a AS ((SELECT b.foo AS foo, b.bar AS bar FROM b) UNION ALL (SELECT c.foo AS foo, c.bar AS bar FROM c)) SELECT * FROM a" :tables [[nil nil "b"] [nil nil "c"]]}
+  {:sql "WITH a AS ((SELECT 1 AS b) UNION ALL (SELECT 1 AS b)) SELECT * FROM a" :tables []}
+  {:sql "SELECT (WITH x AS (SELECT 1 AS y) SELECT * FROM x) AS z" :tables []}
+  {:sql "SELECT ((SELECT 1) + 1)" :tables []}
+  {:sql "SELECT ((SELECT 0) UNION (SELECT 1) ORDER BY 1 OFFSET 1)" :tables []}
+  {:sql "SELECT * FROM x WHERE y IN ((SELECT 1) UNION (SELECT 2) OFFSET 2)" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM project.dataset.INFORMATION_SCHEMA.TABLES" :tables [["project" "dataset" "TABLES"]]}
+  {:sql "SELECT CAST(x AS INT) /* comment */ FROM foo" :tables [[nil nil "foo"]]}
+  {:sql "SELECT c /* c1 */ AS alias /* c2 */" :tables []}
+  {:sql "SELECT a /* x */, b /* x */" :tables []}
+  {:sql "SELECT a /* x */ /* y */ /* z */, b /* k */ /* m */" :tables []}
+  {:sql "SELECT * FROM foo /* x */, bla /* x */" :tables [[nil nil "bla"] [nil nil "foo"]]}
+  {:sql "SELECT 1 /* comment */ + 1" :tables []}
+  {:sql "SELECT 1 /* c1 */ + 2 /* c2 */" :tables []}
+  {:sql "SELECT 1 /* c1 */ + /* c2 */ 2 /* c3 */" :tables []}
+  {:sql "SELECT 1 /* c1 */ + 2 /* c2 */ + 3 /* c3 */" :tables []}
+  {:sql "SELECT 1 /* c1 */ + 2 /* c2 */, 3 /* c3 */" :tables []}
+  {:sql "SELECT x FROM a.b.c /* x */, e.f.g /* x */" :tables [["a" "b" "c"] ["e" "f" "g"]]}
+  {:sql "SELECT FOO(x /* c */) /* FOO */, b /* b */" :tables []}
+  {:sql "SELECT FOO(x /* c1 */ + y /* c2 */ + BLA(5 /* c3 */)) FROM (VALUES (1 /* c4 */, \"test\" /* c5 */)) /* c6 */" :tables []}
+  {:sql "INSERT INTO foo SELECT * FROM bar /* comment */" :tables [[nil nil "bar"] [nil nil "foo"]]}
+  {:sql "/* c */ WITH x AS (SELECT 1) SELECT * FROM x" :tables []}
+  {:sql "SELECT a FROM x WHERE a COLLATE 'utf8_general_ci' = 'b'" :tables [[nil nil "x"]]}
+  {:sql "SELECT x AS INTO FROM bla" :tables [[nil nil "bla"]]}
+  {:sql "ALTER TABLE integers ADD COLUMN k INT" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ADD COLUMN k INT FIRST" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ADD COLUMN k INT AFTER m" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ADD COLUMN IF NOT EXISTS k INT" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE IF EXISTS integers ADD COLUMN k INT" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ADD COLUMN l INT DEFAULT 10" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE measurements ADD COLUMN mtime TIMESTAMPTZ DEFAULT NOW()" :tables [[nil nil "measurements"]]}
+  {:sql "ALTER TABLE integers DROP COLUMN k" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers DROP COLUMN IF EXISTS k" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers DROP COLUMN k CASCADE" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ALTER COLUMN i SET DATA TYPE VARCHAR USING CONCAT(i, '_', j)" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ALTER COLUMN i SET DEFAULT 10" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE integers ALTER COLUMN i DROP DEFAULT" :tables [[nil nil "integers"]]}
+  {:sql "ALTER TABLE ingredients ALTER COLUMN amount COMMENT 'tablespoons'" :tables [[nil nil "ingredients"]]}
+  {:sql "ALTER TABLE mydataset.mytable DROP COLUMN A, DROP COLUMN IF EXISTS B" :tables [[nil "mydataset" "mytable"]]}
+  {:sql "ALTER TABLE mydataset.mytable ADD COLUMN A TEXT, ADD COLUMN IF NOT EXISTS B INT" :tables [[nil "mydataset" "mytable"]]}
+  {:sql "ALTER TABLE orders DROP PARTITION(dt = '2014-05-14', country = 'IN')" :tables [[nil nil "orders"]]}
+  {:sql "ALTER TABLE orders DROP IF EXISTS PARTITION(dt = '2014-05-14', country = 'IN')" :tables [[nil nil "orders"]]}
+  {:sql "ALTER TABLE orders DROP PARTITION(dt = '2014-05-14', country = 'IN'), PARTITION(dt = '2014-05-15', country = 'IN')" :tables [[nil nil "orders"]]}
+  {:sql "ALTER TABLE mydataset.mytable DELETE WHERE x = 1" :tables [[nil "mydataset" "mytable"]]}
+  {:sql "ALTER TABLE table1 RENAME COLUMN c1 TO c2" :tables [[nil nil "table1"]]}
+  {:sql "ALTER TABLE table1 RENAME COLUMN IF EXISTS c1 TO c2" :tables [[nil nil "table1"]]}
+  {:sql "ALTER TABLE table1 RENAME TO table2" :tables [[nil nil "table1"] [nil nil "table2"]]}
+  {:sql "ALTER VIEW view1 AS SELECT a, b, c FROM table1" :tables [[nil nil "table1"] [nil nil "view1"]]}
+  {:sql "ALTER VIEW view1 AS SELECT a, b, c FROM table1 UNION ALL SELECT a, b, c FROM table2" :tables [[nil nil "table1"] [nil nil "table2"] [nil nil "view1"]]}
+  {:sql "ALTER VIEW view1 AS SELECT a, b, c FROM table1 UNION ALL SELECT a, b, c FROM table2 LIMIT 100" :tables [[nil nil "table1"] [nil nil "table2"] [nil nil "view1"]]}
+  {:sql "SELECT div.a FROM test_table AS div" :tables [[nil nil "test_table"]]}
+  {:sql "WITH view AS (SELECT 1 AS x) SELECT * FROM view" :tables []}
+  {:sql "ARRAY<STRUCT<INT, DOUBLE, ARRAY<INT>>>" :tables []}
+  {:sql "STRUCT<int INT>" :tables []}
+  {:sql "SELECT CAST(NULL AS ARRAY<INT>) IS NULL AS array_is_null" :tables []}
+  {:sql "ALTER TABLE \"schema\".\"tablename\" ADD CONSTRAINT \"CHK_Name\" CHECK (NOT \"IdDwh\" IS NULL AND \"IdDwh\" <> (0))" :tables [[nil "schema" "tablename"]]}
+  {:sql "ALTER TABLE persons ADD CONSTRAINT persons_pk PRIMARY KEY (first_name, last_name)" :tables [[nil nil "persons"]]}
+  {:sql "ALTER TABLE pets ADD CONSTRAINT pets_persons_fk FOREIGN KEY (owner_first_name, owner_last_name) REFERENCES persons" :tables [[nil nil "persons"] [nil nil "pets"]]}
+  {:sql "ALTER TABLE pets ADD CONSTRAINT pets_name_not_cute_chk CHECK (LENGTH(name) < 20)" :tables [[nil nil "pets"]]}
+  {:sql "ALTER TABLE people10m ADD CONSTRAINT dateWithinRange CHECK (birthDate > '1900-01-01')" :tables [[nil nil "people10m"]]}
+  {:sql "ALTER TABLE people10m ADD CONSTRAINT validIds CHECK (id > 1 AND id < 99999999) ENFORCED" :tables [[nil nil "people10m"]]}
+  {:sql "ALTER TABLE ct ADD CONSTRAINT ct_id_fk FOREIGN KEY (id) REFERENCES et (fid) DEFERRABLE INITIALLY DEFERRED" :tables [[nil nil "ct"] [nil nil "et"]]}
+  {:sql "ALTER TABLE baa ADD CONSTRAINT boo PRIMARY KEY (x, y) NOT ENFORCED DEFERRABLE INITIALLY DEFERRED NORELY" :tables [[nil nil "baa"]]}
+  {:sql "ALTER TABLE baa ADD CONSTRAINT boo FOREIGN KEY (x, y) REFERENCES persons ON UPDATE NO ACTION ON DELETE NO ACTION MATCH FULL" :tables [[nil nil "baa"] [nil nil "persons"]]}
+  {:sql "ALTER TABLE a ADD PRIMARY KEY (x, y) NOT ENFORCED" :tables [[nil nil "a"]]}
+  {:sql "ALTER TABLE a ADD FOREIGN KEY (x, y) REFERENCES bla" :tables [[nil nil "a"] [nil nil "bla"]]}
+  {:sql "ALTER TABLE s_ut ADD CONSTRAINT s_ut_uq UNIQUE hajo" :tables [[nil nil "s_ut"]]}
+  {:sql "SELECT partition FROM a" :tables [[nil nil "a"]]}
+  {:sql "SELECT end FROM a" :tables [[nil nil "a"]]}
+  {:sql "SELECT id FROM b.a AS a QUALIFY ROW_NUMBER() OVER (PARTITION BY br ORDER BY sadf DESC) = 1" :tables [[nil "b" "a"]]}
+  {:sql "SELECT * FROM x WHERE a GROUP BY a HAVING b SORT BY s ORDER BY c LIMIT d" :tables [[nil nil "x"]]}
+  {:sql "SELECT LEFT.FOO FROM BLA AS LEFT" :tables [[nil nil "BLA"]]}
+  {:sql "SELECT RIGHT.FOO FROM BLA AS RIGHT" :tables [[nil nil "BLA"]]}
+  {:sql "SELECT LEFT FROM LEFT LEFT JOIN RIGHT RIGHT JOIN LEFT" :tables [[nil nil "LEFT"] [nil nil "RIGHT"]]}
+  {:sql "SELECT * FROM x WHERE name ILIKE ANY XXX('a', 'b')" :tables [[nil nil "x"]]}
+  {:sql "SELECT * FROM x WHERE name LIKE ANY XXX('a', 'b')" :tables [[nil nil "x"]]}
+  {:sql "a OVERLAPS b" :tables []}
+  {:sql "PRAGMA quick_check" :tables []}
+  {:sql "PRAGMA QUICK_CHECK(0)" :tables []}
+  {:sql "PRAGMA QUICK_CHECK('sqlite_master')" :tables []}
+  {:sql "PRAGMA schema.quick_check" :tables []}
+  {:sql "PRAGMA schema.QUICK_CHECK(0)" :tables []}
+  {:sql "PRAGMA schema.QUICK_CHECK('sqlite_master')" :tables []}
+  {:sql "PRAGMA synchronous = 2" :tables []}
+  {:sql "PRAGMA synchronous = FULL" :tables []}
+  {:sql "PRAGMA memory_limit = '1GB'" :tables []}
+  {:sql "PRAGMA schema.synchronous = 2" :tables []}
+  {:sql "PRAGMA schema.synchronous = FULL" :tables []}
+  {:sql "PRAGMA schema.memory_limit = '1GB'" :tables []}
+  {:sql "JSON_OBJECT()" :tables []}
+  {:sql "JSON_OBJECT(*)" :tables []}
+  {:sql "JSON_OBJECT('key1': 1, 'key2': TRUE)" :tables []}
+  {:sql "JSON_OBJECT('id': '5', 'fld1': 'bla', 'fld2': 'bar')" :tables []}
+  {:sql "JSON_OBJECT('x': NULL, 'y': 1 NULL ON NULL)" :tables []}
+  {:sql "JSON_OBJECT('x': NULL, 'y': 1 WITH UNIQUE KEYS)" :tables []}
+  {:sql "JSON_OBJECT('x': NULL, 'y': 1 ABSENT ON NULL WITH UNIQUE KEYS)" :tables []}
+  {:sql "JSON_OBJECT('x': 1 RETURNING VARCHAR(100))" :tables []}
+  {:sql "JSON_OBJECT('x': 1 RETURNING VARBINARY FORMAT JSON ENCODING UTF8)" :tables []}
+  {:sql "PRIOR AS x" :tables []}
+  {:sql "SELECT if.x" :tables []}
+  {:sql "SELECT PERCENTILE_CONT(x, 0.5) OVER ()" :tables []}
+  {:sql "WITH my_cte AS (SELECT 'a' AS desc) SELECT desc AS description FROM my_cte" :tables []}
+  {:sql "WITH my_cte AS (SELECT 'a' AS asc) SELECT asc AS description FROM my_cte" :tables []}
+  {:sql "SELECT * FROM case" :tables [[nil nil "case"]]}
+  {:sql "SELECT * FROM schema.case" :tables [[nil "schema" "case"]]}
+  {:sql "SELECT * FROM current_date" :tables [[nil nil "current_date"]]}
+  {:sql "SELECT * FROM schema.current_date" :tables [[nil "schema" "current_date"]]}
+  {:sql "SELECT /*+ SOME_HINT(foo) */ 1" :tables []}
+  {:sql "SELECT /*+ REBALANCE */ * FROM foo" :tables [[nil nil "foo"]]}
+  {:sql "SELECT * FROM (tbl1 CROSS JOIN (SELECT * FROM tbl2) AS t1)" :tables [[nil nil "tbl1"] [nil nil "tbl2"]]}
+  {:sql "/* comment1 */ INSERT INTO x /* comment2 */ VALUES (1, 2, 3)" :tables [[nil nil "x"]]}
+  {:sql "/* comment1 */ UPDATE tbl /* comment2 */ SET x = 2 WHERE x < 2" :tables [[nil nil "tbl"]]}
+  {:sql "/* comment1 */ DELETE FROM x /* comment2 */ WHERE y > 1" :tables [[nil nil "x"]]}
+  {:sql "/* comment */ CREATE TABLE foo AS SELECT 1" :tables [[nil nil "foo"]]}
+  {:sql "SELECT next, transform, if" :tables []}
+  {:sql "SELECT \"any\", \"case\", \"if\", \"next\"" :tables []}
+  {:sql "SELECT x FROM y ORDER BY x ASC" :tables [[nil nil "y"]]}
+  {:sql "KILL '123'" :tables []}
+  {:sql "KILL CONNECTION 123" :tables []}
+  {:sql "KILL QUERY '123'" :tables []}
+  {:sql "CHR(97)" :tables []}
+  {:sql "SELECT * FROM UNNEST(x) WITH ORDINALITY UNION ALL SELECT * FROM UNNEST(y) WITH ORDINALITY" :tables []}
+  {:sql "SELECT x FROM t1 UNION ALL SELECT x FROM t2 LIMIT 1" :tables [[nil nil "t1"] [nil nil "t2"]]}
+  {:sql "SELECT x FROM t1 UNION ALL SELECT x FROM t2 UNION ALL SELECT x FROM t3 LIMIT 1" :tables [[nil nil "t1"] [nil nil "t2"] [nil nil "t3"]]}
+  {:sql "WITH use(use) AS (SELECT 1) SELECT use FROM use" :tables []}
+  {:sql "SELECT recursive FROM t" :tables [[nil nil "t"]]}
+  {:sql "SELECT (ROW_NUMBER() OVER (PARTITION BY user ORDER BY date ASC) - ROW_NUMBER() OVER (PARTITION BY user, segment ORDER BY date ASC)) AS group_id FROM example_table" :tables [[nil nil "example_table"]]}
+  {:sql "CAST(foo AS BPCHAR)" :tables []}
+  {:sql "values" :tables []}
+  {:sql "SELECT values" :tables []}
+  {:sql "SELECT values AS values FROM t WHERE values + 1 > 3" :tables [[nil nil "t"]]}
+  {:sql "SELECT truncate" :tables []}
+  {:sql "SELECT only" :tables []}
+  {:sql "TRUNC(a, b)" :tables []}
+  {:sql "SELECT enum" :tables []}
+  {:sql "SELECT unlogged" :tables []}
+  {:sql "SELECT name" :tables []}
+  {:sql "SELECT copy" :tables []}
+  {:sql "SELECT rollup" :tables []}
+  {:sql "SELECT unnest" :tables []}
+  {:sql "SELECT cube, cube.x FROM cube" :tables [[nil nil "cube"]]}
+  {:sql "SELECT * FROM a STRAIGHT_JOIN b" :tables [[nil nil "a"] [nil nil "b"]]}
+  {:sql "SELECT COUNT(DISTINCT \"foo bar\") FROM (SELECT 1 AS \"foo bar\") AS t" :tables []}
+  {:sql "SELECT vector" :tables []}
+  {:sql "WITH all AS (SELECT 1 AS count) SELECT all.count FROM all" :tables []}
+  {:sql "SELECT rename" :tables []}
+  {:sql "GRANT SELECT ON TABLE tbl TO user" :tables [[nil nil "tbl"]]}
+  {:sql "GRANT SELECT, INSERT ON FUNCTION tbl TO user" :tables [[nil nil "tbl"]]}
+  {:sql "GRANT SELECT ON orders TO ROLE PUBLIC" :tables [[nil nil "orders"]]}
+  {:sql "GRANT SELECT ON nation TO alice WITH GRANT OPTION" :tables [[nil nil "nation"]]}
+  {:sql "GRANT DELETE ON SCHEMA finance TO bob" :tables [[nil nil "finance"]]}
+  {:sql "REVOKE SELECT ON TABLE tbl FROM user" :tables [[nil nil "tbl"]]}
+  {:sql "REVOKE SELECT, INSERT ON FUNCTION tbl FROM user" :tables [[nil nil "tbl"]]}
+  {:sql "REVOKE SELECT ON orders FROM ROLE PUBLIC" :tables [[nil nil "orders"]]}
+  {:sql "REVOKE GRANT OPTION FOR SELECT ON nation FROM alice" :tables [[nil nil "nation"]]}
+  {:sql "REVOKE DELETE ON SCHEMA finance FROM bob CASCADE" :tables [[nil nil "finance"]]}
+  {:sql "REVOKE INSERT ON TABLE orders FROM user RESTRICT" :tables [[nil nil "orders"]]}
+  {:sql "SELECT attach" :tables []}
+  {:sql "SELECT detach" :tables []}
+  {:sql "SELECT 1 OFFSET 1" :tables []}
+  {:sql "SELECT 1 LIMIT 1" :tables []}
+  {:sql "CAST(x AS INT128)" :tables []}
+  {:sql "CAST(x AS UINT128)" :tables []}
+  {:sql "CAST(x AS UINT256)" :tables []}
+  {:sql "SELECT export" :tables []}
+  {:sql "SELECT ARG_MAX(DISTINCT selected_col, filtered_col) FROM table" :tables [[nil nil "table"]]}
+  {:sql "SELECT ARG_MIN(DISTINCT selected_col, filtered_col) FROM table" :tables [[nil nil "table"]]}
+  {:sql "a.b.c.D()" :tables []}
+  {:sql "a.b.c.d.e.f.G()" :tables []}
+  {:sql "SELECT CUME_DIST() OVER (ORDER BY 1) FROM (SELECT 1)" :tables []}
+  {:sql "SELECT DENSE_RANK() OVER (ORDER BY 1) FROM (SELECT 1)" :tables []}
+  {:sql "SELECT NTILE(1) OVER (ORDER BY 1) FROM (SELECT 1)" :tables []}
+  {:sql "SELECT RANK() OVER (ORDER BY 1) FROM (SELECT 1)" :tables []}
+  {:sql "SELECT PERCENT_RANK() OVER (ORDER BY 1) FROM (SELECT 1)" :tables []}
+  {:sql "SELECT ACOS(x)" :tables []}
+  {:sql "SELECT ACOSH(x)" :tables []}
+  {:sql "SELECT ASIN(x)" :tables []}
+  {:sql "SELECT ASINH(x)" :tables []}
+  {:sql "SELECT ATAN(x)" :tables []}
+  {:sql "SELECT ATANH(x)" :tables []}
+  {:sql "SELECT ATAN2(x, y)" :tables []}
+  {:sql "SELECT COT(x)" :tables []}
+  {:sql "SELECT COTH(x)" :tables []}
+  {:sql "SELECT CSC(x)" :tables []}
+  {:sql "SELECT CSCH(x)" :tables []}
+  {:sql "SELECT RADIANS(x)" :tables []}
+  {:sql "SELECT SEC(x)" :tables []}
+  {:sql "SELECT SECH(x)" :tables []}
+  {:sql "SELECT UTC_DATE" :tables []}
+  {:sql "SELECT UTC_TIME" :tables []}
+  {:sql "SELECT UTC_TIMESTAMP" :tables []}
+  {:sql "SELECT SIN(x)" :tables []}
+  {:sql "SELECT SINH(x)" :tables []}
+  {:sql "SELECT TANH(x)" :tables []}
+  {:sql "SELECT COSINE_DISTANCE(v1, v2)" :tables []}
+  {:sql "SELECT EUCLIDEAN_DISTANCE(v1, v2)" :tables []}
+  {:sql "FOO(values.c)" :tables []}
+  {:sql "case.*" :tables []}
+  {:sql "SELECT unknown" :tables []}
+  {:sql "SELECT test.Unknown FROM test" :tables [[nil nil "test"]]}
+  {:sql "SELECT lock" :tables []}
+  {:sql "SELECT a FROM test GROUP BY GROUPING SETS ((x + y, z))" :tables [[nil nil "test"]]}
+  {:sql "SELECT (LEAD(foo1, 1, 0)) OVER (PARTITION BY foo2 ORDER BY foo3) FROM t" :tables [[nil nil "t"]]}
+  {:sql "SELECT LAST_VALUE(CASE WHEN interval <> 'foo' THEN interval END) IGNORE NULLS FROM t" :tables [[nil nil "t"]]}
+  {:sql "WITH UNNEST AS (SELECT 1 AS UNNEST) SELECT UNNEST FROM UNNEST" :tables []}
+  {:sql "SELECT * FROM tbl GROUP BY GROUPING SETS ((a + 1, b * 1), c, CUBE (a, b), ROLLUP (c, d), (a + y, b * 1), ())" :tables [[nil nil "tbl"]]}
+  {:sql "SELECT * FROM tbl GROUP BY GROUPING SETS (GROUPING SETS (course), GROUPING SETS (type), CUBE (a), ROLLUP (b))" :tables [[nil nil "tbl"]]}
+  {:sql "SELECT analyze FROM (SELECT 1 AS analyze)" :tables []}
+  {:sql "SELECT 'Ac' ILIKE 'a%c' ESCAPE NULL" :tables []}
+  {:sql "SELECT CURRENT_DATABASE()" :tables []}
+  {:sql "SELECT CURRENT_SCHEMAS(arg_bool)" :tables []}
+  {:sql "SELECT UNIFORM(1, 10, 5)" :tables []}
+  {:sql "SELECT UNIFORM(1, 10)" :tables []}
+  {:sql "SELECT CURRENT_TIMEZONE()" :tables []}
+  {:sql "SELECT NUMRANGE(1.1, 2.2) -|- NUMRANGE(2.2, 3.3)" :tables []}
+  {:sql "CREATE TABLE t (a VARCHAR, check INT)" :tables [[nil nil "t"]]}
+  {:sql "CREATE TABLE \"if\" (x INT)" :tables [[nil nil "if"]]}
+  {:sql "DROP TABLE \"if\"" :tables [[nil nil "if"]]}
+  {:sql "SELECT TRIM(\"both\") FROM t" :tables [[nil nil "t"]]}
+  {:sql "\"while\"" :tables []}
+  {:sql "DROP INDEX \"concurrently\"" :tables [[nil nil "concurrently"]]}
+  {:sql "CREATE INDEX \"concurrently\" ON t(x)" :tables [[nil nil "t"]]}
+  {:sql "CREATE TABLE t AS \"minvalue\"" :tables [[nil nil "minvalue"] [nil nil "t"]]}
+  {:sql "CREATE TABLE t AS \"increment\"" :tables [[nil nil "increment"] [nil nil "t"]]}
+  {:sql "CREATE TABLE t AS \"start\"" :tables [[nil nil "start"] [nil nil "t"]]}
+  {:sql "CREATE TABLE t AS \"cache\"" :tables [[nil nil "cache"] [nil nil "t"]]}
+  {:sql "CREATE TABLE t AS \"sample\"" :tables [[nil nil "sample"] [nil nil "t"]]}
+  {:sql "DESCRIBE \"history\"" :tables [[nil nil "history"]]}
+  {:sql "SELECT * FROM t CONNECT BY \"nocycle\" = 1" :tables [[nil nil "t"]]}
+  {:sql "SELECT a BETWEEN \"symmetric\" AND b FROM t" :tables [[nil nil "t"]]}
+  {:sql "SELECT JSON_OBJECT(\"key\": 1)" :tables []}
+  {:sql "SELECT JSON_OBJECT('a': \"value\")" :tables []}
+  {:sql "CREATE INDEX i ON t(c \"nulls\")" :tables [[nil nil "nulls"] [nil nil "t"]]}
+  {:sql "GRANT SELECT ON TABLE t TO \"role\"" :tables [[nil nil "t"]]}
+  {:sql "ANALYZE \"verbose\"" :tables [[nil nil "verbose"]]}
+  {:sql "ANALYZE \"tables\"" :tables [[nil nil "tables"]]}
+  {:sql "ANALYZE \"database\"" :tables [[nil nil "database"]]}
+  {:sql "CREATE TABLE t (a INT, UNIQUE \"key\" (a))" :tables [[nil nil "t"]]}
+  {:sql "USE \"role\"" :tables [[nil nil "role"]]}
+  {:sql "SELECT MATCH(\"table\") AGAINST('x') FROM t" :tables [[nil nil "t"]]}]}

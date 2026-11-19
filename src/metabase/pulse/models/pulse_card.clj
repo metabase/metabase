@@ -1,5 +1,9 @@
 (ns metabase.pulse.models.pulse-card
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
@@ -17,12 +21,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/PulseCard
-  [_model]
-  {:create :event/pulse-card-create
-   :update :event/pulse-card-update
-   :delete :event/pulse-card-delete})
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
@@ -60,3 +58,29 @@
       :include_xls       (boolean include_xls)
       :format_rows       (boolean format_rows)
       :pivot_results     (boolean pivot_results)})))
+
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod events/spec :model/PulseCard
+  [_model]
+  {:create :event/pulse-card-create
+   :update :event/pulse-card-update
+   :delete :event/pulse-card-delete})
+
+(defmethod app-db-copy/spec :model/PulseCard [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PulseCard [_model]
+  {:track [:pulse_id :card_id :position :include_csv :include_xls :dashboard_card_id :entity_id :format_rows
+           :pivot_results]
+   :skip  []})
+
+(defmethod audit/spec :model/PulseCard [_model]
+  {:track          []
+   :track-redacted [:card_id :dashboard_card_id :format_rows :include_csv :include_xls :pivot_results :position
+                    :pulse_id]
+   :skip           [:entity_id]
+   :parent         {:model :model/Pulse, :key :pulse_id}})
+
+(defmethod eid-translation/spec :model/PulseCard [_model]
+  {:names [:pulse-card]})

@@ -1,6 +1,7 @@
 (ns metabase.bookmarks.models.bookmark
   (:require
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -102,3 +103,23 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
+  {:skip? false})

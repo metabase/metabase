@@ -2,6 +2,7 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.models.interface :as mi]
@@ -23,3 +24,8 @@
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationPage [_model]
+  {:skip? false})

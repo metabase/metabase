@@ -1,224 +1,42 @@
 (ns metabase-enterprise.dependencies.calculation
+  "The dependencies of the entities, computed by the functions of the dependencies specs of their models."
   (:require
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
-   [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
-   [metabase-enterprise.sandbox.schema]
-   [metabase.actions.schema :as actions.schema]
-   [metabase.documents.prose-mirror :as prose-mirror]
-   [metabase.documents.schema :as documents.schema]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib-metric.schema :as lib-metric.schema]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.measures.schema]
-   [metabase.native-query-snippets.schema]
-   [metabase.queries.schema :as queries.schema]
-   [metabase.segments.schema]
-   [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms.schema :as transforms.schema]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
+   [metabase.dependencies.core :as dependencies]
    [metabase.util.malli :as mu]))
 
-(def ^:private Entity
-  "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
-  each of those in turn hydrated with `:series`; a query `:action` arrives with the `:dataset_query` of its
-  QueryAction and an implicit one without a model with the `:table_id` of its ImplicitAction; a `:data-app` arrives
-  with the `:card_ids` and `:action_ids` of its resource collection; every other entity is a plain row of its model."
-  [:or
-   ::queries.schema/card
-   :metabase.warehouse-schema.schema/table
-   :metabase.native-query-snippets.schema/native-query-snippet
-   ::transforms.schema/transform
-   :metabase.dashboards.schema/dashboard
-   ::documents.schema/document
-   :metabase-enterprise.sandbox.schema/sandbox
-   :metabase.segments.schema/segment
-   :metabase.measures.schema/measure
-   ::actions.schema/action
-   [:merge
-    :metabase.data-apps.schema/data-app
-    [:map
-     [:card_ids   [:set ::lib.schema.id/card]]
-     [:action_ids [:set ::lib.schema.id/action]]]]])
+(set! *warn-on-reflection* true)
 
-(defmulti calculate-deps*
-  "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
-  Prefer calling [[calculate-deps]] which validates the return value."
-  {:arglists '([entity-type entity])}
-  (fn [entity-type _entity] entity-type))
+(mu/defn computed-types :- [:sequential ::deps.dependency-types/dependency-types]
+  "The entity types whose dependencies the job computes, those that their dependents expand inline first, so that
+  they are known when their dependents are computed; a table has none of its own, the links to it being found from
+  the other side."
+  []
+  (->> (dependencies/type->model)
+       (keep (fn [[entity-type model]]
+               (let [spec (dependencies/spec model)]
+                 (when (:dependencies spec)
+                   [(not (:inlined? spec)) (name entity-type) entity-type]))))
+       sort
+       (mapv peek)))
+
+(mu/defn hydrate-entities :- [:sequential :map]
+  "The rows `entities` of `entity-type` with what computing their dependencies needs, loaded in bulk."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entities    :- [:sequential :map]]
+  (if-let [hydrate (:hydrate (dependencies/entity-spec entity-type))]
+    (vec (hydrate (vec entities)))
+    (vec entities)))
 
 (mu/defn calculate-deps :- ::deps.schema/upstream-deps
-  "Calculate upstream dependencies for a single entity.
-  Returns a map of dependency-type -> set of entity IDs."
+  "The dependencies of the hydrated `entity` of `entity-type`, as `{entity-type #{entity-id}}`."
   [entity-type :- ::deps.dependency-types/dependency-types
-   entity      :- Entity]
-  (calculate-deps* entity-type entity))
+   entity      :- :map]
+  ((:dependencies (dependencies/entity-spec entity-type)) entity))
 
-;;; ------------------------------------------------ Helpers ------------------------------------------------
-
-(mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
-  [query :- ::lib.schema/query]
-  {:card (or (lib/all-source-card-ids query) #{})
-   :measure (or (lib/all-measure-ids query) #{})
-   :segment (or (lib/all-segment-ids query) #{})
-   :table (-> #{}
-              (into (lib/all-source-table-ids query))
-              (into (lib/all-implicitly-joined-table-ids query)))})
-
-(mu/defn- upstream-deps:native-query :- ::deps.schema/upstream-deps
-  [query :- ::lib.schema/native-only-query]
-  (let [driver (:engine (lib.metadata/database query))
-        deps   (deps.native/native-query-deps driver query)]
-    ;; The deps are in #{{:table 7} ...} form and need conversion to ::deps.schema/upstream-deps form.
-    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table deps))))
-
-(mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
-  [query :- ::lib.schema/query]
-  (if (lib/native-only-query? query)
-    (upstream-deps:native-query query)
-    (upstream-deps:mbql-query query)))
-
-(mu/defn- upstream-deps:dimension-mappings :- ::deps.schema/upstream-deps
-  "Table dependencies of `dimension-mappings`, gathered from their `:table-id`s."
-  [dimension-mappings :- [:maybe [:sequential ::lib-metric.schema/dimension-mapping]]]
-  {:table (into #{} (keep :table-id) dimension-mappings)})
-
-(mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
-  [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]
-  {:table (into #{} (keep :table_id) tables)})
-
-;; Modified implementation of documents.models.document/document-deps
-(defn- document-deps
-  "The `[entity-type entity-id]` pairs that the smart links and card embeds of a prose-mirror `document` point at."
-  [{:keys [content_type] :as document}]
-  (when (= content_type prose-mirror/prose-mirror-content-type)
-    (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
-                                         (cond
-                                           (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table" "document"} (:model attrs))
-                                                (pos-int? (:entityId attrs)))
-                                           [(keyword (:model attrs)) (:entityId attrs)]
-
-                                           (and (= prose-mirror/card-embed-type type)
-                                                (pos-int? (:id attrs)))
-                                           [:card (:id attrs)]
-
-                                           :else
-                                           nil)))))
-
-;;; ------------------------------------------------ defmethods ------------------------------------------------
-
-(defmethod calculate-deps* :card
-  [_ {query :dataset_query, dimension-mappings :dimension_mappings :as card}]
-  {:pre [(some? query)]}
-  (let [query          (lib-be/normalize-query query)
-        base-deps      (merge-with into
-                                   (upstream-deps:query query)
-                                   (upstream-deps:dimension-mappings dimension-mappings))
-        param-card-ids (keep #(-> % :values_source_config :card_id) (:parameters card))]
-    (reduce (fn [deps card-id]
-              (update deps :card (fnil conj #{}) card-id))
-            base-deps
-            param-card-ids)))
-
-(defmethod calculate-deps* :transform
-  [_ transform]
-  (cond
-    (transforms-base.u/query-transform? transform)
-    (upstream-deps:query (lib-be/normalize-query (-> transform :source :query)))
-
-    (transforms-base.u/python-transform? transform)
-    (upstream-deps:python-transform transform)
-
-    :else (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'"
-                         (:id transform) (-> transform :source :type))
-              {})))
-
-(defmethod calculate-deps* :snippet
-  [_ {:keys [template_tags] :as _snippet}]
-  (let [type->id-key {:card :card-id, :snippet :snippet-id}
-        dependencies (keep (fn [tag]
-                             (let [entity-type (:type tag)]
-                               (when-let [id-key (type->id-key entity-type)]
-                                 (when-let [entity-id (id-key tag)]
-                                   [entity-type entity-id]))))
-                           (vals template_tags))]
-    (u/group-by first second conj #{} dependencies)))
-
-(defmethod calculate-deps* :dashboard
-  [_ {:keys [dashcards] :as dashboard}]
-  (let [card-ids (into #{} (keep :card_id dashcards))
-        series-card-ids (into #{} (comp (mapcat :series) (map :id)) dashcards)
-        param-card-ids (into #{} (keep (comp :card_id :values_source_config) (:parameters dashboard)))
-        vis-setting-target-ids (fn [link-type]
-                                 (into #{} (keep (fn [dashcard]
-                                                   (let [cb (:click_behavior (:visualization_settings dashcard))]
-                                                     (when (and (= (:linkType cb) link-type)
-                                                                (pos-int? (:targetId cb)))
-                                                       (:targetId cb))))
-                                                 dashcards)))
-        vis-setting-card-ids (vis-setting-target-ids "question")
-        vis-setting-dashboard-ids (vis-setting-target-ids "dashboard")
-        column-setting-target-ids (fn [link-type]
-                                    (reduce into #{}
-                                            (map (fn [dashcard]
-                                                   (keep (fn [[_col col-setting]]
-                                                           (let [cb (:click_behavior col-setting)]
-                                                             (when (and (= (:linkType cb) link-type)
-                                                                        (pos-int? (:targetId cb)))
-                                                               (:targetId cb))))
-                                                         (:column_settings (:visualization_settings dashcard))))
-                                                 dashcards)))
-        column-setting-card-ids (column-setting-target-ids "question")
-        column-setting-dashboard-ids (column-setting-target-ids "dashboard")
-        all-card-ids (reduce into #{} [card-ids
-                                       series-card-ids
-                                       param-card-ids
-                                       vis-setting-card-ids
-                                       column-setting-card-ids])
-        all-dashboard-ids (into vis-setting-dashboard-ids column-setting-dashboard-ids)]
-    {:card all-card-ids
-     :dashboard all-dashboard-ids}))
-
-(defmethod calculate-deps* :document
-  [_ document]
-  (reduce (fn [deps [dep-type dep-id]]
-            (update deps dep-type (fnil conj #{}) dep-id))
-          {}
-          (document-deps document)))
-
-(defmethod calculate-deps* :sandbox
-  [_ sandbox]
-  (if-let [card-id (:card_id sandbox)]
-    {:card #{card-id}}
-    {}))
-
-(defmethod calculate-deps* :segment
-  [_ {:keys [table_id definition] :as _segment}]
-  {:segment (or (lib/all-segment-ids definition) #{})
-   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
-            table_id (conj table_id))})
-
-(defmethod calculate-deps* :measure
-  [_ {:keys [table_id definition] :as _measure}]
-  {:measure (or (lib/all-measure-ids definition) #{})
-   :segment (or (lib/all-segment-ids definition) #{})
-   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
-            table_id (conj table_id))})
-
-(defmethod calculate-deps* :action
-  [_ {action-type :type, model-id :model_id, table-id :table_id, query :dataset_query}]
-  (case action-type
-    :implicit (if model-id
-                {:card #{model-id}}
-                {:table (if table-id #{table-id} #{})})
-    :query    (upstream-deps:query (lib-be/normalize-query query))))
-
-(defmethod calculate-deps* :data-app
-  [_ {card-ids :card_ids, action-ids :action_ids}]
-  {:card   card-ids
-   :action action-ids})
+(mu/defn after-dependencies :- [:maybe ifn?]
+  "The `:after-dependencies` of the spec of `entity-type`, a fn of an entity and its direct dependents returning those
+  whose edges to it no longer hold, or nil."
+  [entity-type :- ::deps.dependency-types/dependency-types]
+  (:after-dependencies (dependencies/entity-spec entity-type)))

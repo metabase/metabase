@@ -3,6 +3,8 @@
    [malli.core :as mc]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
    [metabase.events.core :as events]
@@ -32,22 +34,10 @@
   (derive :hook/events)
   (derive :hook/timestamped?))
 
-(defmethod events/spec :model/Channel
-  [_model]
-  {:create :event/channel-create
-   :update :event/channel-update
-   :delete :event/channel-delete})
-
 (doto :model/ChannelTemplate
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/ChannelTemplate
-  [_model]
-  {:create :event/channel-template-create
-   :update :event/channel-template-update
-   :delete :event/channel-template-delete})
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
 
@@ -239,13 +229,44 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/storage-paths :model/Channel [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the Channel `entities`, under `channels/` by name."
+  [entities _ctx]
   (mapv (fn [channel]
           [{:label "channels"} {:label (:name channel) :key (:name channel)}])
         entities))
 
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod events/spec :model/Channel
+  [_model]
+  {:create :event/channel-create
+   :update :event/channel-update
+   :delete :event/channel-delete})
+
+(defmethod app-db-copy/spec :model/Channel [_model]
+  {:skip? false})
+
 (defmethod serialization/spec :model/Channel [_]
-  {:schema   ::channel.schema/external-channel
-   :identity [:name]
-   :copy     [:name :description :type :details :active]
-   :defaults {:active true}})
+  {:schema        ::channel.schema/external-channel
+   :identity      [:name]
+   :copy          [:name :description :type :details :active]
+   :defaults      {:active true}
+   :storage-paths storage-paths
+   :rows-by-refs  serialization/channel-rows-by-refs})
+
+(defmethod audit/spec :model/Channel [_model]
+  {:track          [:id :name :description :type :active]
+   :track-redacted [:details]
+   :skip           []
+   :topics         {:create :channel-create
+                    :update :channel-update}})
+
+(defmethod events/spec :model/ChannelTemplate
+  [_model]
+  {:create :event/channel-template-create
+   :update :event/channel-template-update
+   :delete :event/channel-template-delete})
+
+(defmethod app-db-copy/spec :model/ChannelTemplate [_model]
+  {:skip? false})

@@ -105,7 +105,17 @@
   target-not-found?
   visit-some]
  [protocol.app-db
-  rows-by-refs]
+  channel-rows-by-refs
+  database-rows-by-refs
+  dimension-rows-by-refs
+  field-rows-by-refs
+  field-user-settings-rows-by-refs
+  field-values-rows-by-refs
+  osi-ai-context-rows-by-refs
+  rows-by-refs
+  setting-rows-by-refs
+  table-rows-by-refs
+  table-user-settings-rows-by-refs]
  [serialization.parameters
   export-parameter-mappings
   export-parameters

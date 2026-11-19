@@ -292,7 +292,7 @@
                :start_time   (stale-test/datetime-months-ago months-ago)
                :end_time     (stale-test/datetime-months-ago months-ago)}))
 
-(deftest find-stale-query-test
+(deftest stale-candidates-test
   (testing "a transform is stale when never run past a created_at grace period, or its most recent run predates the cutoff"
     (let [cutoff-months   6
           old-months      (+ cutoff-months 2) ; predates the cutoff
@@ -335,8 +335,7 @@
         ;; (previous fire ~10 months ago), the daily schedule has fired thousands of times since
         (insert-run! on-schedule-id :succeeded old-months)
         (insert-run! missed-schedule-id :succeeded old-months)
-        (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
-                                                 :model/Transform
+        (let [stale-ids (set (map :id (t2/query ((staleness/candidates-fn :model/Transform)
                                                  {:collection-ids :all
                                                   :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
           (testing "a never-run transform is stale only once its created_at passes the cutoff"
@@ -357,8 +356,8 @@
           (testing "the schedule exception does not shield never-run transforms"
             (is (contains? stale-ids never-scheduled-id))))))))
 
-(deftest find-stale-query-collection-scoping-test
-  (testing "find-stale-query scopes transforms to :collection-ids, like the card and dashboard arms"
+(deftest stale-candidates-collection-scoping-test
+  (testing "the Transform candidates scope transforms to :collection-ids, like the card and dashboard arms"
     (let [cutoff-months 6
           ;; never run and created before the cutoff, so each one is stale on the created_at arm alone
           long-ago      (stale-test/datetime-months-ago (+ cutoff-months 2))]
@@ -372,8 +371,7 @@
               stale-ids (fn [collection-ids]
                           (into #{}
                                 (comp (map :id) (filter mine))
-                                (t2/query (staleness/find-stale-query
-                                           :model/Transform
+                                (t2/query ((staleness/candidates-fn :model/Transform)
                                            {:collection-ids collection-ids
                                             :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
           (testing "a named collection returns its own stale transforms and no others"

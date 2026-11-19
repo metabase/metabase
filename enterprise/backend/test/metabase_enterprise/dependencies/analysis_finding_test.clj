@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
@@ -14,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.queries.dependencies :as queries.dependencies]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -145,7 +145,8 @@
           mp          (lib.tu/metadata-provider-with-card-from-query
                        mp 102 q2
                        {:result-metadata (vec q2-cols)})
-          results     (deps.analysis/check-entity mp :card 102)]
+          results     (queries.dependencies/analysis
+                       {:dataset_query (lib/query mp (:dataset-query (lib.metadata/card mp 102)))})]
       (is (seq results)
           "Q2 should have findings for the missing ID column from Q1"))))
 
@@ -175,7 +176,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (with-redefs-fn {#'deps.analysis-finding/entity-db-id (fn [_] (throw (ex-info "Broken" {})))}
+            (with-redefs-fn {#'deps.analysis-finding/upsert-analysis! (fn [_] (throw (ex-info "Broken" {})))}
               run-jobs!)
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :card :entity_id card-id)))
@@ -254,35 +255,36 @@
   (testing "an entity whose database can't be resolved records an error finding instead of no-oping forever"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/AnalysisFindingError]
-        (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT 1"})
-                                         :database_id   (mt/id)}]
-          (let [cid (:id card)]
-            (with-redefs-fn {#'deps.analysis-finding/entity-db-id (constantly nil)}
-              (fn []
-                (lib-be/with-metadata-provider-cache
-                  (deps.analysis-finding/upsert-analysis! (t2/instance :model/Card card)))))
+        (mt/with-temp [:model/Transform transform {:source {:type            :python
+                                                            :source-database (mt/id)
+                                                            :source-tables   []
+                                                            :body            "def transform():\n    pass"}}]
+          (let [transform-id (:id transform)]
+            (lib-be/with-metadata-provider-cache
+              (deps.analysis-finding/upsert-analysis!
+               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
-                                          :entity_type :card :entity_id cid)))
-            (is (seq (models.analysis-finding-error/errors-for-entity :card cid))
+                                          :entity_type :transform :entity_id transform-id)))
+            (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id))
                 "an error finding is recorded explaining why the entity couldn't be analyzed")))))))
 
 (deftest ^:synchronized unanalyzable-entity-rechecks-when-database-resolvable-again-test
   (testing "after a no-database error, the entity is analyzed normally once its database resolves again"
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/AnalysisFindingError]
-        (let [mp       (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))]
-          (mt/with-temp [:model/Card card {:dataset_query (lib/query mp products)}]
-            (let [cid (:id card)]
-              (with-redefs-fn {#'deps.analysis-finding/entity-db-id (constantly nil)}
-                (fn []
-                  (lib-be/with-metadata-provider-cache
-                    (deps.analysis-finding/upsert-analysis! (t2/instance :model/Card card)))))
-              (is (seq (models.analysis-finding-error/errors-for-entity :card cid)))
-              (lib-be/with-metadata-provider-cache
-                (deps.analysis-finding/upsert-analysis! (t2/instance :model/Card card)))
-              (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))
-                  "re-analyzed normally: the database error is replaced by a clean result"))))))))
+        (mt/with-temp [:model/Transform transform {:source {:type            :python
+                                                            :source-database (mt/id)
+                                                            :source-tables   []
+                                                            :body            "def transform():\n    pass"}}]
+          (let [transform-id (:id transform)]
+            (lib-be/with-metadata-provider-cache
+              (deps.analysis-finding/upsert-analysis!
+               (t2/instance :model/Transform (assoc transform :source_database_id nil))))
+            (is (seq (models.analysis-finding-error/errors-for-entity :transform transform-id)))
+            (lib-be/with-metadata-provider-cache
+              (deps.analysis-finding/upsert-analysis! (t2/select-one :model/Transform :id transform-id)))
+            (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))
+                "re-analyzed normally: the database error is replaced by a clean result")))))))
 
 (deftest ^:synchronized analyze-batch-shares-one-metadata-provider-test
   (testing "Every entity in an analysis batch must share one MetadataProvider per database. Reading an entity attaches

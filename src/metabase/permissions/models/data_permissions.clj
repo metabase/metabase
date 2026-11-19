@@ -2,7 +2,9 @@
   "The `data_permissions` model: its table, column transforms and hooks. The permissions it holds are read and written
   through [[metabase.permissions.data-permissions]]."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.permissions.app-db-copy :as permissions.app-db-copy]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.util.i18n :refer [tru]]
@@ -75,3 +77,9 @@
 (t2/define-before-update :model/DataPermissions
   [_permission]
   (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataPermissions [_model]
+  {:skip?     false
+   :transform permissions.app-db-copy/transform-data-permissions})

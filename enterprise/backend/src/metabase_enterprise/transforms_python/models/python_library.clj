@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -17,12 +18,6 @@
 
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
   (derive :model/PythonLibrary trait))
-
-(defmethod events/spec :model/PythonLibrary
-  [_model]
-  {:create :event/python-library-create
-   :update :event/python-library-update
-   :delete :event/python-library-delete})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -81,17 +76,29 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/PythonLibrary [_]
-  {:schema ::transforms-python.schema/external-python-library
-   :copy   [:path :source :entity_id]
-   :skip   [:is_default]})
-
-(defmethod serialization/storage-paths :model/PythonLibrary [_ entities _ctx]
+(defn- storage-paths
+  "The storage path of each of the PythonLibrary `entities`, under `python-libraries/` by path."
+  [entities _ctx]
   (mapv (fn [entity]
           [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
         entities))
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PythonLibrary
+  [_model]
+  {:create :event/python-library-create
+   :update :event/python-library-update
+   :delete :event/python-library-delete})
+
+(defmethod app-db-copy/spec :model/PythonLibrary [_model]
+  {:skip? true})
+
+(defmethod serialization/spec :model/PythonLibrary [_]
+  {:schema        ::transforms-python.schema/external-python-library
+   :copy          [:path :source :entity_id]
+   :skip          [:is_default]
+   :storage-paths storage-paths})
 
 (defmethod remote-sync/spec :model/PythonLibrary
   [_model]

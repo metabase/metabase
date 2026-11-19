@@ -21,7 +21,7 @@ summary: Breaking changes to the Metabase API, listed by release.
   the case of column names, a declared name that differs from the table's only in case is missing.
 
 - Card tests whose card is archived are left out of `GET /api/ee/card-test`, unless the request passes
-  `include-archived=true`. `POST /api/ee/card-test/:id/run` refuses to run such a test, with `400` and the
+  `include-archived=true`. `POST /api/ee/card-test/:id/run` refuses to run such a test, with `422` and the
   `error-code` `card-test.archived-subject`, and records no run. `POST /api/ee/card-test` and
   `PUT /api/ee/card-test/:id` refuse the same way when the test's card, after the change, is archived.
   `GET /api/ee/card-test/:id` and `DELETE /api/ee/card-test/:id` work as before. Restoring the card restores its

@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
    [metabase-enterprise.metabot.schema :as metabot-ee.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
@@ -71,3 +72,8 @@
     {:permissions (vec (mapcat (fn [{:keys [id]}]
                                  (permissions-for-group id (get by-group id [])))
                                groups))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotPermissions [_model]
+  {:skip? true})

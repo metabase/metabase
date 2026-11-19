@@ -39,7 +39,8 @@
   [segment-id   :- ms/PositiveInt
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :segment (testable-segment segment-id) inputs expectations)))
+  (refusing #(data-testing.runner/validate-test :segment (testable-segment segment-id)
+                                                {:inputs inputs :expectations expectations})))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
   "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. The tests
