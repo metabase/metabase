@@ -55,7 +55,8 @@
                                         :format  :rows
                                         :columns [{:name "total" :cast_type declared}]
                                         :rows    [{"total" 1}]}]}]
-          (let [result (data-testing.runner/run-test! :transform transform transform-test)]
+          (let [result (mt/with-current-user (mt/user->id :crowberto)
+                         (data-testing.runner/run-test! :transform transform transform-test))]
             (testing "the run passes, so nothing here reaches the author as a problem"
               (is (= :passed (:status result))))
             (testing "the transform's output column is not the type the author declared"

@@ -343,7 +343,8 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (data-testing.runner/run-test! :transform transform transform-test)
+                            (mt/with-current-user (mt/user->id :crowberto)
+                              (data-testing.runner/run-test! :transform transform transform-test))
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
