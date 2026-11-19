@@ -11,6 +11,7 @@ import {
   type ExpectedColumnType,
   getAllowedValues,
   getExpectedColumnType,
+  getTemplateBlankType,
 } from "./argument-type";
 import { isOnPlaceholder } from "./placeholders";
 import type { CompletionResult, ExpressionSuggestion } from "./types";
@@ -53,20 +54,25 @@ export function suggestFields({
       return null;
     }
 
-    // Inside a function, only the columns of the type its value takes.
-    const expectedType = getExpectedColumnType(source, context.pos);
-    const fittingColumns = expectedType
-      ? columns.filter((option) => expectedType.test(option.column))
-      : columns;
-
     const templateFieldKind = getTemplateFieldKind(context.state);
     if (templateFieldKind === "text") {
       return null;
     }
+    const { from, to } = context.state.selection.main;
+
+    // Only the columns of the type that a template's blank names, like
+    // [Date], or else that the function around the value takes.
+    const expectedType =
+      (templateFieldKind === "column"
+        ? getTemplateBlankType(context.state.sliceDoc(from, to))
+        : null) ?? getExpectedColumnType(source, context.pos);
+    const fittingColumns = expectedType
+      ? columns.filter((option) => expectedType.test(option.column))
+      : columns;
+
     if (templateFieldKind === "column" || isOnPlaceholder(context.state)) {
       // A template's column or a function's placeholder isn't a search term:
       // offer every column that fits, to replace it.
-      const { from, to } = context.state.selection.main;
       return {
         from,
         to,

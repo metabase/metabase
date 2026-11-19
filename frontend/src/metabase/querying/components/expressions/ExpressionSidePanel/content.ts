@@ -187,33 +187,33 @@ function getTemplateSections(): SidePanelSection[] {
       name: t`Text`,
       icon: "text",
       blocks: [
-        [template(t`Count characters`, `length([Comment])`)],
+        [template(t`Count characters`, `length([Text])`)],
         [
-          template(t`Remove or replace text`, `replace([URL], "https://", "")`),
-          template(t`Tidy up spaces and capitals`, `lower(trim([Email]))`),
+          template(
+            t`Remove or replace text`,
+            `replace([Text], "https://", "")`,
+          ),
+          template(t`Tidy up spaces and capitals`, `lower(trim([Text]))`),
         ],
         [
-          template(t`Domain from an email`, `domain([Email])`),
-          template(t`Number from text`, `regexExtract([Code], "[0-9]+")`),
-          template(t`Year or month of a date`, `year([Created At])`),
+          template(t`Domain from an email`, `domain([Text])`),
+          template(t`Number from text`, `regexExtract([Text], "[0-9]+")`),
+          template(t`Year or month of a date`, `year([Date])`),
         ],
         [
           template(
             t`Text contains a word`,
-            `contains([Title], "refund", "case-insensitive")`,
+            `contains([Text], "refund", "case-insensitive")`,
           ),
           template(
             t`Text contains any of several words`,
-            `contains([Job Title], "student") OR contains([Job Title], "intern")`,
+            `contains([Text], "student") OR contains([Text], "intern")`,
           ),
         ],
         [
-          template(t`First N characters`, `substring([SKU], 1, 2)`),
-          template(
-            t`Text before a character`,
-            `splitPart([Stock Code], "-", 1)`,
-          ),
-          template(t`Text after a character`, `splitPart([Name], "/", 2)`),
+          template(t`First N characters`, `substring([Text], 1, 2)`),
+          template(t`Text before a character`, `splitPart([Text], "-", 1)`),
+          template(t`Text after a character`, `splitPart([Text], "/", 2)`),
         ],
       ],
     },
@@ -222,10 +222,7 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "date",
       blocks: [
         [
-          template(
-            t`Age in years`,
-            `datetimeDiff([Birth Date], today(), "year")`,
-          ),
+          template(t`Age in years`, `datetimeDiff([Date], today(), "year")`),
           template(
             t`Start of this month`,
             `datetimeSubtract(today(), day(today()) - 1, "day")`,
@@ -234,19 +231,14 @@ function getTemplateSections(): SidePanelSection[] {
         [
           template(
             t`Days since a date`,
-            `datetimeDiff([Created At], today(), "day")`,
+            `datetimeDiff([Date], today(), "day")`,
           ),
           template(
             t`Days between two dates`,
-            `datetimeDiff([Created At], [Closed At], "day")`,
+            `datetimeDiff([Date 1], [Date 2], "day")`,
           ),
         ],
-        [
-          template(
-            t`Add or subtract time`,
-            `datetimeAdd([Order Date], 7, "day")`,
-          ),
-        ],
+        [template(t`Add or subtract time`, `datetimeAdd([Date], 7, "day")`)],
       ],
     },
     {
@@ -254,28 +246,28 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "math",
       blocks: [
         [
-          template(t`Calculate with two columns`, `[Price] * [Quantity]`),
+          template(t`Calculate with two columns`, `[Number 1] * [Number 2]`),
           template(
             t`Higher of two columns`,
-            `case([Digital] > [Analog], [Digital], [Analog])`,
+            `case([Number 1] > [Number 2], [Number 1], [Number 2])`,
           ),
           template(
             t`Percent change between two columns`,
-            `([This Year] - [Last Year]) / [Last Year]`,
+            `([Number 1] - [Number 2]) / [Number 2]`,
           ),
         ],
         [
-          template(t`Make a number positive`, `abs([Amount])`),
-          template(t`Round to 2 decimals`, `round([Amount] * 100) / 100`),
+          template(t`Make a number positive`, `abs([Number])`),
+          template(t`Round to 2 decimals`, `round([Number] * 100) / 100`),
           template(
             t`Add a leading zero`,
-            `case([Month] < 10, concat("0", text([Month])), text([Month]))`,
+            `case([Number] < 10, concat("0", text([Number])), text([Number]))`,
           ),
         ],
         [
           template(
             t`Sort numbers into ranges`,
-            `case([Days] <= 30, "0–30", [Days] <= 60, "31–60", "60+")`,
+            `case([Number] <= 30, "0–30", [Number] <= 60, "31–60", "60+")`,
           ),
         ],
       ],
@@ -285,10 +277,10 @@ function getTemplateSections(): SidePanelSection[] {
       icon: "conversion",
       blocks: [
         [
-          template(t`Text to number`, `integer([Amount Text])`),
-          template(t`Text to date`, `date([Date Text])`),
-          template(t`Number or date to text`, `text([Invoice ID])`),
-          template(t`Show a month as a name`, `monthName(month([Created At]))`),
+          template(t`Text to number`, `integer([Text])`),
+          template(t`Text to date`, `date([Text])`),
+          template(t`Number or date to text`, `text([Column])`),
+          template(t`Show a month as a name`, `monthName(month([Date]))`),
         ],
       ],
     },
@@ -299,45 +291,42 @@ function getTemplateSections(): SidePanelSection[] {
         [
           template(
             t`Join text columns with a separator`,
-            `concat([First Name], " ", [Last Name])`,
+            `concat([Text 1], " ", [Text 2])`,
           ),
         ],
         [
-          template(t`Replace empty with a default`, `coalesce([Discount], 0)`),
+          template(t`Replace empty with a default`, `coalesce([Number], 0)`),
           template(
             t`Show a label when empty`,
-            `case(isNull([Shipped At]), "Not shipped", "Shipped")`,
+            `case(isNull([Column]), "Not shipped", "Shipped")`,
           ),
           template(
             t`Add columns when one may be empty`,
-            `coalesce([Deposit], 0) + coalesce([Goods], 0)`,
+            `coalesce([Number 1], 0) + coalesce([Number 2], 0)`,
           ),
           template(
             t`Leave a value empty on purpose`,
-            `case([Amount] != 0, [Amount])`,
+            `case([Number] != 0, [Number])`,
           ),
         ],
         [
           template(
             t`Label rows by a condition`,
-            `case([Status] = "Done", "Closed", "Open")`,
+            `case([Text] = "Done", "Closed", "Open")`,
             "table-row",
           ),
           template(
             t`Flag rows with 1 or 0`,
-            `case(notNull([Signed At]), 1, 0)`,
+            `case(notNull([Column]), 1, 0)`,
             "table-row",
           ),
         ],
         [
           template(
             t`Map many values to labels`,
-            `case(in([State], "CA", "OR", "WA"), "West", in([State], "NY", "NJ"), "East", "Other")`,
+            `case(in([Text], "CA", "OR", "WA"), "West", in([Text], "NY", "NJ"), "East", "Other")`,
           ),
-          template(
-            t`Value is one of a list`,
-            `in([Status], "Paid", "Cleared")`,
-          ),
+          template(t`Value is one of a list`, `in([Text], "Paid", "Cleared")`),
         ],
       ],
     },
@@ -352,17 +341,17 @@ function getConditionSections(): SidePanelSection[] {
       icon: "text",
       blocks: [
         [
-          template(t`Character count`, `length([Comment]) > 100`),
-          template(t`Year or month of a date`, `year([Created At]) = 2026`),
+          template(t`Character count`, `length([Text]) > 100`),
+          template(t`Year or month of a date`, `year([Date]) = 2026`),
           template(
             t`Text contains a word`,
-            `contains([Title], "refund", "case-insensitive")`,
+            `contains([Text], "refund", "case-insensitive")`,
           ),
           template(
             t`Text contains any of several words`,
-            `contains([Job Title], "student") OR contains([Job Title], "intern")`,
+            `contains([Text], "student") OR contains([Text], "intern")`,
           ),
-          template(t`First N characters`, `substring([SKU], 1, 2) = "AB"`),
+          template(t`First N characters`, `substring([Text], 1, 2) = "AB"`),
         ],
       ],
     },
@@ -373,19 +362,13 @@ function getConditionSections(): SidePanelSection[] {
         [
           template(
             t`Start of this month`,
-            `[Created At] >= datetimeSubtract(today(), day(today()) - 1, "day")`,
+            `[Date] >= datetimeSubtract(today(), day(today()) - 1, "day")`,
           ),
-          template(
-            t`Dates in the last N days`,
-            `interval([Created At], -30, "day")`,
-          ),
-          template(
-            t`Dates in the next N days`,
-            `interval([Due Date], 7, "day")`,
-          ),
+          template(t`Dates in the last N days`, `interval([Date], -30, "day")`),
+          template(t`Dates in the next N days`, `interval([Date], 7, "day")`),
           template(
             t`Dates before or after a fixed date`,
-            `[Created At] < "2026-01-01"`,
+            `[Date] < "2026-01-01"`,
           ),
         ],
       ],
@@ -395,12 +378,9 @@ function getConditionSections(): SidePanelSection[] {
       icon: "table-column",
       blocks: [
         [
-          template(t`Rows with filled value`, `notNull([Email])`, "table-row"),
-          template(t`Two columns compared`, `[Delivered At] > [Due Date]`),
-          template(
-            t`Value is one of a list`,
-            `in([Status], "Paid", "Cleared")`,
-          ),
+          template(t`Rows with filled value`, `notNull([Column])`, "table-row"),
+          template(t`Two columns compared`, `[Date 1] > [Date 2]`),
+          template(t`Value is one of a list`, `in([Text], "Paid", "Cleared")`),
         ],
       ],
     },
@@ -418,38 +398,34 @@ function getAggregationSections(): SidePanelSection[] {
           template(t`Count rows`, `Count()`, "table-row"),
           template(
             t`Count rows that match`,
-            `CountIf([Status] = "Done")`,
+            `CountIf([Text] = "Done")`,
             "table-row",
           ),
-          template(
-            t`Count unique values`,
-            `Distinct([Customer ID])`,
-            "table-row",
-          ),
+          template(t`Count unique values`, `Distinct([Column])`, "table-row"),
         ],
         [
-          template(t`Total a column`, `Sum([Amount])`),
-          template(t`Compare two columns`, `Sum([Revenue]) - Sum([Cost])`),
+          template(t`Total a column`, `Sum([Number])`),
+          template(t`Compare two columns`, `Sum([Number 1]) - Sum([Number 2])`),
         ],
         [
           template(
             t`Total for matching rows`,
-            `SumIf([Amount], [Status] = "Paid")`,
+            `SumIf([Number], [Text] = "Paid")`,
             "table-row",
           ),
           template(
             t`Unique values in matching rows`,
-            `DistinctIf([Customer ID], [Status] = "Done")`,
+            `DistinctIf([Column], [Text] = "Done")`,
             "table-row",
           ),
           template(
             t`Average for matching rows`,
-            `Average(case([Status] = "Done", [Score]))`,
+            `Average(case([Text] = "Done", [Number]))`,
             "table-row",
           ),
           template(
             t`Percentage of rows that match`,
-            `Share([Status] = "Done")`,
+            `Share([Text] = "Done")`,
             "table-row",
           ),
         ],
@@ -462,15 +438,15 @@ function getAggregationSections(): SidePanelSection[] {
         [
           template(
             t`Days between two dates`,
-            `Average(datetimeDiff([Created At], [Closed At], "day"))`,
+            `Average(datetimeDiff([Date 1], [Date 2], "day"))`,
           ),
           template(
             t`Dates in the last N days`,
-            `CountIf(interval([Created At], -30, "day"))`,
+            `CountIf(interval([Date], -30, "day"))`,
           ),
           template(
             t`Dates in the next N days`,
-            `CountIf(interval([Due Date], 7, "day"))`,
+            `CountIf(interval([Date], 7, "day"))`,
           ),
         ],
       ],
@@ -479,16 +455,16 @@ function getAggregationSections(): SidePanelSection[] {
       name: t`Numbers`,
       icon: "math",
       blocks: [
-        [template(t`Running total`, `CumulativeSum([Amount])`)],
+        [template(t`Running total`, `CumulativeSum([Number])`)],
         [
-          template(t`Previous period's value`, `Offset(Sum([Amount]), -1)`),
+          template(t`Previous period's value`, `Offset(Sum([Number]), -1)`),
           template(
             t`Change vs previous period`,
-            `(Sum([Amount]) - Offset(Sum([Amount]), -1)) / Offset(Sum([Amount]), -1)`,
+            `(Sum([Number]) - Offset(Sum([Number]), -1)) / Offset(Sum([Number]), -1)`,
           ),
           template(
             t`Rate between two counts`,
-            `CountIf([Answer] = "Yes") / (CountIf([Answer] = "Yes") + CountIf([Answer] = "No"))`,
+            `CountIf([Text] = "Yes") / (CountIf([Text] = "Yes") + CountIf([Text] = "No"))`,
           ),
         ],
         functions(

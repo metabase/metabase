@@ -4,20 +4,6 @@ import type {
   SegmentedPrototypeSetting,
 } from "./types";
 
-export const EXPRESSION_PARAMETER_HINTS_SETTING: SegmentedPrototypeSetting = {
-  key: "expression-parameter-hints",
-  type: "segmented",
-  label: "Parameter name hints in custom expressions",
-  description:
-    "Labels with the parameter name before the arguments of a function call, like the inlay hints of VS Code.",
-  options: [
-    { value: "off", label: "Off" },
-    { value: "literals", label: "Literals" },
-    { value: "all", label: "All" },
-  ],
-  defaultValue: "all",
-};
-
 export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSetting =
   {
     key: "expression-columns-outside-brackets",
@@ -65,7 +51,6 @@ export const EXPRESSION_PREVIEW_CONTEXT_SETTING: SegmentedPrototypeSetting = {
  * reads them with `usePrototypeSetting`. See PROTOTYPE.md.
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
-  EXPRESSION_PARAMETER_HINTS_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_HIDE_AI_SETTING,

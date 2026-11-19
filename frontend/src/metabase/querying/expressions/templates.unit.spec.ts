@@ -61,7 +61,7 @@ function setup({ doc = "" }: SetupOpts = {}) {
   return { view, waitForSuggestions, selectedText, suggestedColumns };
 }
 
-const HIGHER_OF_TWO = "case([Digital] > [Analog], [Digital], [Analog])";
+const HIGHER_OF_TWO = "case([Number 1] > [Number 2], [Number 1], [Number 2])";
 
 describe("insertExpressionTemplate", () => {
   it("lists the columns for the first blank when the editor was empty and showed its suggestions", async () => {
@@ -74,7 +74,7 @@ describe("insertExpressionTemplate", () => {
     await waitForSuggestions();
 
     expect(view.state.doc.toString()).toBe(HIGHER_OF_TWO);
-    expect(selectedText()).toBe("[Digital]");
+    expect(selectedText()).toBe("[Number 1]");
     expect(completionStatus(view.state)).toBe("active");
     expect(suggestedColumns().length).toBeGreaterThan(0);
   });
@@ -84,11 +84,42 @@ describe("insertExpressionTemplate", () => {
       doc: "1 + ",
     });
 
-    insertExpressionTemplate(view, "[Price] * [Quantity]");
+    insertExpressionTemplate(view, "[Number 1] * [Number 2]");
     await waitForSuggestions();
 
-    expect(selectedText()).toBe("[Price]");
+    expect(selectedText()).toBe("[Number 1]");
     expect(completionStatus(view.state)).toBe("active");
     expect(suggestedColumns().length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ["[Text]", "length([Text])", Lib.isStringOrStringLike],
+    ["[Number]", "abs([Number]) + 1", Lib.isNumeric],
+    ["[Date 1]", "[Date 1] > [Date 2]", Lib.isTemporal],
+  ])(
+    "lists only the columns of the type that %s names",
+    async (_blank, code, isOfType) => {
+      const { view, waitForSuggestions, suggestedColumns } = setup();
+
+      insertExpressionTemplate(view, code);
+      await waitForSuggestions();
+
+      const columns = suggestedColumns();
+      expect(columns.length).toBeGreaterThan(0);
+      expect(columns.every((column) => isOfType(column))).toBe(true);
+    },
+  );
+
+  it("lists every column for [Column]", async () => {
+    const { view, waitForSuggestions, suggestedColumns } = setup();
+
+    insertExpressionTemplate(view, "notNull([Column])");
+    await waitForSuggestions();
+
+    const columns = suggestedColumns();
+    expect(columns.some((column) => Lib.isTemporal(column))).toBe(true);
+    expect(columns.some((column) => Lib.isStringOrStringLike(column))).toBe(
+      true,
+    );
   });
 });

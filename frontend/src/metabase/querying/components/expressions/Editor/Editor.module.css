@@ -210,17 +210,6 @@
   flex-shrink: 0;
 }
 
-.parameterHint {
-  margin-right: 4px;
-  padding: 0 3px;
-  border-radius: 3px;
-  background-color: var(--mb-color-background_surface-secondary);
-  color: var(--mb-color-text-secondary);
-  font-family: var(--mb-default-font-family);
-  font-size: 0.85em;
-  pointer-events: none;
-}
-
 /* The argument names of a function that the user did not type into yet. */
 .editor :global(.cm-content .cm-snippetField) {
   font-style: normal;

@@ -177,6 +177,28 @@ export function getExpectedColumnType(
   }
 }
 
+// The blanks of a template are named after the type of column they take, with
+// a number when it needs two different columns of that type: "[Number 2]".
+const TEMPLATE_BLANK = /^\[(Text|Number|Date)(?: \d+)?\]$/;
+
+/**
+ * The columns that a template's blank takes, from its name, like `[Date]`, or
+ * null for one that takes any column, like `[Column]`.
+ */
+export function getTemplateBlankType(blank: string): ExpectedColumnType | null {
+  const kind = TEMPLATE_BLANK.exec(blank)?.[1];
+  switch (kind) {
+    case "Text":
+      return ofType(Lib.isStringOrStringLike, t`text`);
+    case "Number":
+      return ofType(Lib.isNumeric, t`number`);
+    case "Date":
+      return ofType(Lib.isTemporal, t`date`);
+    default:
+      return null;
+  }
+}
+
 function ofType(
   test: ExpectedColumnType["test"],
   noun: string,

@@ -68,7 +68,6 @@ import {
   openInlinePromptAtEnd,
 } from "./inline-prompt";
 import { showErrors as showErrorMarks } from "./language";
-import { useParameterHints } from "./parameter-hints";
 import { useEditorSidebar } from "./use-editor-sidebar";
 import { useGenerateExpression } from "./use-generate-expression";
 import { hasActiveSnippet, useInitialClause } from "./utils";
@@ -693,8 +692,6 @@ export function Editor(props: EditorProps) {
     applySource,
   });
 
-  const parameterHintsExtensions = useParameterHints();
-
   // A new list of extensions reconfigures the editor, which drops the fields
   // of an active snippet (CodeMirror adds their state with appendConfig). So
   // the list depends on the text only while the diff shows, and the text does
@@ -706,21 +703,15 @@ export function Editor(props: EditorProps) {
       diffOriginal != null
         ? [
             ...baseExtensions,
-            ...parameterHintsExtensions,
             unifiedMergeView({ original: diffOriginal, mergeControls: false }),
             ...diffControlsExtensions,
           ]
-        : [
-            ...baseExtensions,
-            ...parameterHintsExtensions,
-            ...inlinePromptExtensions,
-          ],
+        : [...baseExtensions, ...inlinePromptExtensions],
     [
       diffOriginal,
       baseExtensions,
       diffControlsExtensions,
       inlinePromptExtensions,
-      parameterHintsExtensions,
     ],
   );
 
