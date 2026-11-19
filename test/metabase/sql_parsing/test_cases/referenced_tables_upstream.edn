@@ -1,5 +1,5 @@
 ;; Every statement in sqlglot's tests/fixtures/identity.sql (sqlglot 30.20.0), read with no dialect, and the tables
-;; sqlglot finds in it.
+;; sqlglot finds in it, except where a comment says otherwise.
 {:cases
  [{:sql "SUM(1)" :tables []}
   {:sql "SUM(CASE WHEN x > 1 THEN 1 ELSE 0 END) / y" :tables []}
@@ -731,9 +731,11 @@
   {:sql "COMMENT ON TABLE my_schema.my_table IS 'Employee Information'" :tables [[nil "my_schema" "my_table"]]}
   {:sql "COMMENT ON TABLE my_schema.my_table IS N'National String'" :tables [[nil "my_schema" "my_table"]]}
   {:sql "WITH a AS (SELECT 1) INSERT INTO b SELECT * FROM a" :tables [[nil nil "b"]]}
-  {:sql "WITH a AS (SELECT * FROM b) UPDATE a SET col = 1" :tables [[nil nil "b"]]}
+  ;; Here `sql_tools` differs from sqlglot, which reads `a` as the CTE: outside T-SQL no CTE name shadows the table an
+  ;; UPDATE or DELETE writes, so the statement writes the real table `a`.
+  {:sql "WITH a AS (SELECT * FROM b) UPDATE a SET col = 1" :tables [[nil nil "a"] [nil nil "b"]]}
   {:sql "WITH a AS (SELECT * FROM b) CREATE TABLE b AS SELECT * FROM a" :tables [[nil nil "b"]]}
-  {:sql "WITH a AS (SELECT * FROM b) DELETE FROM a" :tables [[nil nil "b"]]}
+  {:sql "WITH a AS (SELECT * FROM b) DELETE FROM a" :tables [[nil nil "a"] [nil nil "b"]]}
   {:sql "SELECT ? AS ? FROM x WHERE b BETWEEN ? AND ? GROUP BY ?, 1 LIMIT ?" :tables [[nil nil "x"]]}
   {:sql "SELECT :hello, ? FROM x LIMIT :my_limit" :tables [[nil nil "x"]]}
   {:sql "SELECT a FROM b WHERE c IS ?" :tables [[nil nil "b"]]}
