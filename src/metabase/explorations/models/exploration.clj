@@ -11,7 +11,7 @@
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.revisions.core :as revisions]
-   [metabase.search.spec :as search.spec]
+   [metabase.search.spec :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -152,7 +152,7 @@
 
 ;;; ----------------------------------------------- Search ----------------------------------------------------------
 
-(defmethod search.spec/spec :model/Exploration
+(defmethod search/spec :model/Exploration
   [_model]
   {"exploration"
    {:attrs {:archived :archived

@@ -47,6 +47,7 @@
   max-searchable-value-length
   searchable-value-trim-sql]
  [search.spec
+  explode-camel-case
   indexed-model?
   search-model-spec
   spec

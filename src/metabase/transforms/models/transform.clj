@@ -18,9 +18,9 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.replacement.spec :as replacement.spec]
+   [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
-   [metabase.search.core :as search.core]
+   [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
@@ -557,7 +557,7 @@
 
 ;;; ---------------------------------------------------- Search ------------------------------------------------------
 
-(defmethod search.core/spec :model/Transform
+(defmethod search/spec :model/Transform
   [_model]
   {"transform"
    {:visibility   :superuser
@@ -592,7 +592,7 @@
    :dependency-columns #{:source :target}
    :analysis-columns   #{:source :target}})
 
-(defmethod replacement.spec/spec :model/Transform [_model]
+(defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
    :swap-source        transforms.replacement/swap-source})
 

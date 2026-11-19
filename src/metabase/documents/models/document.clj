@@ -29,7 +29,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
-   [metabase.search.spec :as search.spec]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
@@ -581,7 +581,7 @@
 
 ;;; ---------- Search --------------------------------------------------------------------------------------------
 
-(defmethod search.spec/spec :model/Document
+(defmethod search/spec :model/Document
   [_model]
   {"document"
    {:attrs {:archived true

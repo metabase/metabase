@@ -23,7 +23,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
-   [metabase.search.spec :as search.spec]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -2515,7 +2515,7 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defmethod search.spec/spec :model/Collection
+(defmethod search/spec :model/Collection
   [_model]
   {"collection"
    {:attrs        {:collection-id        :id

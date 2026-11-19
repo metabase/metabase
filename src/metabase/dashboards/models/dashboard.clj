@@ -39,7 +39,7 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.replacement.spec :as replacement.spec]
+   [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
@@ -604,7 +604,7 @@
 
    :dependency-columns #{:parameters}})
 
-(defmethod replacement.spec/spec :model/Dashboard [_model]
+(defmethod replacement/spec :model/Dashboard [_model]
   {:hydrate            dashboards.replacement/hydrate
    :upgrade-field-refs dashboards.replacement/upgrade-field-refs
    :swap-source        dashboards.replacement/swap-source})

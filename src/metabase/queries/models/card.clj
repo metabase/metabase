@@ -54,7 +54,7 @@
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.replacement.spec :as replacement.spec]
+   [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -1935,7 +1935,7 @@
    :analysis-columns   #{:type :dataset_query}
    :output-columns     #{:type :result_metadata}})
 
-(defmethod replacement.spec/spec :model/Card [_model]
+(defmethod replacement/spec :model/Card [_model]
   {:source-database-id :database_id
    :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs

@@ -14,7 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.replacement.spec :as replacement.spec]
+   [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.segments.audit :as segments.audit]
@@ -243,6 +243,6 @@
    :analysis-columns   #{:definition :table_id}
    :output-columns     #{:definition :table_id}})
 
-(defmethod replacement.spec/spec :model/Segment [_model]
+(defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
    :swap-source        segments.replacement/swap-source})

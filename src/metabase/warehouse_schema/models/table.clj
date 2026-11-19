@@ -16,8 +16,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.card-schema :as card-schema]
    [metabase.remote-sync.core :as remote-sync]
-   [metabase.replacement.spec :as replacement.spec]
-   [metabase.search.spec :as search.spec]
+   [metabase.replacement.spec :as replacement]
+   [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -600,7 +600,7 @@
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 
-(defmethod search.spec/spec :model/Table
+(defmethod search/spec :model/Table
   [_model]
   {"table"
    {:attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
@@ -619,7 +619,7 @@
                    :root-collection-type {:fn collection/root-collection-type}
                    :data-layer          :data_layer
                    :data-authority      :data_authority}
-    :search-terms {:name         search.spec/explode-camel-case
+    :search-terms {:name         search/explode-camel-case
                    :display_name true
                    :description  true}
     :render-terms {:initial-sync-status        true
@@ -649,7 +649,7 @@
 
    :output-columns #{:name :schema :display_name :active :visibility_type}})
 
-(defmethod replacement.spec/spec :model/Table [_model]
+(defmethod replacement/spec :model/Table [_model]
   {:source-database-id :db_id})
 
 (defmethod collection-items/spec :model/Table [_model]

@@ -21,7 +21,6 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.core :as search]
-   [metabase.search.spec :as search.spec]
    [metabase.secrets.core :as secret]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
@@ -782,7 +781,7 @@
 
 ;;; ----------------------------------------------------- Search -----------------------------------------------------
 
-(defmethod search.spec/spec :model/Database
+(defmethod search/spec :model/Database
   [_model]
   {"database"
    {:attrs        {:archived      false
@@ -792,7 +791,7 @@
                    :database-id   false
                    :created-at    true
                    :updated-at    true}
-    :search-terms {:name        search.spec/explode-camel-case
+    :search-terms {:name        search/explode-camel-case
                    :description true}
     :where [:and [:= :router_database_id nil] [:= :is_stub false]]
     :render-terms {:initial-sync-status true}}})
