@@ -1,40 +1,42 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
 import { DataTestRun } from "../../components/DataTestRun";
 import { TransformTestHeader } from "../../components/TransformTestHeader";
+import { useRouteDataTestRun } from "../../hooks/use-route-data-test-run";
 import { useRouteTransformTest } from "../../hooks/use-route-transform-test";
-
-type TransformTestRunRouteParams = {
-  runId: string;
-};
 
 export function TransformTestRunPage() {
   const { transform, test, isLoading, error } = useRouteTransformTest();
-  const params = useParams<TransformTestRunRouteParams>();
-  const runId = Urls.extractEntityId(params.runId);
+  const {
+    run,
+    isLoading: isLoadingRun,
+    error: runError,
+  } = useRouteDataTestRun();
 
   if (
     transform == null ||
     test == null ||
-    runId == null ||
+    run == null ||
     isLoading ||
+    isLoadingRun ||
     error != null
   ) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper
+          loading={isLoading || isLoadingRun}
+          error={error ?? runError}
+        />
       </Center>
     );
   }
 
   return (
     <PageContainer data-testid="transform-test-run">
-      <TransformTestHeader transform={transform} test={test} />
-      <DataTestRun testType="transform" testId={test.id} runId={runId} />
+      <TransformTestHeader transform={transform} test={test} run={run} />
+      <DataTestRun testType="transform" testId={test.id} runId={run.id} />
     </PageContainer>
   );
 }

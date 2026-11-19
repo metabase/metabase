@@ -1,4 +1,5 @@
 import { skipToken } from "@reduxjs/toolkit/query";
+import type { ReactNode } from "react";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
@@ -14,6 +15,7 @@ type DataModelBreadcrumbsProps = {
   tableListUrl: string;
   entityUrl?: string;
   entityChildName?: string;
+  children?: ReactNode;
 };
 
 export function DataModelBreadcrumbs({
@@ -23,6 +25,7 @@ export function DataModelBreadcrumbs({
   tableListUrl,
   entityUrl,
   entityChildName,
+  children,
 }: DataModelBreadcrumbsProps) {
   const { data: schemas, isLoading } = useListDatabaseSchemasQuery(
     table.db_id ? { id: table.db_id } : skipToken,
@@ -56,7 +59,7 @@ export function DataModelBreadcrumbs({
       ) : (
         <span>{entityName ?? newEntityLabel}</span>
       )}
-      {entityChildName != null && <span>{entityChildName}</span>}
+      {children || (entityChildName != null && <span>{entityChildName}</span>)}
     </DataStudioBreadcrumbs>
   );
 }

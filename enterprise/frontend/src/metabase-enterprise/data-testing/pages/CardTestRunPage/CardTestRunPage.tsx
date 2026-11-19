@@ -1,40 +1,42 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
-import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/urls";
 
 import { CardTestHeader } from "../../components/CardTestHeader";
 import { DataTestRun } from "../../components/DataTestRun";
 import { useRouteCardTest } from "../../hooks/use-route-card-test";
-
-type CardTestRunRouteParams = {
-  runId: string;
-};
+import { useRouteDataTestRun } from "../../hooks/use-route-data-test-run";
 
 export function CardTestRunPage() {
   const { card, test, isLoading, error } = useRouteCardTest();
-  const params = useParams<CardTestRunRouteParams>();
-  const runId = Urls.extractEntityId(params.runId);
+  const {
+    run,
+    isLoading: isLoadingRun,
+    error: runError,
+  } = useRouteDataTestRun();
 
   if (
     card == null ||
     test == null ||
-    runId == null ||
+    run == null ||
     isLoading ||
+    isLoadingRun ||
     error != null
   ) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <LoadingAndErrorWrapper
+          loading={isLoading || isLoadingRun}
+          error={error ?? runError}
+        />
       </Center>
     );
   }
 
   return (
     <PageContainer data-testid="card-test-run">
-      <CardTestHeader card={card} test={test} />
-      <DataTestRun testType="card" testId={test.id} runId={runId} />
+      <CardTestHeader card={card} test={test} run={run} />
+      <DataTestRun testType="card" testId={test.id} runId={run.id} />
     </PageContainer>
   );
 }

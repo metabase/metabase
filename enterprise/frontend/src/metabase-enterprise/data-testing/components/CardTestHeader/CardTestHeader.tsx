@@ -11,18 +11,24 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import * as Urls from "metabase/urls";
 import { DataStudioMetricBreadcrumbs } from "metabase-enterprise/data-studio/library/metrics/components/DataStudioMetricBreadcrumbs";
-import type { Card, CardTest } from "metabase-types/api";
+import type { Card, CardTest, DataTestRun } from "metabase-types/api";
+
+import {
+  DataTestRunTitle,
+  getDataTestRunBreadcrumbs,
+} from "../DataTestRunTitle";
 
 type CardTestHeaderProps = {
   card: Card;
   test: CardTest;
+  run?: DataTestRun;
 };
 
 function isRunsPathname(pathname: string) {
-  return /\/runs(\/\d+)?$/.test(pathname);
+  return pathname.endsWith("/runs");
 }
 
-export function CardTestHeader({ card, test }: CardTestHeaderProps) {
+export function CardTestHeader({ card, test, run }: CardTestHeaderProps) {
   const overviewUrl = Urls.dataStudioMetricTest(card.id, test.id);
   const runsUrl = Urls.dataStudioMetricTestRuns(card.id, test.id);
   const tabs: PillTab[] = [
@@ -40,13 +46,24 @@ export function CardTestHeader({ card, test }: CardTestHeaderProps) {
 
   return (
     <PaneHeader
-      title={<PanelHeaderTitle>{test.name}</PanelHeaderTitle>}
+      title={
+        <PanelHeaderTitle>
+          {run != null ? <DataTestRunTitle run={run} /> : test.name}
+        </PanelHeaderTitle>
+      }
       icon="test_tube"
-      tabs={<PillTabNavigation tabs={tabs} />}
+      tabs={run == null ? <PillTabNavigation tabs={tabs} /> : undefined}
       breadcrumbs={
         <DataStudioMetricBreadcrumbs card={card}>
           <Link to={Urls.dataStudioMetricTestList(card.id)}>{card.name}</Link>
-          {test.name}
+          {run != null
+            ? getDataTestRunBreadcrumbs({
+                testName: test.name,
+                testUrl: overviewUrl,
+                runsUrl,
+                run,
+              })
+            : test.name}
         </DataStudioMetricBreadcrumbs>
       }
       data-testid="card-test-header"

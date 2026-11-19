@@ -162,6 +162,30 @@ describe("TransformTestRunPage", () => {
     ).toHaveTextContent("Ada Admin");
   });
 
+  it("is a page of its own, with the run in the title and the breadcrumbs", async () => {
+    setup({
+      run: createMockDataTestRunDetail({
+        id: 7,
+        test_id: 2,
+        start_time: "2026-01-01T00:00:00Z",
+      }),
+    });
+
+    const header = await screen.findByTestId("transform-test-header");
+    const breadcrumbs = within(header).getByTestId("data-studio-breadcrumbs");
+    expect(
+      await within(breadcrumbs).findByRole("link", { name: "Refunds" }),
+    ).toHaveAttribute("href", Urls.transformTest(1, 2));
+    expect(
+      within(breadcrumbs).getByRole("link", { name: "Runs" }),
+    ).toHaveAttribute("href", Urls.transformTestRuns(1, 2));
+    expect(within(breadcrumbs).getByText(/Run from/)).toBeInTheDocument();
+    expect(within(header).getAllByText(/Run from/)).toHaveLength(2);
+    expect(
+      within(header).queryByRole("link", { name: "Overview" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows why a run was refused", async () => {
     setup({
       run: createMockDataTestRunDetail({

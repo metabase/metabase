@@ -10,19 +10,29 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { DataModelBreadcrumbs } from "metabase/data-studio/common/components/DataModelBreadcrumbs";
 import { PublishedTableBreadcrumbs } from "metabase/data-studio/common/components/PublishedTableBreadcrumbs";
-import type { Segment, SegmentTest, Table } from "metabase-types/api";
+import type {
+  DataTestRun,
+  Segment,
+  SegmentTest,
+  Table,
+} from "metabase-types/api";
 
 import type { SegmentTestUrls } from "../../hooks/use-segment-test-urls";
+import {
+  DataTestRunTitle,
+  getDataTestRunBreadcrumbs,
+} from "../DataTestRunTitle";
 
 type SegmentTestHeaderProps = {
   segment: Segment;
   table: Table;
   test: SegmentTest;
   urls: SegmentTestUrls;
+  run?: DataTestRun;
 };
 
 function isRunsPathname(pathname: string) {
-  return /\/runs(\/\d+)?$/.test(pathname);
+  return pathname.endsWith("/runs");
 }
 
 export function SegmentTestHeader({
@@ -30,6 +40,7 @@ export function SegmentTestHeader({
   table,
   test,
   urls,
+  run,
 }: SegmentTestHeaderProps) {
   const tabs: PillTab[] = [
     {
@@ -50,9 +61,13 @@ export function SegmentTestHeader({
 
   return (
     <PaneHeader
-      title={<PanelHeaderTitle>{test.name}</PanelHeaderTitle>}
+      title={
+        <PanelHeaderTitle>
+          {run != null ? <DataTestRunTitle run={run} /> : test.name}
+        </PanelHeaderTitle>
+      }
       icon="test_tube"
-      tabs={<PillTabNavigation tabs={tabs} />}
+      tabs={run == null ? <PillTabNavigation tabs={tabs} /> : undefined}
       breadcrumbs={
         <Breadcrumbs
           table={table}
@@ -61,7 +76,15 @@ export function SegmentTestHeader({
           tableListUrl={urls.segmentListUrl}
           entityUrl={urls.getTestListUrl(segment.id)}
           entityChildName={test.name}
-        />
+        >
+          {run != null &&
+            getDataTestRunBreadcrumbs({
+              testName: test.name,
+              testUrl: urls.getTestUrl(segment.id, test.id),
+              runsUrl: urls.getTestRunsUrl(segment.id, test.id),
+              run,
+            })}
+        </Breadcrumbs>
       }
       data-testid="segment-test-header"
     />
