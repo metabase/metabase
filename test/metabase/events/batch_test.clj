@@ -90,30 +90,6 @@
       (is (= {:id 1 :name "a"} (:previous-object event)))
       (is (not (contains? event :object))))))
 
-(deftest create-collected-after-update-test
-  (testing "a creation whose own hooks write the row again is still a creation, and carries no changed columns"
-    (let [new-row {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)}
-          merged  (atom [])]
-      (events/register-owned-consumer! ::merged
-                                       (constantly :merged)
-                                       (fn [_owner events _all] (swap! merged into events)))
-      (try
-        (events/with-batched-events
-          (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline new-row)]
-            (t2/update! ::events-test-timeline/Timeline :id id {:name "b"})))
-        (is (= [:event/events-test-timeline-create] (topics)))
-        (is (=? [{:operation :create}] @merged))
-        (is (not-any? #(contains? % :changed) @merged))
-        (finally
-          (events.tu/unregister! ::merged))))))
-
-(deftest batch-rollback-test
-  (is (thrown? Exception
-               (events/with-batched-events
-                 (t2/insert! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)})
-                 (throw (Exception. "boom")))))
-  (is (empty? @received)))
-
 (defn- row [nm]
   {:name nm :icon "cake" :creator_id (mt/user->id :rasta)})
 
@@ -124,6 +100,46 @@
      ~@body
      (finally
        (t2/delete! ::events-test-timeline/Timeline :name [:like "batch-test-%"]))))
+
+(deftest create-collected-after-update-test
+  (testing "a creation followed by an update of its row in one batch is still a creation, with no changed columns"
+    (let [merged (atom [])]
+      (events/register-owned-consumer! ::merged
+                                       (constantly :merged)
+                                       (fn [_owner events _all] (swap! merged into events)))
+      (try
+        (with-timeline-cleanup
+          (events/with-batched-events
+            (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-a"))]
+              (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-b"})))
+          (is (= [:event/events-test-timeline-create] (topics)))
+          (is (=? [{:operation :create}] @merged))
+          (is (not-any? #(contains? % :changed) @merged)))
+        (finally
+          (events.tu/unregister! ::merged))))))
+
+(deftest self-assigned-updated-at-is-not-changed-test
+  (testing "an update that assigns `updated_at` to itself, to keep it, does not list it among the changed columns"
+    (let [merged (atom [])]
+      (events/register-owned-consumer! ::merged
+                                       (constantly :merged)
+                                       (fn [_owner events _all] (swap! merged into events)))
+      (try
+        (with-timeline-cleanup
+          (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-keep"))]
+            (reset! merged [])
+            (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-kept" :updated_at :updated_at})
+            (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-moved"}))
+          (is (= [#{:name} #{:name :updated_at}] (mapv :changed @merged))))
+        (finally
+          (events.tu/unregister! ::merged))))))
+
+(deftest batch-rollback-test
+  (is (thrown? Exception
+               (events/with-batched-events
+                 (t2/insert! ::events-test-timeline/Timeline {:name "a" :icon "cake" :creator_id (mt/user->id :rasta)})
+                 (throw (Exception. "boom")))))
+  (is (empty? @received)))
 
 (deftest joined-batch-rollback-test
   (testing "a joined batch rolled back with a savepoint of its caller leaves no event behind"

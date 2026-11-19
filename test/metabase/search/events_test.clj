@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.db :as qp.db]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -218,6 +219,14 @@
         (is (= #{"collection"}
                (enqueued-search-models
                 (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"})))))))))
+
+(deftest self-assigned-updated-at-enqueues-nothing-test
+  (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
+        (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
+        (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"

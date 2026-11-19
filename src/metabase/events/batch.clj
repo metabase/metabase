@@ -43,8 +43,8 @@
 (def ^:private CollectedEvent
   "A write of a row: its model, its kind, the row after it for a create or an update, and the row before it for an
   update or a delete.
-  An update also carries `:changed`, the columns it set, among them the `:updated_at` that `:object` shows with its
-  old value."
+  An update also carries `:changed`, the columns it set. It holds `:updated_at` when a timestamp hook set it in this
+  write, and `:object` then shows the old value."
   [:map
    [:model     :keyword]
    [:operation Operation]
