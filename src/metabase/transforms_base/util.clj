@@ -645,7 +645,7 @@
   run must not change such a Table; it may change a Table that the workspace owns."
   [table]
   (and (workspaces/workspace-bound?)
-       (nil? (:workspace_id table))))
+       (nil? (workspaces/owner-workspace-id :metabase_table table))))
 
 (mu/defn- sync-table!
   ([database :- ::lib.schema.metadata/database

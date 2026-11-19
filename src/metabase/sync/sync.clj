@@ -100,7 +100,7 @@
   ([[workspaces/in-workspace-of]])."
   [table :- i/TableInstance]
   (database-routing/with-anonymous-router-access
-    (workspaces/in-workspace-of table
+    (workspaces/in-workspace-of :metabase_table table
                                 (let [database (driver.u/lib-database (:db_id table))]
                                   (sync-metadata/sync-table-metadata! database table)
                                   (analyze/analyze-table! table)
@@ -158,6 +158,6 @@
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
         (database-routing/with-anonymous-router-access
-          (workspaces/in-workspace-of field
+          (workspaces/in-workspace-of :metabase_field field
                                       (sync.fingerprint/refingerprint-field! field))))
       :sync/no-connection)))

@@ -2,6 +2,7 @@
   "Row-level security on the app DB tables that hold the rows a workspace owns, and the setting that turns it on."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.test-util :as serdes.tu]
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.app-db.core :as mdb]
@@ -79,7 +80,7 @@
           (t2/insert! :model/Field {:table_id shared :name "added_by_a" :base_type :type/Integer
                                     :database_type "int4"}))
         (testing "a Table or Field inserted in a workspace belongs to it"
-          (is (= ws-a (mdb/with-workspace-id :all (t2/select-one-fn :workspace_id :model/Table :id only-a)))))
+          (is (= ws-a (mdb/owner-workspace-id :metabase_table only-a))))
         (testing "no workspace sees only the shared rows"
           (is (= #{"shared"} (table-names db-id)))
           (is (empty? (t2/select :model/Field :table_id shared))))
@@ -157,3 +158,44 @@
                  (is (= #{"shared_orders" "ws_only_orders"} (set (map :name (metabot-tables db-id))))))
                (is (= #{"shared_orders"} (set (map :name (mcp-tables [shared owned])))))
                (is (= #{"shared_orders"} (set (map :name (metabot-tables db-id)))))))))))))
+
+(deftest a-selected-table-or-field-has-no-workspace-id-test
+  (testing "the workspace that owns a row is the app DB's business: a selected Table or Field does not have it, so no
+            API response or serdes export does"
+    (is (not (contains? (t2/select-one :model/Table :id (mt/id :venues)) :workspace_id)))
+    (is (not (contains? (t2/select-one :model/Field :id (mt/id :venues :price)) :workspace_id)))))
+
+(deftest the-owner-of-a-row-stays-out-of-responses-and-exports-test
+  (with-request-workspaces-enabled!
+    ((requiring-resolve 'metabase-enterprise.workspaces.request-workspace-test/do-with-request-workspace)
+     (fn [{:keys [workspace-id db-id]}]
+       (mt/with-temp [:model/Table {shared :id} {:db_id db-id :schema "public" :name "shared_orders" :active true}]
+         (let [owned       (mdb/with-workspace-id workspace-id
+                             (t2/insert-returning-pk! :model/Table {:db_id db-id :schema "public"
+                                                                    :name "ws_only_orders" :active true}))
+               owned-field (mdb/with-workspace-id workspace-id
+                             (t2/insert-returning-pk! :model/Field {:table_id owned :name "ws_only_total"
+                                                                    :base_type :type/Integer :database_type "int4"}))
+               headers     {:request-options {:headers {"x-metabase-workspace-id" (str workspace-id)}}}
+               get         (fn [path] (mt/user-http-request :crowberto :get 200 path headers))]
+           (testing "the API"
+             (is (not (contains? (get (format "table/%d" owned)) :workspace_id)))
+             (let [metadata (get (format "table/%d/query_metadata" owned))]
+               (is (not (contains? metadata :workspace_id)))
+               (is (= ["ws_only_total"] (map :name (:fields metadata))))
+               (is (not-any? #(contains? % :workspace_id) (:fields metadata))))
+             (is (not-any? #(contains? % :workspace_id)
+                           (mapcat #(cons % (:fields %)) (:tables (get (format "database/%d/metadata" db-id)))))))
+           (testing "serdes exports"
+             (mdb/with-workspace-id workspace-id
+               (is (not (contains? (serdes.tu/extract-one "Table" owned)
+                                   :workspace_id)))
+               (is (not (contains? (serdes.tu/extract-one "Field" owned-field)
+                                   :workspace_id)))))
+           (testing "code that needs the owner of a row asks the app DB"
+             (mdb/with-workspace-id workspace-id
+               (is (= workspace-id (mdb/owner-workspace-id :metabase_table owned)))
+               (is (= workspace-id (mdb/owner-workspace-id :metabase_field owned-field)))
+               (is (nil? (mdb/owner-workspace-id :metabase_table shared))))
+             (testing "from any thread: work on a row, such as a sync, may leave the workspace before it asks"
+               (is (= workspace-id (mdb/owner-workspace-id :metabase_table owned)))))))))))

@@ -547,7 +547,7 @@
       ;; values we already have. Leave whatever is cached in place instead.
       ;; Read as the Field's own values: in the workspace that owns the Field, or in none for a shared one.
       (if-let [{rows :values} (database-routing/with-anonymous-router-access
-                                (workspaces/in-workspace-of field (distinct-values field)))]
+                                (workspaces/in-workspace-of :metabase_field field (distinct-values field)))]
         ;; rows are 1-tuples — unwrap for storage.
         (persist-field-values! field existing-fv (seq (map first rows)))
         ::fv-fetch-failed))

@@ -143,7 +143,8 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  ;; the workspace that owns a Field stays in the app DB: see [[metabase.app-db.core/owner-workspace-id]]
+  (dissoc field :is_defective_duplicate :unique_field_helper :workspace_id))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.

@@ -310,7 +310,8 @@
 
 (t2/define-after-select :model/Table
   [table]
-  (dissoc table :is_defective_duplicate :unique_table_helper))
+  ;; the workspace that owns a Table stays in the app DB: see [[metabase.app-db.core/owner-workspace-id]]
+  (dissoc table :is_defective_duplicate :unique_table_helper :workspace_id))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

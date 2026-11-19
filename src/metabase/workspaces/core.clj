@@ -110,12 +110,19 @@
   [workspace-id & body]
   `(do-with-workspace-id ~workspace-id (^:once fn* [] ~@body)))
 
+(defn owner-workspace-id
+  "The id of the workspace that owns the row `row` of the app DB table `table` (`:metabase_table` or `:metabase_field`),
+  or nil for a shared row. See [[mdb/owner-workspace-id]]."
+  [table row]
+  (mdb/owner-workspace-id table (:id row)))
+
 (defmacro in-workspace-of
-  "Run `body` in the workspace that owns the Table or Field `row` (its `:workspace_id`), or in none for a shared row.
-  Use it around work on a row whose results belong with the row, such as a sync of a Table: a Table that a workspace
-  owns holds the columns of the workspace's copy, which only that workspace reads."
-  [row & body]
-  `(with-workspace-id (:workspace_id ~row) ~@body))
+  "Run `body` in the workspace that owns the row `row` of the app DB table `table` (`:metabase_table` or
+  `:metabase_field`), or in none for a shared row. Use it around work on a row whose results belong with the row, such
+  as a sync of a Table: a Table that a workspace owns holds the columns of the workspace's copy, which only that
+  workspace reads."
+  [table row & body]
+  `(with-workspace-id (owner-workspace-id ~table ~row) ~@body))
 
 (defmacro without-workspace
   "Run `body` in no workspace that a request names: with the Databases' own logins, and the instance's own table

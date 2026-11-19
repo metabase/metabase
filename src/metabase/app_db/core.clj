@@ -95,6 +95,7 @@
   changelog-by-id]
  [mdb.workspace
   do-with-workspace-id
+  owner-workspace-id
   with-workspace-id
   workspace-id])
 

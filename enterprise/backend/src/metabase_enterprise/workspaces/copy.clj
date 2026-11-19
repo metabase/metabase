@@ -131,8 +131,8 @@
   (workspaces/with-workspace-id workspace-id
     (let [columns       (sync/table-fields-metadata database table)
           fields        (ws.db/table-fields-of-workspace workspace-id (:id table))
-          shared-fields (filterv (comp nil? :workspace_id) fields)
-          owned-by-name (by-name (filter :workspace_id fields))]
+          shared-fields (filterv (comp nil? :owner_workspace_id) fields)
+          owned-by-name (by-name (filter :owner_workspace_id fields))]
       (t2/with-transaction [_conn]
         (write-field-copies! workspace-id shared-fields (desired-field-copies shared-fields owned-by-name columns))
         (write-owned-fields! workspace-id (:id table) shared-fields owned-by-name columns))

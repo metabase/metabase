@@ -417,11 +417,13 @@
 
 (mu/defn table-fields-of-workspace :- [:sequential :map]
   "The Fields of the Table with `table-id` that are shared or that the workspace with `workspace-id` owns, active or
-  not, nested or not, hidden from the workspace or not, with the columns a copy compares."
+  not, nested or not, hidden from the workspace or not, with the columns a copy compares, and the owner as
+  `:owner_workspace_id`: nil for a shared Field."
   [workspace-id :- ms/PositiveInt
    table-id     :- ::lib.schema.id/table]
   (app-db/with-workspace-id :all
-    (t2/select [:model/Field :id :name :parent_id :active :base_type :database_type :database_position :workspace_id]
+    (t2/select [:model/Field :id :name :parent_id :active :base_type :database_type :database_position
+                [:workspace_id :owner_workspace_id]]
                {:where [:and
                         [:= :table_id [:auto/param table-id]]
                         [:or [:= :workspace_id nil] [:= :workspace_id [:auto/param workspace-id]]]]})))

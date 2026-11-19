@@ -50,11 +50,15 @@
 (deftest a-workspace-owned-table-syncs-in-its-workspace-test
   (let [seen      (atom #{})
         fields-of (mt/original-fn #'fetch-metadata/table-fields-metadata)
-        ;; as the app DB has a Table that only workspace 12 owns, and sees it
-        table     (assoc (t2/select-one :model/Table :id (mt/id :venues)) :workspace_id 12)]
+        table     (t2/select-one :model/Table :id (mt/id :venues))]
     (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [database table]
                                                                        (swap! seen conj (workspaces/current-workspace-id))
-                                                                       (fields-of database table))]
+                                                                       (fields-of database table))
+                                ;; as the app DB has a Table that only workspace 12 owns
+                                workspaces/owner-workspace-id        (fn [app-db-table row]
+                                                                       (when (and (= :metabase_table app-db-table)
+                                                                                  (= (:id table) (:id row)))
+                                                                         12))]
       (testing "a Table that a workspace owns is synced in that workspace, whatever workspace starts the sync: its copy
                 is the workspace's, and only the workspace sees its rows"
         (sync/sync-table! table)
@@ -69,7 +73,11 @@
         values (mt/original-fn #'field-values/distinct-values)]
     (mt/with-dynamic-fn-redefs [field-values/distinct-values (fn [field]
                                                                (swap! seen conj (workspaces/current-workspace-id))
-                                                               (values field))]
-      (field-values/create-or-update-full-field-values!
-       (assoc (t2/select-one :model/Field :id (mt/id :venues :price)) :workspace_id 12))
+                                                               (values field))
+                                ;; as the app DB has a Field that only workspace 12 owns
+                                workspaces/owner-workspace-id (fn [app-db-table row]
+                                                                (when (and (= :metabase_field app-db-table)
+                                                                           (= (mt/id :venues :price) (:id row)))
+                                                                  12))]
+      (field-values/create-or-update-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (is (= #{12} @seen)))))

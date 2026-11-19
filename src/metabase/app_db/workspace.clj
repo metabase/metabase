@@ -13,7 +13,8 @@
   savepoint, undoes a `SET` made after it, so the record of a connection goes when one of its transactions ends."
   (:require
    [methodical.core :as methodical]
-   [toucan2.connection :as t2.conn]))
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,3 +132,15 @@
   {:style/indent 1}
   [workspace-id & body]
   `(do-with-workspace-id ~workspace-id (^:once fn* [] ~@body)))
+
+(defn owner-workspace-id
+  "The id of the workspace that owns the row with `id` of the app DB table `table` (`:metabase_table` or
+  `:metabase_field`), or nil for a row every workspace shares. The owner is not a key of a selected Table or Field, so
+  that no API response or export has it. Reads across every workspace, so a thread in another workspace, or in none,
+  gets it too. Nil, with no query, in a process where no thread ever worked in a workspace: such a process holds no
+  row that a workspace owns."
+  [table id]
+  (when (and id @ever-in-a-workspace?)
+    (do-with-workspace-id :all
+      (fn []
+        (:workspace_id (t2/query-one {:select [:workspace_id] :from [table] :where [:= :id id]}))))))

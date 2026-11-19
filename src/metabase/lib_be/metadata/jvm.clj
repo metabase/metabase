@@ -148,8 +148,6 @@
     (-> instance
         (perf/update-keys memoized-kebab-key)
         (assoc :lib/type metadata-type)
-        ;; the workspace that owns a Table or Field is the app DB's business (row-level security), not Lib's
-        (dissoc :workspace-id)
         (drop-undeclared-columns metadata-type)
         normalize
         u.snake-hating-map/snake-hating-map

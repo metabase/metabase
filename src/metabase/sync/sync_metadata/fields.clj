@@ -191,7 +191,7 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (workspaces/in-workspace-of table
+   (workspaces/in-workspace-of :metabase_table table
                                (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
                                  (let [db-metadata (fetch-metadata/table-fields-metadata database table)
                                        ;; TODO: decouple nested field columns sync from field sync. This will allow

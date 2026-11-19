@@ -180,7 +180,7 @@
   FieldValues row. Non-SQL drivers fall back to sequential per-field DISTINCT queries. They are read in the workspace
   that owns `table`, or in none for a shared one ([[workspaces/in-workspace-of]])."
   ([table :- i/TableInstance]
-   (workspaces/in-workspace-of table
+   (workspaces/in-workspace-of :metabase_table table
                                (update-field-values-for-table! (driver.u/lib-database (:db_id table)) table)))
 
   ([database :- i/DatabaseInstance
@@ -221,7 +221,7 @@
                                          true)))
                                    to-sync)
          sync-counts      (database-routing/with-anonymous-router-access
-                            (workspaces/in-workspace-of table
+                            (workspaces/in-workspace-of :metabase_table table
                                                         (sync-fields-for-table! database table fields-to-sync fvs-map)))]
      (merge-with + clear-counts (or sync-counts empty-counts)))))
 

@@ -388,7 +388,7 @@
    sync fills in the workspace, and outside a workspace. Ungated like [[workspace-mode?]]."
   :feature :none
   [database table]
-  (if-let [workspace-id (when (and (workspace-bound?) (nil? (:workspace_id table)))
+  (if-let [workspace-id (when (and (workspace-bound?) (nil? (workspaces/owner-workspace-id :metabase_table table)))
                           (workspaces/current-workspace-id))]
     (do (ws.copy/record-copy! workspace-id database table)
         true)
