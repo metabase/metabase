@@ -51,7 +51,7 @@ import { CloseModal, useCloseModal } from "./CloseModal";
 import S from "./EditorD.module.css";
 import { Errors } from "./Errors";
 import { ExpressionDiffControls } from "./ExpressionDiffControls";
-import { InlineToolbar } from "./InlineToolbar";
+import { CodeRowButton, InlineToolbar } from "./InlineToolbar";
 import type { Shortcut } from "./Shortcuts";
 import { Shortcuts } from "./Shortcuts";
 import { useSqlHint } from "./SqlHint";
@@ -62,6 +62,7 @@ import { DEBOUNCE_VALIDATION_MS } from "./constants";
 import { useCustomTooltip } from "./custom-tooltip";
 import { exitOnBackspace } from "./exit-on-backspace";
 import { useExtensions } from "./extensions";
+import InfoIcon from "./info-16.svg?component";
 import { showErrors as showErrorMarks } from "./language";
 import { useEditorSidebar } from "./use-editor-sidebar";
 import { useGenerateExpression } from "./use-generate-expression";
@@ -165,6 +166,8 @@ export type EditorDProps = {
   prompt?: ReactNode;
   /** Called on Backspace in empty code, to go back to the AI prompt. */
   onExitCode?: () => void;
+  /** Buttons at the end of the code row, before the docs button. */
+  codeActions?: ReactNode;
 };
 
 export type GenerateResult =
@@ -249,6 +252,7 @@ export function EditorD(props: EditorDProps) {
     clearRef,
     docsRef,
     isCodeShown,
+    codeActions,
     prompt,
     onExitCode,
   } = props;
@@ -481,8 +485,14 @@ export function EditorD(props: EditorDProps) {
     [compileSource, onGenerated],
   );
 
+  // `shouldFocus` false keeps the focus where it is, like in the prompt.
   const proposeSource = useCallback(
-    async (source: string, name?: string, breakouts?: GeneratedBreakout[]) => {
+    async (
+      source: string,
+      name?: string,
+      breakouts?: GeneratedBreakout[],
+      shouldFocus = true,
+    ) => {
       const formatted = await formatProposedSource(source);
       if (isComplexEdit(sourceRef.current, formatted)) {
         setProposal({ source: formatted, name, breakouts });
@@ -496,7 +506,9 @@ export function EditorD(props: EditorDProps) {
         acceptSource(formatted);
         reportGenerated(formatted, name?.trim());
       }
-      focusEnd(formatted);
+      if (shouldFocus) {
+        focusEnd(formatted);
+      }
     },
     [
       formatProposedSource,
@@ -506,17 +518,6 @@ export function EditorD(props: EditorDProps) {
       focusEnd,
       reportGenerated,
     ],
-  );
-
-  // An AI answer goes into the code, and the prompt keeps the focus, to ask
-  // for the next change.
-  const applyGeneratedSource = useCallback(
-    async (source: string) => {
-      const formatted = await formatProposedSource(source);
-      acceptSource(formatted);
-      reportGenerated(formatted);
-    },
-    [acceptSource, formatProposedSource, reportGenerated],
   );
 
   // Text from a fix that the user already chose: no diff to confirm it.
@@ -553,21 +554,30 @@ export function EditorD(props: EditorDProps) {
     setProposal((proposal) => proposal && { ...proposal, name });
   }, []);
 
-  const handleAcceptProposed = useCallback(() => {
-    if (proposal == null) {
-      return;
-    }
-    setProposal(null);
-    const name = proposal.name?.trim();
-    if (name) {
-      onAcceptName?.(name);
-    }
-    if (proposal.breakouts != null) {
-      onAcceptBreakouts?.(proposal.breakouts);
-    }
-    acceptSource(proposal.source);
-    focusEnd(proposal.source);
-  }, [proposal, acceptSource, onAcceptName, onAcceptBreakouts, focusEnd]);
+  const acceptProposal = useCallback(
+    (shouldFocus: boolean) => {
+      if (proposal == null) {
+        return;
+      }
+      setProposal(null);
+      const name = proposal.name?.trim();
+      if (name) {
+        onAcceptName?.(name);
+      }
+      if (proposal.breakouts != null) {
+        onAcceptBreakouts?.(proposal.breakouts);
+      }
+      acceptSource(proposal.source);
+      if (shouldFocus) {
+        focusEnd(proposal.source);
+      }
+    },
+    [proposal, acceptSource, onAcceptName, onAcceptBreakouts, focusEnd],
+  );
+  const handleAcceptProposed = useCallback(
+    () => acceptProposal(true),
+    [acceptProposal],
+  );
 
   const handleRejectProposed = useCallback(() => {
     setProposal(null);
@@ -604,20 +614,25 @@ export function EditorD(props: EditorDProps) {
       if (view) {
         closeCompletion(view);
       }
-      const result = await generate({ prompt, source: context });
+      // A new request builds on the change in the diff, so it accepts it.
+      const source = proposal?.source ?? context;
+      acceptProposal(false);
+      const result = await generate({ prompt, source });
       if (result == null || requestId !== requestIdRef.current) {
         return { status: "cancelled" };
       }
       if ("message" in result) {
         return { status: "error", message: result.message };
       }
-      if (result.name?.trim()) {
-        onAcceptName?.(result.name.trim());
-      }
-      if (result.breakouts != null) {
-        onAcceptBreakouts?.(result.breakouts);
-      }
-      await applyGeneratedSource(result.expression);
+      // A large change shows as a diff to accept or reject, a small one goes
+      // into the code at once. The prompt keeps the focus for the next
+      // change.
+      await proposeSource(
+        result.expression,
+        result.name,
+        result.breakouts,
+        false,
+      );
       return { status: "done" };
     };
   }
@@ -833,6 +848,18 @@ export function EditorD(props: EditorDProps) {
             {/* Hidden, not unmounted: it keeps the expression. */}
             <div className={S.codeRow} hidden={!isCodeShown}>
               {codeMirror}
+              <div className={S.codeActions}>
+                {codeActions}
+                {/* The docs open with the code. The button is there to open
+                    them again after the user closes them. */}
+                {openSidebar == null && (
+                  <CodeRowButton
+                    icon={<InfoIcon />}
+                    label={t`Docs`}
+                    onClick={() => toggleSidebar("functions")}
+                  />
+                )}
+              </div>
             </div>
           </>
         ) : (

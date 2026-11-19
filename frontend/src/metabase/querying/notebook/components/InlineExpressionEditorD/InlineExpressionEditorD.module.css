@@ -1,10 +1,23 @@
-/* The box around the editor and its preview. */
+/* The editor and the preview are two cards, one under the other, 16px
+   apart. */
 .panel {
-  background-color: var(--mb-color-background_page-primary);
-  border: 0.5px solid var(--mb-color-border-neutral-strong);
-  border-radius: 8px;
-  box-shadow: var(--mantine-shadow-xs);
-  overflow: hidden;
+  row-gap: var(--mantine-spacing-lg);
+
+  /* `.panel` twice, so that the border wins over the editor's
+     `.wrapper.inline`, which has no bottom border. */
+  &.panel > * {
+    overflow: hidden;
+    border: 0.5px solid var(--mb-color-border-neutral-strong);
+    border-radius: var(--mantine-radius-sm);
+    background-color: var(--mb-color-background_surface-primary);
+    box-shadow: var(--mantine-shadow-xs);
+  }
+
+  /* The card border is the top line of the table. */
+  :global(th) {
+    background-color: var(--mb-color-background_page-primary);
+    box-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
+  }
 }
 
 /* The f button and Done (or Cancel), 24px apart. */
@@ -28,7 +41,7 @@
   box-shadow: var(--mantine-shadow-xs);
   color: var(--mb-color-text-primary);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--mb-color-button-default-neutral-hover);
   }
 
@@ -39,7 +52,7 @@
     color: var(--mb-color-text-primary-inverse);
   }
 
-  &.isPressed:hover {
+  &.isPressed:hover:not(:disabled) {
     background-color: var(--mb-color-background_surface-brand-strong-hover);
   }
 }

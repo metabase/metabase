@@ -22,6 +22,8 @@ import type {
   GenerateNow,
   ValidateNow,
 } from "../../../components/expressions/EditorD/EditorD";
+import { CodeRowButton } from "../../../components/expressions/EditorD/InlineToolbar";
+import PlayIcon from "../../../components/expressions/EditorD/play.svg?component";
 import { Layout } from "../../../components/expressions/Layout";
 import type { InlineExpressionEditorProps } from "../InlineExpressionEditor";
 import { ExpressionPreview } from "../InlineExpressionEditor/ExpressionPreview";
@@ -173,17 +175,52 @@ export function InlineExpressionEditorD({
     return { source: result.source, clause: result.clause };
   };
 
+  // A large AI change, shown as a diff. The preview runs it, so that the
+  // user can check the result before accepting it.
+  const [proposal, setProposal] = useState<PreviewRun | null>(null);
+
   const runPreview = () => {
-    const run = checkNow();
+    const run = proposal ?? checkNow();
     if (run != null) {
       showPreview(run);
     }
   };
 
+  const shownSource = proposal?.source ?? editedSource;
   const isPreviewOutdated =
     previewRun != null &&
-    ((editedSource !== undefined && editedSource !== previewRun.source) ||
+    ((shownSource !== undefined && shownSource !== previewRun.source) ||
       breakoutKey !== previewBreakoutKey);
+
+  // A new proposal runs in the preview at once. An accepted one stays in the
+  // preview; a rejected one makes the preview outdated.
+  const hasProposalRef = useRef(false);
+  const handleProposalChange = useCallback(
+    (
+      next: {
+        source: string;
+        clause: Lib.ExpressionClause | null;
+        name?: string;
+      } | null,
+    ) => {
+      const isNew = next != null && !hasProposalRef.current;
+      hasProposalRef.current = next != null;
+      const run =
+        next?.clause != null ? { ...next, clause: next.clause } : null;
+      setProposal(run);
+      if (isNew && run != null) {
+        showPreview(run);
+      } else if (run != null) {
+        // A new name for the proposal in the preview shows at once.
+        setPreviewRun((previewRun) =>
+          previewRun?.source === run.source && previewRun.name !== run.name
+            ? { ...previewRun, name: run.name }
+            : previewRun,
+        );
+      }
+    },
+    [showPreview],
+  );
 
   // A check also reports the text, so only a new text hides the errors.
   const editedSourceRef = useRef<string | undefined>(undefined);
@@ -270,6 +307,7 @@ export function InlineExpressionEditorD({
       event.altKey ||
       isComposing ||
       readOnly ||
+      proposal != null ||
       !isOnPlainCode(event.target)
     ) {
       return;
@@ -307,6 +345,10 @@ export function InlineExpressionEditorD({
   // Done closes the editor. An empty new clause is dropped. Invalid code
   // shows its errors, with the code shown.
   const handleDone = () => {
+    // The diff waits for Accept or Reject.
+    if (proposal != null) {
+      return;
+    }
     if (isEmpty) {
       onDiscard();
       return;
@@ -322,7 +364,7 @@ export function InlineExpressionEditorD({
   // tidied, like `subtotal + total` to `[Subtotal] + [Total]`, and the
   // preview of the result. A text that isn't valid shows its errors.
   const saveAndShow = async () => {
-    const run = checkNow();
+    const run = proposal == null ? checkNow() : null;
     if (run == null) {
       return;
     }
@@ -367,6 +409,20 @@ export function InlineExpressionEditorD({
         onChange={handleChange}
         onEdit={handleEdit}
         onGenerated={showPreview}
+        onProposalChange={handleProposalChange}
+        codeActions={
+          // The preview can't hide in this version, so the button is only
+          // there to show it.
+          previewRun == null &&
+          !readOnly && (
+            <CodeRowButton
+              icon={<PlayIcon />}
+              label={t`Preview (Enter)`}
+              disabled={isEmpty}
+              onClick={runPreview}
+            />
+          )
+        }
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
@@ -395,6 +451,8 @@ export function InlineExpressionEditorD({
                     })}
                     aria-label={t`Code`}
                     aria-pressed={isCodeShown}
+                    // The diff shows in the code, so the code stays.
+                    disabled={proposal != null}
                     onClick={toggleCode}
                   >
                     <FunctionIcon aria-hidden />

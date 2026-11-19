@@ -61,6 +61,31 @@
   }
 }
 
+/* The preview and docs buttons at the end of the code row, in the middle of
+   its first line. */
+.codeActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  height: 40px;
+  padding-right: 20px;
+}
+
+/* A 16px icon button. A 12px icon sits in the middle. */
+.codeAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--mb-color-text-primary);
+
+  &:disabled {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
 .editor {
   overflow: auto;
   height: 100%;

@@ -47,6 +47,9 @@ Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070,
 - D: the AI prompt is always on screen; `f` or `=` opens the code in a grey row below it (no `=` before the code), and opens the docs side panel.
 - D: there's no context pill; the code below is what a prompt asks the AI to change, also while its row is hidden.
 - D: Backspace on empty code hides the code row and goes back to the prompt.
+- D: a large change from the AI to a long expression shows as a diff with Accept and Reject, and the preview runs it; a small change goes in directly. A new prompt accepts the diff first. While the diff shows, f and Done do nothing.
+- D: the code row has a preview button only while no preview shows, and a docs button while the docs side panel is closed.
+- D: the preview is a separate card below the editor, 16px apart.
 - B: the "Open the docs" row is always the last row of the suggestions and never shows on its own.
 
 ## Decisions
@@ -66,6 +69,9 @@ Version D copies B's two folders. Figma: frames 337:19670, 337:19712, 337:20070,
 - 2026-11-19 — D: `f` with code hides only the code row; the code stays saved and is still sent to the AI.
 - 2026-11-19 — D: the docs side panel opens when the user opens the code (`f` or `=`), and closes when `f` hides it; not for an existing clause or the AI's answer.
 - 2026-11-19 — D: after the AI answers, the cursor stays in the prompt (cleared), and the new code shows below with the preview.
+- 2026-11-19 — D: large AI changes show as a diff to accept or reject, as in A. Why: Oleh's version of the Figma (frames 304:15577, 304:15631, 304:16770) kept it.
+- 2026-11-19 — D: the preview can't hide; its button in the code row shows only until the preview shows.
+- 2026-11-19 — D: the docs button in the code row shows when the user closes the docs side panel.
 
 ## Settings
 - `expression-editor-version` — which version shows.
