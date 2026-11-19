@@ -12,9 +12,6 @@
 
 (methodical/defmethod t2/table-name :model/SemanticSearchTokenTracking [_model] :semantic_search_token_tracking)
 
-(defmethod app-db-copy/spec :model/SemanticSearchTokenTracking [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SemanticSearchTokenTracking
   {:request_type mi/transform-keyword})
 
@@ -35,3 +32,8 @@
     (catch Exception e
       (analytics/inc! :metabase-search/semantic-token-tracking-failures {:model model})
       (log/warnf e "Failed to record %s tokens for embedding model %s" total-tokens model))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SemanticSearchTokenTracking [_model]
+  {:skip? true})

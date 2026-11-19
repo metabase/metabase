@@ -30,18 +30,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Dimension [_model]
-  {:names [:dimension]})
-
-(defmethod events/spec :model/Dimension
-  [_model]
-  {:create :event/dimension-create
-   :update :event/dimension-update
-   :delete :event/dimension-delete})
-
-(defmethod app-db-copy/spec :model/Dimension [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
 
@@ -82,7 +70,16 @@
       (check-human-readable-field dimension))
     dimension))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Dimension
+  [_model]
+  {:create :event/dimension-create
+   :update :event/dimension-update
+   :delete :event/dimension-delete})
+
+(defmethod app-db-copy/spec :model/Dimension [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Dimension [_]
   {:schema        ::warehouse-schema.schema/external-dimension
@@ -94,9 +91,10 @@
    :storage-paths warehouse-schema.serialization/dimension-storage-paths
    :rows-by-refs  serialization/dimension-rows-by-refs})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
 (defmethod remote-sync/spec :model/Dimension
   [_model]
   {:synced-items         warehouse-schema.db/synced-dimension-items
    :synced-filter-clause warehouse-schema.db/synced-field-clause})
+
+(defmethod eid-translation/spec :model/Dimension [_model]
+  {:names [:dimension]})

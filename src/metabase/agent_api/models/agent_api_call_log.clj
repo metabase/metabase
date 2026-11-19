@@ -9,5 +9,7 @@
 (doto :model/AgentApiCallLog
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/AgentApiCallLog [_model]
   {:skip? true})

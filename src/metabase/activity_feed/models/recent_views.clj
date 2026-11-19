@@ -53,9 +53,6 @@
 
 (methodical/defmethod t2/table-name :model/RecentViews [_model] :recent_views)
 
-(defmethod app-db-copy/spec :model/RecentViews [_model]
-  {:skip? false})
-
 (t2/define-before-insert :model/RecentViews
   [log-entry]
   (let [defaults {:timestamp (t/zoned-date-time)}]
@@ -344,3 +341,8 @@
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]
      {:recents view-items})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/RecentViews [_model]
+  {:skip? false})

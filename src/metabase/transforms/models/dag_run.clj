@@ -24,9 +24,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/TransformDagRun [_model]
-  {:skip? false})
-
 (t2/define-before-update :model/TransformDagRun
   [run]
   (cond-> run
@@ -70,3 +67,8 @@
   "Return the transform runs that were part of the given DAG run, ordered by start time."
   [dag-run-id :- ms/PositiveInt]
   (transforms.db/runs-for-dag-run dag-run-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformDagRun [_model]
+  {:skip? false})

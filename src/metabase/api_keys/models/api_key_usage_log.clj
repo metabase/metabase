@@ -9,5 +9,7 @@
 (doto :model/ApiKeyUsageLog
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/ApiKeyUsageLog [_model]
   {:skip? true})

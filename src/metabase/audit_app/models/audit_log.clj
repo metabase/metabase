@@ -28,9 +28,6 @@
   [_model]
   :audit_log)
 
-(defmethod app-db-copy/spec :model/AuditLog [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/AuditLog
   {:topic   mi/transform-keyword
    :details mi/transform-json})
@@ -117,3 +114,8 @@
   (let [defaults {:timestamp :%now
                   :details   {}}]
     (merge defaults activity)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AuditLog [_model]
+  {:skip? false})

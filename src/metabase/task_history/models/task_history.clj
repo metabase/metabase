@@ -33,9 +33,6 @@
 (doto :model/TaskHistory
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/TaskHistory [_model]
-  {:skip? true})
-
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
 (defn- can-access?
@@ -268,3 +265,8 @@
  Throwable
  (fn [throwable json-generator]
    (json/generate-map (Throwable->map throwable) json-generator)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskHistory [_model]
+  {:skip? true})

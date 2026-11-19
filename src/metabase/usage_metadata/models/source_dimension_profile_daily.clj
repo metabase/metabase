@@ -12,12 +12,14 @@
 
 (methodical/defmethod t2/table-name :model/SourceDimensionProfileDaily [_model] :source_dimension_profile_daily)
 
-(defmethod app-db-copy/spec :model/SourceDimensionProfileDaily [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SourceDimensionProfileDaily
   {:source_type      mi/transform-keyword
    :source_basis     mi/transform-keyword
    :observation_type mi/transform-keyword})
 
 (derive :model/SourceDimensionProfileDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceDimensionProfileDaily [_model]
+  {:skip? true})

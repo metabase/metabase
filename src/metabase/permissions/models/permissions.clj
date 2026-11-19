@@ -247,9 +247,6 @@
 
 (derive :model/Permissions :metabase/model)
 
-(defmethod app-db-copy/spec :model/Permissions [_model]
-  {:skip? false})
-
 (defn- maybe-break-out-permission-data
   "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."
   [permissions]
@@ -432,3 +429,8 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Permissions [_model]
+  {:skip? false})

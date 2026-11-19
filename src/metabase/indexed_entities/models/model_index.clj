@@ -28,9 +28,6 @@
 (methodical/defmethod t2/table-name :model/ModelIndex [_model] :model_index)
 (methodical/defmethod t2/table-name :model/ModelIndexValue [_model] :model_index_value)
 
-(defmethod app-db-copy/spec :model/ModelIndexValue [_model]
-  {:skip?    false
-   :sequence false})
 (derive :model/ModelIndex :metabase/model)
 (derive :model/ModelIndexValue :metabase/model)
 
@@ -40,15 +37,6 @@
 (doto :model/ModelIndex
   (derive :hook/events)
   (derive :search/indexed-deletes))
-
-(defmethod events/spec :model/ModelIndex
-  [_model]
-  {:create :event/model-index-create
-   :update :event/model-index-update
-   :delete :event/model-index-delete})
-
-(defmethod app-db-copy/spec :model/ModelIndex [_model]
-  {:skip? false})
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -219,7 +207,20 @@
                                             :state      "initial"
                                             :creator_id creator-id}))
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
+;;; ------------------------------------------------------ Specs -------------------------------------------------------
+
+(defmethod events/spec :model/ModelIndex
+  [_model]
+  {:create :event/model-index-create
+   :update :event/model-index-update
+   :delete :event/model-index-delete})
+
+(defmethod app-db-copy/spec :model/ModelIndex [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ModelIndexValue [_model]
+  {:skip?    false
+   :sequence false})
 
 (defmethod search/spec :model/ModelIndexValue
   [_model]

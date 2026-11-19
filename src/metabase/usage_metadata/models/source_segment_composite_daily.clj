@@ -7,11 +7,13 @@
 
 (methodical/defmethod t2/table-name :model/SourceSegmentCompositeDaily [_model] :source_segment_composite_daily)
 
-(defmethod app-db-copy/spec :model/SourceSegmentCompositeDaily [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SourceSegmentCompositeDaily
   {:source_type    mi/transform-keyword
    :ownership_mode mi/transform-keyword})
 
 (derive :model/SourceSegmentCompositeDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceSegmentCompositeDaily [_model]
+  {:skip? true})

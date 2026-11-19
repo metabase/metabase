@@ -28,20 +28,6 @@
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
-(defmethod events/spec :model/CardTest
-  [_model]
-  {:create :event/card-test-create
-   :update :event/card-test-update
-   :delete :event/card-test-delete})
-
-(defmethod audit/spec :model/CardTest [_model]
-  {:track          [:card_id :name :description]
-   :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]})
-
-(defmethod app-db-copy/spec :model/CardTest [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
   [_original-model _k]
   :model/Card)
@@ -146,13 +132,16 @@
   (data-testing.models/check-revert-available)
   (update-card-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revisions/spec :model/CardTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-card-test!})
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod events/spec :model/CardTest
+  [_model]
+  {:create :event/card-test-create
+   :update :event/card-test-update
+   :delete :event/card-test-delete})
+
+(defmethod app-db-copy/spec :model/CardTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
@@ -162,9 +151,18 @@
    :storage-paths       data-testing.serialization/card-test-storage-paths
    :import-dependencies data-testing.serialization/card-test-import-dependencies})
 
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
-
 (defmethod remote-sync/spec :model/CardTest
   [_model]
   {:synced-items         data-testing.db/synced-card-test-items
    :synced-filter-clause data-testing.db/synced-card-tests-clause})
+
+(defmethod revisions/spec :model/CardTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-card-test!})
+
+(defmethod audit/spec :model/CardTest [_model]
+  {:track          [:card_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

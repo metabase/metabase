@@ -19,9 +19,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/ParameterCard [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ParameterCard
   {:parameterized_object_type mi/transform-keyword})
 
@@ -117,3 +114,8 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ParameterCard [_model]
+  {:skip? false})

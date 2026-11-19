@@ -11,5 +11,7 @@
 (doto :model/PremiumFeaturesCache
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/PremiumFeaturesCache [_model]
   {:skip? true})

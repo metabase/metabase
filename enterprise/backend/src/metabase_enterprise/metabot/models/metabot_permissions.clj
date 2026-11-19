@@ -21,9 +21,6 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(defmethod app-db-copy/spec :model/MetabotPermissions [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/MetabotPermissions
   {:perm_type  mi/transform-keyword
    :perm_value mi/transform-keyword})
@@ -75,3 +72,8 @@
     {:permissions (vec (mapcat (fn [{:keys [id]}]
                                  (permissions-for-group id (get by-group id [])))
                                groups))}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotPermissions [_model]
+  {:skip? true})

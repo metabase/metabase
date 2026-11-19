@@ -12,9 +12,6 @@
 (doto :model/MetabotSourceFeedback
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/MetabotSourceFeedback [_model]
-  {:skip? false})
-
 (def ^:private valid-source-types
   #{"table" "card" "model"})
 
@@ -40,3 +37,8 @@
    feedbacks k
    #(metabot.db/user-summaries-by-id (keep :user_id feedbacks))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotSourceFeedback [_model]
+  {:skip? false})

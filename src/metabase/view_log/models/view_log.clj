@@ -18,9 +18,6 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.always-allow))
 
-(defmethod app-db-copy/spec :model/ViewLog [_model]
-  {:skip? false})
-
 (mr/def ::context [:maybe view-log-impl/context])
 
 (t2/define-before-insert :model/ViewLog
@@ -35,3 +32,8 @@
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json
    :context  mi/transform-keyword})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ViewLog [_model]
+  {:skip? false})

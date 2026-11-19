@@ -26,9 +26,6 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser))
 
-(defmethod app-db-copy/spec :model/AuthIdentity [_model]
-  {:skip? false})
-
 (defn- parse-credentials-timestamps-out
   "Parse timestamp strings in credentials to java.time.Instant when reading from database."
   [credentials]
@@ -155,3 +152,8 @@
   [user-id :- ms/PositiveInt]
   (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AuthIdentity [_model]
+  {:skip? false})

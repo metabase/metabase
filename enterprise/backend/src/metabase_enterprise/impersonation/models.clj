@@ -13,7 +13,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
@@ -22,9 +22,6 @@
   ;; Only admins can work with Connection Impersonation configs
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
-
-(defmethod app-db-copy/spec :model/ConnectionImpersonation [_model]
-  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -98,3 +95,8 @@
   (doseq [group-id (set (keys changes))]
     (delete-impersonations-for-group! {:group-id group-id} (get changes group-id)))
   (log/debug "Done deleting unneeded Connection Impersonations."))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ConnectionImpersonation [_model]
+  {:skip? false})

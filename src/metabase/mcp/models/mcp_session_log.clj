@@ -9,5 +9,7 @@
 (doto :model/McpSessionLog
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/McpSessionLog [_model]
   {:skip? true})

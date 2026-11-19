@@ -18,9 +18,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/WorkspaceDatabase [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/WorkspaceDatabase
   {:database_details (mi/transform-encrypted-json "workspace_database.database_details")
    :input_schemas    mi/transform-json
@@ -93,3 +90,8 @@
                     {:status-code 409
                      :database_id db-id})))
   (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))
+
+;;; ----------------------------------------------- Specs -----------------------------------------------
+
+(defmethod app-db-copy/spec :model/WorkspaceDatabase [_model]
+  {:skip? false})

@@ -22,9 +22,6 @@
   (derive ::mi/create-policy.superuser)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]
-  {:skip? true})
-
 (defn fetch-or-create-support-user!
   "Fetch or Create the support user account from settings.
   If the user exists but is deactivated, reactivate them.
@@ -72,3 +69,8 @@
     (when revoked-at
       (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
         (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]
+  {:skip? true})

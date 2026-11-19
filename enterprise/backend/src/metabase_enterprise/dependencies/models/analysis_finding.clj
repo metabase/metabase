@@ -15,9 +15,6 @@
 
 (derive :model/AnalysisFinding :metabase/model)
 
-(defmethod app-db-copy/spec :model/AnalysisFinding [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/AnalysisFinding
   {:entity_type mi/transform-keyword})
 
@@ -79,3 +76,8 @@
      entity-type
      entity-id
      (map error->finding-error-row finding-details))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFinding [_model]
+  {:skip? true})

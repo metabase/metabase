@@ -11,12 +11,14 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/OAuthClient [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/OAuthClient
   {:redirect_uris  mi/transform-json
    :grant_types    mi/transform-json
    :response_types mi/transform-json
    :scopes         mi/transform-json
    :contacts       mi/transform-json})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthClient [_model]
+  {:skip? false})

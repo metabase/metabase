@@ -18,9 +18,6 @@
 
 (derive :model/AnalysisFindingError :metabase/model)
 
-(defmethod app-db-copy/spec :model/AnalysisFindingError [_model]
-  {:skip? true})
-
 (mr/def ::analysis-finding-error
   "Schema for an AnalysisFindingError record."
   [:map {:closed true}
@@ -79,3 +76,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
   (dependencies.db/finding-errors-for-entity entity-type entity-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFindingError [_model]
+  {:skip? true})

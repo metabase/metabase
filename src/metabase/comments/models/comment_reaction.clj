@@ -12,9 +12,6 @@
 (doto :model/CommentReaction
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/CommentReaction [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/batched-hydrate [:model/CommentReaction :user]
   [_model k reactions]
   (mi/instances-with-hydrated-data
@@ -75,3 +72,8 @@
                 (let [user (format-user (:user reaction))]
                   (update-in acc [(:comment_id reaction) (:emoji reaction)] first-or-last user)))
               {} reactions))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CommentReaction [_model]
+  {:skip? false})

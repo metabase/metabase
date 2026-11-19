@@ -14,9 +14,6 @@
 
 (derive :model/ReplacementRun :metabase/model)
 
-(defmethod app-db-copy/spec :model/ReplacementRun [_model]
-  {:skip? true})
-
 (def ^:private terminal-statuses
   #{:succeeded :failed :canceled :timeout})
 
@@ -141,3 +138,8 @@
          (fail-run! run-id (ex-message throwable))
          (when on-complete
            (deliver on-complete :run/fail)))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ReplacementRun [_model]
+  {:skip? true})

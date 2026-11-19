@@ -47,10 +47,6 @@
 (doto :model/LoginHistory
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/LoginHistory [_model]
-  {:skip?     false
-   :transform login-history.app-db-copy/transform-login-history})
-
 (mu/defn record-login-history!
   "Record a login event in the LoginHistory table."
   [session-id :- [:not uuid?]
@@ -98,3 +94,9 @@
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/LoginHistory [_model]
+  {:skip?     false
+   :transform login-history.app-db-copy/transform-login-history})

@@ -10,9 +10,11 @@
 (doto :model/OAuthRefreshToken
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/OAuthRefreshToken [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/OAuthRefreshToken
   {:scope    mi/transform-json
    :resource mi/transform-json})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthRefreshToken [_model]
+  {:skip? false})

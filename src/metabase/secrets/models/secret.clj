@@ -33,9 +33,6 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
-(defmethod app-db-copy/spec :model/Secret [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/Secret
   {:value  (mi/transform-secret-value "secret.value")
    :kind   mi/transform-keyword
@@ -425,3 +422,8 @@
       (handle-secrets-for-details-key :details)
       (handle-secrets-for-details-key :write_data_details)
       (handle-secrets-for-details-key :admin_details)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Secret [_model]
+  {:skip? false})

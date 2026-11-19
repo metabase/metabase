@@ -17,9 +17,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/EmbeddingTheme [_model]
-  {:skip? false})
-
 ;;;; transforms
 
 (t2/deftransforms :model/EmbeddingTheme
@@ -33,6 +30,11 @@
   (mapv (fn [entity]
           [{:label "embedding_themes"} {:label (:name entity) :key (:entity_id entity)}])
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/EmbeddingTheme [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/EmbeddingTheme [_]
   {:schema        ::embedding.schema/external-embedding-theme

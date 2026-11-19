@@ -15,9 +15,6 @@
 (doto :model/MetabotMessage
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/MetabotMessage [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/MetabotMessage
   {:usage {:in  mi/json-in
            :out (comp metabot.schema/normalize-usage mi/json-out-with-keywordization)}
@@ -73,3 +70,8 @@
 
     :else
     message))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotMessage [_model]
+  {:skip? false})

@@ -57,32 +57,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Document [_model]
-  {:names [:document]})
-
-(defmethod events/spec :model/Document
-  [_model]
-  {:create :event/document-create
-   :update :event/document-update
-   :delete :event/document-delete})
-
-(defmethod audit/spec :model/Document [_model]
-  {:track          [:name :collection_id]
-   :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
-                    :made_public_by_id :public_uuid :public_uuid_prefix]
-   :skip           [:collection_position :entity_id :last_viewed_at :view_count]
-   :topics         {:create documents.audit/create-topic
-                    :update documents.audit/update-topic
-                    :delete documents.audit/delete-topic}})
-
-(defmethod revisions/spec :model/Document [_model]
-  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
-   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
-           :public_uuid :public_uuid_prefix :view_count]})
-
-(defmethod app-db-copy/spec :model/Document [_model]
-  {:skip? false})
-
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
 (defn- document-parent-archived?
@@ -557,7 +531,16 @@
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
 
-;;; ---------- Serialization -------------------------------------------------------------------------------------
+;;; --------------------------------------------------- Specs ----------------------------------------------------
+
+(defmethod events/spec :model/Document
+  [_model]
+  {:create :event/document-create
+   :update :event/document-update
+   :delete :event/document-delete})
+
+(defmethod app-db-copy/spec :model/Document [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Document [_]
   {:schema              ::documents.schema/external-document
@@ -572,14 +555,24 @@
    :import-dependencies documents.serialization/import-dependencies
    :export-dependencies documents.serialization/export-dependencies})
 
-;;; ---------- Remote sync ---------------------------------------------------------------------------------------
-
 (defmethod remote-sync/spec :model/Document
   [_model]
   {:synced-items         documents.db/synced-document-items
    :synced-filter-clause documents.db/synced-documents-clause})
 
-;;; ---------- Search --------------------------------------------------------------------------------------------
+(defmethod revisions/spec :model/Document [_model]
+  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+   :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
+           :public_uuid :public_uuid_prefix :view_count]})
+
+(defmethod audit/spec :model/Document [_model]
+  {:track          [:name :collection_id]
+   :track-redacted [:archived :archived_directly :content_type :creator_id :document :exploration_id :is_placeholder
+                    :made_public_by_id :public_uuid :public_uuid_prefix]
+   :skip           [:collection_position :entity_id :last_viewed_at :view_count]
+   :topics         {:create documents.audit/create-topic
+                    :update documents.audit/update-topic
+                    :delete documents.audit/delete-topic}})
 
 (defmethod search/spec :model/Document
   [_model]
@@ -607,11 +600,6 @@
                    :collection-type            :collection.type
                    :archived-directly          true}}})
 
-;;; ------------------------------------------------- Staleness ---------------------------------------------------
-
-(defmethod staleness/spec :model/Document [_model]
-  {:candidates documents.db/stale-document-candidates})
-
 (defmethod dependencies/spec :model/Document [_model]
   {:type  :document
    :items documents.db/dependency-document-items
@@ -627,3 +615,9 @@
 (defmethod recent-views/spec :model/Document [_model]
   {"document" {:load   documents.db/recent-view-documents
                :render documents.recent-views/render}})
+
+(defmethod staleness/spec :model/Document [_model]
+  {:candidates documents.db/stale-document-candidates})
+
+(defmethod eid-translation/spec :model/Document [_model]
+  {:names [:document]})

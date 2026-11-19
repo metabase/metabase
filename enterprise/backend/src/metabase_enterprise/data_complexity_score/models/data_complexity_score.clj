@@ -15,9 +15,6 @@
 (doto :model/DataComplexityScore
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/DataComplexityScore [_model]
-  {:skip? true})
-
 (defn- score-data-out
   "Re-keywordize the `:keyword`-typed leaves (e.g. `:meta.text-variant`) that JSON storage round-trips back as
   strings."
@@ -64,3 +61,8 @@
     (if id
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataComplexityScore [_model]
+  {:skip? true})

@@ -48,31 +48,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Segment [_model]
-  {:names [:segment]})
-
-(defmethod events/spec :model/Segment
-  [_model]
-  {:create :event/segment-create
-   :update :event/segment-update
-   :delete :event/segment-delete})
-
-(defmethod audit/spec :model/Segment [_model]
-  {:track          [:name :description :table_id]
-   :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
-   :skip           [:entity_id]
-   :details        segments.audit/details})
-
-(defmethod revisions/spec :model/Segment [_model]
-  {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest
-                  :show_in_getting_started]
-   :skip         [:entity_id :creator_id]
-   :same?        {:definition revisions/same-definition?}
-   :diff-columns [:name :description :definition]})
-
-(defmethod app-db-copy/spec :model/Segment [_model]
-  {:skip? false})
-
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."
   [definition]
@@ -176,7 +151,16 @@
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Segment
+  [_model]
+  {:create :event/segment-create
+   :update :event/segment-update
+   :delete :event/segment-delete})
+
+(defmethod app-db-copy/spec :model/Segment [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Segment [_]
   {:schema              ::segments.schema/external-segment
@@ -188,18 +172,23 @@
    :import-dependencies segments.serialization/import-dependencies
    :storage-paths       segments.serialization/storage-paths})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
-(defmethod xrays/spec :model/Segment [_model]
-  {:related    segments.xrays/related
-   :definition segments.xrays/definition})
-
 (defmethod remote-sync/spec :model/Segment
   [_model]
   {:synced-items         segments.db/synced-segment-items
    :synced-filter-clause segments.db/synced-segments-clause})
 
-;;; ----------------------------------------------------- Search -----------------------------------------------------
+(defmethod revisions/spec :model/Segment [_model]
+  {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest
+                  :show_in_getting_started]
+   :skip         [:entity_id :creator_id]
+   :same?        {:definition revisions/same-definition?}
+   :diff-columns [:name :description :definition]})
+
+(defmethod audit/spec :model/Segment [_model]
+  {:track          [:name :description :table_id]
+   :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
+   :skip           [:entity_id]
+   :details        segments.audit/details})
 
 (defmethod search/spec :model/Segment
   [_model]
@@ -246,3 +235,10 @@
 (defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
    :swap-source        segments.replacement/swap-source})
+
+(defmethod eid-translation/spec :model/Segment [_model]
+  {:names [:segment]})
+
+(defmethod xrays/spec :model/Segment [_model]
+  {:related    segments.xrays/related
+   :definition segments.xrays/definition})

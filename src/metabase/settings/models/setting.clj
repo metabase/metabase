@@ -96,11 +96,6 @@
 (doto :model/Setting
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/Setting [_model]
-  {:skip?     false
-   :transform settings.app-db-copy/transform-setting
-   :sequence  false})
-
 (methodical/defmethod t2/primary-keys :model/Setting [_model] [:key])
 
 (declare export?)
@@ -123,15 +118,6 @@
   "Imports the keys of Settings as keywords."
   [_store _entities ks _opts]
   (mapv keyword ks))
-
-(defmethod serialization/spec :model/Setting [_]
-  {:schema       ::settings.schema/external-setting
-   :identity     [:key]
-   :copy         [:value]
-   :skip         [:value_with_aad]
-   :transform    {:key {:export export-keys
-                        :import import-keys}}
-   :rows-by-refs serialization/setting-rows-by-refs})
 
 (def ^:private Type
   [:fn
@@ -1902,3 +1888,19 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Setting [_model]
+  {:skip?     false
+   :transform settings.app-db-copy/transform-setting
+   :sequence  false})
+
+(defmethod serialization/spec :model/Setting [_]
+  {:schema       ::settings.schema/external-setting
+   :identity     [:key]
+   :copy         [:value]
+   :skip         [:value_with_aad]
+   :transform    {:key {:export export-keys
+                        :import import-keys}}
+   :rows-by-refs serialization/setting-rows-by-refs})

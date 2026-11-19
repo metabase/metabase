@@ -19,9 +19,6 @@
 (derive :model/QueryExecution :metabase/model)
 (derive :model/QueryExecution ::t2.disallow/update)
 
-(defmethod app-db-copy/spec :model/QueryExecution [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/QueryExecution
   {:json_query mi/transform-json
    :lens_params mi/transform-json
@@ -47,3 +44,8 @@
   [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
   (assoc query-execution :row_count (or result_rows 0)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/QueryExecution [_model]
+  {:skip? true})

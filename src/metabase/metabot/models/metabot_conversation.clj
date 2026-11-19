@@ -15,16 +15,6 @@
   (derive :metabase/model)
   (derive :hook/events))
 
-(defmethod events/spec :model/MetabotConversation
-  [_model]
-  {:create :event/metabot-conversation-create
-   :update :event/metabot-conversation-update
-   :delete :event/metabot-conversation-delete})
-
-(defmethod app-db-copy/spec :model/MetabotConversation [_model]
-  {:skip?    false
-   :sequence false})
-
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (t2/define-before-update :model/MetabotConversation
@@ -67,3 +57,15 @@
    conversations k
    #(metabot.db/user-summaries-by-id (keep :user_id conversations))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/MetabotConversation
+  [_model]
+  {:create :event/metabot-conversation-create
+   :update :event/metabot-conversation-update
+   :delete :event/metabot-conversation-delete})
+
+(defmethod app-db-copy/spec :model/MetabotConversation [_model]
+  {:skip?    false
+   :sequence false})

@@ -76,9 +76,6 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/Session [_model]
-  {:skip? true})
-
 (def ^:private ending-columns
   "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record
   that the session ended. Everything else on the row is immutable."
@@ -122,3 +119,8 @@
       (when (nil? (:last_login user))
         (events/publish-event! :event/user-joined event))))
   session)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Session [_model]
+  {:skip? true})

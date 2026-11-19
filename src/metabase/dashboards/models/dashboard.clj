@@ -71,47 +71,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Dashboard [_model]
-  {:names [:dashboard]})
-
-(defmethod events/spec :model/Dashboard
-  [_model]
-  {:create :event/dashboard-create
-   :update :event/dashboard-update
-   :delete :event/dashboard-delete})
-
-(defmethod audit/spec :model/Dashboard [_model]
-  {:track          [:name :description]
-   :track-redacted [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_id :creator_id
-                    :embedding_params :embedding_type :enable_embedding :initially_published_at :made_public_by_id
-                    :parameters :points_of_interest :public_uuid :public_uuid_prefix :show_in_getting_started :width]
-   :skip           [:collection_position :entity_id :last_viewed_at :position :view_count]
-   :topics         {:create :dashboard-create
-                    :delete :dashboard-delete}
-   :moments        [{:topic :dashboard-public-link-created, :when dashboards.audit/public-link-created?}
-                    {:topic :dashboard-public-link-deleted, :when dashboards.audit/public-link-deleted?}]})
-
-(defmethod change-log/spec :model/Dashboard [_model]
-  {:track [:name :description :creator_id :parameters :points_of_interest :caveats :show_in_getting_started
-           :public_uuid :made_public_by_id :enable_embedding :embedding_params :archived :position :collection_id
-           :collection_position :cache_ttl :entity_id :auto_apply_filters :width :initially_published_at
-           :archived_directly :embedding_type :public_uuid_prefix]
-   :skip  [:last_viewed_at :view_count]})
-
-(defmethod revisions/spec :model/Dashboard [_model]
-  {:track    [:name :description :archived :archived_directly :auto_apply_filters :cache_ttl :collection_id
-              :parameters :width]
-   :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
-              :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
-              :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
-   :children {:cards {:model :model/DashboardCard :as :dashcards}
-              :tabs  {:model :model/DashboardTab :as :tabs}}
-   :revert!  dashboards.revisions/revert-dashboard!
-   :describe dashboards.revisions/describe-change})
-
-(defmethod app-db-copy/spec :model/Dashboard [_model]
-  {:skip? false})
-
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
 
@@ -514,7 +473,23 @@
       (add-dashcards! dashboard dashcards-to-add)
       dashboard)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Dashboard
+  [_model]
+  {:create :event/dashboard-create
+   :update :event/dashboard-update
+   :delete :event/dashboard-delete})
+
+(defmethod app-db-copy/spec :model/Dashboard [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Dashboard [_model]
+  {:track [:name :description :creator_id :parameters :points_of_interest :caveats :show_in_getting_started
+           :public_uuid :made_public_by_id :enable_embedding :embedding_params :archived :position :collection_id
+           :collection_position :cache_ttl :entity_id :auto_apply_filters :width :initially_published_at
+           :archived_directly :embedding_type :public_uuid_prefix]
+   :skip  [:last_viewed_at :view_count]})
 
 (defmethod serialization/spec :model/Dashboard [_]
   {:schema              ::dashboards.schema/external-dashboard
@@ -537,14 +512,32 @@
    :export-dependencies dashboards.serialization/export-dependencies
    :before-load         dashboards.serialization/before-load})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
 (defmethod remote-sync/spec :model/Dashboard
   [_model]
   {:synced-items         dashboards.db/synced-dashboard-items
    :synced-filter-clause dashboards.db/synced-dashboards-clause})
 
-;;; ---------------------------------------------------- Search ------------------------------------------------------
+(defmethod revisions/spec :model/Dashboard [_model]
+  {:track    [:name :description :archived :archived_directly :auto_apply_filters :cache_ttl :collection_id
+              :parameters :width]
+   :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
+              :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
+              :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
+   :children {:cards {:model :model/DashboardCard :as :dashcards}
+              :tabs  {:model :model/DashboardTab :as :tabs}}
+   :revert!  dashboards.revisions/revert-dashboard!
+   :describe dashboards.revisions/describe-change})
+
+(defmethod audit/spec :model/Dashboard [_model]
+  {:track          [:name :description]
+   :track-redacted [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_id :creator_id
+                    :embedding_params :embedding_type :enable_embedding :initially_published_at :made_public_by_id
+                    :parameters :points_of_interest :public_uuid :public_uuid_prefix :show_in_getting_started :width]
+   :skip           [:collection_position :entity_id :last_viewed_at :position :view_count]
+   :topics         {:create :dashboard-create
+                    :delete :dashboard-delete}
+   :moments        [{:topic :dashboard-public-link-created, :when dashboards.audit/public-link-created?}
+                    {:topic :dashboard-public-link-deleted, :when dashboards.audit/public-link-deleted?}]})
 
 (defmethod search/spec :model/Dashboard
   [_model]
@@ -587,14 +580,6 @@
                                                          [:= :mr.moderated_item_id :this.id]
                                                          [:= :mr.most_recent true]]]}}})
 
-(defmethod xrays/spec :model/Dashboard [_model]
-  {:related dashboards.xrays/related})
-
-(defmethod staleness/spec :model/Dashboard [_model]
-  {:candidates dashboards.db/stale-dashboard-candidates
-   :load       dashboards.staleness/load-items
-   :render     dashboards.staleness/render})
-
 (defmethod dependencies/spec :model/Dashboard [_model]
   {:type  :dashboard
    :items dashboards.db/dependency-dashboard-items
@@ -617,3 +602,14 @@
 (defmethod recent-views/spec :model/Dashboard [_model]
   {"dashboard" {:load   dashboards.db/recent-view-dashboards
                 :render dashboards.recent-views/render}})
+
+(defmethod staleness/spec :model/Dashboard [_model]
+  {:candidates dashboards.db/stale-dashboard-candidates
+   :load       dashboards.staleness/load-items
+   :render     dashboards.staleness/render})
+
+(defmethod eid-translation/spec :model/Dashboard [_model]
+  {:names [:dashboard]})
+
+(defmethod xrays/spec :model/Dashboard [_model]
+  {:related dashboards.xrays/related})

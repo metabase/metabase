@@ -46,7 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
 
@@ -81,34 +81,6 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(defmethod events/spec :model/Database
-  [_model]
-  {:create :event/database-create
-   :update :event/database-update
-   :delete :event/database-delete})
-
-(defmethod audit/spec :model/Database [_model]
-  {:track            [:id :name :engine]
-   :track-redacted   [:admin_details :auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :creator_id
-                      :default_schema :description :details :initial_sync_error :is_attached_dwh :is_audit
-                      :is_full_sync :is_on_demand :is_sample :is_stub :metadata_sync_schedule :points_of_interest
-                      :provider_name :refingerprint :router_database_id :settings :uploads_enabled
-                      :uploads_schema_name :uploads_table_prefix :write_data_details]
-   :skip             [:dbms_version :initial_sync_status :timezone]
-   :context-details? true})
-
-(defmethod change-log/spec :model/Database [_model]
-  {:track [:name :description :details :engine :is_sample :is_full_sync :points_of_interest :caveats
-           :metadata_sync_schedule :cache_field_values_schedule :timezone :is_on_demand :auto_run_queries
-           :refingerprint :cache_ttl :initial_sync_status :creator_id :settings :dbms_version :is_audit
-           :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
-           :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/Database [_model]
-  {:skip?     false
-   :transform warehouses.app-db-copy/transform-database})
 
 (defn is-destination?
   "Is this database a destination database for some router database?"
@@ -748,54 +720,6 @@
      {:pre [(integer? table-id)]}
      (warehouses.db/table-database-id table-id))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serialization/spec :model/Database [_]
-  {:schema        ::warehouses.schema/external-database
-   :identity      [:name]
-   :copy          [:auto_run_queries :caveats
-                   :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-                   :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
-                   :uploads_schema_name :uploads_table_prefix]
-   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name]
-   :transform     {:details                     serialization/import-only-transform
-                   :write_data_details          serialization/import-only-transform
-                   :admin_details               serialization/import-only-transform
-                   :cache_field_values_schedule serialization/import-only-transform
-                   :metadata_sync_schedule      serialization/import-only-transform
-                   :initial_sync_status         {:import warehouses.serialization/import-complete}
-                   :is_sample                   {:import warehouses.serialization/import-false}
-                   :is_stub                     {:import warehouses.serialization/import-false}
-                   :creator_id                  serialization/user-transform
-                   :router_database_id          serialization/database-transform
-                   :settings                    warehouses.serialization/settings-transform}
-   :defaults      {:auto_run_queries true
-                   :is_attached_dwh  false
-                   :is_audit         false
-                   :is_full_sync     true
-                   :is_on_demand     false
-                   :uploads_enabled  false}
-   :storage-paths warehouses.serialization/storage-paths
-   :before-load   warehouses.serialization/before-load
-   :rows-by-refs  serialization/database-rows-by-refs})
-
-;;; ----------------------------------------------------- Search -----------------------------------------------------
-
-(defmethod search/spec :model/Database
-  [_model]
-  {"database"
-   {:attrs        {:archived      false
-                   :collection-id false
-                   :creator-id    false
-                   ;; not sure if this is another bug
-                   :database-id   false
-                   :created-at    true
-                   :updated-at    true}
-    :search-terms {:name        search/explode-camel-case
-                   :description true}
-    :where [:and [:= :router_database_id nil] [:= :is_stub false]]
-    :render-terms {:initial-sync-status true}}})
-
 ;;; ------------------------------------------------- Health checks --------------------------------------------------
 
 (defn maybe-test-and-migrate-details!
@@ -908,3 +832,77 @@
   (analytics/clear! :metabase-database/status)
   (doseq [database (health-check-candidates)]
     (health-check-database! database)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Database
+  [_model]
+  {:create :event/database-create
+   :update :event/database-update
+   :delete :event/database-delete})
+
+(defmethod app-db-copy/spec :model/Database [_model]
+  {:skip?     false
+   :transform warehouses.app-db-copy/transform-database})
+
+(defmethod change-log/spec :model/Database [_model]
+  {:track [:name :description :details :engine :is_sample :is_full_sync :points_of_interest :caveats
+           :metadata_sync_schedule :cache_field_values_schedule :timezone :is_on_demand :auto_run_queries
+           :refingerprint :cache_ttl :initial_sync_status :creator_id :settings :dbms_version :is_audit
+           :uploads_enabled :uploads_schema_name :uploads_table_prefix :is_attached_dwh :router_database_id
+           :provider_name :write_data_details :is_stub :default_schema :initial_sync_error :admin_details]
+   :skip  []})
+
+(defmethod serialization/spec :model/Database [_]
+  {:schema        ::warehouses.schema/external-database
+   :identity      [:name]
+   :copy          [:auto_run_queries :caveats
+                   :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
+                   :default_schema :name :points_of_interest :refingerprint :timezone :uploads_enabled
+                   :uploads_schema_name :uploads_table_prefix]
+   :skip          [:cache_ttl :initial_sync_error :dbms_version :provider_name]
+   :transform     {:details                     serialization/import-only-transform
+                   :write_data_details          serialization/import-only-transform
+                   :admin_details               serialization/import-only-transform
+                   :cache_field_values_schedule serialization/import-only-transform
+                   :metadata_sync_schedule      serialization/import-only-transform
+                   :initial_sync_status         {:import warehouses.serialization/import-complete}
+                   :is_sample                   {:import warehouses.serialization/import-false}
+                   :is_stub                     {:import warehouses.serialization/import-false}
+                   :creator_id                  serialization/user-transform
+                   :router_database_id          serialization/database-transform
+                   :settings                    warehouses.serialization/settings-transform}
+   :defaults      {:auto_run_queries true
+                   :is_attached_dwh  false
+                   :is_audit         false
+                   :is_full_sync     true
+                   :is_on_demand     false
+                   :uploads_enabled  false}
+   :storage-paths warehouses.serialization/storage-paths
+   :before-load   warehouses.serialization/before-load
+   :rows-by-refs  serialization/database-rows-by-refs})
+
+(defmethod audit/spec :model/Database [_model]
+  {:track            [:id :name :engine]
+   :track-redacted   [:admin_details :auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :creator_id
+                      :default_schema :description :details :initial_sync_error :is_attached_dwh :is_audit
+                      :is_full_sync :is_on_demand :is_sample :is_stub :metadata_sync_schedule :points_of_interest
+                      :provider_name :refingerprint :router_database_id :settings :uploads_enabled
+                      :uploads_schema_name :uploads_table_prefix :write_data_details]
+   :skip             [:dbms_version :initial_sync_status :timezone]
+   :context-details? true})
+
+(defmethod search/spec :model/Database
+  [_model]
+  {"database"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :creator-id    false
+                   ;; not sure if this is another bug
+                   :database-id   false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms {:name        search/explode-camel-case
+                   :description true}
+    :where [:and [:= :router_database_id nil] [:= :is_stub false]]
+    :render-terms {:initial-sync-status true}}})

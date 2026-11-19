@@ -9,5 +9,7 @@
 (doto :model/QueryTable
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/QueryTable [_model]
   {:skip? true})

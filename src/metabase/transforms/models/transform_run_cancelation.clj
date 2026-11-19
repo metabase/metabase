@@ -15,10 +15,6 @@
 
 (derive :model/TransformRunCancelation :metabase/model)
 
-(defmethod app-db-copy/spec :model/TransformRunCancelation [_model]
-  {:skip?    false
-   :sequence false})
-
 (mu/defn mark-cancel-started-run! :- :nil
   "Mark a started run for cancelation."
   [run-id :- ms/PositiveInt]
@@ -46,3 +42,9 @@
   "Delete cancelations for runs that are no longer running."
   []
   (transforms.db/delete-cancelations-for-inactive-runs!))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformRunCancelation [_model]
+  {:skip?    false
+   :sequence false})

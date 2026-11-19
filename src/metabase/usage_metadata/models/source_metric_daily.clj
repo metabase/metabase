@@ -7,9 +7,6 @@
 
 (methodical/defmethod t2/table-name :model/SourceMetricDaily [_model] :source_metric_daily)
 
-(defmethod app-db-copy/spec :model/SourceMetricDaily [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SourceMetricDaily
   {:source_type    mi/transform-keyword
    :ownership_mode mi/transform-keyword
@@ -17,3 +14,8 @@
    :temporal_unit  mi/transform-keyword})
 
 (derive :model/SourceMetricDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceMetricDaily [_model]
+  {:skip? true})

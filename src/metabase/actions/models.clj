@@ -47,18 +47,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Action [_model]
-  {:names [:action]})
-
-(defmethod events/spec :model/Action
-  [_model]
-  {:create :event/action-create
-   :update :event/action-update
-   :delete :event/action-delete})
-
-(defmethod app-db-copy/spec :model/Action [_model]
-  {:skip? false})
-
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
@@ -66,27 +54,7 @@
   (derive :search/indexed)
   (derive :hook/events))
 
-(defmethod events/spec :model/QueryAction
-  [_model]
-  {:create :event/query-action-create
-   :update :event/query-action-update
-   :delete :event/query-action-delete})
-
-(defmethod app-db-copy/spec :model/QueryAction [_model]
-  {:skip?    false
-   :sequence false})
-
 (derive :model/ImplicitAction :hook/events)
-
-(defmethod events/spec :model/ImplicitAction
-  [_model]
-  {:create :event/implicit-action-create
-   :update :event/implicit-action-update
-   :delete :event/implicit-action-delete})
-
-(defmethod app-db-copy/spec :model/ImplicitAction [_model]
-  {:skip?    false
-   :sequence false})
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -770,24 +738,16 @@
                 action    (get actions-by-id action-id)]]
       (m/assoc-some dashcard :action action))))
 
-;;; ------------------------------------------------ Serialization ---------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(defmethod serialization/spec :model/QueryAction [_]
-  {:schema    ::actions.schema/external-query-action
-   :identity  [:action_id]
-   :skip      [:legacy_query]
-   :parent    {:model :model/Action :key :action_id}
-   :transform {:action_id     serialization/import-only-transform
-               :database_id   serialization/database-transform
-               :dataset_query serialization/mbql-transform}})
+(defmethod events/spec :model/Action
+  [_model]
+  {:create :event/action-create
+   :update :event/action-update
+   :delete :event/action-delete})
 
-(defmethod serialization/spec :model/ImplicitAction [_]
-  {:schema    ::actions.schema/external-implicit-action
-   :identity  [:action_id]
-   :copy      [:kind]
-   :parent    {:model :model/Action :key :action_id}
-   :transform {:action_id serialization/import-only-transform
-               :table_id serialization/table-transform}})
+(defmethod app-db-copy/spec :model/Action [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Action [_]
   {:schema              ::actions.schema/external-action
@@ -808,22 +768,10 @@
    :export-dependencies actions.serialization/export-dependencies
    :loaded-entities     actions.serialization/loaded-entities})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
 (defmethod remote-sync/spec :model/Action
   [_model]
   {:synced-items         actions.db/synced-action-items
    :synced-filter-clause actions.db/synced-actions-clause})
-
-(defmethod remote-sync/spec :model/QueryAction
-  [_model]
-  {:synced-filter-clause actions.db/synced-action-details-clause})
-
-(defmethod remote-sync/spec :model/ImplicitAction
-  [_model]
-  {:synced-filter-clause actions.db/synced-action-details-clause})
-
-;;; ---------------------------------------------------- Search ------------------------------------------------------
 
 (defmethod search/spec :model/Action
   [_model]
@@ -854,14 +802,62 @@
 
    :dependency-columns #{:model_id :type}})
 
+(defmethod collection-items/spec :model/Action [_model]
+  {"action" {:items   actions.db/collection-action-items
+             :hydrate actions.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Action [_model]
+  {:names [:action]})
+
+(defmethod events/spec :model/QueryAction
+  [_model]
+  {:create :event/query-action-create
+   :update :event/query-action-update
+   :delete :event/query-action-delete})
+
+(defmethod app-db-copy/spec :model/QueryAction [_model]
+  {:skip?    false
+   :sequence false})
+
+(defmethod serialization/spec :model/QueryAction [_]
+  {:schema    ::actions.schema/external-query-action
+   :identity  [:action_id]
+   :skip      [:legacy_query]
+   :parent    {:model :model/Action :key :action_id}
+   :transform {:action_id     serialization/import-only-transform
+               :database_id   serialization/database-transform
+               :dataset_query serialization/mbql-transform}})
+
+(defmethod remote-sync/spec :model/QueryAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})
+
 (defmethod dependencies/spec :model/QueryAction [_model]
   {:part-of      {:type :action :key :action_id}
    :part-columns #{:dataset_query}})
 
+(defmethod events/spec :model/ImplicitAction
+  [_model]
+  {:create :event/implicit-action-create
+   :update :event/implicit-action-update
+   :delete :event/implicit-action-delete})
+
+(defmethod app-db-copy/spec :model/ImplicitAction [_model]
+  {:skip?    false
+   :sequence false})
+
+(defmethod serialization/spec :model/ImplicitAction [_]
+  {:schema    ::actions.schema/external-implicit-action
+   :identity  [:action_id]
+   :copy      [:kind]
+   :parent    {:model :model/Action :key :action_id}
+   :transform {:action_id serialization/import-only-transform
+               :table_id serialization/table-transform}})
+
+(defmethod remote-sync/spec :model/ImplicitAction
+  [_model]
+  {:synced-filter-clause actions.db/synced-action-details-clause})
+
 (defmethod dependencies/spec :model/ImplicitAction [_model]
   {:part-of      {:type :action :key :action_id}
    :part-columns #{:table_id}})
-
-(defmethod collection-items/spec :model/Action [_model]
-  {"action" {:items   actions.db/collection-action-items
-             :hydrate actions.collection-items/hydrate}})

@@ -12,5 +12,7 @@
 (doto :model/McpFeedback
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/McpFeedback [_model]
   {:skip? false})

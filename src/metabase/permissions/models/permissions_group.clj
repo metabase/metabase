@@ -41,27 +41,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/PermissionsGroup [_model]
-  {:names [:permissions-group]})
-
-(defmethod events/spec :model/PermissionsGroup
-  [_model]
-  {:create :event/group-create
-   :update :event/group-update
-   :delete :event/group-delete})
-
-(defmethod audit/spec :model/PermissionsGroup [_model]
-  {:track          [:id :name :is_tenant_group :magic_group_type]
-   :track-redacted []
-   :skip           [:entity_id]})
-
-(defmethod change-log/spec :model/PermissionsGroup [_model]
-  {:track [:name :entity_id :magic_group_type :is_tenant_group]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/PermissionsGroup [_model]
-  {:skip? false})
-
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [magic-group-type]
@@ -278,3 +257,26 @@
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PermissionsGroup
+  [_model]
+  {:create :event/group-create
+   :update :event/group-update
+   :delete :event/group-delete})
+
+(defmethod app-db-copy/spec :model/PermissionsGroup [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PermissionsGroup [_model]
+  {:track [:name :entity_id :magic_group_type :is_tenant_group]
+   :skip  []})
+
+(defmethod audit/spec :model/PermissionsGroup [_model]
+  {:track          [:id :name :is_tenant_group :magic_group_type]
+   :track-redacted []
+   :skip           [:entity_id]})
+
+(defmethod eid-translation/spec :model/PermissionsGroup [_model]
+  {:names [:permissions-group]})

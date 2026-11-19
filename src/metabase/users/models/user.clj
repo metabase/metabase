@@ -30,7 +30,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/User [_model] :core_user)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :author]     [_original-model _k] :model/User)
@@ -44,35 +44,6 @@
   (derive :hook/entity-id)
   (derive :hook/events)
   (derive ::mi/create-policy.superuser))
-
-(defmethod eid-translation/spec :model/User [_model]
-  {:names [:user]})
-
-(defmethod events/spec :model/User
-  [_model]
-  {:create :event/user-create
-   :update :event/user-update
-   :delete :event/user-delete})
-
-(defmethod audit/spec :model/User [_model]
-  {:track          [:first_name :last_name :email :sso_source :tenant_id]
-   :track-redacted [:date_joined :deactivated_with_tenant :is_data_analyst :is_datasetnewb :is_superuser
-                    :jwt_attributes :locale :login_attributes :type]
-   :skip           [:deactivated_at :entity_id :is_active :is_qbnewb :last_login :password :password_salt
-                    :reset_token :reset_triggered :settings]
-   :details        users.audit/details
-   :topics         {:update users.audit/update-topic}
-   :moments        [{:topic :user-reactivated, :when users.audit/reactivated?}
-                    {:topic :user-deactivated, :when users.audit/deactivated?}]})
-
-(defmethod change-log/spec :model/User [_model]
-  {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active
-           :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
-           :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/User [_model]
-  {:skip? false})
 
 (defn- stringify-keys-and-values
   "Given a map, convert all the keys and values to strings."
@@ -520,3 +491,34 @@
 (def filter-clauses
   "Honeysql clauses for filtering on users. See [[users.db/filter-clauses]] for the options."
   users.db/filter-clauses)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/User
+  [_model]
+  {:create :event/user-create
+   :update :event/user-update
+   :delete :event/user-delete})
+
+(defmethod app-db-copy/spec :model/User [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/User [_model]
+  {:track [:email :first_name :last_name :password :password_salt :date_joined :last_login :is_superuser :is_active
+           :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
+           :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
+   :skip  []})
+
+(defmethod audit/spec :model/User [_model]
+  {:track          [:first_name :last_name :email :sso_source :tenant_id]
+   :track-redacted [:date_joined :deactivated_with_tenant :is_data_analyst :is_datasetnewb :is_superuser
+                    :jwt_attributes :locale :login_attributes :type]
+   :skip           [:deactivated_at :entity_id :is_active :is_qbnewb :last_login :password :password_salt
+                    :reset_token :reset_triggered :settings]
+   :details        users.audit/details
+   :topics         {:update users.audit/update-topic}
+   :moments        [{:topic :user-reactivated, :when users.audit/reactivated?}
+                    {:topic :user-deactivated, :when users.audit/deactivated?}]})
+
+(defmethod eid-translation/spec :model/User [_model]
+  {:names [:user]})

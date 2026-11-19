@@ -49,29 +49,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Measure [_model]
-  {:names [:measure]})
-
-(defmethod events/spec :model/Measure
-  [_model]
-  {:create :event/measure-create
-   :update :event/measure-update
-   :delete :event/measure-delete})
-
-(defmethod audit/spec :model/Measure [_model]
-  {:track          []
-   :track-redacted [:archived :creator_id :definition :description :name :table_id]
-   :skip           [:dimension_mappings :dimensions :entity_id]})
-
-(defmethod revisions/spec :model/Measure [_model]
-  {:track        [:name :description :definition :archived :table_id]
-   :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
-   :same?        {:definition revisions/same-definition?}
-   :diff-columns [:name :description :definition]})
-
-(defmethod app-db-copy/spec :model/Measure [_model]
-  {:skip? false})
-
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."
   [definition]
@@ -164,7 +141,23 @@
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; --------------------------------------------- Dimension persistence ----------------------------------------------
+
+(defmethod metrics/save-dimensions! :metadata/measure
+  [measure dimensions dimension-mappings]
+  (when-let [measure-id (:id measure)]
+    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Measure
+  [_model]
+  {:create :event/measure-create
+   :update :event/measure-update
+   :delete :event/measure-delete})
+
+(defmethod app-db-copy/spec :model/Measure [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Measure [_]
   {:schema              ::measures.schema/external-measure
@@ -176,14 +169,21 @@
    :import-dependencies measures.serialization/import-dependencies
    :storage-paths       measures.serialization/storage-paths})
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
 (defmethod remote-sync/spec :model/Measure
   [_model]
   {:synced-items         measures.db/synced-measure-items
    :synced-filter-clause measures.db/synced-measures-clause})
 
-;;; ----------------------------------------------------- Search -----------------------------------------------------
+(defmethod revisions/spec :model/Measure [_model]
+  {:track        [:name :description :definition :archived :table_id]
+   :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
+   :same?        {:definition revisions/same-definition?}
+   :diff-columns [:name :description :definition]})
+
+(defmethod audit/spec :model/Measure [_model]
+  {:track          []
+   :track-redacted [:archived :creator_id :definition :description :name :table_id]
+   :skip           [:dimension_mappings :dimensions :entity_id]})
 
 (defmethod search/spec :model/Measure
   [_model]
@@ -215,13 +215,6 @@
                           [:= :table.is_published true]
                           [:= :collection.id :table.collection_id]]]}}})
 
-;;; --------------------------------------------- Dimension persistence ----------------------------------------------
-
-(defmethod metrics/save-dimensions! :metadata/measure
-  [measure dimensions dimension-mappings]
-  (when-let [measure-id (:id measure)]
-    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
-
 (defmethod dependencies/spec :model/Measure [_model]
   {:type     :measure
    :inlined? true
@@ -235,3 +228,6 @@
 (defmethod replacement/spec :model/Measure [_model]
   {:upgrade-field-refs measures.replacement/upgrade-field-refs
    :swap-source        measures.replacement/swap-source})
+
+(defmethod eid-translation/spec :model/Measure [_model]
+  {:names [:measure]})

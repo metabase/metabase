@@ -14,9 +14,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/ExplorationThreadTimeline [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThreadTimeline :timeline]
   [_model k join-rows]
   (mi/instances-with-hydrated-data
@@ -67,3 +64,8 @@
                                             :timestamp   (u.date/format (:event_timestamp r))
                                             :icon        (:event_icon r)})))
                                  vec)}))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationThreadTimeline [_model]
+  {:skip? false})

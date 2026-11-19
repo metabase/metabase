@@ -15,9 +15,6 @@
 (methodical/defmethod t2/table-name :model/ContentTranslation [_model]
   :content_translation)
 
-(defmethod app-db-copy/spec :model/ContentTranslation [_model]
-  {:skip? true})
-
 (defn get-translations
   "List the translations stored in the content_translation table.
   Optionally filter by locale if a locale parameter is provided."
@@ -28,3 +25,8 @@
    (if locale
      (content-translation.db/translations-for-locale locale)
      (content-translation.db/all-translations))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ContentTranslation [_model]
+  {:skip? true})

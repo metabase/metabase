@@ -20,9 +20,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/TransformJobRun [_model]
-  {:skip? false})
-
 (t2/define-before-update :model/TransformJobRun
   [run]
   (cond-> run
@@ -96,3 +93,8 @@
   "Return transform runs that were part of the given job run, ordered by start time."
   [job-run-id :- ms/PositiveInt]
   (transforms.db/runs-for-job-run job-run-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformJobRun [_model]
+  {:skip? false})

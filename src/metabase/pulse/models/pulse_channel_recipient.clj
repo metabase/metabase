@@ -15,25 +15,6 @@
 (derive :model/PulseChannelRecipient :metabase/model)
 (derive :model/PulseChannelRecipient :hook/events)
 
-(defmethod events/spec :model/PulseChannelRecipient
-  [_model]
-  {:create :event/pulse-channel-recipient-create
-   :update :event/pulse-channel-recipient-update
-   :delete :event/pulse-channel-recipient-delete})
-
-(defmethod audit/spec :model/PulseChannelRecipient [_model]
-  {:track          []
-   :track-redacted [:pulse_channel_id :user_id]
-   :skip           []
-   :parent         {:model :model/PulseChannel, :key :pulse_channel_id}})
-
-(defmethod change-log/spec :model/PulseChannelRecipient [_model]
-  {:track [:pulse_channel_id :user_id]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/PulseChannelRecipient [_model]
-  {:skip? false})
-
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
 ;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
@@ -49,3 +30,24 @@
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
           (pulse.db/delete-pulse-channel! channel-id))))))
+
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod events/spec :model/PulseChannelRecipient
+  [_model]
+  {:create :event/pulse-channel-recipient-create
+   :update :event/pulse-channel-recipient-update
+   :delete :event/pulse-channel-recipient-delete})
+
+(defmethod app-db-copy/spec :model/PulseChannelRecipient [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PulseChannelRecipient [_model]
+  {:track [:pulse_channel_id :user_id]
+   :skip  []})
+
+(defmethod audit/spec :model/PulseChannelRecipient [_model]
+  {:track          []
+   :track-redacted [:pulse_channel_id :user_id]
+   :skip           []
+   :parent         {:model :model/PulseChannel, :key :pulse_channel_id}})

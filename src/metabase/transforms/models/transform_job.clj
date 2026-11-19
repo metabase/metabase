@@ -31,15 +31,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod events/spec :model/TransformJob
-  [_model]
-  {:create :event/transform-job-create
-   :update :event/transform-job-update
-   :delete :event/transform-job-delete})
-
-(defmethod app-db-copy/spec :model/TransformJob [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})
 
@@ -254,7 +245,16 @@
       (for [job jobs]
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
-;;; ------------------------------------------------ Serialization -------------------------------------------------
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/TransformJob
+  [_model]
+  {:create :event/transform-job-create
+   :update :event/transform-job-update
+   :delete :event/transform-job-delete})
+
+(defmethod app-db-copy/spec :model/TransformJob [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformJob [_]
   {:schema              ::transforms.schema/external-transform-job

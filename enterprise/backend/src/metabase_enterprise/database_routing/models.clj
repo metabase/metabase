@@ -22,26 +22,6 @@
   (derive :metabase/model)
   (derive :hook/events))
 
-(defmethod events/spec :model/DatabaseRouter
-  [_model]
-  {:create :event/database-router-create
-   :update :event/database-router-update
-   :delete :event/database-router-delete})
-
-(defmethod audit/spec :model/DatabaseRouter [_model]
-  {:track          []
-   :track-redacted [:database_id :user_attribute]
-   :skip           []
-   :details        database-routing.audit/details
-   :state          database-routing.audit/state
-   :subject        database-routing.audit/subject
-   :topics         {:create :database-update
-                    :update :database-update
-                    :delete :database-update}})
-
-(defmethod app-db-copy/spec :model/DatabaseRouter [_model]
-  {:skip? true})
-
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (defn- check-not-destination
@@ -94,3 +74,25 @@
   (boolean (or (database-routing.db/router-exists? (:id db))
                (some->> (:router-database-id db)
                         database-routing.db/router-exists?))))
+
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/DatabaseRouter
+  [_model]
+  {:create :event/database-router-create
+   :update :event/database-router-update
+   :delete :event/database-router-delete})
+
+(defmethod app-db-copy/spec :model/DatabaseRouter [_model]
+  {:skip? true})
+
+(defmethod audit/spec :model/DatabaseRouter [_model]
+  {:track          []
+   :track-redacted [:database_id :user_attribute]
+   :skip           []
+   :details        database-routing.audit/details
+   :state          database-routing.audit/state
+   :subject        database-routing.audit/subject
+   :topics         {:create :database-update
+                    :update :database-update
+                    :delete :database-update}})

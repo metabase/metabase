@@ -17,9 +17,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod app-db-copy/spec :model/ExplorationThread [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ExplorationThread
   {:query_plan_transcript (mi/transform-json-with-schema "exploration_thread.query_plan_transcript"
                                                          ::explorations.schema/exploration-thread.query-plan-transcript)
@@ -52,3 +49,8 @@
               (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationThread [_model]
+  {:skip? false})

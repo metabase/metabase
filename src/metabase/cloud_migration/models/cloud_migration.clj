@@ -35,9 +35,6 @@
 
 (methodical/defmethod t2/table-name :model/CloudMigration [_model] :cloud_migration)
 
-(defmethod app-db-copy/spec :model/CloudMigration [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/CloudMigration
   {:state mi/transform-keyword})
 
@@ -286,6 +283,11 @@
       json/decode+kw
       (select-keys [:id :upload_url])
       (set/rename-keys {:id :external_id})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CloudMigration [_model]
+  {:skip? true})
 
 (comment
   ;; are we in read-only-mode ?

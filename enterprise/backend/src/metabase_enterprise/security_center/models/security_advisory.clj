@@ -13,9 +13,6 @@
 (doto :model/SecurityAdvisory
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/SecurityAdvisory [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SecurityAdvisory
   {:severity          mi/transform-keyword
    :match_status      mi/transform-keyword
@@ -70,3 +67,8 @@
   [advisory-ids user-id]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SecurityAdvisory [_model]
+  {:skip? true})

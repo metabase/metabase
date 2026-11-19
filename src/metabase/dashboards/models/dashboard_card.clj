@@ -39,26 +39,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/DashboardCard [_model]
-  {:names [:dashboard-card]})
-
-(defmethod events/spec :model/DashboardCard
-  [_model]
-  {:create :event/dashboard-card-create
-   :update :event/dashboard-card-update
-   :delete :event/dashboard-card-delete})
-
-(defmethod audit/spec :model/DashboardCard [_model]
-  {:track          []
-   :track-redacted [:action_id :card_id :col :dashboard_id :dashboard_tab_id :inline_parameters :parameter_mappings
-                    :row :size_x :size_y :visualization_settings]
-   :skip           [:entity_id]
-   :parent         {:model   :model/Dashboard
-                    :key     :dashboard_id
-                    :topics  {:create :dashboard-add-cards
-                              :delete :dashboard-remove-cards}
-                    :details dashboards.audit/cards-details}})
-
 (defn- snapshot-series
   "The `snapshots` of the DashboardCard `rows`, each with the ids of the Cards of its series."
   [rows snapshots]
@@ -69,16 +49,6 @@
             (assoc snapshot :series (mapv :id (:series row))))
           rows
           snapshots)))
-
-(defmethod revisions/spec :model/DashboardCard [_model]
-  {:track    [:card_id :action_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y :parameter_mappings
-              :inline_parameters :visualization_settings]
-   :skip     [:entity_id]
-   :parent   {:model :model/Dashboard :key :dashboard_id}
-   :snapshot snapshot-series})
-
-(defmethod app-db-copy/spec :model/DashboardCard [_model]
-  {:skip? false})
 
 (t2/deftransforms :model/DashboardCard
   {:parameter_mappings     parameters/transform-parameter-mappings
@@ -465,27 +435,7 @@
     (compare col-1 col-2)
     (compare row-1 row-2)))
 
-;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-
-(defmethod serialization/spec :model/DashboardCard [_]
-  {:schema    ::dashboards.schema/external-dashboard-card
-   :copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
-   :parent    {:model :model/Dashboard
-               :key   :dashboard_id
-               :order (juxt :dashboard_tab_id :row :col :entity_id)}
-   :children  {:series :model/DashboardCardSeries}
-   :transform {:dashboard_id           serialization/import-only-transform
-               :card_id                (serialization/fk-transform :model/Card)
-               :action_id              (serialization/fk-transform :model/Action)
-               :dashboard_tab_id       dashboards.serialization/dashboard-tab-id-transform
-               :parameter_mappings     serialization/parameter-mappings-transform
-               :visualization_settings serialization/visualization-settings-transform}})
-
 ;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
-(defmethod remote-sync/spec :model/DashboardCard
-  [_model]
-  {:synced-filter-clause dashboards.db/synced-dashcards-clause})
 
 (defn- set-questions-archived!
   "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
@@ -513,6 +463,56 @@
     (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
       (set-questions-archived! (vec ids) false))))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/DashboardCard
+  [_model]
+  {:create :event/dashboard-card-create
+   :update :event/dashboard-card-update
+   :delete :event/dashboard-card-delete})
+
+(defmethod app-db-copy/spec :model/DashboardCard [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/DashboardCard [_]
+  {:schema    ::dashboards.schema/external-dashboard-card
+   :copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
+   :parent    {:model :model/Dashboard
+               :key   :dashboard_id
+               :order (juxt :dashboard_tab_id :row :col :entity_id)}
+   :children  {:series :model/DashboardCardSeries}
+   :transform {:dashboard_id           serialization/import-only-transform
+               :card_id                (serialization/fk-transform :model/Card)
+               :action_id              (serialization/fk-transform :model/Action)
+               :dashboard_tab_id       dashboards.serialization/dashboard-tab-id-transform
+               :parameter_mappings     serialization/parameter-mappings-transform
+               :visualization_settings serialization/visualization-settings-transform}})
+
+(defmethod remote-sync/spec :model/DashboardCard
+  [_model]
+  {:synced-filter-clause dashboards.db/synced-dashcards-clause})
+
+(defmethod revisions/spec :model/DashboardCard [_model]
+  {:track    [:card_id :action_id :dashboard_id :dashboard_tab_id :row :col :size_x :size_y :parameter_mappings
+              :inline_parameters :visualization_settings]
+   :skip     [:entity_id]
+   :parent   {:model :model/Dashboard :key :dashboard_id}
+   :snapshot snapshot-series})
+
+(defmethod audit/spec :model/DashboardCard [_model]
+  {:track          []
+   :track-redacted [:action_id :card_id :col :dashboard_id :dashboard_tab_id :inline_parameters :parameter_mappings
+                    :row :size_x :size_y :visualization_settings]
+   :skip           [:entity_id]
+   :parent         {:model   :model/Dashboard
+                    :key     :dashboard_id
+                    :topics  {:create :dashboard-add-cards
+                              :delete :dashboard-remove-cards}
+                    :details dashboards.audit/cards-details}})
+
 (defmethod dependencies/spec :model/DashboardCard [_model]
   {:part-of      {:type :dashboard :key :dashboard_id}
    :part-columns #{:card_id :dashboard_id :visualization_settings}})
+
+(defmethod eid-translation/spec :model/DashboardCard [_model]
+  {:names [:dashboard-card]})

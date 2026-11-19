@@ -25,26 +25,6 @@
 (derive :model/PermissionsGroupMembership :metabase/model)
 (derive :model/PermissionsGroupMembership :hook/events)
 
-(defmethod events/spec :model/PermissionsGroupMembership
-  [_model]
-  {:create :event/group-membership-create
-   :update :event/group-membership-update
-   :delete :event/group-membership-delete})
-
-(defmethod audit/spec :model/PermissionsGroupMembership [_model]
-  {:track          [:id :user_id :group_id :is_group_manager]
-   :track-redacted []
-   :skip           []
-   :topics         {:create :group-membership-create
-                    :delete :group-membership-delete}})
-
-(defmethod change-log/spec :model/PermissionsGroupMembership [_model]
-  {:track [:user_id :group_id :is_group_manager]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/PermissionsGroupMembership [_model]
-  {:skip? false})
-
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
   (deferred-tru "You cannot remove the last member of the ''Admin'' group!"))
@@ -324,3 +304,25 @@
   "Removes a user from all groups."
   [user-id]
   (permissions.db/delete-memberships-for-user! user-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PermissionsGroupMembership
+  [_model]
+  {:create :event/group-membership-create
+   :update :event/group-membership-update
+   :delete :event/group-membership-delete})
+
+(defmethod app-db-copy/spec :model/PermissionsGroupMembership [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PermissionsGroupMembership [_model]
+  {:track [:user_id :group_id :is_group_manager]
+   :skip  []})
+
+(defmethod audit/spec :model/PermissionsGroupMembership [_model]
+  {:track          [:id :user_id :group_id :is_group_manager]
+   :track-redacted []
+   :skip           []
+   :topics         {:create :group-membership-create
+                    :delete :group-membership-delete}})

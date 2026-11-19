@@ -15,9 +15,6 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/ApplicationPermissionsRevision [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ApplicationPermissionsRevision
   {:before mi/transform-json
    :after  mi/transform-json})
@@ -32,3 +29,8 @@
   []
   (or (permissions.db/latest-application-permissions-revision-id)
       0))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ApplicationPermissionsRevision [_model]
+  {:skip? false})

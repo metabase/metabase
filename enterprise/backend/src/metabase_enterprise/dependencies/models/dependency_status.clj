@@ -16,9 +16,6 @@
 
 (derive :model/DependencyStatus :metabase/model)
 
-(defmethod app-db-copy/spec :model/DependencyStatus [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/DependencyStatus
   {:entity_type mi/transform-keyword})
 
@@ -49,3 +46,8 @@
                 entity-type models.dependency/current-dependency-analysis-version)
                (seq (dependencies.db/dependency-deleted-entity-ids entity-type 1))))
          (deps.calculation/computed-types))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DependencyStatus [_model]
+  {:skip? true})

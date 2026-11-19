@@ -51,15 +51,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod events/spec :model/DataApp
-  [_model]
-  {:create :event/data-app-create
-   :update :event/data-app-update
-   :delete :event/data-app-delete})
-
-(defmethod app-db-copy/spec :model/DataApp [_model]
-  {:skip? true})
-
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
 
@@ -172,17 +163,6 @@
   [app]
   (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
 
-(defmethod search/spec :model/DataApp
-  [_model]
-  {"data-app"
-   {:attrs        {:archived      false
-                   :collection-id false
-                   :created-at    true
-                   :updated-at    true}
-    :search-terms [:slug :name :description]
-    ;; A result's `name` can be its display name, and the app's URL needs its slug.
-    :render-terms {:data-app-slug :slug}}})
-
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
   [data-app json-generator]
@@ -255,22 +235,6 @@
             [[:model/Collection collection-entity-id]]))
         entities))
 
-(defmethod serialization/spec :model/DataApp [_]
-  {:schema              ::data-apps.schema/external-data-app
-   :copy                [:entity_id :slug :name :description :version :allowed_hosts]
-   :skip                [:enabled :bundle_hash]
-   :transform           {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
-                         :bundle_path            {:as     :path
-                                                  :export serialization/export-unchanged
-                                                  :import serialization/import-unchanged}
-                         :bundle                 {:as     :serdes/resources
-                                                  :export export-bundles
-                                                  :import import-bundles}}
-   :before-load         before-load
-   :storage-paths       storage-paths
-   :resource-paths      resource-paths
-   :import-dependencies import-dependencies})
-
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."
   :feature :none
@@ -287,10 +251,48 @@
     (= "data-apps" (some-> (:namespace collection) name))
     (data-apps.db/data-apps-namespace-collection? collection)))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/DataApp
+  [_model]
+  {:create :event/data-app-create
+   :update :event/data-app-update
+   :delete :event/data-app-delete})
+
+(defmethod app-db-copy/spec :model/DataApp [_model]
+  {:skip? true})
+
+(defmethod serialization/spec :model/DataApp [_]
+  {:schema              ::data-apps.schema/external-data-app
+   :copy                [:entity_id :slug :name :description :version :allowed_hosts]
+   :skip                [:enabled :bundle_hash]
+   :transform           {:resource_collection_id (assoc (serialization/fk-transform :model/Collection) :as :collection)
+                         :bundle_path            {:as     :path
+                                                  :export serialization/export-unchanged
+                                                  :import serialization/import-unchanged}
+                         :bundle                 {:as     :serdes/resources
+                                                  :export export-bundles
+                                                  :import import-bundles}}
+   :before-load         before-load
+   :storage-paths       storage-paths
+   :resource-paths      resource-paths
+   :import-dependencies import-dependencies})
+
 (defmethod remote-sync/spec :model/DataApp
   [_model]
   {:name         :slug
    :synced-items data-apps.db/synced-data-app-items})
+
+(defmethod search/spec :model/DataApp
+  [_model]
+  {"data-app"
+   {:attrs        {:archived      false
+                   :collection-id false
+                   :created-at    true
+                   :updated-at    true}
+    :search-terms [:slug :name :description]
+    ;; A result's `name` can be its display name, and the app's URL needs its slug.
+    :render-terms {:data-app-slug :slug}}})
 
 (defmethod dependencies/spec :model/DataApp [_model]
   {:type  :data-app

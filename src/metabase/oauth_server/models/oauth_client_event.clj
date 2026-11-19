@@ -19,9 +19,6 @@
 (doto :model/OAuthClientEvent
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/OAuthClientEvent [_model]
-  {:skip? false})
-
 (defn- client-pk
   "Look up the numeric `oauth_client.id` primary key for the given OAuth `client-id` (UUID)."
   [client-id]
@@ -45,3 +42,8 @@
                                            :user_id         user-id
                                            :event_type      (if approved? "approved" "denied")})
     (log/warnf "Cannot record OAuth decision event: no client found for client_id %s" client-id)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthClientEvent [_model]
+  {:skip? false})

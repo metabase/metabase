@@ -12,5 +12,7 @@
 (doto :model/MetabotUsedTable
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/MetabotUsedTable [_model]
   {:skip? false})

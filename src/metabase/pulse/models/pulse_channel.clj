@@ -74,30 +74,6 @@
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/PulseChannel [_model]
-  {:names [:pulse-channel]})
-
-(defmethod events/spec :model/PulseChannel
-  [_model]
-  {:create :event/pulse-channel-create
-   :update :event/pulse-channel-update
-   :delete :event/pulse-channel-delete})
-
-(defmethod audit/spec :model/PulseChannel [_model]
-  {:track          []
-   :track-redacted [:channel_id :channel_type :details :enabled :pulse_id :schedule_day :schedule_frame
-                    :schedule_hour :schedule_type]
-   :skip           [:entity_id]
-   :parent         {:model :model/Pulse, :key :pulse_id}})
-
-(defmethod change-log/spec :model/PulseChannel [_model]
-  {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
-           :entity_id :channel_id]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/PulseChannel [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")
    :channel_type mi/transform-keyword
@@ -306,3 +282,29 @@
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
+
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod events/spec :model/PulseChannel
+  [_model]
+  {:create :event/pulse-channel-create
+   :update :event/pulse-channel-update
+   :delete :event/pulse-channel-delete})
+
+(defmethod app-db-copy/spec :model/PulseChannel [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PulseChannel [_model]
+  {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
+           :entity_id :channel_id]
+   :skip  []})
+
+(defmethod audit/spec :model/PulseChannel [_model]
+  {:track          []
+   :track-redacted [:channel_id :channel_type :details :enabled :pulse_id :schedule_day :schedule_frame
+                    :schedule_hour :schedule_type]
+   :skip           [:entity_id]
+   :parent         {:model :model/Pulse, :key :pulse_id}})
+
+(defmethod eid-translation/spec :model/PulseChannel [_model]
+  {:names [:pulse-channel]})

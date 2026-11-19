@@ -16,9 +16,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/SearchIndexMetadata [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/SearchIndexMetadata
   {:engine mi/transform-keyword
    :status (mi/transform-validator mi/transform-keyword (partial mi/assert-enum #{:pending :active :retired}))})
@@ -84,3 +81,8 @@
     (search.db/delete-obsolete-index-metadata! most-recent
                                                (filter some? [our-version (first most-recent)])
                                                (t/minus (t/zoned-date-time) pending-table-cut-off))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SearchIndexMetadata [_model]
+  {:skip? true})

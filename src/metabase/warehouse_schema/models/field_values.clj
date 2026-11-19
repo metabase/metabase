@@ -108,15 +108,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod events/spec :model/FieldValues
-  [_model]
-  {:create :event/field-values-create
-   :update :event/field-values-update
-   :delete :event/field-values-delete})
-
-(defmethod app-db-copy/spec :model/FieldValues [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
    :values                mi/transform-json
@@ -715,7 +706,16 @@
           (warehouse-schema.db/touch-field-values! (:id existing))
           existing)))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/FieldValues
+  [_model]
+  {:create :event/field-values-create
+   :update :event/field-values-update
+   :delete :event/field-values-delete})
+
+(defmethod app-db-copy/spec :model/FieldValues [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/FieldValues [_]
   {:schema        ::warehouse-schema.schema/external-field-values

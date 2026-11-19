@@ -139,26 +139,6 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
-(defmethod events/spec :model/Field
-  [_model]
-  {:create :event/field-create
-   :update :event/field-update
-   :delete :event/field-delete})
-
-(defmethod change-log/spec :model/Field [_model]
-  {:track [:name :base_type :semantic_type :active :description :preview_display :position :table_id :parent_id
-           :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
-           :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
-           :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
-           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
-   :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-           :is_defective_duplicate :unique_field_helper]})
-
-(defmethod app-db-copy/spec :model/Field [_model]
-  {:skip?     false
-   :select    warehouse-schema.db/copy-fields-select
-   :transform warehouse-schema.app-db-copy/transform-field})
-
 (t2/define-after-select :model/Field
   [field]
   (dissoc field :is_defective_duplicate :unique_field_helper))
@@ -479,11 +459,27 @@
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(defmethod xrays/spec :model/Field [_model]
-  {:related    warehouse-schema.xrays/field-related
-   :definition warehouse-schema.xrays/field-definition})
+(defmethod events/spec :model/Field
+  [_model]
+  {:create :event/field-create
+   :update :event/field-update
+   :delete :event/field-delete})
+
+(defmethod app-db-copy/spec :model/Field [_model]
+  {:skip?     false
+   :select    warehouse-schema.db/copy-fields-select
+   :transform warehouse-schema.app-db-copy/transform-field})
+
+(defmethod change-log/spec :model/Field [_model]
+  {:track [:name :base_type :semantic_type :active :description :preview_display :position :table_id :parent_id
+           :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
+           :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
+           :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+   :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+           :is_defective_duplicate :unique_field_helper]})
 
 (defmethod serialization/spec :model/Field [_]
   {:schema        ::warehouse-schema.schema/external-field
@@ -512,3 +508,7 @@
 (defmethod dependencies/spec :model/Field [_model]
   {:part-of      {:type :table :key :table_id}
    :part-columns warehouse-schema.dependencies/field-columns})
+
+(defmethod xrays/spec :model/Field [_model]
+  {:related    warehouse-schema.xrays/field-related
+   :definition warehouse-schema.xrays/field-definition})

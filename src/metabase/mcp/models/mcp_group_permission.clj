@@ -27,9 +27,6 @@
   (derive ::mi/create-policy.superuser)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/McpGroupPermission [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/McpGroupPermission
   {:tool_access mi/transform-json-no-keywordization})
 
@@ -71,3 +68,8 @@
     (when (contains? changes :group_id)
       (check-one-mode (:group_id changes))))
   row)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/McpGroupPermission [_model]
+  {:skip? false})

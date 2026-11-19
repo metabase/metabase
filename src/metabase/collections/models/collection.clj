@@ -336,18 +336,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Collection [_model]
-  {:names [:collection]})
-
-(defmethod events/spec :model/Collection
-  [_model]
-  {:create :event/collection-create
-   :update :event/collection-update
-   :delete :event/collection-delete})
-
-(defmethod app-db-copy/spec :model/Collection [_model]
-  {:skip? false})
-
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
   (when-not (audit/analytics-dev-mode)
@@ -370,11 +358,6 @@
 (def ^:private remote-synced-namespaces
   "The namespaces whose Collections remote sync always syncs, whatever their `is_remote_synced`."
   #{data-apps-ns transforms-ns snippets-ns data-actions-ns})
-
-(defmethod remote-sync/spec :model/Collection
-  [_model]
-  {:synced-items         collections.db/synced-collection-items
-   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
 
 (defn- remote-sync-writable?
   "Whether remote sync leaves `collection` writable: any Collection unless the instance is read-only, and then one
@@ -2515,40 +2498,6 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
-(defmethod search/spec :model/Collection
-  [_model]
-  {"collection"
-   {:attrs        {:collection-id        :id
-                   :collection-type      :type
-                   :collection-location  :location
-                   :root-collection-type {:fn root-collection-type}
-                   :creator-id           false
-                   :database-id          false
-                   :archived             true
-                   :created-at           true
-                   ;; intentionally not tracked
-                   :updated-at           false}
-    :search-terms [:name]
-    :render-terms {:archived-directly          true
-                   ;; Why not make this a search term? I suspect it was just overlooked before.
-                   :description                true
-                   :collection_authority_level :authority_level
-                   :collection_name            :name
-                   ;; `:location` is read by the toucan2 effective-location hydration when collection
-                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
-                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
-                   :location                   true}
-    :where [:or [:= :namespace nil]
-            [:= :namespace "analytics"]
-            [:= :namespace "shared-tenant-collection"]
-            [:= :namespace "tenant-specific"]]
-    ;; depends on the current user, used for rendering and ranking
-    ;; TODO not sure this is what it'll look like
-    :bookmark     [:model/CollectionBookmark [:and
-                                              [:= :bookmark.collection_id :this.id]
-                                              ;; a magical alias, or perhaps this clause can be implicit
-                                              [:= :bookmark.user_id :current_user/id]]]}})
-
 (defn is-library-collection?
   "Return true if the given collection ID corresponds to a collection in the library."
   [collection-id]
@@ -2601,6 +2550,17 @@
   [store _collections locations _opts]
   (serialization/column-refs store :model/Collection (map location-path->parent-id locations)))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Collection
+  [_model]
+  {:create :event/collection-create
+   :update :event/collection-update
+   :delete :event/collection-delete})
+
+(defmethod app-db-copy/spec :model/Collection [_model]
+  {:skip? false})
+
 (defmethod serialization/spec :model/Collection [_]
   {:schema              ::collections.schema/external-collection
    :copy                [:archive_operation_id :archived :archived_directly :authority_level :description :entity_id
@@ -2618,3 +2578,45 @@
    :import-dependencies import-dependencies
    :export-dependencies export-dependencies
    :before-load         before-load})
+
+(defmethod remote-sync/spec :model/Collection
+  [_model]
+  {:synced-items         collections.db/synced-collection-items
+   :synced-filter-clause (partial collections.db/synced-collections-clause (vec (sort remote-synced-namespaces)))})
+
+(defmethod search/spec :model/Collection
+  [_model]
+  {"collection"
+   {:attrs        {:collection-id        :id
+                   :collection-type      :type
+                   :collection-location  :location
+                   :root-collection-type {:fn root-collection-type}
+                   :creator-id           false
+                   :database-id          false
+                   :archived             true
+                   :created-at           true
+                   ;; intentionally not tracked
+                   :updated-at           false}
+    :search-terms [:name]
+    :render-terms {:archived-directly          true
+                   ;; Why not make this a search term? I suspect it was just overlooked before.
+                   :description                true
+                   :collection_authority_level :authority_level
+                   :collection_name            :name
+                   ;; `:location` is read by the toucan2 effective-location hydration when collection
+                   ;; results pass through `metabase.search.impl/add-collection-effective-location`.
+                   ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
+                   :location                   true}
+    :where [:or [:= :namespace nil]
+            [:= :namespace "analytics"]
+            [:= :namespace "shared-tenant-collection"]
+            [:= :namespace "tenant-specific"]]
+    ;; depends on the current user, used for rendering and ranking
+    ;; TODO not sure this is what it'll look like
+    :bookmark     [:model/CollectionBookmark [:and
+                                              [:= :bookmark.collection_id :this.id]
+                                              ;; a magical alias, or perhaps this clause can be implicit
+                                              [:= :bookmark.user_id :current_user/id]]]}})
+
+(defmethod eid-translation/spec :model/Collection [_model]
+  {:names [:collection]})

@@ -16,9 +16,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod app-db-copy/spec :model/ExplorationPage [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/simple-hydrate [:model/ExplorationPage :can_read]
   [_model k instance]
   (vary-meta instance assoc k (boolean (some-> (explorations.db/block-thread-id-row (:exploration_block_id instance)) (t2/hydrate :can_read) mi/can-read?))))
@@ -27,3 +24,8 @@
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationPage [_model]
+  {:skip? false})

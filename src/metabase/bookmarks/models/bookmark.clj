@@ -26,24 +26,6 @@
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
 
-(defmethod app-db-copy/spec :model/CardBookmark [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
-  {:skip? false})
-
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (t2/define-before-insert :model/CollectionBookmark [bookmark]
@@ -121,3 +103,23 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/CardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DashboardBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/CollectionBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/BookmarkOrdering [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/DocumentBookmark [_model]
+  {:skip? false})
+
+(defmethod app-db-copy/spec :model/ExplorationBookmark [_model]
+  {:skip? false})

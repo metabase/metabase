@@ -9,5 +9,7 @@
 (doto :model/McpToolCallLog
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/McpToolCallLog [_model]
   {:skip? true})

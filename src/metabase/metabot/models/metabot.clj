@@ -19,9 +19,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/Metabot [_model]
-  {:skip? false})
-
 ;; NOTE: the `use_verified_content` column now means "use only verified OR curated content" — when on,
 ;; Metabot search is restricted via the precomputed `curated` flag (see metabase.collections.curation),
 ;; which covers verified items, official collections, and library/published content, not just verified
@@ -57,6 +54,11 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Metabot [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Metabot [_]
   {:schema              ::metabot.schema/external-metabot

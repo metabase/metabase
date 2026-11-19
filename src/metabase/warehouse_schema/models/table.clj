@@ -34,7 +34,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
@@ -111,38 +111,6 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(defmethod events/spec :model/Table
-  [_model]
-  {:create :event/table-create
-   :update :event/table-update
-   :delete :event/table-delete})
-
-(defmethod audit/spec :model/Table [_model]
-  {:track          [:id :name :db_id]
-   :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
-                    :database_require_filter :deactivated_at :description :display_name :entity_type
-                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
-                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
-                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
-                    :visibility_type]
-   :skip           [:view_count]
-   :topics         {}
-   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
-                     :details warehouse-schema.audit/moment-details}
-                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
-                     :details warehouse-schema.audit/moment-details}]})
-
-(defmethod change-log/spec :model/Table [_model]
-  {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
-           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
-           :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :collection_id :is_published :transform_id :transform_target]
-   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
-
-(defmethod app-db-copy/spec :model/Table [_model]
-  {:skip?     false
-   :transform warehouse-schema.app-db-copy/transform-table})
 
 (def transform-data-authority
   "Transform for a `data_authority` column. NULL passes through: the column is NOT NULL on `metabase_table`, but
@@ -573,6 +541,25 @@
             transform_id  (conj [:model/Transform transform_id])))
         entities))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Table
+  [_model]
+  {:create :event/table-create
+   :update :event/table-update
+   :delete :event/table-delete})
+
+(defmethod app-db-copy/spec :model/Table [_model]
+  {:skip?     false
+   :transform warehouse-schema.app-db-copy/transform-table})
+
+(defmethod change-log/spec :model/Table [_model]
+  {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
+           :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
+           :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
+           :owner_user_id :collection_id :is_published :transform_id :transform_target]
+   :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
+
 (defmethod serialization/spec :model/Table [_]
   {:schema              ::warehouse-schema.schema/external-table
    :identity            [:db_id :schema :name]
@@ -595,10 +582,20 @@
    :import-dependencies import-dependencies
    :rows-by-refs        serialization/table-rows-by-refs})
 
-(defmethod xrays/spec :model/Table [_model]
-  {:related warehouse-schema.xrays/table-related})
-
-;;; ----------------------------------------------------- Search -----------------------------------------------------
+(defmethod audit/spec :model/Table [_model]
+  {:track          [:id :name :db_id]
+   :track-redacted [:active :archived_at :caveats :collection_id :data_authority :data_layer :data_source
+                    :database_require_filter :deactivated_at :description :display_name :entity_type
+                    :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
+                    :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
+                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
+                    :visibility_type]
+   :skip           [:view_count]
+   :topics         {}
+   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
+                     :details warehouse-schema.audit/moment-details}
+                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
+                     :details warehouse-schema.audit/moment-details}]})
 
 (defmethod search/spec :model/Table
   [_model]
@@ -659,3 +656,6 @@
 (defmethod recent-views/spec :model/Table [_model]
   {"table" {:load   warehouse-schema.db/recent-view-tables
             :render warehouse-schema.recent-views/render}})
+
+(defmethod xrays/spec :model/Table [_model]
+  {:related warehouse-schema.xrays/table-related})

@@ -17,9 +17,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod app-db-copy/spec :model/ExplorationQuery [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
    :dataset_query          mi/transform-json
@@ -67,3 +64,8 @@
       (when (seq seg-ids)
         (explorations.db/segment-names seg-ids)))
    :segment_id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationQuery [_model]
+  {:skip? false})

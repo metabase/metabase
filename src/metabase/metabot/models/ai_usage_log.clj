@@ -9,5 +9,7 @@
 (doto :model/AiUsageLog
   (derive :metabase/model))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/AiUsageLog [_model]
   {:skip? true})

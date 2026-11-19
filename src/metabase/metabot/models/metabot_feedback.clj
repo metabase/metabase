@@ -12,9 +12,6 @@
 (doto :model/MetabotFeedback
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/MetabotFeedback [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/batched-hydrate [:model/MetabotFeedback :user]
   "Batch-hydrate `:user` (id/email/name only) — the feedback submitter."
   [_model k feedbacks]
@@ -22,3 +19,8 @@
    feedbacks k
    #(metabot.db/user-summaries-by-id (keep :user_id feedbacks))
    :user_id {:default nil}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotFeedback [_model]
+  {:skip? false})

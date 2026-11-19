@@ -10,8 +10,10 @@
 
 (derive :model/AnalysisFindingStatus :metabase/model)
 
-(defmethod app-db-copy/spec :model/AnalysisFindingStatus [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/AnalysisFindingStatus
   {:entity_type mi/transform-keyword})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFindingStatus [_model]
+  {:skip? true})

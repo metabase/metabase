@@ -21,9 +21,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/StoredResultUse [_model]
-  {:skip? true})
-
 (t2/define-before-insert :model/StoredResultUse
   [row]
   (when (= (some? (:card_id row)) (some? (:exploration_id row)))
@@ -61,3 +58,8 @@
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]
       (cached-result/assert-can-view-cached-result! snapshot))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResultUse [_model]
+  {:skip? true})

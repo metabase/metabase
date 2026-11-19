@@ -23,9 +23,6 @@
 
 (derive :model/RemoteSyncTask :metabase/model)
 
-(defmethod app-db-copy/spec :model/RemoteSyncTask [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/RemoteSyncTask
   {:conflicts mi/transform-json
    :outcome   mi/transform-json})
@@ -204,3 +201,8 @@
                           (and (cancelled? task) (some? (:ended_at task))) :cancelled
                           (timed-out? task) :timed-out
                           :else :running))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/RemoteSyncTask [_model]
+  {:skip? true})

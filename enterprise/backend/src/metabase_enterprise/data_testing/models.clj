@@ -33,20 +33,6 @@
   (derive :hook/events)
   (derive ::saved-test))
 
-(defmethod events/spec :model/TransformTest
-  [_model]
-  {:create :event/transform-test-create
-   :update :event/transform-test-update
-   :delete :event/transform-test-delete})
-
-(defmethod audit/spec :model/TransformTest [_model]
-  {:track          [:transform_id :name :description]
-   :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]})
-
-(defmethod app-db-copy/spec :model/TransformTest [_model]
-  {:skip? false})
-
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
   "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
   way out."
@@ -230,13 +216,16 @@
   (check-revert-available)
   (update-transform-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revisions/spec :model/TransformTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-transform-test!})
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod events/spec :model/TransformTest
+  [_model]
+  {:create :event/transform-test-create
+   :update :event/transform-test-update
+   :delete :event/transform-test-delete})
+
+(defmethod app-db-copy/spec :model/TransformTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformTest [_]
   {:schema              ::data-testing.schema/external-transform-test
@@ -250,3 +239,14 @@
   [_model]
   {:synced-items         data-testing.db/synced-transform-test-items
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
+
+(defmethod revisions/spec :model/TransformTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-transform-test!})
+
+(defmethod audit/spec :model/TransformTest [_model]
+  {:track          [:transform_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

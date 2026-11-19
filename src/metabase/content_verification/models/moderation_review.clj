@@ -40,15 +40,6 @@
   (derive :hook/events)
   (derive :search/indexed))
 
-(defmethod events/spec :model/ModerationReview
-  [_model]
-  {:create :event/moderation-review-create
-   :update :event/moderation-review-update
-   :delete :event/moderation-review-delete})
-
-(defmethod app-db-copy/spec :model/ModerationReview [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ModerationReview
   {:moderated_item_type mi/transform-keyword})
 
@@ -115,3 +106,14 @@
     [:status              {:optional true} Statuses]
     [:text                {:optional true} [:maybe :string]]]]
   (content-verification.db/insert-moderation-review! params))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/ModerationReview
+  [_model]
+  {:create :event/moderation-review-create
+   :update :event/moderation-review-update
+   :delete :event/moderation-review-delete})
+
+(defmethod app-db-copy/spec :model/ModerationReview [_model]
+  {:skip? false})

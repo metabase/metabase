@@ -8,5 +8,7 @@
 
 (derive :model/QueryField :metabase/model)
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/QueryField [_model]
   {:skip? true})

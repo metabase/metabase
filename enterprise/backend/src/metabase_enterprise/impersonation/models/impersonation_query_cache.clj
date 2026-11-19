@@ -16,9 +16,6 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/ImpersonationQueryCache [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/ImpersonationQueryCache
   {:input_engine mi/transform-keyword
    :result       mi/transform-keyword})
@@ -37,3 +34,8 @@
   (let [changes (t2/changes row)]
     (cond-> row
       (contains? changes :input_query) (assoc :input_query_hash (query-hash (:input_query changes))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ImpersonationQueryCache [_model]
+  {:skip? true})

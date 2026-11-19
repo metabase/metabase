@@ -18,10 +18,6 @@
 
 (methodical/defmethod t2/table-name :model/DataPermissions [_model] :data_permissions)
 
-(defmethod app-db-copy/spec :model/DataPermissions [_model]
-  {:skip?     false
-   :transform permissions.app-db-copy/transform-data-permissions})
-
 (t2/deftransforms :model/DataPermissions
   {:perm_type  mi/transform-keyword
    :perm-type  mi/transform-keyword
@@ -81,3 +77,9 @@
 (t2/define-before-update :model/DataPermissions
   [_permission]
   (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataPermissions [_model]
+  {:skip?     false
+   :transform permissions.app-db-copy/transform-data-permissions})

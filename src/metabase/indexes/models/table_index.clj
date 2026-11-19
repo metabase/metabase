@@ -26,9 +26,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/TableIndex [_model]
-  {:skip? true})
-
 (def ^:private transform-structured
   "JSON in/out for `:structured`, re-keywordizing enum-valued fields (the `fixes`) and validating against the schema
   on both read and write."
@@ -149,6 +146,11 @@
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
 ;; column names (no references), so it copies verbatim. `:created_by` is skipped: the user may
 ;; not resolve on import.
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableIndex [_model]
+  {:skip? true})
 
 (defmethod serialization/spec :model/TableIndex [_]
   {:schema    ::schema/external-table-index

@@ -153,45 +153,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Card [_model]
-  {:names [:card :dataset :metric]})
-
-(defmethod events/spec :model/Card
-  [_model]
-  {:create :event/card-create
-   :update :event/card-update
-   :delete :event/card-delete})
-
-(defmethod audit/spec :model/Card [_model]
-  {:track          [:name :description :database_id :table_id]
-   :track-redacted [:archived :archived_directly :cache_ttl :card_schema :collection_id :creator_id :dashboard_id
-                    :dataset_query :dataset_query_metrics_v2_migration_backup :dimension_mappings :dimensions :display
-                    :document_id :embedding_params :embedding_type :enable_embedding :initially_published_at
-                    :legacy_query :made_public_by_id :metabase_version :metabot_chart_id :metabot_conversation_id
-                    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :query_type :result_metadata
-                    :source_card_id :type :visualization_settings]
-   :skip           [:cache_invalidated_at :collection_position :entity_id :last_used_at :view_count]
-   :details        queries.audit/details
-   :same?          {:result_metadata queries.revisions/same-result-metadata?}
-   :topics         {:create :card-create
-                    :update queries.audit/update-topic
-                    :delete :card-delete}
-   :moments        [{:topic :card-public-link-created, :when queries.audit/public-link-created?}
-                    {:topic :card-public-link-deleted, :when queries.audit/public-link-deleted?}]})
-
-(defmethod change-log/spec :model/Card [_model]
-  {:track [:name :description :display :dataset_query :visualization_settings :creator_id :database_id :table_id
-           :query_type :archived :collection_id :public_uuid :made_public_by_id :enable_embedding :embedding_params
-           :cache_ttl :result_metadata :collection_position :entity_id :parameters :parameter_mappings
-           :metabase_version :type :initially_published_at :archived_directly
-           :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id :card_schema :document_id
-           :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings :metabot_conversation_id
-           :metabot_chart_id]
-   :skip  [:last_used_at :view_count :cache_invalidated_at]})
-
-(defmethod app-db-copy/spec :model/Card [_model]
-  {:skip? false})
-
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
   is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
@@ -1657,21 +1618,6 @@
                      {:id user-id})
     snapshot))
 
-(defmethod revisions/spec :model/Card [_model]
-  {:track         [:name :description :display :type :dataset_query :visualization_settings :parameters
-                   :parameter_mappings :cache_ttl :result_metadata :card_schema :collection_id :dashboard_id
-                   :database_id :table_id :query_type :source_card_id :archived :archived_directly
-                   :dataset_query_metrics_v2_migration_backup]
-   :skip          [:cache_invalidated_at :collection_position :creator_id :dimension_mappings :dimensions
-                   :document_id :embedding_params :embedding_type :enable_embedding :entity_id
-                   :initially_published_at :last_used_at :legacy_query :made_public_by_id :metabase_version
-                   :metabot_chart_id :metabot_conversation_id :public_uuid :public_uuid_prefix :view_count]
-   :same?         {:card_schema     queries.revisions/always-same?
-                   :result_metadata queries.revisions/same-result-metadata?}
-   :snapshot      queries.revisions/snapshot-metadata
-   :defaults      {:card_schema starting-card-schema-version}
-   :before-revert before-revert})
-
 (mu/defn- mbql-clause->identifier-for-parameter-updates
   "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
   but with an empty options clause."
@@ -1872,6 +1818,27 @@
   [_]
   (conj collection/default-allowed-namespaces collection/data-apps-ns))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Card
+  [_model]
+  {:create :event/card-create
+   :update :event/card-update
+   :delete :event/card-delete})
+
+(defmethod app-db-copy/spec :model/Card [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Card [_model]
+  {:track [:name :description :display :dataset_query :visualization_settings :creator_id :database_id :table_id
+           :query_type :archived :collection_id :public_uuid :made_public_by_id :enable_embedding :embedding_params
+           :cache_ttl :result_metadata :collection_position :entity_id :parameters :parameter_mappings
+           :metabase_version :type :initially_published_at :archived_directly
+           :dataset_query_metrics_v2_migration_backup :source_card_id :dashboard_id :card_schema :document_id
+           :legacy_query :embedding_type :public_uuid_prefix :dimensions :dimension_mappings :metabot_conversation_id
+           :metabot_chart_id]
+   :skip  [:last_used_at :view_count :cache_invalidated_at]})
+
 (defmethod serialization/spec :model/Card [_]
   {:schema              ::queries.schema/external-card
    :copy                [:archived :archived_directly :collection_position :description :display
@@ -1901,27 +1868,48 @@
    :export-dependencies queries.serialization/export-dependencies
    :before-load         queries.serialization/before-load})
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
+(defmethod remote-sync/spec :model/Card
+  [_model]
+  {:synced-items         queries.db/synced-card-items
+   :synced-filter-clause queries.db/synced-cards-clause})
+
+(defmethod revisions/spec :model/Card [_model]
+  {:track         [:name :description :display :type :dataset_query :visualization_settings :parameters
+                   :parameter_mappings :cache_ttl :result_metadata :card_schema :collection_id :dashboard_id
+                   :database_id :table_id :query_type :source_card_id :archived :archived_directly
+                   :dataset_query_metrics_v2_migration_backup]
+   :skip          [:cache_invalidated_at :collection_position :creator_id :dimension_mappings :dimensions
+                   :document_id :embedding_params :embedding_type :enable_embedding :entity_id
+                   :initially_published_at :last_used_at :legacy_query :made_public_by_id :metabase_version
+                   :metabot_chart_id :metabot_conversation_id :public_uuid :public_uuid_prefix :view_count]
+   :same?         {:card_schema     queries.revisions/always-same?
+                   :result_metadata queries.revisions/same-result-metadata?}
+   :snapshot      queries.revisions/snapshot-metadata
+   :defaults      {:card_schema starting-card-schema-version}
+   :before-revert before-revert})
+
+(defmethod audit/spec :model/Card [_model]
+  {:track          [:name :description :database_id :table_id]
+   :track-redacted [:archived :archived_directly :cache_ttl :card_schema :collection_id :creator_id :dashboard_id
+                    :dataset_query :dataset_query_metrics_v2_migration_backup :dimension_mappings :dimensions :display
+                    :document_id :embedding_params :embedding_type :enable_embedding :initially_published_at
+                    :legacy_query :made_public_by_id :metabase_version :metabot_chart_id :metabot_conversation_id
+                    :parameter_mappings :parameters :public_uuid :public_uuid_prefix :query_type :result_metadata
+                    :source_card_id :type :visualization_settings]
+   :skip           [:cache_invalidated_at :collection_position :entity_id :last_used_at :view_count]
+   :details        queries.audit/details
+   :same?          {:result_metadata queries.revisions/same-result-metadata?}
+   :topics         {:create :card-create
+                    :update queries.audit/update-topic
+                    :delete :card-delete}
+   :moments        [{:topic :card-public-link-created, :when queries.audit/public-link-created?}
+                    {:topic :card-public-link-deleted, :when queries.audit/public-link-deleted?}]})
 
 (defmethod search/spec :model/Card
   [_model]
   {"card"    (queries.search/card-search-spec "question")
    "dataset" (queries.search/card-search-spec "model")
    "metric"  (queries.search/card-search-spec "metric")})
-
-(defmethod staleness/spec :model/Card [_model]
-  {:candidates queries.db/stale-card-candidates
-   :load       queries.staleness/load-items
-   :render     queries.staleness/render})
-
-(defmethod xrays/spec :model/Card [_model]
-  {:related    queries.xrays/related
-   :definition queries.xrays/definition})
-
-(defmethod remote-sync/spec :model/Card
-  [_model]
-  {:synced-items         queries.db/synced-card-items
-   :synced-filter-clause queries.db/synced-cards-clause})
 
 (defmethod dependencies/spec :model/Card [_model]
   {:type  :card
@@ -1962,3 +1950,15 @@
    "metric"  {:load   queries.db/recent-view-cards
               :render queries.recent-views/render-metric
               :type   "metric"}})
+
+(defmethod staleness/spec :model/Card [_model]
+  {:candidates queries.db/stale-card-candidates
+   :load       queries.staleness/load-items
+   :render     queries.staleness/render})
+
+(defmethod eid-translation/spec :model/Card [_model]
+  {:names [:card :dataset :metric]})
+
+(defmethod xrays/spec :model/Card [_model]
+  {:related    queries.xrays/related
+   :definition queries.xrays/definition})

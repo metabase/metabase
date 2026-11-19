@@ -54,22 +54,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Exploration [_model]
-  {:names [:exploration]})
-
-(defmethod events/spec :model/Exploration
-  [_model]
-  {:create :event/exploration-create
-   :update :event/exploration-update
-   :delete :event/exploration-delete})
-
-(defmethod revisions/spec :model/Exploration [_model]
-  {:track [:name :description :collection_id :archived]
-   :skip  [:archived_directly :collection_position :creator_id :entity_id]})
-
-(defmethod app-db-copy/spec :model/Exploration [_model]
-  {:skip? false})
-
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]
   (doseq [{:keys [id]} rows]
@@ -150,7 +134,20 @@
   [_model _k]
   nil)
 
-;;; ----------------------------------------------- Search ----------------------------------------------------------
+;;; ----------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/Exploration
+  [_model]
+  {:create :event/exploration-create
+   :update :event/exploration-update
+   :delete :event/exploration-delete})
+
+(defmethod app-db-copy/spec :model/Exploration [_model]
+  {:skip? false})
+
+(defmethod revisions/spec :model/Exploration [_model]
+  {:track [:name :description :collection_id :archived]
+   :skip  [:archived_directly :collection_position :creator_id :entity_id]})
 
 (defmethod search/spec :model/Exploration
   [_model]
@@ -175,3 +172,6 @@
 (defmethod collection-items/spec :model/Exploration [_model]
   {"exploration" {:items   explorations.db/collection-exploration-items
                   :hydrate explorations.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Exploration [_model]
+  {:names [:exploration]})

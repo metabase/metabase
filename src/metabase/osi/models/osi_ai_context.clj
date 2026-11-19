@@ -31,9 +31,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/OsiAiContext [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/OsiAiContext
   ;; ai_context is keywordized on read so reconcile reads (:instructions ai_context) etc. directly. On write
   ;; the string shorthand is migrated to {:instructions s}, so storage is always the object form and every
@@ -70,7 +67,10 @@
 (t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OsiAiContext [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/OsiAiContext [_]
   {:schema              ::osi.schema/external-osi-ai-context

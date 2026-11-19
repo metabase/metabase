@@ -20,9 +20,6 @@
 (doto :model/UserParameterValue
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/UserParameterValue [_model]
-  {:skip? false})
-
 (defn- json-out
   "A version of `metabase.models.interface/json-out` that does not log a parse error.
   This is otherwise the same. It returns the string as expected in this case."
@@ -99,3 +96,8 @@
      :id
      {:default {}})
     dashboards))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/UserParameterValue [_model]
+  {:skip? false})

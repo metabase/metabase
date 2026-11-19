@@ -25,9 +25,6 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/SsoRelayState [_model]
-  {:skip? true})
-
 (def ^:private key-prefix
   "Prefix for generated RelayState keys. The trailing `_` is not part of the Base64 alphabet, so a stored
   key can never be mistaken for a Base64-encoded continue URL (the legacy, non-embedding RelayState format)."
@@ -93,3 +90,8 @@
   "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
   []
   (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SsoRelayState [_model]
+  {:skip? true})

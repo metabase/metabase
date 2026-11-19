@@ -34,9 +34,6 @@
 
 (derive :model/Dependency :metabase/model)
 
-(defmethod app-db-copy/spec :model/Dependency [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/Dependency
   {:from_entity_type mi/transform-keyword
    :to_entity_type mi/transform-keyword})
@@ -284,3 +281,8 @@
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})

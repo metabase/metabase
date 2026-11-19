@@ -26,18 +26,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-(defmethod eid-translation/spec :model/Timeline [_model]
-  {:names [:timeline]})
-
-(defmethod events/spec :model/Timeline
-  [_model]
-  {:create :event/timeline-create
-   :update :event/timeline-update
-   :delete :event/timeline-delete})
-
-(defmethod app-db-copy/spec :model/Timeline [_model]
-  {:skip? false})
-
 (t2/define-after-select :model/Timeline
   [timeline]
   ;; We used to have a "balloons" icon but we removed it.
@@ -127,6 +115,17 @@
             #{[:model/Collection collection_id]}))
         timelines))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Timeline
+  [_model]
+  {:create :event/timeline-create
+   :update :event/timeline-update
+   :delete :event/timeline-delete})
+
+(defmethod app-db-copy/spec :model/Timeline [_model]
+  {:skip? false})
+
 (defmethod serialization/spec :model/Timeline [_]
   {:schema              ::timeline.schema/external-timeline
    :copy                [:archived :archived_directly :default :description :entity_id :icon :name]
@@ -137,8 +136,6 @@
    :import-dependencies import-dependencies
    :export-dependencies export-dependencies})
 
-;;; ------------------------------------------------- Remote sync ----------------------------------------------------
-
 (defmethod remote-sync/spec :model/Timeline
   [_model]
   {:synced-items         timeline.db/synced-timeline-items
@@ -148,3 +145,6 @@
   {"timeline" {:rank    8
                :items   timeline.db/collection-timeline-items
                :hydrate timeline.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Timeline [_model]
+  {:names [:timeline]})

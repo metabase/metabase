@@ -26,12 +26,6 @@
 (methodical/defmethod t2/table-name :model/Query [_model] :query)
 (methodical/defmethod t2.model/primary-keys :model/Query [_model] [:query_hash])
 
-(defmethod app-db-copy/spec :model/Query [_model]
-  {:skip? true})
-
-(defmethod xrays/spec :model/Query [_model]
-  {:related queries.xrays/related-query})
-
 (t2/deftransforms :model/Query
   {:query mi/transform-json})
 
@@ -194,3 +188,11 @@
                           (and (lib/mbql-stage? query stage-number)
                                (not (lib/has-clauses? query stage-number))))
                         (range 0 (count (:stages query)))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Query [_model]
+  {:skip? true})
+
+(defmethod xrays/spec :model/Query [_model]
+  {:related queries.xrays/related-query})

@@ -29,9 +29,6 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/TableRemapping [_model]
-  {:skip? false})
-
 (def ^:private sentinel-columns
   "Columns that use `\"\"` as the empty-slot sentinel in storage."
   #{:from_db :from_schema :to_db :to_schema})
@@ -101,3 +98,8 @@
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
 (t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TableRemapping [_model]
+  {:skip? false})

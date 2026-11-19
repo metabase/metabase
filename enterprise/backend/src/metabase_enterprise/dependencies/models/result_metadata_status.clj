@@ -10,9 +10,6 @@
 
 (derive :model/ResultMetadataStatus :metabase/model)
 
-(defmethod app-db-copy/spec :model/ResultMetadataStatus [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/ResultMetadataStatus
   {:entity_type mi/transform-keyword})
 
@@ -23,3 +20,8 @@
   Version history:
   - 1: Initial version"
   1)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ResultMetadataStatus [_model]
+  {:skip? true})

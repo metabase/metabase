@@ -12,9 +12,11 @@
 (doto :model/OAuthAccessToken
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/OAuthAccessToken [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/OAuthAccessToken
   {:scope    mi/transform-json
    :resource mi/transform-json})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthAccessToken [_model]
+  {:skip? false})

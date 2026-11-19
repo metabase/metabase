@@ -17,9 +17,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/MetabotPrompt [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/MetabotPrompt
   {:model mi/transform-keyword})
 
@@ -51,6 +48,11 @@
   (mapv (fn [prompt]
           #{[:model/Card (:card_id prompt)]})
         entities))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotPrompt [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/MetabotPrompt [_]
   {:schema              ::metabot.schema/external-metabot-prompt

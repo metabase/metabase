@@ -17,9 +17,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/Workspace [_model]
-  {:skip? false})
-
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;
 ;;; Workspaces are superuser-only: read, write, and create all require admin.
@@ -153,3 +150,8 @@
           (ws.db/insert-workspace-databases!
            (mapv #(with-workspace-database-defaults % id) to-insert)))))
     (get-workspace id)))
+
+;;; ----------------------------------------------- Specs -----------------------------------------------
+
+(defmethod app-db-copy/spec :model/Workspace [_model]
+  {:skip? false})

@@ -17,12 +17,14 @@
   (derive ::mi/create-policy.superuser)
   (derive :hook/created-at-timestamped?))
 
-(defmethod app-db-copy/spec :model/EmbeddingSdkReact18Host [_model]
-  {:skip? true})
-
 ;; The middleware normalizes the host before it saves it; this rejects a new row whose host is not normalized.
 (t2/define-before-insert :model/EmbeddingSdkReact18Host
   [{:keys [host], :as row}]
   (when-not (mr/validate ::embedding.schema/sdk-react-18-host.host host)
     (throw (ex-info (format "Invalid React 18 SDK host: %s" (pr-str host)) {:host host})))
   row)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/EmbeddingSdkReact18Host [_model]
+  {:skip? true})

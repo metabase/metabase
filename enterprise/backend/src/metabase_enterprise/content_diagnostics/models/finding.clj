@@ -15,9 +15,6 @@
 (doto :model/ContentDiagnosticsFinding
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/ContentDiagnosticsFinding [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/ContentDiagnosticsFinding
   {:entity_type  mi/transform-keyword
    :finding_type mi/transform-keyword
@@ -79,3 +76,8 @@
                                            [:in :id (vec eligible)]
                                            [:= :invalidated_at nil]]))
       eligible)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ContentDiagnosticsFinding [_model]
+  {:skip? false})

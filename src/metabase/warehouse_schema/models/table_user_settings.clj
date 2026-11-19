@@ -20,7 +20,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
@@ -42,15 +42,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events))
-
-(defmethod events/spec :model/TableUserSettings
-  [_model]
-  {:create :event/table-user-settings-create
-   :update :event/table-user-settings-update
-   :delete :event/table-user-settings-delete})
-
-(defmethod app-db-copy/spec :model/TableUserSettings [_model]
-  {:skip? false})
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -186,7 +177,16 @@
   (doseq [batch (partition-all 1000 table-ids)]
     (warehouse-schema.db/delete-table-user-settings! batch)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/TableUserSettings
+  [_model]
+  {:create :event/table-user-settings-create
+   :update :event/table-user-settings-update
+   :delete :event/table-user-settings-delete})
+
+(defmethod app-db-copy/spec :model/TableUserSettings [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema              ::warehouse-schema.schema/external-table-user-settings
@@ -207,8 +207,6 @@
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
    :after-load          warehouse-schema.serialization/table-user-settings-after-load
    :rows-by-refs        serialization/table-user-settings-rows-by-refs})
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/TableUserSettings
   [_model]

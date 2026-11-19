@@ -49,9 +49,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/UserKeyValue [_model]
-  {:skip? true})
-
 (mu/defn put!
   "Upserts a KV-pair"
   [user-id :- :int
@@ -103,3 +100,8 @@
                                  (mtx/default-value-transformer)
                                  {:name :database}))]
       (into {} (map (juxt :key :value) parsed-kvs)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/UserKeyValue [_model]
+  {:skip? true})

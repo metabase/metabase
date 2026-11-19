@@ -37,7 +37,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; -------------------------------------------------- Model setup ---------------------------------------------------
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Sandbox [_model] :sandboxes)
 
@@ -47,16 +47,6 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
-
-(defmethod events/spec :model/Sandbox
-  [_model]
-  {:create :event/sandbox-create
-   :update :event/sandbox-update
-   :delete :event/sandbox-delete})
-
-(defmethod app-db-copy/spec :model/Sandbox [_model]
-  {:skip?    false
-   :sequence "group_table_access_policy_id_seq"})
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -331,6 +321,18 @@
            (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
          (sandbox.db/sandbox id))
        (sandbox.db/insert-sandbox! sandbox)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Sandbox
+  [_model]
+  {:create :event/sandbox-create
+   :update :event/sandbox-update
+   :delete :event/sandbox-delete})
+
+(defmethod app-db-copy/spec :model/Sandbox [_model]
+  {:skip?    false
+   :sequence "group_table_access_policy_id_seq"})
 
 (defmethod dependencies/spec :model/Sandbox [_model]
   {:type  :sandbox

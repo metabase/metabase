@@ -12,9 +12,11 @@
 (doto :model/OAuthAuthorizationCode
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/OAuthAuthorizationCode [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/OAuthAuthorizationCode
   {:scope    mi/transform-json
    :resource mi/transform-json})
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthAuthorizationCode [_model]
+  {:skip? false})

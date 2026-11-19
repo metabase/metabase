@@ -22,9 +22,6 @@
 
 (derive :model/PersistedInfo :metabase/model)
 
-(defmethod app-db-copy/spec :model/PersistedInfo [_model]
-  {:skip? false})
-
 (t2/define-before-insert :model/PersistedInfo
   [persisted-info]
   (merge {:refresh_begin (mi/now), :state_change_at (mi/now)} persisted-info))
@@ -200,3 +197,8 @@
   [database-id]
   (model-persistence.db/ready-deletable-persisted-infos! database-id (default-persistent-info-state))
   (ready-unpersisted-models! database-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/PersistedInfo [_model]
+  {:skip? false})

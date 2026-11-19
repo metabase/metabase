@@ -16,9 +16,6 @@
 
 (methodical/defmethod t2/table-name :model/StoredResult [_model] :stored_result)
 
-(defmethod app-db-copy/spec :model/StoredResult [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/StoredResult
   {:result_data         (mi/transform-secret-value "stored_result.result_data")
    :dataset_query       mi/transform-json
@@ -28,3 +25,8 @@
 (doto :model/StoredResult
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResult [_model]
+  {:skip? true})

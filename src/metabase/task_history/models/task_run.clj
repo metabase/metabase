@@ -23,9 +23,6 @@
 (doto :model/TaskRun
   (derive :metabase/model))
 
-(defmethod app-db-copy/spec :model/TaskRun [_model]
-  {:skip? true})
-
 ;;; Permissions to read or write TaskRun. Same as TaskHistory - requires superusers or monitoring permission.
 (defn- can-access?
   "Whether the current user may read and write TaskRun rows: a superuser, or, with advanced permissions, a user with the
@@ -208,3 +205,8 @@
   {:style/indent 1}
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskRun [_model]
+  {:skip? true})

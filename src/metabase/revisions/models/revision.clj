@@ -198,9 +198,6 @@
 
 (derive :model/Revision :metabase/model)
 
-(defmethod app-db-copy/spec :model/Revision [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 
@@ -387,3 +384,8 @@
         (if new-revision
           (add-revision-details entity new-revision last-revision)
           last-revision)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Revision [_model]
+  {:skip? false})

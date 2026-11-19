@@ -60,38 +60,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/Pulse [_model]
-  {:names [:pulse]})
-
-(defmethod events/spec :model/Pulse
-  [_model]
-  {:create :event/pulse-create
-   :update :event/pulse-update
-   :delete :event/pulse-delete})
-
-(defmethod audit/spec :model/Pulse [_model]
-  {:track          []
-   :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
-                    :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
-   :skip           [:collection_position :entity_id]
-   :details        pulse.audit/details
-   :state          pulse.audit/state
-   :topics         {:create pulse.audit/create-topic
-                    :update :subscription-update}})
-
-(defmethod change-log/spec :model/Pulse [_model]
-  {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id
-           :collection_position :archived :dashboard_id :parameters :entity_id :disable_links :archived_directly]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/Pulse [_model]
-  {:skip? false})
-
-(defmethod collection-items/spec :model/Pulse [_model]
-  {"pulse" {:rank    2
-            :items   pulse.db/collection-pulse-items
-            :hydrate pulse.collection-items/hydrate}})
-
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
   {:in  (comp mi/json-in #(lib/normalize ::parameters.schema/parameters-with-optional-types %))
@@ -829,3 +797,37 @@
   (events/with-batched-events
     (update-notification! (alert->notification alert)))
   (retrieve-alert (u/the-id alert)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Pulse
+  [_model]
+  {:create :event/pulse-create
+   :update :event/pulse-update
+   :delete :event/pulse-delete})
+
+(defmethod app-db-copy/spec :model/Pulse [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Pulse [_model]
+  {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id
+           :collection_position :archived :dashboard_id :parameters :entity_id :disable_links :archived_directly]
+   :skip  []})
+
+(defmethod audit/spec :model/Pulse [_model]
+  {:track          []
+   :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
+                    :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
+   :skip           [:collection_position :entity_id]
+   :details        pulse.audit/details
+   :state          pulse.audit/state
+   :topics         {:create pulse.audit/create-topic
+                    :update :subscription-update}})
+
+(defmethod collection-items/spec :model/Pulse [_model]
+  {"pulse" {:rank    2
+            :items   pulse.db/collection-pulse-items
+            :hydrate pulse.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Pulse [_model]
+  {:names [:pulse]})

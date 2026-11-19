@@ -10,9 +10,6 @@
 
 (derive :model/DataTestRun :metabase/model)
 
-(defmethod app-db-copy/spec :model/DataTestRun [_model]
-  {:skip? false})
-
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword
    :test_type mi/transform-keyword})
@@ -24,3 +21,8 @@
         id->user (when (seq user-ids) (data-testing.db/users-by-id user-ids))]
     (for [run runs]
       (assoc run :initiated_by_user (get id->user (:initiated_by run))))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataTestRun [_model]
+  {:skip? false})

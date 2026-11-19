@@ -14,9 +14,6 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(defmethod app-db-copy/spec :model/MetabotInstanceLimit [_model]
-  {:skip? false})
-
 (defn instance-limit
   "Returns the limit for a given tenant, or the instance-wide limit when `tenant-id` is nil.
    Returns nil if no limit is set."
@@ -38,3 +35,8 @@
   "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
   []
   (metabot.db/tenant-limits))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotInstanceLimit [_model]
+  {:skip? false})

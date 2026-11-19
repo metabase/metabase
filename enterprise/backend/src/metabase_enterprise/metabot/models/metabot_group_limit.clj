@@ -14,9 +14,6 @@
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser))
 
-(defmethod app-db-copy/spec :model/MetabotGroupLimit [_model]
-  {:skip? false})
-
 (defn all-group-limits
   "Returns all group-level limits, ordered by group_id."
   []
@@ -44,3 +41,8 @@
       (metabot.db/update-group-limit! (:id existing) max-usage)
       (metabot.db/insert-group-limit! {:group_id group-id :max_usage max-usage})))
   (group-limit group-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotGroupLimit [_model]
+  {:skip? false})

@@ -28,20 +28,6 @@
   (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
-(defmethod events/spec :model/SegmentTest
-  [_model]
-  {:create :event/segment-test-create
-   :update :event/segment-test-update
-   :delete :event/segment-test-delete})
-
-(defmethod audit/spec :model/SegmentTest [_model]
-  {:track          [:segment_id :name :description]
-   :track-redacted [:creator_id :expectations :inputs]
-   :skip           [:entity_id]})
-
-(defmethod app-db-copy/spec :model/SegmentTest [_model]
-  {:skip? false})
-
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
   [_original-model _k]
   :model/Segment)
@@ -142,13 +128,16 @@
   (data-testing.models/check-revert-available)
   (update-segment-test! id (select-keys snapshot revision-columns)))
 
-(defmethod revisions/spec :model/SegmentTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-segment-test!})
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
-;;; ------------------------------------------------- Serialization ------------------------------------------------
+(defmethod events/spec :model/SegmentTest
+  [_model]
+  {:create :event/segment-test-create
+   :update :event/segment-test-update
+   :delete :event/segment-test-delete})
+
+(defmethod app-db-copy/spec :model/SegmentTest [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/SegmentTest [_]
   {:schema              ::data-testing.schema/external-segment-test
@@ -158,9 +147,18 @@
    :storage-paths       data-testing.serialization/segment-test-storage-paths
    :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
-;;; -------------------------------------------------- Remote sync -------------------------------------------------
-
 (defmethod remote-sync/spec :model/SegmentTest
   [_model]
   {:synced-items         data-testing.db/synced-segment-test-items
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
+
+(defmethod revisions/spec :model/SegmentTest [_model]
+  {:track     revision-columns
+   :skip      [:creator_id :entity_id]
+   :authorize :snapshot
+   :revert!   revert-segment-test!})
+
+(defmethod audit/spec :model/SegmentTest [_model]
+  {:track          [:segment_id :name :description]
+   :track-redacted [:creator_id :expectations :inputs]
+   :skip           [:entity_id]})

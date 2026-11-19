@@ -19,15 +19,6 @@
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
   (derive :model/PythonLibrary trait))
 
-(defmethod events/spec :model/PythonLibrary
-  [_model]
-  {:create :event/python-library-create
-   :update :event/python-library-update
-   :delete :event/python-library-delete})
-
-(defmethod app-db-copy/spec :model/PythonLibrary [_model]
-  {:skip? true})
-
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- normalize-path
@@ -92,13 +83,22 @@
           [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
         entities))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PythonLibrary
+  [_model]
+  {:create :event/python-library-create
+   :update :event/python-library-update
+   :delete :event/python-library-delete})
+
+(defmethod app-db-copy/spec :model/PythonLibrary [_model]
+  {:skip? true})
+
 (defmethod serialization/spec :model/PythonLibrary [_]
   {:schema        ::transforms-python.schema/external-python-library
    :copy          [:path :source :entity_id]
    :skip          [:is_default]
    :storage-paths storage-paths})
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
 
 (defmethod remote-sync/spec :model/PythonLibrary
   [_model]

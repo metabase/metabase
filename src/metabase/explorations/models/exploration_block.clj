@@ -25,9 +25,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
-  {:skip? false})
-
 (defn- keywordize-dim-types
   "The dim snapshot stores `effective-type`/`semantic-type` as JSON strings (`\"type/Date\"`),
    but every reader (the variant planner, the LLM context, `dim-type-isa?`) needs them as
@@ -104,3 +101,8 @@
   none of those are present."
   [dim]
   (or (:display-name dim) (:dimension-id dim) (:name dim)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
+  {:skip? false})

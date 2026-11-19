@@ -31,9 +31,6 @@
 
 (derive :model/TransformRun :metabase/model)
 
-(defmethod app-db-copy/spec :model/TransformRun [_model]
-  {:skip? false})
-
 (t2/define-before-update :model/TransformRun
   [run]
   (cond-> run
@@ -339,3 +336,8 @@
      :limit  limit
      :offset offset
      :total  (transforms.db/paged-run-count filters)}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformRun [_model]
+  {:skip? false})

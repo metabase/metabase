@@ -16,9 +16,6 @@
 
 (methodical/defmethod t2/table-name :model/Undo [_model] :data_edit_undo_chain)
 
-(defmethod app-db-copy/spec :model/Undo [_model]
-  {:skip? true})
-
 (t2/deftransforms :model/Undo
   {:row_pk     mi/transform-json
    :raw_before mi/transform-json
@@ -214,3 +211,8 @@
   "Rollback the given user's last change to the given table."
   [context user-id scope]
   (undo*! :redo context user-id scope))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Undo [_model]
+  {:skip? true})

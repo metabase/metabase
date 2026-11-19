@@ -16,10 +16,10 @@
   (derive :metabase/model)
   (derive :hook/entity-id))
 
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
 (defmethod app-db-copy/spec :model/TransformJobTransformTag [_model]
   {:skip? false})
-
-;;; ------------------------------------------------ Serialization -------------------------------------------------
 
 (defmethod serialization/spec :model/TransformJobTransformTag [_]
   {:schema    ::transforms.schema/external-transform-job-transform-tag

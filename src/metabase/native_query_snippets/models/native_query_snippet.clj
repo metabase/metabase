@@ -36,23 +36,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
-  {:names [:snippet]})
-
-(defmethod events/spec :model/NativeQuerySnippet
-  [_model]
-  {:create :event/snippet-create
-   :update :event/snippet-update
-   :delete :event/snippet-delete})
-
-(defmethod change-log/spec :model/NativeQuerySnippet [_model]
-  {:track [:name :description :content :creator_id :archived :collection_id :entity_id :template_tags
-           :archived_directly]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/NativeQuerySnippet [_model]
-  {:skip? false})
-
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
   {:template_tags {:in mi/json-in
@@ -215,7 +198,21 @@
   [_model snippets changes]
   (sandboxes-allow-snippets-update? snippets changes))
 
-;;; ---------------------------------------------------- Serialization ----------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/NativeQuerySnippet
+  [_model]
+  {:create :event/snippet-create
+   :update :event/snippet-update
+   :delete :event/snippet-delete})
+
+(defmethod app-db-copy/spec :model/NativeQuerySnippet [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/NativeQuerySnippet [_model]
+  {:track [:name :description :content :creator_id :archived :collection_id :entity_id :template_tags
+           :archived_directly]
+   :skip  []})
 
 (defmethod serialization/spec :model/NativeQuerySnippet [_]
   {:schema              ::native-query-snippets.schema/external-native-query-snippet
@@ -249,3 +246,6 @@
   {"snippet" {:rank    6
               :items   native-query-snippets.db/collection-snippet-items
               :hydrate native-query-snippets.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/NativeQuerySnippet [_model]
+  {:names [:snippet]})

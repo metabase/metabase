@@ -37,21 +37,6 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod events/spec :model/FieldUserSettings
-  [_model]
-  {:create :event/field-user-settings-create
-   :update :event/field-user-settings-update
-   :delete :event/field-user-settings-delete})
-
-(defmethod change-log/spec :model/FieldUserSettings [_model]
-  {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
-           :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
-           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
-   :skip  []})
-
-(defmethod app-db-copy/spec :model/FieldUserSettings [_model]
-  {:skip? false})
-
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column `effective` writes, unless `effective` sets the flag itself."
   [settings effective]
@@ -161,6 +146,23 @@
   "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (delete-field-user-settings! (vec (warehouse-schema.db/field-ids-with-user-settings-for-table table-id))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/FieldUserSettings
+  [_model]
+  {:create :event/field-user-settings-create
+   :update :event/field-user-settings-update
+   :delete :event/field-user-settings-delete})
+
+(defmethod app-db-copy/spec :model/FieldUserSettings [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/FieldUserSettings [_model]
+  {:track [:field_id :semantic_type :description :display_name :visibility_type :fk_target_field_id :has_field_values
+           :effective_type :coercion_strategy :caveats :points_of_interest :nfc_path :json_unfolding :settings
+           :data_sensitivity :description_set :semantic_type_set :fk_target_field_id_set :custom_position]
+   :skip  []})
 
 (defmethod serialization/spec :model/FieldUserSettings [_]
   {:schema        ::warehouse-schema.schema/external-field-user-settings

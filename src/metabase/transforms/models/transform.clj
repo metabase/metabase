@@ -54,34 +54,6 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
   (derive :model/Transform trait))
 
-(defmethod eid-translation/spec :model/Transform [_model]
-  {:names [:transform]})
-
-(defmethod events/spec :model/Transform
-  [_model]
-  {:create :event/transform-create
-   :update :event/transform-update
-   :delete :event/transform-delete})
-
-(defmethod audit/spec :model/Transform [_model]
-  {:track          [:name :description :target]
-   :track-redacted [:collection_id :creator_id :owner_email :owner_user_id :source :source_database_id :source_type
-                    :target_db_id]
-   :skip           [:entity_id :last_checkpoint_value :table_dependencies :target_table_id]
-   :details        transforms.audit/details
-   :topics         {:create :transform-create
-                    :update :update-transform
-                    :delete :transform-delete}})
-
-(defmethod revisions/spec :model/Transform [_model]
-  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
-               :target :target_db_id]
-   :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
-   :authorize :snapshot})
-
-(defmethod app-db-copy/spec :model/Transform [_model]
-  {:skip? false})
-
 (mu/defn transform-source-out :- ::transforms.schema/transform-source
   "Deserialize a transform source map from JSON storage format, normalized to its schema."
   [m :- [:or :string [:fn map?]]]
@@ -531,7 +503,16 @@
       (assoc transform :table
              (get id->table (:target_table_id transform))))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Transform
+  [_model]
+  {:create :event/transform-create
+   :update :event/transform-update
+   :delete :event/transform-delete})
+
+(defmethod app-db-copy/spec :model/Transform [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Transform [_]
   {:schema              ::transforms.schema/external-transform
@@ -549,13 +530,25 @@
    :import-dependencies transforms.serialization/transform-import-dependencies
    :loaded-entities     transforms.serialization/transform-loaded-entities})
 
-;;; ------------------------------------------------- Remote sync ----------------------------------------------------
-
 (defmethod remote-sync/spec :model/Transform
   [_model]
   {:synced-items transforms.db/synced-transform-items})
 
-;;; ---------------------------------------------------- Search ------------------------------------------------------
+(defmethod revisions/spec :model/Transform [_model]
+  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
+               :target :target_db_id]
+   :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :authorize :snapshot})
+
+(defmethod audit/spec :model/Transform [_model]
+  {:track          [:name :description :target]
+   :track-redacted [:collection_id :creator_id :owner_email :owner_user_id :source :source_database_id :source_type
+                    :target_db_id]
+   :skip           [:entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :details        transforms.audit/details
+   :topics         {:create :transform-create
+                    :update :update-transform
+                    :delete :transform-delete}})
 
 (defmethod search/spec :model/Transform
   [_model]
@@ -575,11 +568,6 @@
     :render-terms {:transform-name :name
                    :transform-id   :id}}})
 
-;;; ------------------------------------------------- Staleness ------------------------------------------------
-
-(defmethod staleness/spec :model/Transform [_model]
-  {:candidates transforms.staleness/stale-transform-candidates})
-
 (defmethod dependencies/spec :model/Transform [_model]
   {:type  :transform
    :items transforms.db/dependency-transform-items
@@ -598,3 +586,9 @@
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})
+
+(defmethod staleness/spec :model/Transform [_model]
+  {:candidates transforms.staleness/stale-transform-candidates})
+
+(defmethod eid-translation/spec :model/Transform [_model]
+  {:names [:transform]})

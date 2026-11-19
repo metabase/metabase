@@ -10,5 +10,7 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
 (defmethod app-db-copy/spec :model/McpQueryHandle [_model]
   {:skip? true})

@@ -53,20 +53,6 @@
   (derive :hook/events)
   (derive :hook/timestamped?))
 
-(defmethod events/spec :model/CustomVizPlugin
-  [_model]
-  {:create :event/custom-viz-plugin-create
-   :update :event/custom-viz-plugin-update
-   :delete :event/custom-viz-plugin-delete})
-
-(defmethod audit/spec :model/CustomVizPlugin [_model]
-  {:track          [:identifier :display_name :status :enabled :bundle_hash]
-   :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
-   :skip           []})
-
-(defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
-  {:skip? false})
-
 (def non-blob-columns
   "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
   [:id :identifier :display_name :icon :status :error_message :enabled
@@ -90,7 +76,16 @@
   [plugin json-generator]
   (next-method (dissoc plugin :bundle) json-generator))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
+
+(defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/CustomVizPlugin [_]
   {:schema        ::custom-viz-plugin.schema/external-custom-viz-plugin
@@ -103,3 +98,8 @@
    :storage-paths custom-viz-plugin.serialization/storage-paths
    :before-load   custom-viz-plugin.serialization/before-load
    :after-load    custom-viz-plugin.serialization/after-load})
+
+(defmethod audit/spec :model/CustomVizPlugin [_model]
+  {:track          [:identifier :display_name :status :enabled :bundle_hash]
+   :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
+   :skip           []})

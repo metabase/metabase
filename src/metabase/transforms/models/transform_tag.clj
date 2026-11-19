@@ -25,15 +25,6 @@
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
-(defmethod events/spec :model/TransformTag
-  [_model]
-  {:create :event/transform-tag-create
-   :update :event/transform-tag-update
-   :delete :event/transform-tag-delete})
-
-(defmethod app-db-copy/spec :model/TransformTag [_model]
-  {:skip? false})
-
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
@@ -123,7 +114,16 @@
     (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
-;;; ------------------------------------------------ Serialization -------------------------------------------------
+;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod events/spec :model/TransformTag
+  [_model]
+  {:create :event/transform-tag-create
+   :update :event/transform-tag-update
+   :delete :event/transform-tag-delete})
+
+(defmethod app-db-copy/spec :model/TransformTag [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TransformTag [_]
   {:schema        ::transforms.schema/external-transform-tag
@@ -131,8 +131,6 @@
    :transform     {:name transforms.serialization/string-transform}
    :before-load   transforms.serialization/transform-tag-before-load
    :storage-paths transforms.serialization/transform-tag-storage-paths})
-
-;;; ------------------------------------------------- Remote sync --------------------------------------------------
 
 (defmethod remote-sync/spec :model/TransformTag
   [_model]
