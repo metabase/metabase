@@ -35,7 +35,7 @@ export function updateSummaryFormula({
       if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
-      // a rename or an edit also rewrites the formulas that refer to the changed one
+      // a rename or an edit gives the changed formula a new UUID
       const name =
         formula.name === renamedFormula?.name
           ? renamedFormula.nextName
@@ -66,8 +66,7 @@ export function updateSummaryFormula({
     (formula) =>
       formula.stageIndex === index &&
       !groupingNames.includes(formula.name) &&
-      makeSummaryFormula(nextQuery, index, formula.name)?.expression ===
-        formula.expression,
+      makeSummaryFormula(nextQuery, index, formula.name)?.uuid === formula.uuid,
   );
   const cleanedQuery = removed.reduce((currentQuery, formula) => {
     const expression = Lib.expressions(currentQuery, index).find(
