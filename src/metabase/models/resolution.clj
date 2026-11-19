@@ -231,18 +231,20 @@
     (require-model-namespace nspace)))
 
 (defn spec-entries-by-name
-  "The entries that the methods of the multimethod `spec-multifn`, which dispatches on a model and returns a map from name
-  to entry, define, as `{name [model entry]}`, after loading every model namespace. Throws when two models define the
-  same name."
-  [spec-multifn]
-  (load-all-models!)
-  (reduce (fn [acc [model method]]
-            (reduce-kv (fn [acc entry-name entry]
-                         (when-let [[other] (get acc entry-name)]
-                           (throw (ex-info (str "Two models define " (pr-str entry-name))
-                                           {:name entry-name :models [other model]})))
-                         (assoc acc entry-name [model entry]))
-                       acc
-                       (method model)))
-          {}
-          (dissoc (methods spec-multifn) :default)))
+  "The entries that the methods of the multimethod `spec-multifn`, which dispatches on a model, define as `{name [model
+  entry]}` after loading every model namespace, where `spec->entries` (by default `identity`) turns a model's spec into
+  a map from name to entry; throws when two models define the same name."
+  ([spec-multifn]
+   (spec-entries-by-name spec-multifn identity))
+  ([spec-multifn spec->entries]
+   (load-all-models!)
+   (reduce (fn [acc [model method]]
+             (reduce-kv (fn [acc entry-name entry]
+                          (when-let [[other] (get acc entry-name)]
+                            (throw (ex-info (str "Two models define " (pr-str entry-name))
+                                            {:name entry-name :models [other model]})))
+                          (assoc acc entry-name [model entry]))
+                        acc
+                        (spec->entries (method model))))
+           {}
+           (dissoc (methods spec-multifn) :default))))

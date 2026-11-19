@@ -366,8 +366,7 @@
            batch-processing
            models
            settings
-           util
-           util.config}}
+           util}}
 
   app-db
   {:team "UX West"

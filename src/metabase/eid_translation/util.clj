@@ -1,10 +1,8 @@
 (ns metabase.eid-translation.util
   (:require
    [clojure.core.memoize :as memoize]
-   [clojure.string :as str]
    [malli.error :as me]
    [metabase.batch-processing.core :as grouper]
-   [metabase.config.core :as config]
    [metabase.eid-translation.db :as eid-translation.db]
    [metabase.eid-translation.impl :as eid-translation]
    [metabase.eid-translation.settings :as eid-translation.settings]
@@ -13,8 +11,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -23,14 +20,9 @@
   after loading the namespace of every model of this edition, and rebuilt when the methods of the spec change."
   (memoize/fifo
    (fn [_spec-methods]
-     (doseq [[model nspace] models.resolution/model->namespace
-             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
-       (t2/resolve-model model))
-     (into {}
-           (for [[model method] (methods eid-translation.spec/spec)
-                 :when          (not= :default model)
-                 api-name       (:names (method model))]
-             [api-name model])))
+     (update-vals (models.resolution/spec-entries-by-name eid-translation.spec/spec
+                                                          (fn [spec] (zipmap (:names spec) (repeat spec))))
+                  first))
    :fifo/threshold 1))
 
 (defn- api-name->model
