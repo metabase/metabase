@@ -204,13 +204,17 @@
                      (update :model_updated_at t/instant)
                      (select-keys [:last_editor_id :model_updated_at])))))))))
 
-(deftest update-of-unread-joined-column-enqueues-nothing-test
-  (testing "an update that moves `updated_at` reindexes only the documents that read it, not the ones it joins into"
+(deftest update-of-unread-joined-column-enqueues-only-readers-test
+  (testing "an update reindexes the documents that read a column it set, not the ones it is joined into"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card          {card-id :id}     {}
-                     :model/Dashboard     {dash-id :id}     {}
-                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id :card_id card-id}]
-        (is (= [] (capture-enqueues! #(t2/update! :model/DashboardCard :id dashcard-id {:size_x 7}))))))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       _            {:collection_id coll-id}
+                     :model/Dashboard  _            {:collection_id coll-id}]
+        ;; Only the collection's own document reads its description; the card and the dashboard in it read its name,
+        ;; type, location and authority level.
+        (is (= #{"collection"}
+               (->> (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"}))
+                    (into #{} (comp (mapcat identity) (map first))))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"
