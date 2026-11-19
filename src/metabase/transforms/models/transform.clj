@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
@@ -594,3 +595,6 @@
 (defmethod replacement.spec/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
    :swap-source        transforms.replacement/swap-source})
+
+(defmethod collection-items/spec :model/Transform [_model]
+  {"transform" {:items transforms.db/collection-transform-items}})

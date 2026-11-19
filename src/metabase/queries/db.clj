@@ -5,6 +5,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
@@ -16,6 +17,7 @@
    [metabase.query-processor.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
@@ -697,3 +699,83 @@
                          (mi/non-internal-filter-clause :model/Card :card))
                        (when-not include-personal-collections?
                          (collections.listing/outside-personal-collections-clause :card :collection))])}))
+
+(defn- collection-card-items
+  "The query of the Cards of `card-type`, `:question`, `:model` or `:metric`, in `collection` that the collection items
+  listing of `opts` holds, nil when the namespace of `collection` holds no Card."
+  [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
+  (when (collections.listing/holds-model? :model/Card collection)
+    {:select    (cond-> [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
+                         :dashboard_id
+                         :last_used_at
+                         :c.collection_id
+                         :c.archived_directly
+                         :c.archived
+                         :c.dataset_query
+                         [(h2x/literal (case card-type
+                                         :model "dataset"
+                                         :metric  "metric"
+                                         "card"))
+                          :model]
+                         [:u.id :last_edit_user]
+                         [:u.email :last_edit_email]
+                         [:u.first_name :last_edit_first_name]
+                         [:u.last_name :last_edit_last_name]
+                         [:r.timestamp :last_edit_timestamp]
+                         [:mr.status :moderated_status]]
+                  (#{:question :model} card-type) (conj :c.database_id)
+                  (= :model card-type)            (conj :c.table_id :t.is_upload :c.query_type))
+     :from      [[:report_card :c]]
+     :left-join (cond-> [[:revision :r] [:and
+                                         [:= :r.model_id :c.id]
+                                         [:= :r.model (h2x/literal "Card")]
+                                         (revisions.sql/newest-revision-clause :r "Card" :c.id)]
+                         [:moderation_review :mr] [:and
+                                                   [:= :mr.moderated_item_id :c.id]
+                                                   [:= :mr.most_recent true]
+                                                   [:= :mr.moderated_item_type (h2x/literal "card")]]
+                         [:core_user :u] [:= :u.id :r.user_id]]
+                  (= :model card-type) (conj [:metabase_table :t] [:= :t.id :c.table_id]))
+     :where     [:and
+                 (collections.listing/visible-items-clause :c.collection_id archived? {:root-namespace nil})
+                 (if (collection/is-trash? collection)
+                   [:= :c.archived_directly true]
+                   [:and
+                    [:= :c.collection_id (:id collection)]
+                    [:= :c.archived_directly false]])
+                 (when-not show-dashboard-questions?
+                   [:= :c.dashboard_id nil])
+                 [:= :c.document_id nil]
+                 (when created-by-id
+                   [:= :c.creator_id created-by-id])
+                 [:= :c.archived (boolean archived?)]
+                 (case card-type
+                   :model
+                   [:= :c.type (h2x/literal "model")]
+
+                   :metric
+                   [:= :c.type (h2x/literal "metric")]
+
+                   [:= :c.type (h2x/literal "question")])
+                 (collections.listing/pinned-state->clause pinned-state)]}))
+
+(mu/defn collection-question-items :- [:maybe :map]
+  "The query of the saved questions in `collection` that the collection items listing of `opts` holds, nil when the
+  namespace of `collection` holds no Card."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :question collection opts))
+
+(mu/defn collection-model-items :- [:maybe :map]
+  "The query of the models in `collection` that the collection items listing of `opts` holds, nil when the namespace of
+  `collection` holds no Card."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :model collection opts))
+
+(mu/defn collection-metric-items :- [:maybe :map]
+  "The query of the metrics in `collection` that the collection items listing of `opts` holds, nil when the namespace of
+  `collection` holds no Card."
+  [collection :- :map
+   opts       :- :map]
+  (collection-card-items :metric collection opts))

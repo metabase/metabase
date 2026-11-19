@@ -11,6 +11,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -37,6 +38,7 @@
    [metabase.queries.audit :as queries.audit]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.queries.collection-items :as queries.collection-items]
    [metabase.queries.db :as queries.db]
    [metabase.queries.dependencies :as queries.dependencies]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -1853,13 +1855,6 @@
                (not (:archived card)))
       (:id dashboard))))
 
-(mu/defn fully-parameterized?
-  "Given a Card, returns `true` if its query is fully parameterized."
-  [{query :dataset_query, :as _card} :- ::queries.schema/card]
-  (if (empty? query)
-    true
-    (lib/fully-parameterized-query? query)))
-
 (methodical/defmethod mi/to-json :model/Card
   [card json-generator]
   ;; we're doing update + dissoc instead of [[medley.core/dissoc-in]] because we don't want it to remove the
@@ -1943,3 +1938,14 @@
    :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs
    :swap-source        queries.replacement/swap-source})
+
+(defmethod collection-items/spec :model/Card [_model]
+  {"card"    {:rank    5
+              :items   queries.db/collection-question-items
+              :hydrate queries.collection-items/hydrate}
+   "dataset" {:rank    3
+              :items   queries.db/collection-model-items
+              :hydrate queries.collection-items/hydrate-models}
+   "metric"  {:rank    4
+              :items   queries.db/collection-metric-items
+              :hydrate queries.collection-items/hydrate}})

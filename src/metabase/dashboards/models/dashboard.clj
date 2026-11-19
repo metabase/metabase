@@ -7,9 +7,11 @@
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards.audit :as dashboards.audit]
+   [metabase.dashboards.collection-items :as dashboards.collection-items]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.dependencies :as dashboards.dependencies]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -604,3 +606,8 @@
   {:hydrate            dashboards.replacement/hydrate
    :upgrade-field-refs dashboards.replacement/upgrade-field-refs
    :swap-source        dashboards.replacement/swap-source})
+
+(defmethod collection-items/spec :model/Dashboard [_model]
+  {"dashboard" {:rank    1
+                :items   dashboards.db/collection-dashboard-items
+                :hydrate dashboards.collection-items/hydrate}})

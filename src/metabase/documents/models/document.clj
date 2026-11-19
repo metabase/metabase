@@ -3,9 +3,11 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.documents.audit :as documents.audit]
+   [metabase.documents.collection-items :as documents.collection-items]
    [metabase.documents.db :as documents.db]
    [metabase.documents.dependencies :as documents.dependencies]
    [metabase.documents.prose-mirror :as prose-mirror]
@@ -615,3 +617,7 @@
    :dependencies documents.dependencies/dependencies
 
    :dependency-columns #{:content_type :document}})
+
+(defmethod collection-items/spec :model/Document [_model]
+  {"document" {:items   documents.db/collection-document-items
+               :hydrate documents.collection-items/hydrate}})

@@ -4,13 +4,17 @@
   methods, and transactions."
   (:require
    [malli.util :as mut]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -662,3 +666,36 @@
                     [(collections.listing/visible-tables-clause :metabase_table.id opts)
                      (when-not include-sample-databases?
                        [:and [:not :database.is_sample] [:not :database.is_audit]])])})
+
+(mu/defn collection-table-items :- [:maybe :map]
+  "The query of the published tables in `collection` that the user queries and that the collection items listing of
+  `opts` holds, nil when the library is not a feature of the instance, the namespace of `collection` holds no table or
+  `opts` restrict the items to the pinned ones or to those created by a user, which no table is or records."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (premium-features/has-feature? :library)
+             (collections.listing/holds-model? :model/Table collection)
+             (nil? created-by-id)
+             (not= pinned-state :is_pinned))
+    {:select [:t.id
+              [:t.id :table_id]
+              [:t.display_name :name]
+              :t.description
+              :t.collection_id
+              [:t.db_id :database_id]
+              [[:!= :t.archived_at nil] :archived]
+              [(h2x/literal "table") :model]]
+     :from   [[(t2/table-name :model/Table) :t]]
+     :where  [:and
+              [:= :t.is_published true]
+              (collections.listing/visible-items-clause :t.collection_id archived? {:root-namespace nil})
+              (perms/visible-tables-filter-clause
+               :t.id
+               (api/current-user-info)
+               {:perms/view-data      :unrestricted
+                :perms/create-queries :query-builder}
+               {:active-only? false, :include-published-via-collection? true})
+              [:= :t.collection_id (:id collection)]
+              (if archived?
+                [:!= :t.archived_at nil]
+                [:= :t.archived_at nil])]}))

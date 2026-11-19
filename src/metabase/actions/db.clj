@@ -4,6 +4,7 @@
   (:require
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
@@ -11,6 +12,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -327,3 +329,20 @@
                        (collections.listing/archived-clause :action include-archived)
                        (when-not include-personal-collections?
                          (collections.listing/outside-personal-collections-clause :action :collection))])}))
+
+(mu/defn collection-action-items :- [:maybe :map]
+  "The query of the actions without a model in `collection` that the collection items listing of `opts` holds, nil when
+  `collection` is not in the namespace of data actions or data apps or `opts` restrict the items to the pinned ones or to
+  those created by a user, which no action is or records."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (and (contains? #{collection/data-actions-ns collection/data-apps-ns} (some-> (:namespace collection) keyword))
+             (nil? created-by-id)
+             (not= pinned-state :is_pinned))
+    {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+              :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+     :from   [[:action :action]]
+     :where  [:and
+              [:= :action.collection_id (:id collection)]
+              [:= :action.model_id nil]
+              [:= :action.archived (boolean archived?)]]}))

@@ -5,6 +5,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
@@ -22,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
+   [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -647,3 +649,7 @@
 
 (defmethod replacement.spec/spec :model/Table [_model]
   {:source-database-id :db_id})
+
+(defmethod collection-items/spec :model/Table [_model]
+  {"table" {:items   warehouse-schema.db/collection-table-items
+            :hydrate warehouse-schema.collection-items/hydrate}})

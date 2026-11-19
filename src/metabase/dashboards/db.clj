@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
@@ -15,6 +16,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
@@ -613,3 +615,43 @@
                          (mi/non-internal-filter-clause :model/Dashboard :dashboard))
                        (when-not include-personal-collections?
                          (collections.listing/outside-personal-collections-clause :dashboard :collection))])}))
+
+(mu/defn collection-dashboard-items :- [:maybe :map]
+  "The query of the Dashboards in `collection` that the collection items listing of `opts` holds, nil when the namespace
+  of `collection` holds no Dashboard."
+  [collection :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (collections.listing/holds-model? :model/Dashboard collection)
+    {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                 [:last_viewed_at :last_used_at]
+                 :d.collection_id
+                 :d.archived_directly
+                 [(h2x/literal "dashboard") :model]
+                 [:u.id :last_edit_user]
+                 :d.archived
+                 [:u.email :last_edit_email]
+                 [:u.first_name :last_edit_first_name]
+                 [:u.last_name :last_edit_last_name]
+                 [:r.timestamp :last_edit_timestamp]
+                 [:mr.status :moderated_status]]
+     :from      [[:report_dashboard :d]]
+     :left-join [[:moderation_review :mr] [:and
+                                           [:= :mr.moderated_item_id :d.id]
+                                           [:= :mr.most_recent true]
+                                           [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+                 [:revision :r] [:and
+                                 [:= :r.model_id :d.id]
+                                 [:= :r.model (h2x/literal "Dashboard")]
+                                 (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
+                 [:core_user :u] [:= :u.id :r.user_id]]
+     :where     [:and
+                 (collections.listing/visible-items-clause :d.collection_id archived? {:root-namespace nil})
+                 (if (collection/is-trash? collection)
+                   [:= :d.archived_directly true]
+                   [:and
+                    [:= :d.collection_id (:id collection)]
+                    [:not= :d.archived_directly true]])
+                 (when created-by-id
+                   [:= :d.creator_id created-by-id])
+                 [:= :d.archived (boolean archived?)]
+                 (collections.listing/pinned-state->clause pinned-state)]}))

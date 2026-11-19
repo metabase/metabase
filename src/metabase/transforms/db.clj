@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -968,3 +969,23 @@
                              :is-superuser?    is-superuser?
                              :is-data-analyst? is-data-analyst?}
                             {:perms/create-queries :query-builder}))])})))
+
+(mu/defn collection-transform-items :- [:maybe :map]
+  "The query of the Transforms of the source types the user can use in `collection` that the collection items listing of
+  `opts` holds, nil when the namespace of `collection` holds no Transform or `opts` restrict the items to the pinned
+  ones or to those created by a user, which no Transform is or records."
+  [collection                              :- :map
+   {:keys [pinned-state created-by-id]} :- :map]
+  (when (and (collections.listing/holds-model? :model/Transform collection)
+             (nil? created-by-id)
+             (not= pinned-state :is_pinned))
+    (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
+      {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+       :from   [[:transform :transform]]
+       :where  [:and
+                [:= :collection_id (:id collection)]
+                (if (seq enabled-types)
+                  [:in :source_type enabled-types]
+                  [:=
+                   [:inline 0]
+                   [:inline 1]])]})))

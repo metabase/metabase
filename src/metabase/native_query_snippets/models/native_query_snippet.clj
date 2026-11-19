@@ -3,12 +3,14 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.collection-items :as native-query-snippets.collection-items]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.dependencies :as native-query-snippets.dependencies]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -242,3 +244,8 @@
 
    :dependency-columns #{:content :template_tags}
    :output-columns     #{:content :template_tags}})
+
+(defmethod collection-items/spec :model/NativeQuerySnippet [_model]
+  {"snippet" {:rank    6
+              :items   native-query-snippets.db/collection-snippet-items
+              :hydrate native-query-snippets.collection-items/hydrate}})

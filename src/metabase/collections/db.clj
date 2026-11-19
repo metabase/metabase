@@ -546,14 +546,14 @@
                                [:in :collection_id collection-ids]]}))
 
 (defn collection-children-rows
-  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collections.children` from the
+  "The rows matching the collection-children Honey SQL `query`, built by `metabase.collection-items.core` from the
   per-model item queries for a Collection's paginated child listing. Follows the same exception as
   `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
   [query]
   (app-db/query query))
 
 (defn collection-filter-metadata-rows
-  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collections.children` to
+  "The rows matching the collection-filter-metadata Honey SQL `query`, built by `metabase.collection-items.core` to
   probe which item models have at least one visible child in a Collection. Follows the same exception as
   `metabase.search.db` for spec-driven Honey SQL that can't be reduced to plain-data parameters."
   [query]

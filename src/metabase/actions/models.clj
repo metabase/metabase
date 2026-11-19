@@ -2,12 +2,14 @@
   (:require
    [medley.core :as m]
    [metabase.actions.actions :as actions]
+   [metabase.actions.collection-items :as actions.collection-items]
    [metabase.actions.db :as actions.db]
    [metabase.actions.dependencies :as actions.dependencies]
    [metabase.actions.schema :as actions.schema]
    [metabase.actions.serialization :as actions.serialization]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
@@ -859,3 +861,7 @@
 (defmethod dependencies/spec :model/ImplicitAction [_model]
   {:part-of      {:type :action :key :action_id}
    :part-columns #{:table_id}})
+
+(defmethod collection-items/spec :model/Action [_model]
+  {"action" {:items   actions.db/collection-action-items
+             :hydrate actions.collection-items/hydrate}})

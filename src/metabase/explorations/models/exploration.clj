@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.explorations.collection-items :as explorations.collection-items]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema]
    [metabase.models.interface :as mi]
@@ -169,3 +171,7 @@
                    :collection-position        true
                    :collection-type            :collection.type
                    :archived-directly          true}}})
+
+(defmethod collection-items/spec :model/Exploration [_model]
+  {"exploration" {:items   explorations.db/collection-exploration-items
+                  :hydrate explorations.collection-items/hydrate}})

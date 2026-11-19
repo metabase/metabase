@@ -8,8 +8,10 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -86,3 +88,22 @@
                          (collections.listing/archived-clause :snippet include-archived)
                          (when-not include-personal-collections?
                            (collections.listing/outside-personal-collections-clause :snippet :collection))])})))
+
+(defenterprise snippets-collection-children-query
+  "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
+  collections are an EE feature."
+  metabase-enterprise.snippet-collections.api.native-query-snippet
+  [_collection {:keys [archived?]}]
+  {:select [:id :name :entity_id [(h2x/literal "snippet") :model]]
+   :from   [[:native_query_snippet :nqs]]
+   :where  [:= :archived (boolean archived?)]})
+
+(mu/defn collection-snippet-items :- [:maybe :map]
+  "The query of the snippets in `collection` that the collection items listing of `opts` holds, nil when the namespace
+  of `collection` holds no snippet or `opts` restrict the items to those created by a user, which snippets do not
+  record."
+  [collection                :- :map
+   {:keys [created-by-id] :as opts} :- :map]
+  (when (and (collections.listing/holds-model? :model/NativeQuerySnippet collection)
+             (nil? created-by-id))
+    (snippets-collection-children-query collection opts)))
