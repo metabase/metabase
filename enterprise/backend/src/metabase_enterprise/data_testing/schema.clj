@@ -171,13 +171,15 @@
     (deferred-tru "must be from {0} to {1}, inclusive" first-moment last-moment)))
 
 (def ^:private now-quotes-message
-  "Why a serialized `now` that YAML read as a date is refused."
-  (deferred-tru "must be in quotes, such as \"2026-10-13T00:00:00Z\": without them, YAML drops the offset"))
+  "Why a serialized `now` that is not a string is refused, such as one YAML read as a date."
+  (deferred-tru
+   "must be a quoted string, such as \"2026-10-13T00:00:00Z\": YAML reads an unquoted date-time as a date"))
 
 (defn- now-error
   "The message for the refused `now` `value`, after decoding: the range message for a moment, else the offset one."
   [{:keys [value]} _]
-  (if (t/offset-date-time? value) now-range-message now-offset-message))
+  ;; A string, so that a message printed with the error, as an import prints it, reads as text.
+  (str (if (t/offset-date-time? value) now-range-message now-offset-message)))
 
 (mr/def ::now
   "The moment the subject reads as the current time when a run compiles it: an ISO-8601 date-time with an offset, such
@@ -201,7 +203,7 @@
   ;; Each check passes what the other refuses, so a refused value gets one message.
   [:and
    {:json-schema {:type "string" :format "date-time"}}
-   [:fn {:error/fn (constantly now-quotes-message)} string?]
+   [:fn {:error/fn (fn [_ _] (str now-quotes-message))} string?]
    [:fn {:error/fn (fn [error opts] (now-error (update error :value ->offset-date-time) opts))}
     #(or (not (string? %)) (mr/validate ::now (->offset-date-time %)))]])
 

@@ -303,8 +303,14 @@
                       nil
                       (catch clojure.lang.ExceptionInfo e
                         (ex-message e))))]
-      (is (re-find #"with an offset" (str (refusal "2026-10-13T00:00:00"))))
-      (is (re-find #"inclusive" (str (refusal "2040-01-01T00:00:00Z"))))
-      (is (re-find #"in quotes" (str (refusal (:now (yaml/parse-string "now: 2026-10-13T00:00:00Z"))))))
+      (let [refused   #(str "Invalid CardTest \"aaaaaaaaaaaaaaaaaaaaa\": " (pr-str {:now %}))
+            no-offset "must be an ISO-8601 date-time with an offset, such as 2026-10-13T00:00:00Z"
+            unquoted  "must be a quoted string, such as \"2026-10-13T00:00:00Z\": YAML reads an unquoted date-time as a date"]
+        (is (= (refused no-offset) (refusal "2026-10-13T00:00:00")))
+        (is (= (refused "must be from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z, inclusive")
+               (refusal "2040-01-01T00:00:00Z")))
+        (testing "a `now` YAML read as a date, and any other value that is not a string, asks for a quoted string"
+          (is (= (refused unquoted) (refusal (:now (yaml/parse-string "now: 2026-10-13T00:00:00")))))
+          (is (= (refused unquoted) (refusal 12345)))))
       (testing "control: a `now` with an offset in range is accepted"
         (is (nil? (refusal "2026-10-13T00:00:00Z")))))))
