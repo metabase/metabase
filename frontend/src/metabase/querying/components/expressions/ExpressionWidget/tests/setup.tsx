@@ -20,7 +20,7 @@ import { act, fireEvent } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { setupDatabaseEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
@@ -256,6 +256,18 @@ export async function waitForCompletions(): Promise<string[]> {
   return getCompletionLabels();
 }
 
+/** Clicks the completion option with the given label in the suggestion list. */
+export async function clickCompletion(label: string) {
+  const option = within(
+    screen.getByTestId("custom-expression-editor-suggestions"),
+  )
+    .getAllByRole("option")
+    .find((element) => element.textContent === label);
+  await interact(() => {
+    fireEvent.mouseDown(checkNotNull(option));
+  });
+}
+
 /** The labels of the completion options CodeMirror offers right now. */
 export function getCompletionLabels(): string[] {
   return currentCompletions(getEditorView().state).map(
@@ -271,6 +283,13 @@ export function getSelectedCompletionLabel(): string | undefined {
   }
   const completion = currentCompletions(state)[index];
   return completion?.displayLabel ?? completion?.label;
+}
+
+/** Waits for the help text example, which is highlighted asynchronously. */
+export async function waitForHelpTextExample() {
+  await waitFor(() =>
+    expect(screen.getByTestId("helptext-example")).not.toBeEmptyDOMElement(),
+  );
 }
 
 export function queryHelpText() {
