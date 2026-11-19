@@ -32,12 +32,25 @@
                   [[table [id] "update"]])
         :delete [[table [id] "delete"]]))))
 
+(defn- without-repeated-deletes
+  "`changes` with each delete of a row once, since every DELETE statement that a cascade passes through captures it."
+  [changes]
+  (first (reduce (fn [[kept deleted] [table ids action :as change]]
+                   (if (= action "delete")
+                     (let [ids (vec (remove #(contains? deleted [table %]) ids))]
+                       [(cond-> kept (seq ids) (conj [table ids action]))
+                        (into deleted (map #(vector table %)) ids)])
+                     [(conj kept change) deleted]))
+                 [[] #{}]
+                 changes)))
+
 (defn- log-events!
   [_owner events _all]
   (when (premium-features/enable-change-log?)
-    (change-log.log/log! (mapcat (fn [event]
-                                   (concat (own-changes event) (get-in event [:captures :change-log])))
-                                 events))))
+    (change-log.log/log! (without-repeated-deletes
+                          (mapcat (fn [event]
+                                    (concat (own-changes event) (get-in event [:captures :change-log])))
+                                  events)))))
 
 (events/register-statement-capture! :change-log capture-cascade)
 (events/register-owned-consumer! :change-log (constantly :log) log-events!)
