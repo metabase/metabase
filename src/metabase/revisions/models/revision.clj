@@ -209,11 +209,19 @@
   {:create :event/revision-create})
 
 (defn publish-created!
-  "Publish the create event of each Revision of `rows`, the Revision rows as inserted with their `:id`s, within the
-  batch of the write that caused them."
-  [rows]
-  (doseq [{:keys [id user_id] :as row} rows]
-    (events/collect! {:model :model/Revision, :operation :create, :id id, :user-id user_id, :object row})))
+  "Publish the create event of a Revision, within the batch of the write that caused it.
+  Give it the Revision as inserted, with its `:id`, or the Revision `rows` and the `ids` that inserting them returned.
+  The event carries only what the search hooks read of a Revision, not its serialized `:object`."
+  ([{:keys [id user_id] :as revision}]
+   ;; The snapshot is a whole serialized entity, which the batch would hold until its delivery.
+   (events/collect! {:model     :model/Revision
+                     :operation :create
+                     :id        id
+                     :user-id   user_id
+                     :object    (select-keys revision [:id :model :model_id])}))
+  ([rows ids]
+   (doseq [[row id] (map vector rows ids)]
+     (publish-created! (assoc row :id id)))))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
@@ -393,7 +401,7 @@
                                                    :object       serialized-instance
                                                    :is_creation  false
                                                    :is_reversion true})
-                                          (publish-created! [<>])))
+                                          (publish-created! <>)))
             in-batch                 (events/with-event-context {:reverting? true}
                                        (events/with-batched-events
                                          (revert-to-revision! entity id user-id serialized-instance)

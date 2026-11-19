@@ -10,8 +10,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.db :as qp.db]
-   [metabase.revisions.db :as revisions.db]
-   [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -230,29 +228,35 @@
         (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
         (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
 
-(deftest revision-create-reindexes-its-entity-test
-  (testing "the create event of a Revision of a card reindexes the card, which takes its last editor from it"
-    (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {card-id :id} {}]
-        (let [row {:model        "Card"
-                   :model_id     card-id
-                   :user_id      (mt/user->id :crowberto)
-                   :object       {}
-                   :is_creation  false
-                   :is_reversion false}]
-          (is (= #{"card" "dataset" "metric"}
-                 (->> (capture-enqueues! #(let [ids (revisions.db/insert-revisions! [row])]
-                                            (revision/publish-created! (map (fn [id] (assoc row :id id)) ids))))
-                      (into #{} (comp cat (map first))))))))))
-  (testing "a Revision written or deleted by Toucan publishes no event, so the prune of old Revisions costs no read"
+(deftest revision-writes-enqueue-nothing-test
+  (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         (is (= [] (capture-enqueues! #(t2/insert! :model/Revision {:model    "Card"
                                                                    :model_id card-id
                                                                    :user_id  (mt/user->id :crowberto)
                                                                    :object   {}}))))
-        (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))
-        (is (not (isa? :model/Revision :hook/events)))))))
+        (is (= [] (capture-enqueues! #(t2/delete! :model/Revision :model "Card" :model_id card-id))))))))
+
+(deftest revision-create-reindexes-its-dashboard-test
+  (testing "an edit that writes no row of a dashboard still reindexes it, through the Revision that records the edit"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (mt/with-model-cleanup [:model/Dashboard]
+          (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+                put!    (fn [dashcard-id size-x]
+                          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id)
+                                                {:dashcards [{:id      dashcard-id
+                                                              :card_id card-id
+                                                              :row     0
+                                                              :col     0
+                                                              :size_x  size-x
+                                                              :size_y  4
+                                                              :series  []}]}))]
+            (put! -1 4)
+            (let [dashcard-id (t2/select-one-pk :model/DashboardCard :dashboard_id dash-id)]
+              (is (= #{"dashboard"}
+                     (enqueued-search-models (capture-enqueues! #(put! dashcard-id 6))))))))))))
 
 ;;; Purges
 

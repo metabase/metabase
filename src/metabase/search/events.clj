@@ -64,11 +64,10 @@
 (defn- handle!
   [_owner events _all]
   (when-not search.ingestion/*disable-updates*
-    (let [events     (filter #(feeds-index? (:model %) (:operation %)) events)
-          by-op      (group-by :operation events)
-          created    (map #(t2/instance (:model %) (:object %)) (:create by-op))
-          updated    (map updated-instance (:update by-op))
-          deleted    (:delete by-op)]
+    (let [by-op   (group-by :operation events)
+          created (map #(t2/instance (:model %) (:object %)) (:create by-op))
+          updated (map updated-instance (:update by-op))
+          deleted (:delete by-op)]
       (when (seq created)
         (search/bulk-update! created))
       (when (seq updated)

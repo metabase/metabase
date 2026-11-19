@@ -333,6 +333,9 @@
     (testing "every model with an events/spec method derives :hook/events"
       (doseq [model (remove publishes-without-trait (keys specs))]
         (is (isa? model :hook/events) (str model " has an events/spec method but does not derive :hook/events"))))
+    (testing "a model that publishes without the trait does not derive it"
+      (doseq [model publishes-without-trait]
+        (is (not (isa? model :hook/events)) (str model " derives :hook/events, so it needs no exemption"))))
     (testing "no two models share a topic"
       (let [topics (mapcat (fn [[model f]] (vals (f model))) specs)]
         (is (= [] (keep (fn [[topic n]] (when (< 1 n) topic)) (frequencies topics))))))))
