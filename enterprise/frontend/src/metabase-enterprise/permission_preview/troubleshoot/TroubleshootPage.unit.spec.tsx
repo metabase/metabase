@@ -203,10 +203,17 @@ function setup({ isNarrow = false }: SetupOpts) {
   fetchMock.post("path:/api/ee/permission_debug/preview/end", 204);
 
   renderWithProviders(
-    <Route
-      path="/admin/permissions/troubleshoot/:principalType/:principalId"
-      element={<TroubleshootPage />}
-    />,
+    <>
+      {/* a tab switch used to navigate here, which has to render a page for the test to reach its assertion */}
+      <Route
+        path="/admin/permissions/troubleshoot/:principalType"
+        element={<TroubleshootPage />}
+      />
+      <Route
+        path="/admin/permissions/troubleshoot/:principalType/:principalId"
+        element={<TroubleshootPage />}
+      />
+    </>,
     {
       withRouter: true,
       initialRoute: "/admin/permissions/troubleshoot/user/3",
