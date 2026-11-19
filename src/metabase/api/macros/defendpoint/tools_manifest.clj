@@ -187,15 +187,21 @@
 (defn- union->type-array
   "A JSON Schema with a type array that accepts what the `anyOf` `branches` accept, or nil when no type array can.
   Each branch must name its own types, no two branches' overlapping, and assert only [[keyword-types]] keywords that
-  apply to those types."
+  apply to those types.
+  A branch may carry a string `:description`, which is joined, but no other annotation, since the type array would
+  lose it."
   [branches]
   (let [branch-types (map types branches)
         own-keyword? (fn [branch k]
                        (contains? (set (map value-type (types branch))) (keyword-types k)))]
-    (when (and (every? seq branch-types)
+    (when (and (seq branches)
+               (every? seq branch-types)
                (apply distinct? (map value-type (apply concat branch-types)))
+               ;; a localized description is translated when it is serialized, so joining it here would fix the
+               ;; locale of whoever builds the cached manifest first
+               (every? (comp (some-fn nil? string?) :description) branches)
                (every? (fn [branch]
-                         (every? #(own-keyword? branch %) (remove (conj annotation-keys :type) (keys branch))))
+                         (every? #(own-keyword? branch %) (remove #{:type :description} (keys branch))))
                        branches))
       (let [description (str/join " " (keep :description branches))]
         (-> (apply merge (map #(apply dissoc % :type annotation-keys) branches))
@@ -206,7 +212,9 @@
   "The JSON Schema `schema` with an `anyOf` beside only annotations replaced by its [[union->type-array]], joining the
   descriptions, or `schema` itself when there is no such union."
   [{:keys [anyOf description] :as schema}]
-  (or (when (and anyOf (every? annotation-keys (keys (dissoc schema :anyOf))))
+  (or (when (and anyOf
+                 (every? annotation-keys (keys (dissoc schema :anyOf)))
+                 ((some-fn nil? string?) description))
         (when-let [union (union->type-array anyOf)]
           (let [descriptions (remove str/blank? [description (:description union)])]
             (cond-> (merge (dissoc schema :anyOf :description) (dissoc union :description))
@@ -246,7 +254,8 @@
 
 (defn- without-one-of
   "Rewrite every `oneOf` in a JSON Schema as its [[one-of-replacement]].
-  Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win.
+  Where only annotations sit beside the `oneOf`, the replacement merges into them, and theirs win, except that two
+  descriptions are joined, the siblings' first.
   Where any other keyword does, the replacement joins those keywords under `allOf`, and its description, if the
   siblings have none, stays on the property."
   [json-schema]
@@ -263,10 +272,15 @@
              replacement (one-of-replacement branches)]
          ;; A sibling assertion must hold as well, and some read their neighbors (`additionalProperties` reads
          ;; `properties`, `minContains` reads `contains`), so only `allOf` keeps both meanings intact.
-         ;; A sibling annotation, such as the `[:maybe]`'s own description, wins over the replacement's.
+         ;; A sibling annotation wins over the replacement's, except that two descriptions are joined.
          (cond
            (every? annotation-keys (keys siblings))
-           (merge replacement siblings)
+           (cond-> (merge replacement siblings)
+             ;; the `[:maybe]`'s description and its schema's both describe the property, outer first
+             (and (string? (:description siblings))
+                  (string? (:description replacement))
+                  (not= (:description siblings) (:description replacement)))
+             (assoc :description (str (:description siblings) " " (:description replacement))))
 
            ;; clients and the docs generator read a property's description at its top level, not inside `allOf`
            (and (:description replacement) (not (contains? siblings :description)))

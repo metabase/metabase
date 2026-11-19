@@ -3,6 +3,8 @@
    [clojure.test :refer :all]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -172,7 +174,10 @@
            (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
     ;; an empty `oneOf` accepts nothing, and JSON Schema has no empty `anyOf`
     (is (= {:not {}}
-           (published {:oneOf []})))))
+           (published {:oneOf []})))
+    ;; an empty `anyOf` names no types to put in an array
+    (is (= {:anyOf [{:anyOf []} {:type "null"}]}
+           (published {:oneOf [{:anyOf []} {:type "null"}]})))))
 
 (deftest ^:parallel nullable-union-test
   (testing "a nullable union of distinct types becomes one type array, where a coercing client keeps `null`"
@@ -197,7 +202,28 @@
            (published {:oneOf [{:anyOf [{:type "integer", :minimum 1} {:type "number"}]} {:type "null"}]})))
     ;; a keyword for another type, which does nothing in its branch but would constrain the other branch's values
     (is (= {:anyOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]})))))
+           (published {:oneOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]})))
+    ;; an annotation other than a description, which a type array has nowhere to keep per branch
+    (is (= {:anyOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]}
+           (published {:oneOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]})))))
+
+(deftest ^:parallel localized-description-test
+  (testing "a localized description stays a localized string, which is translated for each caller when serialized"
+    (let [pick (deferred-tru "Pick one.")]
+      (is (= {:anyOf [{:anyOf [{:type "integer"} {:type "boolean"}]} {:type "null"}], :description pick}
+             (get-in (tools-manifest/malli->json-schema
+                      [:map [:k [:maybe (mu/with-api-error-message [:or :int :boolean] pick)]]])
+                     [:properties :k])))
+      (is (= {:anyOf [{:anyOf [{:type "integer", :description pick} {:type "boolean"}]} {:type "null"}]}
+             (get-in (tools-manifest/malli->json-schema [:map [:k [:maybe [:or [:int {:description pick}] :boolean]]]])
+                     [:properties :k]))))))
+
+(deftest ^:parallel maybe-description-test
+  (testing "a [:maybe] and its schema both describe the property, so both descriptions are published, outer first"
+    (is (= {:type ["integer" "null"], :description "Outer. An id."}
+           (get-in (tools-manifest/malli->json-schema
+                    [:map [:k [:maybe {:description "Outer."} [:int {:description "An id."}]]]])
+                   [:properties :k])))))
 
 (deftest ^:parallel one-of-siblings-test
   (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
