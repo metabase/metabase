@@ -198,7 +198,7 @@ export const getDarkTheme = (
     "illustration-secondary-brand": brand[80],
     "illustration-tertiary-brand": brand[90],
     "input-background": baseColors.orionAlphaInverse[10],
-    "input-focus": baseColors.blue[70],
+    "input-focus": brand[30],
     "modal-border": baseColors.orionAlphaInverse[30], // Matches border-neutral-strong
     "modal-overlay": baseColors.blackAlpha[35],
     "navbar-admin": baseColors.octopus[80],

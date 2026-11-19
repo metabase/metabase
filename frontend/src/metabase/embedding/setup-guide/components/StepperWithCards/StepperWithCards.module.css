@@ -34,7 +34,7 @@
 .step:not(.stepDone) .stepIcon {
   color: var(--mb-color-text-primary);
   border-color: transparent;
-  background: var(--mb-color-input-focus);
+  background: var(--mb-color-background_surface-selected);
 }
 
 .step.stepDone .stepIcon {

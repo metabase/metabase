@@ -192,7 +192,7 @@ const DatabaseInfo = ({ database }: DatabaseInfoProps) => {
     >
       <Icon
         name="database"
-        c="input-focus"
+        c="icon-brand"
         size="var(--mantine-spacing-lg)"
         mr="xxs"
       />

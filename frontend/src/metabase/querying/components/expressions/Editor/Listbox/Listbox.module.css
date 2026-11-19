@@ -18,7 +18,7 @@
   &:hover,
   &[aria-selected="true"] {
     color: inherit;
-    background-color: var(--mb-color-input-focus);
+    background-color: var(--mb-color-background_surface-selected);
   }
 
   .icon {

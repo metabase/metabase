@@ -52,7 +52,7 @@ function ActionButtonView({
       className={S.actionButton}
       p={0}
       h={isFullHeight ? "100%" : undefined}
-      bd={focus ? "2px solid var(--mb-color-input-focus)" : undefined}
+      bd={focus ? "2px solid var(--mb-color-border-brand)" : undefined}
       variant={buttonVariant}
       color={color}
       disabled={!!disabled}
