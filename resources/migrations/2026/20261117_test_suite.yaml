@@ -127,6 +127,16 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: ywbs17
+      author: galdre
+      comment: Each test appears once in a suite
+      changes:
+        - addUniqueConstraint:
+            tableName: test_suite_member
+            columnNames: suite_id, test_type, test_entity_id
+            constraintName: uq_test_suite_member_suite_test
+
+  - changeSet:
       id: s2rba2
       author: galdre
       comment: Add FK constraint on test_suite_member.suite_id
@@ -138,16 +148,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_test_suite_member_suite_id
             onDelete: CASCADE
-
-  - changeSet:
-      id: ywbs17
-      author: galdre
-      comment: Each test appears once in a suite
-      changes:
-        - addUniqueConstraint:
-            tableName: test_suite_member
-            columnNames: suite_id, test_type, test_entity_id
-            constraintName: uq_test_suite_member_suite_test
 
   - changeSet:
       id: 3pnnh9
