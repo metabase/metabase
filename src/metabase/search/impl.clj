@@ -444,6 +444,16 @@
         (when (seq collection-ids)
           (t2/hydrate (search.db/collection-permission-rows collection-ids) :can_write))))
 
+(defn- with-exploration-ids
+  "`documents` with their `:exploration_id`, from one query. A Document's content gate reads it, and looks it up per
+  Document when it is missing. A search result does not carry it, and the semantic engine does not filter out the
+  Documents of Explorations, so it cannot be assumed nil."
+  [documents]
+  (let [ids             (into [] (comp (remove #(contains? % :exploration_id)) (map :id) (distinct)) documents)
+        exploration-ids (when (seq ids) (search.db/document-exploration-ids ids))]
+    (map #(cond-> % (not (contains? % :exploration_id)) (assoc :exploration_id (get exploration-ids (:id %))))
+         documents)))
+
 (defn- model-check-answers
   "The check answers of `results`, keyed by model and id, for `phase`: `:read` takes the [[hydrated-checks]] without
   `:can_write`, `:page` takes the [[page-checks]], and `:archived` takes the [[hydrated-checks]] and the
@@ -458,7 +468,8 @@
                                                                (get archived-checks model))))]
                     (for [row (apply t2/hydrate
                                      (cond->> rows
-                                       (= model :model/Table) (map #(assoc % :db_id (:database_id %))))
+                                       (= model :model/Table)    (map #(assoc % :db_id (:database_id %)))
+                                       (= model :model/Document) with-exploration-ids)
                                      checks)]
                       [[model (:id row)] (merge (select-keys (meta row) checks) (select-keys row checks))]))))
         (group-by t2/model results)))
