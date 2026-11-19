@@ -179,7 +179,10 @@
            (write-refusal "INSERT INTO t (id) VALUES (nextval('s'))"))))
   (testing "a write that deletes a large object is refused, naming the function"
     (is (= {:error-type ::errors/not-a-single-write :reason "write-function" :detail "lo_unlink"}
-           (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1")))))
+           (write-refusal "DELETE FROM t WHERE lo_unlink(id) = 1"))))
+  (testing "a write that reads a table named in a string is refused, naming the function"
+    (is (= {:error-type ::errors/not-a-single-write :reason "unconfined-function" :detail "table_to_xml"}
+           (write-refusal "UPDATE t SET name = table_to_xml('secrets', true, false, '')::text WHERE id = 1")))))
 
 (deftest write-with-an-e-string-runs-as-written-test
   (testing "an E'' string with an escaped quote is rebuilt as written"

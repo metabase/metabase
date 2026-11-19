@@ -199,9 +199,10 @@
 
 (mu/defn ensure-single-write :- :string
   "`sql` as SQLGlot rebuilt it, the string the run executes, when it is one INSERT, UPDATE or DELETE statement in
-  `driver`'s dialect that returns no rows, hides no SQL from the parser, calls every function by its name, and calls
-  none of the functions the check knows to run SQL text, take a lock, wait, change the session, reach outside the
-  database, or write outside the tables the statement names, such as `nextval` and `setval`. Throws
+  `driver`'s dialect that returns no rows, hides no SQL from the parser, assigns no MySQL user variable, calls every
+  function by its name, and calls none of the functions the check knows to run SQL text, read a table named in a
+  string, take a lock, wait, change the session, reach outside the database, or write outside the tables the
+  statement names, such as `nextval` and `setval`. Throws
   `::data-testing.errors/write-returns-rows` when it has a RETURNING clause (OUTPUT in T-SQL),
   `::data-testing.errors/not-a-single-write` when it is otherwise not such a statement,
   `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-write`
@@ -225,7 +226,7 @@
                 {}))
         (throw (data-testing.errors/ex
                 ::data-testing.errors/not-a-single-write
-                (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser, calls every function by its name, and calls no function that runs SQL text, takes a lock, waits, changes the session, reaches outside the database, or writes outside the tables the statement names, as `nextval` does.")
+                (tru "The SQL under test must be one INSERT, UPDATE or DELETE statement that hides no SQL from the parser, assigns no user variable, calls every function by its name, and calls no function that runs SQL text, reads a table named in a string, takes a lock, waits, changes the session, reaches outside the database, or writes outside the tables the statement names, as `nextval` does.")
                 (cond-> {}
                   reason (assoc :reason reason)
                   detail (assoc :detail detail)))))

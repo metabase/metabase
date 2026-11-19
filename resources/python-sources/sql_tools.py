@@ -1996,6 +1996,55 @@ def _read_only(stmt: exp.Expression) -> bool:
     return not any(_writes_or_locks(node) for node in stmt.walk())
 
 
+# Built-in functions a data-test write must not call, though the other modes admit them: each reads a table named in
+# a string, which the table check never sees, reads or writes the database server's files, or changes state that the
+# run's rollback leaves changed (the random seed, the statistics, replication slots and origins). Most need privileges
+# a connection user rarely has.
+_UNCONFINED_FUNCTIONS = frozenset(
+    {
+        # Postgres: a table, a schema or the database as XML, read by the name passed in
+        "table_to_xml", "table_to_xmlschema", "table_to_xml_and_xmlschema", "schema_to_xml", "schema_to_xmlschema",
+        "schema_to_xml_and_xmlschema", "database_to_xml", "database_to_xmlschema", "database_to_xml_and_xmlschema",
+        # Postgres: the server's files and directories, and the adminpack extension's file functions
+        "pg_read_file", "pg_read_binary_file", "pg_stat_file", "pg_ls_dir", "pg_ls_logdir", "pg_ls_waldir",
+        "pg_ls_logicalmapdir", "pg_ls_logicalsnapdir", "pg_ls_replslotdir", "pg_ls_archive_statusdir", "pg_ls_tmpdir",
+        "pg_ls_summariesdir", "pg_current_logfile", "pg_file_write", "pg_file_rename", "pg_file_unlink",
+        "pg_file_sync", "pg_logdir_ls",
+        # Postgres: the session's random seed
+        "setseed",
+        # Postgres: statistics resets, and the planner statistics a function can set or clear
+        "pg_stat_reset", "pg_stat_reset_shared", "pg_stat_reset_single_table_counters",
+        "pg_stat_reset_single_function_counters", "pg_stat_reset_slru", "pg_stat_reset_replication_slot",
+        "pg_stat_reset_subscription_stats", "pg_stat_reset_backend_stats", "pg_stat_statements_reset",
+        "pg_restore_relation_stats", "pg_restore_attribute_stats", "pg_clear_relation_stats",
+        "pg_clear_attribute_stats",
+        # Postgres: replication slots and origins
+        "pg_copy_physical_replication_slot", "pg_copy_logical_replication_slot", "pg_replication_slot_advance",
+        "pg_logical_slot_get_changes", "pg_logical_slot_peek_changes", "pg_logical_slot_get_binary_changes",
+        "pg_logical_slot_peek_binary_changes", "pg_sync_replication_slots", "pg_log_standby_snapshot",
+        "pg_replication_origin_create", "pg_replication_origin_drop", "pg_replication_origin_oid",
+        "pg_replication_origin_session_setup", "pg_replication_origin_session_reset",
+        "pg_replication_origin_session_is_setup", "pg_replication_origin_session_progress",
+        "pg_replication_origin_xact_setup", "pg_replication_origin_xact_reset", "pg_replication_origin_advance",
+        "pg_replication_origin_progress",
+    }
+)
+
+
+def _unconfined_function(stmt: exp.Expression):
+    """The name of the first function in `stmt` that is one of `_UNCONFINED_FUNCTIONS`, or None."""
+    for node in stmt.walk():
+        name = _function_name(node)
+        if name in _UNCONFINED_FUNCTIONS:
+            return name
+    return None
+
+
+def _assigns_user_variable(stmt: exp.Expression) -> bool:
+    """Whether `stmt` assigns a MySQL user variable, `@x := ...`, whose value outlives the run on its connection."""
+    return any(node.this.find(exp.Parameter) is not None for node in stmt.find_all(exp.PropertyEQ))
+
+
 def _write_function(stmt: exp.Expression):
     """The name of the first function in `stmt` that is one of `_WRITE_FUNCTIONS`, or advances a sequence in another
     spelling (`NEXT VALUE FOR s`, `s.nextval`), or None."""
@@ -2211,8 +2260,9 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
     its tree, and statements holding only a comment after the last semicolon are not counted. "confined-write" is
     stricter than "write": the statement must also call none of `_WRITE_FUNCTIONS`, which write outside the table the
-    statement names (a sequence, a large object), must return no rows (no RETURNING or OUTPUT clause), and its
-    reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
+    statement names (a sequence, a large object), and none of `_UNCONFINED_FUNCTIONS` (reason "unconfined-function"),
+    must assign no MySQL user variable (reason "user-variable"), must return no rows (no RETURNING or OUTPUT clause),
+    and its reconstruction must pass the same checks and reconstruct to itself (reason "rebuild-differs"). When the
     statement is refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
     For "postgres", "confined-write" also refuses, as "backslash-quote", a statement whose reconstruction Postgres would
@@ -2233,8 +2283,13 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _statement_reason(stmts[0], sql, dialect)
             if problem is None and stmt_type == "confined-write":
                 function = _write_function(stmts[0])
+                unconfined = _unconfined_function(stmts[0])
                 if function is not None:
                     problem = ("write-function", function)
+                elif unconfined is not None:
+                    problem = ("unconfined-function", unconfined)
+                elif _assigns_user_variable(stmts[0]):
+                    problem = ("user-variable", None)
                 elif stmts[0].args.get("returning") is not None:
                     problem = ("returning", None)
         else:
