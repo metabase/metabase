@@ -21,22 +21,26 @@ type SegmentTestHeaderProps = {
   urls: SegmentTestUrls;
 };
 
+function isRunsPathname(pathname: string) {
+  return pathname.endsWith("/runs");
+}
+
 export function SegmentTestHeader({
   segment,
   table,
   test,
   urls,
 }: SegmentTestHeaderProps) {
-  const runsUrl = urls.getTestRunsUrl(segment.id, test.id);
   const tabs: PillTab[] = [
     {
       label: t`Overview`,
       to: urls.getTestUrl(segment.id, test.id),
+      isSelected: (pathname: string) => !isRunsPathname(pathname),
     },
     {
       label: t`Runs`,
-      to: runsUrl,
-      isSelected: (pathname: string) => pathname.startsWith(runsUrl),
+      to: urls.getTestRunsUrl(segment.id, test.id),
+      isSelected: isRunsPathname,
     },
   ];
   const Breadcrumbs =

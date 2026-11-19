@@ -155,6 +155,17 @@ describe("SegmentTestOverviewPage", () => {
     );
   });
 
+  it("says not found when the test belongs to another segment", async () => {
+    setup({
+      test: createMockSegmentTest({ id: TEST_ID, segment_id: SEGMENT_ID + 1 }),
+    });
+
+    expect(await screen.findByText("Not found.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Run this test" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("says when the test has never run", async () => {
     setup();
 

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { skipToken, useGetSegmentQuery } from "metabase/api";
 import { useLoadTableWithMetadata } from "metabase/common/data-studio/hooks/use-load-table-with-metadata";
 import { useParams } from "metabase/router";
@@ -32,12 +34,19 @@ export function useRouteSegmentTest() {
     error: testError,
   } = useGetSegmentTestQuery(testId ?? skipToken);
 
+  const isLoading = isLoadingSegment || isLoadingTable || isLoadingTest;
+  const isMissing =
+    segmentId == null ||
+    testId == null ||
+    (test != null && test.segment_id !== segmentId);
+  const notFoundError = !isLoading && isMissing ? t`Not found.` : undefined;
+
   return {
     segment,
     table,
-    test,
+    test: isMissing ? undefined : test,
     urls,
-    isLoading: isLoadingSegment || isLoadingTable || isLoadingTest,
-    error: segmentError ?? tableError ?? testError,
+    isLoading,
+    error: segmentError ?? tableError ?? testError ?? notFoundError,
   };
 }
