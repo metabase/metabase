@@ -30,6 +30,7 @@
    ::colliding-columns          400  ; An expectation compares one output column twice, or one the comparison names itself.
    ::not-a-single-write         400  ; A subject that writes holds SQL other than one INSERT, UPDATE or DELETE, calls a function the write check refuses, or assigns a user variable.
    ::no-output                  400  ; An expectation compares the output of a subject that writes and has none.
+   ::parameters-not-taken       400  ; A test sets parameter values for a subject type that takes none.
    ::write-returns-rows         400  ; A subject that writes has a RETURNING or OUTPUT clause, so it returns rows.
 
    ;; 422 — the subject or its environment

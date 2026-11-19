@@ -66,13 +66,33 @@
       (testing (str schema " admits the inputs, expectations and parameters of a test")
         (is (mr/validate schema definition)))
       (testing (str schema " refuses a key a run does not read")
-        (is (not (mr/validate schema (assoc definition :name "a test")))))))
-  (testing "a definition for a subject without parameters is closed too"
-    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
-                          {:inputs [] :expectations [] :name "a test"})))
-    (is (not (mr/validate ::data-testing.subject/definition-without-parameters
-                          {:inputs [] :expectations [] :parameters {"id" 1}})))
-    (is (mr/validate ::data-testing.subject/definition-without-parameters {:inputs [] :expectations []}))))
+        (is (not (mr/validate schema (assoc definition :name "a test"))))))))
+
+(deftest parameter-values-for-a-subject-without-parameters-are-refused-test
+  (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                       "SELECT ID FROM PUBLIC.PEOPLE")}
+                 :model/Transform {transform-id :id} (data-testing.test-util/id-transform :people)
+                 :model/Segment   {segment-id :id}   (data-testing.test-util/from-google-segment)]
+    (doseq [[subject-type subject] [[:card (t2/select-one :model/Card :id card-id)]
+                                    [:transform (t2/select-one :model/Transform :id transform-id)]
+                                    [:segment (t2/select-one :model/Segment :id segment-id)]]
+            :let [refusal (fn [parameters]
+                            (data-testing.test-util/refusal
+                             #(data-testing.runner/validate-test
+                               subject-type subject
+                               (cond-> {:inputs [] :expectations []}
+                                 parameters (assoc :parameters parameters)))
+                             :parameters))]]
+      (testing (str "a " (name subject-type) " test")
+        (testing "control: without parameter values, any refusal is for another reason"
+          (is (not= ::data-testing.errors/parameters-not-taken (:error-type (refusal nil))))
+          (is (not= ::data-testing.errors/parameters-not-taken (:error-type (refusal {})))))
+        (testing "with parameter values is refused, as a 400 naming them"
+          (let [{:keys [error-type message parameters]} (refusal {"status" "paid" "id" 1})]
+            (is (= ::data-testing.errors/parameters-not-taken error-type))
+            (is (= 400 (data-testing.errors/status-code error-type)))
+            (is (= ["id" "status"] parameters))
+            (is (re-find #"id, status" (str message)))))))))
 
 (deftest run-transform-test-rows-input-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
