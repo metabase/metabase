@@ -9,6 +9,10 @@ import {
 import { t } from "ttag";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
+import {
+  EXPRESSION_PILL_VERSION_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import * as Lib from "metabase-lib";
 import { getUniqueExpressionName } from "metabase-lib/v1/queries/utils/expression";
 
@@ -22,6 +26,7 @@ import { NotebookCell, NotebookCellAdd } from "../NotebookCell";
 import { useCustomColumnRequest } from "../NotebookStepList/CustomColumnRequest";
 
 import { ExpressionPill } from "./ExpressionPill";
+import { ExpressionAddButtonB, ExpressionPillB } from "./ExpressionPillB";
 
 type EditorTarget =
   | { kind: "clause"; index: number }
@@ -331,10 +336,11 @@ export const ExpressionStep = ({
     editedExpression != null
       ? Lib.displayInfo(query, stageIndex, editedExpression).displayName
       : undefined;
+  // A name that the column got by default, not from the user or the AI.
+  const isDefaultOrAutoName = (name: string) =>
+    isDefaultName(name) || autoNamesRef.current.has(name);
   const hasDefaultEditedName =
-    editedName === undefined ||
-    isDefaultName(editedName) ||
-    autoNamesRef.current.has(editedName);
+    editedName === undefined || isDefaultOrAutoName(editedName);
 
   const availableColumns = useMemo(
     () =>
@@ -342,44 +348,85 @@ export const ExpressionStep = ({
     [query, stageIndex, editedIndex],
   );
 
+  // Prototype: the style of the pills, from the switcher.
+  const [pillVersion] = usePrototypeSetting(EXPRESSION_PILL_VERSION_SETTING);
+  const isPillB = pillVersion === "b";
+
   return (
     <>
       <NotebookCell color={color}>
         <ClauseStepDndContext items={expressions} onReorder={handleReorder}>
           {expressions.map((expression, index) => (
             <ClauseStepDndItem key={index} index={index} readOnly={!!readOnly}>
-              <ExpressionPill
-                name={getExpressionName(expression)}
-                color={color}
-                isActive={editedIndex === index}
-                readOnly={readOnly}
-                hasUnsavedChanges={
-                  pendingKey({ kind: "clause", index }) in pendingSources
-                }
-                onOpen={() => openEditorAt({ kind: "clause", index })}
-                onRename={(name) => handleRename(index, name)}
-                onRemove={() => handleRemove(index)}
-              />
+              {isPillB ? (
+                <ExpressionPillB
+                  name={getExpressionName(expression)}
+                  isActive={editedIndex === index}
+                  readOnly={readOnly}
+                  isNameDefault={isDefaultOrAutoName(
+                    getExpressionName(expression),
+                  )}
+                  hasUnsavedChanges={
+                    pendingKey({ kind: "clause", index }) in pendingSources
+                  }
+                  onOpen={() => openEditorAt({ kind: "clause", index })}
+                  onRename={(name) => handleRename(index, name)}
+                  onRemove={() => handleRemove(index)}
+                />
+              ) : (
+                <ExpressionPill
+                  name={getExpressionName(expression)}
+                  color={color}
+                  isActive={editedIndex === index}
+                  readOnly={readOnly}
+                  hasUnsavedChanges={
+                    pendingKey({ kind: "clause", index }) in pendingSources
+                  }
+                  onOpen={() => openEditorAt({ kind: "clause", index })}
+                  onRename={(name) => handleRename(index, name)}
+                  onRemove={() => handleRemove(index)}
+                />
+              )}
             </ClauseStepDndItem>
           ))}
         </ClauseStepDndContext>
 
-        {draftIds.map((id) => (
-          <ExpressionPill
-            key={id}
-            name={t`New column`}
-            color={color}
-            isActive={openTarget?.kind === "draft" && openTarget.id === id}
-            readOnly={readOnly}
-            canRename={false}
-            hasUnsavedChanges
-            onOpen={() => openEditorAt({ kind: "draft", id })}
-            onRename={noop}
-            onRemove={() => discardDraft(id)}
-          />
-        ))}
+        {draftIds.map((id) =>
+          isPillB ? (
+            // A new column starts as "Untitled", in the box of a default name.
+            <ExpressionPillB
+              key={id}
+              name={t`Untitled`}
+              isActive={openTarget?.kind === "draft" && openTarget.id === id}
+              readOnly={readOnly}
+              canRename={false}
+              isNameDefault
+              onOpen={() => openEditorAt({ kind: "draft", id })}
+              onRename={noop}
+              onRemove={() => discardDraft(id)}
+            />
+          ) : (
+            <ExpressionPill
+              key={id}
+              name={t`New column`}
+              color={color}
+              isActive={openTarget?.kind === "draft" && openTarget.id === id}
+              readOnly={readOnly}
+              canRename={false}
+              hasUnsavedChanges
+              onOpen={() => openEditorAt({ kind: "draft", id })}
+              onRename={noop}
+              onRemove={() => discardDraft(id)}
+            />
+          ),
+        )}
 
-        {!readOnly && <NotebookCellAdd color={color} onClick={addDraft} />}
+        {!readOnly &&
+          (isPillB ? (
+            <ExpressionAddButtonB onClick={addDraft} />
+          ) : (
+            <NotebookCellAdd color={color} onClick={addDraft} />
+          ))}
       </NotebookCell>
 
       {openEditor != null && isEditorLoaded && (

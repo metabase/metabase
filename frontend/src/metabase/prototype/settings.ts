@@ -26,8 +26,11 @@ export const EXPRESSION_PILL_VERSION_SETTING: SegmentedPrototypeSetting = {
   type: "segmented",
   label: "Expression pill",
   description:
-    "The style of the custom column pill, to show that a double-click renames it. A: the current pill.",
-  options: [{ value: "a", label: "Version A" }],
+    "The style of the custom column pill, to show that a double-click renames it. A: the current pill. B: a brand-blue pill with its name in a box like a text field, shown for a default name and on hover or selection.",
+  options: [
+    { value: "a", label: "Version A" },
+    { value: "b", label: "Version B" },
+  ],
   defaultValue: "a",
 };
 

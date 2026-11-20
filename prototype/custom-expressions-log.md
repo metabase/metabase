@@ -43,6 +43,9 @@ A separate switcher, **Expression pill** (`expression-pill-version`), for the st
 | Version | Axis | Folder | Based on | Status |
 |---|---|---|---|---|
 | A | The current pill | `notebook/components/ExpressionStep/ExpressionPill.tsx` | — | active |
+| B | Brand-blue pill; the name sits in a box like a text field: shown for a default name, and on hover or while selected | `notebook/components/ExpressionStep/ExpressionPillB.tsx` (+ `.module.css`) | A | active |
+
+Pill B (Figma node 361:2521) is used only in the custom column step; filters and summaries keep pill A. A new column shows "Untitled" (A: "New column"), without the unsaved dot. Names from the user or the AI drop the box; default names ("New column", shortcut names) keep it. The "+" is a 36px brand square.
 
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
