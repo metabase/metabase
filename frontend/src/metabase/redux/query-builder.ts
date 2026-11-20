@@ -36,9 +36,8 @@ export const setIsNativeEditorOpen = createThunkAction(
 
 export const SET_PENDING_METABOT_CARD = "metabase/qb/SET_PENDING_METABOT_CARD";
 /**
- * Tells the next query builder init that Metabot is opening the question at
- * `url`. Each `initializeQB` reads and clears it before anything else, so only
- * the init that starts next sees it.
+ * Tells the next query builder init that Metabot is opening the question at `url`.
+ * That init reads and clears it.
  */
 export const setPendingMetabotCard = createAction<PendingMetabotCard | null>(
   SET_PENDING_METABOT_CARD,

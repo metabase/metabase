@@ -61,18 +61,6 @@ export function removeDataSource(
   }
 }
 
-export function resetDataSourceButton(dataSourceName: string) {
-  dataSource(dataSourceName)
-    .realHover()
-    .findByLabelText("Datasource actions")
-    .click({ force: true });
-  return cy
-    .document()
-    .its("body")
-    .findByTestId("datasource-actions-dropdown")
-    .findByLabelText("Reset data source");
-}
-
 export function dataSourceColumn(dataSourceName: string, columnName: string) {
   return dataSource(dataSourceName)
     .findByText(columnName)
@@ -129,16 +117,6 @@ export function selectDataset(
   cy.wait("@cardQuery");
 }
 
-export function deselectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
-  cy.findAllByText(datasetName)
-    .first()
-    .closest("[data-testid='swap-dataset-button']")
-    .should("have.attr", "aria-pressed", "true")
-    .click({ force: true });
-  cy.wait("@cardQuery");
-}
-
 export function assertCurrentVisualization(name: VisualizationDisplay) {
   cy.findByTestId("viz-picker-main")
     .findByDisplayValue(name)
@@ -157,10 +135,6 @@ export function switchToAddMoreData() {
 
 export function switchToColumnsList() {
   cy.button("Done").click();
-}
-
-export function ensureDisplayIsSelected(display: VisualizationDisplay) {
-  cy.findByDisplayValue(display).should("be.checked");
 }
 
 export function selectColumnFromColumnsList(
@@ -307,18 +281,8 @@ export function saveDashcardVisualizerModal(
   cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
 }
 
-export function closeDashcardVisualizerModal() {
-  return modal().within(() => {
-    cy.findByTestId("visualizer-close-button").click();
-  });
-}
-
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
-}
-
-export function clickUndoButton() {
-  cy.findByLabelText("Undo").click();
 }
 
 export function clickRedoButton() {

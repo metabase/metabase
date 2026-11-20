@@ -397,6 +397,22 @@
    (sql-jdbc.conn/db->pooled-connection-spec database)
    args))
 
+(defn do-with-unpooled-default-connection
+  "Calls `f` with a new `java.sql.Connection` opened from the primary `:details` of `database`, outside the connection
+  pools, and returns what `f` returns. `database` needs `:engine` and `:details`. Ignores the connection type and
+  workspace swaps, and skips routing: a router connects to itself, and a destination passes with no
+  [[driver-api/check-allowed-access!]]. Throws before it connects when the network policy does not allow a host of the
+  details. `f` must realize its result: the connection closes when `f` returns."
+  [{driver :engine, :keys [details], :as database} f]
+  ;; a pooled connection gets this check when its pool is created, and a connection test before it connects; the
+  ;; details of a stored database can come from an import, or be older than the policy
+  (driver.u/with-database-network-policy database
+    (driver.u/validate-connection-hosts! driver details))
+  (sql-jdbc.conn/do-with-unpooled-connection-spec
+   driver details
+   (fn [spec]
+     (sql-jdbc.execute/do-with-connection-with-options driver spec nil f))))
+
 (defmethod driver/query-result-metadata :sql-jdbc
   [driver query]
   (sql-jdbc.metadata/query-result-metadata driver query))
