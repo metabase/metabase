@@ -446,6 +446,16 @@
   [pulse-id]
   (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
 
+(defn pulses-with-ids
+  "The Pulses whose ids are in `pulse-ids`, archived or not."
+  [pulse-ids]
+  (t2/select :model/Pulse :id [:in pulse-ids]))
+
+(defn enabled-pulse-channels
+  "The id, channel type, details, and channel id of the enabled PulseChannels of the Pulse with `pulse-id`."
+  [pulse-id]
+  (t2/select [:model/PulseChannel :id :channel_type :details :channel_id] :pulse_id [:= pulse-id] :enabled true))
+
 (defn pulse-channel-recipient-rows
   "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
   [channel-id]
