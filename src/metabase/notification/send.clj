@@ -490,10 +490,16 @@
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
         ;; set when the drain runs out; a send can swallow the interrupt, so workers check this before taking more
         abandon-flag  (java.util.concurrent.atomic.AtomicBoolean. false)
+        ;; the drain's deadline in nanoTime, published before the wait, so a worker sees it pass before the flag is set
+        deadline      (java.util.concurrent.atomic.AtomicReference.)
+        abandoned?    (fn []
+                        (or (.get abandon-flag)
+                            (when-let [deadline-ns (.get deadline)]
+                              (>= (- (System/nanoTime) (long deadline-ns)) 0))))
         start-worker! (fn []
                         (.submit ^ThreadPoolExecutor executor
                                  ^Callable (fn []
-                                             (while (and (not (.get abandon-flag))
+                                             (while (and (not (abandoned?))
                                                          (not (Thread/interrupted))
                                                          (or (not (.get shutdown-flag))
                                                              ;; Continue processing if shutdown flag is set but queue is not empty
@@ -501,7 +507,7 @@
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
                                                    ;; a take that returns after the deadline must not start a send
-                                                   (when-not (.get abandon-flag)
+                                                   (when-not (abandoned?)
                                                      (log/with-restored-context-from-meta notification
                                                        (task-history/with-restored-run-id notification
                                                          (send-notification-sync! notification)))))
@@ -530,6 +536,7 @@
                       (.shutdown ^ThreadPoolExecutor executor))
         shutdown-fn (fn [timeout-ms]
                       (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
+                      (.set deadline (+ (System/nanoTime) (* 1000000 (long timeout-ms))))
                       (close-fn)
                       (let [drained? (try
                                        (.awaitTermination ^ThreadPoolExecutor executor
