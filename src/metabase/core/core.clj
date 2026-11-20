@@ -141,24 +141,27 @@
    "shut down notifications"      #{"shut down tracing" "shut down analytics" "halt the global system"}
    "release migration locks"      #{"halt the global system"}})
 
+;; how long the halt waits for a start in flight, out of the 30 seconds the process has to shut down
+(def ^:private halt-options {:start-timeout-ms 5000})
+
+(defn- halt-global-system!
+  "Halt the global system with [[system-dependencies]], or with none if they form a cycle."
+  []
+  (try
+    (global-system/halt! system-dependencies halt-options)
+    (catch clojure.lang.ExceptionInfo e
+      ;; a test fails on a cycle, but shutdown must not skip the halt if one ships anyway
+      (if (= :weavejester.dependency/circular-dependency (:reason (ex-data e)))
+        (do (log/error e "Shutdown dependencies form a cycle, so halting with none")
+            (global-system/halt! {} halt-options))
+        (throw e)))))
+
 ;; TODO (Chris 2026-11-13) -- Move these stops into the halt one component at a time, until the halt stops them all.
 ;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
 ;; since the halt takes its order from those edges and not from this list.
 ;; Two limits of the halt matter more as steps move in.
 ;; It does not wait for a stop already running on another thread.
-;; It waits for a start in flight with no timeout, while the process has about 30 seconds to shut down.
-(defn- halt-global-system!
-  "Halt the global system with [[system-dependencies]], or with none if they form a cycle."
-  []
-  (try
-    (global-system/halt! system-dependencies {:start-timeout-ms 5000})
-    (catch clojure.lang.ExceptionInfo e
-      ;; a test fails on a cycle, but shutdown must not skip the halt if one ships anyway
-      (if (= :weavejester.dependency/circular-dependency (:reason (ex-data e)))
-        (do (log/error e "Shutdown dependencies form a cycle, so halting with none")
-            (global-system/halt! {} {:start-timeout-ms 5000}))
-        (throw e)))))
-
+;; It waits only a few seconds for a start in flight, then leaves that component running.
 (defn- shutdown-steps
   "The steps [[destroy!]] runs, in order, as `[label thunk]` pairs."
   []

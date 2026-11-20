@@ -359,6 +359,9 @@
   (swap! admissions assoc :halted? true)
   nil)
 
+;; the longest wait in milliseconds whose nanoseconds still fit in a long
+(def ^:private max-wait-ms (quot Long/MAX_VALUE 1000000))
+
 (defn- await-starts!
   "Wait up to `timeout-ms` for every start in flight to register or fail, and return the keys of those still in flight.
    Called after [[close-admission!]], when no more starts can be admitted, so none is missed."
@@ -377,7 +380,7 @@
   "Refuse every later start, then wait up to `start-timeout-ms` for the starts already in flight to register or fail.
    Throws, before refusing anything, if called from a component's start, whose own start it could not wait for."
   ([]
-   (begin-halt! (quot Long/MAX_VALUE 1000000)))
+   (begin-halt! max-wait-ms))
   ([start-timeout-ms]
    (when (some #(= (Thread/currentThread) (:thread %)) (vals (:starting @admissions)))
      (throw (ex-info "A component's start cannot halt the system" {})))
@@ -406,7 +409,7 @@
    (halt! dependencies {}))
   ([dependencies {:keys [start-timeout-ms], :or {start-timeout-ms Long/MAX_VALUE}}]
    (let [graph (dependency-graph dependencies)]
-     (begin-halt! (min start-timeout-ms (quot Long/MAX_VALUE 1000000)))
+     (begin-halt! (min start-timeout-ms max-wait-ms))
      (stop-all! (halt-order graph)))))
 
 (defn reopen!
