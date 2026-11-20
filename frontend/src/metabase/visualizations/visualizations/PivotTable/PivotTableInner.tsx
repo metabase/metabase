@@ -25,6 +25,7 @@ import { getCspNonce } from "metabase/utils/csp";
 import { getScrollBarSize } from "metabase/utils/dom";
 import {
   COLUMN_SHOW_TOTALS,
+  COLUMN_TEXT_ALIGN,
   isPivotGroupColumn,
   multiLevelPivot,
 } from "metabase/visualizations/lib/data_grid";
@@ -47,7 +48,11 @@ import {
   PIVOT_TABLE_BODY_LABEL,
 } from "./constants";
 import { getTitleForColumn } from "./settings";
-import type { HeaderWidthType, PivotTableClicked } from "./types";
+import type {
+  HeaderWidthType,
+  PivotCellAlign,
+  PivotTableClicked,
+} from "./types";
 import {
   getCellWidthsForSection,
   getLeftHeaderWidths,
@@ -169,6 +174,20 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       }
       return null;
     }, [data, settings]);
+
+    // One entry per measure, in the order the cells of a row section use.
+    const valueAlignments = useMemo<PivotCellAlign[]>(() => {
+      if (!pivoted || typeof settings.column !== "function") {
+        return [];
+      }
+      const getColumnSettings = settings.column;
+      return pivoted.valueIndexes.map(
+        (index) =>
+          getColumnSettings(pivoted.columnsWithoutPivotGroup[index])?.[
+            COLUMN_TEXT_ALIGN
+          ] ?? "right",
+      );
+    }, [pivoted, settings]);
 
     const previousRowIndexes = usePrevious(pivoted?.rowIndexes);
     const hasColumnWidths = [
@@ -580,6 +599,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                                   valueIndexes,
                                   columnIndex,
                                 )}
+                                valueAlignments={valueAlignments}
                               />
                             );
                           }}

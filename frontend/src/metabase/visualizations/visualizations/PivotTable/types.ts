@@ -40,6 +40,9 @@ export type BodyItem = HeaderItem & {
   backgroundColor?: string;
 };
 
+/** Values of the `text_align` column setting. */
+export type PivotCellAlign = "left" | "middle" | "right";
+
 export type CustomColumnWidth = Record<number, number>;
 
 export type HeaderWidthType = {

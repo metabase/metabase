@@ -16,7 +16,12 @@ import type { RowValue, VisualizationSettings } from "metabase-types/api";
 import S from "./PivotTable.module.css";
 import { RowToggleIcon } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
-import type { BodyItem, HeaderItem, PivotTableClicked } from "./types";
+import type {
+  BodyItem,
+  HeaderItem,
+  PivotCellAlign,
+  PivotTableClicked,
+} from "./types";
 
 type CellColorProps = {
   theme: MantineTheme;
@@ -81,6 +86,8 @@ interface CellProps {
   icon?: React.ReactNode;
   backgroundColor?: string;
   isBody?: boolean;
+  /** Alignment of a body cell's value; body cells default to right. */
+  align?: PivotCellAlign;
   isBold?: boolean;
   isEmphasized?: boolean;
   isBorderedHeader?: boolean;
@@ -145,6 +152,7 @@ export function Cell({
   icon,
   backgroundColor,
   isBody = false,
+  align = "right",
   isBold,
   isEmphasized,
   isBorderedHeader,
@@ -168,6 +176,7 @@ export function Cell({
       })}
       data-allow-page-break-after
       data-testid="pivot-table-cell"
+      data-align={isBody ? align : undefined}
       style={{
         ...style,
         ...(backgroundColor ? { backgroundColor } : {}),
@@ -180,7 +189,8 @@ export function Cell({
       <>
         <div
           className={cx(CS.px1, CS.flex, CS.alignCenter, {
-            [CS.justifyEnd]: isBody,
+            [CS.justifyEnd]: isBody && align === "right",
+            [CS.justifyCenter]: isBody && align === "middle",
           })}
         >
           <Ellipsified showTooltip={showTooltip}>{value}</Ellipsified>
@@ -284,6 +294,11 @@ interface BodyCellProps {
   rowSection: BodyItem[];
   getCellClickHandler: CellClickHandler;
   cellWidths: number[];
+  /**
+   * Alignment for each measure, in the same order as the cells of a row
+   * section (one cell per measure, in `valueIndexes` order).
+   */
+  valueAlignments?: PivotCellAlign[];
   showTooltip?: boolean;
 }
 
@@ -292,6 +307,7 @@ export const BodyCell = ({
   rowSection,
   getCellClickHandler,
   cellWidths,
+  valueAlignments,
   showTooltip = true,
 }: BodyCellProps) => {
   return (
@@ -309,6 +325,7 @@ export const BodyCell = ({
               isBold={isSubtotal}
               showTooltip={showTooltip}
               isBody
+              align={valueAlignments?.[index]}
               onClick={getCellClickHandler(clicked)}
               backgroundColor={backgroundColor}
             />
