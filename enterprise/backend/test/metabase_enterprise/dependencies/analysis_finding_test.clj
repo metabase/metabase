@@ -15,6 +15,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.dependencies :as queries.dependencies]
    [metabase.query-processor :as qp]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -516,8 +517,9 @@
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
        (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-         (is (= 1 (t2/update! :model/Segment :id segment-id
-                              {:definition (price-segment-definition lib/<)}))))))))
+         (is (= 1 (segments.write/update-segment! segment-id
+                                                  {:definition (price-segment-definition lib/<)}
+                                                  {}))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!
@@ -529,7 +531,7 @@
                                                                                 (lib.metadata/segment (mt/metadata-provider)
                                                                                                       segment-id))}]
              (analyzed-by-job!)
-             (t2/update! :model/Segment :id segment-id {:definition (price-segment-definition lib/<)})
+             (segments.write/update-segment! segment-id {:definition (price-segment-definition lib/<)} {})
              (is (= #{[:segment segment-id] [:card card-id]}
                     (analyzed-among! [:segment segment-id] [:card card-id]))))))))))
 

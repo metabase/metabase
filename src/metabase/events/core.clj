@@ -22,6 +22,10 @@
   spec
   with-batched-events
   with-event-context]
+ [metabase.events.lifecycle
+  created!
+  deleting!
+  updated!]
  [metabase.events.hierarchy
   derive!
   descendants

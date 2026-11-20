@@ -3,11 +3,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.segments.db :as segments.db]
    [metabase.segments.schema :as segments.schema]
+   [metabase.segments.write :as segments.write]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -21,7 +21,10 @@
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
     (let [segment (api/check-500
-                   (segments.db/insert-segment! api/*current-user-id* name description definition))]
+                   (segments.write/create-segment! {:creator_id  api/*current-user-id*
+                                                    :name        name
+                                                    :description description
+                                                    :definition  definition}))]
       (t2/hydrate segment :creator))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -75,9 +78,10 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (events/with-event-context {:revision-message revision_message}
-        (segments.db/update-segment! id (cond-> changes
-                                          (:definition changes) (update :definition lib-be/normalize-query)))))
+      (segments.write/update-segment! id
+                                      (cond-> changes
+                                        (:definition changes) (update :definition lib-be/normalize-query))
+                                      {:revision-message revision_message}))
     (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

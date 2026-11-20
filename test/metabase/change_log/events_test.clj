@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
    [metabase.metabot.db :as metabot.db]
+   [metabase.models.interface :as mi]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.core :as perms]
@@ -255,18 +256,20 @@
             (str model "'s key is not an integer column"))))))
 
 (deftest tracked-models-derive-events-test
-  (testing "each tracked model derives the events trait, which collects the writes the change log records"
+  (testing "each tracked model derives the events trait or has write functions, which publish the writes the change log records"
     (spec-test-util/load-models!)
     (doseq [model (vals (change-log.cascade/tracked-models))]
-      (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
+      (is (or (isa? model :hook/events) (some? (mi/write-fns model)))
+          (str model " neither derives :hook/events nor has mi/write-fns")))))
 
 (deftest cascade-sources-derive-events-test
-  (testing "a model whose delete cascades to a tracked table derives the events trait, so the delete is captured"
+  (testing "a model whose delete cascades to a tracked table derives the events trait or has write functions, so the delete is captured"
     (let [models  (spec-test-util/load-models!)
           fks     (change-log.cascade/foreign-keys)
           sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
       (doseq [model sources]
-        (is (isa? model :hook/events) (str model " does not derive :hook/events"))))))
+        (is (or (isa? model :hook/events) (some? (mi/write-fns model)))
+            (str model " neither derives :hook/events nor has mi/write-fns"))))))
 
 (defn- startup-namespaces
   "The Metabase namespaces that the startup namespaces require in their `ns` forms, at any depth. EE's startup

@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.batch-processing.core :as grouper]
    [metabase.lib.core :as lib]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -201,9 +202,10 @@
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
                           :result-metadata [:card-g]})
-                 (marks! world #(t2/update! :model/Segment :id (id-of world :segment)
-                                            {:definition (lib/filter (deps.test/table-query :checkins)
-                                                                     (lib/= 2 2))})))))
+                 (marks! world #(segments.write/update-segment! (id-of world :segment)
+                                                                {:definition (lib/filter (deps.test/table-query :checkins)
+                                                                                         (lib/= 2 2))}
+                                                                {})))))
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})

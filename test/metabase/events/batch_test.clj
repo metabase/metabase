@@ -9,6 +9,7 @@
    [metabase.events.core :as events]
    [metabase.events.models.events-test-timeline :as events-test-timeline]
    [metabase.events.test-util :as events.tu]
+   [metabase.models.interface :as mi]
    [metabase.models.resolution :as models.resolution]
    [metabase.test :as mt]
    [metabase.util.quick-task :as quick-task]
@@ -30,7 +31,9 @@
 (def ^:private topic-names
   [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete
    :event/events-test-timeline-update-only-update
-   :event/events-test-timeline-self-update-create :event/events-test-timeline-self-update-update])
+   :event/events-test-timeline-self-update-create :event/events-test-timeline-self-update-update
+   :event/events-test-timeline-converted-create :event/events-test-timeline-converted-update
+   :event/events-test-timeline-converted-delete])
 
 (doseq [topic topic-names]
   (events/derive! topic ::capture))
@@ -280,9 +283,10 @@
       (doseq [model models]
         (is (seq (when-let [f (get specs model)] (f model)))
             (str model " derives :hook/events but has no events/spec method"))))
-    (testing "every model with an events/spec method derives :hook/events"
+    (testing "every model with an events/spec method derives :hook/events or has write functions, never both"
       (doseq [model (keys specs)]
-        (is (isa? model :hook/events) (str model " has an events/spec method but does not derive :hook/events"))))
+        (is (not= (isa? model :hook/events) (some? (mi/write-fns model)))
+            (str model " has an events/spec method and must either derive :hook/events or have mi/write-fns"))))
     (testing "no two models share a topic"
       (let [topics (mapcat (fn [[model f]] (vals (f model))) specs)]
         (is (= [] (keep (fn [[topic n]] (when (< 1 n) topic)) (frequencies topics))))))))
@@ -395,3 +399,95 @@
           (events.batch/do-with-delete-statement ::events-test-timeline/Timeline :id (constantly [])
                                                  #(swap! state dissoc :metabase.events.batch/batch))
           (is (not (contains? @state :metabase.events.batch/batch))))))))
+
+(defn- comparable-payloads
+  "The delivered payloads without the columns that differ between two rows written the same way."
+  []
+  (let [strip #(dissoc (into {} %) :id :entity_id :created_at :updated_at)]
+    (mapv (fn [{:keys [event]}]
+            (cond-> event
+              (:object event)          (update :object strip)
+              (:previous-object event) (update :previous-object strip)))
+          @received)))
+
+(defn- write-trait-timeline!
+  "Create, update and delete a timeline of the model that derives `:hook/events`."
+  []
+  (let [id (t2/insert-returning-pk! ::events-test-timeline/Timeline (row "batch-test-same"))]
+    (t2/update! ::events-test-timeline/Timeline :id id {:name "batch-test-renamed"})
+    (t2/delete! ::events-test-timeline/Timeline :id id)))
+
+(defn- write-converted-timeline!
+  "Create, update and delete a timeline of the model whose write functions publish its events."
+  []
+  (let [id (:id (events-test-timeline/create-timeline! (row "batch-test-same")))]
+    (events-test-timeline/update-timeline! id {:name "batch-test-renamed"} {})
+    (events-test-timeline/delete-timelines! [id] {})))
+
+(deftest write-functions-publish-what-trait-publishes-test
+  (mt/with-test-user :rasta
+    (with-timeline-cleanup
+      (write-trait-timeline!)
+      (let [trait-topics   (topics)
+            trait-payloads (comparable-payloads)
+            trait-events   (mapv :event @received)]
+        (reset! received [])
+        (write-converted-timeline!)
+        (testing "created!, updated! and deleting! publish one event per write, like the trait"
+          (is (= [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete]
+                 trait-topics))
+          (is (= [:event/events-test-timeline-converted-create
+                  :event/events-test-timeline-converted-update
+                  :event/events-test-timeline-converted-delete]
+                 (topics))))
+        (testing "the payloads are those of the trait"
+          (is (= trait-payloads (comparable-payloads))))
+        (testing "the update carries the updated_at of the row before it, as the trait settles an SQL expression"
+          (doseq [events [trait-events (mapv :event @received)]
+                  :let [update (second events)]]
+            (is (= (:updated_at (:previous-object update)) (:updated_at (:object update))))))))))
+
+(deftest updated!-without-change-publishes-nothing-test
+  (mt/with-test-user :rasta
+    (with-timeline-cleanup
+      (let [row (events-test-timeline/create-timeline! (row "batch-test-unchanged"))]
+        (reset! received [])
+        (events/updated! ::events-test-timeline/TimelineConverted row row)
+        (is (= [] (topics)))))))
+
+(deftest deleting!-runs-captures-test
+  (testing "deleting! runs the statement captures with the loaded rows, then the captures, before the delete"
+    (let [deletes (atom [])
+          seen    (atom [])
+          model   ::events-test-timeline/TimelineConverted]
+      (events/register-statement-capture! ::deleting-statement
+                                          (fn [m select-rows]
+                                            (when (= model m)
+                                              (swap! seen conj :statement-capture)
+                                              {:names (sort (map :name (select-rows [:name])))})))
+      (events/register-capture! ::deleting
+                                (fn [deleted]
+                                  (when (= model (:model (first deleted)))
+                                    (swap! seen conj :capture)
+                                    {:ids (sort (map :id deleted))})))
+      (events/register-owned-consumer! ::deleting
+                                       (fn [{m :model, :keys [operation]}]
+                                         (when (and (= model m) (= :delete operation)) :deletes))
+                                       (fn [_owner events _all]
+                                         (swap! deletes into events)))
+      (try
+        (with-timeline-cleanup
+          (let [ids  (mapv #(:id (events-test-timeline/create-timeline! (row %))) ["batch-test-a" "batch-test-b"])
+                rows (t2/select model :id [:in ids])]
+            (events/with-batched-events
+              (events/deleting! model rows (fn []
+                                             (swap! seen conj :delete)
+                                             (t2/delete! model :id [:in ids]))))
+            (is (= [:statement-capture :capture :delete] @seen))
+            (is (= (sort ids) (sort (map :id @deletes))))
+            (is (= {::deleting-statement {:names ["batch-test-a" "batch-test-b"]}
+                    ::deleting           {:ids (sort ids)}}
+                   (select-keys (apply merge (map :captures @deletes)) [::deleting-statement ::deleting])))))
+        (finally
+          (events.tu/unregister! ::deleting-statement)
+          (events.tu/unregister! ::deleting))))))

@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.dependencies :as remote-sync.dependencies]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.protocol :as protocol]
+   [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]))
 
@@ -58,8 +59,11 @@
 (defn- delete-rows!
   "Deletes the rows `ours` exports the documents with the keys `ks` from, each after the rows that depend on it."
   [ours ks]
-  (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))]
-    (remote-sync.db/delete-rows! model (mapv (comp second :row ours) keys))))
+  (doseq [{:keys [model keys]} (reverse (serialization/load-order ks #(mapv (comp :entity ours) %)))
+          :let [pks (mapv (comp second :row ours) keys)]]
+    (if-let [delete! (:delete! (mi/write-fns model))]
+      (delete! pks {:import? true})
+      (remote-sync.db/delete-rows! model pks))))
 
 (defn- apply!
   "Makes the app DB, whose documents are `ours`, hold the `merged` documents, returning how many entities changed."

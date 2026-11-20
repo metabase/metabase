@@ -4,6 +4,7 @@
    [diehard.core :as dh]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.models.interface :as mi]
    [metabase.serialization.db :as serialization.db]
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.util :as protocol.util]
@@ -210,10 +211,14 @@
             (mapcat #(serialization.db/insert-rows! model (vec %)))
             (partition-all serialization.util/batch-size rows)))
     (update-row! [_ model pk changes]
-      (serialization.db/update-row! model (serialization.spec/primary-key model) pk changes))
+      (if-let [update! (:update! (mi/write-fns model))]
+        (update! pk changes {:import? true})
+        (serialization.db/update-row! model (serialization.spec/primary-key model) pk changes)))
     (delete-rows! [_ model pks]
-      (let [pk (serialization.spec/primary-key model)]
-        (run! #(serialization.db/delete-rows! model pk (vec %)) (partition-all serialization.util/batch-size pks))))
+      (let [pk      (serialization.spec/primary-key model)
+            delete! (or (:delete! (mi/write-fns model))
+                        (fn [ids _opts] (serialization.db/delete-rows! model pk ids)))]
+        (run! #(delete! (vec %) {:import? true}) (partition-all serialization.util/batch-size pks))))
     (transact [_ {:keys [isolation retries]} f]
       (let [run (fn []
                   (if (= isolation :repeatable-read)

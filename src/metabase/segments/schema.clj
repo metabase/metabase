@@ -5,6 +5,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.users.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -61,6 +62,28 @@
    [:caveats                 {:optional true} [:maybe :string]]
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
+
+(mr/def ::segment.changes
+  "What an UPDATE of a Segment writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::segment.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::segment.create
+  "What a new Segment takes; its table follows its definition."
+  [:map {:closed true}
+   [:creator_id  ::lib.schema.id/user]
+   [:name        ::segment.name]
+   [:description {:optional true} [:maybe :string]]
+   [:definition  ::segment.definition]])
+
+(mr/def ::write-opts
+  "The context of a write of Segments: `:revision-message`, the message of the revisions, and `:import?`, whether a
+  SerDes import writes them."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:import?          {:optional true} :boolean]])
 
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."

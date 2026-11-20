@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -255,7 +256,7 @@
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
         (events/with-event-context {:revision-message "update this mofo"}
-          (t2/update! :model/Segment :id (:id segment) {:name "Renamed segment"}))
+          (segments.write/update-segment! (:id segment) {:name "Renamed segment"} {}))
         (is (= {:topic       :segment-update
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -270,7 +271,7 @@
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
         (events/with-event-context {:revision-message "deleted"}
-          (t2/delete! :model/Segment :id (:id segment)))
+          (segments.write/delete-segment! (:id segment) {}))
         (is (= {:topic       :segment-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"

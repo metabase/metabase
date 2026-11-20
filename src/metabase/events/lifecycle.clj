@@ -4,6 +4,7 @@
   (:require
    [metabase.events.batch :as events.batch]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -91,3 +92,53 @@
         #(next-method rf query-type model parsed-args resolved-query))))))
 
 (mi/prefer-hook-trait! :hook/events)
+
+(defn- as-rows
+  "`rows`, one row or a sequence of them, as a sequence."
+  [rows]
+  (if (map? rows) [rows] rows))
+
+(mu/defn created!
+  "Collect the create event of each of `rows`, one row or a sequence, of `model`, rows as the insert returned them, in
+  the batch there is or a new one, which a converted model's after-insert hook calls as the `:hook/events` trait does."
+  [model :- :keyword
+   rows  :- [:or :map [:sequential :map]]]
+  (events.batch/do-with-write-batch
+   (fn []
+     (doseq [row (as-rows rows)
+             :let [row (t2/instance model (t2.realize/realize row))]]
+       (collect! model :create row {:object row})))))
+
+(mu/defn updated!
+  "Collect the update event of `row` of `model`, the row as the update leaves it, or its changes, over `previous-row`,
+  the row before it, when a column differs, which a write function calls after its update as the `:hook/events` trait
+  does in one."
+  [model        :- :keyword
+   row          :- :map
+   previous-row :- :map]
+  (let [previous (t2/instance model (t2.realize/realize previous-row))
+        object   (t2/instance model (settled (merge previous (t2.realize/realize row)) previous))]
+    (when (not= object previous)
+      (events.batch/do-with-write-batch
+       #(collect! model :update object {:object object :previous-object previous})))))
+
+(mu/defn deleting!
+  "Run `thunk`, which deletes `rows`, one row or a sequence of loaded rows of `model`, as one DELETE statement of the
+  batch, as the `:hook/events` trait runs one: its statement captures, then the delete events, then its captures, then
+  `thunk`, returning what `thunk` returns."
+  [model :- :keyword
+   rows  :- [:or :map [:sequential :map]]
+   thunk :- ifn?]
+  (let [rows (mapv #(t2/instance model (t2.realize/realize %)) (as-rows rows))]
+    (events.batch/do-with-write-batch
+     (fn []
+       (events.batch/do-with-delete-statement
+        model
+        (first (t2/primary-keys model))
+        (fn [columns]
+          (mapv #(select-keys % columns) rows))
+        (fn []
+          (doseq [row rows]
+            (collect! model :delete row {:previous-object row}))
+          (events.batch/capture-deletes!)
+          (thunk)))))))

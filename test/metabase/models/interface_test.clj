@@ -13,6 +13,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.registry-test-macro :as registry-test-macro]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -122,6 +123,29 @@
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))
+
+(methodical/defmethod t2/table-name :test-model/timestamped-on-insert [_model] :timeline)
+
+(doto :test-model/timestamped-on-insert
+  (derive :metabase/model)
+  (derive :hook/timestamped-on-insert?)
+  (derive :hook/entity-id))
+
+(deftest timestamped-on-insert-test
+  (testing ":hook/timestamped-on-insert? sets both timestamps on insert and leaves them alone on update"
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [old #t "2022-10-13T19:21:00Z"
+            row (t2/insert-returning-instance! :test-model/timestamped-on-insert
+                                               {:name "Test Timeline" :icon "cake" :creator_id (mt/user->id :rasta)})]
+        (is (=? {:created_at java.time.temporal.Temporal
+                 :updated_at java.time.temporal.Temporal}
+                row))
+        (t2/update! :test-model/timestamped-on-insert :id (:id row) {:created_at old :updated_at old})
+        (t2/update! :test-model/timestamped-on-insert :id (:id row) {:name "Renamed Timeline"})
+        (is (=? {:name       "Renamed Timeline"
+                 :created_at (t/offset-date-time old)
+                 :updated_at (t/offset-date-time old)}
+                (t2/select-one :test-model/timestamped-on-insert :id (:id row))))))))
 
 (deftest ^:parallel current-timestamp-reads-back-unchanged-test
   (testing "a timestamp from current-timestamp reads back from the app DB as the same text an export writes"

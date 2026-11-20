@@ -23,9 +23,9 @@
    [metabase.segments.replacement :as segments.replacement]
    [metabase.segments.schema :as segments.schema]
    [metabase.segments.serialization :as segments.serialization]
+   [metabase.segments.write :as segments.write]
    [metabase.segments.xrays :as segments.xrays]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -44,24 +44,10 @@
 
 (doto :model/Segment
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
-
-(defn- definition-table-id
-  "The id of the Table `definition`, a full query, is built on."
-  [definition]
-  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+  (derive :hook/timestamped-on-insert?)
+  (derive :hook/entity-id))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(defn- check-definition
-  "Throws unless `definition` is a full query that fits a Segment."
-  [definition]
-  (when-not (and (seq definition)
-                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-    (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
-  (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
 
 (defn- check-referenced-segments-exist
   "Throws unless every Segment that `definition`, a new Segment's, refers to exists."
@@ -70,22 +56,14 @@
 
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
-  (check-definition definition)
+  (segments.write/check-definition definition)
   (check-referenced-segments-exist definition)
-  (assoc segment :table_id (definition-table-id definition)))
+  (assoc segment :table_id (segments.write/definition-table-id definition)))
 
-(t2/define-before-update :model/Segment
-  [{:keys [id definition] :as segment}]
-  (let [changes (t2/changes segment)]
-    (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
-    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
-      (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
-    (cond-> segment
-      (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
+(t2/define-after-insert :model/Segment
+  [segment]
+  (events/created! :model/Segment segment)
+  segment)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -103,7 +81,7 @@
 (defn- definition-writable?
   "Whether the current user can write Segments of the Table `definition` is built on."
   [definition]
-  (let [table (some-> definition not-empty definition-table-id segments.db/table)]
+  (let [table (some-> definition not-empty segments.write/definition-table-id segments.db/table)]
     (boolean (and table (seq (collection/writable-table-ids [table]))))))
 
 (defmethod mi/can-create? :model/Segment
@@ -122,17 +100,6 @@
        (or (not (contains? changes :definition))
            (definition-writable? (:definition changes)))
        (sandboxes-allow-segment-update? segment changes)))
-
-(defenterprise delete-segment-tests!
-  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
-  metabase-enterprise.data-testing.models.segment-test
-  [_segment-id]
-  nil)
-
-(t2/define-before-delete :model/Segment
-  [{:keys [id] :as segment}]
-  (delete-segment-tests! id)
-  segment)
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 

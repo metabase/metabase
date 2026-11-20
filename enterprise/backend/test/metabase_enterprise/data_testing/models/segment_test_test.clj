@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -91,7 +92,7 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/segment-test-delete topic)
                                                 (swap! published conj (:id (:previous-object event)))))]
-          (t2/delete! :model/Segment :id segment-id))
+          (segments.write/delete-segment! segment-id {}))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/SegmentTest :segment_id segment-id))))
         (testing "each test was deleted through its own hook, so its runs stay with no test id"

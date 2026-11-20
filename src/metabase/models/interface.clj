@@ -518,6 +518,12 @@
   (-> instance
       add-updated-at-timestamp))
 
+(t2/define-before-insert :hook/timestamped-on-insert?
+  [instance]
+  (-> instance
+      add-updated-at-timestamp
+      add-created-at-timestamp))
+
 (t2/define-before-insert :hook/created-at-timestamped?
   [instance]
   (-> instance
@@ -545,11 +551,13 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped-on-insert? :hook/entity-id)
 
 (defn prefer-hook-trait!
   "Orders the hooks of `trait` after those of the timestamp and entity id traits, so they see the row those complete."
   [trait]
-  (doseq [hook [:hook/timestamped? :hook/created-at-timestamped? :hook/updated-at-timestamped? :hook/entity-id]]
+  (doseq [hook [:hook/timestamped? :hook/timestamped-on-insert? :hook/created-at-timestamped?
+                :hook/updated-at-timestamped? :hook/entity-id]]
     (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
@@ -573,6 +581,17 @@
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
                         e))))))
+
+(defmulti write-fns
+  "The write functions of `model` that generic writers (the SerDes loader, replacement, remote sync, revision revert)
+  call in place of a plain `t2/update!` or `t2/delete!`, as `{:update! (fn [id changes opts]) :delete! (fn [ids
+  opts])}`, or nil for a model that its Toucan hooks still write; `model` is resolved first, which loads its namespace."
+  {:arglists '([model])}
+  t2/resolve-model)
+
+(defmethod write-fns :default
+  [_model]
+  nil)
 
 (defmulti after-archived-change
   "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by

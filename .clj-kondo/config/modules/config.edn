@@ -2773,7 +2773,6 @@
   {:team "UX West"
    :api  #{metabase.segments.rest.api}
    :uses #{api
-           events
            lib.be
            models
            segments
@@ -2802,6 +2801,7 @@
            lib.legacy-mbql
            lib.metadata
            lib.schema
+           models
            parameters.schema
            util
            util.config}

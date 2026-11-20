@@ -20,6 +20,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.segments.write :as segments.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -956,9 +957,11 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
-                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
-                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
+           (segments.write/update-segment! segment-id
+                                           {:definition (let [mp (mt/metadata-provider)]
+                                                          (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                              (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))}
+                                           {})
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -968,7 +971,7 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
-           (t2/delete! :model/Segment :id segment-id)
+           (segments.write/delete-segment! segment-id {})
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 

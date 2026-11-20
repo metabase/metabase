@@ -2,7 +2,6 @@
   "Application database queries for the segments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -42,6 +41,11 @@
   [id :- ::lib.schema.id/segment]
   (t2/select-one :model/Segment :id id))
 
+(mu/defn segments
+  "The Segments with `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/select :model/Segment :id [:in ids]))
+
 (mu/defn unarchived-segments
   "The unarchived Segments, in case-insensitive name order."
   []
@@ -49,9 +53,14 @@
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `id`."
-  [id :- ::lib.schema.id/segment
-   changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
-  (t2/update! :model/Segment :id id changes))
+  [id      :- ::lib.schema.id/segment
+   changes :- ::segments.schema/segment.changes]
+  (t2/update! :model/Segment :id [:auto/param id] changes))
+
+(mu/defn delete-segments!
+  "Delete the Segments with `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/delete! :model/Segment :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

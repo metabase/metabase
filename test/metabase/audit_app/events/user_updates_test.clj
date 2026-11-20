@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -293,7 +294,7 @@
   [segment-id entity-id]
   (mt/with-current-user (mt/user->id :crowberto)
     (t2/with-call-count [call-count]
-      (t2/update! :model/Segment :id segment-id {:entity_id entity-id})
+      (segments.write/update-segment! segment-id {:entity_id entity-id} {})
       (call-count))))
 
 (deftest skipped-column-update-of-segment-runs-no-details-query-test

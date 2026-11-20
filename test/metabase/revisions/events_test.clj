@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -44,7 +45,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment {segment-id :id} {}]
       (events/with-event-context {:revision-message "why"}
-        (t2/update! :model/Segment :id segment-id {:name "renamed"}))
+        (segments.write/update-segment! segment-id {:name "renamed"} {}))
       (is (=? {:message "why"} (last (revisions-of "Segment" segment-id)))))))
 
 (defn- last-object [model model-id]

@@ -106,9 +106,11 @@
 (defn revert-columns!
   "Write the tracked columns of `snapshot` that the table of `model` still has to the row with `id`."
   [model id snapshot]
-  (let [valid-columns (set (keys (revisions.db/raw-row model id)))]
-    (revisions.db/update-entity! id {:model model
-                                     :row   (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))})))
+  (let [valid-columns (set (keys (revisions.db/raw-row model id)))
+        changes       (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))]
+    (if-let [update! (:update! (mi/write-fns model))]
+      (update! id changes {})
+      (revisions.db/update-entity! id {:model model :row changes}))))
 
 (defn revert-to-revision!
   "Return the row of `model` with `id` to the state that the `snapshot` of a Revision recorded."

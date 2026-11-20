@@ -3,12 +3,16 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
+   [metabase.search.ingestion :as search.ingestion]
+   [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -21,6 +25,13 @@
   (let [mp (mt/metadata-provider)]
     (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                 (lib/> (lib.metadata/field mp (mt/id :venues :price)) 2))))
+
+(defn- not-null-definition
+  "A full query on `table-key` filtered by `field-key` not being null."
+  [table-key field-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp (mt/id table-key)))
+                (lib/not-null (lib.metadata/field mp (mt/id table-key field-key))))))
 
 (defn- segment-filter-definition
   "A full query on `table-id` filtered by the Segment with `segment-id`."
@@ -61,15 +72,15 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot change the creator of a Segment"
-             (t2/update! :model/Segment :id id {:creator_id (mt/user->id :crowberto)}))))
+             (segments.write/update-segment! id {:creator_id (mt/user->id :crowberto)} {}))))
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot change the creator of a Segment"
-             (t2/update! :model/Segment :id id {:creator_id nil}))))
+             (segments.write/update-segment! id {:creator_id nil} {}))))
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
-               (t2/update! :model/Segment :id id {:creator_id (mt/user->id :rasta)})))))))
+               (segments.write/update-segment! id {:creator_id (mt/user->id :rasta)} {})))))))
 
 (deftest definition-description-missing-definition-test
   (testing "Do not hydrate definition description if definition is nil"
@@ -135,14 +146,14 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) 99999)})))))
+           (segments.write/update-segment! segment-id {:definition (segment-filter-definition (mt/id :venues) 99999)} {})))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :definition (price-definition)}]
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) segment-id)})))))
+           (segments.write/update-segment! segment-id {:definition (segment-filter-definition (mt/id :venues) segment-id)} {})))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :definition (price-definition)}
@@ -151,7 +162,56 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)}))))))
+           (segments.write/update-segment! segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)} {}))))))
+
+(deftest update-segment-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::segment-events
+                                     (fn [{:keys [model]}] (when (= :model/Segment model) :segment))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Segment segment {:name "Segment" :definition (price-definition)}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (segments.write/update-segment! (:id segment) {:name "Renamed Segment"} {:revision-message "rename"}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id segment)
+                    :user-id         (mt/user->id :crowberto)
+                    :context         {:revision-message "rename"}
+                    :previous-object {:name "Segment" :table_id (mt/id :venues) :updated_at (:updated_at segment)}
+                    :object          {:name "Renamed Segment" :table_id (mt/id :venues) :updated_at (:updated_at segment)}}]
+                  @published)))
+        (reset! published [])
+        (segments.write/update-segment! (:id segment) {:definition (not-null-definition :users :name)} {})
+        (testing "the event of a new definition carries the table derived from it"
+          (is (=? [{:previous-object {:table_id (mt/id :venues)}
+                    :object          {:table_id (mt/id :users)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::segment-events)))))
+
+(defn- price-above-definition
+  "A full query on venues filtered by price greater than `n`."
+  [n]
+  (let [mp (mt/metadata-provider)]
+    (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                (lib/> (lib.metadata/field mp (mt/id :venues :price)) n))))
+
+(deftest update-segment-query-count-test
+  (testing "a warm update-segment! issues no more queries than master's t2/update! with the hooks, 3 for a name and 3 for a definition without search ingestion"
+    (mt/with-temp [:model/Segment {id :id} {:name "Segment" :definition (price-above-definition 2) :creator_id (mt/user->id :rasta)}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (segments.write/update-segment! id {:name "Warm Segment"} {})
+          (segments.write/update-segment! id {:definition (price-above-definition 4)} {})
+          (t2/with-call-count [call-count]
+            (segments.write/update-segment! id {:name "Renamed Segment"} {})
+            (is (<= (call-count) 3)))
+          (let [definition (price-above-definition 1)]
+            (t2/with-call-count [call-count]
+              (segments.write/update-segment! id {:definition definition} {})
+              (is (<= (call-count) 3)))))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
