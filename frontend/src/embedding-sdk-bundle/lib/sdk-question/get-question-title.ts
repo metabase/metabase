@@ -14,10 +14,12 @@ export const getQuestionTitle = (
     return null;
   }
 
-  const isSaved = question.isSaved();
   const displayName = question.displayName();
 
-  if (isSaved && displayName) {
+  // Show the explicit name when present. This covers both saved questions
+  // (which have an id) and pre-filtered questions opened via click behavior
+  // (serialized with a name but no id).
+  if (displayName) {
     return tc ? tc(displayName) : displayName;
   }
 
