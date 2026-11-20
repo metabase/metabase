@@ -73,6 +73,15 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
+(mu/defn field-database-id :- [:maybe ::lib.schema.id/database]
+  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/field with `field-id`, or nil when there is
+  none."
+  [field-id :- ::lib.schema.id/field]
+  (:db_id (t2/query-one {:select [:t.db_id]
+                         :from   [[(t2/table-name :model/Field) :f]]
+                         :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                         :where  [:= :f.id [:auto/param field-id]]})))
+
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
@@ -153,18 +162,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/update! :model/Field {:fk_target_field_id field-id :semantic_type :type/FK} {:semantic_type nil})
   (t2/update! :model/Field {:fk_target_field_id field-id} {:fk_target_field_id nil}))
-
-(mu/defn field-database-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/database]
-  "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/field in `field-ids`, by Field id."
-  [field-ids :- [:set ::lib.schema.id/field]]
-  (if (seq field-ids)
-    (into {}
-          (map (juxt :id :db_id))
-          (t2/query {:select [:f.id :t.db_id]
-                     :from   [[(t2/table-name :model/Field) :f]]
-                     :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                     :where  [:in :f.id (vec field-ids)]}))
-    {}))
 
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the ::warehouse-schema.schema/table with `table-id` whose NFC path matches the

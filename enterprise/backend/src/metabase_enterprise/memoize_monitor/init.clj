@@ -34,6 +34,7 @@
   "The vars holding the memoization caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed
   function (see the namespace docstring)."
   [#'schema.field/field-id->table-id
+   #'schema.field/field-id->database-id
    #'database/table-id->database-id
    #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*

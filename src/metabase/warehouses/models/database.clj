@@ -710,8 +710,9 @@
      json-generator)))
 
 (def ^{:arglists '([table-id])} table-id->database-id
-  "Retrieve the `Database` ID for the given table-id."
-  (mdb/memoize-for-application-db
+  "The Database ID of the Table with `table-id`, cached once found since the Table before-update hook refuses a change
+  of `db_id`."
+  (mdb/memoize-hits-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (warehouses.db/table-database-id table-id))))

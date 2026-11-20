@@ -12,6 +12,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [methodical.core :as methodical]
@@ -45,11 +46,9 @@
 (defn- check-human-readable-field
   "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field."
   [{:keys [field_id human_readable_field_id]}]
-  (let [field-id->database-id (warehouse-schema.db/field-database-ids
-                               (into #{} (remove nil?) [field_id human_readable_field_id]))
-        target-database-id    (field-id->database-id human_readable_field_id)]
+  (let [target-database-id (some-> human_readable_field_id field/field-id->database-id)]
     (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
-    (api/checkp (= target-database-id (field-id->database-id field_id))
+    (api/checkp (= target-database-id (some-> field_id field/field-id->database-id))
                 :human_readable_field_id (tru "Target field must belong to the same database"))))
 
 (t2/define-before-insert :model/Dimension

@@ -190,12 +190,28 @@
            (not (types/is-coercible-from? coercion (keyword base_type))))
       {:coercion_strategy nil, :effective_type base_type})))
 
+(def ^{:arglists '([field-id])} field-id->table-id
+  "The ID of the Table of the Field with `field-id`, cached once found since the Field before-update hook refuses a
+  change of `table_id`."
+  (mdb/memoize-hits-for-application-db
+   (fn [field-id]
+     {:pre [(integer? field-id)]}
+     (warehouse-schema.db/field-table-id field-id))))
+
+(def ^{:arglists '([field-id])} field-id->database-id
+  "The ID of the Database of the Field with `field-id`, cached once found since the Field and Table before-update hooks
+  refuse a change of `table_id` and `db_id`."
+  (mdb/memoize-hits-for-application-db
+   (fn [field-id]
+     {:pre [(integer? field-id)]}
+     (warehouse-schema.db/field-database-id field-id))))
+
 (defn- check-fk-target
   "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."
   [{:keys [table_id fk_target_field_id]}]
-  (let [target-database-id (get (warehouse-schema.db/field-database-ids #{fk_target_field_id}) fk_target_field_id)]
+  (let [target-database-id (some-> fk_target_field_id field-id->database-id)]
     (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
-    (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
+    (api/checkp (= target-database-id (some-> table_id database/table-id->database-id))
                 :fk_target_field_id (tru "Target field must belong to the same database"))))
 
 (defn nested-fields-pattern
@@ -431,20 +447,6 @@
   "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
   [field]
   (str/join \. (qualified-name-components field)))
-
-(def ^{:arglists '([field-id])} field-id->table-id
-  "Return the ID of the Table this Field belongs to."
-  (mdb/memoize-for-application-db
-   (fn [field-id]
-     {:pre [(integer? field-id)]}
-     (warehouse-schema.db/field-table-id field-id))))
-
-(defn field-id->database-id
-  "Return the ID of the Database this Field belongs to."
-  [field-id]
-  {:pre [(integer? field-id)]}
-  (let [table-id (field-id->table-id field-id)]
-    (database/table-id->database-id table-id)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

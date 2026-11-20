@@ -19,7 +19,7 @@ the user-facing ones. Put a rule every writer must obey in a hook and a rule onl
 | Needs the database or the stored row (`t2/changes`, `t2/original`) | `before-insert` and `before-update` |
 | Computes a column from other columns of the row | hooks; the caller does not supply it |
 | Reads another entity's column that cannot change | hooks of the referring model |
-| Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
+| Reads another entity's column that can change | not a hook, unless the other entity cascades so the rule holds from both sides; otherwise the write function in `<module>/write.clj` (below) |
 | Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change` for `archived`, else `before-update` / `before-delete` |
 | Reads a property of a Database, Table or Field the row refers to, on a model SerDes can import | the write function in `<module>/write.clj`; never a hook (the SerDes rule, below) |
 | Needs the warehouse, SQL parsing, the network, or is best-effort | the write function in `<module>/write.clj`; never a hook |
@@ -93,8 +93,12 @@ that needs the row as stored.
   refuse: in `mi/after-archived-change` when it follows `archived` (see Archiving), else in `before-update` or
   `before-delete`, only when the causing column is in `(t2/changes row)`. `before-update` runs before Toucan opens its
   transaction, so a model whose update writes other rows declares `(mi/define-update-in-transaction :model/X)`.
-- **Rule on another entity's mutable data.** In this order: freeze the column; cascade from the other entity (archived,
-  deleted, moved, deactivated); check where the entity is used. Do not check the same rule in the hooks of both.
+- **Rule on another entity's mutable data.** A hook that reads a column of another entity that can change is a smell:
+  the rule holds only at the moment of the write, nothing re-checks it when the other row changes, and a sanctioned
+  writer (an import, sync, a task) meets the hook while the other row is rightly in another state. In this order:
+  freeze the column, and then read it through a memoized `x-id->y-id` helper; cascade from the other entity (archived,
+  deleted, moved, deactivated), so the rule holds from both sides; otherwise it is no invariant, and the check or the
+  cleanup belongs to the write function in `<module>/write.clj`. Do not check the same rule in the hooks of both.
 
 ## Permissions
 
