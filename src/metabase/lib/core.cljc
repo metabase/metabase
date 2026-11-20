@@ -583,7 +583,15 @@
   sum-where
   var
   cum-count
-  cum-sum])
+  cum-sum
+  cumulative])
+
+;;; **Code Health:** Healthy. These are for things that compute `:cumulative` aggregations, like the query processor and
+;;; drivers.
+(shared.ns/import-fns
+ [lib.aggregation
+  cumulative-ratio
+  cumulative-roll-up])
 
 ;;; **Code Health:** Leak. These helpers are only used in tests and should be avoided. To be unexported soon.
 (shared.ns/import-fns

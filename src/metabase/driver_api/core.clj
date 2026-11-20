@@ -112,6 +112,8 @@
  match/replace
  lib/truncate-alias
  lib/->metadata-provider
+ lib/cumulative-ratio
+ lib/cumulative-roll-up
  lib/duplicate-column-error
  lib/json-field?
  lib/match-and-normalize-tag-name

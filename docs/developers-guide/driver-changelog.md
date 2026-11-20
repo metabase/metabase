@@ -7,6 +7,31 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- Added a new MBQL clause, `[:cumulative opts <aggregation>]`: the running value of an aggregation, for example
+  `[:cumulative {} [:max {} [:field {} 1]]]` for a running max. It can wrap `:sum`, `:count`, `:count-where`,
+  `:sum-where`, `:min`, `:max`, `:avg` and `:share`. `[:cum-sum {} x]` means the same thing as
+  `[:cumulative {} [:sum {} x]]`, and `[:cum-count {} x?]` the same thing as `[:cumulative {} [:count {} x?]]`; for
+  now drivers still see `:cum-sum` and `:cum-count` as before.
+
+  Drivers that derive from `:sql` get `:cumulative` from the `:sql` implementation of
+  `metabase.driver.sql.query-processor/->honeysql`. A driver that overrides `->honeysql` for `:cum-sum` or `:cum-count`
+  should override it for `:cumulative` in the same way.
+
+  Other drivers that support `:window-functions/cumulative` need to compile `:cumulative` themselves, with two new
+  functions in `metabase.driver-api.core`:
+
+  - `cumulative-ratio` `[cumulative-clause]` -- a cumulative `:avg` or `:share` is a ratio of two other cumulative
+    aggregations. This returns that ratio, which you should compile instead of the clause, or `nil` for any other
+    `:cumulative` clause.
+
+  - `cumulative-roll-up` `[aggregation]` -- returns `:sum`, `:min` or `:max`: how to combine the values the wrapped
+    aggregation has in each group into its running value. It throws for an aggregation whose running value can't be
+    computed this way, so always use it to decide what to compile.
+
+  Drivers that don't support `:window-functions/cumulative` need no changes; Metabase computes the running values
+  from the query results. For these drivers a cumulative `:avg` or `:share`, and a `:cumulative` inside a larger
+  expression or outside the last stage of a query, are errors.
+
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped
   query in a data-test run left the transaction aborted. Without it, the query streams and the reader stops at the cap.

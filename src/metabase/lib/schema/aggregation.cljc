@@ -105,10 +105,60 @@
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
+;; The aggregations `:cumulative` can wrap. A running value is computed as a window over the grouped rows, so it has to
+;; be something we can rebuild from per-group values: a running sum is the sum of the per-group sums, a running max is
+;; the max of the per-group maxes, and so on. `:distinct`, `:median`, `:percentile` and friends cannot be rebuilt that
+;; way. See [[metabase.lib.aggregation/cumulative-roll-up]] for how each of these rolls up.
+;;
+;; `:metric` and `:measure` are allowed here because we cannot tell what they refer to from the clause alone. The
+;; query processor replaces them with the aggregation they refer to, and
+;; [[metabase.lib.aggregation/cumulative-roll-up]] rejects that aggregation if it is not one of these.
+(doseq [tag [:avg
+             :count
+             :count-where
+             :max
+             :measure
+             :metric
+             :min
+             :share
+             :sum
+             :sum-where]]
+  (lib.hierarchy/derive tag ::cumulative-arg-tag))
+
+(defn- cumulative-arg-tag?
+  [x]
+  (and (vector? x)
+       (lib.hierarchy/isa? (first x) ::cumulative-arg-tag)))
+
+(defn- cumulative-arg-error-message []
+  (i18n/tru "Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, Share, a metric, or a measure."))
+
+(mr/def ::cumulative.arg
+  [:and
+   [:ref ::mbql-clause/clause]
+   [:fn
+    {:error/message  cumulative-arg-error-message
+     ;; so the message also shows up when the error is humanized, e.g. in the query processor's 'Invalid query' error
+     :error/fn       (fn [_error _options]
+                       (cumulative-arg-error-message))
+     :error/friendly true}
+    cumulative-arg-tag?]])
+
+;; `[:cumulative opts <aggregation>]` is the running version of the aggregation it wraps: the aggregation over every
+;; row up to and including the current group, e.g. `[:cumulative {} [:max {} x]]` is a running max of `x`.
+;; `[:cum-sum {} x]` means the same thing as `[:cumulative {} [:sum {} x]]`, and `[:cum-count {} x?]` means the same
+;; thing as `[:cumulative {} [:count {} x?]]`.
+(mbql-clause/define-tuple-mbql-clause :cumulative
+  [:schema [:ref ::cumulative.arg]])
+
+;; the type of a running aggregation is the type of the aggregation it wraps.
+(lib.hierarchy/derive :cumulative :lib.type-of/type-is-type-of-first-arg)
+
 (doseq [tag [:aggregation
              :avg
              :count
              :cum-count
+             :cumulative
              :count-where
              :distinct
              :distinct-where
@@ -132,8 +182,14 @@
 ;; splitting / etc." should test for this hierarchy tag.
 (doseq [tag [:cum-count
              :cum-sum
+             :cumulative
              :offset]]
   (lib.hierarchy/derive tag ::window-aggregation-clause-tag))
+
+(defn window-aggregation-clause-tag?
+  "True if `tag` is the tag of a window-function aggregation clause, e.g. `:cumulative` or `:offset`."
+  [tag]
+  (lib.hierarchy/isa? tag ::window-aggregation-clause-tag))
 
 (defn- contains-clause-with-tag?
   "True if `x` is a clause whose tag derives from `hierarchy-tag`, or an expression that transitively contains one."

@@ -211,6 +211,26 @@
                                 :target [:variable [:template-tag :category]]
                                 :value  2}]})))))))
 
+(deftest ^:parallel run-query-with-cumulative-aggregation-test
+  (testing "a question with a :cumulative aggregation can be saved, read back, and run"
+    (let [mp    (mt/metadata-provider)
+          query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                    (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :year))
+                    (lib/aggregate (lib/cumulative (lib/max (lib.metadata/field mp (mt/id :orders :total))))))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
+        (is (=? {:dataset_query   {:stages [{:aggregation [["cumulative" {} ["max" {} ["field" {} (mt/id :orders :total)]]]]}]}
+                 :result_metadata [{:name "CREATED_AT"}
+                                   {:name "max", :display_name "Cumulative max of Total"}]}
+                (mt/user-http-request :rasta :get 200 (format "card/%d" card-id))))
+        (is (= [["2016-01-01T00:00:00Z" 102.77]
+                ["2017-01-01T00:00:00Z" 106.23]
+                ["2018-01-01T00:00:00Z" 159.35]
+                ["2019-01-01T00:00:00Z" 159.35]
+                ["2020-01-01T00:00:00Z" 159.35]]
+               (mt/formatted-rows
+                [str 2.0]
+                (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))))))))
+
 (defn- venues-count-query
   "A count over venues. Built with Lib rather than `mt/mbql-query`, which is deprecated for new
   tests in favour of generating MBQL through Lib."

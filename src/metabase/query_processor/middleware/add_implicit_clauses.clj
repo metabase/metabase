@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -62,7 +63,7 @@
 
 (defn- has-window-function-aggregations? [stage]
   (or (match/match-one (mapcat stage [:aggregation :expressions])
-        [#{:cum-sum :cum-count :offset} & _]
+        [(_tag :guard lib.schema.aggregation/window-aggregation-clause-tag?) & _]
         true)
       ;; FIXME
       (when-let [source-query (:source-query stage)]

@@ -9,6 +9,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -20,7 +21,7 @@
 
 (defn- stage-has-window-aggregation? [stage]
   (match/match-one (:aggregation stage)
-    [#{:cum-sum :cum-count :offset} & _] true))
+    [(_tag :guard lib.schema.aggregation/window-aggregation-clause-tag?) & _] true))
 
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))

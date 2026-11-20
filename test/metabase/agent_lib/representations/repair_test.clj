@@ -2,7 +2,7 @@
   "Tests for the LLM-input repair pass."
   (:require
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
@@ -3091,8 +3091,26 @@
         (is (= "type/Float"
                (type-of ["sum" {} ["field" {"base-type" "type/Float"}
                                    ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]))))
+      (testing "cumulative has the type of the aggregation it wraps"
+        (is (= "type/BigInteger" (type-of ["cumulative" {} ["count" {}]])))
+        (is (= "type/Float"
+               (type-of ["cumulative" {} ["avg" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]])))
+        (is (= "type/Integer"
+               (type-of ["cumulative" {} ["max" {} ["field" {"base-type" "type/Integer"}
+                                                    ["Sample" "PUBLIC" "ORDERS" "QUANTITY"]]]]))))
       (testing "unknown head → type/*"
         (is (= "type/*" (type-of ["some-new-agg-fn" {}])))))))
+
+(deftest ^:parallel cumulative-aggregation-column-name-test
+  (testing "a cumulative aggregation is named after the aggregation it wraps"
+    (are [agg expected] (= expected
+                           (#'repair/aggregation-clause-column-name agg))
+      ["cumulative" {} ["max" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]] "max"
+      ["cumulative" {} ["count" {}]]                                                 "count"
+      ["cumulative" {"name" "running"} ["count" {}]]                                 "running"
+      ["cumulative" {} ["count" {"name" "orders"}]]                                  "orders"
+      ;; we cannot tell what a metric's column is called without looking it up
+      ["cumulative" {} ["metric" {} 1]]                                              nil)))
 
 (deftest ^:parallel aggregation-ref-multi-stage-same-stage-ref-test
   (testing "a later stage can use integer agg-ref against its own aggregation list"

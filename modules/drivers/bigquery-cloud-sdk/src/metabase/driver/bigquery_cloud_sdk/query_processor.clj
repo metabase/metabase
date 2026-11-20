@@ -844,6 +844,11 @@
   (binding [*compiling-cumulative-aggregation* true]
     ((get-method sql.qp/->honeysql [:sql :cum-sum]) driver expr)))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cumulative]
+  [driver expr]
+  (binding [*compiling-cumulative-aggregation* true]
+    ((get-method sql.qp/->honeysql [:sql :cumulative]) driver expr)))
+
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver top-level-clause honeysql-form query]
   (if *compiling-cumulative-aggregation*

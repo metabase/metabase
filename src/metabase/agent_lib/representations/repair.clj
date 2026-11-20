@@ -1796,7 +1796,8 @@
   are the string forms expected in the portable repair output.
 
   Heads whose output type tracks an inner field (`sum`, `min`, `max`, etc) try to pull the
-  inner field's authored `base-type`; fall through to `type/*` if unknown."
+  inner field's authored `base-type`; fall through to `type/*` if unknown. `cumulative` has the type of
+  the aggregation it wraps."
   [agg-clause]
   (let [head (when (and (vector? agg-clause) (>= (count agg-clause) 1))
                (nth agg-clause 0))]
@@ -1805,6 +1806,7 @@
       ("avg" "median" "stddev" "var" "share")        "type/Float"
       ("sum" "sum-where" "cum-sum" "min" "max")
       (or (inner-clause-field-base-type agg-clause) "type/Float")
+      "cumulative"                                   (recur (nth agg-clause 2 nil))
       "type/*")))
 
 (defn- ensure-aggregation-uuids
@@ -1997,12 +1999,15 @@
   "Derive the output column-name an aggregation will produce, mirroring lib's
   `column-name-method`. An explicit `\"name\"` in opts (lib's column-name override) takes
   precedence. Returns `nil` when we can't determine the name (e.g. `metric` head, custom
-  head not in the table); the caller treats that as \"please diagnose, don't auto-fix\"."
+  head not in the table); the caller treats that as \"please diagnose, don't auto-fix\". A
+  `cumulative` clause is named after the aggregation it wraps."
   [agg]
   (when (and (vector? agg) (>= (count agg) 2))
     (or (let [n (get (nth agg 1) "name")]
           (when (and (string? n) (not= n "")) n))
-        (get aggregation-column-name-table (nth agg 0)))))
+        (if (= (nth agg 0) "cumulative")
+          (recur (nth agg 2 nil))
+          (get aggregation-column-name-table (nth agg 0))))))
 
 (defn- collect-stage-agg-uuids
   "Set of `lib/uuid` strings on the aggregation clauses of `stage`. Aggregations without a

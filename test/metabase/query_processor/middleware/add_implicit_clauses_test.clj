@@ -92,6 +92,18 @@
           (is (= query
                  (add-implicit-clauses-to-legacy-inner-query query))))))))
 
+(deftest ^:parallel no-order-bys-for-breakouts-with-window-aggregations-test
+  (testing "we should not add order-bys for breakouts when the stage has a window aggregation"
+    (doseq [aggregation [(lib/cum-count)
+                         (lib/cumulative (lib/count))
+                         (lib/+ (lib/cumulative (lib/max (meta/field-metadata :venues :price))) 1)]]
+      (is (not (contains? (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate aggregation)
+                              (lib/breakout (meta/field-metadata :venues :price))
+                              add-implicit-clauses
+                              (lib/query-stage -1))
+                          :order-by))))))
+
 (deftest ^:parallel add-order-bys-for-no-aggregations-test
   (testing "We should add sorted implicit Fields for a query with no aggregations"
     (is (=? (:query

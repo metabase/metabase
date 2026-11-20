@@ -98,6 +98,9 @@
    [:metabase-enterprise.sandbox.query-processor.middleware.sandboxing/sandbox? {:optional true} :boolean]
    [:metabase.query-processor.middleware.add-remaps/remaps {:optional true} [:ref ::external-remappings]]
    [:metabase.query-processor.middleware.cumulative-aggregations/replaced-indexes {:optional true} [:set [:int {:min 0}]]]
+   [:metabase.query-processor.middleware.cumulative-aggregations/roll-ups
+    {:optional true}
+    [:map-of [:int {:min 0}] [:enum :sum :min :max]]]
    [:metabase.query-processor.middleware.add-implicit-joins/reused-join-aliases {:optional true} [:set [:ref ::join/alias]]]
    [:metabase.query-processor.util.add-alias-info/desired-alias->escaped
     {:optional true}

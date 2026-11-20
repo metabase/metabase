@@ -5,10 +5,14 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (defn- ->local-date [t]
   (t/local-date
@@ -693,3 +697,230 @@
                                   (lib/filter (lib/> ofs 1000))
                                   (lib/order-by ofs))]
         (is (seq (mt/rows (qp/process-query query))))))))
+
+;;; `[:cumulative opts <aggregation>]`
+
+(defn- orders-query
+  "A query against orders. `breakout-units` are the temporal units to break out `created_at` by; `aggregations-fn`
+  takes the `total` column and returns the aggregations to add."
+  [breakout-units aggregations-fn]
+  (let [metadata-provider (mt/metadata-provider)
+        created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+        total             (lib.metadata/field metadata-provider (mt/id :orders :total))]
+    (as-> (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :orders))) query
+      (reduce lib/breakout query (map #(lib/with-temporal-bucket created-at %) breakout-units))
+      (reduce lib/aggregate query (aggregations-fn total))
+      (assoc-in query [:middleware :format-rows?] false))))
+
+(deftest ^:parallel cumulative-equivalent-to-cum-sum-and-cum-count-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "[:cumulative [:sum x]] is [:cum-sum x], and [:cumulative [:count x?]] is [:cum-count x?]"
+      (doseq [[description breakout-units cumulative equivalent]
+              [["sum, no breakouts"
+                []
+                (fn [total] [(lib/cumulative (lib/sum total))])
+                (fn [total] [(lib/cum-sum total)])]
+               ["count, no breakouts"
+                []
+                (fn [_total] [(lib/cumulative (lib/count))])
+                (fn [_total] [(lib/cum-count)])]
+               ["sum and count, one breakout"
+                [:month]
+                (fn [total] [(lib/cumulative (lib/sum total)) (lib/cumulative (lib/count))])
+                (fn [total] [(lib/cum-sum total) (lib/cum-count)])]
+               ["count of a column"
+                [:month]
+                (fn [total] [(lib/cumulative (lib/count total))])
+                (fn [total] [(lib/cum-count total)])]
+               ["sum of an expression"
+                [:month]
+                (fn [total] [(lib/cumulative (lib/sum (lib/+ total 1)))])
+                (fn [total] [(lib/cum-sum (lib/+ total 1))])]
+               ["inside an expression"
+                [:month]
+                (fn [total] [(lib/+ (lib// (lib/cumulative (lib/sum total)) (lib/cumulative (lib/count))) 1.0)])
+                (fn [total] [(lib/+ (lib// (lib/cum-sum total) (lib/cum-count)) 1.0)])]
+               ["more than one breakout: the totals start over when the other breakouts change"
+                [:month :year]
+                (fn [total] [(lib/cumulative (lib/sum total)) (lib/cumulative (lib/count))])
+                (fn [total] [(lib/cum-sum total) (lib/cum-count)])]]]
+        (testing description
+          (let [cumulative-query (orders-query breakout-units cumulative)
+                equivalent-query (orders-query breakout-units equivalent)
+                cumulative-results (qp/process-query cumulative-query)
+                equivalent-results (qp/process-query equivalent-query)]
+            (mt/with-native-query-testing-context cumulative-query
+              (testing "same rows"
+                (is (= (mt/rows equivalent-results)
+                       (mt/rows cumulative-results))))
+              (testing "same column names"
+                (is (= (map (juxt :name :display_name :base_type) (mt/cols equivalent-results))
+                       (map (juxt :name :display_name :base_type) (mt/cols cumulative-results)))))
+              (when (isa? driver/hierarchy driver/*driver* :sql)
+                (testing "same SQL"
+                  (is (= (:query (qp.compile/compile equivalent-query))
+                         (:query (qp.compile/compile cumulative-query)))))))))))))
+
+(defn- running
+  "The running values of column `index` of `rows`, computed in Clojure: `(f running-value value)` for each row. The
+  running value starts over whenever `(partition-fn row)` changes."
+  ([f index rows]
+   (running f index (constantly nil) rows))
+  ([f index partition-fn rows]
+   (into []
+         (comp (partition-by partition-fn)
+               (mapcat (fn [partition-rows]
+                         (reductions f (map #(nth % index) partition-rows)))))
+         rows)))
+
+(defn- approx
+  "Round numbers so we can compare what the database computed to what we computed."
+  [x]
+  (cond->> x
+    (number? x) (u/round-to-decimals 4)))
+
+(defn- ratio
+  "`x` divided by `y`, as a double."
+  [x y]
+  (approx (/ (double x) (double y))))
+
+(deftest ^:parallel cumulative-aggregations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "the running value of an aggregation is that aggregation over every row up to the current group"
+      ;; the same query returns each aggregation and its running version, so we can work out what the running
+      ;; versions should be from the plain ones.
+      (let [query (orders-query
+                   [:month]
+                   (fn [total]
+                     (let [total>100? #(lib/> total 100)]
+                       [;; 1-7: per-month values
+                        (lib/sum total)
+                        (lib/count)
+                        (lib/count total)
+                        (lib/min total)
+                        (lib/max total)
+                        (lib/count-where (total>100?))
+                        (lib/sum-where total (total>100?))
+                        ;; 8-16: their running versions
+                        (lib/cumulative (lib/sum total))
+                        (lib/cumulative (lib/count))
+                        (lib/cumulative (lib/count total))
+                        (lib/cumulative (lib/min total))
+                        (lib/cumulative (lib/max total))
+                        (lib/cumulative (lib/count-where (total>100?)))
+                        (lib/cumulative (lib/sum-where total (total>100?)))
+                        (lib/cumulative (lib/avg total))
+                        (lib/cumulative (lib/share (total>100?)))])))]
+        (mt/with-native-query-testing-context query
+          (let [results (qp/process-query query)
+                rows    (mt/rows results)
+                column  (fn [index] (mapv #(approx (nth % index)) rows))]
+            (is (= ["sum" "count" "count_2" "min" "max" "count_where" "sum_where_total"
+                    "sum_2" "count_3" "count_4" "min_2" "max_2" "count_where_2" "sum_where_total_2" "avg" "share"]
+                   (map (comp u/lower-case-en :name) (rest (mt/cols results)))))
+            (is (= ["Cumulative sum of Total"
+                    "Cumulative count"
+                    "Cumulative count of Total"
+                    "Cumulative min of Total"
+                    "Cumulative max of Total"
+                    "Cumulative count of rows matching condition"
+                    "Cumulative sum of Total matching condition"
+                    "Cumulative average of Total"
+                    "Cumulative share of rows matching condition"]
+                   (map :display_name (drop 8 (mt/cols results)))))
+            (is (< 12 (count rows)))
+            (testing "sum"                (is (= (mapv approx (running + 1 rows))   (column 8))))
+            (testing "count"              (is (= (mapv approx (running + 2 rows))   (column 9))))
+            (testing "count of a column"  (is (= (mapv approx (running + 3 rows))   (column 10))))
+            (testing "min"                (is (= (mapv approx (running min 4 rows)) (column 11))))
+            (testing "max"                (is (= (mapv approx (running max 5 rows)) (column 12))))
+            (testing "count-where"        (is (= (mapv approx (running + 6 rows))   (column 13))))
+            (testing "sum-where"          (is (= (mapv approx (running + 7 rows))   (column 14))))
+            (testing "average: the running sum divided by the running count, not an average of averages"
+              (is (= (mapv ratio (running + 1 rows) (running + 3 rows))
+                     (column 15))))
+            (testing "share: the running count of matching rows divided by the running count of rows"
+              (is (= (mapv ratio (running + 6 rows) (running + 2 rows))
+                     (column 16))))
+            (testing "sanity check: min and max are not just the per-month values"
+              (is (not= (column 4) (column 11)))
+              (is (not= (column 5) (column 12))))))))))
+
+(deftest ^:parallel cumulative-with-multiple-breakouts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "with more than one breakout, the running value starts over when the other breakouts change"
+      ;; month is the finest breakout, so the running values go along it and start over every year.
+      (let [query (orders-query
+                   [:month :year]
+                   (fn [total]
+                     [(lib/max total)
+                      (lib/min total)
+                      (lib/sum total)
+                      (lib/count total)
+                      (lib/cumulative (lib/max total))
+                      (lib/cumulative (lib/min total))
+                      (lib/cumulative (lib/avg total))]))]
+        (mt/with-native-query-testing-context query
+          (let [rows   (->> (mt/rows (qp/process-query query))
+                            (sort-by (fn [[month year]] [(str (->local-date year)) (str (->local-date month))])))
+                year   #(str (->local-date (second %)))
+                column (fn [index] (mapv #(approx (nth % index)) rows))]
+            (is (< 1 (count (distinct (map year rows)))))
+            (testing "max" (is (= (mapv approx (running max 2 year rows)) (column 6))))
+            (testing "min" (is (= (mapv approx (running min 3 year rows)) (column 7))))
+            (testing "average"
+              (is (= (mapv ratio (running + 4 year rows) (running + 5 year rows))
+                     (column 8))))))))))
+
+(deftest ^:parallel cumulative-without-breakout-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "a running aggregation without breakouts is the same as the aggregation"
+      (let [query (orders-query
+                   []
+                   (fn [total]
+                     [(lib/max total)
+                      (lib/cumulative (lib/max total))
+                      (lib/avg total)
+                      (lib/cumulative (lib/avg total))]))]
+        (mt/with-native-query-testing-context query
+          (let [[[max-total cumulative-max avg-total cumulative-avg]] (mt/rows (qp/process-query query))]
+            (is (some? max-total))
+            (is (= (approx max-total) (approx cumulative-max)))
+            (is (= (approx avg-total) (approx cumulative-avg)))))))))
+
+(deftest ^:parallel cumulative-ordered-by-aggregation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (testing "we can order by a :cumulative aggregation"
+      (let [query (as-> (orders-query [:month] (fn [total] [(lib/cumulative (lib/max total))])) query
+                    (lib/order-by query (lib/aggregation-ref query 0) :desc)
+                    (lib/limit query 3))]
+        (mt/with-native-query-testing-context query
+          (let [maxes (map second (mt/rows (qp/process-query query)))]
+            (is (= 3 (count maxes)))
+            (is (= (sort > maxes) maxes))))))))
+
+(deftest ^:parallel cumulative-unsupported-aggregation-test
+  (testing "a query with an aggregation we do not know how to compute the running value of is not valid"
+    ;; [[lib/aggregate]] would refuse to build this, so turn that off; the query processor still has to reject it.
+    (mu/disable-enforcement
+      (doseq [breakout-units [[] [:month]]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid query: .*Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, Share, a metric, or a measure"
+             (qp/process-query
+              (orders-query breakout-units
+                            (fn [total]
+                              [[:cumulative {:lib/uuid (str (random-uuid))} (lib/distinct total)]])))))))))
+
+(deftest ^:parallel cumulative-userland-query-test
+  (testing "a user can run an ad-hoc query with a :cumulative aggregation, which means it has to pass the permissions check"
+    (let [query (-> (orders-query [:year] (fn [total] [(lib/cumulative (lib/max total))]))
+                    (dissoc :lib/metadata :middleware))]
+      (is (= [["2016-01-01T00:00:00Z" 102.77]
+              ["2017-01-01T00:00:00Z" 106.23]
+              ["2018-01-01T00:00:00Z" 159.35]
+              ["2019-01-01T00:00:00Z" 159.35]
+              ["2020-01-01T00:00:00Z" 159.35]]
+             (mt/formatted-rows
+              [str 2.0]
+              (mt/user-http-request :rasta :post 202 "dataset" query)))))))

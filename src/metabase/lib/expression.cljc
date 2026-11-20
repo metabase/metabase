@@ -642,12 +642,9 @@
   [expr]
   (and (vector? expr) (-> expr first aggregation-function?)))
 
-(def ^:private window-function
-  #{:cum-count :cum-sum :offset})
-
 (defn- window-expression?
   [expr]
-  (and (vector? expr) (-> expr first window-function boolean)))
+  (and (vector? expr) (-> expr first lib.schema.aggregation/window-aggregation-clause-tag?)))
 
 (defn- invalid-nesting
   ([expr]
@@ -659,7 +656,9 @@
      (first expr)
 
      (and (aggregation-expr? expr)
-          (some (every-pred aggregation-function? (complement window-function)) path-tags))
+          (some (every-pred aggregation-function?
+                            (complement lib.schema.aggregation/window-aggregation-clause-tag?))
+                path-tags))
      (first expr)
 
      (lib.util/clause? expr)

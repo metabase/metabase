@@ -34,6 +34,28 @@
                            :limit 5}]}
                 (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation query)))))))
 
+(deftest ^:parallel cumulative-clause-test
+  (let [orders-total      (meta/field-metadata :orders :total)
+        orders-created-at (meta/field-metadata :orders :created-at)
+        query             (fn [aggregation]
+                            (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate aggregation)
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))))
+        first-stage       {:fields [[:field {:temporal-unit :month} (meta/id :orders :created-at)]
+                                    [:field {} (meta/id :orders :total)]]}]
+    (testing ":cumulative is a window aggregation, so the breakouts of its stage are nested"
+      (is (=? {:stages [first-stage
+                        {:breakout    [[:field {:temporal-unit :default} "CREATED_AT"]]
+                         :aggregation [[:cumulative {} [:max {} [:field {} "TOTAL"]]]]}]}
+              (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
+               (query (lib/cumulative (lib/max orders-total)))))))
+    (testing "also when it is inside an expression"
+      (is (=? {:stages [first-stage
+                        {:breakout    [[:field {:temporal-unit :default} "CREATED_AT"]]
+                         :aggregation [[:+ {} [:cumulative {} [:max {} [:field {} "TOTAL"]]] 1]]}]}
+              (nest-breakouts/nest-breakouts-in-stages-with-window-aggregation
+               (query (lib/+ (lib/cumulative (lib/max orders-total)) 1))))))))
+
 (deftest ^:parallel nest-breakouts-test
   (binding [add/*escape-alias-fn* (fn [_ s] (driver.impl/truncate-alias s 30))]
     (let [metadata-provider meta/metadata-provider

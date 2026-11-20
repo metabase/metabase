@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
@@ -1182,3 +1183,170 @@
               [(lib/aggregation-column query -1 (first (lib/aggregations query)))]))
       (is (= ["NAME" "sum" "sum_2" "count" "count_2" "NAME_2" "sum_3" "revenue"]
              (map :name (lib/returned-columns query)))))))
+
+(defn- orders-by-month-query []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))))
+
+(defn- aggregation-column
+  "The column `aggregation` adds to the results of `query`."
+  ([aggregation]
+   (aggregation-column (orders-by-month-query) aggregation))
+  ([query aggregation]
+   (-> (lib/aggregate query aggregation)
+       lib/returned-columns
+       last
+       (dissoc :lib/source-uuid))))
+
+(deftest ^:parallel cumulative-test
+  (testing "lib/cumulative wraps an aggregation in a :cumulative clause"
+    (is (=? [:cumulative
+             {:lib/uuid string?}
+             [:max {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :orders :total)]]]
+            (lib/cumulative (lib/max (meta/field-metadata :orders :total)))))))
+
+(deftest ^:parallel cumulative-equivalent-to-cum-sum-and-cum-count-test
+  (testing ":cumulative of :sum and :count returns the same column as :cum-sum and :cum-count"
+    (let [total (meta/field-metadata :orders :total)]
+      (are [cumulative equivalent] (= (aggregation-column equivalent)
+                                      (aggregation-column cumulative))
+        (lib/cumulative (lib/sum total))   (lib/cum-sum total)
+        (lib/cumulative (lib/sum 1))       (lib/cum-sum 1)
+        (lib/cumulative (lib/count))       (lib/cum-count)
+        (lib/cumulative (lib/count total)) (lib/cum-count total)))))
+
+(deftest ^:parallel cumulative-names-test
+  (let [total      (meta/field-metadata :orders :total)
+        total>100? (lib/> total 100)]
+    (testing "a :cumulative column has the name of the aggregation it wraps, and a 'Cumulative ...' display name"
+      (are [aggregation column-name display-name] (=? {:name column-name, :display-name display-name}
+                                                      (aggregation-column (lib/cumulative aggregation)))
+        (lib/sum total)                  "sum"             "Cumulative sum of Total"
+        (lib/count)                      "count"           "Cumulative count"
+        (lib/count total)                "count"           "Cumulative count of Total"
+        (lib/count-where total>100?)     "count_where"     "Cumulative count of rows matching condition"
+        (lib/sum-where total total>100?) "sum_where_TOTAL" "Cumulative sum of Total matching condition"
+        (lib/min total)                  "min"             "Cumulative min of Total"
+        (lib/max total)                  "max"             "Cumulative max of Total"
+        (lib/avg total)                  "avg"             "Cumulative average of Total"
+        (lib/share total>100?)           "share"           "Cumulative share of rows matching condition"))
+    (testing "an aggregation with a name of its own"
+      (is (=? {:name "revenue", :display-name "Cumulative Revenue"}
+              (aggregation-column
+               (lib/cumulative (lib.options/update-options (lib/sum total) assoc :name "revenue", :display-name "Revenue"))))))
+    (testing "the names of the :cumulative clause itself win"
+      (is (=? {:name "running_total", :display-name "Running total"}
+              (aggregation-column
+               (lib.options/update-options (lib/cumulative (lib/sum total))
+                                           assoc :name "running_total", :display-name "Running total")))))))
+
+(deftest ^:parallel cumulative-metadata-test
+  (let [total (meta/field-metadata :orders :total)]
+    (testing "a :cumulative column has the type and semantic type of the aggregation it wraps"
+      (are [aggregation expected] (=? expected
+                                      (aggregation-column (lib/cumulative aggregation)))
+        (lib/count)                  {:base-type :type/Integer, :semantic-type :type/Quantity}
+        (lib/share (lib/> total 10)) {:base-type :type/Float, :semantic-type :type/Percentage}
+        (lib/max total)              {:base-type :type/Float}))
+    (testing "and its formatting settings"
+      (let [mp       (lib.tu/merged-mock-metadata-provider
+                      meta/metadata-provider
+                      {:fields [{:id            (meta/id :orders :total)
+                                 :semantic-type :type/Currency
+                                 :settings      {:currency "EUR", :view_as "link"}}]})
+            query    (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                         (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (meta/id :orders :created-at)) :month)))
+            total    (lib.metadata/field mp (meta/id :orders :total))
+            expected {:semantic-type :type/Currency, :settings {:currency "EUR"}}]
+        (is (=? expected
+                (aggregation-column query (lib/max total))))
+        (is (=? expected
+                (aggregation-column query (lib/cumulative (lib/max total)))))))))
+
+(deftest ^:parallel cumulative-metric-test
+  (testing "a :cumulative metric is named after the metric"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :name          "Revenue"
+                           :type          :metric
+                           :database-id   (meta/id)
+                           :table-id      (meta/id :orders)
+                           :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                              (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))}]})
+          query (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                    (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (meta/id :orders :created-at)) :month)))]
+      (is (=? {:name "sum", :display-name "Cumulative Revenue", :base-type :type/Float}
+              (aggregation-column query (lib/cumulative (lib.metadata/metric mp 1))))))))
+
+(deftest ^:parallel cumulative-roll-up-test
+  (let [total      (meta/field-metadata :orders :total)
+        total>100? (lib/> total 100)]
+    (testing "how the running value of an aggregation is built from its value in each group"
+      (are [aggregation expected] (= expected
+                                     (lib/cumulative-roll-up aggregation))
+        (lib/sum total)                  :sum
+        (lib/count)                      :sum
+        (lib/count total)                :sum
+        (lib/count-where total>100?)     :sum
+        (lib/sum-where total total>100?) :sum
+        (lib/min total)                  :min
+        (lib/max total)                  :max))
+    (testing "it is an error for anything else, so we never compute something like AVG(AVG(x)) OVER (...)"
+      (are [aggregation] (thrown-with-msg?
+                          #?(:clj clojure.lang.ExceptionInfo :cljs js/Error)
+                          #"Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, or Share, not "
+                          (lib/cumulative-roll-up aggregation))
+        (lib/avg total)
+        (lib/share total>100?)
+        (lib/distinct total)
+        (lib/median total)
+        (lib/stddev total)
+        (lib/cum-sum total)
+        (lib/cumulative (lib/sum total))
+        (lib// (lib/sum total) (lib/count))))))
+
+(deftest ^:parallel cumulative-ratio-test
+  (let [total      (meta/field-metadata :orders :total)
+        total>100? (lib/> total 100)]
+    (testing "a cumulative average is the cumulative sum divided by the cumulative count"
+      (let [clause (lib/cumulative (lib/avg total))]
+        (is (=? [:/ {:lib/uuid (lib.options/uuid clause)}
+                 [:cumulative {:lib/uuid string?} [:sum {:lib/uuid string?} [:field {} (meta/id :orders :total)]]]
+                 [:cumulative {:lib/uuid string?} [:count {:lib/uuid string?} [:field {} (meta/id :orders :total)]]]]
+                (lib/cumulative-ratio clause)))))
+    (testing "a cumulative share is the cumulative count of matching rows divided by the cumulative count of rows"
+      (is (=? [:/ {}
+               [:cumulative {} [:count-where {} [:> {} [:field {} (meta/id :orders :total)] 100]]]
+               [:cumulative {} [:count {}]]]
+              (lib/cumulative-ratio (lib/cumulative (lib/share total>100?))))))
+    (testing "the ratio is a valid aggregation that only uses things lib/cumulative-roll-up supports"
+      (doseq [aggregation [(lib/avg total) (lib/share total>100?)]
+              :let        [[_ _ dividend divisor :as ratio] (lib/cumulative-ratio (lib/cumulative aggregation))]]
+        (is (some? (lib/aggregate (orders-by-month-query) ratio)))
+        (doseq [[_cumulative _opts wrapped] [dividend divisor]]
+          (is (= :sum (lib/cumulative-roll-up wrapped))))))
+    (testing "other :cumulative clauses are not ratios"
+      (are [aggregation] (nil? (lib/cumulative-ratio (lib/cumulative aggregation)))
+        (lib/sum total)
+        (lib/count)
+        (lib/min total)
+        (lib/max total)
+        (lib/count-where total>100?)
+        (lib/sum-where total total>100?)))))
+
+(deftest ^:parallel cumulative-display-name-patterns-test
+  (let [patterns (lib.aggregation/aggregation-display-name-patterns)
+        index-of (fn [pattern]
+                   (first (keep-indexed (fn [i p] (when (= p pattern) i)) patterns)))]
+    (testing "the patterns include the cumulative ones"
+      (are [pattern] (some? (index-of pattern))
+        {:prefix "Cumulative max of ", :suffix ""}
+        {:prefix "Cumulative min of ", :suffix ""}
+        {:prefix "Cumulative average of ", :suffix ""}
+        {:prefix "Cumulative sum of ", :suffix " matching condition"}))
+    (testing "'Cumulative sum of X matching condition' comes before 'Cumulative sum of X'"
+      (is (< (index-of {:prefix "Cumulative sum of ", :suffix " matching condition"})
+             (index-of {:prefix "Cumulative sum of ", :suffix ""}))))
+    (testing ":cum-sum and :cumulative of :sum have the same display name, but it is only one pattern"
+      (is (apply distinct? patterns)))))

@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.request.core :as request]
@@ -94,10 +95,19 @@
         (lib.options/with-options opts)
         (with-meta (meta aggregation)))))
 
+(mu/defn- cumulative-share->ratio :- ::lib.schema.aggregation/aggregation
+  "Rewrite a cumulative share in `aggregation` as the ratio of running counts it is equal to.
+  [[transform-share-aggregation]] turns a share into a ratio, and we do not know how to compute the running value of
+  a ratio, so the `:cumulative` has to end up around the counts instead."
+  [aggregation :- ::lib.schema.aggregation/aggregation]
+  (match/replace aggregation
+    [:cumulative _ [:share & _]]
+    (with-meta (lib/cumulative-ratio &match) (meta &match))))
+
 (defn- case-wrap-metric-aggregation
   [aggregation condition]
   (if (seq condition)
-    (match/replace-all aggregation
+    (match/replace-all (cumulative-share->ratio aggregation)
       [:share & _] (transform-share-aggregation condition &match)
       [#'aggregations-pred-arg & _] (transform-aggregation-with-predicate condition &match)
       [#'nullary-aggregations & _] (transform-0-arity-aggregation condition &match)

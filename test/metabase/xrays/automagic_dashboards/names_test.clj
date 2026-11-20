@@ -61,6 +61,22 @@
             (is (= (str expected)
                    (str (#'names/humanize-datetime t unit))))))))))
 
+(deftest ^:parallel cumulative-metric-name-test
+  (let [opts       (fn [] {:lib/uuid (str (random-uuid))})
+        field      [:field (opts) 1]
+        cumulative (fn [aggregation] [:cumulative (opts) aggregation])]
+    (testing "a cumulative metric is named after the aggregation it wraps"
+      (are [aggregation expected] (= expected
+                                     (str (names/metric-name nil (cumulative aggregation))))
+        [:sum (opts) field] "cumulative sum"
+        [:count (opts)]     "cumulative count"
+        [:max (opts) field] "cumulative maximum"))
+    (testing "the same as :cum-sum and :cum-count"
+      (are [aggregation equivalent] (= (str (names/metric-name nil equivalent))
+                                       (str (names/metric-name nil (cumulative aggregation))))
+        [:sum (opts) field] [:cum-sum (opts) field]
+        [:count (opts)]     [:cum-count (opts)]))))
+
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
                        (str (#'names/pluralize n)))

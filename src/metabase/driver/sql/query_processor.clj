@@ -17,6 +17,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.query-processor.util.persisted-cache :as qp.persisted]
@@ -1089,7 +1090,7 @@
   (if (lib.util/clause-of-type? expr :aggregation)
     (let [[_op _opts agg-uuid] expr
           aggregation (agg-by-id aggregations agg-uuid)]
-      (when-not (contains-clause? #{:cum-count :cum-sum :offset} aggregation)
+      (when-not (contains-clause? lib.schema.aggregation/window-aggregation-clause-tag? aggregation)
         [(->honeysql driver aggregation) direction]))
     [(->honeysql driver expr) direction]))
 
@@ -1235,6 +1236,34 @@
     (cumulative-aggregation-over-rows
      driver
      [:sum [:sum (->honeysql driver expr)]])))
+
+;;;    cumulative(max(total))
+;;;
+;;; should compile to SQL like
+;;;
+;;;    max(max(total)) OVER (ORDER BY ... ROWS UNBOUNDED PRECEDING)
+;;;
+;;; The inner function is the aggregation `:cumulative` wraps. The outer one rolls up the value of that aggregation in
+;;; each group, and is whatever [[lib/cumulative-roll-up]] says it should be: `sum` for a sum or a count, `min` for a
+;;; min, `max` for a max. `cumulative(sum(total))` compiles to the same SQL as `cum-sum(total)`, and
+;;; `cumulative(count())` to the same SQL as `cum-count()`.
+;;;
+;;; A cumulative average or share is not rolled up this way; it is compiled as the ratio of two cumulative
+;;; aggregations that [[lib/cumulative-ratio]] returns, e.g.
+;;;
+;;;    sum(sum(total)) OVER (...) / sum(count(total)) OVER (...)
+(defmethod ->honeysql [:sql :cumulative]
+  [driver [_cumulative _opts aggregation :as clause]]
+  (if-let [ratio (lib/cumulative-ratio clause)]
+    (->honeysql driver ratio)
+    ;; work out the roll-up even if we don't end up needing it, so something we can't compute is always an error.
+    (let [roll-up          (lib/cumulative-roll-up aggregation)
+          aggregation-hsql (->honeysql driver aggregation)]
+      ;; a cumulative aggregation with no breakouts doesn't really mean anything, just compile it as a normal
+      ;; aggregation.
+      (if (empty? (:breakout *inner-query*))
+        aggregation-hsql
+        (cumulative-aggregation-over-rows driver [roll-up aggregation-hsql])))))
 
 (defmethod ->honeysql [:sql :offset]
   [driver [_offset _opts expr n]]

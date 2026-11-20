@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -125,7 +126,8 @@
       (are [clause] (lib.schema.aggregation/window-aggregation-expression? clause)
         cum-sum
         [:cum-count {:lib/uuid "00000000-0000-0000-0000-000000000007"}]
-        [:offset {:lib/uuid "00000000-0000-0000-0000-000000000008"} sum -1]))
+        [:offset {:lib/uuid "00000000-0000-0000-0000-000000000008"} sum -1]
+        [:cumulative {:lib/uuid "00000000-0000-0000-0000-000000000014"} sum]))
     (testing "non-window aggregations"
       (are [clause] (not (lib.schema.aggregation/window-aggregation-expression? clause))
         sum
@@ -208,3 +210,72 @@
                       true]]
                     1]]]]
         (is (mr/validate ::lib.schema.aggregation/aggregation expr))))))
+
+(defn- cumulative [aggregation]
+  [:cumulative {:lib/uuid "00000000-0000-0000-0000-000000000000"} aggregation])
+
+(deftest ^:parallel cumulative-test
+  (let [opts  {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        field [:field opts 1]
+        gt    [:> opts field 3]]
+    (testing "aggregations whose running value we know how to compute can be wrapped in :cumulative"
+      (are [aggregation] (not (me/humanize (mr/explain ::lib.schema.aggregation/aggregation (cumulative aggregation))))
+        [:sum opts field]
+        [:count opts]
+        [:count opts field]
+        [:count-where opts gt]
+        [:sum-where opts field gt]
+        [:min opts field]
+        [:max opts field]
+        [:avg opts field]
+        [:share opts gt]
+        [:metric opts 1]
+        [:measure opts 1]))
+    (testing "nothing else can"
+      (are [x] (some? (me/humanize (mr/explain ::lib.schema.aggregation/aggregation (cumulative x))))
+        [:distinct opts field]
+        [:distinct-where opts field gt]
+        [:median opts field]
+        [:percentile opts field 0.5]
+        [:stddev opts field]
+        [:var opts field]
+        ;; other window functions, including :cumulative itself
+        [:cum-sum opts field]
+        [:cum-count opts]
+        [:offset opts [:sum opts field] -1]
+        (cumulative [:sum opts field])
+        ;; arithmetic on aggregations
+        [:/ opts [:sum opts field] [:count opts]]
+        ;; things that are not aggregations
+        field
+        1))
+    (testing "the error says what :cumulative can wrap"
+      (is (= ["Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, Share, a metric, or a measure."]
+             (->> (mr/explain ::lib.schema.aggregation/aggregation (cumulative [:distinct opts field]))
+                  me/humanize
+                  flatten
+                  (remove nil?)))))))
+
+(deftest ^:parallel cumulative-type-of-test
+  (testing ":cumulative has the type of the aggregation it wraps"
+    (let [opts {:lib/uuid "00000000-0000-0000-0000-000000000000"}]
+      (are [aggregation expected] (= expected
+                                     (lib.schema.expression/type-of (cumulative aggregation)))
+        [:count opts]                                       :type/Integer
+        [:avg opts [:field opts 1]]                         :type/Float
+        [:max opts [:field (assoc opts :base-type :type/Text) 1]] :type/Text))))
+
+(deftest ^:parallel normalize-cumulative-test
+  (testing ":cumulative and the aggregation it wraps are normalized, e.g. when a query comes back from JSON"
+    (is (= [:cumulative
+            {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+            [:sum
+             {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+             [:field {:lib/uuid "00000000-0000-0000-0000-000000000002", :base-type :type/Float} 1]]]
+           (lib.normalize/normalize
+            ::lib.schema.aggregation/aggregation
+            ["cumulative"
+             {"lib/uuid" "00000000-0000-0000-0000-000000000000"}
+             ["sum"
+              {"lib/uuid" "00000000-0000-0000-0000-000000000001"}
+              ["field" {"lib/uuid" "00000000-0000-0000-0000-000000000002", "base-type" "type/Float"} 1]]])))))

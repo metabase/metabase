@@ -26,6 +26,14 @@
    :cum-count (deferred-tru "cumulative count")
    :cum-sum   (deferred-tru "cumulative sum")})
 
+(def ^:private cumulative-op->name
+  "Names of `[:cumulative opts <aggregation>]` metrics, by the tag of the aggregation."
+  {:sum   (deferred-tru "cumulative sum")
+   :avg   (deferred-tru "cumulative average")
+   :min   (deferred-tru "cumulative minimum")
+   :max   (deferred-tru "cumulative maximum")
+   :count (deferred-tru "cumulative count")})
+
 (mu/defn metric-name :- ::ads/string-or-18n-string
   "Return the name of the metric or name by describing it."
   [database-id           :- [:maybe :int]
@@ -39,6 +47,10 @@
             (let [mp (lib-be/application-database-metadata-provider database-id)]
               (some-> (lib.metadata/measure mp measure-id) :name))))
         (tru "[Unknown Measure]"))
+
+    (lib/clause-of-type? metric :cumulative)
+    (let [[_cumulative _opts [aggregation-tag]] metric]
+      (-> aggregation-tag keyword cumulative-op->name))
 
     (magic.util/adhoc-metric? metric)
     (-> tag keyword op->name)

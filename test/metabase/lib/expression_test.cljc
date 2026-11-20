@@ -615,6 +615,29 @@
         [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
         [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
 
+(deftest ^:parallel diagnose-expression-cumulative-test
+  (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        total    (meta/field-metadata :orders :total)
+        diagnose (fn [expr]
+                   (:message (lib.expression/diagnose-expression query 0 :aggregation expr nil)))]
+    (testing "an aggregation inside Cumulative is fine, on its own or in arithmetic"
+      (are [expr] (nil? (diagnose expr))
+        (lib/cumulative (lib/sum total))
+        (lib/cumulative (lib/avg total))
+        (lib// (lib/cumulative (lib/sum total)) (lib/cumulative (lib/count)))))
+    (testing "Cumulative is a window function, so it cannot go inside another aggregation or window function"
+      (are [expr] (= "Embedding Cumulative in aggregation functions is not supported"
+                     (diagnose expr))
+        (lib/sum (lib/cumulative (lib/sum total)))
+        (lib/offset (lib/cumulative (lib/sum total)) -1)))
+    (testing "Cumulative only works with some aggregations"
+      (are [expr] (= "Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, Share, a metric, or a measure."
+                     (diagnose expr))
+        [:cumulative {:lib/uuid (str (random-uuid))} (lib/distinct total)]
+        [:cumulative {:lib/uuid (str (random-uuid))} (lib/median total)]
+        [:cumulative {:lib/uuid (str (random-uuid))} (lib/cumulative (lib/sum total))]
+        [:cumulative {:lib/uuid (str (random-uuid))} (lib/offset (lib/sum total) -1)]))))
+
 (deftest ^:parallel diagnose-expression-cyclic-aggregation-tests
   (testing "self loop"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

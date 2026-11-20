@@ -1602,7 +1602,7 @@ function(bin) {
 
 (def ^:private aggregation-op
   "The set of operators handled by [[aggregation->rvalue]] and [[expand-aggregation]]."
-  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var :cum-sum :cum-count})
+  #{:avg :count :count-where :distinct :max :min :share :stddev :sum :sum-where :var :cum-sum :cum-count :cumulative})
 
 (mu/defmethod ->rvalue :case
   [query stage-number [_ _opts cases default-value] :- :mbql.clause/case]
@@ -1741,6 +1741,19 @@ function(bin) {
     {:group {(subs count-expr 1) (aggregation->rvalue query stage-number (lib/count))}
      :window {(driver-api/mbql-5-aggregation-name query stage-number ag) count-expr}}))
 
+;; `[:cumulative opts <aggregation>]`: compute `<aggregation>` in the `$group` stage, then roll up its values in the
+;; `$setWindowFields` stage with the operator [[driver-api/cumulative-roll-up]] says to use. A cumulative average or
+;; share never gets here; [[expand-aggregations]] replaces it with the ratio of two cumulative aggregations first.
+(mu/defmethod expand-aggregation :cumulative :- ::expanded-aggregation
+  [query stage-number [_tag _opts aggregation :as ag] :- :mbql.clause/cumulative]
+  (let [group-name (name (gensym "cumulative-"))
+        operator   (case (driver-api/cumulative-roll-up aggregation)
+                     :sum $sum
+                     :min $min
+                     :max $max)]
+    {:group  {group-name (aggregation->rvalue query stage-number aggregation)}
+     :window {(driver-api/mbql-5-aggregation-name query stage-number ag) {operator (str \$ group-name)}}}))
+
 (mu/defmethod expand-aggregation :default :- ::expanded-aggregation
   [query stage-number ag :- ::lib.schema.mbql-clause/clause]
   {:group {(driver-api/mbql-5-aggregation-name query stage-number ag) (aggregation->rvalue query stage-number ag)}})
@@ -1867,6 +1880,12 @@ function(bin) {
    stage-number :- :int
    aggr-expr    :- ::lib.schema.mbql-clause/clause]
   (let [aggr-name                      (driver-api/mbql-5-aggregation-name query stage-number aggr-expr)
+        ;; a cumulative average or share is the ratio of two cumulative aggregations.
+        aggr-expr                      (match/replace aggr-expr
+                                         [:cumulative & _]
+                                         (if-let [ratio (driver-api/cumulative-ratio &match)]
+                                           ratio
+                                           &match))
         [aggr-expr' aggregations-seen] (->> (extract-aggregations query stage-number aggr-expr aggr-name)
                                             (simplify-extracted-aggregations aggr-name)
                                             adjust-distinct-aggregations)
@@ -1904,11 +1923,13 @@ function(bin) {
    (lib/order-bys query stage-number)))
 
 (defn- window-output-clause
-  "Takes a pair of [output-name input-name] and generates an output clause suitable for
-  including in a `$setWindowFields` output block."
-  [input-name]
-  {$sum input-name
-   "window" {"documents" ["unbounded" "current"]}})
+  "Takes the input of a window and generates an output clause suitable for including in a `$setWindowFields` output
+  block. The input is either an input name, which is summed, or an `{operator input-name}` map."
+  [input]
+  (assoc (if (map? input)
+           input
+           {$sum input})
+         "window" {"documents" ["unbounded" "current"]}))
 
 (mr/def ::window-id
   "A `{breakout-name rvalue-expr}` map identifying the `_id` grouping key of a `$group` stage."
@@ -2328,7 +2349,7 @@ function(bin) {
 
         cumulative-order-by
         (when-let [finest-temporal-index
-                   (and (seq (filter (fn [[agg-type :as _ag-clause]] (#{:cum-sum :cum-count} agg-type))
+                   (and (seq (filter (fn [[agg-type :as _ag-clause]] (#{:cum-sum :cum-count :cumulative} agg-type))
                                      aggregations))
                         (driver-api/finest-temporal-breakout-index breakouts 1))]
           (let [id (projection-group-map query stage-number)]

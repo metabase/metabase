@@ -25,7 +25,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -1072,6 +1073,35 @@
    {:operator :cum-sum
     :feature :window-functions/cumulative
     :aggregate (aggregate-col-1st-arg-fn lib/cum-sum)}
+   {:operator :cumulative/count
+    :feature :window-functions/cumulative
+    :aggregate (fn [query] (lib/aggregate query (lib/cumulative (lib/count))))}
+   {:operator :cumulative/sum
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn (comp lib/cumulative lib/sum))}
+   {:operator :cumulative/min
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn (comp lib/cumulative lib/min))}
+   {:operator :cumulative/max
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn (comp lib/cumulative lib/max))}
+   {:operator :cumulative/avg
+    :feature :window-functions/cumulative
+    :aggregate (aggregate-col-1st-arg-fn (comp lib/cumulative lib/avg))}
+   {:operator :cumulative/count-where
+    :feature :window-functions/cumulative
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/cumulative
+                                       (lib/count-where (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                             (lib/filterable-columns query))
+                                                               30)))))}
+   {:operator :cumulative/share
+    :feature :window-functions/cumulative
+    :aggregate (fn [query]
+                 (lib/aggregate query (lib/cumulative
+                                       (lib/share (lib/< (m/find-first (comp #{"Product ID"} :display-name)
+                                                                       (lib/filterable-columns query))
+                                                         30)))))}
    {:operator :percentile
     :feature :percentile-aggregations
     :aggregate (fn [query]
@@ -1210,4 +1240,61 @@
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
                        :aggregation :metric :measure :offset)
-                 (set (map :operator tested-aggregations)))))))
+                 ;; `:cumulative` is tested once for each of several aggregations it can wrap, as `:cumulative/sum` etc.
+                 (into #{}
+                       (map (fn [{:keys [operator]}]
+                              (keyword (or (namespace operator) (name operator)))))
+                       tested-aggregations))))))
+
+(deftest ^:parallel cumulative-metric-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
+    (let [mp         (mt/metadata-provider)
+          orders     (lib.metadata/table mp (mt/id :orders))
+          total      (lib.metadata/field mp (mt/id :orders :total))
+          created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          metric     (fn [aggregation]
+                       {:id            1
+                        :name          "Big Orders"
+                        :type          :metric
+                        :dataset-query (-> (lib/query mp orders)
+                                           (lib/filter (lib/> total 100))
+                                           (lib/aggregate aggregation))})
+          by-year    (fn [mp aggregation]
+                       (-> (lib/query mp orders)
+                           (lib/breakout (lib/with-temporal-bucket created-at :year))
+                           (lib/aggregate aggregation)))
+          run-metric (fn [metric-aggregation]
+                       (let [mp (lib.tu/mock-metadata-provider mp {:cards [(metric metric-aggregation)]})]
+                         (qp/process-query (by-year mp (lib/cumulative (lib.metadata/metric mp 1))))))
+          rows       #(mt/formatted-rows [str 2.0] %)]
+      (testing "the running value of a metric is the running value of its aggregation"
+        (are [metric-aggregation equivalent] (= (rows (qp/process-query (by-year mp equivalent)))
+                                                (rows (run-metric metric-aggregation)))
+          (lib/sum total)
+          (lib/cumulative (lib/sum-where total (lib/> total 100)))
+
+          (lib/count)
+          (lib/cumulative (lib/count-where (lib/> total 100)))
+
+          (lib/max total)
+          (lib/cumulative (lib/max (lib/case [[(lib/> total 100) total]])))
+
+          (lib/avg total)
+          (lib/cumulative (lib/avg (lib/case [[(lib/> total 100) total]])))))
+      (testing "it is named after the metric"
+        (is (=? [{} {:name "sum", :display_name "Cumulative Big Orders"}]
+                (mt/cols (run-metric (lib/sum total))))))
+      (testing "it is an error if we do not know how to compute the running value of the metric's aggregation"
+        ;; the schema of a query does not allow these inside :cumulative, and in dev and in tests the middleware after
+        ;; this one refuses the query for that reason. Turn that off to check that without it, as in production, this is
+        ;; still an error rather than a wrong number.
+        (mu/disable-enforcement
+          (are [metric-aggregation message] (thrown-with-msg?
+                                             clojure.lang.ExceptionInfo
+                                             message
+                                             (run-metric metric-aggregation))
+            (lib/distinct total)                #"Cumulative only works with .*, not distinct"
+            ;; a metric that is already cumulative
+            (lib/cumulative (lib/sum total))    #"Cumulative only works with .*, not cumulative"
+            ;; arithmetic on aggregations
+            (lib// (lib/sum total) (lib/count)) #"Cumulative only works with .*, not /"))))))

@@ -143,6 +143,31 @@
   "Map of other aggregation tags to functions that take the column display name and return the full aggregation display name."
   {:sum-where (fn [arg] (i18n/tru "Sum of {0} matching condition" arg))})
 
+(def ^:private cumulative-aggregation-display-name-fns
+  "Map of the tag of the aggregation a `:cumulative` clause wraps to a function that takes the display name of that
+  aggregation's first argument and returns the display name of the `:cumulative` clause. There is one string per
+  aggregation, rather than \"Cumulative\" plus the lowercased name of the aggregation, because that does not work in
+  every language."
+  {:avg       (fn [arg] (i18n/tru "Cumulative average of {0}" arg))
+   :count     (fn [arg] (i18n/tru "Cumulative count of {0}" arg))
+   :max       (fn [arg] (i18n/tru "Cumulative max of {0}" arg))
+   :min       (fn [arg] (i18n/tru "Cumulative min of {0}" arg))
+   :sum       (fn [arg] (i18n/tru "Cumulative sum of {0}" arg))
+   :sum-where (fn [arg] (i18n/tru "Cumulative sum of {0} matching condition" arg))})
+
+(def ^:private cumulative-aggregation-no-arg-display-name-fns
+  "Like [[cumulative-aggregation-display-name-fns]], for the aggregations whose display name does not include one of
+  their arguments."
+  {:count       (fn [] (i18n/tru "Cumulative count"))
+   :count-where (fn [] (i18n/tru "Cumulative count of rows matching condition"))
+   :share       (fn [] (i18n/tru "Cumulative share of rows matching condition"))})
+
+(mu/defn- cumulative-display-name :- :string
+  "Display name of a `:cumulative` clause that wraps something with its own name: a metric, a measure, or an aggregation
+  with a custom `:display-name`."
+  [arg :- :string]
+  (i18n/tru "Cumulative {0}" arg))
+
 (lib.hierarchy/derive ::count-aggregation ::aggregation)
 
 ;;; count and cumulative count can both be used either with no args (count of rows) or with one arg (count of X, which
@@ -262,10 +287,21 @@
    the display name function result on the {0} placeholder.
    More specific patterns (like 'Sum of X matching condition') come first."
   []
-  (-> []
-      (into (mapv (fn [[_tag f]] (pattern->prefix-suffix (f "{0}"))) other-aggregation-display-name-fns))
-      (into (mapv (fn [[_tag f]] (pattern->prefix-suffix (f "{0}"))) unary-aggregation-display-name-fns))
-      (into (mapv (fn [[_tag f]] (pattern->prefix-suffix (f "{0}"))) count-aggregation-display-name-fns))))
+  (letfn [(patterns [tag->display-name-fn]
+            (mapv (fn [[_tag f]] (pattern->prefix-suffix (f "{0}"))) tag->display-name-fn))]
+    (into []
+          ;; `:cum-sum` and `[:cumulative [:sum ...]]` have the same display name, as do `:cum-count` and
+          ;; `[:cumulative [:count ...]]`.
+          (clojure.core/distinct)
+          (concat
+           (patterns other-aggregation-display-name-fns)
+           ;; 'Cumulative sum of X matching condition' has to come before 'Cumulative sum of X'.
+           ;;
+           ;; [[cumulative-display-name]] ('Cumulative X') is deliberately not a pattern: it would match any column
+           ;; whose name happens to start with 'Cumulative'.
+           (sort-by (comp - clojure.core/count :suffix) (patterns cumulative-aggregation-display-name-fns))
+           (patterns unary-aggregation-display-name-fns)
+           (patterns count-aggregation-display-name-fns)))))
 
 (mu/defmethod lib.metadata.calculation/display-name-method ::unary-aggregation
   [query
@@ -354,8 +390,90 @@
                      :settings (not-empty (select-keys (:settings col) value-formatting-settings-keys)))))
    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
 
+;;; `[:cumulative opts <aggregation>]` is named after the aggregation it wraps: its column has that aggregation's name
+;;; and its display name is the "Cumulative ..." version of that aggregation's display name. This is so that
+;;; `[:cumulative {} [:sum {} x]]` and `[:cum-sum {} x]` (and `[:cumulative {} [:count {}]]` and `[:cum-count {}]`) are
+;;; interchangeable.
+
+(defmethod lib.metadata.calculation/display-name-method :cumulative
+  [query stage-number [_cumulative _opts [tag opts first-arg :as aggregation]] style]
+  (let [display-name    #(lib.metadata.calculation/display-name query stage-number % style)
+        with-arg-fn     (get cumulative-aggregation-display-name-fns tag)
+        without-arg-fn  (get cumulative-aggregation-no-arg-display-name-fns tag)]
+    (cond
+      (:display-name opts)                (cumulative-display-name (display-name aggregation))
+      (and with-arg-fn (some? first-arg)) (with-arg-fn (display-name first-arg))
+      without-arg-fn                      (without-arg-fn)
+      ;; a metric or a measure
+      :else                               (cumulative-display-name (display-name aggregation)))))
+
+(defmethod lib.metadata.calculation/column-name-method :cumulative
+  [query stage-number [_cumulative _opts aggregation]]
+  ;; the name of the column `aggregation` would have. For a metric or a measure that is the name of the aggregation it
+  ;; refers to rather than its own `column-name`, and it is what the column is called once the query processor has
+  ;; replaced the metric with that aggregation.
+  (or (:name (lib.metadata.calculation/metadata query stage-number aggregation))
+      (lib.metadata.calculation/column-name query stage-number aggregation)))
+
+(defmethod lib.metadata.calculation/metadata-method :cumulative
+  [query stage-number [_cumulative _opts aggregation :as clause]]
+  (merge
+   ;; a running aggregation is the same kind of value as the aggregation it wraps, so it is formatted the same way.
+   (select-keys (lib.metadata.calculation/metadata query stage-number aggregation) [:semantic-type :settings])
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
+
+(mr/def ::cumulative-roll-up
+  "How a running aggregation is built from the values of the aggregation in each group. See [[cumulative-roll-up]]."
+  [:enum :sum :min :max])
+
+(mu/defn cumulative-roll-up :- ::cumulative-roll-up
+  "How to build the running value of `aggregation`, the aggregation that a `:cumulative` clause wraps, from the value
+  of `aggregation` in each group. The running value at a group is the `:sum`, `:min` or `:max` of the values of the
+  groups up to and including it: a running count is the sum of the counts, a running max is the max of the maxes.
+
+  Throws if the running value of `aggregation` cannot be built this way. Anything that computes a `:cumulative` clause
+  has to call this to decide how, so that an aggregation we don't support is always an error, and never something like
+  `AVG(AVG(x)) OVER (...)` that runs and returns the wrong number.
+
+  A running `:avg` or `:share` cannot be built this way, but it is a ratio of two running values that can;
+  see [[cumulative-ratio]]."
+  [aggregation :- [:ref ::lib.schema.mbql-clause/clause]]
+  (let [tag (when (vector? aggregation)
+              (first aggregation))]
+    (case tag
+      (:count :count-where :sum :sum-where) :sum
+      :max                                  :max
+      :min                                  :min
+      (throw (ex-info (i18n/tru "Cumulative only works with Sum, Count, CountIf, SumIf, Min, Max, Average, or Share, not {0}."
+                                (if (keyword? tag)
+                                  (name tag)
+                                  (pr-str aggregation)))
+                      {:type :invalid-query, :aggregation aggregation})))))
+
+(mu/defn cumulative-ratio :- [:maybe [:ref ::lib.schema.mbql-clause/clause]]
+  "If `cumulative-clause` is a running `:avg` or `:share`, return the ratio of two running values it is equal to; return
+  `nil` for any other `:cumulative` clause. A running average is the running sum divided by the running count, and a
+  running share is the running count of matching rows divided by the running count of rows. Rolling up the average or
+  the share of each group instead would give every group the same weight, regardless of how many rows are in it.
+
+  Both parts of the ratio are `:cumulative` clauses that [[cumulative-roll-up]] supports, so something that compiles
+  `:cumulative` clauses can support these two by compiling the ratio instead.
+
+  This is for compiling a query, not for rewriting one before it is compiled: the ratio does not have the name, the
+  semantic type or the formatting settings of the average or share it stands for, so a query has to keep the original
+  clause for the metadata of its results to be right. The ratio keeps the options of `cumulative-clause`."
+  [[_cumulative opts [tag _opts arg]] :- :mbql.clause/cumulative]
+  (when-let [[dividend divisor] (case tag
+                                  :avg   [[:sum {} arg] [:count {} (lib.util/fresh-uuids arg)]]
+                                  :share [[:count-where {} arg] [:count {}]]
+                                  nil)]
+    (letfn [(running [aggregation]
+              (lib.options/ensure-uuid [:cumulative {} (lib.options/ensure-uuid aggregation)]))]
+      [:/ opts (running dividend) (running divisor)])))
+
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
+(lib.common/defop cumulative  [aggregation])
 (lib.common/defop count-where [x])
 (lib.common/defop avg         [x])
 (lib.common/defop distinct    [x])

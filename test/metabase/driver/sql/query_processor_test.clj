@@ -1377,6 +1377,43 @@
       (is (= 55.98
              (->> (qp/process-query query) (mt/formatted-rows [str 2.0]) first second))))))
 
+(deftest ^:parallel cumulative-test
+  (let [mp      (mt/metadata-provider)
+        total   (lib.metadata/field mp (mt/id :orders :total))
+        compile (fn [aggregation breakout?]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (cond-> breakout? (lib/breakout (lib/with-temporal-bucket
+                                                        (lib.metadata/field mp (mt/id :orders :created_at))
+                                                        :month)))
+                      (lib/aggregate aggregation)
+                      qp.compile/compile
+                      :query))
+        over    "OVER (ORDER BY \"__mb_source\".\"CREATED_AT\" ASC ROWS UNBOUNDED PRECEDING)"]
+    (testing "[:cumulative <aggregation>] rolls up the value of <aggregation> in each group"
+      (are [aggregation expected] (str/includes? (compile (lib/cumulative aggregation) true)
+                                                 (str expected " " over))
+        (lib/sum total)   "SUM(SUM(\"__mb_source\".\"TOTAL\"))"
+        (lib/count)       "SUM(COUNT(*))"
+        (lib/count total) "SUM(COUNT(\"__mb_source\".\"TOTAL\"))"
+        (lib/min total)   "MIN(MIN(\"__mb_source\".\"TOTAL\"))"
+        (lib/max total)   "MAX(MAX(\"__mb_source\".\"TOTAL\"))"))
+    (testing "the same SQL as :cum-sum and :cum-count"
+      (are [cumulative equivalent] (= (compile equivalent true)
+                                      (compile cumulative true))
+        (lib/cumulative (lib/sum total))   (lib/cum-sum total)
+        (lib/cumulative (lib/count))       (lib/cum-count)
+        (lib/cumulative (lib/count total)) (lib/cum-count total)))
+    (testing "a cumulative average is the cumulative sum divided by the cumulative count, never AVG(AVG(...))"
+      (let [sql (compile (lib/cumulative (lib/avg total)) true)]
+        (is (str/includes? sql (str "CAST(SUM(SUM(\"__mb_source\".\"TOTAL\")) " over " AS double)"
+                                    " / "
+                                    "NULLIF(CAST(SUM(COUNT(\"__mb_source\".\"TOTAL\")) " over " AS double), 0.0)"
+                                    " AS \"avg\"")))
+        (is (not (str/includes? sql "AVG(")))))
+    (testing "with no breakouts it is just the aggregation"
+      (is (= (compile (lib/max total) false)
+             (compile (lib/cumulative (lib/max total)) false))))))
+
 (deftest ^:parallel literal-float-test
   (doseq [{:keys [value expected type]} [{:value "1.2" :expected 1.2  :type "TEXT"}
                                          {:value 10    :expected 10.0 :type "BIGINT"}
