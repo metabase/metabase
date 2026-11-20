@@ -130,6 +130,16 @@ const runQueryFromEditor = async () => {
   );
 };
 
+/** Hovers the enabled Save button: the "run the query first" tooltip is gone. */
+const expectSaveNoLongerBlocked = async (name: string) => {
+  const saveButton = getEditBarButton(name);
+  expect(saveButton).toBeEnabled();
+  await userEvent.hover(saveButton);
+  expect(
+    screen.queryByText("You must run the query before you can save this model"),
+  ).not.toBeInTheDocument();
+};
+
 const expectSaveBlockedUntilRun = async (name: string) => {
   const saveButton = getEditBarButton(name);
   expect(saveButton).toBeDisabled();
@@ -281,11 +291,7 @@ describe("QueryBuilder > native models", () => {
       await waitFor(() =>
         expect(getEditBarButton("Save changes")).toBeEnabled(),
       );
-      expect(
-        screen.queryByText(
-          "You must run the query before you can save this model",
-        ),
-      ).not.toBeInTheDocument();
+      await expectSaveNoLongerBlocked("Save changes");
       await userEvent.click(getEditBarButton("Save changes"));
 
       await waitFor(() =>
@@ -340,11 +346,7 @@ describe("QueryBuilder > native models", () => {
       await expectSaveBlockedUntilRun("Save");
       await runQueryFromEditor();
       await waitFor(() => expect(getEditBarButton("Save")).toBeEnabled());
-      expect(
-        screen.queryByText(
-          "You must run the query before you can save this model",
-        ),
-      ).not.toBeInTheDocument();
+      await expectSaveNoLongerBlocked("Save");
       await userEvent.click(getEditBarButton("Save"));
       const modal = await screen.findByTestId("save-question-modal");
       await userEvent.type(within(modal).getByLabelText("Name"), "Model");
