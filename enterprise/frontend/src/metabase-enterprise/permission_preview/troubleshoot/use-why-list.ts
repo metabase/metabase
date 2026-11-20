@@ -49,8 +49,6 @@ export type ItemWhyPage = {
   itemType: ItemType;
   name: string;
   verdict: WhyVerdict;
-  /** A dashboard's cards that can't load, each with the blocked tables that stop it. */
-  blockedCards: BlockedCard[];
   /** One View data row per table under row security. */
   filtered: WhyTarget[];
   /** The item's collection, which decides whether it opens. */
@@ -61,22 +59,6 @@ export type ItemWhyPage = {
   explore: WhyTarget[];
   /** The collection, then each table's View data and Create queries. */
   permissions: WhyTarget[];
-};
-
-export type BlockedCard = {
-  name: string;
-  /** Its blocked tables, as View data rows of the item's tables. */
-  tables: WhyTarget[];
-  /** The tables it reaches that more than one group's row and column security applies to. */
-  conflictingTables: WhyTarget[];
-  /** The tables it reaches whose row and column security reads an attribute the person lacks. */
-  missingAttributeTables: WhyTarget[];
-  /** The names of those attributes, with the ones its databases' impersonation or routing reads. */
-  missingAttributes: string[];
-  /** The names of its databases where row and column security and connection impersonation both apply. */
-  conflictingDatabases: string[];
-  /** The item's tables on its databases that fail every query: those conflicting or missing an attribute. */
-  databaseTables: WhyTarget[];
 };
 
 /** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
@@ -513,50 +495,6 @@ function getItemPage(
       filtered.length > 0,
       collectionTarget,
     ),
-    blockedCards: (queryCheck.data["blocked-cards"] ?? []).map((card) => ({
-      name: card.name,
-      tables: tablesInOrder
-        .filter(
-          ({ table, view }) =>
-            card.tables.includes(table.name) && isBlocking(view),
-        )
-        .map(({ view }) => view),
-      conflictingTables: tablesInOrder
-        .filter(({ table }) =>
-          (card["conflicting-tables"] ?? []).includes(table.id),
-        )
-        .map(({ view }) => view),
-      missingAttributeTables: tablesInOrder
-        .filter(({ table }) =>
-          (card["missing-attributes"] ?? []).some(
-            (missing) => missing["table-id"] === table.id,
-          ),
-        )
-        .map(({ view }) => view),
-      missingAttributes: [
-        ...new Set(
-          [
-            ...(card["missing-attributes"] ?? []),
-            ...(card["missing-database-attributes"] ?? []),
-          ].map(({ attribute }) => attribute),
-        ),
-      ],
-      conflictingDatabases: dataPreview.databases
-        .filter(({ id }) =>
-          (card["conflicting-databases"] ?? []).some(
-            (conflict) => conflict["database-id"] === id,
-          ),
-        )
-        .map(({ name }) => name),
-      databaseTables: tablesInOrder
-        .filter(({ database }) =>
-          [
-            ...(card["conflicting-databases"] ?? []),
-            ...(card["missing-database-attributes"] ?? []),
-          ].some((problem) => problem["database-id"] === database.id),
-        )
-        .map(({ view }) => view),
-    })),
     filtered,
     collection: collectionTarget,
     tables: tablesInOrder.map(({ view }) => view),

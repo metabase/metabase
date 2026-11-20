@@ -444,7 +444,7 @@ describe("WhyListSidesheet", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("leads a partly blocked dashboard with the card that can't load and its blocked table, which its status opens", async () => {
+  it("shows a partly blocked dashboard's blocked table in Data in this dashboard, with no Cards that can't load section, and its status opens the table", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
       tableIds: [ORDERS_ID, REVIEWS_ID],
@@ -460,16 +460,16 @@ describe("WhyListSidesheet", () => {
       },
     });
 
-    const cardsHeading = await screen.findByText("Cards that can't load");
-    expect(
-      cardsHeading.compareDocumentPosition(
-        screen.getByText("Data in this dashboard"),
-      ),
-    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByText("Reviews by rating")).toBeInTheDocument();
-    expect(screen.getByText("Reviews table blocked")).toBeInTheDocument();
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can open this dashboard but can't see 1 of its 2 cards.",
+    );
+    expect(screen.queryByText("Cards that can't load")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reviews by rating")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reviews table blocked")).not.toBeInTheDocument();
+    const status = await findRowStatus("Reviews · Sample Database");
+    expect(status).toHaveTextContent("Blocked");
 
-    await userEvent.click(screen.getByRole("button", { name: /Can't load/ }));
+    await userEvent.click(status);
 
     expect(
       screen.getByText(
@@ -503,13 +503,14 @@ describe("WhyListSidesheet", () => {
     expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
       "Sandy Sales can open this dashboard but can't see any of its cards.",
     );
-    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
+    expect(screen.queryByText("Cards that can't load")).not.toBeInTheDocument();
+    expect(screen.queryByText("Revenue by month")).not.toBeInTheDocument();
     expect(
-      screen.getByText("Conflicting policies on Products"),
-    ).toBeInTheDocument();
-    // the failing card's status, and the table's
+      screen.queryByText("Conflicting policies on Products"),
+    ).not.toBeInTheDocument();
+    // the table's status only
     expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
-      2,
+      1,
     );
     expect(
       screen.getByText(
@@ -544,10 +545,9 @@ describe("WhyListSidesheet", () => {
       },
     });
 
-    const [, tableStatus] = await screen.findAllByRole("button", {
-      name: /Can't load/,
-    });
-    await userEvent.click(tableStatus);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Can't load/ }),
+    );
 
     expect(
       screen.getByText(
@@ -567,11 +567,13 @@ describe("WhyListSidesheet", () => {
     expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
       "Sandy Sales can open this dashboard but can't see any of its cards.",
     );
-    expect(screen.getByText("Revenue by month")).toBeInTheDocument();
-    expect(screen.getByText("Missing category and state")).toBeInTheDocument();
-    // the failing card's status, and one per table: Products is in the data though the dashboard doesn't query it
+    expect(screen.queryByText("Revenue by month")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Missing category and state"),
+    ).not.toBeInTheDocument();
+    // one status per table: Products is in the data though the dashboard doesn't query it
     expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
-      3,
+      2,
     );
     expect(
       screen.getByText(
@@ -595,7 +597,7 @@ describe("WhyListSidesheet", () => {
       dashboardQuery: MISSING_ATTRIBUTES_QUERY,
     });
 
-    const [, , tableStatus] = await screen.findAllByRole("button", {
+    const [, tableStatus] = await screen.findAllByRole("button", {
       name: /Can't load/,
     });
     await userEvent.click(tableStatus);
@@ -683,11 +685,11 @@ describe("WhyListSidesheet", () => {
       "Sandy Sales can open this dashboard but can't see any of its cards.",
     );
     expect(
-      screen.getByText("Conflicting policies on Sample Database"),
-    ).toBeInTheDocument();
-    // the card's status, and the database's table
+      screen.queryByText("Conflicting policies on Sample Database"),
+    ).not.toBeInTheDocument();
+    // the database's table only
     expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
-      2,
+      1,
     );
     expect(
       screen.getByText(
@@ -726,10 +728,12 @@ describe("WhyListSidesheet", () => {
     expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
       "Sandy Sales can open this dashboard but can't see any of its cards.",
     );
-    expect(screen.getByText("Missing role and tenant")).toBeInTheDocument();
-    // the card's status, and each table's
+    expect(
+      screen.queryByText("Missing role and tenant"),
+    ).not.toBeInTheDocument();
+    // each table's status
     expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
-      3,
+      2,
     );
     expect(
       screen.getAllByText(
@@ -807,7 +811,6 @@ describe("WhyListSidesheet", () => {
     expect(
       screen.getAllByRole("button", { name: /Rows filtered/ }),
     ).toHaveLength(2);
-    expect(screen.queryByText("Cards that can't load")).not.toBeInTheDocument();
     expect(screen.queryByText(/Can't load/)).not.toBeInTheDocument();
   });
 

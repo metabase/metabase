@@ -31,8 +31,6 @@ import {
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
-import { formatList } from "../format-list";
-
 import { CreateQueriesContent } from "./CreateQueriesContent";
 import { TargetName } from "./TargetName";
 import S from "./WhyListSidesheet.module.css";
@@ -54,7 +52,6 @@ import type { OpenedItem } from "./item-path";
 import { getPreviewColumnName, getPreviewOption } from "./preview-options";
 import {
   type AllCollectionsWhyPage,
-  type BlockedCard,
   type CollectionWhyPage,
   type ItemType,
   type ItemWhyPage,
@@ -432,9 +429,9 @@ function ItemLine({ icon, name, databaseName, whoName }: SheetHeading) {
 }
 
 /**
- * The verdict, then one card per answer: the cards that can't load, opening the item (its collection), its data (View
- * data on each table) and exploring it (Create queries); then every permission on it, folded away, when that list
- * holds more than the cards above show.
+ * The verdict, then one card per answer: opening the item (its collection), its data (View data on each table) and
+ * exploring it (Create queries); then every permission on it, folded away, when that list holds more than the cards
+ * above show.
  */
 function ItemCards({
   page,
@@ -458,15 +455,6 @@ function ItemCards({
         <VerdictAlert verdict={page.verdict} />
       ) : (
         <Verdict verdict={page.verdict} />
-      )}
-      {page.blockedCards.length > 0 && (
-        <SidesheetCard title={t`Cards that can't load`}>
-          <CardRows>
-            {page.blockedCards.map((card, index) => (
-              <BlockedCardRow key={index} card={card} onOpen={onOpen} />
-            ))}
-          </CardRows>
-        </SidesheetCard>
       )}
       {page.collection != null && (
         <ItemCollectionCard
@@ -536,61 +524,6 @@ function CardRows({ children }: { children: ReactNode }) {
     <Box my="-sm" data-testid="card-rows">
       {children}
     </Box>
-  );
-}
-
-/**
- * A dashboard card that can't load: its name, the blocked tables, the ones with conflicting policies and the missing
- * attributes that stop it, and a status that opens the first table.
- */
-function BlockedCardRow({
-  card,
-  onOpen,
-}: {
-  card: BlockedCard;
-  onOpen: (target: WhyTarget) => void;
-}) {
-  const [table] = [
-    ...card.tables,
-    ...card.conflictingTables,
-    ...card.missingAttributeTables,
-    ...card.databaseTables,
-  ];
-  const attributeNames = formatList(card.missingAttributes);
-  const blockedNames = card.tables.map((target) => target.title).join(", ");
-  const conflictingNames = [
-    ...card.conflictingTables.map((target) => target.title),
-    ...card.conflictingDatabases,
-  ].join(", ");
-  const causes = [
-    card.tables.length > 0
-      ? ngettext(
-          msgid`${blockedNames} table blocked`,
-          `${blockedNames} tables blocked`,
-          card.tables.length,
-        )
-      : null,
-    conflictingNames.length > 0
-      ? t`Conflicting policies on ${conflictingNames}`
-      : null,
-    card.missingAttributes.length > 0 ? t`Missing ${attributeNames}` : null,
-  ].filter((cause) => cause != null);
-  return (
-    <Row
-      name={<RowName name={card.name} />}
-      detail={causes.length > 0 ? causes.join(" · ") : undefined}
-      status={
-        table != null ? (
-          <StatusButton
-            option={getTargetOption(table)}
-            label={t`Can't load`}
-            onClick={() => onOpen(table)}
-          />
-        ) : (
-          <Text>{t`Can't load`}</Text>
-        )
-      }
-    />
   );
 }
 

@@ -269,14 +269,6 @@ describe("useWhyList", () => {
             "card-count": 1,
             "blocked-card-count": 1,
             "conflicting-tables": [3],
-            "blocked-cards": [
-              {
-                id: 134,
-                name: "Revenue by month",
-                tables: [],
-                "conflicting-tables": [3],
-              },
-            ],
           },
         },
       });
@@ -288,13 +280,6 @@ describe("useWhyList", () => {
         }),
       );
       expect(result.current?.page).toMatchObject({
-        blockedCards: [
-          {
-            name: "Revenue by month",
-            tables: [],
-            conflictingTables: [{ title: "Products" }],
-          },
-        ],
         tables: [{ title: "Products" }, { title: "Orders" }],
       });
     });
@@ -313,17 +298,6 @@ describe("useWhyList", () => {
               { attribute: "state", "table-id": 1, "group-id": 5 },
               { attribute: "category", "table-id": 3, "group-id": 5 },
             ],
-            "blocked-cards": [
-              {
-                id: 134,
-                name: "Revenue by month",
-                tables: [],
-                "missing-attributes": [
-                  { attribute: "state", "table-id": 1, "group-id": 5 },
-                  { attribute: "category", "table-id": 3, "group-id": 5 },
-                ],
-              },
-            ],
           },
         },
       });
@@ -335,18 +309,6 @@ describe("useWhyList", () => {
         }),
       );
       expect(result.current?.page).toMatchObject({
-        blockedCards: [
-          {
-            name: "Revenue by month",
-            tables: [],
-            conflictingTables: [],
-            missingAttributeTables: [
-              { title: "Orders" },
-              { title: "Products" },
-            ],
-            missingAttributes: ["state", "category"],
-          },
-        ],
         tables: [
           {
             title: "Orders",
@@ -379,14 +341,6 @@ describe("useWhyList", () => {
             "card-count": 1,
             "blocked-card-count": 1,
             "conflicting-databases": [conflict],
-            "blocked-cards": [
-              {
-                id: 134,
-                name: "Revenue by month",
-                tables: [],
-                "conflicting-databases": [conflict],
-              },
-            ],
           },
         },
       });
@@ -398,13 +352,6 @@ describe("useWhyList", () => {
         }),
       );
       expect(result.current?.page).toMatchObject({
-        blockedCards: [
-          {
-            name: "Revenue by month",
-            conflictingDatabases: ["Sample Database"],
-            databaseTables: [{ title: "Orders" }],
-          },
-        ],
         tables: [
           {
             title: "Orders",
@@ -437,14 +384,6 @@ describe("useWhyList", () => {
             "card-count": 1,
             "blocked-card-count": 1,
             "missing-database-attributes": [missingRole, missingRoute],
-            "blocked-cards": [
-              {
-                id: 134,
-                name: "Revenue by month",
-                tables: [],
-                "missing-database-attributes": [missingRole, missingRoute],
-              },
-            ],
           },
         },
       });
@@ -456,13 +395,6 @@ describe("useWhyList", () => {
         }),
       );
       expect(result.current?.page).toMatchObject({
-        blockedCards: [
-          {
-            name: "Revenue by month",
-            missingAttributes: ["role", "tenant"],
-            databaseTables: [{ title: "Orders" }],
-          },
-        ],
         tables: [
           {
             title: "Orders",
@@ -532,7 +464,7 @@ describe("useWhyList", () => {
       expect(readUrl.searchParams.has("preview_id")).toBe(false);
     });
 
-    it("keeps a table with one group's row security out of the failing cards", async () => {
+    it("keeps a table with one group's row security that the dashboard doesn't reach out of its tables", async () => {
       const { result } = setup({
         path: "/dashboard/1-orders-by-state",
         orders: { view_data: "sandboxed", security: ORDERS_SANDBOX },
@@ -550,7 +482,6 @@ describe("useWhyList", () => {
         }),
       );
       expect(result.current?.page).toMatchObject({
-        blockedCards: [],
         tables: [{ title: "Orders" }],
       });
     });
@@ -590,34 +521,6 @@ describe("useWhyList", () => {
         expect(getVerdict(result.current)).toEqual({
           kind: "partial",
           text: "Sandy Sales can open this dashboard but can't see 2 of its 5 cards.",
-        }),
-      );
-    });
-
-    it("names a dashboard's cards that can't load, each with its blocked tables", async () => {
-      const { result } = setup({
-        path: "/dashboard/1-orders-by-state",
-        orders: { view_data: "blocked" },
-        query: {
-          decision: "limited",
-          data: {
-            "card-count": 2,
-            "blocked-card-count": 1,
-            "blocked-cards": [
-              { id: 7, name: "Orders by state", tables: ["ORDERS"] },
-            ],
-          },
-        },
-      });
-
-      await waitFor(() =>
-        expect(result.current?.page).toMatchObject({
-          blockedCards: [
-            {
-              name: "Orders by state",
-              tables: [{ title: "Orders", column: "view_data" }],
-            },
-          ],
         }),
       );
     });
