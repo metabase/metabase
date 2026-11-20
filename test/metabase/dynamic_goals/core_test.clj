@@ -168,6 +168,21 @@
         (is (= [[100]] (get-in (source-result result :card card-id) [:data :rows])))
         (is (= [[100]] (get-in (source-result result :measure measure-id) [:data :rows])))))))
 
+(deftest model-source-is-refused-test
+  (testing "a model fails without running, and the other sources still run"
+    (mt/with-temp [:model/Card {model-id :id} {:type :model :dataset_query (count-query :venues)}
+                   :model/Card {card-id :id}  {:dataset_query (count-query :checkins)}]
+      (let [ran       (atom [])
+            run-query (mt/original-fn #'dynamic-goals/run-query)
+            result    (mt/with-dynamic-fn-redefs [dynamic-goals/run-query (fn [query card-id]
+                                                                            (swap! ran conj card-id)
+                                                                            (run-query query card-id))]
+                        (goal-values :crowberto [{:type "card" :id model-id} {:type "card" :id card-id}]))]
+        (is (=? {:status "failed" :error #".*is a model.*"} (source-result result :card model-id)))
+        (is (nil? (:error_type (source-result result :card model-id))))
+        (is (= "completed" (:status (source-result result :card card-id))))
+        (is (= [card-id] @ran))))))
+
 (deftest failed-query-test
   (testing "a source whose query fails fails on its own, with the query's error"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/native-query {:query "SELECT * FROM no_such_table"})}
