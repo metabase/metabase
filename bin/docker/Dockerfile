@@ -1,4 +1,19 @@
+# musl build of the static-viz JS isolate, see bin/docker/js-isolate/README.md
+ARG JS_ISOLATE_IMAGE=metabase/graaljs-isolate-musl:25.1.3@sha256:dcb86e45666a98923b3df5b5ce6420185b1f729cd3b9d431e50a6a61d2cc4173
+FROM ${JS_ISOLATE_IMAGE} AS js-isolate
+
+# static-viz files for /app, prepared here so the runner only copies them in. Same as in the root Dockerfile.
+FROM eclipse-temurin:25-jre-alpine AS static-viz
+
+COPY ./metabase.jar /tmp/metabase.jar
+COPY --from=js-isolate / /out/js-isolate/
+COPY prepare-static-viz.sh /tmp/
+RUN /tmp/prepare-static-viz.sh /tmp/metabase.jar /out
+
 FROM eclipse-temurin:25-jre-alpine
+
+# the isolate (~55 MB) gets its own early layer so it's only re-downloaded when it or the base image changes
+COPY --from=js-isolate / /app/js-isolate/
 
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
@@ -26,6 +41,7 @@ RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
+COPY --from=static-viz /out/truffle-attach/ /app/truffle-attach/
 
 # expose our default runtime port
 EXPOSE 3000
