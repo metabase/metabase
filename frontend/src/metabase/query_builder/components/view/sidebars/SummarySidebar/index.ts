@@ -1,6 +1,6 @@
 export { SummarySidebar } from "./SummarySidebar";
 export {
   canPivotSummary,
-  getPivotRowKeys,
+  getPivotColumnSplit,
   getSummaryQuestion,
 } from "./pivot-question";

@@ -3,17 +3,21 @@ import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/s
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { TestBreakoutSpec } from "metabase-types/api";
+import type {
+  FieldRefColumnSplitSetting,
+  TestBreakoutSpec,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
   ORDERS_ID,
+  PRODUCTS,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
   canPivotSummary,
-  getPivotRowKeys,
+  getPivotColumnSplit,
   getSummaryQuestion,
 } from "./pivot-question";
 
@@ -128,20 +132,20 @@ describe("getSummaryQuestion", () => {
   });
 });
 
-describe("getPivotRowKeys", () => {
+describe("getPivotColumnSplit", () => {
   const columnSplit = {
     rows: ["CREATED_AT_2"],
     columns: ["CREATED_AT"],
     values: ["count"],
   };
 
-  it("gives the rows of the column split of a pivot table", () => {
+  it("gives the column split of a pivot table", () => {
     const question = createQuestion({
       display: "pivot",
       visualization_settings: { "pivot_table.column_split": columnSplit },
     });
 
-    expect(getPivotRowKeys(question)).toEqual(["CREATED_AT_2"]);
+    expect(getPivotColumnSplit(question)).toEqual(columnSplit);
   });
 
   it("gives nothing when the question shows another visualization", () => {
@@ -150,27 +154,51 @@ describe("getPivotRowKeys", () => {
       visualization_settings: { "pivot_table.column_split": columnSplit },
     });
 
-    expect(getPivotRowKeys(question)).toBeUndefined();
+    expect(getPivotColumnSplit(question)).toBeUndefined();
   });
 
-  it("gives nothing for a pivot table without a column split or with one by field reference", () => {
+  it("gives nothing for a pivot table without a column split", () => {
     expect(
-      getPivotRowKeys(createQuestion({ display: "pivot" })),
+      getPivotColumnSplit(createQuestion({ display: "pivot" })),
     ).toBeUndefined();
-    expect(
-      getPivotRowKeys(
-        createQuestion({
-          display: "pivot",
-          visualization_settings: {
-            "pivot_table.column_split": {
-              rows: [["field", ORDERS.CREATED_AT, null]],
-              columns: [],
-              values: [],
-            },
-          },
-        }),
-      ),
-    ).toBeUndefined();
+  });
+
+  it("gives a column split by field reference by column name, and leaves the one of the question", () => {
+    const legacyColumnSplit = {
+      rows: [
+        [
+          "field",
+          PRODUCTS.CREATED_AT,
+          { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+        ],
+      ],
+      columns: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      values: [["aggregation", 0]],
+    } satisfies FieldRefColumnSplitSetting;
+    const question = createQuestion({
+      display: "pivot",
+      visualization_settings: { "pivot_table.column_split": legacyColumnSplit },
+    });
+
+    expect(getPivotColumnSplit(question)).toEqual(columnSplit);
+    expect(question.setting("pivot_table.column_split")).toEqual(
+      legacyColumnSplit,
+    );
+  });
+
+  it("puts a grouping that the column split doesn't have in the rows, as the pivot table does", () => {
+    const question = createQuestion({
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [],
+          columns: ["CREATED_AT"],
+          values: ["count"],
+        },
+      },
+    });
+
+    expect(getPivotColumnSplit(question)).toEqual(columnSplit);
   });
 });
 

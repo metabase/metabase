@@ -16,9 +16,10 @@ import type {
   SummaryField,
   SummaryFieldSection,
   SummaryQueryChangeOptions,
+  SummaryValueItem,
   SummaryWellId,
 } from "../types";
-import { canDropOnWell, getValueItems, getWellFieldSections } from "../utils";
+import { canDropOnWell, getWellFieldSections } from "../utils";
 
 import { DimensionChip } from "./DimensionChip";
 import {
@@ -43,8 +44,9 @@ type SummaryWellsProps = {
   draggedItem: SummaryDragItem | null;
   canPivot: boolean;
   isPivotMode: boolean;
-  rowItems: SummaryDimensionItem[];
+  valueItems: SummaryValueItem[];
   columnItems: SummaryDimensionItem[];
+  rowItems: SummaryDimensionItem[];
   onPivotToggle: () => void;
   onPick: (wellId: SummaryWellId, field: SummaryField) => void;
   onChange: (nextQuery: Lib.Query, options?: SummaryQueryChangeOptions) => void;
@@ -60,18 +62,15 @@ export function SummaryWells({
   draggedItem,
   canPivot,
   isPivotMode,
-  rowItems,
+  valueItems,
   columnItems,
+  rowItems,
   onPivotToggle,
   onPick,
   onChange,
 }: SummaryWellsProps) {
   const isEditing = (clause?: SummaryFormulaClause) =>
     !isEmpty(clause) && Lib.clauseUuid(clause) === editingFormulaUuid;
-  const valueItems = useMemo(
-    () => getValueItems(query, stageIndex),
-    [query, stageIndex],
-  );
   const valueSections = useMemo(
     () => getWellFieldSections(sections, "values"),
     [sections],

@@ -1,9 +1,15 @@
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isColumnNameColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
-import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
+import type {
+  ColumnNameColumnSplitSetting,
+  FieldRefColumnSplitSetting,
+  FieldReference,
+} from "metabase-types/api";
 
 import type { SummaryPivotChange } from "./types";
+import { getResultColumnNames } from "./utils";
 
 const STAGE_INDEX = -1;
 
@@ -53,17 +59,54 @@ export function canPivotSummary(question: Question, stageIndex: number) {
   return isLastStage && (question.database()?.supportsPivots() ?? true);
 }
 
-/** The Rows of the pivot table that the question shows, when it shows one. */
-export function getPivotRowKeys(question: Question): string[] | undefined {
-  const columnSplit = question.settings()["pivot_table.column_split"];
-  if (
-    question.display() !== "pivot" ||
-    !columnSplit ||
-    !isColumnNameColumnSplitSetting(columnSplit)
-  ) {
+function getColumnNames(
+  query: Lib.Query,
+  fieldRefs: (FieldReference | null)[] = [],
+): string[] {
+  const columns = Lib.returnedColumns(query, STAGE_INDEX);
+  const refs = fieldRefs.filter(isNotNull);
+  if (columns.length === 0 || refs.length === 0) {
+    return [];
+  }
+  return Lib.findColumnIndexesFromLegacyRefs(query, STAGE_INDEX, columns, refs)
+    .filter((index) => index >= 0)
+    .map((index) => Lib.displayInfo(query, STAGE_INDEX, columns[index]).name);
+}
+
+function getColumnNameSplit(
+  query: Lib.Query,
+  columnSplit: FieldRefColumnSplitSetting,
+): ColumnNameColumnSplitSetting {
+  return {
+    rows: getColumnNames(query, columnSplit.rows),
+    columns: getColumnNames(query, columnSplit.columns),
+    values: getColumnNames(query, columnSplit.values),
+  };
+}
+
+/**
+ * The column split of the pivot table that the question shows, by column name, or `undefined`
+ * when it shows none. It is read as the pivot table reads it: a split by field reference is
+ * resolved to column names, and a grouping that the split doesn't have goes in its rows. The
+ * question keeps the split it has.
+ */
+export function getPivotColumnSplit(
+  question: Question,
+): ColumnNameColumnSplitSetting | undefined {
+  const setting = question.settings()["pivot_table.column_split"];
+  if (question.display() !== "pivot" || !setting) {
     return undefined;
   }
-  return columnSplit.rows;
+  const query = question.query();
+  const columnSplit = isColumnNameColumnSplitSetting(setting)
+    ? setting
+    : getColumnNameSplit(query, setting);
+  const { rows = [], columns = [], values = [] } = columnSplit;
+  const { breakoutNames } = getResultColumnNames(query, STAGE_INDEX);
+  const missingNames = breakoutNames.filter(
+    (name) => !rows.includes(name) && !columns.includes(name),
+  );
+  return { rows: [...rows, ...missingNames], columns, values };
 }
 
 export function getSummaryQuestion(

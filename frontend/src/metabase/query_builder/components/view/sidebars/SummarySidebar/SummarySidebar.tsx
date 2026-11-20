@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
 
 import type { UpdateQueryHookProps } from "../../../../hooks/types";
 import { getSummaryGeneratedExpressions } from "../../../../store/selectors";
@@ -26,11 +27,13 @@ import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import {
-  getNextRowKeys,
+  NO_PIVOT_LAYOUT,
+  getNextPivotLayout,
   getPivotChange,
+  getPivotLayout,
+  getPivotLayoutAfterDrop,
   getPivotSplit,
-  getRowAndColumnItems,
-  getRowKeysAfterDrop,
+  getWellItems,
 } from "./pivot-layout";
 import type {
   SummaryDragItem,
@@ -52,7 +55,6 @@ import {
 } from "./utils";
 
 const DRAG_ACTIVATION_DISTANCE_PX = 5;
-const NO_ROW_KEYS: string[] = [];
 
 function translateSections(
   sections: SummaryFieldSection[],
@@ -82,7 +84,7 @@ function getDropWellId(data: unknown): SummaryWellId | null {
 
 type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
   canPivot?: boolean;
-  pivotRowKeys?: string[];
+  pivotColumnSplit?: ColumnNameColumnSplitSetting;
   onQueryChange: (
     nextQuery: Lib.Query,
     pivotChange?: SummaryPivotChange,
@@ -92,7 +94,7 @@ type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
 export function SummarySidebar({
   query,
   canPivot = true,
-  pivotRowKeys,
+  pivotColumnSplit,
   onQueryChange,
   stageIndex,
 }: SummarySidebarProps) {
@@ -102,21 +104,29 @@ export function SummarySidebar({
     isPivotToggled,
     { open: turnPivotToggleOn, close: turnPivotToggleOff },
   ] = useDisclosure(false);
-  const [storedRowKeys, setStoredRowKeys] = useState<string[]>([]);
-  const rowKeys = canPivot ? (pivotRowKeys ?? storedRowKeys) : NO_ROW_KEYS;
-  const { rowItems, columnItems } = useMemo(
-    () => getRowAndColumnItems(query, stageIndex, rowKeys),
-    [query, stageIndex, rowKeys],
+  const [storedLayout, setStoredLayout] = useState(NO_PIVOT_LAYOUT);
+  const layout = useMemo(
+    () =>
+      getPivotLayout(
+        query,
+        stageIndex,
+        canPivot ? (pivotColumnSplit ?? storedLayout) : NO_PIVOT_LAYOUT,
+      ),
+    [query, stageIndex, canPivot, pivotColumnSplit, storedLayout],
+  );
+  const { valueItems, columnItems, rowItems } = useMemo(
+    () => getWellItems(query, stageIndex, layout),
+    [query, stageIndex, layout],
   );
   const isPivotMode = canPivot && (isPivotToggled || rowItems.length > 0);
-  const pivotSplit = useMemo(
-    () => getPivotSplit(query, stageIndex, rowKeys),
-    [query, stageIndex, rowKeys],
-  );
-  const storeRowKeys = (
-    nextRowKeys: string[],
+  const pivotSplit = getPivotSplit(layout);
+  const storeLayout = (
+    nextLayout: ColumnNameColumnSplitSetting,
     pivotChange: SummaryPivotChange | undefined,
-  ) => setStoredRowKeys(pivotChange?.type === "show" ? [] : nextRowKeys);
+  ) =>
+    setStoredLayout(
+      pivotChange?.type === "show" ? NO_PIVOT_LAYOUT : nextLayout,
+    );
 
   const handleQueryChange = (
     nextQuery: Lib.Query,
@@ -135,25 +145,22 @@ export function SummarySidebar({
         summaryGeneratedExpressions: result.generatedExpressions,
       }),
     );
-    const nextRowKeys = getNextRowKeys({
+    const nextLayout = getNextPivotLayout({
       query,
       nextQuery: result.query,
       stageIndex,
-      rowKeys,
+      layout,
       addedWellId,
     });
-    const pivotChange = getPivotChange(
-      pivotSplit,
-      getPivotSplit(result.query, stageIndex, nextRowKeys),
-    );
-    storeRowKeys(nextRowKeys, pivotChange);
+    const pivotChange = getPivotChange(pivotSplit, getPivotSplit(nextLayout));
+    storeLayout(nextLayout, pivotChange);
     onQueryChange(result.query, pivotChange);
   };
 
-  const handleRowKeysChange = (nextRowKeys: string[]) => {
-    const nextPivotSplit = getPivotSplit(query, stageIndex, nextRowKeys);
+  const handleLayoutChange = (nextLayout: ColumnNameColumnSplitSetting) => {
+    const nextPivotSplit = getPivotSplit(nextLayout);
     const pivotChange = getPivotChange(pivotSplit, nextPivotSplit);
-    storeRowKeys(nextRowKeys, pivotChange);
+    storeLayout(nextLayout, pivotChange);
     if (!_.isEqual(pivotSplit, nextPivotSplit)) {
       onQueryChange(query, pivotChange);
     }
@@ -202,7 +209,7 @@ export function SummarySidebar({
   const handleFieldSelect = (field: SummaryField) => {
     const wellId = getFieldWellId(field);
     handleWellAdd(
-      replaceWellWithField(query, stageIndex, wellId, field, rowKeys),
+      replaceWellWithField(query, stageIndex, wellId, field, layout.rows),
       wellId,
     );
   };
@@ -213,7 +220,7 @@ export function SummarySidebar({
     } else {
       turnPivotToggleOn();
     }
-    handleRowKeysChange([]);
+    handleLayoutChange(NO_PIVOT_LAYOUT);
   };
 
   const handleClearAll = () =>
@@ -234,15 +241,15 @@ export function SummarySidebar({
     if (drag == null || wellId == null) {
       return;
     }
-    const nextRowKeys = getRowKeysAfterDrop(
+    const nextLayout = getPivotLayoutAfterDrop(
       query,
       stageIndex,
       drag,
       wellId,
-      rowKeys,
+      layout,
     );
-    if (nextRowKeys !== rowKeys) {
-      handleRowKeysChange(nextRowKeys);
+    if (nextLayout !== layout) {
+      handleLayoutChange(nextLayout);
       return;
     }
     const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
@@ -278,8 +285,9 @@ export function SummarySidebar({
             editingFormulaUuid={editingFormulaUuid}
             canPivot={canPivot}
             isPivotMode={isPivotMode}
-            rowItems={rowItems}
+            valueItems={valueItems}
             columnItems={columnItems}
+            rowItems={rowItems}
             onPivotToggle={handlePivotToggle}
             onPick={handleAdd}
             onChange={handleQueryChange}
