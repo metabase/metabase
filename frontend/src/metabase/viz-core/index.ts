@@ -244,19 +244,17 @@ export {
   getGoalErrorMessage,
   getGoalErrors,
   getGoalSegmentBounds,
+  getChartGoalSources,
+  getGoalSources,
   getNumericGoalValue,
-  getReferencedEntities,
   getSegmentColor,
-  getUnansweredGoalEntities,
-  hasUnansweredGoalReferences,
-  hasUnresolvedGoalReferences,
   isDynamicGoalSetting,
-  needsAnswer,
   needsGraphGoalResolution,
   resolveGoalSegments,
+  resolveForeignColumnRef,
   resolveGoalValue,
   resolveOpenEndedGoalSegments,
-  toReferencedEntity,
+  resolveSelfColumnValue,
 } from "./lib/dynamic-goals";
 export {
   ChartSettingsError,
@@ -499,10 +497,11 @@ export type {
   Widget,
 } from "./types/definition";
 export type {
+  GoalCard,
   GoalData,
   GoalRefError,
+  GoalSourceKind,
   GoalValueResult,
-  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "./types/dynamic-goals";

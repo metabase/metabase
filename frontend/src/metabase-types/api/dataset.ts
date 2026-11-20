@@ -5,11 +5,10 @@ import type {
   VisualizerColumnValueSource,
 } from "metabase-types/api";
 
-import type { Card, CardId, ColumnSettings, UnsavedCard } from "./card";
+import type { Card, ColumnSettings, UnsavedCard } from "./card";
 import type { DatabaseId } from "./database";
 import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
 import type { Insight } from "./insight";
-import type { MeasureId } from "./measure";
 import type { NormalizedQueryParameter, ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
@@ -95,7 +94,6 @@ export interface ResultsMetadata {
 export interface DatasetData {
   rows: RowValues[];
   cols: DatasetColumn[];
-  referenced_entities?: ReferencedEntitiesResults | null;
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
@@ -277,24 +275,3 @@ export type GetRemappedParameterValueRequest = {
 };
 
 export type Point = [number, number];
-
-export type ReferencedEntityType = "card" | "measure";
-
-export type ReferencedEntity =
-  | { type: "card"; id: CardId; columns?: string[] }
-  | { type: "measure"; id: MeasureId; columns?: string[] };
-
-export type ReferencedEntitiesResults = {
-  card?: Record<CardId, ReferencedEntityResult>;
-  measure?: Record<MeasureId, ReferencedEntityResult>;
-};
-
-export interface ReferencedEntityResult {
-  status: "completed" | "failed";
-  error?: string;
-  error_type?: "too-many-rows" | "not-found" | "has-parameters" | "withheld";
-  data?: {
-    cols: DatasetColumn[];
-    rows: RowValues[];
-  };
-}

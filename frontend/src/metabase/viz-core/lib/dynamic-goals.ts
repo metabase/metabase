@@ -4,14 +4,12 @@ import { t } from "ttag";
 import { color } from "metabase/ui/colors";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
-  CardId,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
+  GoalSourceResult,
+  GoalSourceResults,
   GoalValue,
-  MeasureId,
-  ReferencedEntity,
-  ReferencedEntityResult,
   RowValue,
   VisualizationDisplay,
   VisualizationSettings,
@@ -30,8 +28,8 @@ import type {
   GoalData,
   GoalRefError,
   GoalRefErrorReason,
+  GoalSourceKind,
   GoalValueResult,
-  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "../types";
@@ -44,6 +42,7 @@ import {
 
 export function resolveGoalValue(
   data: GoalData,
+  sourceResults: GoalSourceResults,
   goalValue: GoalValue | null | undefined,
 ): GoalValueResult {
   if (goalValue == null) {
@@ -58,10 +57,10 @@ export function resolveGoalValue(
     return resolveSelfColumnValue(data, goalValue);
   }
 
-  return resolveForeignColumnRef(data, goalValue);
+  return resolveForeignColumnRef(sourceResults, goalValue);
 }
 
-function resolveSelfColumnValue(
+export function resolveSelfColumnValue(
   data: GoalData,
   columnName: string,
 ): GoalValueResult {
@@ -94,15 +93,19 @@ function resolveSelfColumnValue(
   return { value };
 }
 
-function resolveForeignColumnRef(
-  data: GoalData,
+export function resolveForeignColumnRef(
+  sourceResults: GoalSourceResults,
   ref: GoalForeignColumnRef,
 ): GoalValueResult {
   const { type, id, column } = ref;
-  const result = data.referenced_entities?.[type]?.[id];
+  const result = sourceResults[type]?.[id];
 
+  // a source with no result never ran
   if (result == null) {
-    return { value: null, isUnanswered: true };
+    return {
+      value: null,
+      error: { type, id, column, reason: "query-failed" },
+    };
   }
 
   if (result.status === "failed" || result.data == null) {
@@ -154,7 +157,7 @@ function resolveForeignColumnRef(
 }
 
 function getFailedQueryReason(
-  errorType: ReferencedEntityResult["error_type"],
+  errorType: GoalSourceResult["error_type"],
 ): GoalRefErrorReason {
   return match(errorType)
     .returnType<GoalRefErrorReason>()
@@ -199,7 +202,7 @@ export function isDynamicGoalSetting(
 
 export const getGoalErrorMessage = (
   { reason, message }: GoalRefError,
-  sourceKind?: ReferencedEntityKind,
+  sourceKind?: GoalSourceKind,
 ) =>
   match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
@@ -210,9 +213,7 @@ export const getGoalErrorMessage = (
     .with("not-a-number", () => t`This value isn't a number`)
     .exhaustive();
 
-const getMissingSourceMessage = (
-  sourceKind: ReferencedEntityKind | undefined,
-) =>
+const getMissingSourceMessage = (sourceKind: GoalSourceKind | undefined) =>
   match(sourceKind)
     .with("question", () => t`This question no longer exists`)
     .with("model", () => t`This model no longer exists`)
@@ -222,7 +223,7 @@ const getMissingSourceMessage = (
     .with(undefined, () => t`This source no longer exists`)
     .exhaustive();
 
-const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
+const getTooManyRowsMessage = (sourceKind: GoalSourceKind | undefined) =>
   match(sourceKind)
     .with(
       "question",
@@ -237,9 +238,7 @@ const getTooManyRowsMessage = (sourceKind: ReferencedEntityKind | undefined) =>
     .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 
-const getHasParametersMessage = (
-  sourceKind: ReferencedEntityKind | undefined,
-) =>
+const getHasParametersMessage = (sourceKind: GoalSourceKind | undefined) =>
   match(sourceKind)
     .with(
       "question",
@@ -326,13 +325,14 @@ export function getGoalValues(
 
 export function resolveOpenEndedGoalSegments(
   data: GoalData,
+  sourceResults: GoalSourceResults,
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter = color,
 ): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
     // a bound that can't resolve counts as unset
-    const min = resolveGoalValue(data, segment.min).value;
-    const max = resolveGoalValue(data, segment.max).value;
+    const min = resolveGoalValue(data, sourceResults, segment.min).value;
+    const max = resolveGoalValue(data, sourceResults, segment.max).value;
 
     if (min == null && max == null) {
       return [];
@@ -351,12 +351,16 @@ export function resolveOpenEndedGoalSegments(
 
 export function resolveGoalSegments(
   data: GoalData,
+  sourceResults: GoalSourceResults,
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter = color,
 ): ResolvedGoalSegment[] {
-  return resolveOpenEndedGoalSegments(data, segments, getColor).filter(
-    isClosedGoalSegment,
-  );
+  return resolveOpenEndedGoalSegments(
+    data,
+    sourceResults,
+    segments,
+    getColor,
+  ).filter(isClosedGoalSegment);
 }
 
 function isClosedGoalSegment(
@@ -376,102 +380,34 @@ export function getGoalErrors(results: GoalValueResult[]): GoalRefError[] {
   return results.flatMap((result) => (result.error ? [result.error] : []));
 }
 
-export function getUnansweredGoalEntities(
-  data: GoalData,
+/** The entities `values` read, one per entity, in a stable order. */
+export function getGoalSources(
   values: (GoalValue | null | undefined)[],
-): ReferencedEntity[] {
-  const unansweredRefs = values
-    .filter(isGoalForeignColumnRef)
-    .filter((ref) => needsAnswer(resolveGoalValue(data, ref)));
-  const entities = new Map(
-    unansweredRefs.map((ref) => [
-      `${ref.type}:${ref.id}`,
-      toReferencedEntity(ref),
-    ]),
+): GoalForeignEntityRef[] {
+  const sources = new Map(
+    values
+      .filter(isGoalForeignColumnRef)
+      .map((ref) => [`${ref.type}:${ref.id}`, toGoalSource(ref)]),
   );
 
-  return Array.from(entities.values());
+  return Array.from(sources.values()).sort(
+    (a, b) => a.type.localeCompare(b.type) || a.id - b.id,
+  );
 }
 
-export function toReferencedEntity({
+/** The entities the goals `card` shows read. */
+export function getChartGoalSources(card: GoalCard): GoalForeignEntityRef[] {
+  return getGoalSources(
+    getGoalValues(
+      card.visualization_settings ?? {},
+      getDynamicGoalSettingKeys(card.display),
+    ),
+  );
+}
+
+function toGoalSource({
   type,
   id,
-}: GoalForeignEntityRef): ReferencedEntity {
+}: GoalForeignEntityRef): GoalForeignEntityRef {
   return { type, id };
-}
-
-export function getGoalForeignColumnRefs(
-  card: GoalCard,
-): GoalForeignColumnRef[] {
-  return getGoalValues(
-    card.visualization_settings ?? {},
-    getDynamicGoalSettingKeys(card.display),
-  ).filter(isGoalForeignColumnRef);
-}
-
-type ReferencedEntityColumns =
-  | { type: "card"; id: CardId; columns: Set<string> }
-  | { type: "measure"; id: MeasureId; columns: Set<string> };
-
-export function getReferencedEntities(card: GoalCard): ReferencedEntity[] {
-  const columnsByEntity = getGoalForeignColumnRefs(card).reduce((map, ref) => {
-    const refKey = `${ref.type}:${ref.id}`;
-    const entry = map.get(refKey) ?? {
-      type: ref.type,
-      id: ref.id,
-      columns: new Set<string>(),
-    };
-    entry.columns.add(ref.column);
-    map.set(refKey, entry);
-    return map;
-  }, new Map<string, ReferencedEntityColumns>());
-
-  return Array.from(columnsByEntity.values(), ({ type, id, columns }) => ({
-    type,
-    id,
-    columns: Array.from(columns),
-  }));
-}
-
-function hasGoalReferencesWhere(
-  card: GoalCard,
-  data: GoalData | undefined,
-  predicate: (resolved: GoalValueResult) => boolean,
-): boolean {
-  return getGoalForeignColumnRefs(card).some(
-    (ref) => data == null || predicate(resolveGoalValue(data, ref)),
-  );
-}
-
-// Skips failed references so dashboards don't re-run a failing query on every render.
-export function hasUnansweredGoalReferences(
-  card: GoalCard,
-  data: GoalData | undefined,
-): boolean {
-  return hasGoalReferencesWhere(card, data, isUnanswered);
-}
-
-// Includes failed references so a user action in the query builder retries them.
-export function hasUnresolvedGoalReferences(
-  card: GoalCard,
-  data: GoalData | undefined,
-): boolean {
-  return hasGoalReferencesWhere(card, data, isUnresolved);
-}
-
-// Missing columns are worth re-running for - failed queries would just fail again.
-export function needsAnswer(resolved: GoalValueResult): boolean {
-  return (
-    isUnanswered(resolved) || resolved.error?.reason === "column-not-found"
-  );
-}
-
-// The result has no answer for the referenced entity.
-function isUnanswered(resolved: GoalValueResult): boolean {
-  return resolved.isUnanswered === true;
-}
-
-// Unanswered, or answered with an error.
-function isUnresolved(resolved: GoalValueResult): boolean {
-  return isUnanswered(resolved) || resolved.error != null;
 }

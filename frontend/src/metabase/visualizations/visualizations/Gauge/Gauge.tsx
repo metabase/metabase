@@ -12,7 +12,7 @@ import {
   GOAL_WARNING_ICON_SIZE,
   GoalWarningIcon,
 } from "metabase/visualizations/components/GoalWarning";
-import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
+import { useResolvedGoalValues } from "metabase/visualizations/hooks/use-resolved-goal-values";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
 
@@ -51,7 +51,7 @@ function GaugeComponent({
   isSettings,
   height: heightProp,
   isQueryBuilder,
-  series: [{ card, data }],
+  series: [{ data }],
   settings,
   visualizationIsClickable,
   width,
@@ -82,14 +82,17 @@ function GaugeComponent({
 
   const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
-  const goalData = useResolvedGoalData(
-    card.dataset_query,
+  const goalData = useResolvedGoalValues(
     data,
     getGoalSegmentBounds(settings["gauge.segments"]),
   );
   const segments =
     goalData.status === "resolved"
-      ? resolveGoalSegments(goalData.data, settings["gauge.segments"])
+      ? resolveGoalSegments(
+          data,
+          goalData.sourceResults,
+          settings["gauge.segments"],
+        )
       : [];
   const gaugeRange = settings["gauge.range"];
   const range: number[] =

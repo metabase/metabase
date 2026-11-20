@@ -32,10 +32,9 @@ export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
     getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
-    useRawSeries: true, // see getRawSeries
+    useRawSeries: true,
     getProps: ([{ card, data }], settings) => ({
       data,
-      datasetQuery: card.dataset_query,
       display: card.display,
       formatOptions: getGoalFormatOptions(data.cols, settings),
       showSelfColumns: false,

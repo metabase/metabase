@@ -104,7 +104,7 @@ export const GoalValuePill = forwardRef<HTMLDivElement, Props>(
             onClick={handleClick}
           >
             <Icon c="text-secondary" flex="0 0 auto" name="hexagon" size={12} />
-            {resolved.isUnanswered ? (
+            {resolved.isLoading ? (
               <Loader size="xs" />
             ) : (
               <Ellipsified fw={500} showTooltip={false}>

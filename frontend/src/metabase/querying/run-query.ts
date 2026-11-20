@@ -1,11 +1,8 @@
-import _ from "underscore";
-
 import { RTK_CACHE_KEY_PARAM } from "metabase/api/api";
 import { cardApi } from "metabase/api/card";
 import { dashboardApi } from "metabase/api/dashboard";
 import { datasetApi } from "metabase/api/dataset";
 import type { Dispatch } from "metabase/redux/store";
-import { getReferencedEntities } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot-options";
@@ -14,7 +11,6 @@ import type {
   DashboardCardQueryRequest,
   Dataset,
   JsonQuery,
-  ReferencedEntity,
 } from "metabase-types/api";
 
 import {
@@ -22,6 +18,7 @@ import {
   makePivotAwareQueryRunner,
   shouldUsePivotEndpoint,
 } from "./api/query-endpoints";
+import { prefetchGoalSourceResults } from "./goal-source-results";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
@@ -88,10 +85,7 @@ let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   question: Question,
-  body: JsonQuery & {
-    ignore_cache?: boolean;
-    referenced_entities?: ReferencedEntity[];
-  },
+  body: JsonQuery & { ignore_cache?: boolean },
   signal?: AbortSignal,
 ): Promise<Dataset> {
   const isPivot = shouldUsePivotEndpoint(question);
@@ -101,13 +95,7 @@ export function runAdhocDatasetQuery(
   // every co-subscribed caller. The key is stripped in `baseQuery` before
   // the request hits the server.
   const requestBody = {
-    ...(isPivot
-      ? {
-          // the pivot endpoint's request schema has no `referenced_entities`
-          ..._.omit(body, "referenced_entities"),
-          ...getPivotOptions(question),
-        }
-      : body),
+    ...(isPivot ? { ...body, ...getPivotOptions(question) } : body),
     [RTK_CACHE_KEY_PARAM]: ++adhocDatasetQueryCounter,
   };
   const endpoint = isPivot
@@ -190,6 +178,13 @@ export async function runQuestionQuery(
     queryParamsOverride = {},
   }: RunQuestionQueryOptions,
 ): Promise<[Dataset]> {
+  prefetchGoalSourceResults(
+    dispatch,
+    token ? { type: "embed-card", token } : { type: "signed-in" },
+    question.card(),
+    { ignoreCache },
+  );
+
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
   const parameters = normalizeParameters(question.parameters());
 
@@ -211,20 +206,12 @@ export async function runQuestionQuery(
     ];
   }
 
-  const referencedEntities = getReferencedEntities(question.card());
-
   return [
     await handleQueryApiError(
       runAdhocDatasetQuery(
         dispatch,
         question,
-        {
-          ...question.datasetQuery(),
-          parameters,
-          ...(referencedEntities.length > 0
-            ? { referenced_entities: referencedEntities }
-            : {}),
-        },
+        { ...question.datasetQuery(), parameters },
         signal,
       ),
     ),

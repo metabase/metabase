@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+import { match } from "ts-pattern";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import type { SelectedTabId } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import {
+  getDashboardType,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
@@ -36,6 +38,7 @@ import type {
   Dataset,
   DatasetQuery,
   EmbedDataset,
+  GoalSourcesScope,
   Parameter,
   ParameterId,
   QuestionDashboardCard,
@@ -584,4 +587,44 @@ export function hasColumnLevelClickBehavior(dashcard: DashboardCard) {
     return dashcard.visualization_settings.visualization.display === "table";
   }
   return dashcard?.card?.display === "table";
+}
+
+/** Where the charts of `dashcard` fetch their goal source results from. */
+export function getDashcardGoalSourcesScope(
+  dashcard: Pick<DashboardCard, "id" | "card_id" | "dashboard_id">,
+): GoalSourcesScope {
+  const {
+    id: dashcardId,
+    card_id: cardId,
+    dashboard_id: dashboardId,
+  } = dashcard;
+
+  return match(getDashboardType(dashboardId))
+    .returnType<GoalSourcesScope>()
+    .with("public", () =>
+      cardId != null
+        ? {
+            type: "public-dashcard",
+            uuid: String(dashboardId),
+            dashcardId,
+            cardId,
+          }
+        : { type: "signed-in" },
+    )
+    .with("embed", () =>
+      cardId != null
+        ? {
+            type: "embed-dashcard",
+            token: String(dashboardId),
+            dashcardId,
+            cardId,
+          }
+        : { type: "signed-in" },
+    )
+    .with("normal", () =>
+      typeof dashboardId === "number"
+        ? { type: "signed-in", dashboard_id: dashboardId }
+        : { type: "signed-in" },
+    )
+    .otherwise(() => ({ type: "signed-in" }));
 }

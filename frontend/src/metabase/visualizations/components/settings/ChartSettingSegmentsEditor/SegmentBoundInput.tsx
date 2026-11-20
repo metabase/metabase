@@ -2,9 +2,8 @@ import { Box } from "metabase/ui";
 import type {
   ColumnSettings,
   DatasetData,
-  DatasetQuery,
+  GoalForeignEntityRef,
   GoalValue,
-  ReferencedEntity,
   VisualizationDisplay,
 } from "metabase-types/api";
 
@@ -13,12 +12,11 @@ import { GoalValueInput, StaticGoalValueInput } from "../GoalValueInput";
 type Props = {
   "aria-label"?: string;
   data: DatasetData | undefined;
-  datasetQuery: DatasetQuery | undefined;
   display: VisualizationDisplay;
   formatOptions: ColumnSettings | undefined;
+  goalSources: GoalForeignEntityRef[];
   id: string;
   placeholder: string;
-  referencedEntities: ReferencedEntity[];
   value: GoalValue | null;
   onChange: (value: GoalValue | null) => void;
 };
@@ -26,12 +24,11 @@ type Props = {
 export function SegmentBoundInput({
   "aria-label": ariaLabel,
   data,
-  datasetQuery,
   display,
   formatOptions,
+  goalSources,
   id,
   placeholder,
-  referencedEntities,
   value,
   onChange,
 }: Props) {
@@ -49,12 +46,11 @@ export function SegmentBoundInput({
         <GoalValueInput
           aria-label={ariaLabel}
           data={data}
-          datasetQuery={datasetQuery}
           display={display}
           formatOptions={formatOptions}
+          goalSources={goalSources}
           id={id}
           placeholder={placeholder}
-          referencedEntities={referencedEntities}
           value={value}
           onChange={onChange}
         />

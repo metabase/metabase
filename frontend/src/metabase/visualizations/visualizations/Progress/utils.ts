@@ -4,7 +4,12 @@ import _ from "underscore";
 
 import { type GoalData, resolveGoalValue } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, GoalValue, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  GoalSourceResults,
+  GoalValue,
+  RowValues,
+} from "metabase-types/api";
 
 export const getValue = (rows: RowValues[]) => {
   const rawValue = rows[0] && rows[0][0];
@@ -23,7 +28,8 @@ export const getValue = (rows: RowValues[]) => {
 export const getGoalValue = (
   goalSetting: GoalValue | null | undefined,
   data: GoalData,
-): number => resolveGoalValue(data, goalSetting).value ?? 0;
+  sourceResults: GoalSourceResults,
+): number => resolveGoalValue(data, sourceResults, goalSetting).value ?? 0;
 
 export const extractProgressValue = (
   rows: RowValues[],

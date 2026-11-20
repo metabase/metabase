@@ -1,5 +1,5 @@
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import type { ReferencedEntityKind } from "metabase/viz-core";
+import type { GoalSourceKind } from "metabase/viz-core";
 
 export type ColumnOption = {
   name: string;
@@ -12,8 +12,8 @@ export type PickedItem = {
   name: string;
 };
 
-export type ReferencedEntityInfo = {
-  kind: ReferencedEntityKind | undefined;
+export type GoalSourceInfo = {
+  kind: GoalSourceKind | undefined;
   name: string | undefined;
   url: string | undefined;
   columns: ColumnOption[];
