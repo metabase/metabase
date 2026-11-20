@@ -48,10 +48,9 @@ A separate switcher, **Expression pill** (`expression-pill-version`), for the st
 | Hover | Pill A; the selected pill shows a light field behind the name on hover | `notebook/components/ExpressionStep/ExpressionPill.tsx` (`RENAME_HINTS`) | A | active |
 | Field | Pill A; the selected pill always shows a field with an outline behind the name; the field gets darker on hover | same | A | active |
 | Default name | Pill A; the field of Field while the name is a default one, the hover field of Hover after a rename | same | A | active |
-| Pencil | Pill A; the selected pill shows a pencil icon after the name | same | A | active |
 | Underline | Pill A; the selected pill shows a dashed underline below the name, solid on hover | same | A | active |
 
-Versions Hover, Field, Default name, Pencil and Underline only add a hint to the selected pill A, which is the only pill that can be renamed. They apply to custom columns and custom summaries. The hint keeps the size of the pill, except for the pencil in Pencil.
+Versions Hover, Field, Default name and Underline only add a hint to the selected pill A, which is the only pill that can be renamed. They apply to custom columns and custom summaries. The hint keeps the size of the pill.
 
 Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom column step; filters and summaries keep pill A. A new column shows "Untitled" (A: "New column"), without the unsaved dot. Names from the user or the AI drop the box; default names ("New column", shortcut names) keep it. The "+" is a 36px square: brand blue in B, white with a border in C.
 

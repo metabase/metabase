@@ -26,7 +26,7 @@ export const EXPRESSION_PILL_VERSION_SETTING: SegmentedPrototypeSetting = {
   type: "segmented",
   label: "Expression pill",
   description:
-    "The style of the custom column pill, to show that a double-click renames it. A: the current pill. B: a brand-blue pill with its name in a box like a text field, shown for a default name and on hover or selection. C: like B, in light colors: a white pill with a border, and a grey box. Hover, Field, Default name, Pencil and Underline keep pill A and add a hint to the selected pill, also in summaries. Hover: a field behind the name on hover. Field: a field behind the name at all times. Default name: the field while the name is a default one, like New column, and the hover field after a rename. Pencil: a pencil icon after the name. Underline: a dashed underline below the name.",
+    "The style of the custom column pill, to show that a double-click renames it. A: the current pill. B: a brand-blue pill with its name in a box like a text field, shown for a default name and on hover or selection. C: like B, in light colors: a white pill with a border, and a grey box. Hover, Field, Default name and Underline keep pill A and add a hint to the selected pill, also in summaries. Hover: a field behind the name on hover. Field: a field behind the name at all times. Default name: the field while the name is a default one, like New column, and the hover field after a rename. Underline: a dashed underline below the name.",
   options: [
     { value: "a", label: "Version A" },
     { value: "b", label: "Version B" },
@@ -34,7 +34,6 @@ export const EXPRESSION_PILL_VERSION_SETTING: SegmentedPrototypeSetting = {
     { value: "hover", label: "Hover" },
     { value: "field", label: "Field" },
     { value: "default", label: "Default name" },
-    { value: "pencil", label: "Pencil" },
     { value: "underline", label: "Underline" },
   ],
   defaultValue: "a",

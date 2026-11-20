@@ -151,15 +151,6 @@ export function ExpressionPill({
           />
         )}
       </span>
-      {hint === "pencil" && (
-        <Icon
-          className={cx(S.pencilIcon, {
-            [S.hiddenWhileRenaming]: isRenaming,
-          })}
-          name="pencil"
-          size={12}
-        />
-      )}
       {hasRemoveButton && (
         <Icon
           className={cx(S.closeIcon, { [S.hiddenWhileRenaming]: isRenaming })}
@@ -175,4 +166,4 @@ export function ExpressionPill({
 }
 
 // Prototype: the pill versions that add a rename hint to pill A.
-const RENAME_HINTS = ["hover", "field", "default", "pencil", "underline"];
+const RENAME_HINTS = ["hover", "field", "default", "underline"];

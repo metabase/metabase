@@ -95,16 +95,6 @@
   }
 }
 
-.pencilIcon {
-  flex: 0 0 auto;
-  margin-left: 0.375rem;
-  opacity: 0.7;
-
-  .pill:hover & {
-    opacity: 1;
-  }
-}
-
 .unsavedIndicator {
   flex: 0 0 auto;
   width: 0.375rem;
