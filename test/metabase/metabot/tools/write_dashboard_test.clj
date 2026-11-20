@@ -1234,6 +1234,16 @@
                 (failure {:dashboard_id dash-id
                           :ops          [{:op "move", :dashcard_id left, :position {:row 10, :col 20}}]})))))))
 
+(deftest card-id-that-isnt-one-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dashboard {dash-id :id} {}]
+      (testing "a card or series id that isn't one is reported by the ops compiler"
+        (doseq [ops [[{:op "add_card", :id -1, :card_id 0}]
+                     [{:op "add_card", :id -1, :card_id 0, :series [-5]}]]]
+          (testing (pr-str ops)
+            (is (=? {:code ::write-dashboard/dashboard-op-rejected}
+                    (failure {:dashboard_id dash-id, :ops ops})))))))))
+
 (deftest op-error-wording-test
   (testing "every compiler error has Metabot wording"
     (is (empty? (remove (set (keys @#'write-dashboard/op-error-details)) (keys dashboard-ops/errors))))))

@@ -697,24 +697,25 @@
                   (assoc :id parameter_id)
                   assoc-slug)))
 
+(defn updated-parameter
+  "The filter `parameter` as the `update_parameter` op `op` leaves it, with its slug unchanged."
+  [parameter {:keys [clear] :as op}]
+  ;; A parameter is a map, so clearing removes the key rather than setting it to nil — `merge` can only add, and a
+  ;; stored explicit null is not the same as an absent property to the REST shape.
+  (apply dissoc (merge parameter (dissoc op :op :parameter_id :clear)) (map keyword clear)))
+
 (defmethod apply-op "update_parameter"
   [state {:keys [parameter_id clear] :as op}]
   (resolve-parameter! state parameter_id)
-  (let [cleared (map keyword clear)]
-    (doseq [field cleared
-            :when (contains? op field)]
-      (fail! :set-and-cleared {:field (name field)}))
-    (update-row state :parameters parameter_id
-                (fn [param]
-                  ;; A parameter is a map, so clearing removes the key rather than setting it to
-                  ;; nil — `merge` can only add, and a stored explicit null is not the same as an
-                  ;; absent property to the REST shape.
-                  (cond-> (apply dissoc
-                                 (merge param (dissoc op :op :parameter_id :clear))
-                                 cleared)
-                    ;; only re-slug on a rename, so an unrelated edit can't rewrite the slug of a
-                    ;; parameter created in the editor and break its existing URLs
-                    (contains? op :name) assoc-slug)))))
+  (doseq [field (map keyword clear)
+          :when (contains? op field)]
+    (fail! :set-and-cleared {:field (name field)}))
+  (update-row state :parameters parameter_id
+              (fn [param]
+                (cond-> (updated-parameter param op)
+                  ;; only re-slug on a rename, so an unrelated edit can't rewrite the slug of a
+                  ;; parameter created in the editor and break its existing URLs
+                  (contains? op :name) assoc-slug))))
 
 (defmethod apply-op "remove_parameter"
   [state {:keys [parameter_id]}]
@@ -1143,8 +1144,8 @@
    A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
    A card that an op gives a position stays where the op put it.
-   A resized card keeps its place unless a card given a position, or a resized card above it or to its left, covers
-   it.
+   A resized card keeps its place unless a card given a position, or a resized card before it, covers it.
+   Resized cards count in reading order, so the one before it sits above it or to its left.
    Either pushes down the cards it covers, and a card that no op placed moves only then.
    The ops' other effects ride in the payload's metadata, read by [[effects]].
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."

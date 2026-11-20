@@ -199,8 +199,8 @@
   (str/join ", " ids))
 
 (tools/defrecoverable cards-not-curated!
-  "This Metabot only uses curated content, and the ops add or place questions that aren't curated, or make a filter
-  take its values from one.
+  "This Metabot only uses curated content, and the ops use questions that aren't curated.
+  They add or place those questions, or make a filter take its values from one.
   The `:card-ids` are those questions, each one the user can read."
   {:payload [:map {:closed true} [:card-ids [:sequential {:min 1} :int]]]}
   [{:keys [card-ids]}]
@@ -511,25 +511,23 @@
                           ("add_card" "replace_card") (cons card_id series)
                           "set_series"                card_ids
                           nil)))
-              (remove nil?)
+              ;; The lookups that judge these take only ids. The ops compiler rejects any other value.
+              (filter pos-int?)
               (distinct))
         ops))
 
 (defn- final-parameters
-  "The filters of `dashboard`, nil on a create, by id, as `ops` leave them.
-  This folds the filter ops the way the compiler applies them: an update merges into the filter and drops what it
-  clears."
-  [dashboard ops]
-  (reduce (fn [params {op-name :op :keys [parameter_id clear] :as op}]
+  "The filters in `stored`, a map of filter id to filter, by id, as `ops` leave them."
+  [stored ops]
+  (reduce (fn [params {op-name :op :keys [parameter_id] :as op}]
             (case op-name
               "add_parameter"    (assoc params parameter_id (dissoc op :op :parameter_id))
               "update_parameter" (cond-> params
                                    (contains? params parameter_id)
-                                   (update parameter_id #(apply dissoc (merge % (dissoc op :op :parameter_id :clear))
-                                                                (map keyword clear))))
+                                   (update parameter_id dashboard-ops/updated-parameter op))
               "remove_parameter" (dissoc params parameter_id)
               params))
-          (u/index-by :id (:parameters dashboard))
+          stored
           ops))
 
 (defn- source-card-ids
@@ -540,16 +538,15 @@
     (into []
           (comp (keep (fn [[id param]]
                         (let [card (dashboard-ops/source-card-id param)]
-                          ;; The curation lookups take only ids. The ops compiler rejects any other value.
+                          ;; As in [[placed-card-ids]], a value that isn't an id is left to the ops compiler.
                           (when (and (pos-int? card)
                                      (not= card (some-> (get stored id) dashboard-ops/source-card-id)))
                             card))))
                 (distinct))
-          (final-parameters dashboard ops))))
+          (final-parameters stored ops))))
 
 (defn- saved-by-this-conversation?
-  "Whether `card`, live and outside any document, was saved from a chart of this conversation, and its query reads
-  only curated content.
+  "Whether `card` is live, outside any document, saved from a chart of this conversation, and over curated content.
   The conversation is no proof of curation, as the card may have been saved while curation was off, so its query is
   judged again, as [[save-entity/savable-chart]] judges a chart's."
   [card]
@@ -563,8 +560,9 @@
          (curation/curated-query? (:dataset_query card)))))
 
 (defn- check-cards-curated!
-  "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` place, or make a
-  filter of `dashboard` take its values from, is curated, or [[saved-by-this-conversation?]].
+  "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` use is curated.
+  That covers each question they place, and each one they make a filter of `dashboard` take its values from.
+  A question that is [[saved-by-this-conversation?]] counts as curated.
   The dashboard itself is a destination, so it needn't be curated. A question the user can't read is left to the ops
   compiler, which reports it as unknown, so the refusal doesn't reveal whether it is curated."
   [dashboard ops]
@@ -633,7 +631,8 @@
 (defn- save-chart!
   "Saves `chart` as a question of the dashboard with `dashboard-id`, and returns `{:chart-id :card-id :card}`.
   A question already saved from the chart, with the same query and display, to this dashboard in this conversation is
-  reused, without a `:card`. It keeps its name, which is returned as `:kept-name` when the chart asked for another."
+  reused, without a `:card`.
+  It keeps its name, which is returned as `:kept-name` when the chart asked for another."
   [dashboard-id {:keys [chart-id name dataset_query display]}]
   (let [conversation-id (shared/current-conversation-id)]
     (if-let [reused (some-> conversation-id
@@ -888,7 +887,6 @@
         layout?     (contains? #{"created" "updated"} action)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
-        kept-names  (filter :kept-name saved-charts)
         output      (te/lines
                      (str "<dashboard_saved" (xml-attrs :action action :url link) ">")
                      (str "  <collection"
@@ -906,7 +904,8 @@
                        "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
                        "restored" "Tell the user you restored it."
                        "Tell the user what you changed and where the dashboard is saved.")
-                     (for [{:keys [chart-id card-id kept-name]} kept-names]
+                     (for [{:keys [chart-id card-id kept-name]} saved-charts
+                           :when kept-name]
                        (str "Chart " chart-id " was already saved here as question " card-id ", so it kept its name "
                             (quoting/quoted kept-name) ". Use that name when you tell the user."))
                      (when (seq pushed-dashcard-ids)

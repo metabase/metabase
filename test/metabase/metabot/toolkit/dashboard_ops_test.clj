@@ -943,6 +943,15 @@
                                 {})]
       (is (= [{:id "p1" :name "Y" :slug "y" :type "string/="}] parameters)))))
 
+(deftest update-parameter-clears-test
+  (testing "update_parameter removes the properties it clears and keeps the rest"
+    (let [{:keys [parameters]} (compile-with-stub-cards
+                                (assoc empty-dash :parameters [{:id "p1", :name "X", :slug "x", :type "string/="
+                                                                :default "a", :isMultiSelect true}])
+                                [{:op "update_parameter" :parameter_id "p1" :clear ["default"]}]
+                                {})]
+      (is (= [{:id "p1", :name "X", :slug "x", :type "string/=", :isMultiSelect true}] parameters)))))
+
 (deftest update-parameter-preserves-slug-when-not-renaming-test
   (testing "GHY-4147: an update that does not touch the name leaves the slug alone, so an edit to
             an editor-created parameter cannot silently break its existing URLs"
