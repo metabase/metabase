@@ -449,12 +449,15 @@
                true))
 
 (defn send-broken-subscription-notification!
-  "Email dashboard and subscription creators information about a broken subscription due to bad parameters"
+  "Email dashboard creator, pulse creator, and email recipients about a broken subscription being deleted due to bad parameters"
   [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters disable_links]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
      :subject (trs "Subscription to {0} removed" dashboard-name)
-     :recipients (distinct (map :email [pulse-creator dashboard-creator]))
+     :recipients (->> affected-users
+                      (concat [pulse-creator dashboard-creator])
+                      (keep :email)
+                      distinct)
      :message-type :html
      :message (channel.template/render
                "broken_subscription_notification"
