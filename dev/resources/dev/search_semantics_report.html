@@ -641,6 +641,10 @@ __REPORT_MODEL__
       return `#${params}`;
     }
 
+    // A link to the hash already shown fires no hashchange, so an unmodified primary click on one is followed by hand.
+    const followsSameHash = (event, link) => link.hash === location.hash && event.button === 0
+      && !(event.ctrlKey || event.metaKey || event.shiftKey || event.altKey);
+
     function writeHash() {
       history.replaceState(null, "", caseHash(state.corpus, state.selected));
     }
@@ -996,8 +1000,7 @@ __REPORT_MODEL__
       for (const row of $("score-table").querySelectorAll("tr.goal-row")) {
         row.addEventListener("click", event => {
           const link = event.target.closest("a");
-          if (link && (link.hash !== location.hash || event.button !== 0
-            || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
+          if (link && !followsSameHash(event, link)) return;
           if (link) event.preventDefault();
           $("filter").value = "";
           openCase(row.dataset.id);
@@ -1046,11 +1049,18 @@ __REPORT_MODEL__
       });
     }
     // Following a link, from a finding or another page, opens its case.
-    window.addEventListener("hashchange", () => {
-      if (readHash(false)) {
-        $("filter").value = "";
-        render();
-        $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    function followHash() {
+      if (!readHash(false)) return;
+      $("filter").value = "";
+      render();
+      $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    window.addEventListener("hashchange", followHash);
+    $("findings").addEventListener("click", event => {
+      const link = event.target.closest("a");
+      if (link && followsSameHash(event, link)) {
+        event.preventDefault();
+        followHash();
       }
     });
     if (readHash(true)) $("filter").value = "";
