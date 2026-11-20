@@ -275,6 +275,10 @@
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
+      (when-let [document-cards (some-> (seq (keep :card_id dashboard-cards)) dashboards.db/document-cards-among seq)]
+        (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                        {:status-code        400
+                         :in-report-card-ids (map :id document-cards)})))
       (let [dashboard-card-ids (dashboards.db/insert-dashcards!
                                 (for [dashcard dashboard-cards]
                                   (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level)))]

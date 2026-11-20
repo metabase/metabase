@@ -102,7 +102,6 @@
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (check-tab dashcard)
-  (check-card-not-in-document dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
