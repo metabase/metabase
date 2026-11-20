@@ -105,3 +105,14 @@
                                                                   {:type "card" :item_id card-id}]))))
           (is (= [["card" card-id 0] ["dashboard" dashboard-id 1]]
                  (orderings rasta))))))))
+
+(deftest collection-bookmark-reads-collection-once-test
+  (testing "second bookmark of same Collection reads nothing about Collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/CollectionBookmark]
+        (let [insert-call-count (fn [user]
+                                  (t2/with-call-count [call-count]
+                                    (t2/insert! :model/CollectionBookmark {:user_id       (mt/user->id user)
+                                                                           :collection_id coll-id})
+                                    (call-count)))]
+          (is (= 1 (- (insert-call-count :rasta) (insert-call-count :crowberto)))))))))

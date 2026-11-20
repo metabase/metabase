@@ -410,7 +410,8 @@
            task
            task.history
            tracing
-           util}
+           util
+           warehouses}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
                     :model/Card
@@ -2763,6 +2764,7 @@
            segments.schema
            serialization
            util
+           warehouses
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
@@ -4272,6 +4274,7 @@
            transforms.schema
            util
            util.graph
+           warehouses.schema
            enterprise/permissions.sandbox}
    :model-imports #{:model/Action
                     :model/Card

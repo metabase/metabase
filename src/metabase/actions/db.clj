@@ -88,11 +88,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id))
 
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
-
 (mu/defn action
   "The Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]

@@ -2211,3 +2211,63 @@
     (testing "other columns of the folder can still change"
       (t2/update! :model/Collection :id (:id folder) {:name "Renamed Folder"})
       (is (= "Renamed Folder" (t2/select-one-fn :name :model/Collection :id (:id folder)))))))
+
+(defn- refusal
+  "The status code and message of the exception `thunk` throws, nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      [(:status-code (ex-data e)) (ex-message e)])))
+
+(deftest collection-type-is-frozen-test
+  (mt/with-temp [:model/Collection {plain-id :id}   {}
+                 :model/Collection {section-id :id} {:type collection/library-metrics-collection-type}]
+    (testing "type of untyped Collection can't be set"
+      (is (= [400 "You cannot change the type of a Collection once it has been created."]
+             (refusal #(t2/update! :model/Collection :id plain-id {:type collection/library-metrics-collection-type}))))
+      (is (nil? (t2/select-one-fn :type :model/Collection :id plain-id))))
+    (testing "type of typed Collection can't be cleared"
+      (is (= [400 "You cannot change the type of a Collection once it has been created."]
+             (refusal #(t2/update! :model/Collection :id section-id {:type nil}))))
+      (is (= collection/library-metrics-collection-type (t2/select-one-fn :type :model/Collection :id section-id))))
+    (testing "stored type written back is no change"
+      (t2/update! :model/Collection :id plain-id {:type nil :description "Same type"})
+      (is (= "Same type" (t2/select-one-fn :description :model/Collection :id plain-id))))
+    (testing "remote-synced request value sets flag and keeps stored type"
+      (t2/update! :model/Collection :id plain-id {:type "remote-synced"})
+      (is (=? {:type nil :is_remote_synced true} (t2/select-one :model/Collection :id plain-id))))))
+
+(deftest collection-id->immutable-info-test
+  (let [missing-id (+ 1000000 (t2/select-one-fn :max-id [:model/Collection [:%max.id :max-id]]))]
+    (testing "missing Collection is not cached, so Collection created afterwards is found"
+      (is (nil? (collection/collection-id->immutable-info missing-id)))
+      (mt/with-temp [:model/Collection _ {:id missing-id :namespace "snippets"}]
+        (is (=? {:id missing-id :namespace :snippets :type nil}
+                (collection/collection-id->immutable-info missing-id)))
+        (testing "and found Collection is read once"
+          (is (= 0 (t2/with-call-count [call-count]
+                     (collection/collection-id->immutable-info missing-id)
+                     (call-count)))))))))
+
+(deftest check-collection-for-reads-archived-only-when-needed-test
+  (mt/with-temp [:model/Collection {live-id :id}     {}
+                 :model/Collection {archived-id :id} {:archived true}]
+    (collection/check-collection-for :model/Dashboard {:collection_id live-id :archived true})
+    (testing "archived row reads nothing once frozen columns are known"
+      (is (= 0 (t2/with-call-count [call-count]
+                 (collection/check-collection-for :model/Dashboard {:collection_id live-id :archived true})
+                 (call-count)))))
+    (testing "unarchived row still reads Collection"
+      (is (= 1 (t2/with-call-count [call-count]
+                 (collection/check-collection-for :model/Dashboard {:collection_id live-id :archived false})
+                 (call-count)))))
+    (testing "refusals are unchanged"
+      (is (= [400 "You cannot put an unarchived item in an archived Collection."]
+             (refusal #(collection/check-collection-for :model/Dashboard {:collection_id archived-id :archived false}))))
+      (is (nil? (refusal #(collection/check-collection-for :model/Dashboard {:collection_id archived-id :archived true}))))
+      (doseq [archived [true false]]
+        (is (= [404 "Collection does not exist."]
+               (refusal #(collection/check-collection-for :model/Dashboard {:collection_id Integer/MAX_VALUE
+                                                                            :archived      archived}))))))))

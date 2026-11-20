@@ -216,5 +216,5 @@
    :synced-filter-clause warehouse-schema.db/synced-field-clause})
 
 (defmethod dependencies/spec :model/FieldUserSettings [_model]
-  {:part-of      {:type :table :key :field_id :via [:model/Field :table_id]}
+  {:part-of      {:type :table :key :field_id :via field/field-id->table-id}
    :part-columns (conj warehouse-schema.dependencies/field-columns :custom_position :json_unfolding)})

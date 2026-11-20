@@ -65,6 +65,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -378,7 +379,9 @@
   [{{query-db-id :database, :as query} :dataset_query, :as card}]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
-    (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
+    (when-let [field-ids (some->> (params/card->template-tag-field-ids card)
+                                  (filter #(not (contains? #{nil query-db-id} (field/field-id->database-id %))))
+                                  not-empty)]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
@@ -1324,7 +1327,8 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
+    (when (seq (parameter-card/values-source-card-ids (:parameters card)))
+      (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card)))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -1377,7 +1381,7 @@
     (when (contains? changes :visualization_settings)
       (check-timeline-settings card))
     (when (or (contains? changes :collection_id) (contains? changes :type))
-      (collection/check-allowed-content (:type card) (parent (:collection_id card))))
+      (collection/check-allowed-content (:type card) (:collection_id card)))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
       (check-not-in-archived-container card (parent (:collection_id card))))
     (-> card

@@ -814,3 +814,10 @@
             (is (=? {:errors {:email "Email address already in use."}}
                     (try (users.write/invite-user! {:email (u/upper-case-en email)})
                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))
+
+(deftest user-rename-skips-admin-membership-read-test
+  (testing "User update changing neither is_superuser nor is_active to false reads no Administrators membership"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"}]
+      (t2/with-call-count [call-count]
+        (t2/update! :model/User :id user-id {:first_name "Renamed"})
+        (is (= 2 (call-count)))))))

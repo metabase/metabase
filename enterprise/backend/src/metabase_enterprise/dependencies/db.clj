@@ -435,18 +435,6 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
 
-(mu/defn column-value :- [:maybe ms/PositiveInt]
-  "The `column` of the row of `model` with `id`, or nil."
-  [model  :- :keyword
-   column :- :keyword
-   id     :- ms/PositiveInt]
-  (t2/select-one-fn column [model column] :id [:auto/param id]))
-
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
-
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
 (mu/defn dependencies-from

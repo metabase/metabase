@@ -96,7 +96,7 @@ that needs the row as stored.
 - **Rule on another entity's mutable data.** A hook that reads a column of another entity that can change is a smell:
   the rule holds only at the moment of the write, nothing re-checks it when the other row changes, and a sanctioned
   writer (an import, sync, a task) meets the hook while the other row is rightly in another state. In this order:
-  freeze the column, and then read it through a memoized `x-id->y-id` helper; cascade from the other entity (archived,
+  freeze the column, and then read it through a memoized `<entity>-id->immutable-info` helper, one map per entity; cascade from the other entity (archived,
   deleted, moved, deactivated), so the rule holds from both sides; otherwise it is no invariant, and the check or the
   cleanup belongs to the write function in `<module>/write.clj`. Do not check the same rule in the hooks of both.
 

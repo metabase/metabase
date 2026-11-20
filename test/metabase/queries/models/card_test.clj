@@ -2382,3 +2382,45 @@
                         (t2/select [:model/Card :archived_directly] :id [:in [collection-card dashboard-card]])))
             (is (t2/exists? :model/Notification :id (:id in-collection)))
             (is (t2/exists? :model/Notification :id (:id in-dashboard)))))))))
+
+(deftest card-collection-move-reads-collection-once-test
+  (testing "second Card moved to same Collection reads only whether Collection is archived"
+    (mt/with-temp [:model/Collection {from-id :id}   {}
+                   :model/Collection {to-id :id}     {}
+                   :model/Card       {first-id :id}  {:collection_id from-id}
+                   :model/Card       {second-id :id} {:collection_id from-id}]
+      (let [move-call-count (fn [id]
+                              (t2/with-call-count [call-count]
+                                (t2/update! :model/Card :id id {:collection_id to-id})
+                                (call-count)))]
+        (is (= 1 (- (move-call-count first-id) (move-call-count second-id))))))))
+
+(deftest card-insert-without-card-sourced-parameter-skips-parameter-cards-test
+  (testing "inserted Card whose parameters take no values from Card runs no ParameterCard statement"
+    (mt/with-temp [:model/Card {source-id :id} {}]
+      (let [parameter         {:id "_CATEGORY_NAME_", :name "Category Name", :slug "category_name", :type "category"}
+            insert-call-count (fn [parameters]
+                                (t2/with-call-count [call-count]
+                                  (mt/with-temp [:model/Card _ {:parameters parameters}]
+                                    (call-count))))]
+        (is (= 3 (- (insert-call-count [(assoc parameter
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-id})])
+                    (insert-call-count [parameter]))))))))
+
+(deftest field-filter-database-check-reads-cached-field-database-test
+  (testing "Field filter Database check of Field whose Database is cached runs no statement"
+    (let [mp    (mt/metadata-provider)
+          card  {:dataset_query (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{FILTER}}")
+                                    (lib/with-template-tags
+                                      {"FILTER" {:id           "_FILTER_"
+                                                 :name         "FILTER"
+                                                 :display-name "Filter"
+                                                 :type         :dimension
+                                                 :field-id     (mt/id :venues :name)
+                                                 :widget-type  :string/=}}))}
+          check #'card/check-field-filter-fields-are-from-correct-database]
+      (check card)
+      (t2/with-call-count [call-count]
+        (check card)
+        (is (= 0 (call-count)))))))

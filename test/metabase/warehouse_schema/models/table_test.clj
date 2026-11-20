@@ -735,3 +735,21 @@
         (is (=? {:data_layer :internal :data_authority :unconfigured}
                 (t2/select-one [:model/Table :data_layer :data_authority]
                                :name "raw-insert-probe" :db_id db-id)))))))
+
+(deftest table-collection-check-reads-collection-once-test
+  (testing "second Table published to same Collection reads nothing about Collection"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database   {db-id :id}   {}
+                     :model/Collection {coll-id :id} {}]
+        (let [insert-call-count (fn [table-name]
+                                  (t2/with-call-count [call-count]
+                                    (t2/insert! :model/Table {:db_id         db-id
+                                                              :name          table-name
+                                                              :active        true
+                                                              :is_published  true
+                                                              :collection_id coll-id})
+                                    (call-count)))]
+          (try
+            (is (= 1 (- (insert-call-count "ORDERS") (insert-call-count "PEOPLE"))))
+            (finally
+              (t2/delete! :model/Table :db_id db-id))))))))

@@ -577,3 +577,15 @@
                         (mt/user-http-request :crowberto :post 400 "revision/revert"
                                               {:entity "transform" :id writer :revision_id (:id revision)})))
            (is (= stored (t2/select-one-fn :source :model/Transform :id writer)))))))))
+
+(deftest transform-collection-checks-read-collection-once-test
+  (testing "second Transform moved to same Collection reads nothing about Collection"
+    (mt/with-temp [:model/Collection {from-id :id} {:namespace collection/transforms-ns}
+                   :model/Collection {to-id :id}   {:namespace collection/transforms-ns}
+                   :model/Transform  {first-id :id}  {:collection_id from-id}
+                   :model/Transform  {second-id :id} {:collection_id from-id}]
+      (let [move-call-count (fn [id]
+                              (t2/with-call-count [call-count]
+                                (t2/update! :model/Transform :id id {:collection_id to-id})
+                                (call-count)))]
+        (is (= 1 (- (move-call-count first-id) (move-call-count second-id))))))))

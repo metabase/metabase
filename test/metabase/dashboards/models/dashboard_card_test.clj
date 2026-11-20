@@ -554,3 +554,83 @@
       (doseq [inline? [false true]]
         (testing (str "inline parameters " inline?)
           (is (= (calls 3 inline?) (calls 12 inline?))))))))
+
+(defn- insert-dashcard-call-count
+  "The number of app-DB statements an insert of a DashboardCard of the Card with `card-id` on the tab with `tab-id`
+  of the Dashboard with `dashboard-id` runs."
+  [dashboard-id tab-id card-id]
+  (t2/with-call-count [call-count]
+    (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
+                                      :dashboard_tab_id tab-id
+                                      :card_id          card-id
+                                      :row              0
+                                      :col              0
+                                      :size_x           4
+                                      :size_y           4})
+    (call-count)))
+
+(deftest dashcards-on-same-tab-read-tab-once-test
+  (testing "dashcards after first on same tab read nothing about tab"
+    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                   :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id :name "Tab" :position 0}
+                   :model/Card         {card-id :id}      {}]
+      (let [[first-count & later-counts] (repeatedly 3 #(insert-dashcard-call-count dashboard-id tab-id card-id))]
+        (is (= [(dec first-count) (dec first-count)] later-counts))))))
+
+(deftest tab-check-refusals-test
+  (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                 :model/Dashboard    {other-id :id}     {}
+                 :model/DashboardTab {other-tab :id}    {:dashboard_id other-id :name "Other" :position 0}
+                 :model/Card         {card-id :id}      {}]
+    (testing "tab of other Dashboard is refused on each insert"
+      (dotimes [_ 2]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
+                              (insert-dashcard-call-count dashboard-id other-tab card-id)))))
+    (testing "missing tab is not cached, so tab created afterwards is found"
+      (let [missing-id (+ 1000000 (t2/select-one-fn :max-id [:model/DashboardTab [:%max.id :max-id]]))]
+        (is (nil? (dashboard-card/dashboard-tab-id->immutable-info missing-id)))
+        (mt/with-temp [:model/DashboardTab _ {:id missing-id :dashboard_id dashboard-id :name "Late" :position 1}]
+          (is (pos? (insert-dashcard-call-count dashboard-id missing-id card-id))))))))
+
+(deftest tab-check-ignores-rolled-back-tabs-test
+  (testing "cached Dashboard of rolled-back tab is never served for tab created afterwards"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Dashboard {other-id :id}     {}
+                   :model/Card      {card-id :id}      {}]
+      (let [rolled-back-id (t2/with-transaction [_conn nil {:rollback-only true}]
+                             (let [tab-id (t2/insert-returning-pk! :model/DashboardTab {:dashboard_id dashboard-id
+                                                                                        :name         "Gone"
+                                                                                        :position     0})]
+                               (insert-dashcard-call-count dashboard-id tab-id card-id)
+                               tab-id))]
+        (is (not (t2/exists? :model/DashboardTab :id rolled-back-id)))
+        (mt/with-temp [:model/DashboardTab {tab-id :id} {:dashboard_id other-id :name "New" :position 0}]
+          (is (< rolled-back-id tab-id))
+          (is (= other-id (:dashboard_id (dashboard-card/dashboard-tab-id->immutable-info tab-id)))))))))
+
+(deftest plain-dashcard-select-runs-no-import-test
+  (testing "dashcard without visualizer settings comes back as stored with no statement beyond its select"
+    (mt/with-temp [:model/Dashboard     dash {}
+                   :model/Card          card {}
+                   :model/DashboardCard dc   {:dashboard_id           (:id dash)
+                                              :card_id                (:id card)
+                                              :visualization_settings {:card.title "Plain"}}]
+      (let [[loaded call-count] (t2/with-call-count [call-count]
+                                  [(t2/select-one :model/DashboardCard :id (:id dc)) (call-count)])]
+        (is (= 1 call-count))
+        (is (= {:card.title "Plain"} (:visualization_settings loaded)))))))
+
+(deftest dashboard-card-id->immutable-info-test
+  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                 :model/Card          {card-id :id}      {}
+                 :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id}]
+    (testing "found DashboardCard is read once"
+      (is (= {:id dashcard-id :dashboard_id dashboard-id} (dashboard-card/dashboard-card-id->immutable-info dashcard-id)))
+      (is (= 0 (t2/with-call-count [call-count]
+                 (dashboard-card/dashboard-card-id->dashboard-id dashcard-id)
+                 (call-count)))))
+    (testing "missing DashboardCard is not cached, so DashboardCard created afterwards is found"
+      (let [missing-id (+ 1000000 (t2/select-one-fn :max-id [:model/DashboardCard [:%max.id :max-id]]))]
+        (is (nil? (dashboard-card/dashboard-card-id->dashboard-id missing-id)))
+        (mt/with-temp [:model/DashboardCard _ {:id missing-id :dashboard_id dashboard-id :card_id card-id}]
+          (is (= dashboard-id (dashboard-card/dashboard-card-id->dashboard-id missing-id))))))))

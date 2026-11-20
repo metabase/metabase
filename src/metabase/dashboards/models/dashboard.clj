@@ -105,7 +105,8 @@
 (t2/define-after-insert :model/Dashboard
   [dashboard]
   (u/prog1 dashboard
-    (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
+    (when (seq (queries/values-source-card-ids (:parameters dashboard)))
+      (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))))
 
 (t2/define-before-update :model/Dashboard
   [row]

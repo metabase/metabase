@@ -57,6 +57,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
 
+(mu/defn collection-immutable-columns
+  "The ID, namespace and type of the ::collections.schema/collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one [:model/Collection :id :namespace :type] :id [:auto/param collection-id]))
+
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]

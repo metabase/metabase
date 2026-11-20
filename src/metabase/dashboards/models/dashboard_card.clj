@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.audit :as dashboards.audit]
@@ -83,11 +84,30 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+(def ^{:arglists '([tab-id])} dashboard-tab-id->immutable-info
+  "The `:id` and `:dashboard_id` of the DashboardTab with `tab-id`, cached once found since the DashboardTab
+  before-update hook refuses a change of `dashboard_id`."
+  (mdb/memoize-hits-for-application-db
+   (fn [tab-id]
+     (dashboards.db/dashboard-tab-immutable-columns tab-id))))
+
+(def ^{:arglists '([dashcard-id])} dashboard-card-id->immutable-info
+  "The `:id` and `:dashboard_id` of the DashboardCard with `dashcard-id`, cached once found since the DashboardCard
+  before-update hook refuses a change of `dashboard_id`."
+  (mdb/memoize-hits-for-application-db
+   (fn [dashcard-id]
+     (dashboards.db/dashboard-card-immutable-columns dashcard-id))))
+
+(defn dashboard-card-id->dashboard-id
+  "The ID of the Dashboard of the DashboardCard with `dashcard-id`, or nil when there is none."
+  [dashcard-id]
+  (:dashboard_id (dashboard-card-id->immutable-info dashcard-id)))
+
 (defn- check-tab
   "Throws a 400 unless the tab of `dashcard`, if any, belongs to the Dashboard of the dashcard."
   [{:keys [dashboard_id dashboard_tab_id]}]
   (when (and dashboard_tab_id
-             (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
+             (not= dashboard_id (:dashboard_id (dashboard-tab-id->immutable-info dashboard_tab_id))))
     (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
 
 (t2/define-before-insert :model/DashboardCard
@@ -109,9 +129,15 @@
     (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
+(defn- visualizer-settings?
+  "Whether the `:visualization_settings` of `dashcard` hold the visualizer column mapping the import rewrites."
+  [dashcard]
+  (let [visualization (get-in dashcard [:visualization_settings :visualization])]
+    (and (map? visualization) (contains? visualization :columnValuesMapping))))
+
 (t2/define-after-select :model/DashboardCard
   [dashcard]
-  (if (contains? dashcard :visualization_settings)
+  (if (visualizer-settings? dashcard)
     (update dashcard :visualization_settings
             #(first (serialization/import-visualizer-settings serialization/app-db-store [%] {:lenient? true})))
     dashcard))

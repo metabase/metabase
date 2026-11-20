@@ -739,21 +739,41 @@
     (when-not (allowed-content-types content-type)
       (throw (ex-info error-message {:status-code 400})))))
 
+(def ^{:arglists '([collection-id])} collection-id->immutable-info
+  "The `:id`, `:namespace` and `:type` of the Collection with `collection-id`, cached once found since the Collection
+  before-update hook refuses a change of `namespace` or `type`."
+  (mdb/memoize-hits-for-application-db
+   (fn [collection-id]
+     (collections.db/collection-immutable-columns collection-id))))
+
+(defn- missing-collection-error
+  "The 404 for content put in a Collection that does not exist."
+  []
+  (let [msg (tru "Collection does not exist.")]
+    (ex-info msg {:status-code 404, :errors {:collection_id msg}})))
+
 (defn content-parent
   "The Collection with `collection-id` as the checks of the content put in it read it, nil for the root; throws a 404
   when it does not exist."
   [collection-id]
   (when collection-id
     (or (collections.db/collection-for-content-checks collection-id)
-        (let [msg (tru "Collection does not exist.")]
-          (throw (ex-info msg {:status-code 404, :errors {:collection_id msg}}))))))
+        (throw (missing-collection-error)))))
+
+(defn- immutable-content-parent
+  "The `:id`, `:namespace` and `:type` of the Collection with `collection-id`, nil for the root; throws a 404 when it
+  does not exist."
+  [collection-id]
+  (when collection-id
+    (or (collection-id->immutable-info collection-id)
+        (throw (missing-collection-error)))))
 
 (defn- content-parent-or-nil
-  "`collection`, a Collection [[content-parent]] loaded, or the one with that id, nil when there is none."
+  "`collection`, a Collection row, or the frozen columns of the one with that id, nil when there is none."
   [collection]
   (if (map? collection)
     collection
-    (some-> collection collections.db/collection-for-content-checks)))
+    (some-> collection collection-id->immutable-info)))
 
 (defn- check-library-content
   "Throws a 400 when the collection `parent` can't hold content of `content-type`; with the Library feature, tables go
@@ -1929,7 +1949,7 @@
   (let [change-keys (set (keys (t2/changes row)))]
     (when (and (library-root-collection? row)
                (seq (set/intersection change-keys
-                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
+                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :is_sample})))
       (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400})))
     (when (and (contains? library-collection-types (:type (t2/original row)))
                (contains? change-keys :location)
@@ -2055,11 +2075,15 @@
                (not (namespace-equals? (:namespace collection-before-updates) (:namespace changes))))
       (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
         (throw (ex-info msg {:status-code 400, :errors {:namespace msg}}))))
+    (when (and (contains? changes :type)
+               (not (namespace-equals? (:type collection-before-updates) (:type changes))))
+      (let [msg (tru "You cannot change the type of a Collection once it has been created.")]
+        (throw (ex-info msg {:status-code 400, :errors {:type msg}}))))
     (check-namespace-columns (merge (select-keys collection-before-updates [:namespace]) changes))
     (when moved?
       (check-parent-namespace row parent)
       (check-parent-not-archived row parent))
-    (when (or moved? (contains? changes :type))
+    (when moved?
       (check-placement row parent))
     (check-library-update row parent)
     (when moved?
@@ -2082,7 +2106,7 @@
         changes   (t2/changes row)
         moved?    (contains? changes :location)
         _         (when moved? (check-valid-location row))
-        ancestors (when (some #(contains? changes %) [:location :is_remote_synced :type])
+        ancestors (when (some #(contains? changes %) [:location :is_remote_synced])
                     (location-ancestors row))]
     (when moved?
       (check-ancestors-exist row ancestors))
@@ -2225,7 +2249,7 @@
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
   (when collection
-    (let [collection           (if (map? collection) collection (content-parent collection))
+    (let [collection           (if (map? collection) collection (immutable-content-parent collection))
           collection-namespace (keyword (:namespace collection))
           allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
@@ -2241,9 +2265,11 @@
 
 (defn check-collection-for
   "Throws unless the Collection of `row`, if any, can hold `model`, is in an allowed namespace, and is not archived
-  unless `row` is."
+  unless `row` is; an archived `row` reads only the frozen columns of its Collection."
   [model {:keys [collection_id archived]}]
-  (when-let [parent (content-parent collection_id)]
+  (when-let [parent (if archived
+                      (immutable-content-parent collection_id)
+                      (content-parent collection_id))]
     (check-allowed-content model parent)
     (check-collection-namespace model parent)
     (check-collection-not-archived archived parent)))

@@ -118,7 +118,7 @@
 (defn- collection-namespace
   "The namespace of the Collection of `action` as a keyword, or nil."
   [{:keys [collection_id]}]
-  (some-> collection_id actions.db/collection-namespace keyword))
+  (some-> collection_id collection/collection-id->immutable-info :namespace keyword))
 
 (defn- check-model-less-collection
   "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection,

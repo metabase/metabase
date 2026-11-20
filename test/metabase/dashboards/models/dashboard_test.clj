@@ -622,3 +622,30 @@
         (is (t2/exists? :model/Notification :id (:id notification)))
         (t2/update! :model/Dashboard :id dashboard-id {:archived false})
         (is (t2/exists? :model/Notification :id (:id notification)))))))
+
+(deftest archived-dashboard-reads-collection-once-test
+  (testing "second archived Dashboard in same Collection reads nothing about Collection"
+    (mt/with-temp [:model/Collection {coll-id :id} {}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [insert-call-count (fn [dashboard-name]
+                                  (t2/with-call-count [call-count]
+                                    (t2/insert! :model/Dashboard {:name          dashboard-name
+                                                                  :collection_id coll-id
+                                                                  :archived      true
+                                                                  :parameters    []
+                                                                  :creator_id    (mt/user->id :rasta)})
+                                    (call-count)))]
+          (is (= 1 (- (insert-call-count "Archived") (insert-call-count "Archived too")))))))))
+
+(deftest dashboard-insert-without-card-sourced-parameter-skips-parameter-cards-test
+  (testing "inserted Dashboard whose parameters take no values from Card runs no ParameterCard statement"
+    (mt/with-temp [:model/Card {source-id :id} {}]
+      (let [parameter         {:id "_CATEGORY_NAME_", :name "Category Name", :slug "category_name", :type "category"}
+            insert-call-count (fn [parameters]
+                                (t2/with-call-count [call-count]
+                                  (mt/with-temp [:model/Dashboard _ {:parameters parameters}]
+                                    (call-count))))]
+        (is (= 3 (- (insert-call-count [(assoc parameter
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-id})])
+                    (insert-call-count [parameter]))))))))

@@ -68,19 +68,17 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
-(mu/defn field-table-id
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
+(mu/defn field-immutable-columns :- [:maybe [:map {:closed true}
+                                      [:table_id ::lib.schema.id/table]
+                                      [:db_id    ::lib.schema.id/database]]]
+  "The ::warehouse-schema.schema/table ID and ::warehouses.schema/database ID of the ::warehouse-schema.schema/field
+  with `field-id`, or nil when there is none."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
-
-(mu/defn field-database-id :- [:maybe ::lib.schema.id/database]
-  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/field with `field-id`, or nil when there is
-  none."
-  [field-id :- ::lib.schema.id/field]
-  (:db_id (t2/query-one {:select [:t.db_id]
+  (some-> (t2/query-one {:select [:f.table_id :t.db_id]
                          :from   [[(t2/table-name :model/Field) :f]]
                          :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                         :where  [:= :f.id [:auto/param field-id]]})))
+                         :where  [:= :f.id [:auto/param field-id]]})
+          (select-keys [:table_id :db_id])))
 
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."

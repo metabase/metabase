@@ -190,21 +190,23 @@
            (not (types/is-coercible-from? coercion (keyword base_type))))
       {:coercion_strategy nil, :effective_type base_type})))
 
-(def ^{:arglists '([field-id])} field-id->table-id
-  "The ID of the Table of the Field with `field-id`, cached once found since the Field before-update hook refuses a
-  change of `table_id`."
+(def ^{:arglists '([field-id])} field-id->immutable-info
+  "The `:table_id` and `:db_id` of the Field with `field-id` in one map, cached once found since the Field and Table
+  before-update hooks refuse a change of `table_id` and `db_id`."
   (mdb/memoize-hits-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (warehouse-schema.db/field-table-id field-id))))
+     (warehouse-schema.db/field-immutable-columns field-id))))
 
-(def ^{:arglists '([field-id])} field-id->database-id
-  "The ID of the Database of the Field with `field-id`, cached once found since the Field and Table before-update hooks
-  refuse a change of `table_id` and `db_id`."
-  (mdb/memoize-hits-for-application-db
-   (fn [field-id]
-     {:pre [(integer? field-id)]}
-     (warehouse-schema.db/field-database-id field-id))))
+(defn field-id->table-id
+  "The ID of the Table of the Field with `field-id`, or nil when there is none."
+  [field-id]
+  (:table_id (field-id->immutable-info field-id)))
+
+(defn field-id->database-id
+  "The ID of the Database of the Field with `field-id`, or nil when there is none."
+  [field-id]
+  (:db_id (field-id->immutable-info field-id)))
 
 (defn- check-fk-target
   "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."

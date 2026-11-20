@@ -243,7 +243,8 @@
         {:keys [email locale]
          superuser? :is_superuser
          active? :is_active} changes
-        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
+        in-admin-group?           (when (or (some? superuser?) (false? active?))
+                                    (users.db/group-membership-exists? (:id (perms/admin-group)) id))]
     (validate-last-admin-not-archived! id in-admin-group? active?)
     (when email
       (validate-user-email! email)

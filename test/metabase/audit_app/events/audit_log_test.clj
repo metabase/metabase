@@ -9,6 +9,9 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -815,3 +818,34 @@
           (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
           (t2/update! :model/ApiKey :id key-id {:last_used_at (java.time.OffsetDateTime/now)})
           (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card" "ApiKey"]]))))))))
+
+(defn- with-segment-on-new-table!
+  "Call `f` with a Segment on a new Table of the test Database, which nothing has read yet."
+  [f]
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :name "segment_audit_probe"}]
+    (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+      (mt/with-temp [:model/Segment segment {:definition (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                             (lib/filter (lib/= 1 1)))}]
+        (f segment)))))
+
+(deftest segment-updates-read-table-database-once-test
+  (testing "second Segment update on same Table reads nothing about Table"
+    (with-segment-on-new-table!
+      (fn [{segment-id :id}]
+        (let [update-call-count (fn [segment-name]
+                                  (mt/with-test-user :rasta
+                                    (t2/with-call-count [call-count]
+                                      (t2/update! :model/Segment :id segment-id {:name segment-name})
+                                      (call-count))))]
+          (is (= 1 (- (update-call-count "First") (update-call-count "Second"))))
+          (is (=? {:details {:new {:name "Second"}}}
+                  (mt/latest-audit-log-entry "segment-update" segment-id))))))))
+
+(deftest segment-permission-failures-read-table-database-once-test
+  (testing "second permission failure of same Segment reads nothing about Table"
+    (with-segment-on-new-table!
+      (fn [segment]
+        (is (= 1 (- (failure-call-count! :event/write-permission-failure segment)
+                    (failure-call-count! :event/write-permission-failure segment))))
+        (is (=? {:details {:database_id (mt/id) :table_id (:table_id segment)}}
+                (mt/latest-audit-log-entry :write-permission-failure (:id segment))))))))

@@ -777,3 +777,20 @@
                                  [{:type  action-type
                                    :query [{:dataset_query {:source-card card-eid}}]}]))
                          [:model/Card card-eid])))))))
+
+(defn- insert-model-less-action-call-count
+  "The number of app-DB statements an insert of a model-less query Action in the Collection with `collection-id` runs."
+  [collection-id]
+  (t2/with-call-count [call-count]
+    (t2/insert! :model/Action {:name          "Counted"
+                               :type          :query
+                               :collection_id collection-id
+                               :creator_id    (mt/user->id :crowberto)})
+    (call-count)))
+
+(deftest action-collection-checks-read-only-archived-flag-test
+  (testing "second Action in same Collection reads only whether Collection is archived"
+    (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+      (mt/with-model-cleanup [:model/Action]
+        (is (= 1 (- (insert-model-less-action-call-count coll-id)
+                    (insert-model-less-action-call-count coll-id))))))))
