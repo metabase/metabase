@@ -3216,8 +3216,11 @@
               refreshed     (refresh-with-scope! client {:refresh_token refresh-token} all-v2-scopes)]
           (is (=? {:resource [(mcp-resource-uri)]} refreshed))
           (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
-          (testing "the next refresh narrows to the resource the new token carries"
-            (is (= v2-scope-set (token-scope-set (refresh-with-scope! client refreshed all-v2-scopes))))))))))
+          ;; A later refresh would bind an unbound MCP token again, so only the stored token shows what rotation kept.
+          (testing "the rotated refresh token keeps the MCP resource"
+            (is (= [(mcp-resource-uri)]
+                   (t2/select-one-fn :resource :model/OAuthRefreshToken
+                                     :token (oidc-util/hash-token (:refresh_token refreshed)))))))))))
 
 ;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
 ;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.

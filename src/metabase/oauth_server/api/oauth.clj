@@ -613,7 +613,9 @@
            (every? (set (mcp/v2-scopes)) scopes))
       ;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without this, [[scope-to-grant]]
       ;; reads the request as one for a REST token and drops every MCP scope, leaving nothing to grant. A request that
-      ;; also asks for a non-MCP scope stays a REST request, so MCP and REST tokens stay separate.
+      ;; also asks for a registered non-MCP scope stays a REST request, so MCP and REST tokens stay separate. A scope
+      ;; Metabase no longer registers, such as the retired `agent:table:read`, does not count, so a request for it
+      ;; alongside MCP scopes gets the MCP resource.
       (assoc :resource [mcp-resource]))))
 
 (defn- refreshable-token
