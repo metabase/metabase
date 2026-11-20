@@ -39,7 +39,7 @@ Until you save your server settings, the **Attributes** and **Group mapping** se
 
 Then save your changes. Metabase will automatically pull the [required attributes](#required-ldap-attributes) from your LDAP directory.
 
-On self-hosted Metabases, you can also set these server settings with the environment variables [`MB_LDAP_HOST`](../configuring-metabase/environment-variables.md#mb_ldap_host), [`MB_LDAP_PORT`](../configuring-metabase/environment-variables.md#mb_ldap_port), [`MB_LDAP_SECURITY`](../configuring-metabase/environment-variables.md#mb_ldap_security), [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn), and [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set these server settings with the environment variables [`MB_LDAP_HOST`](../configuring-metabase/environment-variables.md#mb_ldap_host), [`MB_LDAP_PORT`](../configuring-metabase/environment-variables.md#mb_ldap_port), [`MB_LDAP_SECURITY`](../configuring-metabase/environment-variables.md#mb_ldap_security), [`MB_LDAP_BIND_DN`](../configuring-metabase/environment-variables.md#mb_ldap_bind_dn), and [`MB_LDAP_PASSWORD`](../configuring-metabase/environment-variables.md#mb_ldap_password).
 
 ## User provisioning
 
@@ -92,7 +92,7 @@ Metabase saves each mapping as soon as you add, edit, or remove it. To edit a ma
 
 Some LDAP directories list each person's groups on their own entry. If yours does, leave **Group search base** empty. Otherwise, enter the DN where your group entries live.
 
-On self-hosted Metabases, you can also set the group mapping toggle, the mappings themselves, and the group search base with the environment variables [`MB_LDAP_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_ldap_group_sync), [`MB_LDAP_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_ldap_group_mappings), and [`MB_LDAP_GROUP_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_group_base), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set the group mapping toggle, the mappings themselves, and the group search base with the environment variables [`MB_LDAP_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_ldap_group_sync), [`MB_LDAP_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_ldap_group_mappings), and [`MB_LDAP_GROUP_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_group_base).
 
 ![Group Mapping](images/ldap-group-mapping.png)
 

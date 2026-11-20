@@ -54,7 +54,7 @@ Here's a breakdown of each of the settings:
 
 - **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider. On self-hosted Metabases, you can also set it with the [`MB_JWT_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_jwt_identity_provider_uri) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
-- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then generate a key or paste your own. On self-hosted Metabases, you can also set it with the [`MB_JWT_SHARED_SECRET`](../configuring-metabase/environment-variables.md#mb_jwt_shared_secret) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then generate a key or paste your own. On self-hosted Metabases, you can also set it with the [`MB_JWT_SHARED_SECRET`](../configuring-metabase/environment-variables.md#mb_jwt_shared_secret) environment variable.
 
 Until you save your settings, the **User attribute configuration** and **Group mapping** sections stay locked. You can edit **User provisioning** before you save.
 

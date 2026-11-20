@@ -114,4 +114,4 @@ If the pivot table has more than one metric, Metabase divides the limit between 
 
 If a pivot table goes over the limit, Metabase shows a "Too many rows for a pivot table" error instead of the table. To get under the limit, add a filter or remove a field from the rows or columns.
 
-On self-hosted Metabases, admins can change the limit with the [`MB_PIVOT_MAX_RESULT_ROWS`](../../configuring-metabase/environment-variables.md#mb_pivot_max_result_rows) environment variable or, on Pro and Enterprise plans, in the [config file](../../configuring-metabase/config-file.md).
+On self-hosted Metabases, admins can change the limit with the [`MB_PIVOT_MAX_RESULT_ROWS`](../../configuring-metabase/environment-variables.md#mb_pivot_max_result_rows) environment variable.

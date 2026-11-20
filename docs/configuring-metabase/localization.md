@@ -136,12 +136,12 @@ To configure default currency settings:
 
 On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md) or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
-| Setting                                                                                                                                       | Environment variable                                                      | Config file name    |
-| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
-| [Instance language](#set-default-instance-language)                                                                                           | [`MB_SITE_LOCALE`](./environment-variables.md#mb_site_locale)             | `site-locale`       |
-| [Report timezone](#set-default-instance-report-timezone)                                                                                      | [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone)     | `report-timezone`   |
-| [First day of the week](#first-day-of-the-week)                                                                                               | [`MB_START_OF_WEEK`](./environment-variables.md#mb_start_of_week)         | `start-of-week`     |
-| [Dates and times](#dates-and-times-display-settings), [numbers](#number-display-settings), and [currency](#currency-display-settings) display | [`MB_CUSTOM_FORMATTING`](./environment-variables.md#mb_custom_formatting) | `custom-formatting` |
+| Setting                                                                                                                                       | Environment variable                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Instance language](#set-default-instance-language)                                                                                           | [`MB_SITE_LOCALE`](./environment-variables.md#mb_site_locale)             |
+| [Report timezone](#set-default-instance-report-timezone)                                                                                      | [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone)     |
+| [First day of the week](#first-day-of-the-week)                                                                                               | [`MB_START_OF_WEEK`](./environment-variables.md#mb_start_of_week)         |
+| [Dates and times](#dates-and-times-display-settings), [numbers](#number-display-settings), and [currency](#currency-display-settings) display | [`MB_CUSTOM_FORMATTING`](./environment-variables.md#mb_custom_formatting) |
 
 ## Localizing embedded Metabase
 

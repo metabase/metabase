@@ -27,7 +27,7 @@ To set up user provisioning:
 
 Metabase will tell you the SCIM endpoint URL and SCIM token to share with your identity provider.
 
-On self-hosted Metabases, you can also turn SCIM user provisioning on or off with the [`MB_SCIM_ENABLED`](../configuring-metabase/environment-variables.md#mb_scim_enabled) environment variable or in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also turn SCIM user provisioning on or off with the [`MB_SCIM_ENABLED`](../configuring-metabase/environment-variables.md#mb_scim_enabled) environment variable.
 
 > SAML user provisioning is always disabled when SCIM is enabled.
 

@@ -209,18 +209,18 @@ For more granular options, check out [AI usage controls](./usage-controls.md).
 
 ## Configure AI with environment variables
 
-On self-hosted Metabases, you can also set these settings with [environment variables](../configuring-metabase/environment-variables.md) or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set these settings with [environment variables](../configuring-metabase/environment-variables.md).
 
-| Setting                                                                      | Environment variable                                                                                                                         | Config file name                   |
-| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| [Provider connections](#set-provider-credentials-with-environment-variables) | [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers)                                                      | `llm-providers`                    |
-| [Default model](#default-model)                                              | [`MB_LLM_METABOT_PROVIDER`](../configuring-metabase/environment-variables.md#mb_llm_metabot_provider)                                        | `llm-metabot-provider`             |
-| [Fast mode](#default-model)                                                  | [`MB_LLM_FAST_MODE`](../configuring-metabase/environment-variables.md#mb_llm_fast_mode)                                                      | `llm-fast-mode`                    |
-| [Mini model](#mini-model)                                                    | [`MB_LLM_MINI_MODEL`](../configuring-metabase/environment-variables.md#mb_llm_mini_model)                                                    | `llm-mini-model`                   |
-| [Enable Metabot](#enable-metabot)                                            | [`MB_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_enabled)                                                  | `metabot-enabled?`                 |
-| [Allow Metabot to read query results](#allow-metabot-to-read-query-results)  | [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled)                  | `metabot-query-execution-enabled?` |
-| [Enable Embedded Metabot](#enable-embedded-metabot)                          | [`MB_EMBEDDED_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_embedded_metabot_enabled)                                | `embedded-metabot-enabled?`        |
-| [Disable all AI features](#disable-all-ai-features)                          | [`MB_AI_FEATURES_ENABLED`](../configuring-metabase/environment-variables.md#mb_ai_features_enabled) (set to `false` to turn off AI features) | `ai-features-enabled?`             |
+| Setting                                                                      | Environment variable                                                                                                                         |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Provider connections](#set-provider-credentials-with-environment-variables) | [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers)                                                      |
+| [Default model](#default-model)                                              | [`MB_LLM_METABOT_PROVIDER`](../configuring-metabase/environment-variables.md#mb_llm_metabot_provider)                                        |
+| [Fast mode](#default-model)                                                  | [`MB_LLM_FAST_MODE`](../configuring-metabase/environment-variables.md#mb_llm_fast_mode)                                                      |
+| [Mini model](#mini-model)                                                    | [`MB_LLM_MINI_MODEL`](../configuring-metabase/environment-variables.md#mb_llm_mini_model)                                                    |
+| [Enable Metabot](#enable-metabot)                                            | [`MB_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_enabled)                                                  |
+| [Allow Metabot to read query results](#allow-metabot-to-read-query-results)  | [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled)                  |
+| [Enable Embedded Metabot](#enable-embedded-metabot)                          | [`MB_EMBEDDED_METABOT_ENABLED`](../configuring-metabase/environment-variables.md#mb_embedded_metabot_enabled)                                |
+| [Disable all AI features](#disable-all-ai-features)                          | [`MB_AI_FEATURES_ENABLED`](../configuring-metabase/environment-variables.md#mb_ai_features_enabled) (set to `false` to turn off AI features) |
 
 ## Tips for making the most of Metabot
 

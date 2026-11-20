@@ -159,7 +159,7 @@ If your IdP encrypts SAML responses, you'll need to ensure this section is fille
 - **SAML keystore password:** the magic spell that will open the keystore.
 - **SAML keystore alias:** the alias for the key that Metabase should use for signing SAML requests.
 
-On self-hosted Metabases, you can also set the keystore password and alias with the environment variables [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password) and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set the keystore password and alias with the environment variables [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password) and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias).
 
 ## SAML Single logout (SLO)
 
@@ -206,7 +206,7 @@ After you set up the group attribute in your IdP, configure group mappings:
 
 Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
 
-On self-hosted Metabases, you can also set the group attribute name, the group mapping toggle, and the mappings themselves with the environment variables [`MB_SAML_ATTRIBUTE_GROUP`](../configuring-metabase/environment-variables.md#mb_saml_attribute_group), [`MB_SAML_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_saml_group_sync), and [`MB_SAML_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_saml_group_mappings), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set the group attribute name, the group mapping toggle, and the mappings themselves with the environment variables [`MB_SAML_ATTRIBUTE_GROUP`](../configuring-metabase/environment-variables.md#mb_saml_attribute_group), [`MB_SAML_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_saml_group_sync), and [`MB_SAML_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_saml_group_mappings).
 
 ![Group mapping](images/saml-okta-groups.png)
 

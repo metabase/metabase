@@ -128,7 +128,7 @@ Keep system prompts short. See [AI system prompts](./system-prompts.md).
 
 When a table, model, or question is open, Metabot sees its columns and their descriptions, its measures and segments, and the tables it joins to. Opening the right item first is the most direct way to point Metabot at the right data.
 
-In the chat sidebar, Metabot also sees recently viewed items, so viewing a relevant table or question first helps. AI exploration and **Ask Metabot** in documents ignore recently viewed items.
+In the chat sidebar, Metabot also sees the names and descriptions of up to five recently viewed items, so viewing a relevant table or question first helps. On self-hosted Metabases, admins can turn this off with the [`MB_METABOT_RECENT_VIEWS_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_recent_views_enabled) environment variable. AI exploration and **Ask Metabot** in documents ignore recently viewed items.
 
 Documents are an exception to this: when a document is open, the chat sidebar doesn't see what's in it. Metabot can still find a document by searching for it, so mention the document's name in your question if needed.
 
