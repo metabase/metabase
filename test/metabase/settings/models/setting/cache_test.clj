@@ -171,17 +171,13 @@
             (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
             (is (= "another instance" (force-check-and-read-test-setting-1!)))))))))
 
-(deftest rolled-back-write-is-undone-in-the-cache-test
-  (testing "a write rolled back by its caller's transaction is gone from the cache after the next check"
+(deftest uncommitted-write-is-read-inside-its-transaction-test
+  (testing "inside the transaction that writes a setting, reads see the write"
     (mt/discard-setting-changes [test-setting-1]
       (setting-test/test-setting-1! "committed")
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"roll back"
-                            (t2/with-transaction [_conn]
-                              (setting-test/test-setting-1! "rolled back")
-                              (testing "inside the transaction, the write's reload of the cache sees the write"
-                                (is (= "rolled back" (setting-test/test-setting-1))))
-                              (throw (ex-info "roll back" {})))))
-      (is (= "committed" (force-check-and-read-test-setting-1!))))))
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "uncommitted")
+        (is (= "uncommitted" (force-check-and-read-test-setting-1!)))))))
 
 (deftest cache-out-of-date-test
   (testing "If there is no cache, it should be considered out of date!"
@@ -360,3 +356,19 @@
           .start
           (.join 10000)))
       (is (= "after" (setting-test/test-setting-1))))))
+
+(deftest another-threads-check-keeps-an-uncommitted-write-test
+  (testing "while a write is uncommitted, another thread's check does not revert the shared cache to the committed values"
+    ;; A revert fires the `:on-change` handlers of the reverted settings, and again when the next check restores the
+    ;; write: for `report-timezone`, each one closes every database's connection pool.
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "before")
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "after")
+        (let [reloaded? (atom ::not-run)]
+          ;; A plain Thread, so that the check runs on a connection of its own: `future` conveys this transaction's.
+          (doto (Thread. #(reset! reloaded? (setting.cache/restore-cache-if-needed! :force-check? true)))
+            .start
+            (.join 10000))
+          (is (not= ::not-run @reloaded?) "premise: the other thread's check ran")
+          (is (= "after" (get (setting.cache/cache) "test-setting-1"))))))))

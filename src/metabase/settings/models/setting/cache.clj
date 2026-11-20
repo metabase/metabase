@@ -81,22 +81,33 @@
 ;; that wrote them, and on Postgres and H2 a transaction's `now()` is the time it began, so a later write can store a
 ;; marker that sorts lower. A cache takes its marker only from the read that loads its values, so that it never holds
 ;; the marker of a write whose value it lacks.
+;;
+;; The cache is shared by every thread, so it never takes a marker from inside a transaction: another thread's check
+;; would read the committed marker, see that it differs, and reload the committed values, firing their `:on-change`
+;; handlers. Once the transaction commits, the next check reloads.
 
 (def ^String settings-last-updated-key
   "Internal key used to store the last updated timestamp for Settings."
   "settings-last-updated")
 
 (defn restore-cache!
-  "Populate cache with the latest hotness from the db"
+  "Load every setting into the cache in `state`, on this thread's connection. Inside a transaction the cache keeps the
+  marker it holds, since the one this connection reads may never commit."
   ([] (restore-cache! (current-state)))
   ([state]
    (log/debug "Refreshing Settings cache...")
-   (reset! (cache* state) (settings.db/setting-values-by-key))))
+   (let [loaded (settings.db/setting-values-by-key)]
+     (if (mdb/in-transaction?)
+       (swap! (cache* state) (fn [cache]
+                               (if-let [marker (core/get cache settings-last-updated-key)]
+                                 (assoc loaded settings-last-updated-key marker)
+                                 (dissoc loaded settings-last-updated-key))))
+       (reset! (cache* state) loaded)))))
 
 (defn update-settings-last-updated!
   "Store a new `settings-last-updated` marker, inserting its row if there is none. Then reload the cache for the
-  application DB this thread sees, on this thread's connection: the cache holds the new marker and every write that
-  connection sees, including the uncommitted writes of its transaction."
+  application DB this thread sees, on this thread's connection: the cache holds every write that connection sees, and
+  the new marker unless the caller is in a transaction."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
@@ -120,8 +131,7 @@
   ;; this cache was loaded, so this cache would otherwise miss that instance's values until the marker next changes.
   (let [state (current-state)]
     (restore-cache! state)
-    ;; Inside a transaction, another thread's check can replace this uncommitted snapshot with the committed one, so
-    ;; make the next check due once this one commits.
+    ;; Inside a transaction the cache kept its committed marker, so make the next check due once the new one commits.
     (when (mdb/in-transaction?)
       (mdb/do-after-commit #(.set ^AtomicLong (:last-update-check state) 0)))))
 
