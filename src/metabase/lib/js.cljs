@@ -1579,7 +1579,7 @@
 ;; ## Legacy refs
 (defn- normalize-legacy-ref
   [a-ref]
-  (if (#{:aggregation :metric :segment} (first a-ref))
+  (if (= (first a-ref) :aggregation)
     (subvec a-ref 0 2)
     (update a-ref 2 update-vals #(if (qualified-keyword? %)
                                    (u/qualified-name %)
@@ -1598,11 +1598,7 @@
 (defn- ref->legacy-ref
   [a-ref]
   (-> a-ref
-      ;; TODO (Cam 2026-11-16) check whether we can change this to [[lib.convert/->legacy-MBQL-ref]] -- I have no idea
-      ;; why we'd ever be calling [[legacy-ref]] with a Metric/Segment/Measure in the first place, I don't think their
-      ;; legacy refs are used anywhere.
-      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-      lib.convert/->legacy-MBQL
+      lib.convert/->legacy-MBQL-ref
       normalize-legacy-ref))
 
 (defn ^:export column-unique-key
@@ -1614,16 +1610,15 @@
   (lib.metadata.column/column-unique-key column))
 
 (defn ^:export legacy-ref
-  "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
-  return it as a legacy JSON field ref.
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref.
 
-  For compatibility reasons, segment and metric references are always returned without options.
+  Aggregation references are always returned without options.
 
   > **Code health:** Legacy. New calls strongly discouraged; refs are a bad leak in the abstraction and we should aim
   to refactor the existing ones."
-  [a-query stage-number referenceable]
+  [a-query stage-number a-column]
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (-> referenceable
+    (-> a-column
         lib.core/ref
         ref->legacy-ref
         clj->js)))

@@ -251,45 +251,7 @@
               (.-value (lib.js/filter-drill-details {:value :null})))))))
 
 (deftest ^:parallel legacy-ref-test
-  (let [segment-id 100
-
-        segment-definition
-        {:source-table (meta/id :venues)
-         :aggregation  [[:count]]
-         :filter       [:and
-                        [:> [:field (meta/id :venues :id) nil] [:* [:field (meta/id :venues :price) nil] 11]]
-                        [:contains [:field (meta/id :venues :name) nil] "BBQ" {:case-sensitive true}]]}
-
-        metric-id 101
-
-        metric-definition
-        (-> (lib.tu/venues-query)
-            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
-            (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
-            ;; existing usage -- do not use going forward
-            #_{:clj-kondo/ignore [:deprecated-var]}
-            lib.convert/->legacy-MBQL)
-
-        metadata-provider
-        (lib.tu/mock-metadata-provider
-         meta/metadata-provider
-         {:segments [{:id          segment-id
-                      :name        "PriceID-BBQ"
-                      :table-id    (meta/id :venues)
-                      :definition  segment-definition
-                      :description "The ID is greater than 11 times the price and the name contains \"BBQ\"."}]
-          :cards [{:id            metric-id
-                   :name          "Sum of Cans"
-                   :database-id   (meta/id)
-                   :table-id      (meta/id :venues)
-                   :dataset-query metric-definition
-                   :description   "Number of toucans plus number of pelicans"
-                   :type          :metric}]})
-
-        query (lib/query metadata-provider (meta/table-metadata :venues))
-
-        metric-query (lib/query metadata-provider (lib.metadata/card metadata-provider metric-id))
-
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
         array-checker #(when (array? %) (js->clj %))
         to-legacy-refs (comp array-checker #(lib.js/legacy-ref query -1 %))]
     (testing "field refs come with options"
@@ -300,12 +262,6 @@
               ["field" (meta/id :venues :longitude) {"base-type" "type/Float"}]
               ["field" (meta/id :venues :price) {"base-type" "type/Integer"}]]
              (->> query lib/returned-columns (map to-legacy-refs)))))
-    (testing "segment refs come without options"
-      (is (= [["segment" segment-id]]
-             (->> query lib/available-segments (map to-legacy-refs)))))
-    (testing "metric refs come without options"
-      (is (= [["metric" metric-id]]
-             (->> metric-query lib/available-metrics (map to-legacy-refs)))))
     (testing "aggregation references (#37698)"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
@@ -319,13 +275,7 @@
                 ;; add this back when the second aggregation is added back
                 #_["aggregation-options" ["aggregation 1"] {"display-name" "avg price"}]]
                (map (comp array-checker #(lib.js/legacy-ref query -1 %))
-                    (lib.js/returned-columns query -1))))))
-    (let [legacy-refs (->> query lib/available-segments (map #(lib.js/legacy-ref query -1 %)))]
-      (testing "legacy segment refs come without options"
-        (is (= [["segment" segment-id]] (map array-checker legacy-refs)))))
-    (let [legacy-refs (->> metric-query lib/available-metrics (map #(lib.js/legacy-ref query -1 %)))]
-      (testing "metric refs come without options"
-        (is (= [["metric" metric-id]] (map array-checker legacy-refs)))))))
+                    (lib.js/returned-columns query -1))))))))
 
 (deftest ^:parallel expression-clause-normalization-test
   (are [x y] (do
