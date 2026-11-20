@@ -82,7 +82,9 @@ jobs:
         env:
           GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
         run: |
-          if [ -n "$(git ls-remote --tags origin "refs/tags/$GIT_TAG")" ]; then
+          # Assigned on its own line so a failed lookup stops the job instead of reading as "no tag".
+          EXISTING=$(git ls-remote --tags origin "refs/tags/$GIT_TAG")
+          if [ -n "$EXISTING" ]; then
             echo "::error::Git tag '$GIT_TAG' already exists. Bump version in frontend/ui-package/package.json and land a new PR."
             exit 1
           fi
