@@ -69,8 +69,8 @@
   (t2/select [:model/Field :id :table_id] :id [:in field-ids]))
 
 (mu/defn field-immutable-columns :- [:maybe [:map {:closed true}
-                                      [:table_id ::lib.schema.id/table]
-                                      [:db_id    ::lib.schema.id/database]]]
+                                             [:table_id ::lib.schema.id/table]
+                                             [:db_id    ::lib.schema.id/database]]]
   "The ::warehouse-schema.schema/table ID and ::warehouses.schema/database ID of the ::warehouse-schema.schema/field
   with `field-id`, or nil when there is none."
   [field-id :- ::lib.schema.id/field]
