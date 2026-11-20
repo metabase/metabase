@@ -1,52 +1,19 @@
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Series } from "metabase-types/api";
 
-import { getQuestionWithDefaultVisualizationSettings } from "../../utils/viz-settings";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  hasResultsOfQuestion,
+} from "../../utils/viz-settings";
 
 interface Options {
   question: Question;
   currentQuestion?: Question;
   rawSeries?: Series;
-}
-
-/**
- * Whether `rawSeries` holds the results of the question's query, and not of an earlier query.
- * The results of an earlier query don't have the columns of the question's query, so they can't
- * tell where its columns go in the pivot table.
- */
-export function hasResultsOfQuestion(
-  question: Question,
-  rawSeries: Series | null | undefined,
-) {
-  const lastRunQuery = rawSeries?.[0]?.card.dataset_query;
-  return (
-    isNotNull(lastRunQuery) &&
-    Lib.areLegacyQueriesEqual(question.datasetQuery(), lastRunQuery)
-  );
-}
-
-/**
- * `questionWithDefaults` is `question` with the default settings that `rawSeries` gives. When
- * `rawSeries` holds the results of an earlier query, those defaults take the columns that only
- * the question's query has out of the pivot table's column split. This gives the column split
- * of `question` back in that case.
- */
-export function keepPivotColumnSplitOfChangedQuery(
-  question: Question,
-  questionWithDefaults: Question,
-  rawSeries: Series | null | undefined,
-) {
-  const key = "pivot_table.column_split";
-  const columnSplit = question.settings()[key];
-  if (!columnSplit || hasResultsOfQuestion(question, rawSeries)) {
-    return questionWithDefaults;
-  }
-  return questionWithDefaults.updateSettings({ [key]: columnSplit });
 }
 
 export function computeQuestionPivotTable(options: Options) {
@@ -57,10 +24,12 @@ export function computeQuestionPivotTable(options: Options) {
   const isPivot = question.display() === "pivot";
   const wasPivot = currentQuestion?.display() === "pivot";
   let shouldRun = null;
+  let hasStaleResults = false;
 
   const isQuestionNative = Lib.queryDisplayInfo(question.query()).isNative;
 
   if (wasPivot || isPivot) {
+    hasStaleResults = !hasResultsOfQuestion(question, rawSeries);
     const hasBreakouts =
       !isQuestionNative && Lib.breakouts(question.query(), -1).length > 0;
 
@@ -68,7 +37,7 @@ export function computeQuestionPivotTable(options: Options) {
     if (isPivot && hasBreakouts) {
       const key = "pivot_table.column_split";
 
-      if (rawSeries && hasResultsOfQuestion(question, rawSeries)) {
+      if (rawSeries && !hasStaleResults) {
         const series = assocIn(rawSeries, [0, "card"], question.card());
         const setting = getQuestionWithDefaultVisualizationSettings(
           question,
@@ -89,7 +58,7 @@ export function computeQuestionPivotTable(options: Options) {
     });
   }
 
-  return { shouldRun, question };
+  return { shouldRun, question, hasStaleResults };
 }
 
 function checkShouldRerunPivotTableQuestion({
