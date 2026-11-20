@@ -1114,7 +1114,9 @@
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running. Halting the global system stops it too."
   []
-  (global-system/stop! system-component)
+  ;; a start that threw after setting `system` registered nothing, and a stop that threw left `system` set
+  (when-not (global-system/stop! system-component)
+    (some-> system stop-system!))
   nil)
 
 ;; Threads still working during shutdown, like notification sends, call these after [[shutdown!]] drops the registry.
