@@ -3,6 +3,7 @@
 (ns dev.search-semantics-report
   "Generate a standalone HTML comparison of the search semantics fixture.
   Run with ./bin/mage search-semantics-report, optionally followed by an output path.
+  The mage task runs the model tests first, with node --test dev/test/search_semantics_report_model_test.mjs.
   Direct invocation: bb -cp test:test_resources dev/search_semantics_report.bb."
   (:require
    [babashka.process :as p]
