@@ -59,18 +59,43 @@ export function canPivotSummary(question: Question, stageIndex: number) {
   return isLastStage && (question.database()?.supportsPivots() ?? true);
 }
 
+/**
+ * The name of the column that the field reference is for, or `undefined` when the query has no
+ * such column. Lib throws for a reference that it can't convert, such as the reference to an
+ * aggregation that was removed from the query.
+ */
+function getColumnName(
+  query: Lib.Query,
+  columns: Lib.ColumnMetadata[],
+  fieldRef: FieldReference,
+): string | undefined {
+  try {
+    const [index] = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      STAGE_INDEX,
+      columns,
+      [fieldRef],
+    );
+    return index >= 0
+      ? Lib.displayInfo(query, STAGE_INDEX, columns[index]).name
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getColumnNames(
   query: Lib.Query,
   fieldRefs: (FieldReference | null)[] = [],
 ): string[] {
   const columns = Lib.returnedColumns(query, STAGE_INDEX);
-  const refs = fieldRefs.filter(isNotNull);
-  if (columns.length === 0 || refs.length === 0) {
+  if (columns.length === 0) {
     return [];
   }
-  return Lib.findColumnIndexesFromLegacyRefs(query, STAGE_INDEX, columns, refs)
-    .filter((index) => index >= 0)
-    .map((index) => Lib.displayInfo(query, STAGE_INDEX, columns[index]).name);
+  return fieldRefs
+    .filter(isNotNull)
+    .map((fieldRef) => getColumnName(query, columns, fieldRef))
+    .filter(isNotNull);
 }
 
 function getColumnNameSplit(

@@ -40,8 +40,8 @@ export const StructuredQueryRightSidebar = ({
       Lib.breakouts(query, stageIndex).length > 0,
   );
   const pivotColumnSplit = useMemo(
-    () => getPivotColumnSplit(question),
-    [question],
+    () => (isShowingSummarySidebar ? getPivotColumnSplit(question) : undefined),
+    [question, isShowingSummarySidebar],
   );
   return match({
     isSaved: question.isSaved(),

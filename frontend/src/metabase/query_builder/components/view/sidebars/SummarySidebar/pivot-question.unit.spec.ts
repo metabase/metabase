@@ -186,6 +186,30 @@ describe("getPivotColumnSplit", () => {
     );
   });
 
+  it("leaves out a field reference that the query no longer has", () => {
+    const question = createQuestion({
+      display: "pivot",
+      visualization_settings: {
+        "pivot_table.column_split": {
+          rows: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
+            ],
+          ],
+          columns: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+          values: [
+            ["aggregation", 0],
+            ["aggregation", 1],
+          ],
+        },
+      },
+    });
+
+    expect(getPivotColumnSplit(question)).toEqual(columnSplit);
+  });
+
   it("puts a grouping that the column split doesn't have in the rows, as the pivot table does", () => {
     const question = createQuestion({
       display: "pivot",
