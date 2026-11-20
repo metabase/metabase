@@ -21,7 +21,7 @@ export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
   max: number;
 };
 
-export type GoalSourceKind = CardType | "measure";
+export type GoalSourceKind = Exclude<CardType, "model"> | "measure";
 
 export type GoalRefErrorReason =
   | "query-failed"
