@@ -172,12 +172,12 @@
   "The goal value can come from a progress goal or a graph goal_value depending on it's type.
   For progress charts, the goal can be either a number or a column reference.
   A `{:id N, :type \"card\", :column \"name\"}` goal resolves against the values under
-  `[:result :data :referenced_entities]` and throws when it can't produce a number.
+  `(:goal-values result)` and throws when it can't produce a number.
   Matches the frontend behavior: invalid self-column goals fallback to default value (0)."
   [result]
   (let [resolve-ref #(dynamic-goals/resolve-goal-value
                       %
-                      (get-in result [:result :data :referenced_entities]))]
+                      (:goal-values result))]
     (case (get-in result [:card :display])
 
       (:area :bar :line)

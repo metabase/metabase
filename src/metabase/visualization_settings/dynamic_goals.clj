@@ -5,6 +5,8 @@
   results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`."
   (:require
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.visualization-settings.dynamic-goal-settings :as dynamic-goal-settings]))
 
 (set! *warn-on-reflection* true)
@@ -46,6 +48,23 @@
 (def goal-entity-types
   "The entity `:type`s a dynamic goal can reference."
   (set (keys goal-entity-models)))
+
+(mr/def ::source-result
+  "The result of running one goal source."
+  [:map {:closed true}
+   [:status     [:enum "completed" "failed"]]
+   [:error      {:optional true} [:maybe :string]]
+   [:error_type {:optional true} [:maybe [:enum "too-many-rows" "not-found" "has-parameters" "withheld"
+                                          "too-many-sources"]]]
+   [:data       {:optional true} [:maybe [:map {:closed true}
+                                          [:cols {:optional true}
+                                           [:maybe [:sequential :metabase.legacy-mbql.schema/legacy-column-metadata]]]
+                                          [:rows {:optional true}
+                                           [:maybe [:sequential [:sequential ms/FieldValue]]]]]]]])
+
+(mr/def ::goal-values
+  "Goal source results by source type, then by source id. A source with no entry wasn't run."
+  [:map-of :string [:map-of :string ::source-result]])
 
 (defn- values-in
   [viz-settings settings]
@@ -201,16 +220,16 @@
         (unresolved! :not-a-number ref)))))
 
 (defn resolve-goal-value
-  "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
-  keyed by entity type and then by id *string*). Literal numbers and self-column names pass through
+  "Resolve `goal-value` against `goal-values` (see `::goal-values`, keyed by entity type and then by id *string*).
+  Literal numbers and self-column names pass through
   unchanged; an entity reference becomes the referenced column's first-row value. Throws
   `::unresolved-goal` with `:reason` `:never-ran`/`:query-failed`/`:too-many-rows`/`:column-not-found`/
   `:not-a-number` when the reference can't produce a finite number."
-  [goal-value referenced-entities]
+  [goal-value goal-values]
   (if-let [{entity-type :type, :keys [id column] :as ref} (goal-source goal-value)]
-    (let [{:keys [status data error_type] :as result} (get-in referenced-entities [entity-type (str id)])]
-      ;; no entry at all: the entity was never queried (cancelled mid-run, or the caller derived its
-      ;; specs from different settings than the ones being resolved here)
+    (let [{:keys [status data error_type] :as result} (get-in goal-values [entity-type (str id)])]
+      ;; no entry at all: the source never ran (cancelled mid-run, or its values were fetched for different
+      ;; settings than the ones being resolved here)
       (when-not result
         (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
@@ -263,10 +282,10 @@
   other goal value that can't resolve falls back to 0, and a segment bound that can't resolve becomes nil. A goal the
   chart doesn't show is left as-is. Toggles are read from `effective-settings`, which defaults to `viz-settings`:
   resolving one half of a card+dashcard pair has to consult the merge, since either half can flip `graph.show_goal`."
-  ([display viz-settings referenced-entities]
-   (resolve-dynamic-goals display viz-settings referenced-entities viz-settings))
-  ([display viz-settings referenced-entities effective-settings]
-   (let [resolve-fn #(resolve-goal-value % referenced-entities)]
+  ([display viz-settings goal-values]
+   (resolve-dynamic-goals display viz-settings goal-values viz-settings))
+  ([display viz-settings goal-values effective-settings]
+   (let [resolve-fn #(resolve-goal-value % goal-values)]
      (reduce-kv
       (fn [viz setting kind]
         (if (nil? (get viz setting))
@@ -279,12 +298,12 @@
       (shown-goal-settings display effective-settings)))))
 
 (defn resolve-drawn-goals
-  "Resolve the goals `card` draws on `dashcard` (see [[goal-scope]]) against `data`'s `:referenced_entities`, in
-  every settings map a renderer reads them from. Returns `[card dashcard data]`; goals the chart doesn't draw are left
-  as stored."
-  [card dashcard data]
+  "Resolve the goals `card` draws on `dashcard` (see [[goal-scope]]) against `goal-values`, in every
+  settings map a renderer reads them from. Returns `[card dashcard data]`; goals the chart doesn't draw are left as
+  stored."
+  [card dashcard data goal-values]
   (if-let [{:keys [display effective-settings]} (goal-scope card dashcard)]
-    (let [resolve-fn  #(resolve-dynamic-goals display % (:referenced_entities data) effective-settings)
+    (let [resolve-fn  #(resolve-dynamic-goals display % goal-values effective-settings)
           resolve-in  (fn [m path]
                         (cond-> m
                           (get-in m path) (update-in path resolve-fn)))
@@ -300,12 +319,12 @@
     [card dashcard data]))
 
 (defn- goal-failure
-  "Why `goal-value` can't resolve against `data`: its `::unresolved-goal` ex-data minus `:type`, or nil. Column names
-  are only checked when `check-columns?`."
-  [goal-value data check-columns?]
+  "Why `goal-value` can't resolve against `goal-values` and the chart's `data`: its `::unresolved-goal` ex-data minus
+  `:type`, or nil. Column names are only checked when `check-columns?`."
+  [goal-value goal-values data check-columns?]
   (try
     (cond
-      (goal-source goal-value)                  (resolve-goal-value goal-value (:referenced_entities data))
+      (goal-source goal-value)                  (resolve-goal-value goal-value goal-values)
       (and check-columns? (string? goal-value)) (resolve-self-column-value goal-value data))
     nil
     (catch clojure.lang.ExceptionInfo e
@@ -313,10 +332,10 @@
           (throw e)))))
 
 (defn unresolved-goals
-  "The goals `card` draws on `dashcard` (see [[goal-scope]]) that can't resolve against `data`, as distinct
-  `{:setting :reason :entity-type :entity-id :column}` maps. A visualizer's column-name goals are skipped: its chart
-  reads columns merged from several cards, not `data`'s."
-  [card dashcard data]
+  "The goals `card` draws on `dashcard` (see [[goal-scope]]) that can't resolve against `goal-values` and
+  `data`, as distinct `{:setting :reason :entity-type :entity-id :column}` maps. A visualizer's column-name goals are
+  skipped: its chart reads columns merged from several cards, not `data`'s."
+  [card dashcard data goal-values]
   (when-let [{:keys [display viz-settings effective-settings]} (goal-scope card dashcard)]
     (let [check-columns? (nil? (visualizer-chart dashcard))]
       (into []
@@ -325,7 +344,7 @@
                                   goal-value     (values-in viz {setting kind})]
                               [setting goal-value])))
                   (keep (fn [[setting goal-value]]
-                          (some-> (goal-failure goal-value data check-columns?)
+                          (some-> (goal-failure goal-value goal-values data check-columns?)
                                   (assoc :setting setting))))
                   (distinct))
             viz-settings))))

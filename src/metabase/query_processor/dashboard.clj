@@ -28,7 +28,7 @@
    [metabase.util.performance :refer [some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]))
 
-(defn- check-card-and-dashcard-are-in-dashboard
+(defn check-card-and-dashcard-are-in-dashboard
   "Check that the Card with `card-id` is in Dashboard with `dashboard-id`, either in the already-loaded `dashcard` at the
   top level or as a series. If no such relationship exists this will throw a 404 Exception."
   [dashboard-id card-id dashcard]

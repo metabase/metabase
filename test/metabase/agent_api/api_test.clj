@@ -1045,6 +1045,24 @@
         (mt/user-http-request :rasta :post 403
                               (format "agent/v1/question/%d/query" card-id))))))
 
+(deftest execute-question-runs-no-goal-queries-test
+  (testing "Running a saved question whose chart reads a dynamic goal runs only the question's own query"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (orders-count-query)}
+                   :model/Card {card-id :id} {:dataset_query          (orders-count-query)
+                                              :display                :progress
+                                              :visualization_settings {:progress.goal {:id     goal-id
+                                                                                       :type   "card"
+                                                                                       :column "count"}}}]
+      (let [runs          (atom 0)
+            process-query (mt/original-fn #'qp/process-query)]
+        (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
+                                                       (swap! runs inc)
+                                                       (apply process-query args))]
+          (let [resp (mt/user-http-request :crowberto :post 202 (format "agent/v1/question/%d/query" card-id))]
+            (is (=? {:status "completed" :row_count 1} resp))
+            (is (not (contains? (:data resp) :referenced_entities)))
+            (is (= 1 @runs))))))))
+
 (deftest execute-question-rejects-parameterized-test
   (testing "Refuses a card with a native template-tag variable (400)"
     (mt/with-temp [:model/Card {card-id :id}

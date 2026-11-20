@@ -73,7 +73,7 @@
     (is (= {:graph.goal_value [:resolved ref-a]}
            (dynamic-goals/update-dashcard-goal-values {:graph.goal_value ref-a} (fn [goal] [:resolved goal]))))))
 
-(def ^:private referenced-entities
+(def ^:private goal-values
   {"card"    {"1" {:status "completed"
                    :data   {:cols [{:name "count"} {:name "total"}]
                             :rows [[3 100]]}}
@@ -94,7 +94,7 @@
   (thrown-reason #(dynamic-goals/resolve-goal-value goal refs)))
 
 (deftest ^:parallel resolve-goal-value-passthrough-test
-  (are [goal] (= goal (dynamic-goals/resolve-goal-value goal referenced-entities))
+  (are [goal] (= goal (dynamic-goals/resolve-goal-value goal goal-values))
     5
     2.5
     "self-column"
@@ -102,29 +102,29 @@
 
 (deftest ^:parallel resolve-goal-value-test
   (testing "card ref resolves to the referenced column's first-row value"
-    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
-    (is (= 3 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "count"} referenced-entities))))
+    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} goal-values)))
+    (is (= 3 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "count"} goal-values))))
   (testing "a measure ref resolves out of the measure sub-map, not the card one"
-    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} goal-values))))
   (testing "same id, different type, different value"
-    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} referenced-entities)))
-    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} referenced-entities))))
+    (is (= 100 (dynamic-goals/resolve-goal-value {:id 1 :type "card" :column "total"} goal-values)))
+    (is (= 7 (dynamic-goals/resolve-goal-value {:id 1 :type "measure" :column "avg"} goal-values))))
   (testing "a type with no results at all is :never-ran"
-    (is (= :never-ran (unresolved-reason {:id 1 :type "dashboard" :column "avg"} referenced-entities))))
+    (is (= :never-ran (unresolved-reason {:id 1 :type "dashboard" :column "avg"} goal-values))))
   (testing "keyword statuses are accepted too"
     (is (= 100 (dynamic-goals/resolve-goal-value
                 {:id 1 :type "card" :column "total"}
-                (update-in referenced-entities ["card" "1" :status] keyword))))))
+                (update-in goal-values ["card" "1" :status] keyword))))))
 
 (deftest ^:parallel resolve-goal-value-unresolved-test
   (testing ":never-ran when the entity has no entry at all"
     (are [refs] (= :never-ran (unresolved-reason {:id 1 :type "card" :column "total"} refs))
       nil
-      (dissoc referenced-entities "card")
-      (update referenced-entities "card" dissoc "1")))
+      (dissoc goal-values "card")
+      (update goal-values "card" dissoc "1")))
   (testing ":query-failed"
     (are [refs] (= :query-failed (unresolved-reason {:id 1 :type "card" :column "total"} refs))
-      {"card" {"1" (get-in referenced-entities ["card" "2"])}}
+      {"card" {"1" (get-in goal-values ["card" "2"])}}
       {"card" {"1" {:status "completed"}}}))
   (testing ":too-many-rows"
     (are [error-type] (= :too-many-rows
@@ -133,17 +133,17 @@
       "too-many-rows"
       :too-many-rows))
   (testing ":column-not-found"
-    (is (= :column-not-found (unresolved-reason {:id 1 :type "card" :column "nope"} referenced-entities))))
+    (is (= :column-not-found (unresolved-reason {:id 1 :type "card" :column "nope"} goal-values))))
   (testing ":not-a-number"
     (are [value] (= :not-a-number
                     (unresolved-reason {:id 1 :type "card" :column "total"}
-                                       (assoc-in referenced-entities ["card" "1" :data :rows] [[3 value]])))
+                                       (assoc-in goal-values ["card" "1" :data :rows] [[3 value]])))
       nil
       "a string"
       ##Inf))
   (testing ":not-a-number when the referenced result has no rows"
     (is (= :not-a-number (unresolved-reason {:id 1 :type "card" :column "total"}
-                                            (assoc-in referenced-entities ["card" "1" :data :rows] []))))))
+                                            (assoc-in goal-values ["card" "1" :data :rows] []))))))
 
 (def ^:private self-data
   {:cols [{:name "count"} {:name "total"} {:name "name"}]
@@ -175,7 +175,7 @@
              :scalar.segments  [{:min {:id 1 :type "card" :column "count"} :max "self-col"}]}]
     (testing "substitutes referenced values in the goal settings the display draws, leaving the rest as stored"
       (are [display expected] (= (merge viz expected)
-                                 (dynamic-goals/resolve-dynamic-goals display viz referenced-entities))
+                                 (dynamic-goals/resolve-dynamic-goals display viz goal-values))
         :line       {:graph.goal_value 100}
         "bar"       {:graph.goal_value 100}
         :progress   {:progress.goal 3}
@@ -194,26 +194,26 @@
     (testing "a goal line the chart doesn't show is left alone, even when its reference failed"
       (are [show-goal] (= (assoc viz :graph.show_goal show-goal)
                           (dynamic-goals/resolve-dynamic-goals
-                           :line (assoc viz :graph.show_goal show-goal) referenced-entities))
+                           :line (assoc viz :graph.show_goal show-goal) goal-values))
         false
         nil))
     (testing "and keeps its reference once the goal line is shown"
       (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                     :line (assoc viz :graph.show_goal true) referenced-entities)))))
+                                     :line (assoc viz :graph.show_goal true) goal-values)))))
     (testing "toggles can come from a separate effective-settings map"
-      (is (= viz (dynamic-goals/resolve-dynamic-goals :line viz referenced-entities {:graph.show_goal false})))
+      (is (= viz (dynamic-goals/resolve-dynamic-goals :line viz goal-values {:graph.show_goal false})))
       (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                     :line viz referenced-entities {:graph.show_goal true})))))))
+                                     :line viz goal-values {:graph.show_goal true})))))))
 
 (deftest ^:parallel resolve-dynamic-goals-unresolved-test
   (let [failed {:id 2 :type "card" :column "total"}]
     (testing "a graph goal value that can't resolve keeps its reference, any other falls back to 0"
       (is (= {:graph.show_goal true :graph.goal_value failed}
              (dynamic-goals/resolve-dynamic-goals :line {:graph.show_goal true :graph.goal_value failed}
-                                                  referenced-entities)))
+                                                  goal-values)))
       (is (= {:progress.goal 0}
              (dynamic-goals/resolve-dynamic-goals :progress {:progress.goal {:id 9 :type "card" :column "x"}}
-                                                  referenced-entities))))
+                                                  goal-values))))
     (testing "a segment bound that can't resolve becomes unset, the rest still resolve"
       (is (= {:gauge.segments [{:min 0 :max 100}
                                {:min 100 :max nil}]}
@@ -221,14 +221,14 @@
               :gauge
               {:gauge.segments [{:min 0 :max {:id 1 :type "card" :column "total"}}
                                 {:min {:id 1 :type "card" :column "total"} :max failed}]}
-              referenced-entities)))
+              goal-values)))
       (is (= {:scalar.segments [{:min nil :max 3}
                                 {:min nil :max nil}]}
              (dynamic-goals/resolve-dynamic-goals
               :scalar
               {:scalar.segments [{:min nil :max {:id 1 :type "card" :column "count"}}
                                  {:min {:id 1 :type "card" :column "nope"} :max nil}]}
-              referenced-entities))))))
+              goal-values))))))
 
 (deftest ^:parallel resolve-segments-test
   (let [self-data {:cols [{:name "count"}] :rows [[3]]}
@@ -313,16 +313,15 @@
                                                                               :settings chart-viz}}}))))))))
 
 (deftest ^:parallel resolve-drawn-goals-test
-  (let [data {:referenced_entities referenced-entities
-              :viz-settings        {:graph.show_goal true :graph.goal_value ref-a}}]
+  (let [data {:viz-settings {:graph.show_goal true :graph.goal_value ref-a}}]
     (testing "a card's goals resolve in the card's settings and in the result's merge of them"
       (let [card              {:id 1 :display :line :visualization_settings card-viz}
-            [card' _ data'] (dynamic-goals/resolve-drawn-goals card nil data)]
+            [card' _ data'] (dynamic-goals/resolve-drawn-goals card nil data goal-values)]
         (is (= 100 (get-in card' [:visualization_settings :graph.goal_value])))
         (is (= 100 (get-in data' [:viz-settings :graph.goal_value])))))
     (testing "goals the display doesn't draw are left as stored"
       (let [card              {:id 1 :display :custom:foo :visualization_settings card-viz}
-            [card' _ data'] (dynamic-goals/resolve-drawn-goals card nil data)]
+            [card' _ data'] (dynamic-goals/resolve-drawn-goals card nil data goal-values)]
         (is (= card card'))
         (is (= data data'))))
     (testing "a visualizer resolves its nested chart and the dashcard's settings, leaving the card's alone"
@@ -331,7 +330,7 @@
                                   :visualization_settings {:progress.goal ref-a
                                                            :visualization {:display  "progress"
                                                                            :settings {:progress.goal ref-a}}}}
-            [card' dashcard' data'] (dynamic-goals/resolve-drawn-goals card dashcard data)]
+            [card' dashcard' data'] (dynamic-goals/resolve-drawn-goals card dashcard data goal-values)]
         (is (= card card'))
         (is (= data data'))
         (is (= 100 (get-in dashcard' [:visualization_settings :progress.goal])))
@@ -339,13 +338,12 @@
     (testing "a series card resolves nothing"
       (let [card     {:id 2 :display :line :visualization_settings card-viz}
             dashcard {:card_id 1 :visualization_settings card-viz}]
-        (is (= [card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data)))))))
+        (is (= [card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data goal-values)))))))
 
 (deftest ^:parallel unresolved-goals-test
   (let [failed {:id 2 :type "card" :column "total"}
-        data   {:cols                [{:name "total"} {:name "label"}]
-                :rows                [[5 "x"]]
-                :referenced_entities referenced-entities}]
+        data   {:cols [{:name "total"} {:name "label"}]
+                :rows [[5 "x"]]}]
     (testing "every failing goal the chart draws, with its setting and reason"
       (is (= [{:setting :scalar.segments :reason :query-failed :entity-type "card" :entity-id 2 :column "total"}
               {:setting :scalar.segments :reason :column-not-found :entity-type nil :entity-id nil :column "nope"}
@@ -355,15 +353,17 @@
                                                                                  {:min "total" :max "nope"}
                                                                                  {:min "label"}]}}
               nil
-              data))))
+              data
+              goal-values))))
     (testing "a goal in both the card's and the dashcard's settings is listed once"
       (is (= [{:setting :graph.goal_value :reason :query-failed :entity-type "card" :entity-id 2 :column "total"}]
              (dynamic-goals/unresolved-goals
               {:id 1 :display :line :visualization_settings {:graph.show_goal true :graph.goal_value failed}}
               {:card_id 1 :visualization_settings {:graph.goal_value failed}}
-              data))))
+              data
+              goal-values))))
     (testing "nothing for goals the chart doesn't draw, literals, or series cards"
-      (are [card dashcard] (empty? (dynamic-goals/unresolved-goals card dashcard data))
+      (are [card dashcard] (empty? (dynamic-goals/unresolved-goals card dashcard data goal-values))
         {:id 1 :display :line :visualization_settings {:graph.show_goal false :graph.goal_value failed}}  nil
         {:id 1 :display :gauge :visualization_settings {:graph.show_goal true :graph.goal_value failed}}  nil
         {:id 1 :display :custom:foo :visualization_settings {:progress.goal failed}}                     nil
@@ -376,13 +376,15 @@
               {:card_id                1
                :visualization_settings {:visualization {:display  "progress"
                                                         :settings {:progress.goal failed}}}}
-              data)))
+              data
+              goal-values)))
       (is (empty? (dynamic-goals/unresolved-goals
                    {:id 1 :display :progress}
                    {:card_id                1
                     :visualization_settings {:visualization {:display  "progress"
                                                              :settings {:progress.goal "COLUMN_9"}}}}
-                   data))))))
+                   data
+                   goal-values))))))
 
 (deftest ^:parallel goal-references-test
   (testing "every referenced entity column, hidden and visualizer-nested goals included, once each"
