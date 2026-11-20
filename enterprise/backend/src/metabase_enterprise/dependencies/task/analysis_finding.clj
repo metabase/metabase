@@ -15,13 +15,15 @@
 (mu/defn- run-batch! :- [:maybe ms/PositiveInt]
   "Analyze a batch of entities whose findings are outdated, returning when to run again: a second from now when it took
   any, or nil."
-  []
-  (when (premium-features/has-feature? :dependencies)
-    (let [batch-size (deps.settings/dependency-entity-check-batch-size)
-          taken      (deps.analysis-finding/analyze-batch! batch-size)]
-      (when (pos? taken)
-        (log/debug "Processed" taken "entities for analysis")
-        1))))
+  ([]
+   (run-batch! {}))
+  ([opts :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]
+   (when (premium-features/has-feature? :dependencies)
+     (let [batch-size (deps.settings/dependency-entity-check-batch-size)
+           taken      (deps.analysis-finding/analyze-batch! batch-size opts)]
+       (when (pos? taken)
+         (log/debug "Processed" taken "entities for analysis")
+         1)))))
 
 (declare ^:private job)
 
@@ -44,9 +46,12 @@
    :run-batch!       #'run-batch!})
 
 (mu/defn run-batch-in-place! :- ::task.util/batch-outcome
-  "Run a batch of the UpdateAnalysisFindings job now rather than on its schedule."
-  []
-  (task.util/run-batch-in-place! job))
+  "Run a batch of the UpdateAnalysisFindings job now rather than on its schedule; with `reported-only?`, of only the
+  entities the findings report lists."
+  ([]
+   (run-batch-in-place! {}))
+  ([opts :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]
+   (task.util/run-batch-in-place! (assoc job :run-batch! #(run-batch! opts)))))
 
 (mu/defn enabled? :- :boolean
   "Whether the UpdateAnalysisFindings job runs."

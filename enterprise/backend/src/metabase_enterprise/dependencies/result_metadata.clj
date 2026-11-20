@@ -160,38 +160,42 @@
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus counts
   a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting
-  its failure, returning how many statuses it took, deleted ones included."
-  [batch-size :- ms/PositiveInt]
-  (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
-        statuses    (dependencies.db/take-pending-result-metadata-statuses!
-                     batch-size models.result-metadata-status/current-result-metadata-version
-                     models.dependency/current-dependency-analysis-version)]
-    (when (seq deleted-ids)
-      (dependencies.db/delete-result-metadata-statuses! deleted-ids))
-    (lib-be/with-metadata-provider-cache
-      (let [read     (into {}
-                           (map (juxt :card-id identity))
-                           (dependencies.db/readable-entities
-                            cards-with-states (into #{} (map :entity_id) statuses) record-failure!))
-            outcomes (task.util/map-in-parallel
-                      (deps.settings/dependency-job-threads)
-                      (fn [{card-id :entity_id, :keys [stale]}]
-                        (try
-                          (let [{:keys [card state]} (read card-id)]
-                            (rederive-card! card state))
-                          {:card-id card-id :stale stale}
-                          (catch Throwable e
-                            (dependencies.db/throw-unless-app-db-reachable! e)
-                            {:card-id card-id :error e})))
-                      ;; an unreadable card already counted its failure
-                      (filterv (comp read :entity_id) statuses))]
-        (doseq [chunk (partition-all task.util/write-chunk-size (remove :error outcomes))]
-          (dependencies.db/clear-result-metadata-statuses!
-           (into {} (map (juxt :card-id :stale)) chunk)
-           models.result-metadata-status/current-result-metadata-version))
-        (doseq [{:keys [card-id error]} outcomes
-                :when error]
-          (record-failure! card-id error))
-        (when-let [e (->> outcomes (keep :error) (remove #(instance? Exception %)) first)]
-          (throw e))))
-    (+ (count deleted-ids) (count statuses))))
+  its failure, returning how many statuses it took, deleted ones included; with `reported-only?`, only the cards the
+  findings report lists or something depends on."
+  ([batch-size :- ms/PositiveInt]
+   (update-result-metadata! batch-size {}))
+  ([batch-size :- ms/PositiveInt
+    opts       :- [:map {:closed true} [:reported-only? {:optional true} :boolean]]]
+   (let [deleted-ids (dependencies.db/result-metadata-deleted-card-ids batch-size)
+         statuses    (dependencies.db/take-pending-result-metadata-statuses!
+                      batch-size models.result-metadata-status/current-result-metadata-version
+                      models.dependency/current-dependency-analysis-version opts)]
+     (when (seq deleted-ids)
+       (dependencies.db/delete-result-metadata-statuses! deleted-ids))
+     (lib-be/with-metadata-provider-cache
+       (let [read     (into {}
+                            (map (juxt :card-id identity))
+                            (dependencies.db/readable-entities
+                             cards-with-states (into #{} (map :entity_id) statuses) record-failure!))
+             outcomes (task.util/map-in-parallel
+                       (deps.settings/dependency-job-threads)
+                       (fn [{card-id :entity_id, :keys [stale]}]
+                         (try
+                           (let [{:keys [card state]} (read card-id)]
+                             (rederive-card! card state))
+                           {:card-id card-id :stale stale}
+                           (catch Throwable e
+                             (dependencies.db/throw-unless-app-db-reachable! e)
+                             {:card-id card-id :error e})))
+                       ;; an unreadable card already counted its failure
+                       (filterv (comp read :entity_id) statuses))]
+         (doseq [chunk (partition-all task.util/write-chunk-size (remove :error outcomes))]
+           (dependencies.db/clear-result-metadata-statuses!
+            (into {} (map (juxt :card-id :stale)) chunk)
+            models.result-metadata-status/current-result-metadata-version))
+         (doseq [{:keys [card-id error]} outcomes
+                 :when error]
+           (record-failure! card-id error))
+         (when-let [e (->> outcomes (keep :error) (remove #(instance? Exception %)) first)]
+           (throw e))))
+     (+ (count deleted-ids) (count statuses)))))

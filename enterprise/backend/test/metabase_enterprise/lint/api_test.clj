@@ -172,7 +172,22 @@
        (let [report (lint-report)]
          (doseq [card [archived-card internal-card]]
            (is (= [] (card-results report card)))
-           (is (not (contains? (:entities report) (keyword (:entity_id card)))))))))))
+           (is (not (contains? (:entities report) (keyword (:entity_id card)))))
+           (testing "and leaves their analysis to the scheduled job"
+             (is (not (t2/exists? :model/AnalysisFinding :entity_type "card" :entity_id (:id card))))))
+         (testing "and the result metadata of an archived card nothing depends on"
+           (is (not (t2/exists? :model/ResultMetadataStatus
+                                :entity_type "card" :entity_id (:id archived-card) :stale 0)))))))))
+
+(deftest ^:synchronized broken-through-archived-intermediate-card-test
+  (testing "POST /api/ee/lint re-derives the result metadata of an archived card something depends on"
+    (do-with-broken-model!
+     (fn [user model-card]
+       (let [intermediate-card (create-card! user "Lint intermediate" :model (deps.test/card-query (:id model-card)))]
+         [intermediate-card (create-card-filtering-total! user intermediate-card "Lint dependent")]))
+     (fn [_model-card [intermediate-card dependent-card]]
+       (card/update-card! {:card-before-update intermediate-card :card-updates {:archived true}})
+       (is (= ["missing-column"] (map :ruleId (card-results (lint-report) dependent-card))))))))
 
 (deftest ^:synchronized fixed-entity-no-longer-reported-test
   (testing "POST /api/ee/lint stops reporting an entity once it is fixed"
