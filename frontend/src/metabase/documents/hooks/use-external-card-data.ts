@@ -28,6 +28,7 @@ export function useExternalCardDataLoader(
 
   const {
     data: dataset,
+    startedTimeStamp: datasetFetchStartedAt,
     isLoading: isLoadingDataset,
     error: datasetError,
   } = useGetPublicDocumentCardQueryQuery(
@@ -54,6 +55,7 @@ export function useExternalCardDataLoader(
   return {
     card,
     dataset,
+    datasetFetchStartedAt,
     isLoading,
     series,
     question,
