@@ -20,7 +20,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-   [metabase.query-processor.compile :as qp.compile]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -434,9 +433,10 @@
           query (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
           query (lib/aggregate query (lib/count))]
       (qp.store/with-metadata-provider mp
-        (let [sql (:query (qp.compile/compile query))]
-          (is (str/starts-with? sql "WITH \"__mb_stage_0\" AS ("))
-          (is (not (re-find #"__mb_stage_1" sql))))))))
+        (driver/with-driver :redshift
+          (is (=? [{:source-table (meta/id :venues)}
+                   {:aggregation [[:count {}]]}]
+                  (sql.qp/preprocess :redshift query))))))))
 
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; We might use it again in the future for getting privileges for actions.
