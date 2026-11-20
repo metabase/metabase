@@ -98,6 +98,7 @@ Pills B and C (Figma nodes 361:2521, 361:2582) are used only in the custom colum
 - 2026-11-19 — D: large AI changes show as a diff to accept or reject, as in A. Why: Oleh's version of the Figma (frames 304:15577, 304:15631, 304:16770) kept it.
 - 2026-11-19 — D: the preview can't hide; its button in the code row shows only until the preview shows.
 - 2026-11-19 — D: the docs button in the code row shows when the user closes the docs side panel.
+- 2026-11-20 — A new custom column or custom summary can be renamed before its expression is valid. The name stays in the step's state until the first valid edit adds the clause with it. The AI does not replace a name that the user gave. A new pill (column, summary or filter) shows no unsaved dot; the dot shows only on a saved clause with an invalid edit.
 
 ## Settings
 - `expression-editor-version` — which version of the editor shows.

@@ -66,6 +66,18 @@ export const ExpressionStep = ({
     {},
   );
 
+  // The names that the user gave to drafts. A draft is not in the query yet,
+  // so its name stays here until the first valid edit adds the column.
+  const [draftNames, setDraftNames] = useState<Record<string, string>>({});
+  const draftNamesRef = useRef(draftNames);
+  draftNamesRef.current = draftNames;
+
+  const setDraftName = useCallback((id: string, name: string | undefined) => {
+    setDraftNames(({ [id]: _removed, ...rest }) =>
+      name === undefined ? rest : { ...rest, [id]: name },
+    );
+  }, []);
+
   const dropPendingSource = useCallback((target: EditorTarget) => {
     const key = pendingKey(target);
     setPendingSources((pending) => {
@@ -159,9 +171,11 @@ export const ExpressionStep = ({
       const existing =
         target.kind === "clause" ? currentExpressions[target.index] : undefined;
 
+      const draftName =
+        target.kind === "draft" ? draftNamesRef.current[target.id] : undefined;
       const existingName = existing
         ? Lib.displayInfo(currentQuery, stageIndex, existing).displayName
-        : undefined;
+        : draftName;
       const canRename =
         forceName ||
         existingName === undefined ||
@@ -195,6 +209,7 @@ export const ExpressionStep = ({
 
       if (target.kind === "draft") {
         dropPendingSource(target);
+        setDraftName(target.id, undefined);
         setDraftIds((ids) => ids.filter((id) => id !== target.id));
         setOpen({
           target: { kind: "clause", index: currentExpressions.length },
@@ -202,7 +217,7 @@ export const ExpressionStep = ({
         });
       }
     },
-    [stageIndex, commitQuery, dropPendingSource, setOpen],
+    [stageIndex, commitQuery, dropPendingSource, setDraftName, setOpen],
   );
 
   const handleRename = useCallback(
@@ -288,13 +303,14 @@ export const ExpressionStep = ({
   const discardDraft = useCallback(
     (id: string) => {
       dropPendingSource({ kind: "draft", id });
+      setDraftName(id, undefined);
       setDraftIds((ids) => ids.filter((draftId) => draftId !== id));
       const editor = openEditorRef.current;
       if (editor?.target.kind === "draft" && editor.target.id === id) {
         setOpen(null);
       }
     },
-    [dropPendingSource, setOpen],
+    [dropPendingSource, setDraftName, setOpen],
   );
 
   const handleDiscard = useCallback(() => {
@@ -333,10 +349,12 @@ export const ExpressionStep = ({
   const editedIndex = openTarget?.kind === "clause" ? openTarget.index : null;
   const editedExpression =
     editedIndex != null ? expressions[editedIndex] : undefined;
+  const editedDraftName =
+    openTarget?.kind === "draft" ? draftNames[openTarget.id] : undefined;
   const editedName =
     editedExpression != null
       ? Lib.displayInfo(query, stageIndex, editedExpression).displayName
-      : undefined;
+      : editedDraftName;
   // A name that the column got by default, not from the user or the AI.
   const isDefaultOrAutoName = (name: string) =>
     isDefaultName(name) || autoNamesRef.current.has(name);
@@ -400,26 +418,28 @@ export const ExpressionStep = ({
             // A new column starts as "Untitled", in the box of a default name.
             <pillStyle.Pill
               key={id}
-              name={t`Untitled`}
+              name={draftNames[id] ?? t`Untitled`}
               isActive={openTarget?.kind === "draft" && openTarget.id === id}
               readOnly={readOnly}
-              canRename={false}
-              isNameDefault
+              isNameDefault={
+                draftNames[id] === undefined || isDefaultName(draftNames[id])
+              }
               onOpen={() => openEditorAt({ kind: "draft", id })}
-              onRename={noop}
+              onRename={(name) => setDraftName(id, name)}
               onRemove={() => discardDraft(id)}
             />
           ) : (
             <ExpressionPill
               key={id}
-              name={t`New column`}
+              name={draftNames[id] ?? t`New column`}
+              hasDefaultName={
+                draftNames[id] === undefined || isDefaultName(draftNames[id])
+              }
               color={color}
               isActive={openTarget?.kind === "draft" && openTarget.id === id}
               readOnly={readOnly}
-              canRename={false}
-              hasUnsavedChanges
               onOpen={() => openEditorAt({ kind: "draft", id })}
-              onRename={noop}
+              onRename={(name) => setDraftName(id, name)}
               onRemove={() => discardDraft(id)}
             />
           ),
@@ -456,8 +476,6 @@ export const ExpressionStep = ({
     </>
   );
 };
-
-const noop = () => {};
 
 // Prototype: the pill styles after A, from the switcher. B and C behave the
 // same and differ only in colors.

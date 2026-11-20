@@ -131,7 +131,6 @@ export function FilterStep({
               isActive
               readOnly={readOnly}
               canRename={false}
-              hasUnsavedChanges
               onOpen={noop}
               onRename={noop}
               onRemove={inline.close}

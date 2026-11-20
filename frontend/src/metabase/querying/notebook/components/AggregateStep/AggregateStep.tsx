@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -66,8 +66,23 @@ export function AggregateStep({
     replaceClause: replaceAggregation,
     updateQuery,
   });
-  const handleCommit = (clause: Lib.ExpressionClause, name?: string) =>
-    inline.commit(name != null ? Lib.withExpressionName(clause, name) : clause);
+  // The name that the user gave to the draft, for the editor session it
+  // belongs to. The draft is not in the query yet, so the name stays here
+  // until the first valid edit adds the summary.
+  const [draftName, setDraftName] = useState<{
+    session: number;
+    name: string;
+  }>();
+  const openDraftName =
+    inline.isDraftOpen && draftName?.session === inline.openEditor?.session
+      ? draftName?.name
+      : undefined;
+  const handleCommit = (clause: Lib.ExpressionClause, name?: string) => {
+    const nextName = openDraftName ?? name;
+    inline.commit(
+      nextName != null ? Lib.withExpressionName(clause, nextName) : clause,
+    );
+  };
 
   const availableColumns = useMemo(
     () => Lib.aggregableColumns(query, stageIndex, inline.editedIndex),
@@ -195,14 +210,18 @@ export function AggregateStep({
         inline.isDraftOpen && (
           <ExpressionPill
             hasStepSelectedColor
-            name={t`New summary`}
+            name={openDraftName ?? t`New summary`}
+            hasDefaultName={openDraftName == null}
             color={color}
             isActive
             readOnly={readOnly}
-            canRename={false}
-            hasUnsavedChanges
             onOpen={noop}
-            onRename={noop}
+            onRename={(name) => {
+              const session = inline.openEditor?.session;
+              if (session != null) {
+                setDraftName({ session, name });
+              }
+            }}
             onRemove={inline.close}
           />
         )
@@ -245,8 +264,8 @@ export function AggregateStep({
             reportTimezone={reportTimezone}
             readOnly={readOnly}
             clause={inline.editedClause}
-            name={editedInfo?.isNamed ? editedInfo.displayName : undefined}
-            hasDefaultName={!editedInfo?.isNamed}
+            name={editedInfo?.isNamed ? editedInfo.displayName : openDraftName}
+            hasDefaultName={!editedInfo?.isNamed && openDraftName == null}
             initialExpressionClause={inline.openEditor.initialExpressionClause}
             breakouts={breakoutNames}
             onAcceptBreakouts={handleAcceptBreakouts}
