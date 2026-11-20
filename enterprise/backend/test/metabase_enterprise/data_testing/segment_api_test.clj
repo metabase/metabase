@@ -13,18 +13,12 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(def ^:private inputs
-  [{:table   {:schema "PUBLIC" :name "PEOPLE"}
-    :format  "rows"
-    :columns [{:name "ID" :cast_type "INTEGER"} {:name "SOURCE" :cast_type "VARCHAR"}]
-    :rows    [{"ID" 1 "SOURCE" "Google"} {"ID" 2 "SOURCE" "Twitter"}]}])
-
-(def ^:private expectations
-  [{:type "empty" :name "only people from Google" :sql "SELECT * FROM {{output}} WHERE SOURCE <> 'Google'"}])
-
 (defn- body
   [segment-id]
-  {:segment_id segment-id :name "My test" :inputs inputs :expectations expectations})
+  {:segment_id   segment-id
+   :name         "My test"
+   :inputs       data-testing.test-util/google-segment-inputs
+   :expectations data-testing.test-util/google-segment-expectations})
 
 (deftest premium-feature-test
   (testing "every endpoint refuses an instance without the feature"
@@ -57,7 +51,7 @@
                      :name         "My test"
                      :description  "abc"
                      :inputs       [{:format "rows" :rows [{:ID 1 :SOURCE "Google"} {:ID 2 :SOURCE "Twitter"}]}]
-                     :expectations expectations}
+                     :expectations data-testing.test-util/google-segment-expectations}
                     created)))
           (testing "GET returns the test with its newest run"
             (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
@@ -85,7 +79,7 @@
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/Segment     {other-id :id}   (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+                   :model/SegmentTest {test-id :id}    (body segment-id)]
       (let [missing-id (inc (t2/select-one-fn :max-id [:model/Segment [:%max.id :max-id]]))
             before     (segment-tests-state)]
         (testing "even for an admin, the permission check refuses a segment that does not exist"
@@ -100,7 +94,7 @@
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id segment-id :inputs inputs :expectations expectations}]
+                   :model/SegmentTest {test-id :id}    (body segment-id)]
       (testing "POST refuses a test missing an input, under the segment-test error prefix"
         (let [response (mt/user-http-request :crowberto :post 400 "ee/segment-test" (assoc (body segment-id) :inputs []))]
           (is (= "segment-test.missing-inputs" (:error-code response)))
@@ -110,10 +104,10 @@
                  :columns    {:PUBLIC.PEOPLE ["SOURCE"]}}
                 (mt/user-http-request :crowberto :post 400 "ee/segment-test"
                                       (assoc (body segment-id)
-                                             :inputs [(-> (first inputs)
+                                             :inputs [(-> (first data-testing.test-util/google-segment-inputs)
                                                           (assoc :columns [{:name "ID" :cast_type "INTEGER"}])
                                                           (assoc :rows [{"ID" 1} {"ID" 2}]))])))))
-      (testing "POST refuses a test with no expectations"
+      (testing "POST refuses a test with no data-testing.test-util/google-segment-expectations"
         (is (= "segment-test.no-expectations"
                (:error-code (mt/user-http-request :crowberto :post 400 "ee/segment-test"
                                                   (assoc (body segment-id) :expectations []))))))
@@ -126,8 +120,8 @@
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                        :inputs       inputs
-                                                        :expectations expectations}]
+                                                        :inputs       data-testing.test-util/google-segment-inputs
+                                                        :expectations data-testing.test-util/google-segment-expectations}]
       (data-testing.test-util/empty-segment-definition! segment-id)
       (testing "POST refuses a test of a segment with no definition, as one whose query cannot be compiled"
         (is (=? {:error-code "segment-test.uncompilable-subject"}
@@ -135,11 +129,11 @@
       (testing "a run of a saved test of it is refused the same way"
         (is (=? {:error-code "segment-test.uncompilable-subject"}
                 (mt/user-http-request :crowberto :post 422 (str "ee/segment-test/" test-id "/run")))))
-      (testing "an edit of the inputs of a saved test of it is refused the same way, and changes nothing"
+      (testing "an edit of the data-testing.test-util/google-segment-inputs of a saved test of it is refused the same way, and changes nothing"
         (let [before (t2/select-one :model/SegmentTest :id test-id)]
           (is (=? {:error-code "segment-test.uncompilable-subject"}
                   (mt/user-http-request :crowberto :put 422 (str "ee/segment-test/" test-id)
-                                        {:inputs [(assoc (first inputs) :rows [{"ID" 3 "SOURCE" "Google"}])]})))
+                                        {:inputs [(assoc (first data-testing.test-util/google-segment-inputs) :rows [{"ID" 3 "SOURCE" "Google"}])]})))
           (is (= before (t2/select-one :model/SegmentTest :id test-id))))))))
 
 (deftest a-run-by-a-non-admin-of-a-test-of-a-segment-with-no-definition-is-forbidden-test
@@ -150,8 +144,8 @@
                                                                       :perms/create-queries :query-builder-and-native}
           (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                          :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                              :inputs       inputs
-                                                              :expectations expectations}]
+                                                              :inputs       data-testing.test-util/google-segment-inputs
+                                                              :expectations data-testing.test-util/google-segment-expectations}]
             (let [path (str "ee/segment-test/" test-id "/run")]
               (try
                 (testing "control: the non-admin runs the test while the segment has its definition"
@@ -169,8 +163,8 @@
     (mt/with-temp [:model/Table       {table-id :id}   {:db_id (mt/id) :name "DROPPED" :active true}
                    :model/Segment     {segment-id :id} (data-testing.test-util/segment-on table-id "On a dropped table")
                    :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                        :inputs       inputs
-                                                        :expectations expectations}]
+                                                        :inputs       data-testing.test-util/google-segment-inputs
+                                                        :expectations data-testing.test-util/google-segment-expectations}]
       (let [path (str "ee/segment-test/" test-id)]
         (try
           ;; Sync keeps the row of a dropped table and marks it inactive.
@@ -182,9 +176,9 @@
                 (is (=? refusal (mt/user-http-request :crowberto :post 422 "ee/segment-test" (body segment-id)))))
               (testing "a run of a saved test of it is refused the same way"
                 (is (=? refusal (mt/user-http-request :crowberto :post 422 (str path "/run")))))
-              (testing "an edit of the inputs of a saved test of it is refused the same way, and changes nothing"
+              (testing "an edit of the data-testing.test-util/google-segment-inputs of a saved test of it is refused the same way, and changes nothing"
                 (let [before (t2/select-one :model/SegmentTest :id test-id)]
-                  (is (=? refusal (mt/user-http-request :crowberto :put 422 path {:inputs inputs})))
+                  (is (=? refusal (mt/user-http-request :crowberto :put 422 path {:inputs data-testing.test-util/google-segment-inputs})))
                   (is (= before (t2/select-one :model/SegmentTest :id test-id)))))))
           (testing "a segment whose definition names no table"
             ;; A raw write: the model refuses a definition with no source table.
@@ -230,10 +224,7 @@
     ;; A run counts as the test's run only if it started after the test was created. The with-temp default for
     ;; `created_at` is the JVM's clock and the run's start time is the app DB's, so the test is dated in the past.
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                   :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                        :inputs       inputs
-                                                        :expectations expectations
-                                                        :created_at   #t "2025-01-01T00:00:00Z"}]
+                   :model/SegmentTest {test-id :id}    (assoc (body segment-id) :created_at #t "2025-01-01T00:00:00Z")]
       (let [path (str "ee/segment-test/" test-id)]
         (try
           (testing "a run reports each expectation"
@@ -296,9 +287,7 @@
   (mt/with-premium-features data-testing.test-util/data-analyst-features
     (perms.tu/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                     :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                          :inputs       inputs
-                                                          :expectations expectations}]
+                     :model/SegmentTest {test-id :id}    (body segment-id)]
         (let [path (str "ee/segment-test/" test-id)]
           (try
             (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/view-data      :blocked
@@ -339,8 +328,8 @@
     (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
                    :model/Segment     {active-id :id}  (data-testing.test-util/from-google-segment)
                    :model/SegmentTest {test-id :id}    {:segment_id   segment-id
-                                                        :inputs       inputs
-                                                        :expectations expectations
+                                                        :inputs       data-testing.test-util/google-segment-inputs
+                                                        :expectations data-testing.test-util/google-segment-expectations
                                                         :created_at   #t "2025-01-01T00:00:00Z"}]
       (let [path      (str "ee/segment-test/" test-id)
             run-ids   (atom #{})
@@ -404,14 +393,14 @@
 (deftest a-revert-to-a-state-that-an-edit-would-refuse-is-refused-segment-test
   (mt/with-premium-features #{:transforms-testing}
     (mt/with-temp [:model/Segment {subject-id :id} (data-testing.test-util/from-google-segment)]
-      ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
+      ;; Created through the model, which does not validate, so that its creation revision has no data-testing.test-util/google-segment-inputs. A revision is
       ;; recorded only under a current user.
       (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
                           (:id (data-testing.models.segment-test/create-segment-test!
                                 {:segment_id   subject-id
-                                 :name         "No inputs"
+                                 :name         "No data-testing.test-util/google-segment-inputs"
                                  :inputs       []
-                                 :expectations (mapv #(update % :type keyword) expectations)
+                                 :expectations (mapv #(update % :type keyword) data-testing.test-util/google-segment-expectations)
                                  :creator_id   (mt/user->id :crowberto)})))
             path        (str "ee/segment-test/" test-id)
             creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" test-id))
@@ -419,30 +408,30 @@
                              :id)]
         (try
           (is (pos-int? creation-id) "premise: the test has a creation revision")
-          (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
-          (testing "control: an edit back to no inputs is refused"
+          (mt/user-http-request :crowberto :put 200 path {:inputs data-testing.test-util/google-segment-inputs})
+          (testing "control: an edit back to no data-testing.test-util/google-segment-inputs is refused"
             (is (=? {:error-code "segment-test.missing-inputs"}
                     (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
-          (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
+          (testing "a revert to the creation revision is refused the same way, and leaves the data-testing.test-util/google-segment-inputs"
             (is (=? {:error-code "segment-test.missing-inputs"}
                     (mt/user-http-request :crowberto :post 400 "revision/revert"
                                           {:entity "segment-test" :id test-id :revision_id creation-id})))
             (is (= 1 (count (:inputs (t2/select-one :model/SegmentTest :id test-id))))))
-          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the inputs is refused"
+          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the data-testing.test-util/google-segment-inputs is refused"
             (let [revision-id (-> (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" test-id))
                                   first
                                   :id)]
               (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})
-              ;; The segment now filters on a column that the inputs lack.
+              ;; The segment now filters on a column that the data-testing.test-util/google-segment-inputs lack.
               (t2/update! :model/Segment :id subject-id
                           {:definition (let [mp (mt/metadata-provider)]
                                          (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :people)))
                                                      (lib/= (lib.metadata/field mp (mt/id :people :name)) "abc")))})
-              (testing "premise: an edit of the inputs is refused"
+              (testing "premise: an edit of the data-testing.test-util/google-segment-inputs is refused"
                 (is (=? {:error-code "segment-test.missing-input-columns"}
-                        (mt/user-http-request :crowberto :put 400 path {:inputs inputs}))))
+                        (mt/user-http-request :crowberto :put 400 path {:inputs data-testing.test-util/google-segment-inputs}))))
               (mt/user-http-request :crowberto :post 200 "revision/revert"
                                     {:entity "segment-test" :id test-id :revision_id revision-id})
-              (is (= "No inputs" (t2/select-one-fn :name :model/SegmentTest :id test-id)))))
+              (is (= "No data-testing.test-util/google-segment-inputs" (t2/select-one-fn :name :model/SegmentTest :id test-id)))))
           (finally
             (t2/delete! :model/SegmentTest :id test-id)))))))

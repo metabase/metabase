@@ -7,6 +7,12 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- The Security Center advisory endpoints moved under `/api/ee/security-center/advisories`: `GET /api/ee/security-center`
+  is now `GET /api/ee/security-center/advisories`, and `POST /api/ee/security-center/:advisory-id/acknowledge`,
+  `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and
+  `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
+  `404 Not Found`. Request and response bodies are unchanged.
+
 - `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
   engine and the host, and ignores a value in the request.
 

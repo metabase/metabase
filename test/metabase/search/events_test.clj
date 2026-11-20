@@ -4,10 +4,12 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.db :as qp.db]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.db :as search.db]
@@ -48,6 +50,11 @@
     (mt/with-dynamic-fn-redefs [search.ingestion/ingest-maybe-async! (fn [updates] (swap! calls conj (set updates)))]
       (thunk))
     @calls))
+
+(defn- enqueued-search-models
+  "The search models of the documents that the updates in `enqueued`, as [[capture-enqueues!]] returns them, name."
+  [enqueued]
+  (into #{} (comp cat (map first)) enqueued))
 
 (defn- cascading-documents-of
   "What [[search/cascading-documents]] enumerates for the card with `card-id`."
@@ -188,6 +195,38 @@
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
                  (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
+
+(deftest update-of-unindexed-column-reindexes-test
+  (testing "an edit that changes no indexed column still refreshes the indexed last editor and update time"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [dash-id (:id (mt/user-http-request :rasta :post 200 "dashboard" {:name (mt/random-name)}))
+              indexed #(t2/select-one [(search.index/active-table) :last_editor_id :model_updated_at]
+                                      :model "dashboard" :model_id (str dash-id))]
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" dash-id) {:width "full"})
+          (is (= {:last_editor_id   (mt/user->id :crowberto)
+                  :model_updated_at (t/instant (t2/select-one-fn :updated_at :report_dashboard :id dash-id))}
+                 (update (indexed) :model_updated_at t/instant))))))))
+
+(deftest update-of-unread-joined-column-enqueues-only-readers-test
+  (testing "an update reindexes the documents that read a column it set, not the ones it is joined into"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       _            {:collection_id coll-id}
+                     :model/Dashboard  _            {:collection_id coll-id}]
+        ;; Only the collection's own document reads its description; the card and the dashboard in it read its name,
+        ;; type, location and authority level.
+        (is (= #{"collection"}
+               (enqueued-search-models
+                (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"})))))))))
+
+(deftest self-assigned-updated-at-enqueues-nothing-test
+  (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
+        (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
+        (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"

@@ -749,15 +749,28 @@
             (is (= (sort pgs) pgs)
                 "rows should appear in non-decreasing pivot-grouping order")))))))
 
+(defn- set-standard-conforming-strings!
+  "Sets `standard_conforming_strings` to `value` on `conn`, and returns whether the server accepted it.
+   Returns false when the server refuses `value` as unsupported, and rethrows any other error."
+  [^Connection conn value]
+  (try
+    (with-open [stmt (.createStatement conn)]
+      (.execute stmt (str "SET standard_conforming_strings TO " value)))
+    true
+    (catch PSQLException e
+      (if (= (.getState PSQLState/NOT_IMPLEMENTED) (.getSQLState e))
+        false
+        (throw e)))))
+
 ;;; Postgres `:contains`/`:starts-with`/`:ends-with` must produce SQL that the PostgreSQL JDBC
 ;;; driver can prepare regardless of the server's `standard_conforming_strings` setting. With
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
 ;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
-;;; (#73721).
+;;; (#73721). PostgreSQL 19 refuses the setting off, so only the `on` case runs there.
 (deftest contains-filter-jdbc-parser-test
   (mt/test-driver :postgres
-    (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
+    (testing "PGJDBC parses LIKE filters under each standard_conforming_strings setting the server allows (#73721)"
       (let [mp       (mt/metadata-provider)
             venues   (lib.metadata/table mp (mt/id :venues))
             name-col (lib.metadata/field mp (mt/id :venues :name))]
@@ -773,17 +786,16 @@
              (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
              nil
              (fn [^Connection conn]
-               (with-open [stmt (.createStatement conn)]
-                 (.execute stmt (str "SET standard_conforming_strings TO " scs)))
-               (doseq [[op-name op-fn] {:contains    lib/contains
-                                        :starts-with lib/starts-with
-                                        :ends-with   lib/ends-with}]
-                 (testing op-name
-                   (let [query (-> (lib/query mp venues)
-                                   (lib/filter (op-fn name-col "Foo")))
-                         {sql :query} (qp.compile/compile query)]
-                     (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
-                         (str "PGJDBC should prepare the SQL; got SQL: " sql)))))))))))))
+               (when (set-standard-conforming-strings! conn scs)
+                 (doseq [[op-name op-fn] {:contains    lib/contains
+                                          :starts-with lib/starts-with
+                                          :ends-with   lib/ends-with}]
+                   (testing op-name
+                     (let [query (-> (lib/query mp venues)
+                                     (lib/filter (op-fn name-col "Foo")))
+                           {sql :query} (qp.compile/compile query)]
+                       (is (some? (with-open [pstmt (.prepareStatement conn sql)] pstmt))
+                           (str "PGJDBC should prepare the SQL; got SQL: " sql))))))))))))))
 
 (deftest describe-nested-field-columns-identifier-test
   (mt/test-driver :postgres

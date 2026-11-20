@@ -13,6 +13,8 @@ If your queries are hanging or timing out, the problem could be coming from your
 - Jetty
 - Cloud service
 
+Metabase also has its own timeouts. By default, Metabase cancels queries that run for longer than 20 minutes, and gives up connecting to a database after 10 seconds (for example, when you test a database connection). On self-hosted Metabases, you can change these limits with the [`MB_DB_QUERY_TIMEOUT_MINUTES`](../configuring-metabase/environment-variables.md#mb_db_query_timeout_minutes) and [`MB_DB_CONNECTION_TIMEOUT_MS`](../configuring-metabase/environment-variables.md#mb_db_connection_timeout_ms) environment variables.
+
 ## Resources for common deployments
 
 Fixes for timeout problems will depend on your specific setup. These resources may help:

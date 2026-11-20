@@ -33,7 +33,7 @@ To create an alert:
    - [When a question returns a result](#results-alerts) - for any question.
    - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
    - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
-5. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+5. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html). Scheduled times are in your Metabase's [report timezone](../configuring-metabase/localization.md#set-default-instance-report-timezone), or in the server's timezone if no report timezone is set.
 6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
 7. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
 8. Click **Done**.
@@ -155,6 +155,14 @@ See [Sending alerts and subscriptions to private Slack channels](../configuring-
 ## Removing Metabase branding from alerts
 
 See [Remove Metabase branding from exports](./exporting-results.md#remove-metabase-branding-from-exports).
+
+## Tables in alerts show the first 20 rows
+
+When an alert is for a question that displays a table (not a pivot table), the alert shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
+
+## Email alerts include the results as a CSV file
+
+Email alerts attach the question's results as a CSV file, as long as the person who created the alert has [permission to download results](../permissions/data.md#download-results-permissions). The CSV file includes up to 1,048,575 rows by default, but if the results take up more than 10 MB, Metabase leaves the CSV file out of the email. On self-hosted Metabases, admins can change this limit with the [`MB_ATTACHMENT_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_row_limit) environment variable.
 
 ## Alerts in embedded questions exclude links
 

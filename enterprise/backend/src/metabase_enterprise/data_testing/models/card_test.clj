@@ -9,6 +9,7 @@
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -54,6 +55,7 @@
   ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
   ;; runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
+  (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
   card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -155,6 +157,14 @@
       (when (:archived card)
         (data-testing.subject.card/check-testable card))
       (data-testing.subject/check-not-archived :card card))))
+
+(defmethod data-testing.test-type/spec :card [_test-type]
+  {:model      :model/CardTest
+   :run-topics {:start   :event/card-test-run-start
+                :timeout :event/card-test-run-timeout}
+   ;; A suite records a typed refusal of the subject as the member's refusal.
+   :subject    #(testable-card (:card_id %))
+   :can-run?   can-run?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

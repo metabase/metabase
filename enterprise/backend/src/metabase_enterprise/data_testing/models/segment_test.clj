@@ -9,6 +9,7 @@
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -51,6 +52,7 @@
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -153,6 +155,14 @@
       (when (:archived segment)
         (data-testing.subject.segment/check-testable segment))
       (data-testing.subject/check-not-archived :segment segment))))
+
+(defmethod data-testing.test-type/spec :segment [_test-type]
+  {:model      :model/SegmentTest
+   :run-topics {:start   :event/segment-test-run-start
+                :timeout :event/segment-test-run-timeout}
+   ;; A suite records a typed refusal of the subject as the member's refusal.
+   :subject    #(testable-segment (:segment_id %))
+   :can-run?   can-run?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
