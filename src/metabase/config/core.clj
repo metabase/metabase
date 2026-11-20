@@ -64,7 +64,7 @@
    :mb-log-team-attribution         "false"
    :mb-qp-cache-backend             "db"
    :mb-jetty-async-response-timeout (str (* 10 60 1000)) ; 10m
-   :mb-jetty-stop-timeout           (str (* 5 1000))       ; 5s
+   :mb-jetty-stop-timeout           (str (* 5 1000))     ; 5s
    :mb-monitor-performance           ""
    :mb-monitor-performance-save-rate ""})
 
