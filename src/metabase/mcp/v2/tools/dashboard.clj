@@ -190,7 +190,5 @@
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
                           (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
-                          (seq dropped)             (assoc :dropped_connections      dropped
-                                                           :dropped_connection_count (count dropped)))
-                        ;; A token that can't read the dashboard back still learns that filters were disconnected.
-                        [:dropped_connection_count]))))
+                          (seq dropped)             (assoc :dropped_connections dropped))
+                        []))))

@@ -260,11 +260,10 @@
     (let [args {:method "update"
                 :id     (:id dash)
                 :ops    [{:op "replace_card", :dashcard_id (:id dc), :card_id (:id new)}]}]
-      (testing "a token that can't read the dashboard back gets only the count"
-        (let [result (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
-                                              (wire (assoc args :validate_only true))))]
-          (is (=? {:id (:id dash), :dropped_connection_count 1} result))
-          (is (not (contains? result :dropped_connections)))))
+      (testing "a token that can't read the dashboard back isn't told about the dropped connections"
+        (is (= #{:id :note}
+               (set (keys (tool-result (call-tool! :crowberto #{"agent:content:write"} "dashboard_write"
+                                                   (wire (assoc args :validate_only true)))))))))
       (doseq [validate-only? [true false]]
         (testing (if validate-only? "dry run" "save")
           (is (= [{:parameter_id "cat", :dashcard_id (:id dc), :card_id (:id new), :series false}]
