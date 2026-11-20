@@ -67,6 +67,20 @@ describe("getAnalysisState", () => {
     ).toEqual(["periods", "people"]);
   });
 
+  it("filters events to the date range", () => {
+    const query = Lib.buildProductAnalyticsQuery(setup());
+
+    expect(getClauseNames(query, 0, Lib.filters(query, 0))).toEqual([
+      "Created At is in the previous 90 days",
+    ]);
+  });
+
+  it("throws when the date range isn't a date filter value", () => {
+    const settings = { ...SETTINGS, date_range: "not a date range" };
+
+    expect(() => setup({ settings })).toThrow("Invalid date range");
+  });
+
   it("throws when the table lacks a column for a role", () => {
     const table = createEventTable({
       "columns.timestamp": "CREATED_AT",

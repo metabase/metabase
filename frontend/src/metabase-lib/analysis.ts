@@ -15,8 +15,6 @@ export type AnalysisState = {
   "columns.person": string;
   /** The `columnUniqueKey` of the query's column with each event's time. */
   "columns.timestamp": string;
-  /** How far back to read events, like "90d". */
-  date_range: string;
   /** What the analysis buckets events by. */
   granularity: DateTimeAbsoluteUnit;
   "habit.values": "count";

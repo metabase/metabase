@@ -19,7 +19,10 @@ export function setupAdhocQueryEndpoint(
 }
 
 export function setupNativeDatasetEndpoint(
-  response: MockResponse<NativeDatasetResponse | Response>,
+  response: MockResponse<NativeDatasetResponse | Response> = {
+    query: "SELECT 1",
+    params: null,
+  },
 ) {
   fetchMock.post("path:/api/dataset/native", response);
 }
@@ -67,10 +70,4 @@ export function setupCardDataset(
       name: "dataset-post",
     },
   );
-}
-
-export function setupNativeDatasetEndpoint(
-  response: NativeDatasetResponse = { query: "SELECT 1", params: null },
-) {
-  fetchMock.post("path:/api/dataset/native", response);
 }

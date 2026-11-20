@@ -1,4 +1,6 @@
 import { getColumnRoleValue } from "metabase/product-analytics-core";
+import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
+import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type {
   EventTableColumnRole,
@@ -32,9 +34,21 @@ function getRoleColumn(
   return column;
 }
 
+function getDateRangeFilter(
+  column: Lib.ColumnMetadata,
+  dateRange: string,
+): Lib.ExpressionClause {
+  const value = deserializeDateParameterValue(dateRange);
+  if (value === null) {
+    throw new Error(`Invalid date range ${dateRange}`);
+  }
+  return getDateFilterClause(column, value);
+}
+
 /**
  * What the planner builds the analysis's query from. Throws when the table
- * isn't in the metadata provider, or lacks a column for a required role.
+ * isn't in the metadata provider, lacks a column for a required role, or the
+ * date range isn't a date filter value.
  */
 export function getAnalysisState<K extends ProductAnalyticsKind>({
   kind,
@@ -52,14 +66,16 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
   );
   const timestampColumn = getRoleColumn(tableQuery, table, "timestamp");
   const personColumn = getRoleColumn(tableQuery, table, "person");
+  const baseQuery = Lib.filter(
+    tableQuery,
+    STAGE_INDEX,
+    getDateRangeFilter(timestampColumn, settings.date_range),
+  );
   return {
     kind,
-    base_query: tableQuery,
+    base_query: baseQuery,
     "columns.person": Lib.columnUniqueKey(personColumn),
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
-    // TODO: pass `settings.date_range` once the planner parses date filter
-    // strings like "past90days".
-    date_range: "90d",
     granularity: settings.granularity,
     "habit.values": "count",
   };
