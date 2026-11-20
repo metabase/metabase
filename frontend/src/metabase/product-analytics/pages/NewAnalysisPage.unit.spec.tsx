@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   setupAdhocQueryEndpoint,
@@ -19,6 +20,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import { getRoutes } from "../routes";
+import { encodeSettings } from "../url-state";
 
 registerVisualizations();
 
@@ -85,6 +87,10 @@ const setup = ({
   });
   return { router };
 };
+
+const SET_UP_TABLE_ROUTE = `/product-analysis/new?kind=habit&table=${SET_UP_TABLE.id}`;
+
+const getRunRequests = () => fetchMock.callHistory.calls("path:/api/dataset");
 
 describe("NewAnalysisPage", () => {
   it("is not found for an unknown kind of analysis", async () => {
@@ -227,5 +233,132 @@ describe("NewAnalysisPage", () => {
     expect(
       screen.queryByRole("link", { name: "Set up in Data Studio" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("toolbar", () => {
+    it("shows the default settings", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+
+      expect(
+        await screen.findByRole("button", { name: /Previous 90 days/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "by day" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Count people")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Count people/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("reruns the analysis with a changed setting, and keeps it in the URL", async () => {
+      const { router } = setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      expect(
+        await screen.findByRole("heading", {
+          name: "How many days did people show up?",
+        }),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+
+      await userEvent.click(screen.getByRole("button", { name: "by day" }));
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Week" }),
+      );
+
+      expect(
+        await screen.findByRole("heading", {
+          name: "How many weeks did people show up?",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "by week" }),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+      expect(router?.location.search).toBe(
+        `?kind=habit&table=${SET_UP_TABLE.id}`,
+      );
+      expect(router?.location.hash).toBe(
+        `#${encodeSettings({ granularity: "week" })}`,
+      );
+    });
+
+    it("reruns the analysis with a changed date range, and keeps it in the URL", async () => {
+      const { router } = setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      await waitFor(() => expect(getRunRequests()).toHaveLength(1));
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Previous 90 days/ }),
+      );
+      const interval = await screen.findByLabelText("Interval");
+      await userEvent.clear(interval);
+      await userEvent.type(interval, "30");
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      expect(
+        await screen.findByRole("button", { name: /Previous 30 days/ }),
+      ).toBeInTheDocument();
+      expect(router?.location.hash).toBe(
+        `#${encodeSettings({ date_range: "past30days" })}`,
+      );
+      await waitFor(() => expect(getRunRequests()).toHaveLength(2));
+    });
+
+    it("offers no date filter that can't be stored", async () => {
+      setup({ initialRoute: SET_UP_TABLE_ROUTE });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Previous 90 days/ }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Back" }),
+      );
+      await userEvent.click(await screen.findByText("Exclude…"));
+
+      expect(await screen.findByText("Days of the week…")).toBeInTheDocument();
+      expect(screen.queryByText("Empty values")).not.toBeInTheDocument();
+      expect(screen.queryByText("Not empty values")).not.toBeInTheDocument();
+    });
+
+    it("opens with the settings in the URL", async () => {
+      setup({
+        initialRoute: `${SET_UP_TABLE_ROUTE}#${encodeSettings({ granularity: "week" })}`,
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "by week" }),
+      ).toBeInTheDocument();
+    });
+
+    it("opens with the default settings when the URL's are broken", async () => {
+      setup({ initialRoute: `${SET_UP_TABLE_ROUTE}#not-settings` });
+
+      expect(
+        await screen.findByRole("button", { name: "by day" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("undoes a change with browser back, and redoes it with forward", async () => {
+      const { router } = setup({ initialRoute: SET_UP_TABLE_ROUTE });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "by day" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Week" }),
+      );
+      expect(
+        await screen.findByRole("button", { name: "by week" }),
+      ).toBeInTheDocument();
+
+      act(() => router?.back());
+      expect(
+        await screen.findByRole("button", { name: "by day" }),
+      ).toBeInTheDocument();
+
+      act(() => router?.forward());
+      expect(
+        await screen.findByRole("button", { name: "by week" }),
+      ).toBeInTheDocument();
+    });
   });
 });

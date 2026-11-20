@@ -37,12 +37,7 @@ export const ViewSqlButton = ({ query }: ViewSqlButtonProps) => {
   return (
     <>
       <Tooltip label={label}>
-        <ActionIcon
-          variant="subtle"
-          size="lg"
-          aria-label={label}
-          onClick={open}
-        >
+        <ActionIcon variant="subtle" aria-label={label} onClick={open}>
           <Icon name="sql" />
         </ActionIcon>
       </Tooltip>

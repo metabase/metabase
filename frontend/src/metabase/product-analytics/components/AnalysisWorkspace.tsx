@@ -1,17 +1,19 @@
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isEventTableSetUp } from "metabase/product-analytics-core";
-import { Group, Paper, Stack } from "metabase/ui";
+import { Paper, Stack } from "metabase/ui";
 import type { ProductAnalyticsKind, TableId } from "metabase-types/api";
 
+import { getAnalysisConfig } from "../analyses/config";
+import type { AnalysisSettingsByKind } from "../analyses/types";
 import { useAnalysis } from "../use-analysis";
+import { useStoredSettings } from "../use-stored-settings";
 
 import { AnalysisResult } from "./AnalysisResult";
 import { AnalysisTitle } from "./AnalysisTitle";
+import { AnalysisToolbar } from "./AnalysisToolbar";
 import S from "./AnalysisWorkspace.module.css";
-import { EventTablePicker } from "./EventTablePicker";
 import { TableNotSetUp } from "./TableNotSetUp";
-import { ViewSqlButton } from "./ViewSqlButton";
 
 type AnalysisWorkspaceProps = {
   kind: ProductAnalyticsKind;
@@ -22,7 +24,7 @@ type AnalysisWorkspaceProps = {
 /**
  * A new analysis: the title and toolbar across the top, and the result below.
  * Without a table, the toolbar's table picker opens and nothing shows below.
- * Picking a table runs the analysis with its default settings.
+ * Picking a table runs the analysis, and each settings change reruns it.
  */
 export const AnalysisWorkspace = ({
   kind,
@@ -41,13 +43,17 @@ export const AnalysisWorkspace = ({
       : skipToken,
   );
   const isTableSetUp = table !== undefined && isEventTableSetUp(table);
+  const eventTable = isTableSetUp ? table : undefined;
+  const { storedSettings, onChangeSettings } =
+    useStoredSettings<AnalysisSettingsByKind[ProductAnalyticsKind]>();
   const {
+    settings,
     analysis,
     query,
     rawSeries,
     isRunning,
     error: analysisError,
-  } = useAnalysis({ kind, table: isTableSetUp ? table : undefined });
+  } = useAnalysis({ kind, table: eventTable, storedSettings });
 
   return (
     <Stack flex={1} h="100%" gap={0} bg="background_page-secondary">
@@ -61,15 +67,16 @@ export const AnalysisWorkspace = ({
         bg="background_page-primary"
       >
         <AnalysisTitle kind={kind} tableName={table?.display_name} />
-        <Group justify="space-between" gap="sm">
-          <EventTablePicker
-            table={table}
-            isLoading={isLoading}
-            isInitiallyOpened={tableId === undefined}
-            onChange={onTableChange}
-          />
-          {query !== undefined && <ViewSqlButton query={query} />}
-        </Group>
+        <AnalysisToolbar
+          table={table}
+          isTableLoading={isLoading}
+          isTablePickerInitiallyOpened={tableId === undefined}
+          settings={settings}
+          options={getAnalysisConfig(kind).options}
+          query={query}
+          onTableChange={onTableChange}
+          onChangeSettings={onChangeSettings}
+        />
       </Stack>
       {tableId !== undefined && (
         <Stack flex={1} mih={0} py="lg" pl="xxl" pr="lg">
