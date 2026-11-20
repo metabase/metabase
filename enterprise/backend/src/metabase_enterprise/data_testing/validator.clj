@@ -13,6 +13,9 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
+  [[ensure-single-select]] is the statement check that every SQL an author wrote passes before a run executes it, and
+  returns the string the run executes.
+
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
    [clojure.string :as str]
@@ -21,6 +24,7 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -144,10 +148,82 @@
             (cond-> {:references (vec surviving)}
               source (assoc :expectation source))))))
 
+(mr/def ::sql-source
+  "Whose SQL a refusal names: nil for the query under test, `[:input table]` for the input standing in for `table`, or
+  `[:expectation name]`."
+  [:maybe [:or
+           [:tuple [:= :input] ::data-testing.schema/table]
+           [:tuple [:= :expectation] :string]]])
+
+(defn- sql-source-label
+  "`source`, a [[::sql-source]], as a message names it."
+  [[kind x :as source]]
+  (case (when source kind)
+    nil          (tru "the query under test")
+    :input       (tru "input {0}" (table-label x))
+    :expectation (tru "expectation {0}" (pr-str x))))
+
+(mu/defn ensure-single-select :- :string
+  "`sql` as the run executes it, when it is one SELECT statement that the read-only statement check passes in
+  `driver`'s dialect: `sql` as SQLGlot rebuilt it. The check refuses a SELECT that writes or locks anywhere in it, such
+  as a data-modifying CTE, `SELECT ... INTO` or `FOR UPDATE`. For a driver with no SQLGlot dialect, the check reads `sql` in SQLGlot's
+  generic dialect, and the run executes `sql` as written.
+
+  Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
+  `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-sql` when
+  it holds a list of values too long to parse whole, or, for a driver with no dialect, is too long to check. Each
+  refusal names `source`."
+  [driver :- :keyword
+   sql    :- :string
+   source :- ::sql-source]
+  (let [checked     (sql-tools/validate-executable-stmt driver sql "read-only")
+        no-dialect? (= [:unknown "unknown-dialect"] ((juxt :verdict :reason) checked))
+        {:keys [verdict error reason detail] rebuilt :sql}
+        (if no-dialect?
+          (sql-tools/classify-stmt driver sql "read-only")
+          checked)]
+    (case verdict
+      :allowed
+      ;; Without a dialect, the rebuild is SQLGlot's generic SQL, which the driver's database may read differently.
+      (if no-dialect? sql rebuilt)
+
+      :disallowed
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/not-a-single-select
+              (tru "The SQL of {0} must be one SELECT statement, with nothing the SQL check refuses: no second statement, nothing that writes or locks, no SQL hidden from the parser, and no function that changes the session or runs SQL text."
+                   (sql-source-label source))
+              (cond-> {}
+                reason (assoc :reason reason)
+                detail (assoc :detail detail))))
+
+      :unknown
+      (if error
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/unparseable-source
+                (tru "The SQL of {0} could not be parsed: {1}" (sql-source-label source) error)
+                {}))
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncheckable-sql
+                (tru "The SQL of {0} cannot be checked to be one SELECT statement: it holds a list of values too long to parse, or it is too long to check."
+                     (sql-source-label source))
+                {:reason reason}))))))
+
+(mu/defn expectation-query :- :string
+  "The SQL the run executes for the expectation named `expectation-name`, whose SQL is `sql`: `sql` reading the temp
+  tables of `replacements` and `output-token`, as [[ensure-single-select]] returns it."
+  [driver           :- :keyword
+   expectation-name :- :string
+   sql              :- :string
+   replacements     :- ::data-testing.compile/table-replacements
+   output-token     :- [:maybe ::data-testing.compile/output-token]]
+  (ensure-single-select driver
+                        (data-testing.compile/replace-tables driver sql replacements output-token)
+                        [:expectation expectation-name]))
+
 (mu/defn- check-expectation-sql
-  "Throw unless the expectation named `expectation-name` reads only `temp-tables` once rewritten with `replacements`
-  and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming the expectation
-  rather than the parser's own escape."
+  "Throw unless the expectation named `expectation-name` is one SELECT that reads only `temp-tables` once rewritten
+  with `replacements` and `output-token`. Its SQL is the author's, so SQL the parser cannot read is a refusal naming
+  the expectation rather than the parser's own escape."
   [driver           :- :keyword
    expectation-name :- :string
    sql              :- :string
@@ -156,7 +232,7 @@
    temp-tables      :- [:set :string]]
   (try
     (check-rewrite driver
-                   (data-testing.compile/replace-tables driver sql replacements output-token)
+                   (expectation-query driver expectation-name sql replacements output-token)
                    temp-tables
                    expectation-name)
     (catch Exception e

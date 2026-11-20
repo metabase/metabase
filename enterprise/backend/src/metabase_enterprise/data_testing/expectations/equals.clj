@@ -16,6 +16,7 @@
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.expectations.report :as expectations.report]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -278,7 +279,7 @@
 (defrecord EqualsSql [type name format sql]
   expectations.protocol/Expectation
   (temp-tables [_this {:keys [driver replacements output-token]}]
-    {"expected" {:query  (data-testing.compile/replace-tables driver sql replacements output-token)
+    {"expected" {:query  (data-testing.validator/expectation-query driver name sql replacements output-token)
                  :params []}})
 
   (probes [_this {:keys [driver output-table output-columns temp-tables] :as context}]

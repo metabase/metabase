@@ -1984,6 +1984,101 @@ def _hidden_sql(sql: str, dialect: str, select: bool):
     return None
 
 
+# A Postgres name: it may hold `$` and digits after its first character, so `a$q$` is one name, not a dollar quote.
+_PG_WORD = re.compile(r"[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9$\x80-\U0010ffff]*")
+_PG_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9\x80-\U0010ffff]*)?\$")
+_LINE_END = re.compile(r"[\n\r]")
+
+
+def _pg_literal_end(sql: str, i: int, backslash_escapes: bool):
+    """The index after the quote that ends the literal whose text starts at `i`, or None when it does not end."""
+    n = len(sql)
+    while i < n:
+        c = sql[i]
+        if c == "\\" and backslash_escapes:
+            i += 2
+        elif c == "'":
+            if sql.startswith("''", i):
+                i += 2
+            else:
+                return i + 1
+        else:
+            i += 1
+    return None
+
+
+def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> int:
+    """The number of statements Postgres reads in `sql` with `standard_conforming_strings` set as given, counting a
+    piece between semicolons only when it holds more than whitespace and comments. A literal, quoted name or comment
+    that does not end ends the count, with the piece it started counted."""
+    count, content, i, n = 0, False, 0, len(sql)
+    while i < n:
+        c = sql[i]
+        if c == ";":
+            count, content, i = count + content, False, i + 1
+            continue
+        if c.isspace():
+            i += 1
+            continue
+        if sql.startswith("--", i):
+            match = _LINE_END.search(sql, i)
+            i = n if match is None else match.end()
+            continue
+        if sql.startswith("/*", i):
+            depth, i = 1, i + 2
+            while i < n and depth:
+                if sql.startswith("/*", i):
+                    depth, i = depth + 1, i + 2
+                elif sql.startswith("*/", i):
+                    depth, i = depth - 1, i + 2
+                else:
+                    i += 1
+            continue
+        content = True
+        end = None
+        word = _PG_WORD.match(sql, i)
+        dollar = _PG_DOLLAR_QUOTE.match(sql, i)
+        if word is not None:
+            prefix, i = word.group().lower(), word.end()
+            if not sql.startswith("'", i) and not (prefix == "u" and sql.startswith("&'", i)):
+                continue
+            # E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
+            # literal after its prefix.
+            if prefix == "e":
+                end = _pg_literal_end(sql, i + 1, True)
+            elif prefix in ("b", "x"):
+                end = _pg_literal_end(sql, i + 1, False)
+            elif prefix == "u":
+                end = _pg_literal_end(sql, i + 2, False)
+            else:
+                end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+        elif c == "'":
+            end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+        elif c == '"':
+            close = sql.find('"', i + 1)
+            while close != -1 and sql.startswith('""', close):
+                close = sql.find('"', close + 2)
+            end = None if close == -1 else close + 1
+        elif dollar is not None:
+            close = sql.find(dollar.group(), dollar.end())
+            end = None if close == -1 else close + len(dollar.group())
+        else:
+            # A number runs into a following letter: `1e'...'` is a number and then an E'' literal.
+            i += 1
+            continue
+        if end is None:
+            break
+        i = end
+    return count + content
+
+
+def _hidden_by_string_setting(sql: str) -> bool:
+    """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
+    reads it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a
+    rebuilt E'' literal can run past its end under either setting."""
+    return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
+
+
 def _unbracketed(stmt: exp.Expression) -> exp.Expression:
     """`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias."""
     while isinstance(stmt, exp.Subquery) and not stmt.alias:
@@ -2019,7 +2114,7 @@ def _not_read_only_reason(stmts, sql: str, dialect: str):
     return _statement_reason(stmts[0], sql, dialect)
 
 
-def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None) -> str:
+def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = None, check_rebuild: bool = False) -> str:
     """Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
     and returns the query reconstructed from the parsed AST.
 
@@ -2027,6 +2122,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     `stmt_type` "read-only" is stricter than "read": the SELECT must also hold nothing that writes or locks anywhere in
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
+
+    With `check_rebuild`, the reconstruction must also pass the same checks and reconstruct to itself (reason
+    "rebuild-differs", with the reconstruction's own reason as `reason_detail`), and for "postgres", Postgres must
+    read it as one statement with `standard_conforming_strings` on and off (reason "backslash-quote").
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2042,13 +2141,25 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             problem = _statement_reason(stmts[0], sql, dialect)
         else:
             problem = None
+        rebuilt = None
+        if len(stmts) == 1:
+            rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+            if problem is None and check_rebuild and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
+                problem = ("backslash-quote", None)
+            # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
+            # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
+            # its quote moves.
+            if problem is None and check_rebuild:
+                again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
+                if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
+                    problem = ("rebuild-differs", again.get("reason"))
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
-        if len(stmts) == 1:
+        if rebuilt is not None:
             result["is_single_stmt?"] = True
             if isinstance(_unbracketed(stmts[0]), allowed_types) and problem is None:
                 result["allowed_stmt_type?"] = True
-            result["sql"] = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
+            result["sql"] = rebuilt
     except Exception as e:
         result["error"] = str(e)
     if stmt_type == "read-only" and "error" in result:

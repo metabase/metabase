@@ -36,7 +36,7 @@
       (is (= "SELECT id FROM archived_orders"
              (protocol/replace-names java-parser "postgres" "SELECT id FROM orders"
                                      {:tables [[{:table "orders"} "archived_orders"]]})))
-      (is (true? (:allowed_stmt_type? (protocol/single-stmt-of-type java-parser "postgres" "SELECT id FROM orders" "read"))))
+      (is (true? (:allowed_stmt_type? (protocol/single-stmt-of-type java-parser "postgres" "SELECT id FROM orders" "read" false))))
       (is (= "success" (:status (protocol/transpile-sql java-parser "SELECT id FROM orders" "postgres" "mysql")))))
     (testing "a parse error is the same call-failed-ex the GraalPy parser throws"
       (let [error (try (protocol/referenced-tables java-parser "postgres" "SELECT * FROM WHERE (")
@@ -59,8 +59,8 @@
         (testing (pr-str sql)
           (is (= (protocol/transpile-sql graal sql "postgres" "mysql")
                  (protocol/transpile-sql java sql "postgres" "mysql")))
-          (is (= (protocol/single-stmt-of-type graal "postgres" sql "read-only")
-                 (protocol/single-stmt-of-type java "postgres" sql "read-only")))))
+          (is (= (protocol/single-stmt-of-type graal "postgres" sql "read-only" false)
+                 (protocol/single-stmt-of-type java "postgres" sql "read-only" false)))))
       (is (= "multiple_statements" (:reason (protocol/transpile-sql java "SELECT 1; SELECT 2" "postgres" "mysql")))))))
 
 (deftest statement-checks-match-graalpy-test
@@ -83,9 +83,40 @@
                ["tsql"     "write" "DELETE FROM t WHERE a = 1"                                        true]
                ["postgres" "read"  "SELECT id FROM orders"                                            true]]]
         (testing (pr-str dialect stmt-type sql)
-          (let [result (protocol/single-stmt-of-type java dialect sql stmt-type)]
+          (let [result (protocol/single-stmt-of-type java dialect sql stmt-type false)]
             (is (= allowed? (:allowed_stmt_type? result)))
-            (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type)
+            (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type false)
+                   result))))))))
+
+(deftest rebuild-checks-match-graalpy-test
+  (testing "with check-rebuild?, both parsers refuse the same rebuilds for the same reasons"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [[dialect stmt-type sql reason]
+              [;; A backslash before a quote ends no literal with standard_conforming_strings on, and one with it off.
+               ["postgres" "read-only" "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"          "backslash-quote"]
+               ["postgres" "read-only" "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
+               ["postgres" "read-only" "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"           "backslash-quote"]
+               ["postgres" "read-only" "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note" "backslash-quote"]
+               ["postgres" "read"      "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
+               ;; A rebuilt `E'\\'` ends one quote later, so the rebuild fails the checks or does not rebuild to itself.
+               ["postgres" "read-only" "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id" "rebuild-differs"]
+               ["postgres" "read-only" "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id" "rebuild-differs"]
+               ["postgres" "read-only" "SELECT E'a\\\\' AS id"                                                "rebuild-differs"]
+               ["postgres" "write"     "UPDATE t SET a = E'a\\\\'"                                            "rebuild-differs"]
+               ;; One statement under either setting.
+               ["postgres" "read-only" "SELECT 'it''s' AS note"                                               nil]
+               ["postgres" "read-only" "SELECT $q$it's; DELETE FROM orders$q$ AS note"                        nil]
+               ["postgres" "read-only" "SELECT 'C:\\temp' AS note"                                            nil]
+               ["postgres" "read-only" "SELECT E'it\\'s' AS id"                                               nil]
+               ["postgres" "read-only" "SELECT 'x' AS \"a\\'\" /* b\\' /* c' */ ; */"                         nil]
+               ["postgres" "read-only" "SELECT X'1F' AS x, B'1' AS y, N'z\\' AS z -- ;\n"                     nil]
+               ["postgres" "read-only" "SELECT 1 AS a$q$ FROM t WHERE b = 'c'"                                nil]
+               ["redshift" "read-only" "SELECT 'it\\'s' AS note"                                              nil]]]
+        (testing (pr-str dialect stmt-type sql)
+          (let [result (protocol/single-stmt-of-type java dialect sql stmt-type true)]
+            (is (= reason (:reason result)))
+            (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type true)
                    result))))))))
 
 (deftest slow-call-times-out-test
@@ -175,7 +206,7 @@
               {"referenced-tables"        #(sqlglot-java.references/referenced-tables "postgres" sql)
                "referenced-fields"        #(sqlglot-java.references/referenced-fields "postgres" sql)
                "simple-query"             #(sqlglot-java.statements/simple-query "postgres" sql)
-               "single-stmt-of-type"      #(sqlglot-java.statements/single-stmt-of-type "postgres" sql "read")
+               "single-stmt-of-type"      #(sqlglot-java.statements/single-stmt-of-type "postgres" sql "read" false)
                "field-references"         #(sqlglot-java.field-references/field-references "postgres" sql)
                "add-into-clause"          #(sqlglot-java.rewrite/add-into-clause "postgres" sql "u")
                "replace-names"            #(sqlglot-java.rewrite/replace-names
@@ -292,7 +323,7 @@
                       (protocol/referenced-fields java-parser "postgres" sql)
                       (protocol/simple-query java-parser "postgres" sql)
                       (protocol/field-references java-parser "postgres" sql)
-                      (protocol/single-stmt-of-type java-parser "postgres" sql "read-only")
+                      (protocol/single-stmt-of-type java-parser "postgres" sql "read-only" false)
                       (protocol/transpile-sql java-parser sql "postgres" "snowflake")]]
         (is (not-any? sqlglot-java.ast/ast-node? (tree-seq coll? seq result))
             (pr-str result))))))
@@ -362,7 +393,7 @@
              :allowed_stmt_type? false
              :reason             "unparseable"
              :error              "maximum recursion depth exceeded"}
-            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" too-deep-sql "read-only")))))
+            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" too-deep-sql "read-only" false)))))
 
 (deftest port-logs-no-sql-test
   (testing "the port's warning that quotes SQL it falls back on does not reach the log, as sql_tools.py ensures"
@@ -374,11 +405,11 @@
                     (close []))]
       (.addHandler logger handler)
       (try
-        (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7731" "read-only")
+        (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7731" "read-only" false)
         (is (= [] @records))
         (testing "after a Log4j reconfiguration, which resets java.util.logging levels"
           (mt/with-log-level [metabase.sql-parsing :debug]
-            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7732" "read-only"))
+            (protocol/single-stmt-of-type (sqlglot-java/parser) "postgres" "CREATE FROBNICATE marker_7732" "read-only" false))
           (is (= [] @records)))
         (finally
           (.removeHandler logger handler))))))

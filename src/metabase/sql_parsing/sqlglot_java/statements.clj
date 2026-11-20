@@ -272,6 +272,121 @@
           (re-find #"--(?![ \t\n\r\f\x0B]|\z)" sql)                   ["bare-dash-comment" nil]
           (re-find #"\\['\"`]" sql)                                  ["backslash-quote" nil]))))
 
+;; A Postgres name: it may hold `$` and digits after its first character, so `a$q$` is one name, not a dollar quote.
+(def ^:private pg-word #"[A-Za-z_\x{80}-\x{10FFFF}][A-Za-z_0-9$\x{80}-\x{10FFFF}]*")
+(def ^:private pg-dollar-quote #"\$(?:[A-Za-z_\x{80}-\x{10FFFF}][A-Za-z_0-9\x{80}-\x{10FFFF}]*)?\$")
+
+(defn- looking-at
+  "The text `pattern` matches starting at index `i` of `sql`, as `[text end]`, or nil."
+  [pattern ^String sql i]
+  (let [m (doto (re-matcher pattern sql) (.region (int i) (count sql)))]
+    (when (.lookingAt m)
+      [(.group m) (.end m)])))
+
+(defn- python-space?
+  "Whether `c` is whitespace to Python's `str.isspace`, which also counts the no-break spaces and U+0085."
+  [c]
+  (let [c (int c)]
+    (or (Character/isWhitespace c) (Character/isSpaceChar c) (= c 0x85))))
+
+(defn- index-after
+  "The index after the first `s` in `sql` at or after `from`, or nil."
+  [^String sql ^String s from]
+  (let [i (.indexOf sql s (int from))]
+    (when-not (neg? i)
+      (+ i (count s)))))
+
+(defn- pg-literal-end
+  "The index after the quote that ends the literal whose text starts at `i`, or nil when it does not end.
+  Port of `_pg_literal_end`."
+  [^String sql i backslash-escapes?]
+  (let [n (count sql)]
+    (loop [i i]
+      (when (< i n)
+        (let [c (.charAt sql i)]
+          (cond
+            (and (= c \\) backslash-escapes?) (recur (+ i 2))
+            (= c \')                          (if (.startsWith sql "''" i) (recur (+ i 2)) (inc i))
+            :else                             (recur (inc i))))))))
+
+(defn- pg-token-end
+  "The index after the token that starts at index `i` of `sql`, whose character there is neither whitespace, `;` nor
+  the start of a comment. Nil when the token is a literal, quoted name or dollar quote that does not end."
+  [^String sql i standard-conforming-strings?]
+  (let [c (.charAt sql i)]
+    (if-let [[word word-end] (looking-at pg-word sql i)]
+      (let [prefix (u/lower-case-en word)]
+        (cond
+          (not (or (.startsWith sql "'" (int word-end))
+                   (and (= prefix "u") (.startsWith sql "&'" (int word-end)))))
+          word-end
+          ;; E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
+          ;; literal after its prefix.
+          (= prefix "e")         (pg-literal-end sql (inc word-end) true)
+          (#{"b" "x"} prefix)    (pg-literal-end sql (inc word-end) false)
+          (= prefix "u")         (pg-literal-end sql (+ word-end 2) false)
+          :else                  (pg-literal-end sql (inc word-end) (not standard-conforming-strings?))))
+      (cond
+        (= c \')
+        (pg-literal-end sql (inc i) (not standard-conforming-strings?))
+
+        (= c \")
+        (loop [close (.indexOf sql "\"" (int (inc i)))]
+          (cond
+            (neg? close)                     nil
+            (.startsWith sql "\"\"" close)   (recur (.indexOf sql "\"" (int (+ close 2))))
+            :else                            (inc close)))
+
+        :else
+        (if-let [[dollar dollar-end] (looking-at pg-dollar-quote sql i)]
+          (index-after sql dollar dollar-end)
+          ;; A number runs into a following letter: `1e'...'` is a number and then an E'' literal.
+          (inc i))))))
+
+(defn- line-comment-end
+  "The index after the line end that ends the `--` comment at `i` of `sql`, or the length of `sql`."
+  ^long [^String sql i]
+  (let [m (re-matcher #"[\n\r]" sql)]
+    (if (.find m (int i)) (.end m) (count sql))))
+
+(defn- block-comment-end
+  "The index after the `*/` that ends the `/*` comment at `i` of `sql`, comments nesting as Postgres nests them, or the
+  length of `sql`."
+  ^long [^String sql i]
+  (let [n (count sql)]
+    (loop [depth 1, i (+ i 2)]
+      (cond
+        (or (>= i n) (zero? depth)) i
+        (.startsWith sql "/*" i)    (recur (inc depth) (+ i 2))
+        (.startsWith sql "*/" i)    (recur (dec depth) (+ i 2))
+        :else                       (recur depth (inc i))))))
+
+(defn- postgres-statement-count
+  "The number of statements Postgres reads in `sql` with `standard_conforming_strings` set as given, counting a piece
+  between semicolons only when it holds more than whitespace and comments. A literal, quoted name or comment that does
+  not end ends the count, with the piece it started counted. Port of `_postgres_statement_count`."
+  [^String sql standard-conforming-strings?]
+  (let [n (count sql)]
+    (loop [i 0, stmt-count 0, content? false]
+      (if (>= i n)
+        (cond-> stmt-count content? inc)
+        (let [c (.charAt sql i)]
+          (cond
+            (= c \;)                 (recur (inc i) (cond-> stmt-count content? inc) false)
+            (python-space? c)        (recur (inc i) stmt-count content?)
+            (.startsWith sql "--" i) (recur (line-comment-end sql i) stmt-count content?)
+            (.startsWith sql "/*" i) (recur (block-comment-end sql i) stmt-count content?)
+            :else                    (if-let [end (pg-token-end sql i standard-conforming-strings?)]
+                                       (recur (long end) stmt-count true)
+                                       (inc stmt-count))))))))
+
+(defn- hidden-by-string-setting?
+  "Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot reads
+  it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a rebuilt
+  E'' literal can run past its end under either setting. Port of `_hidden_by_string_setting`."
+  [sql]
+  (boolean (some #(> (postgres-statement-count sql %) 1) [true false])))
+
 (defn- unbracketed
   "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias.
   Port of `_unbracketed`."
@@ -316,8 +431,12 @@
   `\"read-only\"` also refuses a SELECT holding anything that writes or locks anywhere in its tree, and does not count
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
+
+  With `check-rebuild?`, the regenerated SQL must also pass the same checks and regenerate to itself (`:reason`
+  `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres
+  must read it as one statement with `standard_conforming_strings` on and off (`:reason` `\"backslash-quote\"`).
   Port of `is_single_stmt_of_type`."
-  [dialect sql stmt-type]
+  [dialect sql stmt-type check-rebuild?]
   (let [read-only-type? (= stmt-type "read-only")
         ;; Filled in as it goes, so a failure part way keeps what was found before it.
         result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
@@ -325,19 +444,35 @@
       (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
                       read-only-type? ast/nonempty-statements)
             allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
+            [stmt]  stmts
             problem (cond
                       read-only-type?        (not-read-only-reason stmts sql dialect)
-                      (= 1 (count stmts))    (statement-reason (first stmts) sql dialect))
-            [stmt]  stmts]
+                      (= 1 (count stmts))    (statement-reason stmt sql dialect))
+            rebuilt (when (= 1 (count stmts))
+                      (when-not stmt
+                        (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
+                      (ast/sql stmt dialect))
+            problem (cond
+                      (or problem (not check-rebuild?) (nil? rebuilt))
+                      problem
+
+                      (and (= dialect "postgres") (hidden-by-string-setting? rebuilt))
+                      ["backslash-quote" nil]
+
+                      ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
+                      ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
+                      ;; with one backslash, so its quote moves.
+                      :else
+                      (let [again (single-stmt-of-type dialect rebuilt stmt-type false)]
+                        (when (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again)))
+                          ["rebuild-differs" (:reason again)])))]
         (when problem
           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
-        (when (= 1 (count stmts))
+        (when rebuilt
           (vswap! result assoc :is_single_stmt? true)
           (when (and (ast/instance-of-any? allowed (unbracketed stmt)) (nil? problem))
             (vswap! result assoc :allowed_stmt_type? true))
-          (when-not stmt
-            (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
-          (vswap! result assoc :sql (ast/sql stmt dialect))))
+          (vswap! result assoc :sql rebuilt)))
       ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
       (catch StackOverflowError _
         (vswap! result assoc :error "maximum recursion depth exceeded"))

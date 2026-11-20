@@ -236,8 +236,9 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query native}]
         (let [card    (t2/select-one :model/Card :id card-id)
               refusal (fn [definition]
-                        (data-testing.test-util/refusal-type
-                         #(data-testing.runner/validate-test :card card definition)))]
+                        (binding [api/*current-user-id* (mt/user->id :crowberto)]
+                          (data-testing.test-util/refusal-type
+                           #(data-testing.runner/validate-test :card card definition))))]
           (testing "a test is refused as it is saved, not only when it runs"
             (is (= ::data-testing.errors/now-on-native-sql (refusal (assoc definition :now (t/offset-date-time now))))))
           (testing "control: without `now` the same test is accepted"
