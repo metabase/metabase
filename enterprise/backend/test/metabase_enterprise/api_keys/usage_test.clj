@@ -488,7 +488,7 @@
   (testing "startup starts the flush loop through the global system, so a halt stops it, and shutdown stops it once"
     (let [handle @#'ee-usage/flush-component
           stops  (atom 0)
-          halts? #(boolean (some #{handle} (#'system/halt-order (#'system/dependency-graph {}))))]
+          halts? #(global-system.tu/halts? handle)]
       (global-system.tu/with-root handle nil
         (mt/with-dynamic-fn-redefs [ee-usage/start-flush! (constantly true)
                                     ee-usage/stop-flush!  #(swap! stops inc)]

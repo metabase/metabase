@@ -58,9 +58,9 @@
 
 (deftest mq-starts-through-the-global-system-test
   (testing "startup starts MQ through the global system, so a halt stops it, and shutdown stops and unregisters it"
-    (let [handle  @#'mq.init/mq-component
-          stops   (atom 0)
-          halts?  #(boolean (some #{handle} (#'system/halt-order (#'system/dependency-graph {}))))]
+    (let [handle @#'mq.init/mq-component
+          stops  (atom 0)
+          halts? #(global-system.tu/halts? handle)]
       (global-system.tu/with-root handle nil
         (mt/with-dynamic-fn-redefs [mq.init/start! (constantly {:queue-be ::fake})
                                     mq.init/stop!  (fn [& _] (swap! stops inc))]
