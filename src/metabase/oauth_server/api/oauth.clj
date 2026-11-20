@@ -650,32 +650,43 @@
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
    which RFC 6749 section 6 treats as the original grant; oidc-provider would read it as asking for no scopes and mint
    a token with none. Any other `body` is returned unchanged."
-  [provider authorization-header {:keys [grant_type scope resource] :as body}]
-  (if (not= grant_type "refresh_token")
+  [provider authorization-header {:keys [grant_type scope resource refresh_token] :as body}]
+  (cond
+    (not= grant_type "refresh_token")
     body
-    (let [scope? (not (str/blank? scope))
-          body   (cond-> body (not scope?) (dissoc :scope))]
-      (if-let [token-data (refreshable-token provider authorization-header body)]
-        (let [named  (or (not-empty resource) (:resource token-data))
-              held   (into #{} (:scope token-data))
-              target (with-default-mcp-resource {:scope    (if scope? scope (str/join " " held))
-                                                 :resource named})]
-          (cond-> body
-            scope?
-            (assoc :scope (let [requested (scope-tokens (scope-to-grant target))]
-                            ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it
-                            ;; deduplicated and single-spaced.
-                            (or (not-empty (str/join " " (filter held requested)))
-                                (throw (ex-info "no requested scope is held by the refresh token"
-                                                {:oauth-error       "invalid_scope"
-                                                 :error-description not-held-scope-description})))))
 
-            ;; A token issued before MCP and REST tokens were separated holds MCP scopes but no resource. oidc-provider
-            ;; checks a refresh's `resource` against the token's only when the token has one, so naming the default
-            ;; here binds the new tokens to it and later refreshes need no default.
-            (and (empty? named) (seq (:resource target)))
-            (assoc :resource (:resource target))))
-        body))))
+    (str/blank? scope)
+    ;; Only a token with no resource needs anything here, so [[refreshable-token]], which authenticates the client a
+    ;; second time, runs for that token alone and not on every refresh. See the `:else` arm for why naming the
+    ;; resource binds the new tokens.
+    (let [body   (dissoc body :scope)
+          stored (when (empty? resource)
+                   (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
+          target (when (and stored (empty? (:resource stored)))
+                   (with-default-mcp-resource {:scope (str/join " " (:scope stored))}))]
+      (cond-> body
+        (and (seq (:resource target)) (refreshable-token provider authorization-header body))
+        (assoc :resource (:resource target))))
+
+    :else
+    (if-let [token-data (refreshable-token provider authorization-header body)]
+      (let [named     (or (not-empty resource) (:resource token-data))
+            target    (with-default-mcp-resource {:scope scope, :resource named})
+            requested (scope-tokens (scope-to-grant target))
+            held      (into #{} (:scope token-data))
+            ;; oidc-provider splits `scope` on single spaces and stores what it gets, so pass it deduplicated and
+            ;; single-spaced.
+            granted   (or (not-empty (str/join " " (filter held requested)))
+                          (throw (ex-info "no requested scope is held by the refresh token"
+                                          {:oauth-error       "invalid_scope"
+                                           :error-description not-held-scope-description})))]
+        (cond-> (assoc body :scope granted)
+          ;; A token issued before MCP and REST tokens were separated holds MCP scopes but no resource. oidc-provider
+          ;; checks a refresh's `resource` against the token's only when the token has one, so naming the default
+          ;; here binds the new tokens to it and later refreshes need no default.
+          (and (empty? named) (seq (:resource target)))
+          (assoc :resource (:resource target))))
+      body)))
 
 (defn- authorization-consent-response
   "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
