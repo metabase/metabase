@@ -16,7 +16,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (defn- card-href
   [card]
@@ -189,19 +190,48 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
+(defn log-unresolved-goals!
+  "Warn about each goal `card` draws on `dashcard` that can't resolve against `goal-values` and `data`. Only the query
+  builder shows goal warnings, so this is what ties a sent chart to its broken goal."
+  [card dashcard data goal-values]
+  (when-let [failures (seq (dynamic-goals/unresolved-goals card dashcard data goal-values))]
+    (let [display (:display (dynamic-goals/goal-scope card dashcard))]
+      (doseq [{:keys [setting reason entity-type entity-id column]} failures]
+        (log/warnf "Dynamic goal %s can't be resolved (%s): %s. Chart card %s%s, display %s"
+                   (name setting)
+                   (name reason)
+                   (dynamic-goals/describe-goal-source entity-type entity-id column)
+                   (:id card)
+                   (if-let [dashcard-id (:id dashcard)] (format ", dashcard %s" dashcard-id) "")
+                   (some-> display name))))))
+
+(defn- draws-goals?
+  "Whether a chart detected as `chart-type` draws the goals of `card` on `dashcard`. An empty result draws none, and a
+  one-cell result of a non-scalar display is drawn as a bare number."
+  [chart-type card dashcard]
+  (case chart-type
+    :empty  false
+    :scalar (= :scalar (some-> (dynamic-goals/goal-scope card dashcard) :display keyword))
+    true))
+
 (mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
   [render-type :- ::body/render-type
    timezone-id :- [:maybe :string]
    card        :- [:maybe ::body/card]
    dashcard    :- [:maybe ::body/dashcard]
-   {:keys [data error] :as results} :- [:maybe ::body/QPResult]]
+   {:keys [data error] :as results} :- [:maybe ::body/QPResult]
+   goal-values :- [:maybe ::dynamic-goals/goal-values]]
   (try
     (when error
       (throw (ex-info (tru "Card has errors: {0}" error) (assoc results :card-error true))))
-    (let [chart-type (or (detect-pulse-chart-type card dashcard data)
-                         (when (is-attached? card)
-                           :attached)
-                         :unknown)]
+    ;; detection reads no goal values, so it can run before they're resolved, while the settings still hold the refs
+    (let [chart-type           (or (detect-pulse-chart-type card dashcard data)
+                                   (when (is-attached? card)
+                                     :attached)
+                                   :unknown)
+          _                    (when (draws-goals? chart-type card dashcard)
+                                 (log-unresolved-goals! card dashcard data goal-values))
+          [card dashcard data] (dynamic-goals/resolve-drawn-goals card dashcard data goal-values)]
       (log/debugf "Rendering pulse card with chart-type %s and render-type %s" chart-type render-type)
       (body/render chart-type render-type timezone-id card dashcard data))
     (catch Throwable e
@@ -252,7 +282,7 @@
          {description :content}           (make-description-if-needed dashcard card options)
          {pulse-body       :content
           body-attachments :attachments
-          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
+          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results (:channel.render/goal-values options))
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]
      (cond-> {:attachments (merge title-attachments body-attachments)
@@ -289,12 +319,13 @@
    (:content (render-pulse-card :inline timezone-id card nil results options))))
 
 (mr/def ::part
-  "The `{:card :dashcard :result}` shape a Pulse/Dashboard Subscription section carries."
+  "The `{:card :dashcard :result :goal-values}` shape a Pulse/Dashboard Subscription section carries."
   [:map {:closed true}
    [:type     {:optional true} [:= :card]]
    [:card     {:optional true} [:maybe ::body/card]]
    [:dashcard {:optional true} [:maybe ::body/dashcard]]
-   [:result   {:optional true} [:maybe ::body/QPResult]]])
+   [:result   {:optional true} [:maybe ::body/QPResult]]
+   [:goal-values {:optional true} [:maybe ::dynamic-goals/goal-values]]])
 
 (mu/defn render-pulse-section :- ::body/RenderedPartCard
   "Render a single Card section of a Pulse to a Hiccup form (representing HTML)."
@@ -303,12 +334,13 @@
    (render-pulse-section timezone-id part {}))
 
   ([timezone-id :- [:maybe :string]
-    {card :card, dashcard :dashcard, result :result, :as _part} :- ::part
+    {card :card, dashcard :dashcard, result :result, goal-values :goal-values, :as _part} :- ::part
     options :- [:maybe ::body/options]]
    (log/with-context {:card_id (:id card)}
      (let [options                       (merge {:channel.render/include-title?       true
                                                  :channel.render/include-description? true
-                                                 :channel.render/include-inline-parameters? true}
+                                                 :channel.render/include-inline-parameters? true
+                                                 :channel.render/goal-values          goal-values}
                                                 options)
            {:keys [attachments content]} (render-pulse-card :attachment timezone-id card dashcard result options)]
        {:attachments attachments
@@ -350,14 +382,22 @@
 
 (mu/defn render-pulse-card-to-base64 :- string?
   "Render a `pulse-card` as a PNG and return it as a base64 encoded string."
-  ^String [timezone-id :- [:maybe :string]
-           card        :- [:maybe ::body/card]
-           dashcard    :- [:maybe ::body/dashcard]
-           result      :- ::body/QPResult
-           width       :- pos-int?]
-  (-> (render-pulse-card :inline timezone-id card dashcard result)
-      (png/render-html-to-png width)
-      image-bundle/render-img-data-uri))
+  (^String [timezone-id :- [:maybe :string]
+            card        :- [:maybe ::body/card]
+            dashcard    :- [:maybe ::body/dashcard]
+            result      :- ::body/QPResult
+            width       :- pos-int?]
+   (render-pulse-card-to-base64 timezone-id card dashcard result width nil))
+
+  (^String [timezone-id :- [:maybe :string]
+            card        :- [:maybe ::body/card]
+            dashcard    :- [:maybe ::body/dashcard]
+            result      :- ::body/QPResult
+            width       :- pos-int?
+            options     :- [:maybe ::body/options]]
+   (-> (render-pulse-card :inline timezone-id card dashcard result options)
+       (png/render-html-to-png width options)
+       image-bundle/render-img-data-uri)))
 
 (mu/defn png-from-render-info :- bytes?
   "Create a PNG file (as a byte array) from rendering info. `options` takes the keys

@@ -24,6 +24,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -53,6 +54,8 @@
    [metabase.queries.serialization :as queries.serialization]
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
+   [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.card :as qp.card]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
@@ -67,6 +70,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.util.performance :as perf]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -981,6 +986,15 @@
         (some? (:action_id dashcard))
         (some? (:virtual_card settings)))))
 
+(defn- shared-dashboard? [dashboard]
+  (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+
+(defn- newly-placed-card-ids
+  "The ids `card-ids-xf` yields from `new-dashcards` but not from `existing-dashcards`."
+  [card-ids-xf existing-dashcards new-dashcards]
+  (let [existing-card-ids (into #{} card-ids-xf existing-dashcards)]
+    (into #{} (comp card-ids-xf (remove existing-card-ids)) new-dashcards)))
+
 (defn- shared-dashboard-timelines-readable?
   "Whether the current user reads the timelines of `cards` that a public or embedded `dashboard` shows to anyone."
   [dashboard cards]
@@ -994,7 +1008,7 @@
   publicly shared or embedded, so the current user needs read access to those timelines."
   [dashboard cards]
   (when (and api/*current-user-id*
-             (or (:public_uuid dashboard) (:enable_embedding dashboard)))
+             (shared-dashboard? dashboard))
     (let [timeline-ids (into #{} (mapcat card-exposed-timeline-ids) cards)]
       (doseq [timeline (t2/hydrate (queries.db/timelines timeline-ids) :can_read)]
         (api/read-check timeline)))))
@@ -1010,20 +1024,106 @@
   is grandfathered only when `existing-dashcards` already shows its events, so turning a dashcard that hides them
   into one that shows them is checked like any other placement."
   [dashboard existing-dashcards new-dashcards]
-  (let [exposed-card-ids  (comp (remove dashcard-hides-card-events?) (keep :card_id))
-        existing-card-ids (into #{} exposed-card-ids existing-dashcards)
-        new-card-ids      (into #{} (comp exposed-card-ids (remove existing-card-ids)) new-dashcards)]
-    (check-shared-dashboard-timeline-permissions-for-card-ids! dashboard new-card-ids)))
+  (check-shared-dashboard-timeline-permissions-for-card-ids!
+   dashboard
+   (newly-placed-card-ids (comp (remove dashcard-hides-card-events?) (keep :card_id))
+                          existing-dashcards
+                          new-dashcards)))
+
+(defn- reads-parameter-tag?
+  [query]
+  (boolean (perf/some qp.card/parameter-template-tag? (lib/all-template-tags query))))
+
+(defn card-reads-parameters?
+  "Whether running `card`'s saved query needs parameter values: `card` has parameters, or its query or that of any card
+  it reads, at any depth, has a template tag that becomes one."
+  [{:keys [parameters dataset_query]}]
+  (boolean
+   (or (seq parameters)
+       (when (seq dataset_query)
+         (let [query (lib/query (lib-be/application-database-metadata-provider (:database dataset_query))
+                                dataset_query)]
+           (or (reads-parameter-tag? query)
+               ;; source cards, `{{#123}}` tags and metrics; the walk keeps a visited set, so a cycle ends
+               (perf/some (fn [card-id]
+                            (some-> (lib.metadata/card query card-id)
+                                    :dataset-query
+                                    perf/not-empty
+                                    reads-parameter-tag?))
+                          (lib/all-source-card-ids-recursive query))))))))
+
+(def ^:private goal-reference-models
+  {"card" :model/Card, "measure" :model/Measure})
+
+(defn- resolvable-goal-references
+  [viz-settings]
+  ;; goals of any other type are dropped at run time too, so they reach nothing
+  (into #{} (filter (comp goal-reference-models first)) (dynamic-goals/goal-references viz-settings)))
+
+(defn- check-goal-reference!
+  [[entity-type id]]
+  (api/check-400 (pos-int? id) (tru "A goal must reference an entity by its integer ID."))
+  (let [entity (api/read-check (goal-reference-models entity-type) id)]
+    ;; a measure's value is its table's data, while reading a Table only takes metadata access
+    (when (= "measure" entity-type)
+      (api/check (query-perms/can-query-table? (get-in entity [:definition :database]) (:table_id entity))
+                 [403 (tru "You must have data permissions to use this measure as a goal.")]))
+    ;; a goal runs its source with no parameter values, so it'd get each one's default or none
+    (when (= "card" entity-type)
+      (api/check-400
+       (not (card-reads-parameters? entity))
+       (tru "This question uses variables, directly or through a question it''s built on, so it can''t be a goal.")))))
+
+(defn check-new-goal-references!
+  "Throws if a goal in `viz-settings` reads a column no `previous-viz-settings` reads, and the card or measure that
+  column belongs to is malformed, missing, or unreadable by the current user, or is a card whose query reads parameters.
+  A measure also needs query access to its table. Does nothing when no user is bound."
+  [viz-settings & previous-viz-settings]
+  ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
+  ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write
+  ;; (serdes import, migrations, tasks) rather than a request.
+  (when-let [refs (and api/*current-user-id*
+                       (not-empty (resolvable-goal-references viz-settings)))]
+    ;; most settings carry no goals, so skip scanning every previous setting (a whole dashboard's, for a new dashcard)
+    ;; public pages return only the columns goals name, so a new column of an already-referenced entity is new
+    ;; exposure; the read check itself is per entity
+    (let [previous-refs (into #{} (mapcat resolvable-goal-references) previous-viz-settings)]
+      (run! check-goal-reference! (into #{} (map pop) (set/difference refs previous-refs))))))
+
+(defn check-shared-dashboard-goal-permissions!
+  "Placing `cards` on `dashboard` resolves their goals for anyone who opens it when the dashboard is publicly shared or
+  embedded, so the current user needs to be able to read what those goals reference."
+  [dashboard cards]
+  (when (shared-dashboard? dashboard)
+    (doseq [card cards]
+      (check-new-goal-references! (:visualization_settings card)))))
+
+(defn- dashcard-card-ids
+  "The card and series cards `dashcard` runs. Series are maps or bare ids, depending on the caller."
+  [dashcard]
+  (cons (:card_id dashcard) (map #(cond-> % (map? %) :id) (:series dashcard))))
+
+(defn check-newly-exposed-dashcards-goal-permissions!
+  "[[check-shared-dashboard-goal-permissions!]] for the cards `new-dashcards` newly place on `dashboard`, as a card or
+  a series."
+  [dashboard existing-dashcards new-dashcards]
+  (when (shared-dashboard? dashboard)
+    ;; unlike timeline events, a visualizer dashcard's cards still resolve their own goals, so no dashcard is skipped
+    (when-let [new-card-ids (not-empty (newly-placed-card-ids (comp (mapcat dashcard-card-ids) (filter pos-int?))
+                                                              existing-dashcards
+                                                              new-dashcards))]
+      (check-shared-dashboard-goal-permissions! dashboard (queries.db/cards new-card-ids)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *copy-source-card*
   "The Card a new Card is being copied from, if any, bound because the create check takes only the new Card, so that
-  the timelines the source already selects need no read access."
+  the timelines the source already selects, and its goal references unless the copy goes into a public Document, need
+  no read access."
   nil)
 
 (defmacro with-copy-source-card
   "Runs `body`, treating a Card created within it as a copy of `source-card`, so that an inherited timeline selection
-  does not require read access to those timelines, where `source-card` must be a Card the current user has already
+  or goal reference does not require read access, where `source-card` must be a Card the current user has already
   passed a read check on and `body` should perform only the create permission check and the single copy insert."
   [source-card & body]
   `(binding [*copy-source-card* ~source-card] ~@body))
@@ -1296,6 +1396,11 @@
 (t2/define-before-insert :model/Card
   [card]
   (check-timeline-settings card)
+  ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references
+  (check-new-goal-references! (:visualization_settings card)
+                              (when (and *copy-source-card*
+                                         (not (some-> (:document_id card) queries.db/public-document?)))
+                                (:visualization_settings *copy-source-card*)))
   (let [card   (-> card
                    (assoc :metabase_version config/mb-version-string
                           :card_schema current-card-schema-version)
@@ -1375,7 +1480,8 @@
         card     (normalize-card card)
         parent   (memoize collection/content-parent)]
     (when (contains? changes :visualization_settings)
-      (check-timeline-settings card))
+      (check-timeline-settings card)
+      (check-new-goal-references! (:visualization_settings card) (:visualization_settings original)))
     (when (or (contains? changes :collection_id) (contains? changes :type))
       (collection/check-allowed-content (:type card) (parent (:collection_id card))))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
@@ -1535,7 +1641,9 @@
                             (not (:dashboard_id input-card-data)))))
    ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
    (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
-     (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
+     (let [dashboard (queries.db/dashboard dashboard-id)]
+       (check-shared-dashboard-timeline-permissions! dashboard [input-card-data])
+       (check-shared-dashboard-goal-permissions! dashboard [input-card-data])))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id :document_id]
@@ -1919,7 +2027,7 @@
    :dependencies queries.dependencies/dependencies
    :analysis     queries.dependencies/analysis
 
-   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters}
+   :dependency-columns #{:type :dataset_query :dimension_mappings :parameters :visualization_settings}
    :analysis-columns   #{:type :dataset_query}
    :output-columns     #{:type :result_metadata}})
 

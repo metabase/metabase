@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dynamic-goals.core :as dynamic-goals]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
@@ -201,6 +202,15 @@
     :resident-cap cells-to-disk-threshold
     :floor        squeezed-spill-threshold}))
 
+(defn- with-goal-values
+  "`part` with the goal values its chart draws under `:goal-values`, once its result completed. Run under the
+  caller's permissions."
+  [{:keys [card dashcard result] :as part} dashboard-id]
+  (if-let [goal-values (when (= :completed (:status result))
+                         (dynamic-goals/chart-goal-values-or-nil card dashcard :dashboard-id dashboard-id))]
+    (assoc part :goal-values goal-values)
+    part))
+
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
@@ -227,36 +237,38 @@
                                              card
                                              (notification.db/card card-id))
                                       attached-result? (and attached? (= card-id card_id))]
-                                  {:card     card
-                                   :dashcard dashcard
-                                   ;; TODO should this be dashcard?
-                                   :type     :card
-                                   :result   (-> (qp.dashboard/process-query-for-dashcard
-                                                  :dashboard     dashboard
-                                                  :card          card
-                                                  :dashcard      dashcard
-                                                  :context       :dashboard-subscription
-                                                  :export-format :api
-                                                  :parameters    parameters
-                                                  :constraints   {}
-                                                  :middleware    {:process-viz-settings?             true
-                                                                  :js-int-to-string?                 false
-                                                                  ;; body-only cards only render a preview, so cap
-                                                                  ;; them at the interactive display limits;
-                                                                  ;; attachments need the full result
-                                                                  :add-default-userland-constraints? (not attached-result?)}
-                                                  :make-run      (fn make-run [qp _export-format]
-                                                                   (^:once fn* [query info]
-                                                                     (qp
-                                                                      (qp/userland-query query info)
-                                                                      ;; Pass streaming rff with 2000 row threshold
-                                                                      (notification.temp-storage/notification-rff
-                                                                       {:budget spill-budget}
-                                                                       {:dashboard_id dashboard_id
-                                                                        :card_id card-id
-                                                                        :dashcard_id (u/the-id dashcard)})))))
-                                                 fixup-viz-settings
-                                                 format-qp-result)}))
+                                  (cond-> {:card     card
+                                           :dashcard dashcard
+                                           ;; TODO should this be dashcard?
+                                           :type     :card
+                                           :result   (-> (qp.dashboard/process-query-for-dashcard
+                                                          :dashboard     dashboard
+                                                          :card          card
+                                                          :dashcard      dashcard
+                                                          :context       :dashboard-subscription
+                                                          :export-format :api
+                                                          :parameters    parameters
+                                                          :constraints   {}
+                                                          :middleware    {:process-viz-settings?             true
+                                                                          :js-int-to-string?                 false
+                                                                          ;; body-only cards only render a preview, so cap
+                                                                          ;; them at the interactive display limits;
+                                                                          ;; attachments need the full result
+                                                                          :add-default-userland-constraints? (not attached-result?)}
+                                                          :make-run      (fn make-run [qp _export-format]
+                                                                           (^:once fn* [query info]
+                                                                             (qp
+                                                                              (qp/userland-query query info)
+                                                                              ;; Pass streaming rff with 2000 row threshold
+                                                                              (notification.temp-storage/notification-rff
+                                                                               {:budget spill-budget}
+                                                                               {:dashboard_id dashboard_id
+                                                                                :card_id card-id
+                                                                                :dashcard_id (u/the-id dashcard)})))))
+                                                         fixup-viz-settings
+                                                         format-qp-result)}
+                                    ;; series cards draw no goals
+                                    (= card-id card_id) (with-goal-values dashboard_id))))
                result         (result-fn card_id)
                series-results (mapv (comp result-fn :id) multi-cards)]
            (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -333,6 +345,7 @@
                 [:type                      [:= :card]]
                 [:card                      :map]
                 [:result                    [:maybe :map]]
+                [:goal-values {:optional true} [:maybe :metabase.visualization-settings.dynamic-goals/goal-values]]
                 [:dashcard {:optional true} [:maybe :map]]]]
    [:text      [:map
                 [:text :string]
@@ -395,29 +408,31 @@
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [card   (notification.db/card card-id)
-        result (request/with-current-user creator-id
-                 (-> (qp.card/process-query-for-card card :api
-                                                     ;; TODO rename to :notification?
-                                                     :context     :pulse
-                                                     :constraints {}
-                                                     :middleware  {:skip-results-metadata?            false
-                                                                   :process-viz-settings?             true
-                                                                   :js-int-to-string?                 false
-                                                                   :add-default-userland-constraints? false}
-                                                     :make-run    (fn make-run [qp _export-format]
-                                                                    (^:once fn* [query info]
-                                                                      (qp
-                                                                       (qp/userland-query query info)
-                                                                       ;; Pass streaming rff with 2000 row threshold
-                                                                       ;; a standalone card has no sibling cards, so it
-                                                                       ;; uses its own (unshared) spill budget
-                                                                       (notification.temp-storage/notification-rff
-                                                                        {:budget (new-spill-budget)}
-                                                                        {:card-id card-id})))))
-                     fixup-viz-settings
-                     format-qp-result))]
-    (log/debugf "Result has %d rows" (:row_count result))
-    {:card   card
-     :result result
-     :type   :card}))
+  (let [card (notification.db/card card-id)
+        part (request/with-current-user creator-id
+               (-> {:card   card
+                    :type   :card
+                    :result (-> (qp.card/process-query-for-card
+                                 card :api
+                                 ;; TODO rename to :notification?
+                                 :context     :pulse
+                                 :constraints {}
+                                 :middleware  {:skip-results-metadata?            false
+                                               :process-viz-settings?             true
+                                               :js-int-to-string?                 false
+                                               :add-default-userland-constraints? false}
+                                 :make-run    (fn make-run [qp _export-format]
+                                                (^:once fn* [query info]
+                                                  (qp
+                                                   (qp/userland-query query info)
+                                                   ;; Pass streaming rff with 2000 row threshold
+                                                   ;; a standalone card has no sibling cards, so it
+                                                   ;; uses its own (unshared) spill budget
+                                                   (notification.temp-storage/notification-rff
+                                                    {:budget (new-spill-budget)}
+                                                    {:card-id card-id})))))
+                                fixup-viz-settings
+                                format-qp-result)}
+                   (with-goal-values nil)))]
+    (log/debugf "Result has %d rows" (-> part :result :row_count))
+    part))

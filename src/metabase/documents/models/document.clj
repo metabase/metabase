@@ -315,8 +315,8 @@
   clone is still gated by the usual runtime permission checks, the same ones that gate running the source card."
   [source-card creator]
   (card/with-copy-source-card source-card
-    (api/create-check :model/Card source-card))
-  (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator))
+    (api/create-check :model/Card source-card)
+    (card/create-card! (assoc source-card :type :question :dashboard_id nil) creator)))
 
 (mu/defn update-cards-in-ast :- [:map [:document :any]
                                  [:content_type :string]]

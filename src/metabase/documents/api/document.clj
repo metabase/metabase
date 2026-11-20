@@ -19,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]
    [toucan2.core :as t2]))
 
 (defn- cards-to-create-schema
@@ -190,6 +191,14 @@
             {}
             (t2/hydrate cards-to-copy :can_read))))
 
+(defn- rewire-copied-goals!
+  "Points the goals of the Document's cards that read a copied card (`card-id-map`: old id -> copy's id) at the copy."
+  [document-id card-id-map]
+  (doseq [{:keys [id visualization_settings]} (documents.db/cards-for-document document-id)
+          :let [viz (dynamic-goals/remap-goal-card-ids visualization_settings card-id-map)]
+          :when (not= viz visualization_settings)]
+    (documents.db/update-card! id {:visualization_settings viz})))
+
 (defn copy-document!
   "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved
   inside it and returns the new document, requiring read permission on the source and create permission on the
@@ -210,6 +219,7 @@
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (documents.db/insert-document! document-data)
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
+                         (rewire-copied-goals! new-document-id card-id-map)
                          (when (seq card-id-map)
                            (documents.db/update-document! new-document-id
                                                           (m.document/update-cards-in-ast

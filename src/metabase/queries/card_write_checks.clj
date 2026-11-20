@@ -8,6 +8,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
@@ -96,12 +97,24 @@
   (api/create-check :model/Card (assoc card :collection_id (actual-collection-id card)))
   (check-no-save-cycle (:dataset_query card)))
 
+(mu/defn- check-goals-readable-on-new-dashboard
+  "Moving a card onto a shared dashboard resolves its goals for anyone who opens it, so the current user needs to read
+  what they reference."
+  [card-before-update :- ::queries.schema/card
+   card-updates       :- ::queries.schema/card]
+  (when-let [dashboard-id (and (api/column-will-change? (:dashboard_id card-before-update)
+                                                        (get card-updates :dashboard_id ::api/not-provided))
+                               (:dashboard_id card-updates))]
+    (card/check-shared-dashboard-goal-permissions! (queries.db/dashboard dashboard-id)
+                                                   [(merge card-before-update card-updates)])))
+
 (mu/defn check-allowed-to-update-card!
   "Throws unless the current user may apply `card-updates` to `card-before-update`."
   [card-before-update :- ::queries.schema/card
    card-updates       :- ::queries.schema/card]
   (check-embedding-enabled-to-change-embedding card-before-update card-updates)
   (api/update-check card-before-update card-updates)
+  (check-goals-readable-on-new-dashboard card-before-update card-updates)
   (doseq [f [check-update-result-metadata-data-perms
              check-allowed-to-modify-query]]
     (f card-before-update card-updates)))

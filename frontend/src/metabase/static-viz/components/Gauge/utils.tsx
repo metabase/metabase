@@ -5,6 +5,13 @@ import type { NumberFormatOptions } from "metabase/static-viz/lib/numbers";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import { resolveColorFromCssVariable } from "metabase/ui/utils/colors";
+import { isNotNull } from "metabase/utils/types";
+import {
+  type GoalData,
+  type ResolvedGoalSegment,
+  resolveOpenEndedGoalSegments,
+} from "metabase/viz-core";
+import type { GoalSegment } from "metabase-types/api";
 
 import {
   BASE_FONT_SIZE,
@@ -17,12 +24,7 @@ import {
   START_ANGLE,
   VALUE_MARGIN,
 } from "./constants";
-import type {
-  GaugeLabelData,
-  GaugeSegment,
-  Position,
-  TextAnchor,
-} from "./types";
+import type { GaugeLabelData, Position, TextAnchor } from "./types";
 
 export function populateDefaultColumnSettings(
   columnSettings?: NumberFormatOptions,
@@ -136,18 +138,21 @@ function calculateLeftXOffset(textAnchor: TextAnchor, labelWidth: number) {
   }
 }
 
-export function gaugeAccessor(segment: GaugeSegment) {
+export function gaugeAccessor(segment: ResolvedGoalSegment) {
   return segment.max - segment.min;
 }
 
 export function gaugeSorter(
-  thisSegment: GaugeSegment,
-  thatSegment: GaugeSegment,
+  thisSegment: ResolvedGoalSegment,
+  thatSegment: ResolvedGoalSegment,
 ) {
-  return thisSegment.min - thatSegment.min;
+  // a containing segment goes first so the segments nested in it are drawn on top
+  return thisSegment.min - thatSegment.min || thatSegment.max - thisSegment.max;
 }
 
-export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
+export function fixSwappedMinMax(
+  segment: ResolvedGoalSegment,
+): ResolvedGoalSegment {
   if (segment.min > segment.max) {
     return {
       ...segment,
@@ -159,8 +164,32 @@ export function fixSwappedMinMax(segment: GaugeSegment): GaugeSegment {
   return segment;
 }
 
+// a bound that is unset or can't resolve runs the segment to that end of the gauge
+export function resolveGaugeSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter,
+): ResolvedGoalSegment[] {
+  const openEndedSegments = resolveOpenEndedGoalSegments(
+    data,
+    segments,
+    getColor,
+  );
+  const bounds = openEndedSegments
+    .flatMap((segment) => [segment.min, segment.max])
+    .filter(isNotNull);
+  const start = Math.min(...bounds);
+  const end = Math.max(...bounds);
+
+  return openEndedSegments.map((segment) => ({
+    ...segment,
+    min: segment.min ?? start,
+    max: segment.max ?? end,
+  }));
+}
+
 export function colorGetter(
-  pieArcDatum: PieArcDatum<GaugeSegment>,
+  pieArcDatum: PieArcDatum<ResolvedGoalSegment>,
   getColor: ColorGetter,
 ) {
   // Convert to hex due to Apache Batik limitations (SVG renderer for static viz)

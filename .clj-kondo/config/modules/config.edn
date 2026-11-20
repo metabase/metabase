@@ -597,7 +597,8 @@
            tiles
            timeline
            util
-           util.config}
+           util.config
+           visualization-settings}
    :model-exports #{:model/Channel :model/ChannelTemplate}
    :model-imports #{:model/Dashboard
                     :model/DashboardCard
@@ -866,6 +867,7 @@
            timeline
            util
            util.config
+           visualization-settings
            xrays}
    :model-exports #{:model/Dashboard
                     :model/DashboardCard
@@ -998,7 +1000,8 @@
            serialization
            settings
            staleness
-           util}
+           util
+           visualization-settings}
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
@@ -1057,6 +1060,24 @@
            workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
+  dynamic-goals
+  {:team "Gadget"
+   :api  #{metabase.dynamic-goals.api
+           metabase.dynamic-goals.core}
+   :uses #{api
+           api-scope
+           dashboards
+           data-apps
+           lib
+           lib.be
+           queries
+           query-processor
+           request
+           server
+           util
+           visualization-settings}
+   :model-imports #{:model/Card :model/Measure}}
+
   embedding
   {:team "Embedding"
    :api  #{metabase.embedding.init
@@ -1109,6 +1130,7 @@
            api.eid-translation
            dashboards
            database-routing
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -1216,7 +1238,8 @@
            lib.schema
            lib.types
            query-processor
-           util}}
+           util
+           visualization-settings}}
 
   frontend-errors
   {:team "UX West"
@@ -1814,6 +1837,7 @@
               analytics.interface
               api
               channel
+              dynamic-goals
               formatter
               lib
               lib.schema
@@ -2011,6 +2035,7 @@
            channel
            dashboards
            driver
+           dynamic-goals
            embedding
            events
            lib.schema
@@ -2033,7 +2058,8 @@
            users
            users.schema
            util
-           util.config}
+           util.config
+           visualization-settings}
    :model-exports #{:model/Notification
                     :model/NotificationCard
                     :model/NotificationHandler
@@ -2234,6 +2260,7 @@
            dashboards
            dashboards.rest
            documents
+           dynamic-goals
            events
            lib
            lib.metadata
@@ -2354,6 +2381,7 @@
            util
            util.config
            util.graph
+           visualization-settings
            warehouses.schema
            xrays}
    :model-exports #{:model/Card
@@ -2373,6 +2401,7 @@
                     :model/Document
                     :model/Exploration
                     :model/Field
+                    :model/Measure
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification
@@ -2804,7 +2833,8 @@
            lib.schema
            parameters.schema
            util
-           util.config}
+           util.config
+           visualization-settings}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/Collection
@@ -3566,6 +3596,12 @@
    :api #{metabase.graph.core}
    :uses #{util}}
 
+  visualization-settings
+  {:team "UX West"
+   :api  #{metabase.visualization-settings.dynamic-goals metabase.visualization-settings.ui-logic}
+   :uses #{util}
+   :model-imports #{:model/Card :model/Measure}}
+
   warehouses
   {:team "UX West"
    :module-exports #{warehouses.schema
@@ -3955,6 +3991,7 @@
    :uses #{cache
            lib.schema
            premium-features
+           queries
            query-processor
            query-processor.cache-backend
            task

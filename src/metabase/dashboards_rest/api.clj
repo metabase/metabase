@@ -17,6 +17,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.settings :as dashboards.settings]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.eid-translation.core :as eid-translation]
@@ -424,7 +425,9 @@
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
   [deep-copy? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        dashcards                        (:dashcards old-dashboard)
+        {:keys [copy discard reference]} (dashboards.write/add-goal-sources-to-copy
+                                          (cards-to-copy deep-copy? dashcards) deep-copy? dashcards)]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (api/create-check :model/Card (assoc to-copy :collection_id dest-coll-id))
@@ -557,10 +560,11 @@
                            (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                            ;; Ok, now save the Dashboard
                            (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
-                                 {id->new-card :copied
+                                 {id->copied-card :copied
                                   id->referenced-card :referenced
                                   uncopied :discarded}
                                  (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+                                 id->new-card (dashboards.write/remap-copied-goal-sources! id->copied-card)
 
                                  id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                   (duplicate-tabs dash existing-tabs))]
@@ -568,7 +572,9 @@
                                                                               id->new-card
                                                                               id->referenced-card
                                                                               id->new-tab-id))]
-                               (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                               (dashboard-card/with-copy-source-dashcards (:dashcards existing-dashboard)
+                                 (api/check-500 (dashboard/add-dashcards!
+                                                 dash (dashboards.write/remap-dashcard-goal-sources dashcards id->new-card)))))
                              (cond-> dash
                                (seq uncopied)
                                (assoc :uncopied uncopied)))))]

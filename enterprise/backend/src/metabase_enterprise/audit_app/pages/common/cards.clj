@@ -1,7 +1,10 @@
-(ns metabase-enterprise.audit-app.pages.common.cards)
+(ns metabase-enterprise.audit-app.pages.common.cards
+  (:require
+   [metabase.queries.core :as queries]))
 
 (def latest-qe
-  "HoneySQL for a CTE to get latest QueryExecution for a Card. Exactly one row per Card."
+  "HoneySQL for a CTE to get latest QueryExecution for a Card. Exactly one row per Card. Runs in
+  `referenced-run-contexts` don't count."
   ;; A Card can have several executions sharing its max started_at, so we need to rank them first.
   [:latest_qe ^:allow-subquery
    {:select [:card_id :error :started_at]
@@ -19,18 +22,22 @@
                :join   [[^:allow-subquery
                          {:select   [:card_id [:%max.started_at :started_at]]
                           :from     [:query_execution]
+                          :where    (queries/not-referenced-run :context)
                           :group-by [:card_id]} :inner_qe]
                         [:and
                          [:= :query_execution.card_id :inner_qe.card_id]
-                         [:= :query_execution.started_at :inner_qe.started_at]]]}
+                         [:= :query_execution.started_at :inner_qe.started_at]]]
+               :where  (queries/not-referenced-run :query_execution.context)}
               :ranked_qe]]
     :where  [:= :rn [:inline 1]]}])
 
 (def query-runs
-  "HoneySQL for a CTE to include the total number of queries for each Card forever."
+  "HoneySQL for a CTE to include the total number of queries for each Card forever. Runs in `referenced-run-contexts`
+  don't count."
   [:query_runs ^:allow-subquery {:select   [:card_id
                                             [:%count.* :count]]
                                  :from     [:query_execution]
+                                 :where    (queries/not-referenced-run :context)
                                  :group-by [:card_id]}])
 
 (def dashboards-count

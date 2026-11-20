@@ -173,6 +173,24 @@
                            "table.columns"   [{"name" "A" "enabled" true "fieldRef" ["field" 1 nil] "key" "k"}]
                            "table.pivot"     "yes"})))))
 
+(deftest ^:parallel normalize-keeps-scalar-segment-goal-values-test
+  (testing "a scalar segment bound is a number, another column's name, or a reference to another entity's column"
+    (is (= {:scalar.segments [{:min 0 :max "target" :color "red"}
+                              {:min {:type "card" :id 1 :column "count"} :max nil :color "blue"}]}
+           (lib/normalize ::lib.schema.visualization/visualization-settings
+                          {"scalar.segments" [{"min" 0 "max" "target" "color" "red"}
+                                              {"min"   {"type" "card" "id" 1 "column" "count"}
+                                               "max"   nil
+                                               "color" "blue"}]}))))
+  (testing "a reference with a keyword type keeps it, as a string"
+    (is (= {:scalar.segments [{:min {:type "card" :id 1 :column "count"} :color "red"}]}
+           (lib/normalize ::lib.schema.visualization/visualization-settings
+                          {:scalar.segments [{:min {:type :card :id 1 :column "count"} :color "red"}]}))))
+  (testing "a reference without a positive integer id is dropped"
+    (is (= {:scalar.segments [{:color "red"}]}
+           (lib/normalize ::lib.schema.visualization/visualization-settings
+                          {"scalar.segments" [{"min" {"type" "card" "id" "x" "column" "count"} "color" "red"}]})))))
+
 (deftest ^:parallel normalize-deprecated-values-test
   (testing "deprecated values are normalized to the ones that replaced them"
     (is (= {:column_settings {"[\"name\",\"A\"]" {:time_style     "HH:mm"

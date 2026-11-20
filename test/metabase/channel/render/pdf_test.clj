@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.card :as render.card]
+   [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.pdf :as pdf]
    [metabase.channel.render.pdf.font :as font]
    [metabase.channel.render.pdf.typeset :as typeset]
@@ -503,10 +504,10 @@
     (is (= :bar (#'pdf/effective-display
                  {:display "smartscalar"}
                  {:visualization_settings {:visualization {:display "bar"}}}))))
-  (testing "a visualizer dashcard without an explicit display falls back to the card display"
-    (is (= :line (#'pdf/effective-display
-                  {:display "line"}
-                  {:visualization_settings {:visualization {:settings {}}}})))))
+  (testing "a visualizer dashcard without an explicit display renders as a bar chart, as in the app"
+    (is (= :bar (#'pdf/effective-display
+                 {:display "line"}
+                 {:visualization_settings {:visualization {:settings {}}}})))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Text-layout characterization (golden) test.
@@ -1046,3 +1047,44 @@
         (is (= (get-in part [:result :error]) @too-large-msg)))
       (testing "and the no-results placeholder was not used"
         (is (false? @no-results-called))))))
+
+(deftest ^:parallel sized-chart-unresolved-goal-warning-test
+  (let [card     {:id                     1
+                  :display                :line
+                  :visualization_settings {:graph.show_goal  true
+                                           :graph.goal_value {:id 42 :type "card" :column "target"}}}
+        data     {:cols                [{:name "x"} {:name "y"}]
+                  :rows                [["a" 1]]}
+        goal-values {"card" {"42" {:status "failed" :error "boom"}}}
+        warnings (fn [chart]
+                   (mt/with-log-messages-for-level [messages [metabase.channel.render :warn]]
+                     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz] chart)]
+                       (#'pdf/sized-chart-png card {:id 3 :card_id 1} data goal-values 400 300))
+                     (mapv :message (messages))))]
+    (testing "a drawn rectangular chart warns once about a goal that can't resolve"
+      (is (= [(str "Dynamic goal graph.goal_value can't be resolved (query-failed): card 42, column target. "
+                   "Chart card 1, dashcard 3, display line")]
+             (warnings {:type    :svg
+                        :content "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>"}))))
+    (testing "a chart that draws no SVG leaves the warning to the card-body fallback"
+      (is (empty? (warnings {:type :html :content "<div></div>"}))))))
+
+(deftest ^:parallel sized-chart-resolves-dynamic-goals-test
+  (testing "the chart is handed goal values substituted from the part's goal values, not references"
+    (let [goal-ref    {:id 42 :type "card" :column "target"}
+          card        {:id                     1
+                       :display                :line
+                       :visualization_settings {:graph.show_goal true}}
+          dashcard    {:id 3 :card_id 1 :visualization_settings {:graph.show_goal true :graph.goal_value goal-ref}}
+          data        {:cols [{:name "x"} {:name "y"}]
+                       :rows [["a" 1]]}
+          goal-values {"card" {"42" {:status "completed"
+                                     :data   {:cols [{:name "target" :base_type :type/Integer}]
+                                              :rows [[80]]}}}}
+          captured    (atom nil)]
+      (binding [js.svg/*javascript-visualization* (fn [cards-with-data viz]
+                                                    (reset! captured {:cards cards-with-data :viz viz})
+                                                    {:type    :svg
+                                                     :content "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>"})]
+        (#'pdf/sized-chart-png card dashcard data goal-values 400 300))
+      (is (= 80 (:graph.goal_value (:viz @captured)))))))

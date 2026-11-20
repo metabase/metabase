@@ -49,22 +49,37 @@
   "Embedding previews need to be limited in size to avoid performance issues (#20938)."
   2000)
 
+(defn- resolve-card-context
+  "Resolve the context shared by the preview card chart routes and `GET /card/:token/goal-values`: superuser and
+  embedding-enabled checks, unsign `token`, look up its Card, and validate the token params and raw `query-params`
+  against the token's `_embedding_params`. Throws the same 400/403/404 for both."
+  [token query-params]
+  (let [unsigned-token   (check-and-unsign token)
+        card-id          (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card             (api/check-404 (embedding-rest.db/card card-id))
+        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        embedding-params (token-embedding-params unsigned-token)]
+    (api.embed.common/card-context card embedding-params token-params
+                                   (api.embed.common/parse-query-params query-params))))
+
 (api.macros/defendpoint :get "/card/:token/query"
   :- ::api.public/query-result-response
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
-  (let [unsigned-token (check-and-unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (embedding-rest.db/card card-id))]
-    (api.embed.common/process-query-for-card-with-params
-     :export-format    :api
-     :card             card
-     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (token-embedding-params unsigned-token)
-     :constraints      {:max-results max-results}
-     :query-params     (api.embed.common/parse-query-params query-params))))
+  (api.embed.common/process-query-for-card-context
+   (resolve-card-context token query-params)
+   :export-format :api
+   :constraints   {:max-results max-results}))
+
+(api.macros/defendpoint :get "/card/:token/goal-values"
+  :- ::api.public/goal-values-response
+  "Fetch the values of the dynamic goals of a Card you're considering embedding by passing a JWT `token`. Same checks as
+  `GET /api/preview_embed/card/:token/query`; every goal is withheld when the token signs a parameter value."
+  [{:keys [token]} :- [:map {:closed true}
+                       [:token api.embed.common/EncodedToken]]]
+  (api.embed.common/goal-values-response (resolve-card-context token {})))
 
 (defn- preview-card-for-param-values
   "The Card the parameter value lookups run against. Unlike the metadata endpoints this is the stored Card rather than
@@ -161,6 +176,22 @@
   (check-and-unsign token)
   (api.embed.common/dashboard-param-remapped-value token param-key (codec/url-decode value) {:preview true}))
 
+(defn- resolve-dashcard-context
+  "Resolve the context shared by the preview dashcard chart routes and their `/goal-values` route: superuser and
+  embedding-enabled checks, unsign `token`, look up its Dashboard, `dashcard-id` and `card-id`, validate the token
+  params and raw `query-params` against the token's `_embedding_params`, and check the card is on the dashcard on the
+  Dashboard. Throws the same 400/403/404 for both."
+  [token dashcard-id card-id query-params]
+  (let [unsigned-token   (check-and-unsign token)
+        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
+        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
+        card             (api/check-404 (embedding-rest.db/active-card card-id))
+        embedding-params (token-embedding-params unsigned-token)
+        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
+    (api.embed.common/dashcard-context dashboard dashcard card embedding-params token-params
+                                       (api.embed.common/parse-query-params query-params))))
+
 (api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   :- ::api.public/query-result-response
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
@@ -169,21 +200,19 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- api.embed.common/QueryParams]
-  (let [unsigned-token   (check-and-unsign token)
-        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/active-card card-id))
-        embedding-params (token-embedding-params unsigned-token)
-        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed.common/process-query-for-dashcard
-     :export-format    :api
-     :dashboard        dashboard
-     :dashcard         dashcard
-     :card             card
-     :embedding-params embedding-params
-     :token-params     token-params
-     :query-params     (api.embed.common/parse-query-params query-params))))
+  (api.embed.common/process-query-for-dashcard-context
+   (resolve-dashcard-context token dashcard-id card-id query-params)
+   :export-format :api))
+
+(api.macros/defendpoint :get "/dashboard/:token/dashcard/:dashcard-id/card/:card-id/goal-values"
+  :- ::api.public/goal-values-response
+  "Fetch the values of the dynamic goals of a Card on a Dashboard you're considering embedding with JWT `token`. Same
+  checks as the preview dashcard query route; every goal is withheld when the token signs a parameter value."
+  [{:keys [token dashcard-id card-id]} :- [:map {:closed true}
+                                           [:token api.embed.common/EncodedToken]
+                                           [:dashcard-id ms/PositiveInt]
+                                           [:card-id     ms/PositiveInt]]]
+  (api.embed.common/goal-values-response (resolve-dashcard-context token dashcard-id card-id {})))
 
 (api.macros/defendpoint :get "/pivot/card/:token/query"
   :- ::api.public/query-result-response
@@ -191,16 +220,10 @@
   [{:keys [token]} :- [:map {:closed true}
                        [:token api.embed.common/EncodedToken]]
    query-params :- api.embed.common/QueryParams]
-  (let [unsigned-token (check-and-unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (embedding-rest.db/card card-id))]
-    (api.embed.common/process-query-for-card-with-params
-     :export-format    :api
-     :card             card
-     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-     :embedding-params (token-embedding-params unsigned-token)
-     :query-params     (api.embed.common/parse-query-params query-params)
-     :qp               qp.pivot/run-pivot-query)))
+  (api.embed.common/process-query-for-card-context
+   (resolve-card-context token query-params)
+   :export-format :api
+   :qp            qp.pivot/run-pivot-query))
 
 (api.macros/defendpoint :get "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   :- ::api.public/query-result-response
@@ -210,22 +233,10 @@
                                            [:dashcard-id ms/PositiveInt]
                                            [:card-id     ms/PositiveInt]]
    query-params :- api.embed.common/QueryParams]
-  (let [unsigned-token   (check-and-unsign token)
-        dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/active-card card-id))
-        embedding-params (token-embedding-params unsigned-token)
-        token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (api.embed.common/process-query-for-dashcard
-     :export-format    :api
-     :dashboard        dashboard
-     :dashcard         dashcard
-     :card             card
-     :embedding-params embedding-params
-     :token-params     token-params
-     :query-params     (api.embed.common/parse-query-params query-params)
-     :qp               qp.pivot/run-pivot-query)))
+  (api.embed.common/process-query-for-dashcard-context
+   (resolve-dashcard-context token dashcard-id card-id query-params)
+   :export-format :api
+   :qp            qp.pivot/run-pivot-query))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

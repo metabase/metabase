@@ -2,8 +2,9 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { type GoalData, resolveGoalValue } from "metabase/viz-core";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, RowValues } from "metabase-types/api";
+import type { DatasetColumn, GoalValue, RowValues } from "metabase-types/api";
 
 export const getValue = (rows: RowValues[]) => {
   const rawValue = rows[0] && rows[0][0];
@@ -20,33 +21,9 @@ export const getValue = (rows: RowValues[]) => {
 };
 
 export const getGoalValue = (
-  goalSetting: number | string,
-  columns: DatasetColumn[],
-  rows: RowValues[],
-): number => {
-  if (typeof goalSetting === "number") {
-    return goalSetting;
-  }
-
-  if (typeof goalSetting === "string") {
-    const columnIndex = columns.findIndex((col) => col.name === goalSetting);
-
-    if (columnIndex !== -1 && rows[0]) {
-      const rawValue = rows[0][columnIndex];
-      if (rawValue === null || rawValue === undefined) {
-        return 0;
-      }
-      if (rawValue === "Infinity") {
-        return Infinity;
-      }
-      if (typeof rawValue === "number") {
-        return rawValue;
-      }
-    }
-  }
-
-  return 0;
-};
+  goalSetting: GoalValue | null | undefined,
+  data: GoalData,
+): number => resolveGoalValue(data, goalSetting).value ?? 0;
 
 export const extractProgressValue = (
   rows: RowValues[],

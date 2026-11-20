@@ -9,6 +9,7 @@
    [metabase.queries.models.card.metadata]
    [metabase.queries.models.parameter-card]
    [metabase.queries.models.query]
+   [metabase.queries.models.query-execution]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
    [metabase.query-processor.card]
@@ -40,6 +41,10 @@
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
+  check-new-goal-references!
+  check-shared-dashboard-goal-permissions!
+  check-newly-exposed-dashcards-goal-permissions!
+  card-reads-parameters?
   create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
@@ -77,6 +82,8 @@
   average-execution-time-ms
   query->database-and-table-ids
   save-queries-and-update-average-execution-times!]
+ [metabase.queries.models.query-execution
+  not-referenced-run]
  [metabase.queries.cached-result
   allowed-chart-sorts
   assert-can-view-cached-result!

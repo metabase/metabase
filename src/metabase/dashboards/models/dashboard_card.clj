@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
@@ -92,9 +93,24 @@
              (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
     (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
 
+;;; before-insert can't take arguments, so the copy source is passed through a binding
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *copy-source-dashcards*
+  "DashboardCards whose goals new DashboardCards may reuse without a fresh read check."
+  nil)
+
+(defmacro with-copy-source-dashcards
+  "Runs `body` with [[*copy-source-dashcards*]] bound to `source-dashcards`, which must belong to a Dashboard the
+  current user has passed a read check on."
+  [source-dashcards & body]
+  `(binding [*copy-source-dashcards* ~source-dashcards] ~@body))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (check-tab dashcard)
+  (apply queries/check-new-goal-references!
+         (:visualization_settings dashcard)
+         (map :visualization_settings *copy-source-dashcards*))
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -108,6 +124,9 @@
       (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
     (when (contains? changes :dashboard_tab_id)
       (check-tab dashcard))
+    (when (contains? changes :visualization_settings)
+      (queries/check-new-goal-references! (:visualization_settings dashcard)
+                                          (:visualization_settings (t2/original dashcard))))
     (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

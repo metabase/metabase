@@ -2,7 +2,10 @@
   "The functions of the dependencies spec of a Card."
   (:require
    [metabase.dependencies.core :as dependencies]
-   [metabase.lib-be.core :as lib-be]))
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.visualization-settings.dynamic-goals :as dynamic-goals]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,10 +25,12 @@
   (dependencies/query-errors (card-query card)))
 
 (defn dependencies
-  "The dependencies of the hydrated `card`: what its query reads, the tables of its dimension mappings, and the cards
-  its parameters take their values from."
-  [{dimension-mappings :dimension_mappings, :keys [parameters], :as card}]
+  "The dependencies of the hydrated `card`: what its query reads, the tables of its dimension mappings, the cards its
+  parameters take their values from, and the entities its dynamic goals read."
+  [{dimension-mappings :dimension_mappings, :keys [parameters visualization_settings], :as card}]
   (dependencies/merge-dependencies
    (dependencies/query-dependencies card (card-query card))
    {:table (into #{} (keep :table-id) dimension-mappings)}
-   (dependencies/parameters-dependencies parameters)))
+   (dependencies/parameters-dependencies parameters)
+   (dynamic-goals/goal-dependencies
+    (lib/normalize ::lib.schema.visualization/visualization-settings visualization_settings))))
