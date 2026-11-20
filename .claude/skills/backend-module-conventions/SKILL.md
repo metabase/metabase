@@ -21,11 +21,11 @@ A module is `metabase.<module>` (OSS, `src/`) or `metabase-enterprise.<module>` 
 | `<module>.db` | Every app-DB query the module makes. See the next section. |
 | `<module>.models.*` | Toucan 2 model definitions: `methodical/defmethod t2/table-name`, hooks, transforms. |
 | `<module>.settings` | `defsetting`s. |
-| `<module>.init` | Requires the namespaces that register things as a side effect (settings, tasks, event handlers). `metabase.core.init` or `metabase-enterprise.core.init` requires it. |
+| `<module>.init` | Requires every namespace of the module whose top-level forms register something: each model namespace, settings, tasks, event handlers, and any `defmethod` on a multimethod another namespace defines. `metabase.core.init` or `metabase-enterprise.core.init` requires it. |
 | `<module>.api`, or the nested `<module>.rest` module (`:ns-prefix "metabase.<module>-rest"`, dir `<module>_rest/`) | HTTP endpoints. Domain logic stays in the base module. The `.rest` child calls the parent's `.core`. |
 | `enterprise/<module>` | The EE companion of an OSS module. It nests under the OSS module, which exports it automatically. |
 
-If a setting, task, or event handler never takes effect, look for a missing link in the `.init` chain.
+An implementation of dynamic dispatch takes effect only once its namespace loads, so require it from `.init` directly; do not rely on another namespace happening to require it. If a model's hooks, a setting, task, or event handler never takes effect, look for a missing link in the `.init` chain.
 
 ## Keep app-DB access in `<module>.db`
 
