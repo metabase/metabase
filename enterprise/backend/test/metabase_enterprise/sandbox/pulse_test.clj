@@ -11,9 +11,9 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.util :as perms-util]
-   [metabase.pulse.api.pulse :as api.pulse]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
+   [metabase.pulse.write :as pulse.write]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -216,11 +216,11 @@
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]}))
         ;; Check that both Rasta and Crowberto are still recipients
         (is (= (sort [(mt/user->id :rasta) (mt/user->id :crowberto)])
-               (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
+               (->> (pulse.write/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort)))
         (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly false)]
           ;; Rasta, a non-sandboxed user, updates the pulse, but does not include Crowberto in the recipients list
           (mt/user-http-request :rasta :put 200 (format "pulse/%d" pulse-id)
                                 {:channels [(assoc pc :recipients [{:id (mt/user->id :rasta)}])]})
           ;; Crowberto should now be removed as a recipient
           (is (= [(mt/user->id :rasta)]
-                 (->> (#'api.pulse/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))
+                 (->> (pulse.write/email-channel (models.pulse/retrieve-alert pulse-id)) :recipients (map :id) sort))))))))

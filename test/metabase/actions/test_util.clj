@@ -5,8 +5,8 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.actions.write :as action.write]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -179,7 +179,7 @@
 (defn- insert-action!
   "Normalizes `action` the way the REST API decodes one and inserts it, returning its id."
   [action]
-  (action/insert! (lib/normalize ::actions.schema/action.for-insert action)))
+  (action.write/insert! (lib/normalize ::actions.schema/action.for-insert action)))
 
 (defmulti ^:private create-action*!
   {:arglists '([options-map model-id])}

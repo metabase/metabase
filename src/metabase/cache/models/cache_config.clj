@@ -55,9 +55,21 @@
   "The columns of a CacheConfig that together hold its cache strategy."
   #{:strategy :config :refresh_automatically})
 
+(defn- target-exists?
+  "Whether the entity a CacheConfig targets with its `model` and `model_id` exists; the root config always does."
+  [{:keys [model model_id]}]
+  (case model
+    "root"      true
+    "database"  (cache.db/database-exists? model_id)
+    "dashboard" (cache.db/dashboard-exists? model_id)
+    "question"  (cache.db/card-exists? model_id)))
+
 (t2/define-before-insert :model/CacheConfig
   [cache-config]
-  (-> cache-config cache.schema/check-target cache.schema/check-strategy))
+  (cache.schema/check-target cache-config)
+  (when-not (target-exists? cache-config)
+    (throw (ex-info (tru "The target of a cache configuration must exist.") {:status-code 400})))
+  (cache.schema/check-strategy cache-config))
 
 (t2/define-before-update :model/CacheConfig
   [cache-config]

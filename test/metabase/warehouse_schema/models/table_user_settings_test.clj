@@ -130,3 +130,33 @@
       (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
+(deftest plain-write-reaches-table-row-test
+  (testing "plain insert and update of settings write user values to Table row"
+    (mt/with-temp [:model/Table {table-id :id} {:display_name "Sync Name" :description "sync description"}]
+      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "User Name"})
+      (is (=? {:display_name "User Name" :description "sync description"} (user-table table-id)))
+      (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set true})
+      (is (=? {:display_name "User Name" :description nil} (user-table table-id)))
+      (testing "taking value back leaves Table row as it is"
+        (t2/update! :model/TableUserSettings :table_id table-id {:display_name nil})
+        (is (= "User Name" (:display_name (user-table table-id))))))))
+
+(deftest plain-write-of-visibility-pair-reaches-table-row-test
+  (testing "plain writes of either half of visibility choice reach Table row whole"
+    (mt/with-temp [:model/Table {table-id :id} {:visibility_type nil :data_layer :final}]
+      (t2/insert! :model/TableUserSettings {:table_id table-id :visibility_type :technical})
+      (is (=? {:visibility_type :technical :data_layer :hidden} (user-table table-id)))
+      (t2/update! :model/TableUserSettings :table_id table-id {:data_layer :final})
+      (is (=? {:visibility_type nil :data_layer :final} (user-table table-id)))
+      (t2/update! :model/TableUserSettings :table_id table-id {:data_layer :internal})
+      (is (=? {:visibility_type nil :data_layer :internal} (user-table table-id))))))
+
+(deftest plain-write-refused-by-table-rolls-back-settings-test
+  (testing "plain update of settings that Table refuses leaves settings as they were"
+    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
+      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "User Name"})
+      (is (thrown-with-msg? Exception #"Cannot change data_source from metabase-transform"
+                            (t2/update! :model/TableUserSettings :table_id table-id {:data_source :ingested})))
+      (is (nil? (t2/select-one-fn :data_source :model/TableUserSettings :table_id table-id)))
+      (is (= :metabase-transform (:data_source (user-table table-id)))))))

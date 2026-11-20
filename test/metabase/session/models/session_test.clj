@@ -173,6 +173,31 @@
         (is (nil? (:key session)) "Key is not returned by the insert")
         (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session :user_id user-id)))))))
 
+(deftest session-expiry-follows-auth-identity-expiry-test
+  (let [identity-expiry (t/offset-date-time 2030 1 1 0 0 0 0 (t/zone-offset 0))
+        earlier         (t/offset-date-time 2029 1 1 0 0 0 0 (t/zone-offset 0))
+        later           (t/offset-date-time 2031 1 1 0 0 0 0 (t/zone-offset 0))]
+    (mt/with-temp [:model/User         {user-id :id}     {}
+                   :model/AuthIdentity {expiring-id :id} {:user_id user-id :provider "google" :expires_at identity-expiry}
+                   :model/AuthIdentity {open-id :id}     {:user_id user-id :provider "ldap"}]
+      (mt/with-model-cleanup [:model/Session]
+        (letfn [(stored-expiry [session]
+                  (let [id (session/generate-session-id)]
+                    (t2/insert! :model/Session (merge {:id id :user_id user-id :session_key (session/generate-session-key)}
+                                                      session))
+                    (some-> (t2/select-one-fn :expires_at :model/Session :id id) t/offset-date-time)))]
+          (testing "session of expiring identity ends when identity does"
+            (is (t/= identity-expiry (stored-expiry {:auth_identity_id expiring-id}))))
+          (testing "later expiry given for session of expiring identity is capped at identity's"
+            (is (t/= identity-expiry (stored-expiry {:auth_identity_id expiring-id :expires_at later}))))
+          (testing "earlier expiry given for session of expiring identity is kept"
+            (is (t/= earlier (stored-expiry {:auth_identity_id expiring-id :expires_at earlier}))))
+          (testing "session of identity without expiry keeps given expiry"
+            (is (t/= later (stored-expiry {:auth_identity_id open-id :expires_at later})))
+            (is (nil? (stored-expiry {:auth_identity_id open-id}))))
+          (testing "session without identity keeps given expiry"
+            (is (t/= later (stored-expiry {:expires_at later})))))))))
+
 (deftest hash-session-key-test
   (testing "the no-secret on-disk format stays plain SHA-512; a format regression here mass-logs-out keyless
             deployments on upgrade"

@@ -247,7 +247,7 @@
   1000)
 
 (t2/define-before-delete :model/Database
-  [{id :id, driver :engine, :as database}]
+  [{id :id, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
   ;; rows must be cleaned up explicitly, and non-:unprovisioned rows must refuse the delete.
   ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
@@ -294,11 +294,7 @@
              ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
              (concat (for [chunk (partition-all tombstone-chunk-size gone)]
                        (fn [] (search/delete! :model/Card chunk)))
-                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
-  (try
-    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
-    (catch Throwable e
-      (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
+                     [(fn [] (search/reconcile-cascading-documents! cascading))])))))
 
 (defn- maybe-disable-uploads-for-all-dbs!
   "This function maintains the invariant that only one database can have uploads_enabled=true."

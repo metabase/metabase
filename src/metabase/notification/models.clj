@@ -908,50 +908,6 @@
   [event-name]
   (notification.db/active-system-event-notifications (u/qualified-name event-name)))
 
-(defn create-notification!
-  "Create a new notification with `subsciptions`.
-  Return the created notification."
-  [notification subscriptions handlers+recipients]
-  (validate-email-handlers! handlers+recipients)
-  (events/with-batched-events
-    (let [payload-id      (case (:payload_type notification)
-                            (:notification/system-event :notification/testing)
-                            nil
-                            :notification/card
-                            (notification.db/insert-notification-card! (:payload notification)))
-          notification    (-> notification
-                              (assoc :payload_id payload-id)
-                              (dissoc :payload))
-          instance        (notification.db/insert-notification! notification)
-          notification-id (:id instance)]
-      (when (seq subscriptions)
-        (notification.db/insert-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
-        ;; assert can either template_id exists, then template but be nil, and vice versa
-        (when (and template (not (map? template)))
-          (throw (ex-info "Channel template must be a map" {:status-code 400})))
-        (let [template-id (if template
-                            (notification.db/insert-channel-template! template)
-                            (:template_id handler))
-              handler    (-> handler
-                             (dissoc :recipients :template)
-                             (assoc :notification_id notification-id
-                                    :template_id template-id))
-              handler-id (notification.db/insert-handler! handler)]
-          (notification.db/insert-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
-      instance)))
-
-(defn update-notification!
-  "Update an existing notification with `new-notification`."
-  [existing-notification new-notification]
-  (validate-email-handlers! (:handlers new-notification))
-  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
-
-(defn unsubscribe-user!
-  "Unsubscribe a user from a notification."
-  [notification-id user-id]
-  (notification.db/delete-user-recipients-for-notification! notification-id user-id))
-
 ;;; ------------------------------------------------ Specs ------------------------------------------------
 
 (defmethod events/spec :model/Notification

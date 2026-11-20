@@ -728,7 +728,7 @@
     (clean-db-fixture!
      (mt/id)
      (fn []
-       (let [other-db-id 999999]
+       (mt/with-temp [:model/Database {other-db-id :id} {}]
          (with-database-cache-config!
            (mt/id)
            (fn [_]

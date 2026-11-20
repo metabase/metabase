@@ -83,6 +83,19 @@
                                                                :strategy :nocache :config {}})))))
     (is (not (t2/exists? :model/CacheConfig :model_id card-id)))))
 
+(deftest insert-refuses-missing-target-test
+  (mt/with-temp [:model/Card      {card-id :id}      {}
+                 :model/Dashboard {dashboard-id :id} {}
+                 :model/Database  {database-id :id}  {}]
+    (t2/delete! :model/Card :id card-id)
+    (t2/delete! :model/Dashboard :id dashboard-id)
+    (t2/delete! :model/Database :id database-id)
+    (doseq [[model target-id] [["question" card-id] ["dashboard" dashboard-id] ["database" database-id]]]
+      (testing model
+        (is (= 400 (status-code #(t2/insert! :model/CacheConfig {:model model :model_id target-id
+                                                                 :strategy :nocache :config {}}))))
+        (is (not (t2/exists? :model/CacheConfig :model model :model_id target-id)))))))
+
 (deftest insert-refuses-invalid-strategy-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (doseq [[row message] [[{:strategy :ttl :config {:multiplier 10}} "ttl without min_duration_ms"]

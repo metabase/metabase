@@ -16,6 +16,7 @@
    [metabase-enterprise.workspaces.settings :as ws.settings]
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
+   [metabase.actions.write :as action.write]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2078,7 +2079,7 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                _action-id (action.write/insert! (lib/normalize ::actions.schema/action.for-insert
                                                           {:entity_id     eid
                                                            :name          "the action"
                                                            :model_id      (:id card)
@@ -2228,7 +2229,7 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/insert! {:entity_id     eid
+                _action-id (action.write/insert! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query

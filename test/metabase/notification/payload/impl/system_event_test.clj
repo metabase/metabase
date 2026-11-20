@@ -3,8 +3,8 @@
    [clojure.test :refer :all]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
-   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.notification.write :as notification.write]
    [metabase.session.settings :as session.settings]
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
@@ -35,7 +35,7 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (models.notification/create-notification!
+          (notification.write/create-notification!
            {:payload_type :notification/system-event}
            [{:type       :notification-subscription/system-event
              :event_name :event/user-invited}]
@@ -72,7 +72,7 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (models.notification/create-notification!
+          (notification.write/create-notification!
            {:payload_type :notification/system-event}
            [{:type       :notification-subscription/system-event
              :event_name :event/user-invited}]

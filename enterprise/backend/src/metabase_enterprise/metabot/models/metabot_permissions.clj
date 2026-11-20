@@ -41,6 +41,7 @@
 
 (t2/define-before-insert :model/MetabotPermissions
   [{:keys [group_id] :as row}]
+  (metabot-ee.schema/check-perm-value-fits-type (select-keys row [:perm_type :perm_value]))
   (check-visible-group group_id)
   row)
 

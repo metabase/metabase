@@ -45,7 +45,7 @@
    {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :reactions]
-  "Hydrate the creator (user) of a comment based on the creator_id."
+  "Hydrate the reactions of each comment that is not deleted."
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k

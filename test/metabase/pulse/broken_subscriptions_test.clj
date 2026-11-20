@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
-   [metabase.pulse.models.pulse :as models.pulse]
+   [metabase.pulse.write :as pulse.write]
    [metabase.test :as mt]))
 
 (deftest broken-subscription-data-logic-test
@@ -121,4 +121,4 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+              (is (true? (:archived (pulse.write/update-pulse! {:id bad-pulse-id :archived true})))))))))))

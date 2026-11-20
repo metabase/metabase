@@ -295,7 +295,7 @@
         send-condition (or (:type condition) "has_result")]
     (when (goal-conditions send-condition)
       (check-goal-line! card))
-    (let [created (notification.api/create-notification!
+    (let [created (notification.api/create-notification-with-perm-checks!
                    {:payload_type  :notification/card
                     :active        (if (some? active) (boolean active) true)
                     :creator_id    api/*current-user-id*
@@ -360,7 +360,7 @@
     ;; the update schema is closed over a narrower write shape, so only that shape is sent back.
     ;; `:subscriptions`/`:handlers` still carry their full existing rows when untouched, since the
     ;; update spec deletes whatever a body omits.
-    (let [updated (notification.api/update-notification!
+    (let [updated (notification.api/update-notification-with-perm-checks!
                    id
                    (cond-> {:payload_type  :notification/card
                             :payload       (select-keys payload [:send_condition :send_once])

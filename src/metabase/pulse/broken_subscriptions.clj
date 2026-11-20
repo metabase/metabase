@@ -4,7 +4,7 @@
   (:require
    [metabase.channel.email.messages :as messages]
    [metabase.pulse.db :as pulse.db]
-   [metabase.pulse.models.pulse :as pulse]
+   [metabase.pulse.write :as pulse.write]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -91,6 +91,6 @@
   (doseq [{:keys [pulse-id] :as broken-subscription}
           (broken-subscription-data dashboard-id original-dashboard-params)]
     ;; Archive the pulse
-    (pulse/update-pulse! {:id pulse-id :archived true})
+    (pulse.write/update-pulse! {:id pulse-id :archived true})
     ;; Let the pulse and subscription creator know about the broken pulse
     (messages/send-broken-subscription-notification! broken-subscription)))

@@ -1382,3 +1382,12 @@
                               (call-count)))]
           (is (= (query-count [db-1])
                  (query-count [db-1 db-2 db-3]))))))))
+
+(deftest delete-notifies-driver-once-test
+  (testing "plain delete of Database notifies its driver once, through its delete event"
+    (let [calls (atom [])]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}]
+        (with-redefs [driver/notify-database-updated (fn [_driver database]
+                                                       (swap! calls conj (u/the-id database)))]
+          (t2/delete! :model/Database :id db-id))
+        (is (= 1 (count (filter #{db-id} (deref calls)))))))))

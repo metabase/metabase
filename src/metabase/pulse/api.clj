@@ -12,6 +12,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.api.pulse]
    [metabase.pulse.api.unsubscribe]
+   [metabase.pulse.write]
    [potemkin :as p]))
 
 (comment metabase.pulse.api.alert/keep-me
@@ -19,7 +20,7 @@
          metabase.pulse.api.unsubscribe/keep-me)
 
 (p/import-vars
- [metabase.pulse.api.pulse
+ [metabase.pulse.write
   create-pulse-with-perm-checks!
   update-pulse-with-perm-checks!])
 

@@ -4,7 +4,6 @@
    [metabase.transforms-base.ordering]
    [metabase.transforms-base.util]
    [metabase.transforms.canceling]
-   [metabase.transforms.crud]
    [metabase.transforms.dag]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
@@ -21,6 +20,7 @@
    [metabase.transforms.settings]
    [metabase.transforms.usage]
    [metabase.transforms.util]
+   [metabase.transforms.write]
    [potemkin :as p]))
 
 (p/import-vars
@@ -39,7 +39,7 @@
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]
- [metabase.transforms.crud
+ [metabase.transforms.write
   requestable-indexes
   check-feature-enabled!
   get-transforms
@@ -47,7 +47,9 @@
   create-transform!
   update-transform!
   delete-transform!
-  delete-transforms-folder!]
+  delete-transforms-folder!
+  reset-checkpoint!
+  update-transform-tags!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute
@@ -66,8 +68,6 @@
  [metabase.transforms.schedule
   delete-trigger!
   existing-trigger]
- [metabase.transforms.models.transform
-  update-transform-tags!]
  [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs

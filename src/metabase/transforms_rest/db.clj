@@ -3,7 +3,6 @@
   with no additional logic, so no other namespace in the module runs a query itself."
   (:require
    [malli.util :as mut]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -15,11 +14,6 @@
   "A map of id to Transform, for every Transform."
   []
   (t2/select-pk->fn identity :model/Transform))
-
-(mu/defn reset-checkpoint!
-  "Clear the stored checkpoint value of the Transform with `id`."
-  [id :- ::lib.schema.id/transform]
-  (t2/update! :model/Transform :id id {:last_checkpoint_value nil}))
 
 ;;; ---------------------------------------------------- Tags ------------------------------------------------------
 

@@ -52,14 +52,14 @@
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
   (security-center.db/update-advisory! (:id advisory) {:acknowledged_by user-id})
-  (events/publish-event! :event/security-advisory-acknowledge
-                         {:object  advisory
-                          :user-id user-id})
-  (analytics/track-event! :snowplow/simple_event
-                          {:event        "security_advisory_acknowledged"
-                           :event_detail (name (:severity advisory))})
-  (-> (security-center.db/advisory (:id advisory))
-      (t2/hydrate :acknowledged_by_user)))
+  (let [acknowledged (security-center.db/advisory (:id advisory))]
+    (events/publish-event! :event/security-advisory-acknowledge
+                           {:object  acknowledged
+                            :user-id user-id})
+    (analytics/track-event! :snowplow/simple_event
+                            {:event        "security_advisory_acknowledged"
+                             :event_detail (name (:severity advisory))})
+    (t2/hydrate acknowledged :acknowledged_by_user)))
 
 (defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged

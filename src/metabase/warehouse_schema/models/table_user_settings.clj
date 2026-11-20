@@ -97,17 +97,58 @@
     (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
   settings)
 
+(defn- mirrored-columns
+  "The columns among `written` that `settings` says a user set, with `is_published` and `collection_id` together."
+  [settings written]
+  (let [user-set (user-settings/user-set-table-columns settings)
+        written  (into (set written)
+                       (keep (fn [[column flag]] (when (contains? (set written) flag) column)))
+                       user-settings/table-set-flags)
+        columns  (into #{} (filter #(contains? user-set %)) written)]
+    (cond-> columns
+      (some columns [:is_published :collection_id])
+      (into (filter user-set) [:is_published :collection_id]))))
+
+(defn- same-value?
+  "Whether `a` and `b` are the same keyword-valued column value."
+  [a b]
+  (= (some-> a keyword) (some-> b keyword)))
+
+(defn- table-changes
+  "The `columns` of `settings` to write to its Table, with no more than one half of the `visibility_type`/`data_layer`
+  pair, since the Table derives the other half and refuses a change of both."
+  [settings columns]
+  (let [changes (select-keys settings columns)]
+    (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
+      (let [table (warehouse-schema.db/table (:table_id settings))]
+        (warehouse-schema.serialization/without-derived-half
+         (cond-> changes
+           (same-value? (:visibility_type changes) (:visibility_type table)) (dissoc :visibility_type)
+           (same-value? (:data_layer changes) (:data_layer table))           (dissoc :data_layer))))
+      changes)))
+
+(defn- mirror-to-table!
+  "Write the `columns` of `settings` to its Table, so the Table holds the values a user set."
+  [settings columns]
+  (when (seq columns)
+    (let [changes (table-changes settings columns)]
+      (when (seq changes)
+        (warehouse-schema.db/update-table! (:table_id settings) changes)))))
+
 (t2/define-before-insert :model/TableUserSettings
   [settings]
   (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
   [settings]
+  (mirror-to-table! settings (mirrored-columns settings user-settings/user-settable-table-columns))
   (delete-when-empty! settings))
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (completed-settings settings (t2/changes settings)))
+  (let [settings (completed-settings settings (t2/changes settings))]
+    (mirror-to-table! settings (mirrored-columns settings (keys (t2/changes settings))))
+    settings))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]
@@ -116,16 +157,18 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (mu/defn upsert-table-user-settings!
-  "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
-  row; a nil for a column without a set flag unsets it."
+  "Record the user-settable Table columns present in `settings` as the user values of `table`, in its row and then its
+  settings, so the Table refuses what it cannot take as the caller wrote it; a nil for a column without a set flag unsets
+  it."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
-        (warehouse-schema.db/update-or-insert-table-user-settings!
-         id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
-        (warehouse-schema.db/update-table! id settings)))))
+        (events/with-batched-events
+          (warehouse-schema.db/update-table! id settings)
+          (warehouse-schema.db/update-or-insert-table-user-settings!
+           id (fn [existing] (cond-> settings existing (with-set-flags settings settings)))))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
@@ -135,13 +178,13 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (events/with-batched-events
+        (warehouse-schema.db/update-tables! table-ids settings)
         (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
           (when-let [missing (not-empty (remove existing table-ids))]
             (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
           (when (seq existing)
             (warehouse-schema.db/update-table-user-settings-for-tables!
-             existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids settings)))))
+             existing (with-set-flags settings settings settings))))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."

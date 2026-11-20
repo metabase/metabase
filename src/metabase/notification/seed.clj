@@ -4,7 +4,7 @@
   If a notification is changed, it will be replaced with a new one."
   (:require
    [metabase.notification.db :as notification.db]
-   [metabase.notification.models :as models.notification]
+   [metabase.notification.write :as notification.write]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -202,7 +202,7 @@
                          (dissoc :template)
                          (assoc :template_id (notification.db/insert-channel-template! template)))
                      handler))]
-    (models.notification/create-notification!
+    (notification.write/create-notification!
      (dissoc notification :handlers :subscriptions)
      (:subscriptions notification)
      handlers)))
@@ -224,7 +224,7 @@
     :skip))
 
 (defn- hydrate-existing-notification
-  "Hydrate an existing notification row for comparison. Don't use [[models.notification/hydrate-notification]]
+  "Hydrate an existing notification row for comparison. Don't use [[metabase.notification.models/hydrate-notification]]
    so we can migrate on schema changes."
   [notification]
   (t2/hydrate notification :creator :payload :subscriptions [:handlers :channel :template [:recipients :recipients-detail]]))

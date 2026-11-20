@@ -55,17 +55,42 @@
     (warehouse-schema.db/delete-field-user-settings! [(:field_id settings)]))
   settings)
 
+(defn- mirrored-columns
+  "The columns among `written` that `settings` says a user set, with `effective_type` and `coercion_strategy` together
+  and without a column `written` sets to an SQL expression, whose value is known only once stored."
+  [settings written]
+  (let [settings (into {} (remove (comp sequential? val)) settings)
+        user-set (user-settings/user-set-field-columns settings)
+        written  (into (set written)
+                       (keep (fn [[column flag]] (when (contains? (set written) flag) column)))
+                       user-settings/field-set-flags)
+        columns  (into #{} (filter #(contains? user-set %)) written)
+        columns  (cond-> columns
+                   (some columns [:effective_type :coercion_strategy])
+                   (into (filter user-set) [:effective_type :coercion_strategy]))]
+    (into #{} (filter #(contains? settings %)) columns)))
+
+(defn- mirror-to-field!
+  "Write the `columns` of `settings` to its Field, so the Field holds the values a user set."
+  [settings columns]
+  (when (seq columns)
+    (warehouse-schema.db/update-field! (:field_id settings) (select-keys settings columns))))
+
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
   (with-set-flags settings settings))
 
 (t2/define-after-insert :model/FieldUserSettings
   [settings]
+  (mirror-to-field! settings (mirrored-columns settings user-settings/user-settable-field-columns))
   (delete-when-empty! settings))
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
-  (with-set-flags settings (t2/changes settings)))
+  (let [changes  (t2/changes settings)
+        settings (with-set-flags settings changes)]
+    (mirror-to-field! settings (mirrored-columns settings (keys (t2/changes settings))))
+    settings))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
@@ -105,10 +130,11 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
-        (remove-remappings-ended-by! field settings)
-        (warehouse-schema.db/update-or-insert-field-user-settings!
-         id (fn [existing] (cond->> settings existing (with-set-flags settings))))
-        (warehouse-schema.db/update-field! id settings)))))
+        (events/with-batched-events
+          (remove-remappings-ended-by! field settings)
+          (warehouse-schema.db/update-or-insert-field-user-settings!
+           id (fn [existing] (cond->> settings existing (with-set-flags settings))))
+          (warehouse-schema.db/update-field! id settings))))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."

@@ -33,13 +33,12 @@
              [:saml-name-id-format {:optional true} [:maybe :string]]]]
    (let [user-id (u/the-id user)
          provider-str (name provider)
-         auth-identity (auth-identity.db/auth-identity-expiry user-id provider-str)
-         auth-identity-id (:id auth-identity)
+         auth-identity-id (auth-identity.db/auth-identity-id user-id provider-str)
          session-key (str (random-uuid))
          session-id (string/random-string 12)
          session (t2/with-transaction [_]
                    (u/prog1 (auth-identity.db/insert-session! session-id user-id auth-identity-id session-key
-                                                              (:expires_at auth-identity) mfa-auth-identity-id opts)
+                                                              mfa-auth-identity-id opts)
                      (when provider-str
                        (log/debugf "Updating last_used_at for user %s with provider %s" user-id provider-str)
                        (auth-identity.db/touch-auth-identity! auth-identity-id))

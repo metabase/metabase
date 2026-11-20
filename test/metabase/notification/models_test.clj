@@ -8,6 +8,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -124,13 +125,13 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [active-notification   (models.notification/create-notification!
+        (let [active-notification   (notification.write/create-notification!
                                      {:payload_type :notification/card
                                       :payload      {:card_id card-id}
                                       :creator_id   (mt/user->id :crowberto)}
                                      []
                                      [])
-              inactive-notification (models.notification/create-notification!
+              inactive-notification (notification.write/create-notification!
                                      {:payload_type :notification/card
                                       :payload      {:card_id card-id}
                                       :active       false
@@ -200,7 +201,7 @@
                    :model/PermissionsGroupMembership _ {:group_id (:id group)
                                                         :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
-        (let [noti (models.notification/create-notification!
+        (let [noti (notification.write/create-notification!
                     default-system-event-notification
                     [default-user-invited-subscription
                      default-card-created-subscription]
@@ -256,7 +257,7 @@
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
                      :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
-        (let [noti (models.notification/create-notification!
+        (let [noti (notification.write/create-notification!
                     default-system-event-notification
                     [default-user-invited-subscription]
                     [{:channel_type (:type chn-1)

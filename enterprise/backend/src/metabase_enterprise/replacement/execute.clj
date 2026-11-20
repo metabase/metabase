@@ -5,7 +5,8 @@
   (:require
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
-   [metabase.util.jvm :as u.jvm]))
+   [metabase.util.jvm :as u.jvm]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -25,7 +26,8 @@
   [work-fn progress]
   (check-no-active-run)
   (try
-    (replacement.protocols/start-run! progress)
+    (t2/with-transaction [_conn]
+      (replacement.protocols/start-run! progress))
     (catch Throwable e
       (check-no-active-run)
       (throw e)))
