@@ -39,13 +39,13 @@
           nil)))))
 
 (defn- updated-instance
-  "The row of an update as an instance that knows its changes."
-  [{:keys [model object previous-object]}]
-  (reduce-kv (fn [instance column value]
-               (cond-> instance
-                 (not= value (get previous-object column)) (assoc column value)))
-             (t2/instance model previous-object)
-             object))
+  "The row of an update as an instance whose changes are the columns that the update set."
+  [{:keys [model object previous-object changed]}]
+  ;; The columns come from `changed`, not from a diff of `object` against `previous-object`, because the timestamp
+  ;; hook sets `updated_at` as SQL, so `object` carries the old value and a diff misses it. The instance starts without
+  ;; those columns so that each counts as changed, whether or not its value in `object` differs.
+  (merge (t2/instance model (apply dissoc (into {} previous-object) changed))
+         (select-keys object changed)))
 
 (defn- handle-deleted!
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."

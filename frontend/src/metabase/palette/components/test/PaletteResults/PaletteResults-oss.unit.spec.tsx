@@ -203,6 +203,32 @@ describe("PaletteResults", () => {
     ).toHaveAttribute("href", "/apps/link-test");
   });
 
+  it("should link an indexed record search result to the record in its model", async () => {
+    setup({
+      query: "marble shoes",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "indexed-entity",
+          name: "Rustic Paper Wallet",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "indexed-entity",
+          name: "Small Marble Shoes",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Small Marble Shoes" }),
+    ).toHaveAttribute("href", "/model/3-products-model/2");
+  });
+
   it("should label a data app search result as a data app, not by a collection", async () => {
     setup({
       query: "Link",

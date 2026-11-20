@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -261,13 +262,20 @@
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))
 
+(defn- user-request-call-count!
+  "The number of app DB queries that `(mt/user-http-request user-and-args...)` runs, its session write included."
+  [& user-and-args]
+  ;; Each session writes `last_active_at` at most once a minute, so clear the throttle to count that write every time.
+  (session/clear-session-activity-cache!)
+  (t2/with-call-count [call-count]
+    (apply mt/user-http-request user-and-args)
+    (call-count)))
+
 (defn- user-qbnewb-call-count!
   "The number of app DB queries that the user `user-id` runs to clear their own new-user flag."
   [user-id]
   (t2/update! :model/User :id user-id {:is_qbnewb true})
-  (t2/with-call-count [call-count]
-    (mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))
-    (call-count)))
+  (user-request-call-count! :rasta :put 200 (str "user/" user-id "/modal/qbnewb")))
 
 (deftest skipped-column-update-of-user-runs-no-details-query-test
   (let [user-id   (mt/user->id :rasta)
@@ -282,10 +290,8 @@
   (mt/with-premium-features #{:audit-app}
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [before (max-id)]
-        (testing "deactivating a user runs one query to hydrate their groups, and one to insert the row"
-          (t2/with-call-count [call-count]
-            (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
-            (is (= 13 (call-count)))))
+        (testing "deactivating a user runs a fixed number of queries, the session write included"
+          (is (= 14 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id)))))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!

@@ -31,13 +31,13 @@ import {
   getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
-  getMetabotCardBaseline,
+  getIsUntouchedMetabotCard,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
   getQueryResults,
   getQuestion,
   getTimeoutId,
-  getUntouchedMetabotCardBaseline,
+  toMetabotCardBaseline,
 } from "../store/selectors";
 
 import { updateUrl } from "./url";
@@ -269,7 +269,7 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     }
 
     const card = question.card();
-    const metabotCardBaseline = getUntouchedMetabotCardBaseline(getState());
+    const wasUntouchedMetabotCard = getIsUntouchedMetabotCard(getState());
 
     dispatch({
       type: QUERY_COMPLETED_TYPE,
@@ -282,9 +282,9 @@ export const queryCompleted = (question: Question, queryResults: Dataset[]) => {
     // not the user's edits. The loaded version stays too: Back restores it
     // from history without running the query again.
     const completedQuestion = getQuestion(getState());
-    if (metabotCardBaseline && completedQuestion) {
+    if (wasUntouchedMetabotCard && completedQuestion) {
       dispatch(
-        addMetabotCardBaseline(getMetabotCardBaseline(completedQuestion)),
+        addMetabotCardBaseline(toMetabotCardBaseline(completedQuestion)),
       );
     }
     dispatch(loadCompleteUIControls());

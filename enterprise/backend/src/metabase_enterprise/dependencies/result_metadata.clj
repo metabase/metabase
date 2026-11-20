@@ -152,6 +152,7 @@
         (dependencies.db/clear-result-metadata-status!
          card-id stale models.result-metadata-status/current-result-metadata-version)
         (catch Throwable e
+          (dependencies.db/throw-unless-app-db-reachable! e)
           (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
           (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
             (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))

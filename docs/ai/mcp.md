@@ -133,6 +133,8 @@ https://mcp.internal.example.com https://*.staging.example.com
 
 Wildcards (`*`) work for subdomains. Origins can't include a path. Changes take effect within a minute.
 
+On self-hosted Metabases, you can also set allowed origins with the [`MB_MCP_APPS_CORS_CUSTOM_ORIGINS`](../configuring-metabase/environment-variables.md#mb_mcp_apps_cors_custom_origins) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Authentication
 
 MCP clients authenticate with Metabase using OAuth 2.0. Metabase runs its own embedded OAuth server, so you don't need to set up an external OAuth provider.
@@ -236,7 +238,7 @@ See [Agent-driven development](./agent-driven-development.md).
 
 Some clients don't support connecting to MCP servers running on localhost. For example, Claude Desktop doesn't permit local connections, but Claude Code does.
 
-For containerized setups, like when testing locally, you may need to set the `MB_SITE_URL` environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
+For containerized setups, like when testing locally, you may need to set the [`MB_SITE_URL`](../configuring-metabase/environment-variables.md#mb_site_url) environment variable to the URL you point to in order to authenticate your client. For example, if you're playing around with a Metabase on localhost, you should set:
 
 ```
 MB_SITE_URL: http://localhost:3000

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { addLocale, useLocale } from "ttag";
 
 import { findRequests, setupCardEndpoints } from "__support__/server-mocks";
 import { screen, waitFor } from "__support__/ui";
@@ -232,6 +233,51 @@ describe("MiniPicker", () => {
       await userEvent.click(await screen.findByText("Our analytics"));
       expect(await screen.findByText("Brighton")).toBeInTheDocument();
       expect(screen.queryByText("Catherine")).not.toBeInTheDocument();
+    });
+
+    describe("with a non-English locale (metabase#25537)", () => {
+      beforeAll(() => {
+        addLocale("zz-fake", {
+          headers: { "plural-forms": "nplurals=2; plural=(n != 1);" },
+          translations: {
+            "": {
+              "Our analytics": {
+                msgid: "Our analytics",
+                msgstr: ["[zz] Our analytics"],
+              },
+            },
+          },
+        });
+        useLocale("zz-fake");
+      });
+
+      afterAll(() => {
+        // restore the default locale so later tests aren't affected
+        useLocale("en");
+      });
+
+      it("can pick a saved model from the translated root collection", async () => {
+        const { onChangeSpy } = await setup();
+        expect(
+          await screen.findByText("[zz] Our analytics"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByText("[zz] Our analytics"));
+        await userEvent.click(await screen.findByText("Pemberly"));
+
+        const itemRequests = (await findRequests("GET")).filter(({ url }) =>
+          new URL(url).pathname.endsWith("/items"),
+        );
+        expect(itemRequests.map(({ url }) => new URL(url).pathname)).toEqual([
+          "/api/collection/root/items",
+        ]);
+        expect(onChangeSpy).toHaveBeenCalledWith({
+          id: 103,
+          model: "dataset",
+          name: "Pemberly",
+        });
+      });
     });
 
     it("should show a collection when provided a card as a value", async () => {
