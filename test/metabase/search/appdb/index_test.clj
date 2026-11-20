@@ -43,6 +43,11 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+(defn- index-names
+  "The names of the entities the index matches for `term`."
+  [term]
+  (into #{} (map second) (search.index/search term)))
+
 (defn- now []
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
   (t/truncate-to (t/offset-date-time) :millis))
@@ -174,14 +179,15 @@
         (is (= 2 (index-hits "revenue")))
         (is (= #_1 2 (index-hits "projected revenue")))
         (testing "Simple dictionary allows searching for unstemmed words #60649"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organ")))
-          (is (= 2 (index-hits "organi"))))
+          (is (= #{"Organization Reference" "Nobody Expects Organi"} (index-names "organ")))
+          (is (= #{"Organization Reference" "Nobody Expects Organi"} (index-names "organi"))))
         (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
-          ;; Older english stemmers reduce "organization" to "organ", a prefix of "Organi", so the two results are
-          ;; "Organization Reference" and "Nobody Expects Organi". PostgreSQL 19's stemmer gives "organiz" instead.
-          (is (= (if (< (postgres-major-version) 19) 2 1)
-                 (index-hits "organization"))))
+          ;; Older english stemmers reduce "organization" to "organ", a prefix of "Organi". PostgreSQL 19's stemmer
+          ;; gives "organiz" instead.
+          (is (= (if (< (postgres-major-version) 19)
+                   #{"Organization Reference" "Nobody Expects Organi"}
+                   #{"Organization Reference"})
+                 (index-names "organization"))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 
