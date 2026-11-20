@@ -1086,13 +1086,14 @@
   If installing the reporter fails, stops the system again and rethrows."
   [port]
   (let [sys (make-prometheus-system port "metabase-registry")]
-    (alter-var-root #'system (constantly sys))
     (try
       (install-real-reporter!)
-      sys
       (catch Throwable e
         (stop-system! sys)
-        (throw e)))))
+        (throw e)))
+    ;; set last, since [[setup!]] skips the start when it finds the var set, so it never finds a start that may fail
+    (alter-var-root #'system (constantly sys))
+    sys))
 
 ;; The running system, as a global-system component, so halting the system stops it too.
 ;; Readers still use the `system` var, which the component's start and stop set, so tests can redefine it.
