@@ -5024,7 +5024,7 @@
           (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
                                                           :lucky :put 200 (str "dashboard/" dash-id)
                                                           {:parameters []}))
-                title            (format "Subscription to %s removed" dashboard-name)
+                title            (format "Subscription to %s deleted" dashboard-name)
                 ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                 ;; as "We've Noticed a New Metabase Login, Rasta".
                 inbox            (update-vals

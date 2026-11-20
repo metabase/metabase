@@ -453,7 +453,7 @@
   [{:keys [dashboard-id dashboard-name pulse-creator dashboard-creator affected-users bad-parameters disable_links]}]
   (let [{:keys [siteUrl] :as context} (common-context)]
     (email/send-message!
-     :subject (trs "Subscription to {0} removed" dashboard-name)
+     :subject (trs "Subscription to {0} deleted" dashboard-name)
      :recipients (->> affected-users
                       (concat [pulse-creator dashboard-creator])
                       (keep :email)
@@ -483,6 +483,6 @@
                                                     {:notification-type :email
                                                      :recipient         (:common_name pulse-creator)
                                                      :role              "Subscription Creator"}]
-                                                   (map #(assoc % :role "Subscriber") affected-users)))
+                                                   (map #(assoc % :role "Recipient") affected-users)))
                        :dashboardUrl             (format "%s/dashboard/%s" siteUrl dashboard-id)
                        :disable_links            disable_links})))))
