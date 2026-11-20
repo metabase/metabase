@@ -32,19 +32,50 @@
              #(mc/decoder ::data-testing.schema/stored-run-result
                           (mtx/transformer mtx/json-transformer {:name :normalize}))))
 
+(def ^:private max-stored-string-length
+  "How many characters of any one string of a result are stored. A cell or a message can be as long as the warehouse
+  makes it."
+  1000)
+
+(def ^:private max-stored-result-length
+  "How many characters of JSON a stored result may take. A larger result is not stored."
+  1000000)
+
+(defn- shortened
+  "`x` with every string value in it cut to [[max-stored-string-length]]. Map keys stay whole."
+  [x]
+  (cond
+    (string? x)     (if (> (count x) max-stored-string-length)
+                      (str (subs x 0 max-stored-string-length) "…")
+                      x)
+    (map? x)        (update-vals x shortened)
+    (sequential? x) (mapv shortened x)
+    :else           x))
+
+(defn- result-in
+  "The JSON to store for `result`, with its long strings cut, or nil when it is still too large to store."
+  [result]
+  (let [json (mi/json-in (shortened result))]
+    (if (> (count json) max-stored-result-length)
+      (log/warnf "Not storing the result of a test run: %d characters of JSON" (count json))
+      json)))
+
 (defn- result-out
   "The stored result read from the JSON `s`, or nil when it is not one this version can read."
   [s]
-  (when-let [result (mi/json-out-with-keywordization s)]
-    (let [decoded ((stored-result-decoder) result)]
-      (if (mr/validate ::data-testing.schema/stored-run-result decoded)
-        decoded
-        (log/warn "Ignoring a data_test_run.result that is not a stored run result")))))
+  (try
+    (when-let [result (mi/json-out-with-keywordization s)]
+      (let [decoded ((stored-result-decoder) result)]
+        (if (mr/validate ::data-testing.schema/stored-run-result decoded)
+          decoded
+          (log/warn "Ignoring a data_test_run.result that is not a stored run result"))))
+    (catch Throwable e
+      (log/warnf "Ignoring a data_test_run.result that cannot be read: %s" (ex-message e)))))
 
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword
    :test_type mi/transform-keyword
-   :result    {:in mi/json-in :out result-out}})
+   :result    {:in result-in :out result-out}})
 
 (defn with-initiated-by-users
   "`runs`, each with the user whose id is its `:initiated_by`, or nil, under `:initiated_by_user`."
@@ -76,11 +107,12 @@
    result :- [:maybe ::data-testing.schema/stored-run-result]]
   (data-testing.db/finish-started-test-run! run-id status result))
 
-(mu/defn clear-results-of-runs-before! :- :int
-  "Set the stored result of every DataTestRun that started before `cutoff` to nil, returning the number of rows
-  updated."
-  [cutoff :- ms/TemporalInstant]
-  (data-testing.db/clear-test-run-results-before! cutoff))
+(mu/defn clear-results-of-runs! :- :int
+  "Set the stored result of the DataTestRuns with `run-ids` to nil, returning the number of rows updated."
+  [run-ids :- [:sequential ms/PositiveInt]]
+  (if (seq run-ids)
+    (data-testing.db/clear-test-run-results! (vec run-ids))
+    0))
 
 (mu/defn delete-data-test-runs! :- :int
   "Delete the DataTestRuns with `run-ids`, returning the number of rows deleted."

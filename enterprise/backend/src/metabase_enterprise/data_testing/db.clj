@@ -2,6 +2,7 @@
   "Application database queries for the data-testing module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [malli.core :as mc]
    [malli.util :as mut]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
@@ -13,6 +14,7 @@
    [metabase.run-tracking.core :as rt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -222,6 +224,15 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
+(mu/defn- test-of-run-exists-clause :- vector?
+  "A clause that holds for a DataTestRun when the `test-type` test it names exists and was created no later than the
+  run started."
+  [test-type :- ::data-testing.schema/test-type]
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
+                             :where  [:and
+                                      [:= :the_test.id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
+                                      [:>= (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) :the_test.created_at]]}])
 
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
@@ -235,11 +246,7 @@
      [:in (u/qualified-key (t2/table-name :model/DataTestRun) :test_id) test-ids]
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
-     [:exists ^:allow-subquery {:select [1]
-                                :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
-                                :where  [:and
-                                         [:= :the_test.id (u/qualified-key (t2/table-name :model/DataTestRun) :test_id)]
-                                         [:>= (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) :the_test.created_at]]}]]))
+     (test-of-run-exists-clause test-type)]))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -352,25 +359,47 @@
               :status "started"
               {:status status :end_time :%now :result result}))
 
-(mu/defn clear-test-run-results-before! :- :int
-  "Set the stored result of every DataTestRun that started before `cutoff` to nil, and return how many had one."
-  [cutoff :- ms/TemporalInstant]
-  (t2/update! :model/DataTestRun
-              {:result     [:not= nil]
-               :start_time [:< cutoff]}
-              {:result nil}))
+(mu/defn test-run-ids-with-result-before :- [:maybe [:set ms/PositiveInt]]
+  "The ids of at most `limit` DataTestRuns that started before `cutoff` and have a stored result, or nil when there
+  are none."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
+  (t2/select-pks-set :model/DataTestRun
+                     {:where [:and
+                              [:< (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) cutoff]
+                              [:not= (u/qualified-key (t2/table-name :model/DataTestRun) :result) nil]]
+                      :limit limit}))
 
-(mu/defn expired-test-run-ids :- [:set ms/PositiveInt]
-  "The ids of the finished DataTestRuns that started before `cutoff`, except the newest run of each test, which stays
-  as the test's last run. A run that names no test has no newer run to keep it."
-  [cutoff :- ms/TemporalInstant]
+(mu/defn clear-test-run-results! :- :int
+  "Set the stored result of the DataTestRuns with `run-ids` to nil, and return how many rows that touched."
+  [run-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (app-db/sum-batched app-db/update-partition-size
+                      #(t2/update! :model/DataTestRun :id [:in %] {:result nil})
+                      run-ids))
+
+(mu/defn- test-of-run-gone-clause :- vector?
+  "A clause that holds for a DataTestRun that names no test, or names a test of a known type that no longer exists.
+  Such a run is not the last run of any test."
+  []
+  (into [:or [:= (u/qualified-key (t2/table-name :model/DataTestRun) :test_id) nil]]
+        (for [test-type (mc/children (mr/resolve-schema ::data-testing.schema/test-type))]
+          [:and
+           [:= (u/qualified-key (t2/table-name :model/DataTestRun) :test_type) (name test-type)]
+           [:not (test-of-run-exists-clause test-type)]])))
+
+(mu/defn expired-test-run-ids :- [:maybe [:set ms/PositiveInt]]
+  "The ids of at most `limit` finished DataTestRuns that started before `cutoff`, except the newest run of each test
+  that still exists, which stays as the test's last run. Nil when there are none."
+  [cutoff :- ms/TemporalInstant
+   limit  :- ms/PositiveInt]
   (t2/select-pks-set :model/DataTestRun
                      {:where [:and
                               [:< (u/qualified-key (t2/table-name :model/DataTestRun) :start_time) cutoff]
                               [:not= (u/qualified-key (t2/table-name :model/DataTestRun) :status) "started"]
                               [:or
-                               [:= (u/qualified-key (t2/table-name :model/DataTestRun) :test_id) nil]
-                               (newer-run-exists-clause)]]}))
+                               (test-of-run-gone-clause)
+                               (newer-run-exists-clause)]]
+                      :limit limit}))
 
 (mu/defn delete-test-runs! :- :int
   "Delete the DataTestRuns with `run-ids` and return how many were deleted."
