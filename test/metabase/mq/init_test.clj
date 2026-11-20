@@ -1,6 +1,8 @@
 (ns metabase.mq.init-test
   (:require
    [clojure.test :refer :all]
+   [metabase.global-system.system :as system]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.mq.init :as mq.init]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
@@ -53,3 +55,22 @@
       (mt/with-dynamic-fn-redefs [task/scheduler-disabled? (constantly false)]
         (is (thrown-with-msg? ExceptionInfo #"Invalid queue backend"
                               (startup/def-startup-validation! ::mq.init/MqBackendValidation)))))))
+
+(deftest mq-starts-through-the-global-system-test
+  (testing "startup starts MQ through the global system, so a halt stops it, and shutdown stops and unregisters it"
+    (let [handle  @#'mq.init/mq-component
+          stops   (atom 0)
+          halts?  #(boolean (some #{handle} (#'system/halt-order (#'system/dependency-graph {}))))]
+      (global-system.tu/with-root handle nil
+        (mt/with-dynamic-fn-redefs [mq.init/start! (constantly {:queue-be ::fake})
+                                    mq.init/stop!  (fn [& _] (swap! stops inc))]
+          (try
+            (startup/def-startup-logic! ::mq.init/MqStart)
+            (let [after-start {:halts? (halts?), :stops @stops}]
+              (startup/def-shutdown-logic! ::mq.init/MqShutdown)
+              (is (= {:after-start {:halts? true, :stops 0}
+                      :after-stop  {:halts? false, :stops 1}}
+                     {:after-start after-start
+                      :after-stop  {:halts? (halts?), :stops @stops}})))
+            (finally
+              (system/stop! handle))))))))

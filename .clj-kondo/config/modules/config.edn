@@ -2003,6 +2003,7 @@
    :api #{metabase.mq.core metabase.mq.init}
    :uses #{analytics.interface
            app-db
+           global-system
            settings
            startup
            task
@@ -3990,6 +3991,7 @@
    :api  #{metabase-enterprise.api-keys.init}
    :uses #{analytics
            api-keys
+           global-system
            metabot
            premium-features
            request
