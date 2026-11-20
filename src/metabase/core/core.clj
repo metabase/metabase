@@ -120,7 +120,9 @@
    ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics
    :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
                                              :metabase.driver.sql-jdbc.connection/pools
-                                             :metabase.tracing.core/otel-sdk}})
+                                             :metabase.tracing.core/otel-sdk}
+   ;; the default queue backend stores messages and runs deliveries as scheduler jobs
+   :metabase.mq.init/mq                    #{:metabase.task.impl/scheduler}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs. Requests queue search updates, MQ messages, API key usage and notifications, and schedule jobs.
