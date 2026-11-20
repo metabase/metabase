@@ -4364,7 +4364,6 @@
            request
            session
            system
-           users.tenants
            util
            util.config}
    :model-imports #{:model/Card
