@@ -700,14 +700,15 @@ describe("QueryBuilder > structured models", () => {
     });
 
     it("lists the table ID fields as foreign key targets in the model metadata editor (metabase#31663)", async () => {
-      // The picker stays disabled until the ID fields arrive
-      setupDatabaseIdFieldsEndpoints({ database: SAMPLE_DB, delay: 1500 });
       await setup({
         card: MODEL,
         database: SAMPLE_DB,
         dataset: DATASET,
         initialRoute: `/model/${MODEL.id}/columns`,
       });
+      // The picker stays disabled until the ID fields arrive. `setup` registers
+      // this endpoint without a delay, so the delayed one comes after it.
+      setupDatabaseIdFieldsEndpoints({ database: SAMPLE_DB, delay: 1500 });
 
       const productIdHeader = (
         await screen.findAllByTestId("header-cell")
