@@ -53,6 +53,7 @@ function showSource(view: EditorView, source: string) {
 export function useSummaryFormulaBar({
   query,
   stageIndex,
+  isPivotMode,
   onAdd,
   onEdit,
 }: SummaryFormulaBarOptions) {
@@ -119,11 +120,12 @@ export function useSummaryFormulaBar({
 
   // The edited chip can go away under the bar, from its remove button or Clear all.
   const isEditedFormulaGone = activeDraft?.kind === "edit" && !editedFormula;
+  const isRowsWellGone = activeDraft?.wellId === "rows" && !isPivotMode;
   useEffect(() => {
-    if (isEditedFormulaGone) {
+    if (isEditedFormulaGone || isRowsWellGone) {
       close();
     }
-  }, [isEditedFormulaGone, close]);
+  }, [isEditedFormulaGone, isRowsWellGone, close]);
 
   const handleSubmit = (expression: NamedExpression) => {
     if (activeDraft?.kind === "new") {

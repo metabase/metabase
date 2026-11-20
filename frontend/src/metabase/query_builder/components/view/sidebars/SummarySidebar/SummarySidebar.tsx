@@ -194,6 +194,7 @@ export function SummarySidebar({
     useSummaryFormulaBar({
       query,
       stageIndex,
+      isPivotMode,
       onAdd: (nextQuery, wellId) =>
         handleWellAdd(nextQuery, wellId, wellId !== "values"),
       onEdit: (nextQuery, options) => {
