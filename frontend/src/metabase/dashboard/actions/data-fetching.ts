@@ -686,6 +686,13 @@ function getDashcardGoalCard(
   }
 
   if (!isVisualizerDashboardCard(dashcard)) {
+    // a scalar with series draws bars, without its goals
+    const isMultiSeriesScalar =
+      card.display === "scalar" && (dashcard.series?.length ?? 0) > 0;
+    if (isMultiSeriesScalar) {
+      return null;
+    }
+
     return {
       display: card.display,
       visualization_settings: {

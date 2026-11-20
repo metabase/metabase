@@ -972,6 +972,15 @@ describe("fetchCardDataAction with goal references", () => {
     expect(getGoalSourceCalls()).toHaveLength(0);
   });
 
+  it("does not fetch goal source results for a scalar dashcard with series", async () => {
+    const { store, card, dashcard } = setupScalarDashcardWithSeries();
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.called(QUERY_URL)).toBe(true);
+    expect(getGoalSourceCalls()).toHaveLength(0);
+  });
+
   it("fetches the goal source results of a visualizer dashcard's chart", async () => {
     const { store, card, dashcard } = setupVisualizerDashcard();
 
@@ -1015,6 +1024,25 @@ describe("fetchCardDataAction with goal references", () => {
       unsavedDashcardSettings != null
         ? { ...savedDashcard, visualization_settings: unsavedDashcardSettings }
         : savedDashcard;
+    const store = setupDashcardStore({ dashcard });
+
+    return { store, card, dashcard };
+  }
+
+  function setupScalarDashcardWithSeries() {
+    const card = createMockCard({
+      id: 1,
+      display: "scalar",
+      visualization_settings: { "scalar.segments": REF_SEGMENTS },
+    });
+    const seriesCard = createMockCard({ id: 2, display: "scalar" });
+    const dashcard = createMockDashboardCard({
+      id: 1,
+      card_id: card.id,
+      dashboard_id: DASHBOARD_ID,
+      card,
+      series: [seriesCard],
+    });
     const store = setupDashcardStore({ dashcard });
 
     return { store, card, dashcard };
