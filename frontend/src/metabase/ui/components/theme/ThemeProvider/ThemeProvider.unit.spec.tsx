@@ -1,11 +1,14 @@
-import type { MantineThemeOverride } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
+import { useMantineTheme } from "@mantine/core";
+import { render as renderWithoutProviders } from "@testing-library/react";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
+import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui/component-theme";
 import { getThemeOverrides } from "metabase/ui/theme";
 import { getColorShades } from "metabase/ui/utils/colors";
 
-import { Text } from "../..";
+import { Text, Tooltip } from "../..";
 
 import { ThemeProvider } from "./ThemeProvider";
 
@@ -50,5 +53,141 @@ describe.skip("ThemeProvider", () => {
 
     // Theme overrides from the user should be applied.
     expect(textCss.getPropertyValue("color")).toBe("rgb(12, 34, 56)");
+  });
+});
+
+describe("ThemeProvider theme override", () => {
+  const METABASE_THEME = getThemeOverrides();
+
+  const readTheme = (theme?: MantineThemeOverride) => {
+    let result: MantineTheme | undefined;
+    const Reader = () => {
+      result = useMantineTheme();
+      return null;
+    };
+
+    render(
+      <ThemeProvider theme={theme}>
+        <Reader />
+      </ThemeProvider>,
+    );
+
+    if (!result) {
+      throw new Error("Theme was not read");
+    }
+    return result;
+  };
+
+  it("uses the Metabase theme when no override is given", () => {
+    const theme = readTheme();
+
+    expect(theme.primaryColor).toBe(METABASE_THEME.primaryColor);
+    expect(theme.fontSizes.xl).toBe(METABASE_THEME.fontSizes!.xl);
+    expect(theme.colors["text-primary"]).toEqual(
+      METABASE_THEME.colors!["text-primary"],
+    );
+    const popover: unknown = theme.other.popover;
+    expect(popover).toMatchObject({
+      zIndex: DEFAULT_METABASE_COMPONENT_THEME.popover.zIndex,
+    });
+  });
+
+  it("replaces primitives and colour tuples from the override", () => {
+    const tuple = getColorShades("rgb(12, 34, 56)");
+    const theme = readTheme({
+      primaryColor: "text-primary",
+      fontFamily: "Comic Sans MS",
+      colors: { "text-primary": tuple },
+    });
+
+    expect(theme.primaryColor).toBe("text-primary");
+    expect(theme.fontFamily).toBe("Comic Sans MS");
+    expect(theme.colors["text-primary"]).toEqual(tuple);
+  });
+
+  it("keeps Metabase values the override does not mention", () => {
+    const theme = readTheme({ fontFamily: "Comic Sans MS" });
+
+    expect(theme.fontSizes.xl).toBe(METABASE_THEME.fontSizes!.xl);
+    expect(theme.primaryColor).toBe(METABASE_THEME.primaryColor);
+    expect(theme.colors["text-secondary"]).toEqual(
+      METABASE_THEME.colors!["text-secondary"],
+    );
+    const popoverProps: unknown = theme.components.Popover.defaultProps;
+    expect(popoverProps).toMatchObject({ radius: "md" });
+  });
+
+  it("merges nested objects key by key", () => {
+    const tuple = getColorShades("rgb(12, 34, 56)");
+    const portalProps = { target: "#sdk-root" };
+    const theme = readTheme({
+      fontFamily: "Comic Sans MS",
+      colors: { "text-primary": tuple },
+      other: { popover: { zIndex: 9999 } },
+      components: {
+        Tooltip: { defaultProps: { portalProps, events: { focus: false } } },
+      },
+    });
+
+    expect(theme.fontFamily).toBe("Comic Sans MS");
+    expect(theme.colors["text-primary"]).toEqual(tuple);
+    expect(theme.colors["text-secondary"]).toEqual(
+      METABASE_THEME.colors!["text-secondary"],
+    );
+    const popover: unknown = theme.other.popover;
+    const collectionBrowser: unknown = theme.other.collectionBrowser;
+    const tooltipProps: unknown = theme.components.Tooltip.defaultProps;
+    expect(popover).toMatchObject({ zIndex: 9999 });
+    expect(collectionBrowser).toEqual(
+      DEFAULT_METABASE_COMPONENT_THEME.collectionBrowser,
+    );
+    expect(tooltipProps).toMatchObject({
+      portalProps,
+      events: { hover: true, focus: false, touch: true },
+      transitionProps: { transition: "fade" },
+      withinPortal: true,
+    });
+  });
+  // `render` wraps the tree in another ThemeProvider, and Mantine merges a nested
+  // provider's theme into its parent's itself. These cover a single provider.
+  describe("as the only provider", () => {
+    it("keeps an object-form primaryShade from the override", () => {
+      const primaryShade = { light: 4, dark: 6 } as const;
+      let theme: MantineTheme | undefined;
+      const Reader = () => {
+        theme = useMantineTheme();
+        return null;
+      };
+
+      renderWithoutProviders(
+        <ThemeProvider theme={{ primaryShade }}>
+          <Reader />
+        </ThemeProvider>,
+      );
+
+      expect(theme?.primaryShade).toEqual(primaryShade);
+    });
+
+    it("renders a tooltip into an element passed as its portal target", async () => {
+      const target = document.createElement("div");
+      document.body.appendChild(target);
+
+      renderWithoutProviders(
+        <ThemeProvider
+          theme={{
+            components: {
+              Tooltip: { defaultProps: { portalProps: { target } } },
+            },
+          }}
+        >
+          <Tooltip label="Tip" opened>
+            <span>Target</span>
+          </Tooltip>
+        </ThemeProvider>,
+      );
+
+      expect(target).toContainElement(await screen.findByText("Tip"));
+      target.remove();
+    });
   });
 });

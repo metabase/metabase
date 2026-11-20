@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, render, screen, waitFor, within } from "__support__/ui";
-import { isFocusVisible } from "metabase/utils/dom";
+import { isFocusVisible } from "metabase/utils/focus-visible";
 
 import { Icon } from "../../icons";
 
 import { SegmentedControl, type SegmentedControlItem } from "./index";
 
-jest.mock("metabase/utils/dom", () => ({
-  ...jest.requireActual("metabase/utils/dom"),
+jest.mock("metabase/utils/focus-visible", () => ({
+  ...jest.requireActual("metabase/utils/focus-visible"),
   isFocusVisible: jest.fn(() => false),
 }));
 
