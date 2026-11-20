@@ -176,6 +176,49 @@
           (is (= report-tz (session-tz)))
           (is (= :passed (run-test))))))))
 
+(defn- orders-input-every-column
+  "An input standing in for the orders table that gives every column of the table, with one row per id of
+  `id->created-at`, a map of order id to the moment the order was created; every other column holds 1. A segment test's
+  output has every column of the table when its input is SQL."
+  [id->created-at]
+  (let [mp                    (mt/metadata-provider)
+        {:keys [schema], table-name :name} (lib.metadata/table mp (mt/id :orders))
+        field-name            #(:name (lib.metadata/field mp (mt/id :orders %)))
+        others                (remove #{(field-name :id) (field-name :created_at)}
+                                      (map :name (lib.metadata/fields mp (mt/id :orders))))
+        row                   (fn [[id moment]]
+                                (str/join ", " (concat [(str "SELECT " id " AS " (field-name :id))
+                                                        (str (sql.qp/inline-value driver/*driver* moment)
+                                                             " AS " (field-name :created_at))]
+                                                       (map #(str "1 AS " %) others))))]
+    {:table  {:schema schema :name table-name}
+     :format :sql
+     :sql    (str/join " UNION ALL " (map row (sort-by key id->created-at)))}))
+
+(defn- run-segment-test!
+  "Save a segment of the orders table with `definition` and a test of it with `inputs`, one expectation and the further
+  `test-fields`, then run the test. Returns its [[outcome!]]."
+  [definition test-fields inputs [expectation]]
+  (mt/with-temp [:model/Segment     {segment-id :id} {:table_id   (mt/id :orders)
+                                                      :name       "Pinned"
+                                                      :definition definition}
+                 :model/SegmentTest {test-id :id}    (merge {:segment_id   segment-id
+                                                             :inputs       inputs
+                                                             :expectations [expectation]}
+                                                            test-fields)]
+    (outcome! :segment (t2/select-one :model/Segment :id segment-id) :model/SegmentTest test-id)))
+
+(deftest segment-reads-the-pinned-clock-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+    (let [mp         (mt/metadata-provider)
+          definition (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/filter (lib/time-interval (created-at) -30 :day)))
+          inputs     [(orders-input-every-column {1 (pinned+ -10 :days) 2 (pinned+ -60 :days) 3 (real+ -10 :days)})]
+          run-test   #(run-segment-test! definition % inputs [(selects [1])])]
+      (testing "a segment test with `now` selects the rows of the pinned month"
+        (is (= {:pinned :passed :unpinned :failed}
+               {:pinned (run-test {:now now}) :unpinned (run-test {})}))))))
+
 (defn- run-transform-test!
   "Save a transform of `source-query` into a new table and a test of it with `inputs`, the further `test-fields`, and
   one expectation, `(expectation-of target)` where `target` is the target table's qualified name, then run the test.

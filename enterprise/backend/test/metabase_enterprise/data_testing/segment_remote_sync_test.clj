@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
@@ -78,7 +79,9 @@
            (mt/with-temp [:model/Segment     segment {:table_id   (:id synced)
                                                       :name       "Ones"
                                                       :definition (definition (:id synced) (:id synced-field))}
-                          :model/SegmentTest t       {:segment_id (:id segment) :name "Only ones"}]
+                          :model/SegmentTest t       {:segment_id (:id segment)
+                                                      :name       "Only ones"
+                                                      :now        (t/offset-date-time "2026-10-13T09:00:00+09:00")}]
              (let [{v1 :version} (remote-sync.tu/push! url nil)
                    segment-path  (remote-sync.tu/entity-path! url "main" segment)
                    t-path        (remote-sync.tu/entity-path! url "main" t)]
@@ -87,6 +90,8 @@
                  (is (= (str (str/replace segment-path #"\.yaml$" "") "/only_ones.yaml") t-path)))
                (when t-path
                  (let [t-yaml (remote-sync.tu/read-file! url "main" t-path)]
+                   (testing "the pushed file holds `now` in UTC"
+                     (is (str/includes? (str t-yaml) "2026-10-13T00:00:00Z")))
                    (testing "a pull that removes the test's file deletes the test and keeps its segment"
                      (remote-sync.tu/commit! url "main" {t-path nil})
                      (let [{v2 :version :as result} (remote-sync.tu/pull! url v1)]
@@ -97,7 +102,11 @@
                          (remote-sync.tu/commit! url "main" {t-path t-yaml})
                          (is (=? {:status :success} (remote-sync.tu/pull! url v2)))
                          (is (=? {:name "Only ones" :segment_id (:id segment)}
-                                 (t2/select-one :model/SegmentTest :entity_id (:entity_id t)))))))))))))))))
+                                 (t2/select-one :model/SegmentTest :entity_id (:entity_id t))))
+                         (testing "with the same moment"
+                           (is (= (t/instant "2026-10-13T00:00:00Z")
+                                  (some-> (t2/select-one-fn :now :model/SegmentTest :entity_id (:entity_id t))
+                                          t/instant)))))))))))))))))
 
 (deftest dirty-list-shows-segment-tests-under-their-segments-tables-test
   (remote-sync.tu/with-repository [url]

@@ -1,0 +1,16 @@
+## Adds now to segment_test, as card_test and transform_test have it: the moment a test's segment reads as the current
+## time when it compiles, so that a relative date filter selects the same rows on every run. Null means the real clock.
+
+databaseChangeLog:
+  - changeSet:
+      id: oqhk3y
+      author: galdre
+      comment: Add segment_test.now
+      changes:
+        - addColumn:
+            tableName: segment_test
+            columns:
+              - column:
+                  name: now
+                  type: ${timestamp_type}
+                  remarks: The moment the segment reads as the current time when the test compiles it, or null for the real clock

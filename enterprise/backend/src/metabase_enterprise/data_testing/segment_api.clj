@@ -22,12 +22,11 @@
   (data-testing.errors/refusing "segment-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Segment `segment-id` with `inputs` and `expectations` unless it could run."
-  [segment-id   :- ms/PositiveInt
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :segment (data-testing.db/segment segment-id)
-                                                {:inputs inputs :expectations expectations})))
+  "Refuse a test of the Segment `segment-id` with the inputs, expectations and `now` of `definition` unless it could
+  run."
+  [segment-id :- ms/PositiveInt
+   definition :- ::data-testing.runner/definition]
+  (refusing #(data-testing.runner/validate-test :segment (data-testing.db/segment segment-id) definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
   "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. Needs Data
@@ -67,9 +66,9 @@
   declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
-   {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
+   {:keys [segment_id] :as body} :- ::data-testing.schema/segment-test.create]
   (api/create-check :model/SegmentTest body)
-  (validate-test! segment_id inputs expectations)
+  (validate-test! segment_id (data-testing.runner/test-definition body))
   (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
@@ -80,9 +79,9 @@
    body :- ::data-testing.schema/segment-test.update]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
-    (when (some #(contains? body %) [:segment_id :inputs :expectations])
-      (let [{:keys [segment_id inputs expectations]} (merge segment-test body)]
-        (validate-test! segment_id inputs expectations)))
+    (when (some #(contains? body %) (cons :segment_id data-testing.runner/definition-keys))
+      (let [{:keys [segment_id] :as merged} (merge segment-test body)]
+        (validate-test! segment_id (data-testing.runner/test-definition merged))))
     (when (seq body)
       (data-testing.models.segment-test/update-segment-test! id body)))
   (data-testing.db/segment-test id))

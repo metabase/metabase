@@ -217,7 +217,7 @@
                      :details  details
                      :topic    topic
                      :model    "SegmentTest"})
-            full  (fn [test-name] {:segment_id segment-id :name test-name :description "Checks output"})]
+            full  (fn [test-name] {:segment_id segment-id :name test-name :description "Checks output" :now nil})]
         (testing "create"
           (is (= (entry :segment-test-create (full "Original"))
                  (mt/latest-audit-log-entry :segment-test-create segment-test-id))))

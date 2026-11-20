@@ -33,7 +33,8 @@
   :model/Segment)
 
 (t2/deftransforms :model/SegmentTest
-  {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
+  {:now          data-testing.models/now-column
+   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :last_run]
@@ -121,12 +122,13 @@
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
-  [:segment_id :name :description :inputs :expectations])
+  [:segment_id :name :description :now :inputs :expectations])
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  (update-segment-test! id (select-keys snapshot revision-columns)))
+  ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
+  (update-segment-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -143,7 +145,8 @@
   {:schema              ::data-testing.schema/external-segment-test
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:segment_id (serialization/fk-transform :model/Segment)
-                         :creator_id serialization/user-transform}
+                         :creator_id serialization/user-transform
+                         :now        data-testing.models/now-transform}
    :storage-paths       data-testing.serialization/segment-test-storage-paths
    :import-dependencies data-testing.serialization/segment-test-import-dependencies})
 
@@ -159,6 +162,6 @@
    :revert!   revert-segment-test!})
 
 (defmethod audit/spec :model/SegmentTest [_model]
-  {:track          [:segment_id :name :description]
+  {:track          [:segment_id :name :description :now]
    :track-redacted [:creator_id :expectations :inputs]
    :skip           [:entity_id]})

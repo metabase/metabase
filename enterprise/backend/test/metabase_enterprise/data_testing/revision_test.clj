@@ -558,10 +558,9 @@
                 (is (= ["changed the inputs"] (strings {:inputs one-input}))))
               (testing "a change of the expectations"
                 (is (= ["changed the expectations"] (strings {:expectations one-expectation}))))
-              (when-not (= "SegmentTest" model)
-                (testing "a change of `now`"
-                  (is (= ["changed the time the test reads as now"]
-                         (strings {:now (t/offset-date-time "2026-10-13T00:00:00Z")})))))
+              (testing "a change of `now`"
+                (is (= ["changed the time the test reads as now"]
+                       (strings {:now (t/offset-date-time "2026-10-13T00:00:00Z")}))))
               (testing "a change of the subject names both subjects"
                 (is (= [(str "moved this " (#'revision.diff/model-str->i18n-str model) " from " from-name " to " to-name)]
                        (strings {subject-key to}))))
@@ -673,11 +672,15 @@
           (mt/with-temp [:model/Card          {card-id :id}           {}
                          :model/CardTest      {card-test-id :id}      {:card_id card-id :name "Before"}
                          :model/Transform     {transform-id :id}      {}
-                         :model/TransformTest {transform-test-id :id} {:transform_id transform-id :name "Before"}]
+                         :model/TransformTest {transform-test-id :id} {:transform_id transform-id :name "Before"}
+                         :model/Segment       {segment-id :id}        (data-testing.test-util/from-google-segment)
+                         :model/SegmentTest   {segment-test-id :id}   {:segment_id segment-id :name "Before"}]
             (doseq [[model model-name entity id subject] [[:model/CardTest "CardTest" "card-test" card-test-id
                                                            {:card_id card-id}]
                                                           [:model/TransformTest "TransformTest" "transform-test"
-                                                           transform-test-id {:transform_id transform-id}]]]
+                                                           transform-test-id {:transform_id transform-id}]
+                                                          [:model/SegmentTest "SegmentTest" "segment-test"
+                                                           segment-test-id {:segment_id segment-id}]]]
               (testing model
                 (let [;; A revision as a release before `now` wrote it.
                       revision-id (t2/insert-returning-pk! :model/Revision
