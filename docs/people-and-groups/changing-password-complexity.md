@@ -38,6 +38,8 @@ By default, Metabase also prevents users from setting passwords that are in a li
 
 On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication** > **Overview**.
 
+On self-hosted Metabases, you can also turn off password logins with the [`MB_ENABLE_PASSWORD_LOGIN`](../configuring-metabase/environment-variables.md#mb_enable_password_login) environment variable or in the [config file](../configuring-metabase/config-file.md).
+
 ## Change a password
 
 You can change your password in [Account settings](account-settings.md).

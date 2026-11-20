@@ -47,6 +47,8 @@ On self-hosted Metabases, you can also set the client ID with the [`MB_GOOGLE_AU
 
 If people's Google account email addresses are from a specific domain, and you want to allow them to sign up on their own, you can enter that domain in the **Domain** field.
 
+On self-hosted Metabases, you can also set the domain with the [`MB_GOOGLE_AUTH_AUTO_CREATE_ACCOUNTS_DOMAIN`](../configuring-metabase/environment-variables.md#mb_google_auth_auto_create_accounts_domain) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 Once set up, existing Metabase users signed in to a Google account that matches the email they used to set up their Metabase account will be able to sign in with just a click.
 
 Note that Metabase accounts _created_ with Google Sign-In will not have passwords; they must use Google to sign in to Metabase.

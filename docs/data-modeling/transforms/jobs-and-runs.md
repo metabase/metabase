@@ -106,11 +106,15 @@ Metabase skips a dependency when the dependency:
 
 The job's page in **Data Studio > Data transformation > Jobs** lists every transform the job will run and in which order. The **Notes** column tells you when Metabase will skip a dependency, and flags dependencies that have no schedule of their own.
 
+Metabase runs up to three SQL transforms from a job at the same time, and Python transforms one at a time. A transform still waits for the transforms it depends on. On self-hosted Pro and Enterprise plans, you can change how many SQL transforms run at once with the [`MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`](../../configuring-metabase/environment-variables.md#mb_transform_run_job_sql_concurrency) environment variable.
+
 ## Runs
 
 ![Transform runs](../images/runs.png)
 
 You can see all past and current transform runs (both manual and scheduled) in **Data Studio > Data transformation > Runs**. Run times are in your Metabase server's timezone (hover the info icon next to **Started at** to see which).
+
+If a transform run takes longer than four hours, Metabase stops it and marks it as timed out. On self-hosted Pro and Enterprise plans, you can change this limit with the [`MB_TRANSFORM_TIMEOUT`](../../configuring-metabase/environment-variables.md#mb_transform_timeout) environment variable.
 
 You can click on any transform run to see more details about the run, like the error logs. To go to the transform definition from the transform run page, click on the icon next to the transform name in the right sidebar.
 

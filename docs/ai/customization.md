@@ -34,6 +34,15 @@ Upload a custom icon. SVG or PNG with a transparent background gives the cleanes
 
 This toggle controls whether the default decorative illustrations show in the Metabot chat sidebar.
 
+## Customize Metabot with environment variables
+
+On self-hosted Metabases, you can also customize Metabot with [environment variables](../configuring-metabase/environment-variables.md) or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
+| Setting                                                   | Environment variable                                                                                              | Config file name             |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| [Metabot's name](#metabots-name)                          | [`MB_METABOT_NAME`](../configuring-metabase/environment-variables.md#mb_metabot_name)                             | `metabot-name`               |
+| [Show Metabot illustrations](#show-metabot-illustrations) | [`MB_METABOT_SHOW_ILLUSTRATIONS`](../configuring-metabase/environment-variables.md#mb_metabot_show_illustrations) | `metabot-show-illustrations` |
+
 ## Further reading
 
 - [AI settings](./settings.md)

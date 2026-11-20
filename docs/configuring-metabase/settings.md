@@ -16,13 +16,9 @@ You can configure these settings by clicking the **grid icon** in the upper righ
 
 How you’d like to refer to this instance of Metabase.
 
-On self-hosted Metabases, you can also set the site name with the [`MB_SITE_NAME`](./environment-variables.md#mb_site_name) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
-
 ## Site URL
 
 The site URL is the web address that people use to access your Metabase instance. Make sure to include `http://` or `https://` to make sure it’s reachable. This feature is only available for self-hosted Metabases. For customers on Metabase Cloud, check out [Custom domains](https://www.metabase.com/docs/latest/cloud/custom-domain).
-
-On self-hosted Metabases, you can also set the site URL with the [`MB_SITE_URL`](./environment-variables.md#mb_site_url) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### Redirect to HTTPS
 
@@ -33,8 +29,6 @@ To force all traffic to use HTTPS via redirect, click `http://` (under the **Sit
 For example, say you enable HTTPS redirect for a Metabase instance at the site URL "example.com". When someone enters an address like `example.com/data` in their browser's address bar, they'll get automatically redirected to a secure connection at `https://example.com/data`.
 
 > Note: if you haven't set up HTTPS on your server, Metabase will not let you enable HTTPS redirect. Instead, you'll get a warning saying "It looks like HTTPS is not properly configured."
-
-On self-hosted Metabases, you can also turn on the redirect with the [`MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`](./environment-variables.md#mb_redirect_all_requests_to_https) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ## Homepage
 
@@ -73,3 +67,19 @@ To manually label field or table names in Metabase, check out the [Table Metadat
 ## Enable X-rays
 
 [X-rays](../exploration-and-organization/x-rays.md) are a great way for people to get quick summary stats on your data. If these X-ray queries get too slow or expensive, you can turn them off here.
+
+## Configure general settings with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md) or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
+| Setting                                                                   | Environment variable                                                                                                                                                                                                              | Config file name                                               |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| [Site name](#site-name)                                                   | [`MB_SITE_NAME`](./environment-variables.md#mb_site_name)                                                                                                                                                                         | `site-name`                                                    |
+| [Site URL](#site-url)                                                     | [`MB_SITE_URL`](./environment-variables.md#mb_site_url)                                                                                                                                                                           | `site-url`                                                     |
+| [Redirect to HTTPS](#redirect-to-https)                                   | [`MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`](./environment-variables.md#mb_redirect_all_requests_to_https)                                                                                                                               | `redirect-all-requests-to-https`                               |
+| [Homepage](#homepage)                                                     | [`MB_CUSTOM_HOMEPAGE`](./environment-variables.md#mb_custom_homepage), [`MB_CUSTOM_HOMEPAGE_DASHBOARD`](./environment-variables.md#mb_custom_homepage_dashboard), [`MB_LANDING_PAGE`](./environment-variables.md#mb_landing_page) | `custom-homepage`, `custom-homepage-dashboard`, `landing-page` |
+| [Email address for help requests](#email-address-for-help-requests)       | [`MB_ADMIN_EMAIL`](./environment-variables.md#mb_admin_email)                                                                                                                                                                     | `admin-email`                                                  |
+| [Send anonymous tracking data](#send-anonymous-tracking-data-to-metabase) | [`MB_ANON_TRACKING_ENABLED`](./environment-variables.md#mb_anon_tracking_enabled)                                                                                                                                                 | `anon-tracking-enabled`                                        |
+| [Collect user data](#collect-user-data-to-display-in-usage-analytics)     | [`MB_ANALYTICS_PII_RETENTION_ENABLED`](./environment-variables.md#mb_analytics_pii_retention_enabled)                                                                                                                             | `analytics-pii-retention-enabled`                              |
+| [Friendly table and field names](#friendly-table-and-field-names)         | [`MB_HUMANIZATION_STRATEGY`](./environment-variables.md#mb_humanization_strategy)                                                                                                                                                 | `humanization-strategy`                                        |
+| [Enable X-rays](#enable-x-rays)                                           | [`MB_ENABLE_XRAYS`](./environment-variables.md#mb_enable_xrays)                                                                                                                                                                   | `enable-xrays`                                                 |

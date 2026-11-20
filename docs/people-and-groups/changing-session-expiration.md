@@ -32,7 +32,7 @@ This setting applies equally to everyone regardless of their browser behavior or
 
 > **Note:** A dashboard left open with auto-refresh enabled counts as activity and keeps the session alive, even in a background tab. Scheduled alerts and dashboard subscriptions are server-side operations and do not reset the inactivity timer.
 
-To configure session time out, go to **Admin** > **Authentication** > **Overview**, or set an environment variable:
+To configure session time out, go to **Admin** > **Settings** > **Authentication** > **Overview**, or set an environment variable:
 
 ```sh
 # log out after 2 hours of inactivity

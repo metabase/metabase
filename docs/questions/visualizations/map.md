@@ -54,10 +54,12 @@ To change the pin type:
 
 1. While viewing the map, click the **gear** icon in the bottom left.
 2. In the visualization settings, choose the pin type in the **Pin type** dropdown.
-   - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer than 1,000 rows.
-   - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
+   - **Markers**. Each point is a pin, and you can hover over it to see its details. Maps default to markers for results with fewer than 1,000 rows.
+   - **Tiles**. Each point is a small square, without tooltips. Maps default to tiles for results with 1,000 rows or more. Tile maps can show more points than marker maps (see below).
 
-By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
+By default, marker maps show up to 2,000 points, the same limit as every chart that displays unaggregated data. To raise this limit, use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting affects _all_ charts, not just pin maps, so raising it too much can slow down your Metabase and your browser.
+
+Tile maps aren't limited to the rows in your results, so they can show more than 2,000 points. In very dense areas, though, a tile map might not show every point.
 
 If you need to display a large number of geographic data points, consider using a grid map to display the distribution instead.
 

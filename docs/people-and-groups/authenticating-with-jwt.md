@@ -70,6 +70,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
+On self-hosted Metabases, you can also set these attribute keys with the environment variables [`MB_JWT_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_email), [`MB_JWT_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_firstname), [`MB_JWT_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_lastname), [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups), and [`MB_JWT_ATTRIBUTE_TENANT`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_tenant), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Configure group mappings
 
 You can use your JWT to assign Metabase users to custom Metabase [groups](./managing.md#groups) based on their attributes, e.g. automatically assign everyone with a certain JWT attribute to the `Sales` group in Metabase. This can be helpful for [permissions management](../permissions/introduction.md#key-points-regarding-permissions) at scale.
@@ -152,6 +154,8 @@ If you set either `MB_JWT_GROUP_SYNC` or `MB_JWT_GROUP_MAPPINGS`, the **Group ma
 User provisioning is enabled by default. When someone logs in via JWT SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save and enable** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
+
+On self-hosted Metabases, you can also turn user provisioning on or off with the [`MB_JWT_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_jwt_user_provisioning_enabled) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 

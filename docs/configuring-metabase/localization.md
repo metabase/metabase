@@ -40,7 +40,12 @@ To set the instance-wide language:
 
 _Admin > Settings > Localization > Instance settings > Report timezone_
 
-Use **report timezone** to set a default display time zone for dates and times in Metabase. The report timezone setting is a display setting only, so changing the report timezone won't affect the time zone of any data in your database. On self-hosted Metabases, you can also set it with the [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+Use **report timezone** to set the timezone Metabase works in. Metabase uses the report timezone to:
+
+- **Run queries** on the databases listed below. Dates in your results, relative date filters like "Previous 30 days", and grouping by day or week all follow the report timezone. Other databases use their own timezone.
+- **Schedule dashboard subscriptions and alerts.** If you don't set a report timezone, they use the timezone of the server running Metabase.
+
+Changing the report timezone doesn't change any data in your database.
 
 Report timezone doesn't apply to `timestamp without time zone` data types, including the output of [`convertTimezone`](../questions/query-builder/expressions/converttimezone.md) expressions. For example:
 
@@ -50,21 +55,28 @@ Report timezone doesn't apply to `timestamp without time zone` data types, inclu
 | `2022-12-28T12:00:00-06:00`              | `timestamp with offset`       | 'Canada/Eastern' | Dec 28, 2022, 7:00 AM  |
 | `2022-12-28T12:00:00`                    | `timestamp without time zone` | 'Canada/Eastern' | Dec 28, 2022, 12:00 AM |
 
-Report timezone is only supported for the following databases:
+Metabase can run queries in the report timezone on these databases:
 
 - BigQuery
+- ClickHouse
+- Databricks
 - Druid
+- MongoDB
 - MySQL
 - Oracle
 - PostgreSQL
 - Presto
 - Redshift
+- Snowflake
+- Starburst
 - Vertica
 
 To set report timezone:
 
 1. Go to **Admin > Settings > Localization**.
 2. Under **Report timezone**, pick the default report timezone.
+
+On self-hosted Metabases, you can also set the report timezone with the [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### First day of the week
 
@@ -119,6 +131,17 @@ To configure default currency settings:
 
    - **Unit of currency:** if you do most of your business in a particular currency, you can specify that here.
    - **Currency label style:** whether you want to have your currencies labeled with a symbol, a code (like "USD"), or its full name.
+
+## Configure localization with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md) or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
+| Setting                                                                                                                                       | Environment variable                                                      | Config file name    |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------- |
+| [Instance language](#set-default-instance-language)                                                                                           | [`MB_SITE_LOCALE`](./environment-variables.md#mb_site_locale)             | `site-locale`       |
+| [Report timezone](#set-default-instance-report-timezone)                                                                                      | [`MB_REPORT_TIMEZONE`](./environment-variables.md#mb_report_timezone)     | `report-timezone`   |
+| [First day of the week](#first-day-of-the-week)                                                                                               | [`MB_START_OF_WEEK`](./environment-variables.md#mb_start_of_week)         | `start-of-week`     |
+| [Dates and times](#dates-and-times-display-settings), [numbers](#number-display-settings), and [currency](#currency-display-settings) display | [`MB_CUSTOM_FORMATTING`](./environment-variables.md#mb_custom_formatting) | `custom-formatting` |
 
 ## Localizing embedded Metabase
 

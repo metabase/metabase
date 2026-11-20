@@ -21,6 +21,8 @@ If your LDAP setup uses other attributes for these, you can change them in the *
 
 Your LDAP directory must have the email field populated for each entry that will become a Metabase user, otherwise Metabase won't be able to create the account, nor will that person be able to log in. If either name field is missing, Metabase will use a default of "Unknown," and the person can change their name in their [account settings](./account-settings.md).
 
+On self-hosted Metabases, you can also set these attribute names with the environment variables [`MB_LDAP_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_email), [`MB_LDAP_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_firstname), and [`MB_LDAP_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_ldap_attribute_lastname), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Enabling LDAP authentication
 
 To enable LDAP authentication, go to **Admin** > **Settings** > **Authentication** > **LDAP** and click **Set up**. Fill out the form, then click **Save and enable**.
@@ -44,6 +46,8 @@ On self-hosted Metabases, you can also set these server settings with the enviro
 User provisioning is enabled by default. When someone logs in via LDAP, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save changes** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in.
+
+On self-hosted Pro and Enterprise plans, you can also turn user provisioning on or off with the [`MB_LDAP_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_ldap_user_provisioning_enabled) environment variable or in the [config file](../configuring-metabase/config-file.md).
 
 ## User schema
 
@@ -88,6 +92,8 @@ Metabase saves each mapping as soon as you add, edit, or remove it. To edit a ma
 
 Some LDAP directories list each person's groups on their own entry. If yours does, leave **Group search base** empty. Otherwise, enter the DN where your group entries live.
 
+On self-hosted Metabases, you can also set the group mapping toggle, the mappings themselves, and the group search base with the environment variables [`MB_LDAP_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_ldap_group_sync), [`MB_LDAP_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_ldap_group_mappings), and [`MB_LDAP_GROUP_BASE`](../configuring-metabase/environment-variables.md#mb_ldap_group_base), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ![Group Mapping](images/ldap-group-mapping.png)
 
 Some things to keep in mind regarding group mapping:
@@ -122,7 +128,9 @@ On self-hosted Metabases, you can also set the filter with the [`MB_LDAP_GROUP_M
 
 {% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
-You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [row and column security][row-and-column-security], your LDAP directory will be able to [pass these attributes][user-attributes-docs] to Metabase.
+Metabase always reads people's email, first name, and last name from your LDAP directory, as well as their groups, which Metabase uses if you turn on [group mapping](#group-mapping). You can also sync other [user attributes][user-attributes-def], such as roles, from your LDAP directory.
+
+To choose which user attributes to sync, list them, separated by commas, in the [`MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes_allowlist) environment variable or as `ldap-sync-user-attributes-allowlist` in the [config file](../configuring-metabase/config-file.md). By default, the list is empty, so Metabase doesn't sync any user attributes. To turn off user attribute syncing entirely, set [`MB_LDAP_SYNC_USER_ATTRIBUTES`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes) to `false`.
 
 ## Troubleshooting login issues
 
@@ -134,9 +142,7 @@ You can manage [user attributes][user-attributes-def] such as names, emails, and
 - [Using LDAP for authentication and access control](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control).
 - [Permissions overview](../permissions/start.md).
 
-[row-and-column-security]: ../permissions/row-and-column-security.md
 [google-saml-docs]: ./saml-google.md
 [jwt-docs]: ./authenticating-with-jwt.md
 [saml-docs]: ./authenticating-with-saml.md
-[user-attributes-docs]: ../permissions/row-and-column-security.md#choosing-user-attributes-for-row-and-column-security
 [user-attributes-def]: https://www.metabase.com/glossary/attribute#user-attributes-in-metabase

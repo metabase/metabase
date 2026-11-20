@@ -57,6 +57,8 @@ If you disable user provisioning, users without accounts or with deactivated acc
 
 If you manage user provisioning with [SCIM](./user-provisioning.md), you can't turn on SAML user provisioning.
 
+On self-hosted Metabases, you can also turn SAML user provisioning on or off with the [`MB_SAML_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_saml_user_provisioning_enabled) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ## Identity provider (IdP) configuration
 
 The top portion of the SAML form in Metabase has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
@@ -92,6 +94,8 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 Metabase shows the values for **User's email attribute**, **User's first name attribute**, and **User's last name attribute**. Copy each one into an input box labeled "Name" in your IdP's attribute statements section.
 
 > If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
+
+On self-hosted Metabases, you can also set these attribute names with the environment variables [`MB_SAML_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_saml_attribute_email), [`MB_SAML_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_saml_attribute_firstname), and [`MB_SAML_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_saml_attribute_lastname), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Identity provider info
 
@@ -155,7 +159,7 @@ If your IdP encrypts SAML responses, you'll need to ensure this section is fille
 - **SAML keystore password:** the magic spell that will open the keystore.
 - **SAML keystore alias:** the alias for the key that Metabase should use for signing SAML requests.
 
-On self-hosted Metabases, you can also set these with the environment variables [`MB_SAML_KEYSTORE_PATH`](../configuring-metabase/environment-variables.md#mb_saml_keystore_path), [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password), and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+On self-hosted Metabases, you can also set the keystore password and alias with the environment variables [`MB_SAML_KEYSTORE_PASSWORD`](../configuring-metabase/environment-variables.md#mb_saml_keystore_password) and [`MB_SAML_KEYSTORE_ALIAS`](../configuring-metabase/environment-variables.md#mb_saml_keystore_alias), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## SAML Single logout (SLO)
 
@@ -202,6 +206,8 @@ After you set up the group attribute in your IdP, configure group mappings:
 
 Metabase saves each mapping as soon as you add, edit, or remove it. To edit a mapping, hover over it and click the pencil icon.
 
+On self-hosted Metabases, you can also set the group attribute name, the group mapping toggle, and the mappings themselves with the environment variables [`MB_SAML_ATTRIBUTE_GROUP`](../configuring-metabase/environment-variables.md#mb_saml_attribute_group), [`MB_SAML_GROUP_SYNC`](../configuring-metabase/environment-variables.md#mb_saml_group_sync), and [`MB_SAML_GROUP_MAPPINGS`](../configuring-metabase/environment-variables.md#mb_saml_group_mappings), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
+
 ![Group mapping](images/saml-okta-groups.png)
 
 ### Remove a group mapping
@@ -237,6 +243,8 @@ To require people to log in with SSO, go to **Admin** > **Settings** > **Authent
 ## New account notification emails
 
 When people log in to Metabase for the first time via SSO, Metabase will automatically create an account for them, which will trigger an email notification to Metabase administrators. If you don't want these notifications to be sent, go to **Admin** > **Settings** > **Authentication** > **User provisioning**, and toggle off **"Notify admins of new users provisioned from SSO"**
+
+On self-hosted Metabases, you can also turn these notifications on or off with the [`MB_SEND_NEW_SSO_USER_ADMIN_EMAIL`](../configuring-metabase/environment-variables.md#mb_send_new_sso_user_admin_email) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Example code using SAML
 

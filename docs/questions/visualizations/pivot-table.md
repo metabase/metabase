@@ -102,5 +102,16 @@ There are special considerations when exporting pivot tables as XLSX files. See 
 - All metrics and dimensions specified in the query will be displayed in the pivot table.
 - Pivot tables are only available for questions built with the query builder.
 - The query builder question must have a summary block.
+- Pivot tables have a [size limit](#pivot-tables-have-a-size-limit).
 
 If you must use SQL, and your SQL query doesn't have parameters, you can save that SQL query, then use its [results as the starting point](../native-editor/writing-sql.md#explore-sql-question-results-using-the-query-builder) for a query builder question to build a question. The trick here is to do your aggregation and grouping in the query builder. That is, use the SQL question to grab the raw data you want to work with (maybe [create a model](../../data-modeling/models/models.md)), then start a new question in the query builder to filter, summarize, and group that data.
+
+### Pivot tables have a size limit
+
+Metabase can build a pivot table from up to 200,000 combinations of values. A combination is one set of values from the fields in the pivot table's rows and columns. For example, if your rows have 4 product categories and your columns have 48 months, your pivot table has up to 4 × 48 = 192 combinations.
+
+If the pivot table has more than one metric, Metabase divides the limit between them. For example, with two metrics, the limit is 100,000 combinations.
+
+If a pivot table goes over the limit, Metabase shows a "Too many rows for a pivot table" error instead of the table. To get under the limit, add a filter or remove a field from the rows or columns.
+
+On self-hosted Metabases, admins can change the limit with the [`MB_PIVOT_MAX_RESULT_ROWS`](../../configuring-metabase/environment-variables.md#mb_pivot_max_result_rows) environment variable or, on Pro and Enterprise plans, in the [config file](../../configuring-metabase/config-file.md).

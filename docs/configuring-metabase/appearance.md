@@ -112,8 +112,6 @@ This message is the text Metabase presents when it's loading a query. Options in
 - "Running query..."
 - "Loading results..."
 
-On self-hosted Metabases, you can also set the loading message with the [`MB_LOADING_MESSAGE`](./environment-variables.md#mb_loading_message) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
-
 ## Names
 
 _Admin > Settings > Appearance > Conceal Metabase_
@@ -123,8 +121,6 @@ _Admin > Settings > Appearance > Conceal Metabase_
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
 
 Setting a custom application name will also hide the "How to use Metabase" section in the navigation.
-
-On self-hosted Metabases, you can also set the application name with the [`MB_APPLICATION_NAME`](./environment-variables.md#mb_application_name) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### Documentation and references
 
@@ -164,8 +160,6 @@ What people see when Metabase prompts them to log in.
 - No illustration
 - Custom
 
-On self-hosted Metabases, you can also set this illustration with the [`MB_LOGIN_PAGE_ILLUSTRATION`](./environment-variables.md#mb_login_page_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
-
 ### Landing page
 
 The illustration people see on the landing page when they log in. To choose which page people land on, see [Homepage](./settings.md#homepage).
@@ -173,8 +167,6 @@ The illustration people see on the landing page when they log in. To choose whic
 - Lighthouse
 - No illustration
 - Custom
-
-On self-hosted Metabases, you can also set this illustration with the [`MB_LANDING_PAGE_ILLUSTRATION`](./environment-variables.md#mb_landing_page_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
 
 ### When calculations return no results
 
@@ -186,8 +178,6 @@ Metabase will display this illustration when questions or dashboard cards contai
 - No illustration
 - Custom
 
-On self-hosted Metabases, you can also set this illustration with the [`MB_NO_DATA_ILLUSTRATION`](./environment-variables.md#mb_no_data_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
-
 ### When no objects can be found
 
 Metabase will display this illustration when searches don't return any results.
@@ -196,7 +186,24 @@ Metabase will display this illustration when searches don't return any results.
 - No illustration
 - Custom
 
-On self-hosted Metabases, you can also set this illustration with the [`MB_NO_OBJECT_ILLUSTRATION`](./environment-variables.md#mb_no_object_illustration) environment variable or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+## Configure appearance with environment variables
+
+On self-hosted Metabases, you can also set these settings with [environment variables](./environment-variables.md) or, on Pro and Enterprise plans, in the [config file](./config-file.md).
+
+| Setting                                                         | Environment variable                                                                                                                                                                               | Config file name                                                |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [Color palette](#color-palette)                                 | [`MB_APPLICATION_COLORS`](./environment-variables.md#mb_application_colors)                                                                                                                        | `application-colors`                                            |
+| [Logo](#logo)                                                   | [`MB_APPLICATION_LOGO_URL`](./environment-variables.md#mb_application_logo_url)                                                                                                                    | `application-logo-url`                                          |
+| [Favicon](#favicon)                                             | [`MB_APPLICATION_FAVICON_URL`](./environment-variables.md#mb_application_favicon_url)                                                                                                              | `application-favicon-url`                                       |
+| [Font](#font)                                                   | [`MB_APPLICATION_FONT`](./environment-variables.md#mb_application_font), [`MB_APPLICATION_FONT_FILES`](./environment-variables.md#mb_application_font_files)                                       | `application-font`, `application-font-files`                    |
+| [Loading message](#loading-message)                             | [`MB_LOADING_MESSAGE`](./environment-variables.md#mb_loading_message)                                                                                                                              | `loading-message`                                               |
+| [Application name](#application-name)                           | [`MB_APPLICATION_NAME`](./environment-variables.md#mb_application_name)                                                                                                                            | `application-name`                                              |
+| [Documentation and references](#documentation-and-references)   | [`MB_SHOW_METABASE_LINKS`](./environment-variables.md#mb_show_metabase_links)                                                                                                                      | `show-metabase-links`                                           |
+| [Help link](#help-link-in-the-settings-menu)                    | [`MB_HELP_LINK`](./environment-variables.md#mb_help_link), [`MB_HELP_LINK_CUSTOM_DESTINATION`](./environment-variables.md#mb_help_link_custom_destination)                                         | `help-link`, `help-link-custom-destination`                     |
+| [Login page illustration](#login-and-unsubscribe-pages)         | [`MB_LOGIN_PAGE_ILLUSTRATION`](./environment-variables.md#mb_login_page_illustration), [`MB_LOGIN_PAGE_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_login_page_illustration_custom)         | `login-page-illustration`, `login-page-illustration-custom`     |
+| [Landing page illustration](#landing-page)                      | [`MB_LANDING_PAGE_ILLUSTRATION`](./environment-variables.md#mb_landing_page_illustration), [`MB_LANDING_PAGE_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_landing_page_illustration_custom) | `landing-page-illustration`, `landing-page-illustration-custom` |
+| [No results illustration](#when-calculations-return-no-results) | [`MB_NO_DATA_ILLUSTRATION`](./environment-variables.md#mb_no_data_illustration), [`MB_NO_DATA_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_no_data_illustration_custom)                     | `no-data-illustration`, `no-data-illustration-custom`           |
+| [No objects found illustration](#when-no-objects-can-be-found)  | [`MB_NO_OBJECT_ILLUSTRATION`](./environment-variables.md#mb_no_object_illustration), [`MB_NO_OBJECT_ILLUSTRATION_CUSTOM`](./environment-variables.md#mb_no_object_illustration_custom)             | `no-object-illustration`, `no-object-illustration-custom`       |
 
 ## Further reading
 
