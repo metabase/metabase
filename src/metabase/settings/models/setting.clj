@@ -10,12 +10,14 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.app-db-copy :as settings.app-db-copy]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.settings.schema :as settings.schema]
@@ -107,13 +109,15 @@
         :when (and (export? key) (not is_env_setting))]
     {:key key :value value}))
 
-(defmethod serialization/spec :model/Setting [_]
-  {:schema    ::settings.schema/external-setting
-   :identity  [:key]
-   :copy      [:value]
-   :skip      [:value_with_aad]
-   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
-                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
+(defn- export-keys
+  "Exports the keys of Settings as strings."
+  [_store _settings ks _opts]
+  (mapv name ks))
+
+(defn- import-keys
+  "Imports the keys of Settings as keywords."
+  [_store _entities ks _opts]
+  (mapv keyword ks))
 
 (def ^:private Type
   [:fn
@@ -1884,3 +1888,19 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Setting [_model]
+  {:skip?     false
+   :transform settings.app-db-copy/transform-setting
+   :sequence  false})
+
+(defmethod serialization/spec :model/Setting [_]
+  {:schema       ::settings.schema/external-setting
+   :identity     [:key]
+   :copy         [:value]
+   :skip         [:value_with_aad]
+   :transform    {:key {:export export-keys
+                        :import import-keys}}
+   :rows-by-refs serialization/setting-rows-by-refs})

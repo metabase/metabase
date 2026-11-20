@@ -11,6 +11,7 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
@@ -60,70 +61,22 @@
   "The columns of a Dimension whose update changes the remap it describes."
   #{:field_id :human_readable_field_id :name :type})
 
-(def ^:private dependency-columns
-  "For each model, the columns whose update has the dependency job compute the entity's dependencies again."
-  {:model/Action             #{:model_id :type}
-   :model/Card               #{:type :dataset_query :dimension_mappings :parameters
-                               :visualization_settings}
-   :model/Dashboard          #{:parameters}
-   :model/DataApp            #{:resource_collection_id}
-   :model/Document           #{:content_type :document}
-   :model/Measure            #{:definition :table_id}
-   :model/NativeQuerySnippet #{:content :template_tags}
-   :model/Sandbox            #{:card_id}
-   :model/Segment            #{:definition :table_id}
-   :model/Transform          #{:source :target}})
-
-(def ^:private analysis-columns
-  "For each model, the columns whose update has the analysis job analyze the entity itself again."
-  {:model/Card      #{:type :dataset_query}
-   :model/Segment   #{:definition :table_id}
-   :model/Transform #{:source :target}})
-
-(def ^:private model-output-columns
-  "For each model, the columns whose update changes what the entities directly depending on it read, so their statuses
-  are marked."
-  {:model/Card               #{:type :result_metadata}
-   :model/Measure            #{:definition :table_id}
-   :model/NativeQuerySnippet #{:content :template_tags}
-   :model/Segment            #{:definition :table_id}
-   :model/Table              #{:name :schema :display_name :active :visibility_type}})
-
 (mu/defn- output-columns :- Columns
-  "The [[model-output-columns]] of `row` of `model`, with the name of a metric, which the cards aggregating it show."
+  "The `:output-columns` of the spec of `model`, with the name of a metric `row`, which the cards aggregating it show."
   [model :- :keyword
    row   :- [:map]]
-  (cond-> (get model-output-columns model)
+  (cond-> (:output-columns (dependencies/spec model))
     (and (= :model/Card model) (= :metric (keyword (:type row)))) (conj :name)))
 
-(def ^:private field-columns
-  "The Field columns whose update changes what the entities using the Field's Table read."
-  #{:name :display_name :description :active :visibility_type :settings :base_type :effective_type :database_type
-    :semantic_type :coercion_strategy :fk_target_field_id :position})
-
 (mu/defn- part-owner :- Node
-  "The entity, as `[entity-type entity-id]`, that `row` of `model` is a part of, or nil."
+  "The entity, as `[entity-type entity-id]`, that `row` of `model` is a part of, as the `:part-of` of its spec says,
+  or nil."
   [model :- :keyword
    row   :- [:maybe [:map]]]
-  (case model
-    (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id row)]
-    :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id row)
-                                                                      dependencies.db/dashcard-dashboard-id)]
-    (:model/QueryAction :model/ImplicitAction)    [:action (:action_id row)]
-    (:model/Field :model/TableUserSettings)       [:table (:table_id row)]
-    :model/FieldUserSettings                      [:table (some-> (:field_id row) dependencies.db/field-table-id)]
-    nil))
-
-(def ^:private part-columns
-  "For each model whose rows are parts of an entity, the columns whose update changes the entity."
-  {:model/DashboardCard       #{:card_id :dashboard_id :visualization_settings}
-   :model/DashboardCardSeries #{:card_id :dashboardcard_id}
-   :model/DashboardTab        #{}
-   :model/QueryAction         #{:dataset_query}
-   :model/ImplicitAction      #{:table_id}
-   :model/Field               field-columns
-   :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
-   :model/FieldUserSettings   (conj field-columns :custom_position :json_unfolding)})
+  (when-let [{entity-type :type, column :key, [via-model via-column] :via} (:part-of (dependencies/spec model))]
+    [entity-type (if via-model
+                   (some->> (get row column) (dependencies.db/column-value via-model via-column))
+                   (get row column))]))
 
 (mu/defn- mark-dependents!
   "Add the entity `entity-type` `entity-id` to what `batched`, an atom of the marks of a batch, marks when it ends: the
@@ -226,12 +179,13 @@
   its output when that changes, returning whether a column some job reads changed."
   [batched :- Marks
    {:keys [model object previous-object] :as event} :- [:map]]
-  (let [entity-type (deps.dependency-types/model->dependency-type model)
+  (let [spec        (dependencies/spec model)
+        entity-type (:type spec)
         own         {entity-type #{(:id object)}}
-        dependency? (u.events/changed-any? event (dependency-columns model))
-        analysis?   (u.events/changed-any? event (analysis-columns model))
+        dependency? (u.events/changed-any? event (:dependency-columns spec))
+        analysis?   (u.events/changed-any? event (:analysis-columns spec))
         output?     (output-changed? event)
-        part?       (u.events/changed-any? event (part-columns model))
+        part?       (u.events/changed-any? event (:part-columns spec))
         data-apps?  (data-apps-changed? event)]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
@@ -275,7 +229,7 @@
   [batched :- Marks
    model   :- :keyword
    row     :- [:map]]
-  (when (contains? part-columns model)
+  (when (:part-of (dependencies/spec model))
     (mark-part-owner! batched (part-owner model row)))
   (case model
     (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
@@ -289,7 +243,7 @@
   [batched :- Marks
    model   :- :keyword
    row     :- [:map]]
-  (when (contains? part-columns model)
+  (when (:part-of (dependencies/spec model))
     (mark-part-owner! batched (part-owner model row)))
   (case model
     (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
@@ -298,20 +252,19 @@
     :model/Field                (mark-remap-targets! batched #{(:id row)})
     :model/FieldUserSettings    (mark-remap-targets! batched #{(:field_id row)})
     nil)
-  (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
+  (when-let [entity-type (dependencies/model-type model)]
     (mark-output-changed! batched entity-type row)))
 
-(def ^:private tracked-models
-  "The models whose writes the dependency jobs read."
-  #{:model/Action :model/Card :model/Dashboard :model/DashboardCard :model/DashboardCardSeries :model/DashboardTab
-    :model/DataApp :model/Database :model/Dimension :model/Document :model/Field :model/FieldUserSettings
-    :model/FieldValues :model/ImplicitAction :model/Measure :model/NativeQuerySnippet :model/QueryAction
-    :model/Sandbox :model/Segment :model/Table :model/TableUserSettings :model/Transform})
+(def ^:private spec-less-models
+  "The models without a dependencies spec whose writes the jobs read all the same: the remaps of Dimensions and
+  FieldValues, which the marking above handles, and Databases, whose creation and deletion trigger the jobs."
+  #{:model/Database :model/Dimension :model/FieldValues})
 
 (defn- owner
-  "The one owner of the tracked `event`s of a batch."
+  "The one owner of the `event`s of a batch of the models whose writes the jobs read: those with a dependencies spec
+  and the [[spec-less-models]]."
   [{:keys [model]}]
-  (when (contains? tracked-models model)
+  (when (or (contains? spec-less-models model) (dependencies/spec model))
     ::batch))
 
 (defn- mark-event!

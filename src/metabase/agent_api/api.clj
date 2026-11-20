@@ -21,7 +21,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
@@ -1530,7 +1529,7 @@
     ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
-      (dashboard/archive-or-unarchive-internal-dashboard-questions!
+      (dashboard-card/archive-or-unarchive-internal-dashboard-questions!
        dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 

@@ -133,7 +133,7 @@
                   :model        "Card"
                   :model_id     id
                   :user_id      (mt/user->id :rasta)
-                  :object       (revision/serialize-instance :model/Card (:id card) card)
+                  :object       (revision/snapshot :model/Card card)
                   :message      "because i wanted to"
                   :is_creation  false
                   :is_reversion true)
@@ -681,7 +681,7 @@
                     {:model        "Card"
                      :model_id     card-id
                      :user_id      (mt/user->id :crowberto)
-                     :object       (assoc (revision/serialize-instance :model/Card card-id (t2/select-one :model/Card :id card-id))
+                     :object       (assoc (revision/snapshot :model/Card (t2/select-one :model/Card :id card-id))
                                           :unknown_field true)
                      :is_creation  false
                      :is_reversion false})
@@ -697,7 +697,7 @@
                     {:model        "Dashboard"
                      :model_id     dashboard-id
                      :user_id      (mt/user->id :crowberto)
-                     :object       (assoc (revision/serialize-instance :model/Dashboard dashboard-id (t2/select-one :model/Dashboard :id dashboard-id))
+                     :object       (assoc (revision/snapshot :model/Dashboard (t2/select-one :model/Dashboard :id dashboard-id))
                                           :unknown_field true)
                      :is_creation  false
                      :is_reversion false})

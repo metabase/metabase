@@ -5,14 +5,21 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.embedding.settings :as embed.settings]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.core :as setting]
+   [metabase.staleness.core :as staleness]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -44,6 +51,28 @@
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/Dashboard :id dashboard-id))
+
+(mu/defn dashcards
+  "The DashboardCards of the Dashboard with `dashboard-id`."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+
+(mu/defn active-card-ids-for-dashboard
+  "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
+  [card-ids     :- [:sequential ::lib.schema.id/card]
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-pks-set :model/Card
+                     {:where [:and
+                              [:in :id card-ids]
+                              [:= :archived false]
+                              [:or
+                               [:= :dashboard_id dashboard-id]
+                               [:= :dashboard_id nil]]]}))
+
+(mu/defn active-card-ids
+  "The ids among `card-ids` of unarchived Cards."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
 (mu/defn dashboard-collection-rows
   "The Dashboards with `dashboard-ids` narrowed to `:id` and `:collection_id`, the columns their permission hydrations
@@ -530,3 +559,135 @@
     (-> (t2/select [:model/Dashboard :id :name :collection_id] :id [:in ids])
         (t2/hydrate [:collection :effective_ancestors])
         (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn stale-dashboard-candidates :- ::staleness/query
+  "The query of the Dashboards that are stale for `opts`, `{:collection-ids (:all | #{int|nil}), :cutoff-date local-date}`."
+  [opts :- ::staleness/candidates-options]
+  ^:allow-subquery {:select [:report_dashboard.id
+                             [(h2x/literal "Dashboard") :model]
+                             [:report_dashboard.name :name]
+                             [:last_viewed_at :last_used_at]
+                             :report_dashboard.collection_id]
+                    :from :report_dashboard
+                    :left-join [:pulse [:and
+                                        [:= :pulse.archived false]
+                                        [:= :pulse.dashboard_id :report_dashboard.id]]
+                                :collection [:= :collection.id :report_dashboard.collection_id]
+                                :moderation_review [:and
+                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
+                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
+                                                    [:= :moderation_review.most_recent true]
+                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
+                    :where [:and
+                            [:= :pulse.id nil]
+                            [:= :moderation_review.id nil]
+                            [:= :report_dashboard.archived false]
+                            [:<= :report_dashboard.last_viewed_at (:cutoff-date opts)]
+                            [:= :collection.type nil]
+                            (when (embed.settings/some-embedding-enabled?)
+                              [:= :report_dashboard.enable_embedding false])
+                            (when (setting/get :enable-public-sharing)
+                              [:= :report_dashboard.public_uuid nil])
+                            (staleness/collection-filter :report_dashboard.collection_id opts)]})
+
+(mu/defn stale-dashboard-items
+  "The listing columns of the Dashboards with `dashboard-ids`, with the hydrations the stale content page shows."
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
+  (-> (t2/select [:model/Dashboard
+                  :id
+                  :description
+                  :collection_id
+                  :name
+                  :entity_id
+                  :archived
+                  :collection_position
+                  [:last_viewed_at :last_used_at]
+                  ["dashboard" :model]
+                  [nil :dashboard_id]
+                  [nil :location]
+                  [nil :database_id]]
+                 :id [:in dashboard-ids])
+      (t2/hydrate :can_write :can_delete :can_restore [:collection :effective_location])))
+
+(mu/defn dependency-dashboard-items :- :map
+  "The query of the Dashboards the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: in the
+  collections the user reads, without the internal ones unless `:include-internal?` and those in personal collections
+  unless `:include-personal-collections?`, located by their collection."
+  [{:keys [include-archived include-personal-collections? include-internal?] :as opts}
+   :- :metabase.dependencies.items/items-opts]
+  (let [location (collections.listing/collection-location :collection nil)]
+    {:select    [[:dashboard.id :entity_id] [:dashboard.name :name] [location :location]]
+     :from      [[:report_dashboard :dashboard]]
+     :left-join [:collection [:= :dashboard.collection_id :collection.id]]
+     :where     (into [:and]
+                      (remove nil?)
+                      [(collections.listing/visible-in-collections-clause :dashboard opts include-archived nil)
+                       (collections.listing/archived-clause :dashboard include-archived)
+                       (when-not include-internal?
+                         (mi/non-internal-filter-clause :model/Dashboard :dashboard))
+                       (when-not include-personal-collections?
+                         (collections.listing/outside-personal-collections-clause :dashboard :collection))])}))
+
+(mu/defn collection-dashboard-items :- :map
+  "The query of the Dashboards in `collection` that the collection items listing of `opts` holds."
+  [collection :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+               [:last_viewed_at :last_used_at]
+               :d.collection_id
+               :d.archived_directly
+               [(h2x/literal "dashboard") :model]
+               [:u.id :last_edit_user]
+               :d.archived
+               [:u.email :last_edit_email]
+               [:u.first_name :last_edit_first_name]
+               [:u.last_name :last_edit_last_name]
+               [:r.timestamp :last_edit_timestamp]
+               [:mr.status :moderated_status]]
+   :from      [[:report_dashboard :d]]
+   :left-join [[:moderation_review :mr] [:and
+                                         [:= :mr.moderated_item_id :d.id]
+                                         [:= :mr.most_recent true]
+                                         [:= :mr.moderated_item_type (h2x/literal "dashboard")]]
+               [:revision :r] [:and
+                               [:= :r.model_id :d.id]
+                               [:= :r.model (h2x/literal "Dashboard")]
+                               (revisions.sql/newest-revision-clause :r "Dashboard" :d.id)]
+               [:core_user :u] [:= :u.id :r.user_id]]
+   :where     [:and
+               (collections.listing/visible-items-clause :d.collection_id archived? {:root-namespace nil})
+               (if (collection/is-trash? collection)
+                 [:= :d.archived_directly true]
+                 [:and
+                  [:= :d.collection_id (:id collection)]
+                  [:not= :d.archived_directly true]])
+               (when created-by-id
+                 [:= :d.creator_id created-by-id])
+               [:= :d.archived (boolean archived?)]
+               (collections.listing/pinned-state->clause pinned-state)]})
+
+(mu/defn recent-view-dashboards
+  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/hydrate
+   (t2/select :model/Dashboard
+              {:select [:dash.id
+                        :dash.name
+                        :dash.description
+                        :dash.archived
+                        [:dash.collection_id :entity-coll-id]
+                        [:c.id :collection_id]
+                        [:c.name :collection_name]
+                        [:c.authority_level :collection_authority_level]
+                        [:mr.status :moderated-status]]
+               :from [[:report_dashboard :dash]]
+               :where [:in :dash.id dashboard-ids]
+               :left-join [[:moderation_review :mr]
+                           [:and
+                            [:= :mr.moderated_item_id :dash.id]
+                            [:= :mr.moderated_item_type "dashboard"]
+                            [:= :mr.most_recent true]]
+                           [:collection :c]
+                           [:and
+                            [:= :c.id :dash.collection_id]
+                            [:= :c.archived false]]]}) :can_read :can_write))

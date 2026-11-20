@@ -1,5 +1,6 @@
 (ns metabase.usage-metadata.models.source-segment-composite-daily
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -11,3 +12,8 @@
    :ownership_mode mi/transform-keyword})
 
 (derive :model/SourceSegmentCompositeDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceSegmentCompositeDaily [_model]
+  {:skip? true})

@@ -238,7 +238,7 @@
      dashboard (:dashcards dashboard) (concat to-create to-update))
     (queries/check-newly-exposed-dashcards-goal-permissions!
      dashboard (:dashcards dashboard) (concat to-create to-update))
-    (dashboard/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
+    (dashboard-card/archive-or-unarchive-internal-dashboard-questions! (:id dashboard) new-cards)
     ;; Check both created and updated dashcards: a "Replace" keeps the dashcard id and only swaps
     ;; card_id, so it lands in `to-update`, not `to-create` (UXW-4731). Card ids the dashboard already
     ;; references are grandfathered, so pre-existing foreign internal cards don't block saving (UXW-4870).

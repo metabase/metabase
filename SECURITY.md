@@ -4,7 +4,7 @@ Security is very important to us at Metabase.
 
 ## Supported Versions
 
-We typically only support the latest release of Metabase for maintenance updates, but depending on the nature of the security issue we may issue hotfixes for arbitrarily earlier versions of Metabase.
+See our [version-support page](https://www.metabase.com/version-support) for a list of currently supported versions, but depending on the nature of the security issue we may issue hotfixes for arbitrarily earlier versions of Metabase.
 
 ## Reporting a Vulnerability
 

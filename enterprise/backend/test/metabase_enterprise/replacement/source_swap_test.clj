@@ -213,7 +213,7 @@
                           :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
             (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
               (deps.test/synchronously-run-dependency-job!)
-              (mt/with-dynamic-fn-redefs [replacement.db/update-card! (fn [& _] (throw (ex-info "refused" {})))]
+              (mt/with-dynamic-fn-redefs [replacement.db/update-row! (fn [& _] (throw (ex-info "refused" {})))]
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"refused"
                                       (replacement.source-swap/swap-source! [:card card-id]
                                                                             [:card old-source-id]
@@ -570,7 +570,7 @@
                       viz)))))))))
 
 (deftest card-swap-source!-dependencies-updated-test
-  (testing "swap-source! for card updates dependency records from old-source to new-source"
+  (testing "dependency job moves dependency records of swapped card from old-source to new-source"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
@@ -601,7 +601,7 @@
                   "Dependency on reviews should exist after swap"))))))))
 
 (deftest segment-swap-source!-dependencies-updated-test
-  (testing "swap-source! for segment updates dependency records"
+  (testing "dependency job moves dependency records of swapped segment"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
@@ -630,7 +630,7 @@
                   "Dependency on reviews should exist"))))))))
 
 (deftest measure-swap-source!-dependencies-updated-test
-  (testing "swap-source! for measure updates dependency records"
+  (testing "dependency job moves dependency records of swapped measure"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)
@@ -660,7 +660,7 @@
                   "Dependency on reviews should exist"))))))))
 
 (deftest transform-swap-source!-dependencies-updated-test
-  (testing "swap-source! for transform updates dependency records"
+  (testing "dependency job moves dependency records of swapped transform"
     (mt/with-premium-features #{:dependencies}
       (mt/with-test-user :rasta
         (let [mp    (mt/metadata-provider)

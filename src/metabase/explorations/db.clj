@@ -6,6 +6,8 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
@@ -13,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -886,3 +889,77 @@
                     :target_type     "exploration"
                     :child_target_id [:in child-target-ids]
                     :deleted_at      nil))
+
+(defn- exploration-recent-edits-subquery
+  "The latest edit of each exploration listed under `collection`, taking the newest of the revisions of the Exploration
+  itself and of its Summary Document, whose edits \"Last edited\" must reflect."
+  [collection]
+  (let [listed? (fn [alias]
+                  (if (collection/is-trash? collection)
+                    [:= (keyword (str alias ".archived_directly")) true]
+                    [:= (keyword (str alias ".collection_id")) (:id collection)]))]
+    ^:allow-subquery
+    {:select [:exploration_id
+              :timestamp
+              :user_id
+              [[:over [[:row_number] ^:allow-subquery {:partition-by [:exploration_id]
+                                                       :order-by     [[:timestamp :desc]]}]] :rn]]
+     :from   [[^:allow-subquery {:union-all
+                                 [^:allow-subquery
+                                  {:select [[:e.id        :exploration_id]
+                                            [:r.timestamp :timestamp]
+                                            [:r.user_id   :user_id]]
+                                   :from   [[:exploration :e]]
+                                   :join   [[:revision :r] [:and
+                                                            [:= :r.model_id :e.id]
+                                                            [:= :r.model (h2x/literal "Exploration")]
+                                                            (revisions.sql/newest-revision-clause :r "Exploration" :e.id)]]
+                                   :where  (listed? "e")}
+                                  ^:allow-subquery
+                                  {:select [[:d.exploration_id :exploration_id]
+                                            [:r.timestamp      :timestamp]
+                                            [:r.user_id        :user_id]]
+                                   :from   [[:document :d]]
+                                   :join   [[:exploration :e] [:= :e.id :d.exploration_id]
+                                            [:revision :r] [:and
+                                                            [:= :r.model_id :d.id]
+                                                            [:= :r.model (h2x/literal "Document")]
+                                                            (revisions.sql/newest-revision-clause :r "Document" :d.id)]]
+                                   :where  (listed? "e")}]}
+               :all_edits]]}))
+
+(mu/defn collection-exploration-items :- [:maybe :map]
+  "The query of the Explorations in `collection` that the collection items listing of `opts` holds, nil when `opts`
+  restrict the items to those created by a user, which Explorations do not record."
+  [collection                                        :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select [:exploration.id
+              :exploration.name
+              :exploration.description
+              :exploration.entity_id
+              :exploration.collection_id
+              :exploration.collection_position
+              :exploration.archived
+              :exploration.archived_directly
+              [:u.id         :last_edit_user]
+              [:u.email      :last_edit_email]
+              [:u.first_name :last_edit_first_name]
+              [:u.last_name  :last_edit_last_name]
+              [:ere.timestamp :last_edit_timestamp]
+              [(h2x/literal "exploration") :model]]
+     :from [[:exploration :exploration]]
+     :left-join [[(exploration-recent-edits-subquery collection) :ere]
+                 [:and
+                  [:= :ere.exploration_id :exploration.id]
+                  [:= :ere.rn [:inline 1]]]
+                 [:core_user :u] [:= :u.id :ere.user_id]]
+     :where [:and
+             (collections.listing/visible-items-clause :exploration.collection_id archived? {:root-namespace nil})
+             (if (collection/is-trash? collection)
+               [:= :exploration.archived_directly true]
+               [:and
+                [:= :exploration.collection_id (:id collection)]
+                [:= :exploration.archived_directly false]])
+             [:= :exploration.archived (boolean archived?)]
+             (collections.listing/pinned-state->clause pinned-state :exploration.collection_position)]}))

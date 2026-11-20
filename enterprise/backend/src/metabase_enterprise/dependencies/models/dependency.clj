@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -281,3 +282,8 @@
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Dependency [_model]
+  {:skip? true})

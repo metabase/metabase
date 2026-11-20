@@ -2992,6 +2992,13 @@
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
         "required" : [ "card_id", "name", "inputs", "expectations" ],
@@ -3042,6 +3049,13 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "inputs" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
           },
@@ -3081,6 +3095,13 @@
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           }
         },
         "additionalProperties" : false
@@ -3390,30 +3411,6 @@
         },
         "additionalProperties" : false
       },
-      "metabase-enterprise.data-testing.schema..test.definition" : {
-        "description" : "A test as a client writes it, without the subject it covers.",
-        "type" : "object",
-        "properties" : {
-          "description" : {
-            "anyOf" : [ {
-              "type" : "string"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "expectations" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
-          },
-          "inputs" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          }
-        },
-        "required" : [ "name", "inputs", "expectations" ],
-        "additionalProperties" : false
-      },
       "metabase-enterprise.data-testing.schema..transform-test.create" : {
         "description" : "What a client sends to create a transform test.",
         "type" : "object",
@@ -3433,6 +3430,13 @@
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           },
           "transform_id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
@@ -3486,6 +3490,13 @@
             "type" : "string",
             "format" : "date-time"
           },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "inputs" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
           },
@@ -3522,6 +3533,13 @@
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           },
           "transform_id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
@@ -3566,6 +3584,13 @@
             "description" : "value must be a valid date/time/datetime",
             "type" : "string",
             "format" : "date-time"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           },
           "inputs" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
@@ -3727,6 +3752,11 @@
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.input"
         }
+      },
+      "metabase-enterprise.data-testing.schema.now" : {
+        "description" : "an ISO-8601 date-time with an offset, from 1970-01-01T00:00:01Z to 2038-01-19T03:14:07Z, inclusive",
+        "type" : "string",
+        "format" : "date-time"
       },
       "metabase-enterprise.data-testing.schema.result-column" : {
         "description" : "A column reported by a test run, with its database native type.",
@@ -3945,6 +3975,13 @@
             "description" : "value must be a valid date/time/datetime",
             "type" : "string",
             "format" : "date-time"
+          },
+          "now" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.now"
+            }, {
+              "type" : "null"
+            } ]
           },
           "inputs" : {
             "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"

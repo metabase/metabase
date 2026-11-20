@@ -5,136 +5,125 @@
   a user."
   (:require
    [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
-   [metabase.util :as u]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.util.events :as u.events]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private revisioned-models
-  "The models whose rows have Revisions."
-  #{:model/Card :model/CardTest :model/Dashboard :model/Document :model/Exploration :model/Measure
-    :model/Segment :model/SegmentTest :model/Transform :model/TransformTest})
-
-(def ^:private creator-recorded
-  "The models whose saved tests record their creator as the author of the creation Revision when a user writes it, and
-  whose reversion writes a Revision of its own update."
-  revision/models-recording-own-revert)
-
-(def ^:private ignored-columns
-  "For each model, the columns whose change alone is not content to snapshot, `:default` being the counters and
-  timestamps that every model has."
-  {:default         #{:updated_at :view_count :last_used_at :last_viewed_at :cache_invalidated_at :collection_position
-                      :entity_id}
-   :model/Dashboard #{:position}
-   :model/Measure   #{:dimensions :dimension_mappings}
-   :model/Transform #{:last_checkpoint_value :target_table_id :table_dependencies}})
-
-(defn- ignored-column?
-  [model column]
-  (or (contains? (ignored-columns :default) column)
-      (contains? (get ignored-columns model) column)))
-
-(defn- model-overrides
-  "The overrides that a user can set in the columns of `metadata` that `other` has too, by column name."
-  [metadata other]
-  (let [names (into #{} (map :name) other)
-        keys* (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))]
-    (into {}
-          (comp (filter (comp names :name))
-                (map (juxt :name #(select-keys % keys*))))
-          metadata)))
-
-(defn- edited-column?
-  "Whether the change of `column` in the update `event` of a row of `model` is content to snapshot: the result metadata
-  of a model is by what a user sets in it, and of any other card never, for the product recomputes it."
-  [model column {:keys [object previous-object]}]
-  (if (and (= :model/Card model) (= :result_metadata column))
-    (let [previous (:result_metadata previous-object)
-          current  (:result_metadata object)]
-      (boolean (and (= :model (keyword (:type object)))
-                    (seq previous)
-                    (not= (model-overrides previous current) (model-overrides current previous)))))
-    true))
-
 (defn- user-edit?
   "Whether the lifecycle `event` is a write that a Revision should say a user made: not one that the archive or restore
-  of another entity carried to its row, nor an update that changes nothing but ignored columns."
+  of another entity carried to its row, nor an update that changes nothing that the revision spec of the model
+  tracks."
   [{:keys [context object previous-object] :as event}]
   (and (nil? (:archived-with context))
        (or (not (and object previous-object))
-           (let [model (u.events/model-of event)]
-             (boolean (some #(and (not (ignored-column? model %)) (edited-column? model % event))
-                            (u.events/changed-keys event)))))))
+           (revision/changed? (u.events/model-of event) previous-object object))))
 
-(defn- entity
-  "The `[model id]` of the entity whose Revision the `event` calls for, or nil when it calls for none, `dashboard-of`
-  being a function of a DashboardCard id giving the id of its Dashboard."
-  [dashboard-of {:keys [model operation object previous-object context] :as event}]
-  (cond
-    (and (contains? revisioned-models model) (#{:create :update} operation))
-    (when (and (or (not (:reverting? context)) (creator-recorded model))
+(defn- parent-ref
+  "The `[parent-model parent-id]` of the row that the `event` writes, nil for a model whose rows have Revisions of
+  their own."
+  [{:keys [object previous-object] :as event}]
+  (when-let [{:keys [model key]} (revisions.spec/parent (u.events/model-of event))]
+    [model (get (or object previous-object) key)]))
+
+(defn- own-entity
+  "The `[model id]` of the row that the `event` writes when its model has Revisions of its own and the event calls for
+  one, else nil."
+  [{:keys [operation object context] :as event}]
+  (let [model (u.events/model-of event)
+        spec  (revisions.spec/spec model)]
+    (when (and spec
+               (not (:parent spec))
+               (#{:create :update} operation)
+               (not (:reverting? context))
                (user-edit? event))
-      [model (:id object)])
+      [model (:id object)])))
 
-    (#{:model/DashboardCard :model/DashboardTab :model/DashboardCardSeries} model)
-    (when (and (not (:reverting? context)) (user-edit? event))
-      (when-let [dashboard-id (if (= :model/DashboardCardSeries model)
-                                (dashboard-of (:dashboardcard_id (or object previous-object)))
-                                (:dashboard_id (or object previous-object)))]
-        [:model/Dashboard dashboard-id]))))
+(defn- part-write?
+  "Whether the `event` writes a row that belongs to the Revision of a parent, and calls for one."
+  [{:keys [context] :as event}]
+  (and (some? (parent-ref event))
+       (not (:reverting? context))
+       (user-edit? event)))
 
-(defn- changes-entity?
-  "Whether `event`, one of the writes of the entity `[model id]`, changes what its Revision records: a write of one of
-  its parts, its creation, or an update of its row that its serialization sees."
-  [[model id] {:keys [operation object previous-object] :as event}]
-  (or (not= model (:model event))
-      (not= :update operation)
-      (revision/row-changed? model id previous-object object)))
+(defn- parent-links
+  "The `[model id]` of the parent of each of `refs`, the `[model id]` of rows that belong to the Revision of a parent
+  of their own, loaded together: one query for the rows of each model, however many levels there are above them."
+  [refs]
+  (loop [pending (into #{} (filter #(revisions.spec/parent (first %))) refs)
+         links   {}]
+    (if (empty? pending)
+      links
+      (let [found (into {}
+                        (mapcat (fn [[model refs*]]
+                                  (let [{parent-model :model, k :key} (revisions.spec/parent model)]
+                                    (for [[id parent-id] (revisions.db/parent-ids model k (map second refs*))]
+                                      [[model id] [parent-model parent-id]]))))
+                        (group-by first pending))]
+        (recur (into #{}
+                     (comp (map val)
+                           (filter #(revisions.spec/parent (first %)))
+                           (remove #(contains? (merge links found) %)))
+                     found)
+               (merge links found))))))
+
+(defn- entity-of
+  "A fn of a lifecycle event returning the `[model id]` of the entity whose Revision it calls for, nil when it calls
+  for none, the parents that the events of one batch name being `links`, see [[parent-links]]."
+  [links]
+  (fn [event]
+    (or (own-entity event)
+        (when (part-write? event)
+          (loop [ref (parent-ref event)]
+            (cond
+              (nil? (revisions.spec/parent (first ref))) ref
+              (contains? links ref)                      (recur (get links ref))
+              :else                                      nil))))))
+
+(defn- without-children
+  "`row` of `model` with no child rows, so that nothing loads them."
+  [model row]
+  (reduce (fn [row {hydration-key :as}] (assoc row hydration-key []))
+          row
+          (vals (revisions.spec/children model))))
 
 (defn- revision-row
-  "The Revision row of the entity `[model id]` as it is now, for the `events` of its writes, or nil when they do not
-  change it or no user made them."
-  [[model id :as entity] events]
+  "The Revision row of the entity `[model id]` as it is now, for the `events` of its writes, or nil when no user made
+  them."
+  [[model id] events]
   (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
-        user-id    (some :user-id events)
-        creator-id (when (and user-id own (creator-recorded model)) (:creator_id (:object own)))]
-    (when-let [user-id (or creator-id user-id)]
+        user-id    (some :user-id events)]
+    (when user-id
       (try
-        (when (some #(changes-entity? entity %) events)
-          (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
-                                        (revisions.db/entity model id))
-                                    (cond-> (and own (= :model/Dashboard model) (every? #(= model (:model %)) events))
-                                      (assoc :dashcards [] :tabs [])))]
-            (revision/revision-row {:entity       model
-                                    :id           id
-                                    :object       object
-                                    :user-id      user-id
-                                    :is-creation? (boolean own)
-                                    :message      (some #(get-in % [:context :revision-message]) events)})))
+        (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
+                                      (revisions.db/entity model id))
+                                  (cond-> (and own (every? #(= model (:model %)) events))
+                                    (->> (without-children model))))]
+          (revision/revision-row {:entity       model
+                                  :id           id
+                                  :object       object
+                                  :user-id      user-id
+                                  :is-creation? (boolean own)
+                                  :message      (some #(get-in % [:context :revision-message]) events)}))
         (catch Throwable e
           (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
 
 (defn- owner
   "The one owner of the events of a batch that call for a Revision, nil for the others, without reading the app DB."
   [event]
-  (when (entity identity event)
+  (when (or (own-entity event) (part-write? event))
     ::revisions))
 
 (defn- push!
   "Write, in one statement, the Revision of each entity that `events` change, as it is now."
   [_owner events _all-events]
   (when (some :user-id events)
-    (let [dashboards (revisions.db/dashboard-ids-of-dashcards
-                      (into #{} (keep #(when (= :model/DashboardCardSeries (:model %))
-                                         (:dashboardcard_id (or (:object %) (:previous-object %)))))
-                            events))
-          entity-of  #(entity dashboards %)
-          by-entity  (group-by entity-of events)
-          rows       (into [] (keep #(revision-row % (get by-entity %))) (distinct (map entity-of events)))]
+    (let [entity    (entity-of (parent-links (into #{} (keep parent-ref) events)))
+          by-entity (group-by entity events)
+          rows      (into [] (keep #(revision-row % (get by-entity %))) (remove nil? (keys by-entity)))]
       (when (seq rows)
         (try
           (revisions.db/insert-revisions! rows)

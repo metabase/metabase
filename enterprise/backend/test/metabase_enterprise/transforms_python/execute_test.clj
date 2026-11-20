@@ -19,7 +19,7 @@
 
 (deftest atomic-python-transform-swap-test
   (testing "Python transform execution with atomic table swap"
-    (mt/test-drivers #{:mysql :postgres}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :atomic-renames)
       (mt/with-premium-features #{:transforms-python :transforms-basic}
         (mt/dataset transforms-dataset/transforms-test
           (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]

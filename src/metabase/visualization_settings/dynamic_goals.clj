@@ -129,6 +129,14 @@
   [viz-settings]
   (into #{} (comp (keep goal-source) (map (juxt :type :id :column))) (dashcard-goal-values viz-settings)))
 
+(defn goal-dependencies
+  "The entities the dynamic goals in `viz-settings` read, visualizer goals included, as `{entity-type #{entity-id}}`."
+  [viz-settings]
+  (->> (goal-references viz-settings)
+       (filter (fn [[entity-type id _column]]
+                 (and (pos-int? id) (goal-entity-types entity-type))))
+       (u/group-by (comp keyword first) second conj #{})))
+
 (defn update-dashcard-goal-values
   "Like [[update-goal-values]], also rewriting the goals a visualizer dashcard nests under `:visualization`."
   [viz-settings f]
@@ -152,6 +160,13 @@
                                      (if-let [new-id (and (= "card" type) (id->new-id id))]
                                        (assoc goal-value :id new-id)
                                        goal-value))))))
+
+(defn swap-goal-source
+  "Point the goals in `viz-settings` that read the `old-source` card at the `new-source` card. Only a card-to-card swap
+  rewrites them, since a goal can't read a table or a transform."
+  [viz-settings [old-type old-id] [new-type new-id]]
+  (cond-> viz-settings
+    (= :card old-type new-type) (remap-goal-card-ids {old-id new-id})))
 
 (defn- visualizer-chart
   "The chart a visualizer dashcard draws, or nil when `dashcard` isn't one."

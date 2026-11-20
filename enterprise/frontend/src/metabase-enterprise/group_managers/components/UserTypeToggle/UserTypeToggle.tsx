@@ -28,7 +28,6 @@ export const UserTypeToggle = ({
       <Box
         component="button"
         className={S.toggle}
-        c="core-brand"
         px="sm"
         py={0}
         aria-label={tooltipText}

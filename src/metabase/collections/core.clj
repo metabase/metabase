@@ -41,4 +41,6 @@
   data-actions-ns
   default-allowed-namespaces]
  [metabase.collections.util
-  annotate-dashboards])
+  annotate-dashboards
+  present-collection
+  with-effective-ancestors])

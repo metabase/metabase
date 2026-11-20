@@ -2,7 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
@@ -10,7 +10,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- depends-on-> [from-type from-id to-type to-id]
   {:from_entity_type from-type

@@ -2,16 +2,30 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
    [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.audit :as dashboards.audit]
+   [metabase.dashboards.collection-items :as dashboards.collection-items]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.dependencies :as dashboards.dependencies]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.recent-views :as dashboards.recent-views]
+   [metabase.dashboards.replacement :as dashboards.replacement]
+   [metabase.dashboards.revisions :as dashboards.revisions]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.embedding.settings :as embed.settings]
+   [metabase.dashboards.serialization :as dashboards.serialization]
+   [metabase.dashboards.staleness :as dashboards.staleness]
+   [metabase.dashboards.xrays :as dashboards.xrays]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
@@ -25,10 +39,11 @@
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement]
+   [metabase.revisions.core :as revisions]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.settings.core :as setting]
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
@@ -38,6 +53,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -55,15 +71,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod events/spec :model/Dashboard
-  [_model]
-  {:create :event/dashboard-create
-   :update :event/dashboard-update
-   :delete :event/dashboard-delete})
-
-(methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
-  #{:last_viewed_at :view_count})
-
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
 
@@ -72,9 +79,9 @@
    :public_uuid      (mi/transform-encrypted-text "report_dashboard.public_uuid")
    :embedding_params mi/transform-json-no-keywordization})
 
-(defmethod mi/exclude-internal-content-hsql :model/Dashboard
-  [_model & {:keys [table-alias]}]
-  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+(defmethod mi/non-internal-filter-clause :model/Dashboard
+  [_model alias]
+  [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -303,32 +310,6 @@
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- set-questions-archived!
-  "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
-  [card-ids archived?]
-  (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?}))
-  (dashboards.db/set-cards-archived! card-ids archived?))
-
-(defn archive-or-unarchive-internal-dashboard-questions!
-  "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the
-  dashboard, not displayed as part of a collection) we want to archive it. Similarly, we want to mark any Dashboard
-  Questions that *are* on the Dashboard as *not* archived. This function takes a dashboard and the set of dashcards
-  about to be saved, and ensures that all DQs that appear on the dashboard are unarchived and all DQs that DON'T
-  appear on the dashboard are archived."
-  [dashboard-id new-cards]
-  (let [;; the set of ALL Dashboard Questions (internal to the dashboard) for this Dashboard
-        internal-dashboard-question-ids (dashboards.db/internal-dashboard-question-ids dashboard-id)
-        ;; the set of all card IDs that are present on the dashboard
-        used-card-ids (into #{} (map :card_id new-cards))
-        ;; DQs that aren't used get archived
-        internal-dashboard-questions-to-archive (set/difference internal-dashboard-question-ids used-card-ids)
-        ;; DQs that ARE used get unarchived
-        internal-dashboard-questions-to-unarchive (set/intersection internal-dashboard-question-ids used-card-ids)]
-    (when-let [ids (seq internal-dashboard-questions-to-archive)]
-      (set-questions-archived! (vec ids) true))
-    (when-let [ids (seq internal-dashboard-questions-to-unarchive)]
-      (set-questions-archived! (vec ids) false))))
-
 (defn- dashboard-id->param-field-ids
   "Get the set of Field IDs referenced by the parameters in this Dashboard."
   [dashboard-or-id]
@@ -492,163 +473,143 @@
       (add-dashcards! dashboard dashcards-to-add)
       dashboard)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Dashboard
+  [_model]
+  {:create :event/dashboard-create
+   :update :event/dashboard-update
+   :delete :event/dashboard-delete})
+
+(defmethod app-db-copy/spec :model/Dashboard [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Dashboard [_model]
+  {:track [:name :description :creator_id :parameters :points_of_interest :caveats :show_in_getting_started
+           :public_uuid :made_public_by_id :enable_embedding :embedding_params :archived :position :collection_id
+           :collection_position :cache_ttl :entity_id :auto_apply_filters :width :initially_published_at
+           :archived_directly :embedding_type :public_uuid_prefix]
+   :skip  [:last_viewed_at :view_count]})
 
 (defmethod serialization/spec :model/Dashboard [_]
-  {:schema             ::dashboards.schema/external-dashboard
-   :copy               [:archived :archived_directly :auto_apply_filters :caveats :collection_position
-                        :description :embedding_params :enable_embedding :embedding_type :entity_id :name
-                        :points_of_interest :position :public_uuid :show_in_getting_started :width]
-   :skip               [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid_prefix]
-   :transform          {:collection_id     (serialization/fk-transform :model/Collection)
-                        :creator_id        serialization/user-transform
-                        :made_public_by_id serialization/user-transform
-                        :parameters        serialization/parameters-transform}
-   :children           {:tabs      :model/DashboardTab
-                        :dashcards :model/DashboardCard}
-   :defaults           {:archived                false
-                        :archived_directly       false
-                        :auto_apply_filters      true
-                        :enable_embedding        false
-                        :show_in_getting_started false}})
-
-(def ^:private export-walkers
-  "The dependency walkers for Dashboard rows with database ids."
-  {:mbql                   serialization/export-mbql-dependencies
-   :parameters             serialization/export-parameters-dependencies
-   :visualization-settings serialization/export-visualization-settings-dependencies})
-
-(def ^:private import-walkers
-  "The dependency walkers for Dashboard entities, which hold references."
-  {:mbql                   serialization/import-mbql-dependencies
-   :parameters             serialization/import-parameters-dependencies
-   :visualization-settings serialization/import-visualization-settings-dependencies})
-
-(defn- dashcard-dependencies
-  "The dependencies of a dashcard, found with the `walkers` of [[export-walkers]] or [[import-walkers]]."
-  [{:keys [action_id card_id parameter_mappings visualization_settings series]} {:keys [mbql visualization-settings]}]
-  (set
-   (concat
-    (mapcat mbql parameter_mappings)
-    (visualization-settings visualization_settings)
-    (when card_id   #{[:model/Card card_id]})
-    (when action_id #{[:model/Action action_id]})
-    (for [s series] [:model/Card (:card_id s)]))))
-
-(defn- dashboard-dependencies
-  "The dependencies of a Dashboard with its `:dashcards` and their `:series`, found with `walkers`."
-  [dashboard {:keys [parameters] :as walkers}]
-  (->> (map #(dashcard-dependencies % walkers) (:dashcards dashboard))
-       (reduce set/union #{})
-       (set/union (when-let [id (:collection_id dashboard)] #{[:model/Collection id]}))
-       (set/union (parameters (:parameters dashboard)))))
-
-(defn- export-dashboard-dependencies
-  "The `[model id]` dependencies of a Dashboard row with its `:dashcards` and their `:series`."
-  [dashboard]
-  (dashboard-dependencies dashboard export-walkers))
-
-(defn- import-dashboard-dependencies
-  "The `[model ref]` dependencies of a Dashboard entity."
-  [dashboard]
-  (dashboard-dependencies dashboard import-walkers))
-
-(defmethod serialization/import-dependencies :model/Dashboard [_ entities]
-  (mapv import-dashboard-dependencies entities))
-
-(defn- dashcards-with-series
-  "The map from Dashboard id to the dashcards of the Dashboards with `dashboard-ids`, each with its `:series`."
-  [dashboard-ids]
-  (let [dashcards (when (seq dashboard-ids) (dashboards.db/dashcards-serdes-columns (vec dashboard-ids)))
-        series    (group-by :dashboardcard_id (when (seq dashcards)
-                                                (dashboards.db/dashcard-series-columns (mapv :id dashcards))))]
-    (group-by :dashboard_id (map #(assoc % :series (get series (:id %))) dashcards))))
-
-(defmethod serialization/export-dependencies :model/Dashboard [_ dashboards]
-  (let [dashcards (dashcards-with-series (keep :id dashboards))]
-    (mapv #(export-dashboard-dependencies (assoc % :dashcards (get dashcards (:id %)))) dashboards)))
-
-(defmethod serialization/before-load :model/Dashboard [_ items]
-  (let [action-eids    (into #{} (comp (mapcat (comp :dashcards :entity)) (keep :action_id)) items)
-        loaded         (if (seq action-eids) (dashboards.db/action-entity-ids-in action-eids) #{})
-        keep-dashcard? #(or (nil? (:action_id %)) (contains? loaded (:action_id %)))]
-    (mapv #(m/update-existing-in % [:entity :dashcards] (partial filterv keep-dashcard?)) items)))
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+  {:schema              ::dashboards.schema/external-dashboard
+   :copy                [:archived :archived_directly :auto_apply_filters :caveats :collection_position
+                         :description :embedding_params :enable_embedding :embedding_type :entity_id :name
+                         :points_of_interest :position :public_uuid :show_in_getting_started :width]
+   :skip                [:initially_published_at :view_count :last_viewed_at :cache_ttl :public_uuid_prefix]
+   :transform           {:collection_id     (serialization/fk-transform :model/Collection)
+                         :creator_id        serialization/user-transform
+                         :made_public_by_id serialization/user-transform
+                         :parameters        serialization/parameters-transform}
+   :children            {:tabs      :model/DashboardTab
+                         :dashcards :model/DashboardCard}
+   :defaults            {:archived                false
+                         :archived_directly       false
+                         :auto_apply_filters      true
+                         :enable_embedding        false
+                         :show_in_getting_started false}
+   :import-dependencies dashboards.serialization/import-dependencies
+   :export-dependencies dashboards.serialization/export-dependencies
+   :before-load         dashboards.serialization/before-load})
 
 (defmethod remote-sync/spec :model/Dashboard
   [_model]
   {:synced-items         dashboards.db/synced-dashboard-items
    :synced-filter-clause dashboards.db/synced-dashboards-clause})
 
-;;; ---------------------------------------------------- Search ------------------------------------------------------
+(defmethod revisions/spec :model/Dashboard [_model]
+  {:track    [:name :description :archived :archived_directly :auto_apply_filters :cache_ttl :collection_id
+              :parameters :width]
+   :skip     [:caveats :collection_position :creator_id :embedding_params :embedding_type :enable_embedding :entity_id
+              :initially_published_at :last_viewed_at :made_public_by_id :points_of_interest :position
+              :public_uuid :public_uuid_prefix :show_in_getting_started :view_count]
+   :children {:cards {:model :model/DashboardCard :as :dashcards}
+              :tabs  {:model :model/DashboardTab :as :tabs}}
+   :revert!  dashboards.revisions/revert-dashboard!
+   :describe dashboards.revisions/describe-change})
 
-(search/define-spec "dashboard"
-  {:model        :model/Dashboard
-   :attrs        {:archived       true
-                  :collection-id  true
-                  :creator-id     true
-                  :database-id    false
-                  :last-editor-id :r.user_id
-                  :last-edited-at :r.timestamp
-                  :last-viewed-at true
-                  :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified       [:= "verified" :mr.status]
-                  :official-collection [:= "official" :collection.authority_level]
-                  :view-count     true
-                  :created-at     true
-                  :updated-at     true
-                  :collection-type :collection.type
-                  :collection-location :collection.location
-                  :root-collection-type {:fn collection/root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:archived-directly          true
-                  :collection-authority_level :collection.authority_level
-                  :collection-name            :collection.name
-                  ;; This is used for legacy ranking, in future it will be replaced by :pinned
-                  :collection-position        true
-                  :moderated-status           :mr.status}
-   :where        []
-   :bookmark     [:model/DashboardBookmark [:and
-                                            [:= :bookmark.dashboard_id :this.id]
-                                            ;; a magical alias, or perhaps this clause can be implicit
-                                            [:= :bookmark.user_id :current_user/id]]]
-   :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
-                  :r          [:model/Revision [:and
-                                                [:= :r.model_id :this.id]
-                                                [:= :r.model "Dashboard"]
-                                                (revisions.sql/newest-revision-clause :r "Dashboard" :this.id)]]
-                  :mr         [:model/ModerationReview [:and
-                                                        [:= :mr.moderated_item_type "dashboard"]
-                                                        [:= :mr.moderated_item_id :this.id]
-                                                        [:= :mr.most_recent true]]]}})
+(defmethod audit/spec :model/Dashboard [_model]
+  {:track          [:name :description]
+   :track-redacted [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_id :creator_id
+                    :embedding_params :embedding_type :enable_embedding :initially_published_at :made_public_by_id
+                    :parameters :points_of_interest :public_uuid :public_uuid_prefix :show_in_getting_started :width]
+   :skip           [:collection_position :entity_id :last_viewed_at :position :view_count]
+   :topics         {:create :dashboard-create
+                    :delete :dashboard-delete}
+   :moments        [{:topic :dashboard-public-link-created, :when dashboards.audit/public-link-created?}
+                    {:topic :dashboard-public-link-deleted, :when dashboards.audit/public-link-deleted?}]})
 
-(defmethod staleness/find-stale-query :model/Dashboard
-  [_model args]
-  ^:allow-subquery {:select [:report_dashboard.id
-                             [(h2x/literal "Dashboard") :model]
-                             [:report_dashboard.name :name]
-                             [:last_viewed_at :last_used_at]
-                             :report_dashboard.collection_id]
-                    :from :report_dashboard
-                    :left-join [:pulse [:and
-                                        [:= :pulse.archived false]
-                                        [:= :pulse.dashboard_id :report_dashboard.id]]
-                                :collection [:= :collection.id :report_dashboard.collection_id]
-                                :moderation_review [:and
-                                                    [:= :moderation_review.moderated_item_id :report_dashboard.id]
-                                                    [:= :moderation_review.moderated_item_type (h2x/literal "dashboard")]
-                                                    [:= :moderation_review.most_recent true]
-                                                    [:= :moderation_review.status (h2x/literal "verified")]]]
-                    :where [:and
-                            [:= :pulse.id nil]
-                            [:= :moderation_review.id nil]
-                            [:= :report_dashboard.archived false]
-                            [:<= :report_dashboard.last_viewed_at (-> args :cutoff-date)]
-                            ;; find things only in regular collections, not the `instance-analytics` collection.
-                            [:= :collection.type nil]
-                            (when (embed.settings/some-embedding-enabled?)
-                              [:= :report_dashboard.enable_embedding false])
-                            (when (setting/get :enable-public-sharing)
-                              [:= :report_dashboard.public_uuid nil])
-                            (staleness/collection-filter :report_dashboard.collection_id args)]})
+(defmethod search/spec :model/Dashboard
+  [_model]
+  {"dashboard"
+   {:attrs        {:archived       true
+                   :collection-id  true
+                   :creator-id     true
+                   :database-id    false
+                   :last-editor-id :r.user_id
+                   :last-edited-at :r.timestamp
+                   :last-viewed-at true
+                   :pinned         [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                   :verified       [:= "verified" :mr.status]
+                   :official-collection [:= "official" :collection.authority_level]
+                   :view-count     true
+                   :created-at     true
+                   :updated-at     true
+                   :collection-type :collection.type
+                   :collection-location :collection.location
+                   :root-collection-type {:fn collection/root-collection-type}}
+    :search-terms [:name :description]
+    :render-terms {:archived-directly          true
+                   :collection-authority_level :collection.authority_level
+                   :collection-name            :collection.name
+                   ;; This is used for legacy ranking, in future it will be replaced by :pinned
+                   :collection-position        true
+                   :moderated-status           :mr.status}
+    :where        []
+    :bookmark     [:model/DashboardBookmark [:and
+                                             [:= :bookmark.dashboard_id :this.id]
+                                             ;; a magical alias, or perhaps this clause can be implicit
+                                             [:= :bookmark.user_id :current_user/id]]]
+    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                   :r          [:model/Revision [:and
+                                                 [:= :r.model_id :this.id]
+                                                 [:= :r.model "Dashboard"]
+                                                 (revisions.sql/newest-revision-clause :r "Dashboard" :this.id)]]
+                   :mr         [:model/ModerationReview [:and
+                                                         [:= :mr.moderated_item_type "dashboard"]
+                                                         [:= :mr.moderated_item_id :this.id]
+                                                         [:= :mr.most_recent true]]]}}})
+
+(defmethod dependencies/spec :model/Dashboard [_model]
+  {:type  :dashboard
+   :items dashboards.db/dependency-dashboard-items
+
+   :hydrate      dashboards.dependencies/hydrate
+   :dependencies dashboards.dependencies/dependencies
+
+   :dependency-columns #{:parameters}})
+
+(defmethod replacement/spec :model/Dashboard [_model]
+  {:hydrate            dashboards.replacement/hydrate
+   :upgrade-field-refs dashboards.replacement/upgrade-field-refs
+   :swap-source        dashboards.replacement/swap-source})
+
+(defmethod collection-items/spec :model/Dashboard [_model]
+  {"dashboard" {:rank    1
+                :items   dashboards.db/collection-dashboard-items
+                :hydrate dashboards.collection-items/hydrate}})
+
+(defmethod recent-views/spec :model/Dashboard [_model]
+  {"dashboard" {:load   dashboards.db/recent-view-dashboards
+                :render dashboards.recent-views/render}})
+
+(defmethod staleness/spec :model/Dashboard [_model]
+  {:candidates dashboards.db/stale-dashboard-candidates
+   :load       dashboards.staleness/load-items
+   :render     dashboards.staleness/render})
+
+(defmethod eid-translation/spec :model/Dashboard [_model]
+  {:names [:dashboard]})
+
+(defmethod xrays/spec :model/Dashboard [_model]
+  {:related dashboards.xrays/related})
