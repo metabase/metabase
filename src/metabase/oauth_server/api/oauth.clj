@@ -168,10 +168,9 @@
   "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  ;; An authorization request, or a refresh of a token with no resource, gets here only when it names a resource: one
-  ;; that names none and asks only for MCP scopes is given the MCP resource by [[with-default-mcp-resource]], and any
-  ;; other keeps its non-MCP scopes. A refresh of a token bound to a resource narrows to that resource, so it can get
-  ;; here without naming one. The provider cannot be built without a Site URL, so the URL is always there.
+  ;; Only a request with a resource gets here, its own or its refresh token's. One that names none and asks only for MCP
+  ;; scopes is given the MCP resource by [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The
+  ;; provider cannot be built without a Site URL, so the URL is always there.
   (str "The requested scopes are not accepted by the requested resource. "
        "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 
@@ -642,9 +641,8 @@
    hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
    keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
    `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives. When neither the request nor the
-   refresh token names a resource, the resource is defaulted as [[with-default-mcp-resource]] defaults it for
-   authorization, from the requested scopes or, for a refresh without `scope`, the scopes the token holds. The body
-   then names it, so the new tokens carry it.
+   refresh token names a resource, the body names the one [[with-default-mcp-resource]] gives the requested scopes, or
+   the token's own scopes when the refresh has no `scope`, so the new tokens carry it.
 
    Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
