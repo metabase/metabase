@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
    [metabase.util :as u]
@@ -68,3 +69,8 @@
     (when revoked-at
       (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
         (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]
+  {:skip? true})

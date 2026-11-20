@@ -5,6 +5,7 @@
    [malli.transform :as mtx]
    [metabase-enterprise.data-complexity-score.db :as data-complexity-score.db]
    [metabase-enterprise.data-complexity-score.schema :as data-complexity-score.schema]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -60,3 +61,8 @@
     (if id
       (score-with-calculated-at (data-complexity-score.db/score-entry id))
       (latest-score fingerprint source))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/DataComplexityScore [_model]
+  {:skip? true})

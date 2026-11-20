@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [malli.error :as me]
    [metabase.config.core :as config]
+   [metabase.models.resolution :as models.resolution]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -14,6 +15,8 @@
    [metabase.util.match :as match]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
+
+(set! *warn-on-reflection* true)
 
 (def search-models
   "Search model string names, ordered by indexing priority.
@@ -38,17 +41,6 @@
              "dataset"
              ;; These can easily dwarf the cardinality of other entities, hence being dead last.
              "indexed-entity"])))
-
-(def raw-spec-forms
-  "Stores the raw (unevaluated) spec forms captured at macro expansion time.
-  Used to compute a deterministic hash for index versioning."
-  (atom {}))
-
-(def ^:private search-model->toucan-model
-  (into {}
-        (map (fn [search-model]
-               [search-model (-> search-model search.config/model->db-model :db-model)]))
-        search-models))
 
 (def ^:private SearchModel
   (into [:enum] search-models))
@@ -373,29 +365,43 @@
                               (some? (first column))))]
     (qualify-column table column)))
 
-(defmulti spec*
-  "Impl for [[spec]]."
-  {:arglists '([search-model])}
+(defmulti spec
+  "The search specifications of the Toucan `model`, as `{search-model spec}` where each `search-model` is a string of
+  [[search-models]], such as `{\"card\" {...} \"dataset\" {...} \"metric\" {...}}` for `:model/Card`. A model implements
+  this to be indexed for search, and the specification of each of its search models is read with [[search-model-spec]].
+
+  Spec keys:
+  - `:attrs` - Map of search index attributes (required)
+  - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
+    column keyword to either `true` (use the raw value) or a transform fn applied for
+    full-text search (required)
+  - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
+    embedding text (they remain in full-text search). Use for fields whose raw value is
+    not suitable for semantic search.
+  - `:render-terms` - Additional attributes needed for display (required)
+  - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only) or `:superuser`
+  - `:where` - HoneySQL where clause to filter indexed records
+  - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
+  - `:joins` - Map of join aliases to [model join-condition] tuples
+
+  Attribute value formats:
+  - `true` - Use column with same name (snake_case)
+  - `:column_name` - Use specified database column
+  - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
+    return value is written to the column named after the attr key (snake_case).
+
+  A function in a specification must be a named `defn`, not an anonymous fn, since [[index-version-hash]] identifies it
+  by name."
+  {:arglists '([model])}
   identity)
 
-(defn spec
-  "Register a Metabase model as a search-model.
-  Once we're trying up the fulltext search project, we can inline a detailed explanation.
-  For now, see its schema, and the existing definitions that use it."
-  ([search-model]
-   ;; make sure the model namespace is loaded.
-   (t2/resolve-model (search-model->toucan-model search-model))
-   (spec* search-model)))
-
-(defn specifications
-  "A mapping from each search-model to its specification."
-  []
-  (into {}
-        (map (fn [[search-model toucan-model]]
-               ;; make sure the model namespace is loaded.
-               (t2/resolve-model toucan-model)
-               [search-model (spec search-model)]))
-        search-model->toucan-model))
+(defn- complete-spec
+  "The `spec` of `search-model` of `model` with its name, model, default visibility and default attrs."
+  [model search-model spec]
+  (-> spec
+      (assoc :name search-model :model model)
+      (update :visibility #(or % :all))
+      (update :attrs #(merge default-attrs %))))
 
 (defn validate-spec!
   "Check whether a given specification is valid"
@@ -406,41 +412,44 @@
           :when (not= :this table)]
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
-(defmacro define-spec
-  "Define a search specification for indexing and searching a Metabase model.
+(defn- build-specifications
+  "The validated, completed specification of every search model that a model defines, after loading every model
+  namespace."
+  []
+  (into {}
+        (map (fn [[search-model [model model-spec]]]
+               [search-model (complete-spec model search-model model-spec)]))
+        (models.resolution/spec-entries-by-name spec)))
 
-   Spec keys:
-   - `:model` - Toucan model keyword (required)
-   - `:attrs` - Map of search index attributes (required)
-   - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
-     column keyword to either `true` (use the raw value) or a transform fn applied for
-     full-text search (required)
-   - `:embedding-exclude` - Set of `:search-terms` keys to omit from the semantic-search
-     embedding text (they remain in full-text search). Use for fields whose raw value is
-     not suitable for semantic search.
-   - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
-   - `:where` - HoneySQL where clause to filter indexed records
-   - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
-   - `:joins` - Map of join aliases to [model join-condition] tuples
+(def ^:private specifications*
+  ;; The key is only an invalidation token, as for `model-hooks*`: the value comes from the static search-models list,
+  ;; so the first call builds a complete map even though resolving those models registers more methods while it runs.
+  (memoize/fifo
+   (fn [_spec-methods]
+     (let [specs (build-specifications)]
+       (doseq [search-model search-models]
+         (when-not (contains? specs search-model)
+           (throw (ex-info (str "No search specification for " search-model) {:search-model search-model}))))
+       (run! validate-spec! (vals specs))
+       specs))
+   :fifo/threshold 1))
 
-   Attribute value formats:
-   - `true` - Use column with same name (snake_case)
-   - `:column_name` - Use specified database column
-   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure function at index time; its scalar
-     return value is written to the column named after the attr key (snake_case)."
-  [search-model spec]
-  `(do
-     ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)
-     (swap! raw-spec-forms assoc ~search-model '~spec)
-     (let [spec# (-> ~spec
-                     (assoc :name ~search-model)
-                     (update :visibility #(or % :all))
-                     (update :attrs #(merge ~default-attrs %)))]
-       (validate-spec! spec#)
-       (derive (:model spec#) :hook/events)
-       (derive (:model spec#) :search/indexed)
-       (defmethod spec* ~search-model [~'_] spec#))))
+(defn specifications
+  "A mapping from each search-model to its specification."
+  []
+  (specifications* (methods spec)))
+
+(defn search-model-spec
+  "The specification of `search-model`, a string of [[search-models]], with its `:name`, `:model`, `:visibility` and
+  `:attrs` completed with the defaults."
+  [search-model]
+  (or (get (specifications) search-model)
+      (throw (ex-info (str "No search specification for " (pr-str search-model)) {:search-model search-model}))))
+
+(defn indexed-model?
+  "Whether the Toucan `model`, or a model it derives from, has a search specification."
+  [model]
+  (some? (get-method spec model)))
 
 (def ^:private model-hooks*
   ;; Specs are immutable in production, and keying on the methods map also does the useful thing after a
@@ -459,7 +468,7 @@
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
   []
-  (model-hooks* (methods spec*)))
+  (model-hooks* (methods spec)))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query, leaving as it is
@@ -511,16 +520,27 @@
 
 ;;;; index version hashing
 
+(defn- fn-name
+  "The qualified name of the function `f`, which must be a named `defn`."
+  [f]
+  (let [qualified (Compiler/demunge (.getName (class f)))]
+    (when (re-find #"fn--\d+" qualified)
+      (throw (ex-info "A search specification holds an anonymous function; name it with defn" {:fn qualified})))
+    qualified))
+
 (defn- canonicalize
   "Convert a form to a canonical, JSON-serializable representation.
-   Symbols and keywords become strings, maps are sorted."
+   Symbols and keywords become strings, functions become their qualified names, maps are sorted, and sets become sorted
+   vectors."
   [form]
   (cond
+    (fn? form) (fn-name form)
     (symbol? form) (str form)
     (keyword? form) (str form)
     (map? form) (into (sorted-map)
                       (for [[k v] form]
                         [(canonicalize k) (canonicalize v)]))
+    (set? form) (vec (sort-by pr-str (map canonicalize form)))
     (sequential? form) (mapv canonicalize form)
     :else form))
 
@@ -529,20 +549,24 @@
   "Override for tests that need a specific index version."
   nil)
 
+(defn- compute-index-version-hash
+  "The hash of the search `specs`, with the default attrs and the attr types."
+  [specs]
+  (-> {:specs        specs
+       :default-attrs default-attrs
+       :attr-types    attr-types}
+      canonicalize
+      json/encode
+      buddy-hash/sha256
+      codecs/bytes->hex))
+
 (def ^{:arglists '([testing-only-index-version-hash]) :private true} index-version-hash*
   (memoize (fn [testing-only-index-version-hash]
              (or testing-only-index-version-hash
-                 (let [data {:specs        @raw-spec-forms
-                             :default-attrs default-attrs
-                             :attr-types    attr-types}]
-                   (-> data
-                       canonicalize
-                       json/encode
-                       buddy-hash/sha256
-                       codecs/bytes->hex))))))
+                 (compute-index-version-hash (specifications))))))
 
 (defn index-version-hash
   "Compute a deterministic hash of all search specifications.
-   Includes raw spec forms, default-attrs, and attr-types."
+   Includes the specifications with their functions named, default-attrs, and attr-types."
   []
   (index-version-hash* *testing-only-index-version-hash*))

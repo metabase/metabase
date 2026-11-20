@@ -2,18 +2,27 @@
   "A Measure is a saved MBQL 'macro', expanding to an `:aggregation` clause. It is tied to a table and contains
    exactly one aggregation expression."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.dependencies :as measures.dependencies]
+   [metabase.measures.replacement :as measures.replacement]
    [metabase.measures.schema :as measures.schema]
+   [metabase.measures.serialization :as measures.serialization]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.replacement.spec :as replacement]
+   [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
@@ -39,12 +48,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/Measure
-  [_model]
-  {:create :event/measure-create
-   :update :event/measure-update
-   :delete :event/measure-delete})
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."
@@ -138,72 +141,93 @@
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serialization/spec :model/Measure [_]
-  {:schema    ::measures.schema/external-measure
-   :copy      [:name :archived :description :entity_id]
-   :skip      [:dimensions :dimension_mappings :table_id]
-   :transform {:creator_id serialization/user-transform
-               :definition (assoc serialization/mbql-transform
-                                  :import (fn [store _ queries opts]
-                                            (mapv #(cond-> % (seq %) lib-be/normalize-query)
-                                                  (serialization/import-mbql store queries opts))))}
-   :defaults  {:archived false}})
-
-(defmethod serialization/import-dependencies :model/Measure [_ entities]
-  (mapv (fn [{:keys [definition]}]
-          (serialization/import-mbql-dependencies definition))
-        entities))
-
-(defmethod serialization/storage-paths :model/Measure [_ entities _ctx]
-  (mapv (fn [measure]
-          (let [table-path (-> measure :definition serialization/serialized-query-source-table)]
-            (into (serialization/storage-path-prefixes table-path)
-                  [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
-        entities))
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
-
-(defmethod remote-sync/spec :model/Measure
-  [_model]
-  {:synced-items         measures.db/synced-measure-items
-   :synced-filter-clause measures.db/synced-measures-clause})
-
-;;; ----------------------------------------------------- Search -----------------------------------------------------
-
-(search/define-spec "measure"
-  {:model :model/Measure
-   :attrs {:archived true
-           :collection-id false
-           :creator-id true
-           :database-id :table.db_id
-           :created-at true
-           :updated-at true
-           ;; A measure on a Library table inherits the table's library ranking boost and curated status.
-           :root-collection-type {:fn collection/table-root-collection-type}}
-   :search-terms [:name :description]
-   :render-terms {:table-id                  :table_id
-                  :table_description         :table.description
-                  :table_name                :table.name
-                  :table_display_name        :table.display_name
-                  :table_schema              :table.schema
-                  ;; The parent table's collection, for [[collection/table-root-collection-type]].
-                  ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
-                  :table-collection-id       :table.collection_id
-                  :table-is-published        :table.is_published
-                  :table-collection-location :collection.location
-                  :table-collection-type     :collection.type}
-   ;; Only published tables count as library content, matching the table spec's own collection join.
-   :joins {:table      [:model/Table [:= :table.id :this.table_id]]
-           :collection [:model/Collection
-                        [:and
-                         [:= :table.is_published true]
-                         [:= :collection.id :table.collection_id]]]}})
-
 ;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
     (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Measure
+  [_model]
+  {:create :event/measure-create
+   :update :event/measure-update
+   :delete :event/measure-delete})
+
+(defmethod app-db-copy/spec :model/Measure [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Measure [_]
+  {:schema              ::measures.schema/external-measure
+   :copy                [:name :archived :description :entity_id]
+   :skip                [:dimensions :dimension_mappings :table_id]
+   :transform           {:creator_id serialization/user-transform
+                         :definition measures.serialization/definition-transform}
+   :defaults            {:archived false}
+   :import-dependencies measures.serialization/import-dependencies
+   :storage-paths       measures.serialization/storage-paths})
+
+(defmethod remote-sync/spec :model/Measure
+  [_model]
+  {:synced-items         measures.db/synced-measure-items
+   :synced-filter-clause measures.db/synced-measures-clause})
+
+(defmethod revisions/spec :model/Measure [_model]
+  {:track        [:name :description :definition :archived :table_id]
+   :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
+   :same?        {:definition revisions/same-definition?}
+   :diff-columns [:name :description :definition]})
+
+(defmethod audit/spec :model/Measure [_model]
+  {:track          []
+   :track-redacted [:archived :creator_id :definition :description :name :table_id]
+   :skip           [:dimension_mappings :dimensions :entity_id]})
+
+(defmethod search/spec :model/Measure
+  [_model]
+  {"measure"
+   {:attrs {:archived true
+            :collection-id false
+            :creator-id true
+            :database-id :table.db_id
+            :created-at true
+            :updated-at true
+            ;; A measure on a Library table inherits the table's library ranking boost and curated status.
+            :root-collection-type {:fn collection/table-root-collection-type}}
+    :search-terms [:name :description]
+    :render-terms {:table-id                  :table_id
+                   :table_description         :table.description
+                   :table_name                :table.name
+                   :table_display_name        :table.display_name
+                   :table_schema              :table.schema
+                   ;; The parent table's collection, for [[collection/table-root-collection-type]].
+                   ;; Listing these terms also reindexes a measure when its table moves into or out of the Library.
+                   :table-collection-id       :table.collection_id
+                   :table-is-published        :table.is_published
+                   :table-collection-location :collection.location
+                   :table-collection-type     :collection.type}
+    ;; Only published tables count as library content, matching the table spec's own collection join.
+    :joins {:table      [:model/Table [:= :table.id :this.table_id]]
+            :collection [:model/Collection
+                         [:and
+                          [:= :table.is_published true]
+                          [:= :collection.id :table.collection_id]]]}}})
+
+(defmethod dependencies/spec :model/Measure [_model]
+  {:type     :measure
+   :inlined? true
+   :items    measures.db/dependency-measure-items
+
+   :dependencies measures.dependencies/dependencies
+
+   :dependency-columns #{:definition :table_id}
+   :output-columns     #{:definition :table_id}})
+
+(defmethod replacement/spec :model/Measure [_model]
+  {:upgrade-field-refs measures.replacement/upgrade-field-refs
+   :swap-source        measures.replacement/swap-source})
+
+(defmethod eid-translation/spec :model/Measure [_model]
+  {:names [:measure]})

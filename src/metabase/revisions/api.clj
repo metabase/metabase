@@ -127,8 +127,6 @@
                                                      [:entity      Entity]
                                                      [:revision_id ms/PositiveInt]]]
   (let [model    (entity-model entity)
-        ;; Before any lookup, so that a refusal does not depend on whether `id` exists.
-        _        (revision/check-revert-available model)
         instance (revisions.db/entity model id)
         _        (api/write-check instance)
         revision (api/check-404 (revisions.db/revision (name model) id revision-id))]

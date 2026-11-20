@@ -592,6 +592,58 @@ describe("diagnostics", () => {
         "Percentile() combines many rows into one value, so it only works in Summarize. Use it there, or choose a function that works on one row at a time.",
       );
     });
+    it.each([
+      "isEmpty([Product → Title])",
+      "isEmpty(lTrim([Product → Title]))",
+      "isEmpty('AAA')",
+      "isEmpty(lTrim('AAA'))",
+      "notEmpty([Product → Title])",
+      "notEmpty(lTrim([Product → Title]))",
+      "notEmpty('AAA')",
+      "notEmpty(lTrim('AAA'))",
+    ])(
+      "should accept a string expression in %s (metabase#55687)",
+      (expression) => {
+        expect(err(expression)).toBeUndefined();
+      },
+    );
+
+    it.each([
+      'year("a string")',
+      'month("a string")',
+      'day("a string")',
+      'hour("a string")',
+      'minute("a string")',
+      'datetimeAdd("a string", 1, "day")',
+      'datetimeDiff("a string", 1, "day")',
+      "year(1)",
+      "month(42)",
+      "day(102)",
+      "hour(140)",
+      "minute(55)",
+      'datetimeAdd(42, 1, "day")',
+      'datetimeDiff(42, 1, "day")',
+      "year(true)",
+      "month(true)",
+      "day(true)",
+      "hour(true)",
+      "minute(true)",
+      'datetimeAdd(true, 1, "day")',
+      'datetimeDiff(true, 1, "day")',
+    ])(
+      "should reject a non-temporal argument in %s (metabase#26512)",
+      (expression) => {
+        expect(err(expression)).toMatch(/^Types are incompatible/);
+      },
+    );
+
+    it.each([
+      "year([Created At])",
+      'datetimeAdd([Created At], 1, "day")',
+      'datetimeDiff([Created At], [Created At], "day")',
+    ])("should accept a temporal argument in %s", (expression) => {
+      expect(err(expression)).toBeUndefined();
+    });
   });
 
   describe("diagnoseAndCompile", () => {

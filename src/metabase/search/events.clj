@@ -12,9 +12,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- feeds-index?
-  "Whether the `operation` of a write of `model` can change the search index."
+  "Whether the `operation` of a write of `model`, which has a search spec or derives `:search/indexed` as the models
+  that only feed the document of another model do, can change the search index."
   [model operation]
-  (or (isa? model :search/indexed)
+  (or (search/indexed-model? model)
+      (isa? model :search/indexed)
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
 
 (defn- capture-dependents

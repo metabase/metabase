@@ -3,37 +3,14 @@
   (:require
    [metabase.change-log.db :as change-log.db]
    [metabase.change-log.numbering :as change-log.numbering]
+   [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(def tracked-models
-  "The models whose writes the change log records. A model here must derive `:hook/events`."
-  #{:model/Card
-    :model/Dashboard
-    :model/Database
-    :model/Field
-    :model/FieldUserSettings
-    :model/NativeQuerySnippet
-    :model/Notification
-    :model/NotificationCard
-    :model/NotificationHandler
-    :model/NotificationRecipient
-    :model/NotificationSubscription
-    :model/PermissionsGroup
-    :model/PermissionsGroupMembership
-    :model/Pulse
-    :model/PulseCard
-    :model/PulseChannel
-    :model/PulseChannelRecipient
-    :model/Table
-    :model/Tenant
-    :model/User})
 
 (defn table-of
   "The name of the table of `model`."
@@ -74,17 +51,7 @@
    action :- [:enum :insert :update :delete]
    & conditions :- [:* [:maybe [:fn {:description "what `t2/select` takes after the model"} some?]]]]
   (when (premium-features/enable-change-log?)
-    (if (contains? tracked-models model)
+    (if (change-log.spec/tracked? model)
       (log! [[(table-of model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
-      (throw-or-log (format "Not logging %s on %s to the change log: the model is not in `metabase.change-log.log/tracked-models`."
+      (throw-or-log (format "Not logging %s on %s to the change log: the model has no `metabase.change-log.core/spec`."
                             (name action) model)))))
-
-(methodical/defmulti ignored-columns
-  "The columns of `model` that the change log leaves out. An update that sets only these logs nothing.
-
-    (methodical/defmethod change-log/ignored-columns :model/Dashboard [_model]
-      #{:last_viewed_at :view_count})"
-  {:arglists '([model])}
-  identity)
-
-(methodical/defmethod ignored-columns :default [_model] #{})

@@ -46,7 +46,7 @@
 
 (def eligible-collection-where
   "The WHERE defining a collection *subject* - the finalized content-diagnostics eligibility set, stated
-  directly (not via `mi/exclude-internal-content-hsql`) so the scope is visible here and stable against
+  directly (not via `mi/non-internal-filter-clause`) so the scope is visible here and stable against
   platform changes to \"internal content\". Content-diagnostics analyzes real user content only, so a
   collection tree that structurally cannot hold it is out. Included: the default (nil), transforms, and
   tenant namespaces, library-metrics trees, and tenant-specific root collections. Excluded: the snippet

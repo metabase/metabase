@@ -3,6 +3,7 @@
   model definitions and hydration methods."
   (:require
    [clojure.set :as set]
+   [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
@@ -112,6 +113,16 @@
   "The IDs of the actions in the collection with `collection-id`."
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
+
+(mu/defn cards-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Cards in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Card :id :collection_id] :collection_id [:in collection-ids]))
+
+(mu/defn actions-in-collections :- [:sequential [:map [:id ms/PositiveInt] [:collection_id ms/PositiveInt]]]
+  "The `:id` and `:collection_id` of the Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select [:model/Action :id :collection_id] :collection_id [:in collection-ids]))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
@@ -282,3 +293,14 @@
   "The DataApps with `ids`, as remote sync lists them."
   [ids :- [:sequential pos-int?]]
   (t2/select [:model/DataApp :id :slug :name] :id [:in ids]))
+
+(mu/defn dependency-data-app-items :- [:maybe :map]
+  "The query of the DataApps the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, which is
+  none: those the user reads, none without the data apps feature."
+  [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
+  (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
+    {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
+     :from   [:data_app]
+     :where  (into [:and]
+                   (remove nil?)
+                   [[:in :data_app.id visible-ids]])}))

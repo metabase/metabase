@@ -406,7 +406,7 @@
   "Wrap the thunk into with-temp, creating entities used throughout semantic search test.
 
   N.B. *disable-updates* is bound to avoid processing of those entities by logic in [[search.ingestion]] ns.
-  The processing is triggered by the lifecycle events of the models a search spec derives `:search/indexed` on.
+  The processing is triggered by the lifecycle events of the models that have a search spec.
 
   As of 2025-09-10, processing triggered by insertion, combined with manual gating of documents that callers
   of this fn do, would result in duplicate processing and deletion of those entities from index

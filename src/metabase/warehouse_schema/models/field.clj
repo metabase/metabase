@@ -3,9 +3,11 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
+   [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
@@ -18,11 +20,16 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
+   [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.warehouses.models.database :as database]
+   [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -131,15 +138,6 @@
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
-
-(defmethod events/spec :model/Field
-  [_model]
-  {:create :event/field-create
-   :update :event/field-update
-   :delete :event/field-delete})
-
-(methodical/defmethod change-log/ignored-columns :model/Field [_model]
-  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
 (t2/define-after-select :model/Field
   [field]
@@ -461,46 +459,56 @@
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-;; In order to retrieve the dependencies for a field its table_id needs to be serialized as [database schema table],
-;; a trio of strings with schema maybe nil.
+(defmethod events/spec :model/Field
+  [_model]
+  {:create :event/field-create
+   :update :event/field-update
+   :delete :event/field-delete})
 
-(def ^:private table-transform
-  serialization/table-transform)
+(defmethod app-db-copy/spec :model/Field [_model]
+  {:skip?     false
+   :select    warehouse-schema.db/copy-fields-select
+   :transform warehouse-schema.app-db-copy/transform-field})
 
-(def ^:private field-transform
-  serialization/field-transform)
+(defmethod change-log/spec :model/Field [_model]
+  {:track [:name :base_type :semantic_type :active :description :preview_display :position :table_id :parent_id
+           :display_name :visibility_type :fk_target_field_id :points_of_interest :caveats :database_type
+           :has_field_values :settings :database_position :custom_position :effective_type :coercion_strategy
+           :nfc_path :database_required :json_unfolding :database_is_auto_increment :database_partitioned
+           :database_is_pk :database_is_nullable :database_is_generated :database_default :data_sensitivity]
+   :skip  [:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+           :is_defective_duplicate :unique_field_helper]})
 
 (defmethod serialization/spec :model/Field [_]
-  {:schema    ::warehouse-schema.schema/external-field
-   :identity  [:table_id :parent_id :name]
-   :copy      [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default :database_indexed
-               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
-               :database_partitioned :database_position :database_required :database_type
-               :description :display_name :effective_type :has_field_values
-               :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
-               :visibility_type]
-   :skip      [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
-               :is_defective_duplicate :unique_field_helper]
-   :children  {:dimensions :model/Dimension}
-   :transform {:table_id           table-transform
-               :fk_target_field_id field-transform
-               :parent_id          field-transform}
-   :defaults  {:active                     true
-               :database_is_auto_increment false
-               :database_required          false
-               :json_unfolding             false
-               :preview_display            true}})
+  {:schema        ::warehouse-schema.schema/external-field
+   :identity      [:table_id :parent_id :name]
+   :copy          [:active :base_type :caveats :coercion_strategy :data_sensitivity :database_default
+                   :database_indexed :database_is_auto_increment :database_is_generated :database_is_nullable
+                   :database_is_pk :database_partitioned :database_position :database_required :database_type
+                   :description :display_name :effective_type :has_field_values
+                   :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type
+                   :settings :visibility_type]
+   :skip          [:custom_position :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed
+                   :is_defective_duplicate :unique_field_helper]
+   :children      {:dimensions :model/Dimension}
+   :transform     {:table_id           serialization/table-transform
+                   :fk_target_field_id serialization/field-transform
+                   :parent_id          serialization/field-transform}
+   :defaults      {:active                     true
+                   :database_is_auto_increment false
+                   :database_required          false
+                   :json_unfolding             false
+                   :preview_display            true}
+   :entity-ref    warehouse-schema.serialization/field-entity-ref
+   :storage-paths warehouse-schema.serialization/field-storage-paths
+   :rows-by-refs  serialization/field-rows-by-refs})
 
-(defmethod serialization/entity-ref :model/Field [_ {:keys [table_id parent_id name]}]
-  (conj (or parent_id table_id) name))
+(defmethod dependencies/spec :model/Field [_model]
+  {:part-of      {:type :table :key :table_id}
+   :part-columns warehouse-schema.dependencies/field-columns})
 
-(defmethod serialization/storage-paths :model/Field [_ entities _]
-  (mapv (fn [field]
-          (let [[db-name schema table-name & field-names] (serialization/entity-ref :model/Field field)
-                field-name                                (str/join "." field-names)]
-            (conj (serialization/storage-path-prefixes [db-name schema table-name])
-                  {:label "fields"}
-                  {:label field-name :key field-name})))
-        entities))
+(defmethod xrays/spec :model/Field [_model]
+  {:related    warehouse-schema.xrays/field-related
+   :definition warehouse-schema.xrays/field-definition})

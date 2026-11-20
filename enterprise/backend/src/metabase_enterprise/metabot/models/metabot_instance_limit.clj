@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot.models.metabot-instance-limit
   (:require
    [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -34,3 +35,8 @@
   "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
   []
   (metabot.db/tenant-limits))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/MetabotInstanceLimit [_model]
+  {:skip? false})
