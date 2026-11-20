@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.write :as perms-rest.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -44,7 +45,7 @@
           (is (nil? (perms group-id))))))))
 
 (defn- grant-block-perms! [group-id]
-  (data-perms.graph/update-data-perms-graph!
+  (perms-rest.write/update-data-perms-graph!
    (-> (data-perms.graph/api-graph)
        (assoc-in [:groups group-id (mt/id) :view-data] :blocked)
        (assoc-in [:groups group-id (mt/id) :create-queries] :no))))
@@ -130,7 +131,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."
-             (data-perms.graph/update-data-perms-graph! [group-id (mt/id)] {:view-data :blocked
+             (perms-rest.write/update-data-perms-graph! [group-id (mt/id)] {:view-data :blocked
                                                                             :create-queries :query-builder-and-native}))))
       (testing "via the API"
         (let [current-graph (data-perms.graph/api-graph)

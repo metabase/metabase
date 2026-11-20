@@ -68,10 +68,11 @@
   exploration)
 
 (t2/define-before-update :model/Exploration
-  [{:keys [archived collection_id] :as exploration}]
+  [{:keys [id archived collection_id] :as exploration}]
   (let [changes (t2/changes exploration)]
     (when (contains? changes :collection_id)
-      (collection/check-collection-not-archived archived collection_id))
+      (collection/check-collection-not-archived archived collection_id)
+      (explorations.db/move-summary-documents! id collection_id))
     (cond-> exploration
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
 

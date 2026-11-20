@@ -266,6 +266,16 @@
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/update! :model/Collection :id collection-id changes))
 
+(mu/defn directly-archived-descendant-collections
+  "The directly archived Collections whose location starts with `location-prefix`."
+  [location-prefix :- :string]
+  (t2/select :model/Collection :location [:like (str location-prefix "%")] :archived_directly true))
+
+(mu/defn delete-collection!
+  "Delete the Collection with `id`, returning the number deleted."
+  [id :- ::lib.schema.id/collection]
+  (t2/delete! :model/Collection :id id))
+
 (mu/defn collection-remote-synced-by-item-id
   "The `:id` of each of the `model` rows with `ids` and the `:is_remote_synced` of its Collection, as stored."
   [model :- :keyword

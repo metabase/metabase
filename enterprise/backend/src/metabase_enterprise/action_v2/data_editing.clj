@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.action-v2.coerce :as data-editing.coerce]
    [metabase-enterprise.action-v2.db :as action-v2.db]
-   [metabase-enterprise.action-v2.models.undo :as undo]
+   [metabase-enterprise.action-v2.write :as action-v2.write]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -185,7 +185,7 @@
     ;; TODO fix tests that execute actions without a user scope
     (when user-id
       (when-not (some (comp #{:data-editing/undo :data-editing/redo} first) invocation-stack)
-        (undo/track-change!
+        (action-v2.write/track-change!
          user-id
          scope
          (u/for-map [[table-id diffs] (group-by :table-id diffs)]

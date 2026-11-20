@@ -5,7 +5,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
    [metabase.geojson.rest.api-test :as geojson-test]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 

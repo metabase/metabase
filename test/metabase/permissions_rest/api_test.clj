@@ -510,6 +510,29 @@
         (is (= :unrestricted
                (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :view-data])))))))
 
+(deftest update-perms-graph-by-each-user-test
+  (testing "PUT /api/permissions/graph"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
+      (let [revision-id (perms/latest-permissions-revision-id)
+            old-graph   (data-perms.graph/api-graph {:group-ids [group-id]})
+            new-graph   (assoc-in (data-perms.graph/api-graph {:group-ids [group-id]})
+                                  [:groups group-id (mt/id) :create-queries]
+                                  :query-builder)
+            stored      #(get-in (data-perms.graph/api-graph {:group-ids [group-id]})
+                                 [:groups group-id (mt/id)])]
+        (testing "is refused to a non-admin, who changes nothing"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :put 403 "permissions/graph" new-graph)))
+          (is (= (get-in old-graph [:groups group-id (mt/id)]) (stored)))
+          (is (= revision-id (perms/latest-permissions-revision-id))))
+        (testing "applies the graph for an admin and records the revision as theirs"
+          (is (= (inc revision-id)
+                 (:revision (mt/user-http-request :crowberto :put 200 "permissions/graph" new-graph))))
+          (is (= :query-builder (:create-queries (stored))))
+          (is (=? {:user_id (mt/user->id :crowberto)}
+                  (t2/select-one :model/PermissionsRevision :id (inc revision-id)))))))))
+
 (deftest update-perms-graph-table-specific-perms-test
   (testing "PUT /api/permissions/graph"
     (testing "make sure we can update the perms graph from the API"

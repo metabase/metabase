@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
+   [metabase-enterprise.advanced-permissions.write :as advanced-permissions.write]
    [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -46,7 +47,7 @@
         (let [new-graph (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                     :monitoring   :no
                                                                     :subscription :no})
-              _ (g-perms/update-graph! new-graph)
+              _ (advanced-permissions.write/update-graph! new-graph)
               updated-graph (g-perms/graph)]
           (is (partial= (:groups new-graph) (:groups updated-graph)))
           (is (= (inc (:revision current-graph)) (:revision updated-graph)))
@@ -54,13 +55,13 @@
   (testing "Revoke successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
       (let [new-graph     (assoc-in current-graph [:groups group-id :subscription] :no)
-            _             (g-perms/update-graph! new-graph)
+            _             (advanced-permissions.write/update-graph! new-graph)
             updated-graph (g-perms/graph)]
         (is (= (dissoc (:groups new-graph) group-id) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph))))))
   (testing "We can do a no-op and revision won't changes"
     (with-new-group-and-current-graph _group-id current-graph
-      (g-perms/update-graph! current-graph)
+      (advanced-permissions.write/update-graph! current-graph)
       (let [updated-graph (g-perms/graph)]
         (is (= (:groups updated-graph) (:groups updated-graph)))
         (is (= (:revision current-graph) (:revision updated-graph))))))
@@ -70,14 +71,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"You cannot create or revoke permissions for the 'Admin' group."
-             (g-perms/update-graph! new-graph))))))
+             (advanced-permissions.write/update-graph! new-graph))))))
   (testing "Failed when revision is mismatched"
     (with-new-group-and-current-graph _group-id current-graph
       (let [new-graph (assoc current-graph :revision (inc (:revision current-graph)))]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Looks like someone else edited the permissions and your data is out of date. Please fetch new data and try again."
-             (g-perms/update-graph! new-graph))))))
+             (advanced-permissions.write/update-graph! new-graph))))))
   (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id _current-graph
       ;; subscription is granted for new group by default, so revoke it
@@ -89,7 +90,7 @@
             new-graph             (assoc-in current-graph [:groups group-id] {:setting      :yes
                                                                               :subscription :yes
                                                                               :monitoring   :no})
-            _                     (g-perms/update-graph! new-graph)
+            _                     (advanced-permissions.write/update-graph! new-graph)
             updated-graph         (g-perms/graph)]
         (is (= (:groups new-graph) (:groups updated-graph)))
         (is (= (inc (:revision current-graph)) (:revision updated-graph)))))))

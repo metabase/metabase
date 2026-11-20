@@ -10,11 +10,11 @@
    [metabase.explorations.api]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.derived-perms :as derived-perms]
-   [metabase.explorations.models.exploration-query-result :as eqr]
    [metabase.explorations.query-plan :as query-plan]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.variants :as qp.variants]
    [metabase.explorations.queues :as explorations.queues]
+   [metabase.explorations.write :as explorations.write]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1786,7 +1786,7 @@
           (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
                                       queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
-                         (eqr/create-ephemeral-card-for-exploration-queries!
+                         (explorations.write/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u
                           {:display "bar" :visualization-settings {}}))))
           (is (= 1 (t2/count :model/StoredResult :creator_id (:id u)))
@@ -1824,7 +1824,7 @@
               ;; Stub the perms check (the synthetic EQ has no inline dataset_query) so we exercise
               ;; the real create-card! / stored_result write path.
               result    (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
-                          (eqr/create-ephemeral-card-for-exploration-queries!
+                          (explorations.write/create-ephemeral-card-for-exploration-queries!
                            [qid] doc-id (:collection_id doc) u
                            {:display "bar" :visualization-settings {}}))
               use-rows  (t2/select :model/StoredResultUse :card_id (:card-id result))]
@@ -3017,7 +3017,7 @@
   test stubs it for the same reason. Tests that are *about* the permission check don't use this."
   [& args]
   (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)]
-    (apply eqr/create-ephemeral-card-for-exploration-queries! args)))
+    (apply explorations.write/create-ephemeral-card-for-exploration-queries! args)))
 
 (deftest composite-snapshot-carries-a-data-access-token-test
   (testing "A multi-query composite snapshot is stamped with its sources' data-access lens — without one the
@@ -3114,7 +3114,7 @@
         (let [checked (atom [])]
           (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query
                                       (fn [q] (swap! checked conj q) nil)]
-            (eqr/create-ephemeral-card-for-exploration-queries!
+            (explorations.write/create-ephemeral-card-for-exploration-queries!
              query-ids document-id (:collection_id doc) u
              {:display "bar" :visualization-settings {}}))
           (is (= 2 (count @checked))

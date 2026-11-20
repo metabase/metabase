@@ -10,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.write :as perms-rest.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.api :as api.dataset]
@@ -29,7 +30,7 @@
         revision           (:revision (data-perms.graph/api-graph))]
     (mt/with-additional-premium-features #{:advanced-permissions}
       (perms.test-util/with-restored-data-perms!
-        (data-perms.graph/update-data-perms-graph! {:revision revision
+        (perms-rest.write/update-data-perms-graph! {:revision revision
                                                     :groups   {all-users-group-id {db-id {:download graph}}}})
         (f)))))
 

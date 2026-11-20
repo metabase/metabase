@@ -21,12 +21,6 @@
    [:is_qbnewb      {:optional true} :boolean]
    [:is_datasetnewb {:optional true} :boolean]])
 
-(mu/defn rename-collection!
-  "Set the name of the Collection with `collection-id`."
-  [collection-id   :- ::lib.schema.id/collection
-   collection-name :- :string]
-  (t2/update! :model/Collection :id collection-id {:name collection-name}))
-
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
@@ -90,12 +84,6 @@
   [email   :- :string
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."

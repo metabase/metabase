@@ -1,6 +1,5 @@
 (ns metabase.dashboards.models.dashboard-tab
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection :as collection]
@@ -13,10 +12,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -95,69 +91,6 @@
         tabs              (sort-by :position tabs)]
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
-
-;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
-
-(mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
-  "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
-  [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
-  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
-                                                               (map #(dissoc % :id))
-                                                               (map #(assoc % :dashboard_id dashboard-id))))]
-    (zipmap (map :id new-tabs) new-tab-ids)))
-
-(mu/defn update-tabs! :- nil?
-  "Updates tabs of a dashboard if changed."
-  [current-tabs :- [:sequential ::dashboards.schema/dashboard-tab]
-   new-tabs     :- [:sequential ::dashboards.schema/dashboard-tab]]
-  (let [update-ks       [:name :position]
-        id->current-tab (m/index-by :id current-tabs)
-        to-update-tabs  (filter
-                         ;; filter out tabs that haven't changed
-                         (fn [new-tab]
-                           (let [current-tab (get id->current-tab (:id new-tab))]
-                             (not= (select-keys current-tab update-ks)
-                                   (select-keys new-tab update-ks))))
-                         new-tabs)]
-    (doseq [tab to-update-tabs]
-      (dashboards.db/update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
-    nil))
-
-(mu/defn delete-tabs! :- nil?
-  "Delete tabs of a Dashboard"
-  [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (when (seq tab-ids)
-    (dashboards.db/delete-dashboard-tabs! tab-ids))
-  nil)
-
-(defn do-update-tabs!
-  "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
-  Returns:
-  - `old->new-tab-id`: a map from tab IDs in `new-tabs` to newly created tab IDs
-  - `created-tab-ids`
-  - `updated-tab-ids`
-  - `deleted-tab-ids`
-  - `total-num-tabs`: the total number of active tabs after the operation."
-  [dashboard-id current-tabs new-tabs]
-  (let [{:keys [to-create
-                to-update
-                to-delete]} (u/row-diff current-tabs new-tabs)
-        to-delete-ids       (map :id to-delete)
-        _                   (when-let [to-delete-ids (seq to-delete-ids)]
-                              (delete-tabs! to-delete-ids))
-        old->new-tab-id     (when (seq to-create)
-                              (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
-                                                 (->> to-create
-                                                      (map #(dissoc % :id))
-                                                      (map #(assoc % :dashboard_id dashboard-id))))]
-                                (zipmap (map :id to-create) new-tab-ids)))]
-    (when (seq to-update)
-      (update-tabs! current-tabs to-update))
-    {:old->new-tab-id old->new-tab-id
-     :created-tab-ids (vals old->new-tab-id)
-     :deleted-tab-ids to-delete-ids
-     :total-num-tabs  (reduce + (map count [to-create to-update]))}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

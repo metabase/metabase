@@ -1,7 +1,7 @@
 (ns metabase.revisions.specs.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
@@ -399,7 +399,7 @@
                 :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
+        (dashboards.write/delete-dashboard-cards! [(:id dashboard-card)])
         (t2/update! :model/Dashboard :id dashboard-id
                     {:name               "Revert Test"
                      :auto_apply_filters false

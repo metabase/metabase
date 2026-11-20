@@ -6,8 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.dashboards.db :as dashboards.db]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.queries.core :as queries]
    [metabase.revisions.core :as revisions]
    [metabase.util :as u]
@@ -30,11 +29,11 @@
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
     (when (seq to-delete)
-      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
+      (dashboards.write/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
-      (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
+      (dashboards.write/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
     (when (seq to-update)
-      (dashboard-card/update-dashboard-cards!
+      (dashboards.write/update-dashboard-cards!
        (for [update-card to-update]
          [update-card (id->current-card (:id update-card))])))))
 
@@ -78,8 +77,8 @@
     (let [serialized-dashcards      (:cards serialized-dashboard)
           current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
                                           (dashboards.db/dashboard-tabs-for-dashboards [dashboard-id]))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
-          _                         (dashboard-card/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
+          {:keys [old->new-tab-id]} (dashboards.write/do-update-tabs! dashboard-id current-tabs (:tabs serialized-dashboard))
+          _                         (dashboards.write/archive-or-unarchive-internal-dashboard-questions! dashboard-id serialized-dashcards)
           serialized-dashcards      (cond->> serialized-dashcards
                                       true
                                       (remove-invalid-dashcards dashboard-id)

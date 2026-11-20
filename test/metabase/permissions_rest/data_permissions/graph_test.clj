@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.write :as perms-rest.write]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -20,7 +21,7 @@
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                       (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -65,7 +66,7 @@
                                      (do
                                        ;; Clear default perms for the group
                                        (t2/delete! :model/DataPermissions :group_id group-id-1)
-                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                       (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -141,7 +142,7 @@
       (testing "data-access permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                       (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           ;; Setting granular data access permissions
           {group-id-1
@@ -215,7 +216,7 @@
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                     (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                      (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular download permissions
         {group-id-1
@@ -280,7 +281,7 @@
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                     (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                      (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data model editing permissions
         {group-id-1
@@ -339,7 +340,7 @@
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                     (perms-rest.write/update-data-perms-graph! {:groups api-graph})
                                      (data-perms.graph/data-permissions-graph :group-id group-id-1)))
         ;; Granting permission to edit database details
         {group-id-1
@@ -517,7 +518,7 @@
       (is (thrown-with-msg?
            Exception
            #"Audit database permissions can only be changed by updating audit collection permissions."
-           (data-perms.graph/update-data-perms-graph! [(u/the-id group) audit/audit-db-id :data :schemas] :all))))))
+           (perms-rest.write/update-data-perms-graph! [(u/the-id group) audit/audit-db-id :data :schemas] :all))))))
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of native query perms doesn't fail if only one of them changes"
@@ -528,7 +529,7 @@
             (letfn [(perms []
                       (get-in (data-perms.graph/api-graph) ks))
                     (set-perms! [new-perms]
-                      (data-perms.graph/update-data-perms-graph! (assoc-in {} ks new-perms))
+                      (perms-rest.write/update-data-perms-graph! (assoc-in {} ks new-perms))
                       (perms))]
               (testing "Should initially have no perms"
                 (is (= nil
@@ -564,17 +565,17 @@
       (mt/with-temp [:model/PermissionsGroup group]
         ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
         (mt/with-current-user (mt/user->id :rasta)
-          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
+          (is (nil? (perms-rest.write/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
                                                                                                     :create-queries :no}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))})))
-          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
+          (is (nil? (perms-rest.write/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :blocked
                                                                                                     :create-queries :no}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))})))
           (data-perms/set-database-permission! group (mt/id) :perms/view-data :unrestricted)
-          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
+          (is (nil? (perms-rest.write/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
                                                                                                     :create-queries :query-builder}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))})))
-          (is (nil? (data-perms.graph/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
+          (is (nil? (perms-rest.write/update-data-perms-graph! {:groups {(u/the-id group) {(mt/id) {:view-data :unrestricted
                                                                                                     :create-queries :query-builder}}}
                                                                 :revision (:revision (data-perms.graph/api-graph))}))))))))
 
@@ -626,7 +627,7 @@
       ;; Clear default perms for the group
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "transforms:yes together with create-queries:query-builder-and-native is allowed"
-        (is (nil? (data-perms.graph/update-data-perms-graph!
+        (is (nil? (perms-rest.write/update-data-perms-graph!
                    {:groups {group-id {db-id {:view-data :unrestricted
                                               :create-queries :query-builder-and-native
                                               :transforms :yes}}}})))
@@ -634,18 +635,18 @@
       (testing "transforms:yes together with create-queries:query-builder is rejected"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Query builder and native"
-             (data-perms.graph/update-data-perms-graph!
+             (perms-rest.write/update-data-perms-graph!
               {:groups {group-id {db-id {:view-data :unrestricted
                                          :create-queries :query-builder
                                          :transforms :yes}}}}))))
       (testing "transforms:yes alone is rejected when existing create-queries is not query-builder-and-native"
         ;; Downgrade create-queries so the group no longer has native access
-        (data-perms.graph/update-data-perms-graph!
+        (perms-rest.write/update-data-perms-graph!
          {:groups {group-id {db-id {:view-data :unrestricted
                                     :create-queries :query-builder}}}})
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"Query builder and native"
-             (data-perms.graph/update-data-perms-graph!
+             (perms-rest.write/update-data-perms-graph!
               {:groups {group-id {db-id {:transforms :yes}}}})))))))
 
 (defn- data-permission-rows
@@ -703,7 +704,7 @@
                             {:view-data {"s1" :blocked "s2" :blocked}}]]
         {:set   (mapv (fn [step] (step) (snapshot set-group-id)) set-steps)
          :graph (mapv (fn [step]
-                        (data-perms.graph/update-data-perms-graph! {:groups {graph-group-id {db-id step}}})
+                        (perms-rest.write/update-data-perms-graph! {:groups {graph-group-id {db-id step}}})
                         (snapshot graph-group-id))
                       graph-steps)}))))
 

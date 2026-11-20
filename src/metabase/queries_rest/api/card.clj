@@ -661,77 +661,10 @@
   "Hard delete a Card. To soft delete, use `PUT /api/queries/:id`"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [card (api/write-check :model/Card id)]
-    (api/check-403 (queries/can-delete? card))
-    (queries-rest.db/delete-card! id))
+  (queries/delete-card! (api/write-check :model/Card id))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
-
-(defn- update-collection-positions!
-  "For cards that have a position in the previous collection, add them to the end of the new collection, trying to
-  preserve the order from the original collections. Note it's possible for there to be multiple collections
-  (and thus duplicate collection positions) merged into this new collection. No special tie breaker logic for when
-  that's the case, just use the order the DB returned it in"
-  [new-collection-id-or-nil cards]
-  ;; Sorting by `:collection_position` to ensure lower position cards are appended first
-  (let [sorted-cards        (sort-by :collection_position cards)
-        max-position-result (queries-rest.db/max-collection-position new-collection-id-or-nil)
-        ;; collection_position for the next card in the collection
-        starting-position   (inc (get max-position-result :max_position 0))]
-    ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
-    ;; to be lazy and we're just going to discard the results
-    (doall
-     (map (fn [idx {:keys [collection_id collection_position] :as card}]
-            ;; We are removing this card from `collection_id` so we need to reconcile any
-            ;; `collection_position` entries left behind by this move
-            (api/reconcile-position-for-collection! collection_id collection_position nil)
-            ;; Now we can update the card with the new collection and a new calculated position
-            ;; that appended to the end
-            (queries-rest.db/update-card! (u/the-id card)
-                                          {:collection_position idx
-                                           :collection_id       new-collection-id-or-nil}))
-          ;; These are reversed because of the classic issue when removing an item from array. If we remove an
-          ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
-          ;; can avoid changing the index of cards we haven't yet updated
-          (reverse (range starting-position (+ (count sorted-cards) starting-position)))
-          (reverse sorted-cards)))))
-
-(defn- write-check-collection-or-root [collection-id-or-nil]
-  (if collection-id-or-nil
-    (api/write-check :model/Collection collection-id-or-nil)
-    (api/write-check collection/root-collection)))
-
-(defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
-  (write-check-collection-or-root new-collection-id-or-nil)
-  ;; for each affected card...
-  (when (seq card-ids)
-    (let [cards (queries-rest.db/cards-to-move-to-collection (set card-ids) new-collection-id-or-nil)] ; poisioned NULLs = ick
-      ;; ...check that we have write permissions for it...
-      (doseq [card (t2/hydrate (vec cards) :can_write)]
-        (when-not (mi/can-update? card {:collection_id new-collection-id-or-nil})
-          (events/publish-event! :event/update-permission-failure {:user-id api/*current-user-id* :object card})
-          (api/check-403 false)))
-      ;; ...and check that we have write permissions for the old collections, root included
-      (doseq [old-collection-id (set (map :collection_id cards))]
-        (write-check-collection-or-root old-collection-id))
-      ;; Ensure all of the card updates occur in a transaction. Read committed (the default) really isn't what we want
-      ;; here. We are querying for the max card position for a given collection, then using that to base our position
-      ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
-      ;; get duplicates
-      (events/with-batched-events
-        (t2/with-transaction [_conn]
-          ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
-          ;; are gone and update the position in the new collection
-          (when-let [cards-with-position (seq (filter :collection_position cards))]
-            (update-collection-positions! new-collection-id-or-nil cards-with-position))
-          (doseq [card  cards
-                  :when (not (:collection_position card))]
-            (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))))
-      nil))
-
-  (when new-collection-id-or-nil
-    (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :post "/collections" :- [:map {:closed true} [:status [:= :ok]]]
   "Bulk update endpoint for Card Collections. Move a set of `Cards` with `card_ids` into a `Collection` with
@@ -741,7 +674,7 @@
    {:keys [card_ids collection_id]} :- [:map {:closed true}
                                         [:card_ids      [:sequential ms/PositiveInt]]
                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (move-cards-to-collection! collection_id card_ids)
+  (queries/move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
@@ -854,19 +787,7 @@
   be enabled."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (let [new-uuid (str (random-uuid))
-        card     (api/read-check :model/Card card-id)]
-    (api/update-check card {:public_uuid new-uuid, :made_public_by_id api/*current-user-id*})
-    (public-sharing.validation/check-public-sharing-enabled)
-    (api/check-not-archived card)
-    (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
-          uuid (or existing-public-uuid
-                   (u/prog1 new-uuid
-                     (t2/with-transaction [_conn]
-                       (queries-rest.db/update-card! card-id
-                                                     {:public_uuid       <>
-                                                      :made_public_by_id api/*current-user-id*}))))]
-      {:uuid uuid})))
+  {:uuid (queries/create-public-link! (api/read-check :model/Card card-id))})
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -875,13 +796,7 @@
   "Delete the publicly-accessible link to this Card."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (api/update-check (api/check-404 (queries-rest.db/card card-id)) {:public_uuid nil, :made_public_by_id nil})
-  (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
-  (t2/with-transaction [_conn]
-    (queries-rest.db/update-card! card-id
-                                  {:public_uuid       nil
-                                   :made_public_by_id nil}))
+  (queries/delete-public-link! card-id)
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"

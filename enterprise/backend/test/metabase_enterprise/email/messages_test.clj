@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.email.messages :as messages]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 

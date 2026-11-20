@@ -8,7 +8,7 @@
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
-   [metabase.events.core :as events]
+   [metabase.documents.write :as write]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
@@ -16,8 +16,6 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -35,8 +33,8 @@
                           (-> (update-keys #(api.macros/decode-and-validate-params
                                              :body key-schema (cond-> % (keyword? %) u/qualified-name)))
                               (update-vals #(api.macros/decode-and-validate-params
-                                             :body m.document/CardCreateSchema %)))))}
-   [:map-of key-schema m.document/CardCreateSchema]])
+                                             :body write/CardCreateSchema %)))))}
+   [:map-of key-schema write/CardCreateSchema]])
 
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
@@ -54,41 +52,6 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
    [:cards {:optional true} [:maybe (cards-to-create-schema :int)]]
    [:archived {:optional true} [:maybe :boolean]]])
-
-(defn- insert-card-embed!
-  "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
-  transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
-  [document-id card-id position extra-attrs]
-  (let [updated (events/with-batched-events
-                  (let [document (api/check-404 (documents.db/document document-id))
-                        updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
-                        updates  (cond-> (select-keys updated [:document])
-                                   (:is_placeholder document) (assoc :is_placeholder false))]
-                    (documents.db/update-document! document-id updates)
-                    (merge document updates)))]
-    updated))
-
-(defn add-card-to-document!
-  "Insert an embed for the already-created card with `card-id` into the prose-mirror ast of the
-  document with `document-id` and persist it. `position` is a 0-based index among the document's
-  top-level blocks; `nil` appends the embed at the end and out-of-range indexes are clamped.
-
-  Optional kwargs:
-  - `:extra-attrs` — map merged onto the `cardEmbed` attrs (e.g. `:stored_result_id`,
-    `:chart_href`, `:child_target_id`, `:host_data`).
-
-  Adding a card clears `:is_placeholder` when it was set. The caller is responsible for
-  write-checking the document first. The document is re-read inside the transaction so a
-  concurrent edit cannot be overwritten. Returns the updated document, hydrated as by
-  [[m.document/get-document]]; [[add-card-to-document-row!]] skips the hydration."
-  [document-id card-id position & {:keys [extra-attrs]}]
-  (insert-card-embed! document-id card-id position extra-attrs)
-  (m.document/get-document document-id :log-view? false))
-
-(defn add-card-to-document-row!
-  "[[add-card-to-document!]] for callers that don't need the hydrated document result."
-  [document-id card-id position & {:keys [extra-attrs]}]
-  (api/read-check (insert-card-embed! document-id card-id position extra-attrs)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -114,7 +77,7 @@
    _query-params
    {:keys [collection_id] :as body} :- DocumentCreateOptions]
   (api/create-check :model/Document {:collection_id collection_id})
-  (m.document/create-document! body))
+  (write/create-document! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -142,82 +105,15 @@
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/update-check existing-document (select-keys body [:collection_id :archived]))
-    (m.document/update-document! existing-document body)))
+    (write/update-document! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document."
   [{:keys [document-id]} :- [:map {:closed true} [:document-id ms/PositiveInt]]]
   (let [document (api/check-404 (documents.db/document document-id))]
     (api/write-check document)
-    (when-not (:archived document)
-      (let [msg (tru "Document must be archived before it can be deleted.")]
-        (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
-    (documents.db/delete-document! document-id)
+    (write/delete-document! document)
     api/generic-204-no-content))
-
-;;; ---------------------------------------------------- Copy --------------------------------------------------------
-
-(mu/defn- copy-cards-for-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
-  "Copies all cards that belong to the source document to the new document.
-
-  Args:
-  - source-document-id: ID of the document being copied
-  - new-document-id: ID of the newly created document
-  - new-collection-id: Collection ID for the new cards
-
-  Returns:
-  - Map of old-card-id -> new-card-id"
-  [source-document-id :- ms/PositiveInt
-   new-document-id :- ms/PositiveInt
-   new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (documents.db/cards-for-document source-document-id)]
-    (reduce (fn [accum card]
-              ;; The document_id FK can outlive a card's presence in the document body, and the card may sit in a
-              ;; collection the caller cannot read. Read-check each card before copying, mirroring
-              ;; `clone-cards-in-document!`.
-              (api/read-check card)
-              (let [new-card (m.document/clone-card! (-> card
-                                                         (dissoc :id :entity_id :created_at :updated_at :creator_id
-                                                                 :public_uuid :made_public_by_id :cache_invalidated_at)
-                                                         (assoc :document_id new-document-id
-                                                                :collection_id new-collection-id))
-                                                     @api/*current-user*)]
-                (when (or (:archived card) (:archived_directly card))
-                  (documents.db/update-card! (:id new-card)
-                                             {:archived          (boolean (:archived card))
-                                              :archived_directly (boolean (:archived_directly card))}))
-                (assoc accum (:id card) (:id new-card))))
-            {}
-            (t2/hydrate cards-to-copy :can_read))))
-
-(defn copy-document!
-  "Copies the document with `from-document-id` into `:collection_id` (nil is the root) along with the questions saved
-  inside it and returns the new document, requiring read permission on the source and create permission on the
-  destination collection."
-  [from-document-id {:keys [name collection_id collection_position]}]
-  (api/create-check :model/Document {:collection_id collection_id})
-  (let [existing-document (api/check-404
-                           (api/read-check
-                            (documents.db/unarchived-document from-document-id)))
-        document-data {:name                (or name (:name existing-document))
-                       :document            (:document existing-document)
-                       :content_type        (:content_type existing-document)
-                       :creator_id          api/*current-user-id*
-                       :collection_id       collection_id
-                       :collection_position collection_position}
-        new-document (events/with-batched-events
-                       (when collection_position
-                         (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
-                       (let [new-document-id (documents.db/insert-document! document-data)
-                             card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
-                         (when (seq card-id-map)
-                           (documents.db/update-document! new-document-id
-                                                          (m.document/update-cards-in-ast
-                                                           {:document (:document existing-document)
-                                                            :content_type (:content_type existing-document)}
-                                                           card-id-map)))
-                         (m.document/get-document new-document-id)))]
-    new-document))
 
 (api.macros/defendpoint :post "/:from-document-id/copy" :- [:map [:id ::documents.schema/document.id]]
   "Copy a Document."
@@ -228,9 +124,9 @@
                                                         [:name                {:optional true} [:maybe documents.schema/DocumentName]]
                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
-  (copy-document! from-document-id {:name                name
-                                    :collection_id       collection_id
-                                    :collection_position collection_position}))
+  (write/copy-document! from-document-id {:name                name
+                                          :collection_id       collection_id
+                                          :collection_position collection_position}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -249,16 +145,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :archived false)
-  ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
-  ;; Only one request will successfully create the UUID; both will return the same value.
-  (t2/with-transaction [_conn]
-    (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
-      {:uuid existing-uuid}
-      (do
-        (documents.db/update-document! document-id
-                                       {:public_uuid       (str (random-uuid))
-                                        :made_public_by_id api/*current-user-id*})
-        {:uuid (documents.db/document-public-uuid document-id)}))))
+  {:uuid (write/create-public-link! document-id api/*current-user-id*)})
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
   "Remove the public link for a Document.
@@ -275,9 +162,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
-  (documents.db/update-document! document-id
-                                 {:public_uuid       nil
-                                  :made_public_by_id nil})
+  (write/delete-public-link! document-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map

@@ -56,8 +56,8 @@
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.scoring :as semantic.scoring]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [next.jdbc :as jdbc])
   (:import

@@ -4,8 +4,8 @@
    [metabase-enterprise.search.semantic.index :as semantic.index]
    [metabase-enterprise.search.semantic.test-util :as semantic.tu]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

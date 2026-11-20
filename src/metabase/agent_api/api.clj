@@ -1362,12 +1362,12 @@
 
 (defn- insert-new-dashcard!
   "Insert a new dashcard at `position-fields` on `tab-id` and record it in the mutation `state`.
-   Goes through [[dashboard-card/create-dashboard-cards!]] so model-level invariants (e.g. no
+   Goes through [[dashboards.write/create-dashboard-cards!]] so model-level invariants (e.g. no
    document-backed cards on dashboards) are enforced. The returned instance (with its :id) goes
    into :placed so later mutations in the batch — notably a `move` to \"top\", which shifts every
    other card by id — can address it."
   [state dashboard-id tab-id position-fields columns]
-  (let [new-dashcard (first (dashboard-card/create-dashboard-cards!
+  (let [new-dashcard (first (dashboards.write/create-dashboard-cards!
                              [(merge position-fields
                                      {:dashboard_id     dashboard-id
                                       :dashboard_tab_id tab-id}
@@ -1475,7 +1475,7 @@
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
-            (dashboard-card/delete-dashboard-cards! [dashcard_id])
+            (dashboards.write/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1527,7 +1527,7 @@
     ;; Adding/removing dashcards can orphan (or resurrect) dashboard questions — cards internal to
     ;; this dashboard. Sync their archived state from the final dashcard set, like the REST path.
     (when (or (seq (:added @state)) (seq (:removed @state)))
-      (dashboard-card/archive-or-unarchive-internal-dashboard-questions!
+      (dashboards.write/archive-or-unarchive-internal-dashboard-questions!
        dashboard-id (agent-api.db/dashcards dashboard-id)))
     (select-keys @state [:added :removed :moved])))
 

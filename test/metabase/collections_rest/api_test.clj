@@ -11,6 +11,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.collections.write :as collections.write]
    [metabase.config.core :as config]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -19,7 +20,7 @@
    [metabase.permissions.models.collection.graph :as graph]
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.write :as queries.write]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.test-util :as revisions.tu]
@@ -270,7 +271,7 @@
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
     (with-collection-hierarchy! [a b c d e f g]
-      (collection/move-collection! a (collection/children-location personal-collection))
+      (collections.write/move-collection! a (collection/children-location personal-collection))
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
             response-lucky      (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -572,7 +573,7 @@
 (deftest collection-tree-library-test
   (testing "GET /api/collection/tree"
     (without-library
-     (let [_ (collection/create-library-collection!)]
+     (let [_ (collections.write/create-library-collection!)]
        (testing "By default it does not include library items"
          (let [response (mt/user-http-request :rasta :get 200 "collection/tree")
                all-types (flatten-tree-types response)]
@@ -599,7 +600,7 @@
   (testing "GET /api/collection/tree with include-library"
     (without-library
      (mt/with-model-cleanup [:model/Collection]
-       (collection/create-library-collection!)
+       (collections.write/create-library-collection!)
        (with-library-not-synced
          (let [data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
                _subcoll     (mt/user-http-request :crowberto :post 200 "collection"
@@ -624,7 +625,7 @@
   (testing "GET /api/collection/:id/items"
     (without-library
      (mt/with-model-cleanup [:model/Collection]
-       (collection/create-library-collection!)
+       (collections.write/create-library-collection!)
        (with-library-not-synced
          (let [library      (t2/select-one :model/Collection :type collection/library-collection-type)
                data-coll    (t2/select-one :model/Collection :entity_id @#'collection/library-data-entity-id)
@@ -1472,11 +1473,13 @@
       (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:name "Renamed" :archived true})
       (is (= "Folder" (t2/select-one-fn :name :model/Collection :id folder-id))))
     (testing "an already archived transforms folder can still be unarchived"
-      (t2/update! :model/Collection :id folder-id {:archived             true
-                                                   :archived_directly    true
-                                                   :archive_operation_id (str (random-uuid))})
-      (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived false})
-      (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))))
+      (mt/with-temp [:model/Collection {archived-id :id} {:name                 "Archived Folder"
+                                                          :namespace            :transforms
+                                                          :archived             true
+                                                          :archived_directly    true
+                                                          :archive_operation_id (str (random-uuid))}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" archived-id) {:archived false})
+        (is (false? (t2/select-one-fn :archived :model/Collection :id archived-id)))))))
 
 (deftest collections-are-moved-to-trash-when-archived
   (testing "I can trash something by marking it as archived"
@@ -2277,7 +2280,7 @@
 (deftest collection-root-items-library-test
   (testing "GET /api/collection/root/items"
     (without-library
-     (let [_ (collection/create-library-collection!)]
+     (let [_ (collections.write/create-library-collection!)]
        (testing "By default it does not include library items"
          (let [response (mt/user-http-request :rasta :get 200 "collection/root/items")
                all-types (map :type (:data response))]
@@ -2736,14 +2739,14 @@
       ;; Initially no cards should have dashboard_id set
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
       (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card2-id)))
-      ;; Mock card/update-card! to fail on the second call
-      (mt/with-dynamic-fn-redefs [card/update-card!
+      ;; Mock queries.write/update-card! to fail on the second call
+      (mt/with-dynamic-fn-redefs [queries.write/update-card!
                                   (let [call-count (atom 0)]
                                     (fn [& args]
                                       (swap! call-count inc)
                                       (when (= @call-count 2)
                                         (throw (ex-info "Simulated failure" {})))
-                                      (apply (mt/original-fn #'card/update-card!) args)))]
+                                      (apply (mt/original-fn #'queries.write/update-card!) args)))]
         (mt/user-http-request :crowberto :post 500
                               (format "collection/%d/move-dashboard-question-candidates" coll-id)))
       ;; Verify neither card was moved (operation rolled back)
@@ -3327,7 +3330,7 @@
   (testing "POST /api/collection"
     (testing "Child collection of library collection should inherit the :type"
       (mt/with-model-cleanup [:model/Collection]
-        (collection/create-library-collection!)
+        (collections.write/create-library-collection!)
         (with-library-not-synced
           (doseq [[entity-id collection-type] [[@#'collection/library-data-entity-id    "library-data"]
                                                [@#'collection/library-metrics-entity-id "library-metrics"]]]

@@ -38,6 +38,30 @@
                                     :card_id          (:id card)
                                     :exploration_id   (:id expl)}))))))))
 
+(deftest exactly-one-reference-kept-on-update-test
+  (testing "an update keeps exactly one of :card_id / :exploration_id set"
+    (mt/with-temp [:model/User       u    {}
+                   :model/Collection coll {}
+                   :model/Card       card {:collection_id (:id coll)}
+                   :model/Exploration expl {:name "sru-update-test" :creator_id (:id u)}]
+      (let [sr-id (stored-result!)
+            id    (first (t2/insert-returning-pks! :model/StoredResultUse
+                                                   {:stored_result_id sr-id :card_id (:id card)}))]
+        (testing "clearing the only reference is rejected"
+          (is (thrown? Exception
+                       (t2/update! :model/StoredResultUse :id id {:card_id nil})))
+          (is (= (:id card) (t2/select-one-fn :card_id :model/StoredResultUse :id id))))
+        (testing "adding a second reference is rejected"
+          (is (thrown? Exception
+                       (t2/update! :model/StoredResultUse :id id {:exploration_id (:id expl)}))))
+        (testing "replacing the reference is allowed"
+          (t2/update! :model/StoredResultUse :id id {:card_id nil :exploration_id (:id expl)})
+          (is (=? {:card_id nil :exploration_id (:id expl)}
+                  (t2/select-one :model/StoredResultUse :id id))))
+        (testing "an update of another column is allowed"
+          (t2/update! :model/StoredResultUse :id id {:stored_result_id sr-id})
+          (is (= (:id expl) (t2/select-one-fn :exploration_id :model/StoredResultUse :id id))))))))
+
 (deftest stored-result-gate-inputs-for-card-test
   (testing "a card's snapshots are read without their result blob"
     (mt/with-temp [:model/Card card {}]

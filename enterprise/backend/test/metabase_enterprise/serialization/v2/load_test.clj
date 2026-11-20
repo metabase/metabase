@@ -18,6 +18,7 @@
    [metabase.actions.schema :as actions.schema]
    [metabase.actions.write :as action.write]
    [metabase.collections.models.collection :as collection]
+   [metabase.collections.write :as collections.write]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -3403,11 +3404,11 @@
         (let [serialized (atom nil)]
           (ts/with-dbs [source-db dest-db]
             (ts/with-db source-db
-              (collection/create-library-collection!)
+              (collections.write/create-library-collection!)
               (mt/with-user-locale export-locale
                 (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true})))))
             (ts/with-db dest-db
-              (collection/create-library-collection!)
+              (collections.write/create-library-collection!)
               (mt/with-user-locale import-locale
                 (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized)))
               (is (= "Library"

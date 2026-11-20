@@ -1,22 +1,8 @@
 (ns metabase.users.util
   (:require
-   [clojure.set :as set]
-   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.auth-identity.core :as auth-identity]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.notification.core :as notification]
-   [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.settings.core :as setting]
    [metabase.users.db :as users.db]
-   [metabase.users.models.user :as user]
-   [metabase.users.schema :as users.schema]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.users.models.user :as user]))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -27,89 +13,11 @@
     (= user-id api/*current-user-id*)
     api/*is-superuser?*)))
 
-(defn- maybe-set-user-permissions-groups!
-  [user-or-id new-groups-or-ids]
-  (when (and new-groups-or-ids
-             (not= (user/group-ids user-or-id)
-                   (set (map u/the-id new-groups-or-ids))))
-    (api/check-superuser)
-    (user/set-permissions-groups! user-or-id new-groups-or-ids)))
-
-(defenterprise set-group-memberships!
-  "Set the group memberships of `user-or-id`. Without advanced permissions only the group IDs count, and changing them
-  requires a superuser."
-  metabase-enterprise.advanced-permissions.oss-hooks
-  [user-or-id new-user-group-memberships]
-  (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))
-
-(mu/defn maybe-set-user-group-memberships!
-  "Implementation for `POST /api/user` and friends; set the PermissionsGroupMemberships for a `user-or-id`."
-  [user-or-id :- ::lib.schema.id/user
-   new-user-group-memberships :- [:maybe [:sequential ::users.schema/user-group-membership]]
-   & [is-superuser?] :- [:* [:maybe :boolean]]]
-  (when new-user-group-memberships
-    ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
-    ;; agrees with is_superuser -- don't want to have ambiguous behavior
-    (when (some? is-superuser?)
-      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (perms/admin-group))))
-                  "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
-    (set-group-memberships! user-or-id new-user-group-memberships)))
-
 (defn fetch-user
   "Implementation for `/api/user` endpoints; fetch a User from the app DB by `:id`, optionally requiring `:type`
    and/or `:is_active` to match."
   [& {:keys [id type is_active]}]
   (users.db/admin-or-self-visible-user user/admin-or-self-visible-columns id :type type :is-active? is_active))
-
-(mu/defn invite-user!
-  "Implementation for `POST /api/user`, invites a user to Metabase."
-  [{:keys [email
-           user-group-memberships
-           source
-           tenant-id
-           invite-target]
-    :as   attributes} :- [:map {:closed true}
-                          [:first-name              {:optional true} [:maybe ms/NonBlankString]]
-                          [:last-name               {:optional true} [:maybe ms/NonBlankString]]
-                          [:email                   ms/Email]
-                          [:password                {:optional true} [:maybe ms/NonBlankString]]
-                          [:user-group-memberships  {:optional true} [:maybe [:sequential ::users.schema/user-group-membership]]]
-                          [:login-attributes        {:optional true} [:maybe users.schema/LoginAttributes]]
-                          [:source                  {:optional true, :default :admin} [:enum :setup :admin]]
-                          [:tenant-id               {:optional true} [:maybe ms/PositiveInt]]
-                          [:invite-target           {:optional true} [:maybe users.schema/InviteTarget]]]]
-  (api/check-400 (not (users.db/user-email-exists? (u/lower-case-en email)))
-                 {:errors     {:email (tru "Email address already in use.")}
-                  :error_code "email-already-in-use"})
-  (api/checkp (not (and tenant-id
-                        (not (setting/get :use-tenants))))
-              "tenant_id"
-              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
-  (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id
-                       (notification/with-skip-sending-notification (boolean tenant-id)
-                         (user/create-and-invite-user!
-                          (-> attributes
-                              (u/select-non-nil-keys [:first-name :last-name :email :password :login-attributes :tenant-id])
-                              (set/rename-keys {:first-name             :first_name
-                                                :last-name              :last_name
-                                                :user-group-memberships :user_group_memberships
-                                                :login-attributes       :login_attributes
-                                                :tenant-id              :tenant_id}))
-                          @api/*current-user*
-                          (= source :setup)
-                          invite-target)))]
-      (when-let [password (:password attributes)]
-        (auth-identity/set-password! new-user-id password))
-      (maybe-set-user-group-memberships! new-user-id user-group-memberships)
-      (when (= source :setup)
-        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
-      (analytics/track-event! :snowplow/invite
-                              {:event           :invite-sent
-                               :invited-user-id new-user-id
-                               :source          (or source :admin)})
-      (-> (fetch-user :id new-user-id)
-          (t2/hydrate :user_group_memberships)))))
 
 (defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."

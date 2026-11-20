@@ -1,8 +1,8 @@
-(ns metabase-enterprise.action-v2.models.undo-test
+(ns metabase-enterprise.action-v2.write-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
+   [metabase-enterprise.action-v2.write :as write]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -13,13 +13,13 @@
 ;; TODO: uncomment when diff-keys is used
 #_(deftest ^:parallel diff-keys-test
     (testing "Detect which keys have changes"
-      (is (= [:a :b :c] (#'undo/diff-keys
+      (is (= [:a :b :c] (#'write/diff-keys
                          nil
                          (zipmap [:a :b :c] (range)))))
-      (is (= [:a :b :c] (#'undo/diff-keys
+      (is (= [:a :b :c] (#'write/diff-keys
                          (zipmap [:a :b :c] (range))
                          nil)))
-      (is (= [:b :c :d] (#'undo/diff-keys
+      (is (= [:b :c :d] (#'write/diff-keys
                          (zipmap [:a :b :c] (range))
                          (zipmap [:a :c :d] (range)))))))
 
@@ -34,7 +34,7 @@
   "Return the batch number of the new change that we would (un-)revert.
   NOTE: this does not check whether there is a conflict preventing us from actually performing it."
   [undo-or-redo user-id scope]
-  (:batch_num (first (#'undo/next-batch (= :undo undo-or-redo) user-id scope))))
+  (:batch_num (first (#'write/next-batch (= :undo undo-or-redo) user-id scope))))
 
 (defn- undo-via-api! [user-id scope]
   (mt/user-http-request user-id :post "/ee/action-v2/execute-bulk"
@@ -245,75 +245,75 @@
           (let [user-1     (mt/user->id :crowberto)
                 user-2     (mt/user->id :rasta)]
             (testing "Total rows"
-              (with-redefs [undo/retention-total-rows 17]
+              (with-redefs [write/retention-total-rows 17]
                 (dotimes [i 25]
-                  (undo/track-change! user-1
-                                      {:table-id table-1}
-                                      {table-1
-                                       {{:id 1} {:raw_before (if (even? i) {} nil)
-                                                 :raw_after  (if (even? i) nil {})}
-                                        {:id 2} {:raw_before (if (odd? i) {} nil)
-                                                 :raw_after  (if (odd? i) nil {})}}})))
+                  (write/track-change! user-1
+                                       {:table-id table-1}
+                                       {table-1
+                                        {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                  :raw_after  (if (even? i) nil {})}
+                                         {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                  :raw_after  (if (odd? i) nil {})}}})))
               (is (= 16 (t2/count :model/Undo)))
               (is (= 8 (count-batches))))
             (testing "Total batches"
-              (with-redefs [undo/retention-total-batches 15]
+              (with-redefs [write/retention-total-batches 15]
                 (dotimes [i 25]
-                  (undo/track-change! user-1
-                                      {:table-id table-1}
-                                      {table-1
-                                       {{:id 1} {:raw_before (if (even? i) {} nil)
-                                                 :raw_after  (if (even? i) nil {})}
-                                        {:id 2} {:raw_before (if (odd? i) {} nil)
-                                                 :raw_after  (if (odd? i) nil {})}}})))
+                  (write/track-change! user-1
+                                       {:table-id table-1}
+                                       {table-1
+                                        {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                  :raw_after  (if (even? i) nil {})}
+                                         {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                  :raw_after  (if (odd? i) nil {})}}})))
               (is (= 30 (t2/count :model/Undo)))
               (is (= 15 (count-batches))))
             (testing "User id"
-              (with-redefs [undo/retention-batches-per-user 5]
+              (with-redefs [write/retention-batches-per-user 5]
                 (dotimes [i 25]
                   ;; just toggle existence
-                  (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
-                                      {:table-id table-1}
-                                      {table-1
-                                       {{:id 1} {:raw_before (if (even? i) {} nil)
-                                                 :raw_after  (if (even? i) nil {})}
-                                        {:id 2} {:raw_before (if (odd? i) {} nil)
-                                                 :raw_after  (if (odd? i) nil {})}}})))
+                  (write/track-change! (if (zero? (mod i 3)) user-1 user-2)
+                                       {:table-id table-1}
+                                       {table-1
+                                        {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                  :raw_after  (if (even? i) nil {})}
+                                         {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                  :raw_after  (if (odd? i) nil {})}}})))
               (is (= 20 (t2/count :model/Undo)))
               (is (= 10 (count-batches)))
               (is (= 5 (count-batches [:= :user_id user-1])))
               (is (= 5 (count-batches [:= :user_id user-2]))))
             (testing "Scope"
               (t2/delete! :model/Undo)
-              (with-redefs [undo/retention-batches-per-scope 9]
+              (with-redefs [write/retention-batches-per-scope 9]
                 (dotimes [i 35]
                   ;; just toggle existence
                   (let [table-id (if (zero? (mod i 5)) table-1 table-2)]
-                    (undo/track-change! user-1
-                                        {:table-id table-id}
-                                        {table-id
-                                         {{:id 1} {:raw_before (if (even? i) {} nil)
-                                                   :raw_after  (if (even? i) nil {})}
-                                          {:id 2} {:raw_before (if (odd? i) {} nil)
-                                                   :raw_after  (if (odd? i) nil {})}}})))
+                    (write/track-change! user-1
+                                         {:table-id table-id}
+                                         {table-id
+                                          {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                    :raw_after  (if (even? i) nil {})}
+                                           {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                    :raw_after  (if (odd? i) nil {})}}})))
                 (is (= 32 (t2/count :model/Undo)))
                 (is (= 16 (count-batches)))
                 (is (= 7 (count-batches [:= :table_id table-1])))
                 (is (= 9 (count-batches [:= :table_id table-2])))))
             (testing "A haphazard mix"
-              (with-redefs [undo/retention-total-rows        17
-                            undo/retention-total-batches     21
-                            undo/retention-batches-per-user  5
-                            undo/retention-batches-per-scope 9]
+              (with-redefs [write/retention-total-rows        17
+                            write/retention-total-batches     21
+                            write/retention-batches-per-user  5
+                            write/retention-batches-per-scope 9]
                 (dotimes [i 25]
                   ;; just toggle existence
-                  (undo/track-change! (if (zero? (mod i 3)) user-1 user-2)
-                                      {:dashboard-id 1}
-                                      {(if (zero? (mod i 5)) table-1 table-2)
-                                       {{:id 1} {:raw_before (if (even? i) {} nil)
-                                                 :raw_after  (if (even? i) nil {})}
-                                        {:id 2} {:raw_before (if (odd? i) {} nil)
-                                                 :raw_after  (if (odd? i) nil {})}}})))
+                  (write/track-change! (if (zero? (mod i 3)) user-1 user-2)
+                                       {:dashboard-id 1}
+                                       {(if (zero? (mod i 5)) table-1 table-2)
+                                        {{:id 1} {:raw_before (if (even? i) {} nil)
+                                                  :raw_after  (if (even? i) nil {})}
+                                         {:id 2} {:raw_before (if (odd? i) {} nil)
+                                                  :raw_after  (if (odd? i) nil {})}}})))
               (is (= 16 (t2/count :model/Undo)))
               (is (= 8 (count-batches)))
               (is (= 3 (count-batches [:= :user_id user-1])))
@@ -333,7 +333,7 @@
             ;; Create a regular undoable change first
             (action-v2.tu/create-rows! table-id user-id 200 [{:id 1, :name "Undoable change"}])
             ;; Manually create a non-undoable change using track-change! directly
-            (undo/track-change!
+            (write/track-change!
              user-id
              test-scope
              {table-id

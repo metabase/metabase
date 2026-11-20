@@ -7,7 +7,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.models.card :as card]
+   [metabase.queries.write :as queries.write]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -74,8 +74,8 @@
       (mt/with-premium-features #{:dependencies}
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [source-card (card/create-card! (card-with-query "Source card" :products) user)
-                  child-card  (card/create-card! (card-sourced-from "Child card" source-card) user)
+            (let [source-card (queries.write/create-card! (card-with-query "Source card" :products) user)
+                  child-card  (queries.write/create-card! (card-sourced-from "Child card" source-card) user)
                   _            (deps.test/synchronously-run-dependency-job!)
                   found-usages (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
@@ -87,9 +87,9 @@
       (mt/with-premium-features #{:dependencies}
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [source-card      (card/create-card! (card-with-query "Source card" :products) user)
-                  child-card       (card/create-card! (card-sourced-from "Child card" source-card) user)
-                  grandchild-card  (card/create-card! (card-sourced-from "Grandchild card" child-card) user)
+            (let [source-card      (queries.write/create-card! (card-with-query "Source card" :products) user)
+                  child-card       (queries.write/create-card! (card-sourced-from "Child card" source-card) user)
+                  grandchild-card  (queries.write/create-card! (card-sourced-from "Grandchild card" child-card) user)
                   _                (deps.test/synchronously-run-dependency-job!)
                   found-usages     (replacement.usages/transitive-usages [:card (:id source-card)])]
               (is (some #(= [:card (:id child-card)] %) found-usages)
@@ -103,7 +103,7 @@
       (mt/with-premium-features #{:dependencies}
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [lonely-card  (card/create-card! (card-with-query "Lonely card" :products) user)
+            (let [lonely-card  (queries.write/create-card! (card-with-query "Lonely card" :products) user)
                   _            (deps.test/synchronously-run-dependency-job!)
                   found-usages (replacement.usages/transitive-usages [:card (:id lonely-card)])]
               (is (empty? found-usages)
@@ -115,7 +115,7 @@
       (mt/with-premium-features #{:dependencies}
         (let [user (mt/fetch-user :rasta)]
           (mt/with-model-cleanup [:model/Card :model/Dependency]
-            (let [card-on-table (card/create-card! (card-with-query "Card on products" :products) user)
+            (let [card-on-table (queries.write/create-card! (card-with-query "Card on products" :products) user)
                   _             (deps.test/synchronously-run-dependency-job!)
                   found-usages  (replacement.usages/transitive-usages [:table (mt/id :products)])]
               (is (some #(= [:card (:id card-on-table)] %) found-usages)

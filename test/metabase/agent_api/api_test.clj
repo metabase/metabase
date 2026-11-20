@@ -1457,7 +1457,7 @@
                                :parent_collection_id parent-id}))))
   ;; Parent-inheritance behaviors (:namespace, :type "library*", :is_remote_synced, exclusion of
   ;; :type "trash") are unit-tested directly against `apply-defaults-to-collection` in
-  ;; `metabase.collections.create-test`, since the HTTP boundary is gated by other checks
+  ;; `metabase.collections.write-test`, since the HTTP boundary is gated by other checks
   ;; (library collections refuse writes, snippet-namespace collections require explicit perms)
   ;; that make end-to-end coverage redundant.
   )

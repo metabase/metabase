@@ -28,7 +28,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -165,19 +164,6 @@
   [collection]
   (= (:type collection) library-dashboards-collection-type))
 
-(defn- set-remote-synced-by-depth!
-  "Set `:is_remote_synced` to `remote-synced?` on `collections`, a parent in a statement before its children, since the
-  update hook of each checks the flag of its stored parent."
-  [collections remote-synced?]
-  (t2/with-transaction [_conn]
-    (doseq [[_depth level] (sort-by key (group-by #(count (filter #{\/} (:location %))) collections))]
-      (collections.db/set-collections-remote-synced! (mapv :id level) remote-synced?))))
-
-(defn clear-remote-synced-collection!
-  "Marks any remote-synced-collection as non-remote-synced"
-  []
-  (set-remote-synced-by-depth! (collections.db/remote-synced-collection-locations) false))
-
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
   []
@@ -241,10 +227,12 @@
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
 
-(def ^:private library-data-entity-id
+(def library-data-entity-id
+  "The entity id of the Library's Data collection."
   "librarylibrarydatadat")
 
-(def ^:private library-metrics-entity-id
+(def library-metrics-entity-id
+  "The entity id of the Library's Metrics collection."
   "librarylibrarymetrics")
 
 (def ^:private library-dashboards-entity-id
@@ -256,32 +244,6 @@
     library-data-entity-id
     library-metrics-entity-id
     library-dashboards-entity-id})
-
-(defn- grant-library-collection-permissions!
-  "Gives All Users read and Data Analysts read-write access to the Library `collection`."
-  [collection]
-  (collections.db/delete-permissions-for-collection! (:id collection))
-  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
-  (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
-
-(defn create-library-collection!
-  "Create the Library collection. Returns Created collection. Throws if it already exists."
-  []
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
-        base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
-    (run! grant-library-collection-permissions! [library data metrics])
-    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -647,7 +609,7 @@
           (or (empty? ids)
               (apply distinct? ids))))))
 
-(def ^:private LocationPath
+(def LocationPath
   "Schema for a directory-style 'path' to the location of a Collection."
   [:fn #'valid-location-path?])
 
@@ -1408,14 +1370,6 @@
 
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
-(defn set-remote-synced!
-  "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
-  [collection remote-synced?]
-  (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (:id collection)
-                                                                         (children-location collection)
-                                                                         remote-synced?)
-                               remote-synced?))
-
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [_model k items]
@@ -1642,25 +1596,6 @@
   metabase-enterprise.data-studio.api.table
   [_seed-table-ids]
   nil)
-
-(mu/defn move-collection!
-  "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   new-location :- LocationPath]
-  (let [orig-children-location (children-location collection)
-        new-children-location  (children-location (assoc collection :location new-location))]
-    (when (= (:type collection) tenant-specific-root-collection-type)
-      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; first move this Collection
-    (log/infof "Moving Collection %s and its descendants from %s to %s"
-               (u/the-id collection) (:location collection) new-location)
-    (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
-    (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection) {:location new-location})
-      ;; we need to update all the descendant collections as well...
-      (collections.db/move-descendant-collections! orig-children-location
-                                                   new-children-location
-                                                   (boolean (collections.db/collection-remote-synced? (u/the-id collection)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -2016,6 +1951,8 @@
                  (some changes [:type :personal_owner_id :is_sample :archive_operation_id]))
              (perms/data-app-collection? (:id collection-before-updates))))
    [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
+  (when (and (:archived changes) (= transforms-ns (keyword (:namespace collection-before-updates))))
+    (throw (ex-info (tru "A transforms folder cannot be archived. Delete it instead.") {:status-code 400})))
   (when (or (:personal_owner_id collection-before-updates)
             (and (not *allow-modifying-tenant-root-collections?*)
                  (= (:type collection-before-updates) tenant-specific-root-collection-type)))

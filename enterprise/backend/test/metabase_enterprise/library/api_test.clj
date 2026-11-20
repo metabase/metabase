@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [without-library]]
+   [metabase.collections.write :as collections.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
@@ -34,7 +35,7 @@
        (testing "When there is no library, returns a message but still 200"
          (let [response (mt/user-http-request :crowberto :get 200 "ee/library")]
            (is (= {:data nil} response))))
-       (let [_          (collection/create-library-collection!)
+       (let [_          (collections.write/create-library-collection!)
              data-id    (t2/select-one-pk :model/Collection :type collection/library-data-collection-type)
              metrics-id (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
              response   (mt/user-http-request :crowberto :get 200 "ee/library")]
@@ -68,7 +69,7 @@
   (mt/with-premium-features #{:library}
     (mt/with-discard-model-updates! [:model/Collection]
       (without-library
-       (collection/create-library-collection!)
+       (collections.write/create-library-collection!)
        (let [data-folder   (t2/select-one :model/Collection :type collection/library-data-collection-type)
              metrics-id    (t2/select-one-pk :model/Collection :type collection/library-metrics-collection-type)
              dashboards-id (t2/select-one-pk :model/Collection :type collection/library-dashboards-collection-type)
@@ -100,7 +101,7 @@
     (perms.test-util/with-restored-perms!
       (mt/with-discard-model-updates! [:model/Collection]
         (without-library
-         (collection/create-library-collection!)
+         (collections.write/create-library-collection!)
          (let [data-folder    (t2/select-one :model/Collection :type collection/library-data-collection-type)
                metrics-folder (t2/select-one :model/Collection :type collection/library-metrics-collection-type)
                below          (fn [user] (:below (mt/user-http-request user :get 200 "ee/library")))]

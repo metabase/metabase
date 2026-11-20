@@ -12,6 +12,7 @@
    [metabase.audit-app.impl :as audit]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
+   [metabase.collections.write :as collections.write]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -1051,7 +1052,7 @@
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
     (with-collection-hierarchy! [{:keys [b e], :as collections}]
-      (collection/move-collection! e (collection/children-location b))
+      (collections.write/move-collection! e (collection/children-location b))
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
                         "F" {"G" {}}}}}
@@ -1066,7 +1067,7 @@
     ;;           |                           |
     ;;           +-> F -> G                  +-> F -> G
     (with-collection-hierarchy! [{:keys [b d], :as collections}]
-      (collection/move-collection! d (collection/children-location b))
+      (collections.write/move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
              (collection-locations (vals collections)))))))
@@ -1080,7 +1081,7 @@
     ;;           |
     ;;           +-> F -> G         F -> G
     (with-collection-hierarchy! [{:keys [f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
+      (collections.write/move-collection! f (collection/children-location collection/root-collection))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
               "F" {"G" {}}}
@@ -1095,8 +1096,8 @@
     ;;           |                     |
     ;;           +-> F -> G            +-> G
     (with-collection-hierarchy! [{:keys [a f], :as collections}]
-      (collection/move-collection! f (collection/children-location collection/root-collection))
-      (collection/move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
+      (collections.write/move-collection! f (collection/children-location collection/root-collection))
+      (collections.write/move-collection! a (collection/children-location (t2/select-one :model/Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
                         "C" {"D" {"E" {}}}}
                    "G" {}}}
@@ -1583,7 +1584,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Collection must be in the same namespace as its parent"
-               (collection/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
+               (collections.write/move-collection! collection-2 (format "/%d/" (:id parent-collection)))))))
       (testing (format "You should not be able to change the namespace of a Collection from %s to %s"
                        (pr-str parent-namespace) (pr-str child-namespace))
         (is (thrown-with-msg?
@@ -1832,14 +1833,14 @@
 
 (deftest has-remote-synced-collection?-test
   (testing "Returns false when no remote-synced collections exist"
-    (collection/clear-remote-synced-collection!)
+    (collections.write/clear-remote-synced-collection!)
     (is (false? (collection/has-remote-synced-collection?))))
   (testing "Returns true when at least one remote-synced collection exists"
     (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
       (is (true? (collection/has-remote-synced-collection?)))))
   (testing "Returns false after clearing remote-synced collections"
     (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
-      (collection/clear-remote-synced-collection!)
+      (collections.write/clear-remote-synced-collection!)
       (is (false? (collection/has-remote-synced-collection?))))))
 
 (deftest remote-synced-parent-validation-creating-regular-in-remote-test
@@ -1993,7 +1994,7 @@
 (deftest create-library
   (mt/with-empty-h2-app-db!
     (testing "Can create a library if none exist"
-      (let [library (collection/create-library-collection!)]
+      (let [library (collections.write/create-library-collection!)]
         (is (= "Library" (:name library)))
         (is (= ["Data" "Metrics"] (sort (map :name (collection/descendants library)))))
         (testing "Only admins can write to the library, all users can read"
@@ -2004,7 +2005,7 @@
               (is (true? (mi/can-read? (t2/hydrate (t2/select-one :model/Collection :id sub-id) :can_read))))
               (is (false? (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id sub-id) :can_write)))))))))
     (testing "Creating a Layer when one already exists throws an exception"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collection/create-library-collection!))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Semantic layer already exists" (collections.write/create-library-collection!))))
     ;;cleanup created libraries
     (t2/delete! :model/Collection :type [:in [collection/library-collection-type
                                               collection/library-data-collection-type
@@ -2067,7 +2068,7 @@
                                   (t2/update! :model/Collection :id collection-id changes)))))
         (testing "move-collection!"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
-                                (collection/move-collection! collection (collection/children-location other)))))
+                                (collections.write/move-collection! collection (collection/children-location other)))))
         (t2/update! :model/Collection :id collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
         (is (=? {:location "/" :is_remote_synced true :description "Birds"}
                 (t2/select-one :model/Collection :id collection-id)))))))
@@ -2200,3 +2201,13 @@
           (grant! descendant)
           (is (true? (can-update? {:parent_id (:id target)})))
           (is (true? (can-update? {:location (collection/children-location target)}))))))))
+
+(deftest transforms-folder-cannot-be-archived-test
+  (mt/with-temp [:model/Collection folder {:name "Transforms Folder" :namespace :transforms}]
+    (testing "a plain update of archived is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A transforms folder cannot be archived"
+                            (t2/update! :model/Collection :id (:id folder) {:archived true})))
+      (is (false? (t2/select-one-fn :archived :model/Collection :id (:id folder)))))
+    (testing "other columns of the folder can still change"
+      (t2/update! :model/Collection :id (:id folder) {:name "Renamed Folder"})
+      (is (= "Renamed Folder" (t2/select-one-fn :name :model/Collection :id (:id folder)))))))

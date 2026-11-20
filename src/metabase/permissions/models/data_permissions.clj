@@ -7,6 +7,7 @@
    [metabase.permissions.app-db-copy :as permissions.app-db-copy]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -67,8 +68,18 @@
     (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
                     {:status-code 400}))))
 
+(defn- check-database-level-type
+  "Throws a 400 when `row` sets on a Table a permission type that exists only for a whole Database."
+  [{:keys [perm_type table_id]}]
+  (let [perm-type (keyword perm_type)]
+    (when (and (some? table_id)
+               (= :model/Database (get-in permissions.schema/data-permissions [perm-type :model])))
+      (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
+                      {:status-code 400})))))
+
 (t2/define-before-insert :model/DataPermissions
   [permission]
+  (check-database-level-type permission)
   (check-transforms-need-native permission)
   (data-perms/assert-valid-permission permission)
   (data-perms/assert-no-destination-db-permissions! [permission])

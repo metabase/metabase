@@ -7,6 +7,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
+   [metabase.permissions.write :as perms.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -52,7 +53,7 @@
     (is (thrown-with-msg?
          Exception
          #"You cannot edit permissions for a Personal Collection or its descendants."
-         (perms/revoke-collection-permissions!
+         (perms.write/revoke-collection-permissions!
           (perms-group/all-users)
           (u/the-id (t2/select-one :model/Collection :personal_owner_id (mt/user->id :lucky))))))
     (testing "(should apply to descendants as well)"
@@ -62,12 +63,12 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot edit permissions for a Personal Collection or its descendants."
-             (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
+             (perms.write/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
     (mt/with-temp [:model/Collection {collection-id :id}]
-      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+      (perms.write/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
         (is (some? (t2/select-one :model/Collection :id collection-id)))))))
 
@@ -75,8 +76,8 @@
   (mt/with-temp [:model/Collection collection {:location (collection/children-location
                                                           (collection/user->personal-collection
                                                            (mt/user->id :lucky)))}]
-    (doseq [[perms-type f] {"read"  perms/grant-collection-read-permissions!
-                            "write" perms/grant-collection-readwrite-permissions!}]
+    (doseq [[perms-type f] {"read"  perms.write/grant-collection-read-permissions!
+                            "write" perms.write/grant-collection-readwrite-permissions!}]
       (testing (format "Should throw Exception if you use the helper function to grant %s perms for a Personal Collection"
                        perms-type)
         (is (thrown?
@@ -97,27 +98,27 @@
       (is (= nil
              (perms)))
       (testing "Should be able to grant Root Collection perms"
-        (perms/grant-collection-read-permissions! group-id collection/root-collection)
+        (perms.write/grant-collection-read-permissions! group-id collection/root-collection)
         (is (= #{"/collection/root/read/"}
                (perms))))
       (testing "Should be able to grant non-default namespace Root Collection read perms"
-        (perms/grant-collection-read-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (perms.write/grant-collection-read-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/read/" "/collection/namespace/currency/root/read/"}
                (perms))))
       (testing "Should be able to revoke Root Collection perms (shouldn't affect other namespaces)"
-        (perms/revoke-collection-permissions! group-id collection/root-collection)
+        (perms.write/revoke-collection-permissions! group-id collection/root-collection)
         (is (= #{"/collection/namespace/currency/root/read/"}
                (perms))))
       (testing "Should be able to grant Root Collection readwrite perms"
-        (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)
+        (perms.write/grant-collection-readwrite-permissions! group-id collection/root-collection)
         (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/"}
                (perms))))
       (testing "Should be able to grant non-default namespace Root Collection readwrite perms"
-        (perms/grant-collection-readwrite-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (perms.write/grant-collection-readwrite-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/" "/collection/namespace/currency/root/read/" "/collection/namespace/currency/root/"}
                (perms))))
       (testing "Should be able to revoke non-default namespace Root Collection perms (shouldn't affect default namespace)"
-        (perms/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
+        (perms.write/revoke-collection-permissions! group-id (assoc collection/root-collection :namespace "currency"))
         (is (= #{"/collection/root/"}
                (perms)))))))
 
@@ -132,10 +133,10 @@
                                      [:monitoring "/application/monitoring/"]
                                      [:setting "/application/setting/"]]]
         (testing (format "Able to grant `%s` permission" (name perm-type))
-          (perms/grant-application-permissions! group-id perm-type)
+          (perms.write/grant-application-permissions! group-id perm-type)
           (is (= (perms)  #{perm-path})))
         (testing (format "Able to revoke `%s` permission" (name perm-type))
-          (perms/revoke-application-permissions! group-id perm-type)
+          (perms.write/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))
 
 (deftest maybe-break-out-permission-data-test
@@ -160,21 +161,21 @@
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}]
     (testing "Setting and monitoring permissions should still be blocked"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                            (perms/grant-application-permissions! tenant-group-id :setting)))
+                            (perms.write/grant-application-permissions! tenant-group-id :setting)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                            (perms/grant-application-permissions! tenant-group-id :monitoring))))
+                            (perms.write/grant-application-permissions! tenant-group-id :monitoring))))
     (testing "Subscription permissions should be allowed"
-      (is (nil? (perms/grant-application-permissions! tenant-group-id :subscription))))))
+      (is (nil? (perms.write/grant-application-permissions! tenant-group-id :subscription))))))
 
 (deftest cannot-grant-collection-permissions-to-tenant-group
   ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/Collection {coll-id :id} {:location "/" :type "library-data"}]
-    (perms/revoke-collection-permissions! tenant-group-id coll-id)
+    (perms.write/revoke-collection-permissions! tenant-group-id coll-id)
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
-                          (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+                          (perms.write/grant-collection-read-permissions! tenant-group-id coll-id)))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."
-                          (perms/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
+                          (perms.write/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
 
 (deftest tenant-group-rows-insert-test
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
@@ -215,9 +216,9 @@
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
     (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? (constantly true)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
-                            (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+                            (perms.write/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
-      (perms/grant-collection-read-permissions! normal-group-id coll-id))))
+      (perms.write/grant-collection-read-permissions! normal-group-id coll-id))))
 
 (deftest can-create-use-parent-collection-perms-test
   (testing "can-create? for models using :perms/use-parent-collection-perms checks parent collection write permissions"
@@ -227,7 +228,7 @@
           (mt/with-temp [:model/PermissionsGroup group {}
                          :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                               :group_id (:id group)}]
-            (perms/grant-collection-readwrite-permissions! group coll)
+            (perms.write/grant-collection-readwrite-permissions! group coll)
             (mt/with-current-user (mt/user->id :rasta)
               (is (true? (mi/can-create? :model/Card {:collection_id (:id coll)}))))))
         (testing "cannot create in collection when user lacks write permissions"

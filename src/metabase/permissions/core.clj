@@ -19,6 +19,7 @@
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
+   [metabase.permissions.write]
    [potemkin :as p]))
 
 (comment
@@ -37,7 +38,8 @@
   metabase.permissions.util/keep-me
   metabase.permissions.validation/keep-me
   metabase.permissions.collection-permissions/keep-me
-  metabase.permissions.application-permissions/keep-me)
+  metabase.permissions.application-permissions/keep-me
+  metabase.permissions.write/keep-me)
 
 (p/import-vars
  [metabase.permissions.application-permissions
@@ -95,13 +97,7 @@
  [metabase.permissions.models.permissions
   namespace-clause
   collection-read-access-group-ids
-  current-user-has-application-permissions?
-  grant-application-permissions!
-  grant-collection-read-permissions!
-  grant-collection-readwrite-permissions!
-  grant-permissions!
-  revoke-application-permissions!
-  revoke-collection-permissions!]
+  current-user-has-application-permissions?]
  [metabase.permissions.models.permissions-group
   group-display-name
   non-magic-groups
@@ -137,9 +133,7 @@
   routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
-  sandboxed-user-for-db?
-  increment-implicit-perms-revision!
-  save-perms-revision!]
+  sandboxed-user-for-db?]
  [metabase.permissions.validation
   check-advanced-permissions-enabled
   check-group-manager
@@ -147,7 +141,16 @@
   check-manager-of-group
   has-application-permission?]
  [metabase.permissions.models.collection.graph
-  graph
+  graph]
+ [metabase.permissions.write
+  grant-application-permissions!
+  grant-collection-read-permissions!
+  grant-collection-readwrite-permissions!
+  grant-permissions!
+  increment-implicit-perms-revision!
+  revoke-application-permissions!
+  revoke-collection-permissions!
+  save-perms-revision!
   update-graph!]
  [metabase.permissions.published-tables
   can-access-via-collection?

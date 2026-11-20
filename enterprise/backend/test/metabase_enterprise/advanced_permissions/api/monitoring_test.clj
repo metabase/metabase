@@ -2,7 +2,7 @@
   "Permissions tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require
    [clojure.test :refer :all]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]))
 
 (deftest task-test

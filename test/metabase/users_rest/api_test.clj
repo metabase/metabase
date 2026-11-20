@@ -1233,34 +1233,6 @@
                                          :email            email
                                          :login_attributes {"@foo" "bar"}}))))))))
 
-(deftest ^:parallel updated-user-name-test
-  (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."
-    (let [names {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
-          nonames {:first_name nil :last_name nil}
-          firstname {:first_name "Test" :last_name nil}
-          lastname {:first_name nil :last_name "User"}]
-      ;; starting with names
-      (is (nil? (#'api.user/updated-user-name names {})))
-      (is (nil? (#'api.user/updated-user-name names {:first_name "Test"})))
-      (is (nil? (#'api.user/updated-user-name names {:last_name "User"})))
-      (is (nil? (#'api.user/updated-user-name names {:first_name "Test" :last_name "User"})))
-      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
-      (is (= {:first_name "Test" :last_name "U"} (#'api.user/updated-user-name names {:last_name "U"})))
-      (is (= {:first_name "T" :last_name "User"} (#'api.user/updated-user-name names {:first_name "T"})))
-      ;; starting with 'nil' names
-      (is (nil? (#'api.user/updated-user-name nonames {})))
-      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
-      (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
-      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil :last_name nil})))
-      (is (= {:first_name "T" :last_name "U"} (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
-      (is (= {:first_name nil :last_name "U"} (#'api.user/updated-user-name nonames {:last_name "U"})))
-      (is (= {:first_name "T" :last_name nil} (#'api.user/updated-user-name nonames {:first_name "T"})))
-      ;; starting with one name nil
-      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
-      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
-      (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
-      (is (nil? (#'api.user/updated-user-name lastname {:last_name "User"}))))))
-
 (deftest update-first-name-last-name-test
   (testing "PUT /api/user/:id"
     (testing "Test that we can update a user's first and last names"
@@ -1796,6 +1768,28 @@
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [:model/User :is_active :sso_source] :id (u/the-id user)))))))))))
+
+(deftest reactivate-user-requires-superuser-test
+  (mt/with-temp [:model/User {user-id :id} {:is_active false}]
+    (testing "non-admin is refused and user stays inactive"
+      (mt/user-http-request :rasta :put 403 (format "user/%d/reactivate" user-id))
+      (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))
+    (testing "admin reactivates user as non-superuser"
+      (t2/update! :model/User :id user-id {:is_superuser false})
+      (is (=? {:id user-id :is_active true :is_superuser false}
+              (mt/user-http-request :crowberto :put 200 (format "user/%d/reactivate" user-id)))))))
+
+(deftest reactivate-user-in-deactivated-tenant-test
+  (mt/when-ee-evailable
+   (mt/with-premium-features #{:tenants}
+     (mt/with-temporary-setting-values [use-tenants true]
+       (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Reactivate T1" :slug "reactivate-t1"}
+                      :model/User   {user-id :id}   {:tenant_id tenant-id}]
+         (t2/update! :model/Tenant :id tenant-id {:is_active false})
+         (is (false? (t2/select-one-fn :is_active :model/User :id user-id)))
+         (is (=? {:message "Not able to reactivate a user in a deactivated tenant"}
+                 (mt/user-http-request :crowberto :put 400 (format "user/%d/reactivate" user-id))))
+         (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))))))
 
 (deftest reactivate-second-to-last-admin-test
   (mt/with-single-admin-user! [{id :id}]

@@ -5,8 +5,8 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

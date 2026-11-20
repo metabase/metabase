@@ -8,7 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.metabot.tools.util :as metabot.tools.util]
-   [metabase.permissions.models.permissions :as perms]
+   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

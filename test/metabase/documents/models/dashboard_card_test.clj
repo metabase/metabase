@@ -1,7 +1,7 @@
 (ns metabase.documents.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -12,7 +12,7 @@
                    :model/Card      normal-card  {:name "Normal Card" :type :question}
                    :model/Card      report-card  {:name "Report Card" :type :question :document_id (:id document)}]
       (testing "Adding a normal card works fine"
-        (let [result (dashboard-card/create-dashboard-cards!
+        (let [result (dashboards.write/create-dashboard-cards!
                       [{:dashboard_id (:id dashboard)
                         :card_id      (:id normal-card)
                         :size_x       4
@@ -25,7 +25,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cards with 'document_id' cannot be added to dashboards"
-             (dashboard-card/create-dashboard-cards!
+             (dashboards.write/create-dashboard-cards!
               [{:dashboard_id (:id dashboard)
                 :card_id      (:id report-card)
                 :size_x       4
@@ -42,7 +42,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cards with 'document_id' cannot be added to dashboards"
-             (dashboard-card/create-dashboard-cards!
+             (dashboards.write/create-dashboard-cards!
               [{:dashboard_id (:id dashboard)
                 :card_id      (:id normal-card1)
                 :size_x       4

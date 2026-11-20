@@ -21,11 +21,23 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(t2/define-before-insert :model/StoredResultUse
+(defn- check-exactly-one-reference
+  "Throw unless exactly one of `:card_id` and `:exploration_id` of `row` is set."
   [row]
   (when (= (some? (:card_id row)) (some? (:exploration_id row)))
     (throw (ex-info "stored_result_use requires exactly one of :card_id or :exploration_id to be set"
-                    {:card_id (:card_id row) :exploration_id (:exploration_id row)})))
+                    {:card_id (:card_id row) :exploration_id (:exploration_id row)}))))
+
+(t2/define-before-insert :model/StoredResultUse
+  [row]
+  (check-exactly-one-reference row)
+  row)
+
+(t2/define-before-update :model/StoredResultUse
+  [row]
+  (let [changes (t2/changes row)]
+    (when (or (contains? changes :card_id) (contains? changes :exploration_id))
+      (check-exactly-one-reference row)))
   row)
 
 (mu/defn carry-pairings-for-document!

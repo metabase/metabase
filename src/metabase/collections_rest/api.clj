@@ -488,7 +488,7 @@
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (collections/create-collection! body))
 
-;; Update-collection business logic lives in `metabase.collections.update` so that non-REST
+;; Update-collection business logic lives in `metabase.collections.write` so that non-REST
 ;; callers (the MCP `collection_write` tool) run the identical permission checks and move/archive
 ;; handling.
 
@@ -617,23 +617,7 @@
   "Deletes a collection permanently"
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/check-403 api/*is-superuser?*)
-  (let [collection (collections-rest.db/collection id)
-        old-children-location (collection/children-location collection)
-        new-children-location (:location collection)]
-    (api/check-400 (:archived collection)
-                   "Collection must be trashed before deletion.")
-    (api/check-400 (contains? #{:tenant-specific collection/shared-tenant-ns nil} (:namespace collection))
-                   "Only collections in the default or tenant namespaces can be deleted.")
-    ;; Shouldn't happen, because they can't be archived either... but juuuuust in case.
-    (api/check-400 (nil? (:personal_owner_id collection))
-                   "Personal collections cannot be deleted.")
-    (events/with-batched-events
-      ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
-        (collection/move-collection! child new-children-location))
-      ;; Now we can safely delete this collection and anything left under it.
-      (collections-rest.db/delete-collection! id))))
+  (collections/delete-collection! id))
 
 (api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:

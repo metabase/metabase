@@ -159,9 +159,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
-   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
@@ -300,128 +298,9 @@
   (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
 
-;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
-
-(mu/defn delete-related-permissions!
-  "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
-  This includes *both* ancestor and descendant paths. For example:
-
-  Suppose we asked this functions to delete related permissions for `/db/1/schema/PUBLIC/`. Depending on the
-  permissions the group has, it could end up doing something like:
-
-    *  deleting `/db/1/` permissions (because the ancestor perms implicitly grant you full perms for `schema/PUBLIC`)
-    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
-
-  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
-  for `/db/1/schema/`.
-
-  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
-  `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- permissions.path/GroupOrID path :- perms.u/PathSchema]
-  (let [group-id (u/the-id group-or-id)
-        paths    (conj (perms.u/->v2-path path) path)]
-    (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths))))
-
-(defn grant-permissions!
-  "Grant the permissions `path` gives to `group-or-id`, returning nil."
-  [group-or-id path]
-  (try
-    (permissions.db/insert-permissions! (map (fn [path-object]
-                                               {:group_id (u/the-id group-or-id) :object path-object})
-                                             (distinct (conj (perms.u/->v2-path path) path))))
-    nil
-    ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
-    (catch Throwable e
-      (log/error (u/format-color 'red "Failed to grant permissions: %s" (ex-message e)))
-      ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
-      ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
-      ;; to pass when they shouldn't. Don't allow this during tests
-      (when config/is-test?
-        (throw e)))))
-
-;;;; Audit Permissions helper fns
-
 (def namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
   permissions.db/namespace-clause)
-
-(defn revoke-application-permissions!
-  "Remove all permissions entries for a Group to access a Application permissions"
-  [group-or-id perm-type]
-  (delete-related-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
-
-(defn grant-application-permissions!
-  "Grant full permissions for a group to access a Application permissions."
-  [group-or-id perm-type]
-  (when (and (perms-group/is-tenant-group? group-or-id)
-             (not= perm-type :subscription))
-    (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
-  (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
-
-;; TODO: We really have to figure out a better solution to these circular dependencies than this
-(defn- is-personal-collection-or-descendant-of-one? [collection]
-  ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
-
-(defn- is-trash-or-descendant? [collection]
-  ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
-
-(defn- shared-tenant-collection?
-  [collection]
-  ((requiring-resolve 'metabase.collections.models.collection/shared-tenant-collection?) collection))
-
-(defn- ^:private collection-or-id->collection
-  [collection-or-id]
-  (if (map? collection-or-id)
-    collection-or-id
-    (permissions.db/collection (u/the-id collection-or-id))))
-
-(mu/defn- check-is-modifiable-collection
-  "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
-  Trash, and descendants of those can't have their permissions modified."
-  [collection-or-id :- permissions.path/CollectionOrID]
-  ;; skip the whole thing for the root collection, we know it's not a personal collection, trash, or descendant of one
-  ;; of them.
-  (when-not (:metabase.collections.models.collection.root/is-root? collection-or-id)
-    (let [collection (collection-or-id->collection collection-or-id)]
-      ;; Check whether the collection is the Trash collection or a descendant thereof; if so, throw an Exception. This
-      ;; is done because you can't modify the permissions of things in the Trash, you need to untrash them first.
-      (when (is-trash-or-descendant? collection)
-        (throw (ex-info (tru "You cannot edit permissions for the Trash collection or its descendants.") {})))
-      ;; Check whether the collection is a personal collection or a descendant thereof; if so, throw an Exception.
-      ;; This is done because we *should* never be editing granting/etc. permissions for *Personal* Collections to
-      ;; entire Groups! Their owner will get implicit permissions automatically, and of course admins will be able to
-      ;; see them,but a whole group should never be given some sort of access.
-      (when (is-personal-collection-or-descendant-of-one? collection)
-        (throw (ex-info (tru "You cannot edit permissions for a Personal Collection or its descendants.") {}))))))
-
-(mu/defn revoke-collection-permissions!
-  "Revoke all access for `group-or-id` to a Collection."
-  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
-  (check-is-modifiable-collection collection-or-id)
-  (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
-
-(mu/defn grant-collection-readwrite-permissions!
-  "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."
-  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
-  (check-is-modifiable-collection collection-or-id)
-  (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
-  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
-
-(mu/defn grant-collection-read-permissions!
-  "Grant read access to a Collection, which means a user can view all Cards in the Collection."
-  [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
-  (check-is-modifiable-collection collection-or-id)
-  (let [collection (collection-or-id->collection collection-or-id)]
-    (when (perms-group/is-tenant-group? group-or-id)
-      (when-not (or (shared-tenant-collection? collection)
-                    ;; Tenant groups access data apps through read grants on its resource collection.
-                    (and (pos-int? (:id collection))
-                         (data-perms/collection-owned-by-data-app? (:id collection))))
-        (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
-  (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?
   "Check if `*current-user*` has permissions for a application permissions of type `perm-type`.

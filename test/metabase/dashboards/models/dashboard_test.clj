@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -279,7 +279,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
-                saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+                saved-dashboard (dashboards.write/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :dashcards count)))))))))
 
