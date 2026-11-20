@@ -7,12 +7,10 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
-- New driver feature `:stage-ctes/single-row-aggregation`. When a driver compiles stages to CTEs and the last stage
-  of a multi-stage query aggregates without breakouts, Metabase puts that aggregation in its own stage CTE. This is
-  for databases like Postgres that do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has
-  a `WITH` clause. By default, it has the same value as `:stage-ctes`. Redshift returns `false`, because it fails with
-  an internal assert when it projects such a numeric aggregate again from a CTE. Return `false` if your database fails
-  on this shape.
+- New driver feature `:stage-ctes/single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
+  do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
+  `false`.
 
 - Added new driver feature flag `:jdbc/set-max-rows`, which says whether `metabase.driver/query-on-connection` may cap
   a query's rows with `Statement.setMaxRows`. It is true for every `:sql-jdbc` driver except Redshift, where a capped

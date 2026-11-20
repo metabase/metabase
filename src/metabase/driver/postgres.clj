@@ -111,6 +111,7 @@
                               :schemas                        true
                               :split-part                     true
                               :stage-ctes                     true
+                              :stage-ctes/single-row-aggregation true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
