@@ -33,6 +33,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  ColumnNameColumnSplitSetting,
   Database,
   TestOperatorSpec,
   TestQuerySpec,
@@ -117,7 +118,7 @@ type SetupOpts = {
   databaseResponse?: Promise<Database>;
   query?: Lib.Query;
   generatedExpressions?: SummaryGeneratedExpression[];
-  pivotRowKeys?: string[];
+  pivotColumnSplit?: ColumnNameColumnSplitSetting;
 };
 
 async function setup({
@@ -129,7 +130,7 @@ async function setup({
     DEFAULT_TEST_QUERY,
   ),
   generatedExpressions,
-  pivotRowKeys: initialPivotRowKeys,
+  pivotColumnSplit: initialPivotColumnSplit,
 }: SetupOpts = {}) {
   if (databaseResponse) {
     fetchMock.get(`path:/api/database/${database.id}`, () => databaseResponse, {
@@ -145,7 +146,9 @@ async function setup({
   });
   function Harness({ initialCard }: { initialCard: Card }) {
     const [card, setCard] = useState(initialCard);
-    const [pivotRowKeys, setPivotRowKeys] = useState(initialPivotRowKeys);
+    const [pivotColumnSplit, setPivotColumnSplit] = useState(
+      initialPivotColumnSplit,
+    );
     const mode = useSelector(getQueryBuilderMode);
     const question = new Question(card, metadata);
     const query = question.query();
@@ -168,15 +171,15 @@ async function setup({
           <SummarySidebar
             query={query}
             stageIndex={stageIndex}
-            pivotRowKeys={pivotRowKeys}
+            pivotColumnSplit={pivotColumnSplit}
             onQueryChange={(nextQuery, pivotChange) => {
               savedCard = question.setQuery(nextQuery).card();
               setCard(savedCard);
               if (pivotChange?.type === "show") {
-                setPivotRowKeys(pivotChange.columnSplit.rows);
+                setPivotColumnSplit(pivotChange.columnSplit);
               }
               if (pivotChange?.type === "hide") {
-                setPivotRowKeys(undefined);
+                setPivotColumnSplit(undefined);
               }
               onQueryChange(nextQuery);
             }}
@@ -708,7 +711,11 @@ describe("formulas in Rows", () => {
       generatedExpressions: [
         makeSummaryFormula(FORMULA_QUERY, -1, "Order date"),
       ].filter(isNotNull),
-      pivotRowKeys: ["Order date"],
+      pivotColumnSplit: {
+        rows: ["Order date"],
+        columns: [],
+        values: ["Sum total"],
+      },
     });
     expect(getChipLabels("rows")).toEqual(["Order date: Year"]);
 

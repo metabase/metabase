@@ -12,7 +12,7 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { TestQuerySpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
-import { getRowAndColumnItems } from "../pivot-layout";
+import { NO_PIVOT_LAYOUT, getPivotLayout, getWellItems } from "../pivot-layout";
 import type {
   SummaryField,
   SummaryQueryChangeOptions,
@@ -57,11 +57,11 @@ function setup({
   const query = Lib.createTestQuery(SAMPLE_PROVIDER, spec);
   const onPick = jest.fn<void, [SummaryWellId, SummaryField]>();
   const onChange = jest.fn<void, [Lib.Query, SummaryQueryChangeOptions?]>();
-  const onPivotToggle = jest.fn();
-  const { rowItems, columnItems } = getRowAndColumnItems(
+  const onPivotToggle = jest.fn<void, []>();
+  const { valueItems, columnItems, rowItems } = getWellItems(
     query,
     STAGE_INDEX,
-    rowKeys,
+    getPivotLayout(query, STAGE_INDEX, { ...NO_PIVOT_LAYOUT, rows: rowKeys }),
   );
   renderWithProviders(
     <SummaryWells
@@ -71,8 +71,9 @@ function setup({
       draggedItem={null}
       canPivot={canPivot}
       isPivotMode={isPivotMode}
-      rowItems={rowItems}
+      valueItems={valueItems}
       columnItems={columnItems}
+      rowItems={rowItems}
       onPivotToggle={onPivotToggle}
       onPick={onPick}
       onChange={onChange}

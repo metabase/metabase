@@ -17,6 +17,10 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import type {
+  ColumnNameColumnSplitSetting,
+  TestAggregationSpec,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -127,18 +131,19 @@ function getFieldDrag(
   return { kind: "field", field: item.field, label: item.name };
 }
 
+const COUNT: TestAggregationSpec = { type: "operator", operator: "count" };
+
+const SUM_OF_TOTAL: TestAggregationSpec = {
+  type: "operator",
+  operator: "sum",
+  args: [{ type: "column", name: "TOTAL" }],
+};
+
 const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
   stages: [
     {
       source: { type: "table", id: ORDERS_ID },
-      aggregations: [
-        { type: "operator", operator: "count" },
-        {
-          type: "operator",
-          operator: "sum",
-          args: [{ type: "column", name: "TOTAL" }],
-        },
-      ],
+      aggregations: [COUNT, SUM_OF_TOTAL],
       breakouts: [{ type: "column", name: "CREATED_AT", unit: "month" }],
     },
   ],
@@ -147,7 +152,7 @@ const SUMMARIZED_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
 type SetupOpts = {
   query?: Lib.Query;
   canPivot?: boolean;
-  pivotRowKeys?: string[];
+  pivotColumnSplit?: ColumnNameColumnSplitSetting;
 };
 
 function setup({
@@ -156,32 +161,34 @@ function setup({
     DEFAULT_TEST_QUERY,
   ),
   canPivot,
-  pivotRowKeys: initialPivotRowKeys,
+  pivotColumnSplit: initialPivotColumnSplit,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn<void, [Lib.Query, SummaryPivotChange?]>();
 
   function Wrapper() {
     const [query, setQuery] = useState(initialQuery);
-    const [pivotRowKeys, setPivotRowKeys] = useState(initialPivotRowKeys);
+    const [pivotColumnSplit, setPivotColumnSplit] = useState(
+      initialPivotColumnSplit,
+    );
     return (
       <>
         <SummarySidebar
           query={query}
           stageIndex={STAGE_INDEX}
           canPivot={canPivot}
-          pivotRowKeys={pivotRowKeys}
+          pivotColumnSplit={pivotColumnSplit}
           onQueryChange={(nextQuery, pivotChange) => {
             setQuery(nextQuery);
             if (pivotChange?.type === "show") {
-              setPivotRowKeys(pivotChange.columnSplit.rows);
+              setPivotColumnSplit(pivotChange.columnSplit);
             }
             if (pivotChange?.type === "hide") {
-              setPivotRowKeys(undefined);
+              setPivotColumnSplit(undefined);
             }
             onQueryChange(nextQuery, pivotChange);
           }}
         />
-        <button onClick={() => setPivotRowKeys(undefined)}>
+        <button onClick={() => setPivotColumnSplit(undefined)}>
           Use another visualization
         </button>
       </>
@@ -843,33 +850,37 @@ describe("SummarySidebar", () => {
     });
 
     describe("pivot table question", () => {
-      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
-        stages: [
-          {
-            source: { type: "table", id: ORDERS_ID },
-            aggregations: [{ type: "operator", operator: "count" }],
-            breakouts: [
-              { type: "column", name: "CREATED_AT", unit: "month" },
-              {
-                type: "column",
-                sourceFieldId: ORDERS.PRODUCT_ID,
-                name: "CATEGORY",
-              },
-              {
-                type: "column",
-                sourceFieldId: ORDERS.PRODUCT_ID,
-                name: "VENDOR",
-              },
-            ],
-          },
-        ],
-      });
+      const createQuery = (aggregations: TestAggregationSpec[]) =>
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [
+            {
+              source: { type: "table", id: ORDERS_ID },
+              aggregations,
+              breakouts: [
+                { type: "column", name: "CREATED_AT", unit: "month" },
+                {
+                  type: "column",
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                  name: "CATEGORY",
+                },
+                {
+                  type: "column",
+                  sourceFieldId: ORDERS.PRODUCT_ID,
+                  name: "VENDOR",
+                },
+              ],
+            },
+          ],
+        });
+      const query = createQuery([COUNT]);
+      const pivotColumnSplit = {
+        rows: ["VENDOR", "CREATED_AT"],
+        columns: ["CATEGORY"],
+        values: ["count"],
+      };
 
       it("opens in pivot mode with the Rows of the question, in their order", () => {
-        const { onQueryChange } = setup({
-          query,
-          pivotRowKeys: ["VENDOR", "CREATED_AT"],
-        });
+        const { onQueryChange } = setup({ query, pivotColumnSplit });
 
         expect(getWell("values").getByText("Values")).toBeInTheDocument();
         expect(getChipLabels("rows")).toEqual([
@@ -881,7 +892,10 @@ describe("SummarySidebar", () => {
       });
 
       it("opens outside pivot mode when no Rows of the question is a grouping", () => {
-        setup({ query, pivotRowKeys: ["TOTAL"] });
+        setup({
+          query,
+          pivotColumnSplit: { rows: ["TOTAL"], columns: [], values: [] },
+        });
 
         expect(
           screen.queryByTestId("summary-well-rows"),
@@ -890,10 +904,7 @@ describe("SummarySidebar", () => {
       });
 
       it("keeps the other Rows when a Rows grouping is removed", async () => {
-        const { getLastPivotChange } = setup({
-          query,
-          pivotRowKeys: ["VENDOR", "CREATED_AT"],
-        });
+        const { getLastPivotChange } = setup({ query, pivotColumnSplit });
 
         await userEvent.click(
           screen.getByRole("button", { name: "Remove Product → Vendor" }),
@@ -910,8 +921,39 @@ describe("SummarySidebar", () => {
         expect(getChipLabels("rows")).toEqual(["Created At: Month"]);
       });
 
+      it("keeps the order of the Columns and Values of the question when a value is added", async () => {
+        const { getLastPivotChange } = setup({
+          query: createQuery([COUNT, SUM_OF_TOTAL]),
+          pivotColumnSplit: {
+            rows: ["CREATED_AT"],
+            columns: ["VENDOR", "CATEGORY"],
+            values: ["sum", "count"],
+          },
+        });
+        expect(getChipLabels("values")).toEqual(["Sum of Total", "Count"]);
+        expect(getChipLabels("columns")).toEqual([
+          "Product → Vendor",
+          "Product → Category",
+        ]);
+
+        await userEvent.type(
+          screen.getByLabelText("Add a value by name"),
+          "quant",
+        );
+        await pickOption("Quantity");
+
+        expect(getLastPivotChange()).toEqual({
+          type: "show",
+          columnSplit: {
+            rows: ["CREATED_AT"],
+            columns: ["VENDOR", "CATEGORY"],
+            values: ["sum", "count", "sum_2"],
+          },
+        });
+      });
+
       it("leaves the pivot mode when the question stops showing a pivot table", async () => {
-        setup({ query, pivotRowKeys: ["VENDOR", "CREATED_AT"] });
+        setup({ query, pivotColumnSplit });
 
         await userEvent.click(
           screen.getByRole("button", { name: "Use another visualization" }),
@@ -948,7 +990,15 @@ describe("SummarySidebar", () => {
       });
 
       it("shows the Rows of a pivot table question as plain groupings", () => {
-        setup({ query, canPivot: false, pivotRowKeys: ["CREATED_AT"] });
+        setup({
+          query,
+          canPivot: false,
+          pivotColumnSplit: {
+            rows: ["CREATED_AT"],
+            columns: [],
+            values: ["count"],
+          },
+        });
 
         expect(
           screen.queryByTestId("summary-well-rows"),
