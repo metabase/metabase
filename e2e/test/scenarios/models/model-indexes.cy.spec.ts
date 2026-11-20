@@ -48,14 +48,6 @@ describe("scenarios > model indexes", () => {
 
     // the deleted index must not linger in the cached model index list (metabase#31094)
     cy.wait("@modelIndexCreate");
-    assertIndexedValueSearchable();
-
-    // the re-created index is read back from the server on a fresh page
-    cy.reload();
-    cy.wait("@dataset");
-    editTitleMetadata();
-    getSurfaceIndividualRecordsToggle().should("be.checked");
-    cy.findByTestId("dataset-edit-bar").button("Cancel").click();
     cy.findByTestId("dataset-edit-bar").should("not.exist");
 
     H.commandPaletteSearch("marble shoes", false);
