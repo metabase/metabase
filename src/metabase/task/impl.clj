@@ -195,6 +195,7 @@
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler without waiting for the jobs still running, which are logged.
+  Stops the scheduler every thread shares, even when called inside a binding of the scheduler, which it leaves alone.
   Halting the global system stops it too."
   []
   (system/stop! scheduler-component)
