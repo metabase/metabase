@@ -324,6 +324,7 @@ export const setup = async ({
           <Route path=":slug/columns" element={<TestQueryBuilder />} />
           <Route path=":slug/metadata" element={<TestQueryBuilder />} />
           <Route path=":slug/notebook" element={<TestQueryBuilder />} />
+          <Route path=":slug/:objectId" element={<TestQueryBuilder />} />
         </Route>
         <Route path="/question">
           <Route index element={<TestQueryBuilder />} />
