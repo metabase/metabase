@@ -151,9 +151,7 @@
   "The ids among `pulse-ids` of the Pulses the current user can read."
   [pulse-ids]
   (if (seq pulse-ids)
-    (into #{}
-          (comp (filter mi/can-read?) (map :id))
-          (t2/hydrate (pulse.db/pulses-with-ids pulse-ids) :can_read))
+    (into #{} (map :id) (mi/readable (pulse.db/pulses-with-ids pulse-ids)))
     #{}))
 
 (defn handle-broken-subscriptions!
