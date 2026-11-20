@@ -463,10 +463,10 @@
   (t2/select-one (into [(dependencies/entity-model entity-type)] columns)
                  :id id))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+(mu/defn cards-by-id
+  "The Cards with `card-ids`, keyed by ID."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into {} (mapcat #(t2/select-pk->fn identity :model/Card :id [:in %])) (partition-all 1000 card-ids)))
 
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
@@ -840,6 +840,15 @@
   (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
                          (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
           (select-keys [:updated_at :result_metadata])))
+
+(mu/defn card-states-by-id :- [:map-of ::lib.schema.id/card ::dependencies.schema/card-state]
+  "The [[card-state]]s of the Cards with `card-ids`, read without locks, keyed by ID."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  ;; the ID under another name: a read with `:id` and `result_metadata` has the Card model upgrade the card's schema,
+  ;; which the narrow read [[card-state]] compares against does not
+  (into {} (comp (mapcat #(t2/select [:model/Card [:id :card_id] :updated_at :result_metadata] :id [:in %]))
+                 (map (juxt :card_id #(select-keys % [:updated_at :result_metadata]))))
+        (partition-all 1000 card-ids)))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching

@@ -2,6 +2,7 @@
   "Re-derives the result metadata of the MBQL cards whose ResultMetadataStatus a write marked stale, which a write of
   what they read does; native cards are left alone, since their result metadata comes from running them."
   (:require
+   [clojure.core.cache.wrapped :as cache.wrapped]
    [malli.error :as me]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -125,15 +126,35 @@
       (dependencies.db/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!
-  "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed."
-  [card-id :- ::lib.schema.id/card]
-  (let [state    (dependencies.db/card-state card-id false)
-        card     (dependencies.db/card card-id)
-        metadata (lib-be/with-metadata-provider-cache
-                   (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
-                     (rederived-result-metadata card)))]
+  "Re-derive the result metadata of the MBQL `card` in `state`, as the batch read them, and store it when it changed."
+  [card  :- [:maybe (ms/InstanceOf :model/Card)]
+   state :- [:maybe ::dependencies.schema/card-state]]
+  (let [metadata (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
+                   (rederived-result-metadata card))]
     (when (and state metadata)
-      (store-result-metadata! card-id state metadata))))
+      (store-result-metadata! (:id card) state metadata)
+      ;; the batch's cards share a metadata cache, and the ones after this read its new metadata
+      (some-> (lib-be/metadata-provider-cache) (cache.wrapped/evict (:database_id card))))))
+
+(mu/defn- record-failure! :- :nil
+  [card-id :- ::lib.schema.id/card
+   e       :- (ms/InstanceOfClass Throwable)]
+  (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
+  (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
+    (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
+  nil)
+
+(mu/defn- cards-with-states :- [:sequential [:map {:closed true}
+                                             [:card-id ::lib.schema.id/card]
+                                             [:card    [:maybe (ms/InstanceOf :model/Card)]]
+                                             [:state   [:maybe ::dependencies.schema/card-state]]]]
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (let [card-ids (vec card-ids)
+        ;; states before cards: a write in between leaves a card newer than its state, which fails the store, rather
+        ;; than storing what an older query returns
+        states   (dependencies.db/card-states-by-id card-ids)
+        cards    (dependencies.db/cards-by-id card-ids)]
+    (mapv (fn [card-id] {:card-id card-id :card (cards card-id) :state (states card-id)}) card-ids)))
 
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus counts
@@ -146,16 +167,21 @@
                      models.dependency/current-dependency-analysis-version)]
     (when (seq deleted-ids)
       (dependencies.db/delete-result-metadata-statuses! deleted-ids))
-    (doseq [{card-id :entity_id, :keys [stale]} statuses]
-      (try
-        (rederive-card! card-id)
-        (dependencies.db/clear-result-metadata-status!
-         card-id stale models.result-metadata-status/current-result-metadata-version)
-        (catch Throwable e
-          (dependencies.db/throw-unless-app-db-reachable! e)
-          (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
-          (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
-            (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))
-          (when-not (instance? Exception e)
-            (throw e)))))
+    (lib-be/with-metadata-provider-cache
+      (let [read (into {}
+                       (map (juxt :card-id identity))
+                       (dependencies.db/readable-entities
+                        cards-with-states (into #{} (map :entity_id) statuses) record-failure!))]
+        ;; an unreadable card already counted its failure
+        (doseq [{card-id :entity_id, :keys [stale]} (filterv (comp read :entity_id) statuses)]
+          (try
+            (let [{:keys [card state]} (read card-id)]
+              (rederive-card! card state))
+            (dependencies.db/clear-result-metadata-status!
+             card-id stale models.result-metadata-status/current-result-metadata-version)
+            (catch Throwable e
+              (dependencies.db/throw-unless-app-db-reachable! e)
+              (record-failure! card-id e)
+              (when-not (instance? Exception e)
+                (throw e)))))))
     (+ (count deleted-ids) (count statuses))))
