@@ -204,17 +204,18 @@
 (deftest ^:parallel single-row-aggregation-over-stages-test
   (testing "An aggregation without breakouts over a previous stage, with a join in the aggregation stage"
     (mt/test-drivers (mt/normal-driver-select {:+features [:nested-queries :left-join :basic-aggregations]})
-      (let [mp    (mt/metadata-provider)
-            query (lib/append-stage (lib/query mp (lib.metadata/table mp (mt/id :venues))))
-            query (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :categories))
-                                                   [(lib/= (col (lib/visible-columns query) "category_id")
-                                                           (lib.metadata/field mp (mt/id :categories :id)))]))
-            id    (col (lib/visible-columns query) "id")
-            query (-> query
-                      (lib/aggregate (lib/max id))
-                      (lib/aggregate (lib/min id))
-                      (lib/aggregate (lib/count))
-                      (lib/aggregate (lib/count-where (lib/= (col (lib/visible-columns query) "price") 4))))]
+      (let [mp      (mt/metadata-provider)
+            query   (lib/append-stage (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+            ;; find the columns by field ID, because the names differ between drivers (e.g. `_id` on Mongo)
+            venues  #(m/find-first (comp #{(mt/id :venues %)} :id) (lib/visible-columns query))
+            query   (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :categories))
+                                                     [(lib/= (venues :category_id)
+                                                             (lib.metadata/field mp (mt/id :categories :id)))]))
+            query   (-> query
+                        (lib/aggregate (lib/max (venues :id)))
+                        (lib/aggregate (lib/min (venues :id)))
+                        (lib/aggregate (lib/count))
+                        (lib/aggregate (lib/count-where (lib/= (venues :price) 4))))]
         (mt/with-native-query-testing-context query
           (is (= [[100 1 100 6]]
                  (mt/formatted-rows [int int int int] (qp/process-query query)))))))))
