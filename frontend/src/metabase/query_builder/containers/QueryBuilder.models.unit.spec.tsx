@@ -1,18 +1,25 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupDatabaseIdFieldsEndpoints } from "__support__/server-mocks";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
-import { act, screen, waitFor, within } from "__support__/ui";
-import { mockGetBoundingClientRect } from "__support__/utils";
+import {
+  act,
+  mockGetBoundingClientRect,
+  mockOffsetHeightAndWidth,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
+import { mockGetBoundingClientRect as mockGetBoundingClientRectInEachTest } from "__support__/utils";
 import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type { TableId, TestJoinSpec } from "metabase-types/api";
+import type { Card, Dataset, TableId, TestJoinSpec } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -26,6 +33,7 @@ import {
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { getIsRunning } from "../store/selectors";
@@ -95,7 +103,7 @@ const PRODUCTS_COLUMNS = [
 describe("QueryBuilder - models", () => {
   const scrollBy = HTMLElement.prototype.scrollBy;
 
-  mockGetBoundingClientRect();
+  mockGetBoundingClientRectInEachTest();
 
   beforeEach(() => {
     HTMLElement.prototype.scrollBy = jest.fn();
@@ -104,9 +112,6 @@ describe("QueryBuilder - models", () => {
   afterEach(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
     window.history.replaceState(null, "", "/");
-
-    jest.resetAllMocks();
-    setupJestCanvasMock();
   });
 
   it("keeps the model's collection in the header of an ad-hoc question based on the model (metabase#46221)", async () => {
@@ -549,3 +554,231 @@ async function openQuestionActionsItem(itemName: string) {
   await userEvent.click(screen.getByLabelText("Move, trash, and more…"));
   await userEvent.click(await screen.findByText(itemName));
 }
+
+const BREAKOUT_DATASET = createMockDataset({
+  data: {
+    cols: [
+      createMockColumn({
+        name: "CREATED_AT",
+        display_name: "Created At: Month",
+        source: "breakout",
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+        unit: "month",
+      }),
+      createMockColumn({
+        name: "count",
+        display_name: "Count",
+        source: "aggregation",
+        base_type: "type/Integer",
+      }),
+    ],
+    rows: [
+      ["2025-01-01T00:00:00Z", 10],
+      ["2025-02-01T00:00:00Z", 20],
+    ],
+  },
+  database_id: SAMPLE_DB_ID,
+  status: "completed",
+  row_count: 2,
+});
+
+/**
+ * Ad-hoc runs on top of the model: a query with a breakout returns grouped
+ * rows, the model itself returns its own rows.
+ */
+const setupStructuredRuns = ({
+  model,
+  modelDataset,
+}: {
+  model: Card;
+  modelDataset: Dataset;
+}) => {
+  fetchMock.post("path:/api/dataset", (call) => {
+    const body = String(call.options.body);
+    if (!body.includes(`"source-card":${model.id}`)) {
+      return { status: 400 };
+    }
+    return body.includes('"breakout"') ? BREAKOUT_DATASET : modelDataset;
+  });
+};
+
+const getBreakoutRunCount = () =>
+  fetchMock.callHistory
+    .calls("path:/api/dataset", { method: "POST" })
+    .filter((call) => String(call.options.body).includes('"breakout"')).length;
+
+const waitForBreakoutRunAfter = (previousCount: number) =>
+  waitFor(() => expect(getBreakoutRunCount()).toBeGreaterThan(previousCount));
+
+const expectSelectedDisplay = async ({
+  selected,
+  other,
+}: {
+  selected: string;
+  other?: string;
+}) => {
+  await userEvent.click(await screen.findByTestId("viz-type-button"));
+  const selectedOption = await screen.findByTestId(`${selected}-container`);
+  expect(selectedOption).toHaveAttribute("aria-selected", "true");
+  if (other) {
+    expect(screen.getByTestId(`${other}-container`)).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  }
+  await userEvent.click(screen.getByTestId("viz-type-button"));
+};
+
+describe("QueryBuilder > structured models", () => {
+  describe("structured model", () => {
+    const ORDERS_COLS = [
+      createMockColumn({
+        id: ORDERS.ID,
+        name: "ID",
+        display_name: "ID",
+        source: "fields",
+        table_id: ORDERS_ID,
+        field_ref: ["field", ORDERS.ID, null],
+        base_type: "type/BigInteger",
+        semantic_type: "type/PK",
+      }),
+      createMockColumn({
+        id: ORDERS.PRODUCT_ID,
+        name: "PRODUCT_ID",
+        display_name: "Product ID",
+        source: "fields",
+        table_id: ORDERS_ID,
+        field_ref: ["field", ORDERS.PRODUCT_ID, null],
+        base_type: "type/Integer",
+        semantic_type: "type/FK",
+        fk_target_field_id: PRODUCTS.ID,
+      }),
+      createMockColumn({
+        id: ORDERS.CREATED_AT,
+        name: "CREATED_AT",
+        display_name: "Created At",
+        source: "fields",
+        table_id: ORDERS_ID,
+        field_ref: ["field", ORDERS.CREATED_AT, null],
+        base_type: "type/DateTime",
+        effective_type: "type/DateTime",
+      }),
+    ];
+    // The Sample Database runs queries as they change, so do the questions here
+    const SAMPLE_DB = createSampleDatabase({ auto_run_queries: true });
+    const MODEL = createMockCard({
+      id: 1,
+      name: "Orders Model",
+      type: "model",
+      display: "table",
+      dataset_query: Lib.toJsQuery(
+        Lib.createTestQuery(SAMPLE_PROVIDER, {
+          stages: [{ source: { type: "table", id: ORDERS_ID } }],
+        }),
+      ),
+      result_metadata: ORDERS_COLS,
+    });
+    const DATASET = createMockDataset({
+      data: {
+        cols: ORDERS_COLS,
+        rows: [[1, 14, "2025-01-01T00:00:00Z"]],
+      },
+      database_id: SAMPLE_DB_ID,
+      status: "completed",
+      row_count: 1,
+    });
+
+    beforeEach(() => {
+      setupListNotificationEndpoints({ card_id: MODEL.id }, []);
+      mockGetBoundingClientRect({ width: 1200, height: 800 });
+      mockOffsetHeightAndWidth(800);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("lists the table ID fields as foreign key targets in the model metadata editor (metabase#31663)", async () => {
+      await setup({
+        card: MODEL,
+        database: SAMPLE_DB,
+        dataset: DATASET,
+        initialRoute: `/model/${MODEL.id}/columns`,
+      });
+      // The picker stays disabled until the ID fields arrive. `setup` registers
+      // this endpoint without a delay, so the delayed one comes after it.
+      setupDatabaseIdFieldsEndpoints({ database: SAMPLE_DB, delay: 1500 });
+
+      const productIdHeader = (
+        await screen.findAllByTestId("header-cell")
+      ).find((header) => header.textContent === "Product ID");
+      await userEvent.click(
+        within(checkNotNull(productIdHeader)).getByText("Product ID"),
+      );
+      expect(await screen.findByLabelText("Display name")).toHaveValue(
+        "Product ID",
+      );
+      const targetInput = await screen.findByRole("textbox", {
+        name: "Foreign key target",
+      });
+      await waitFor(() => expect(targetInput).toBeEnabled());
+      await userEvent.click(targetInput);
+
+      const listbox = await screen.findByRole("listbox");
+      ["Orders → ID", "People → ID", "Products → ID", "Reviews → ID"].forEach(
+        (name) => {
+          expect(within(listbox).getByText(name)).toBeInTheDocument();
+        },
+      );
+      // The edited model is loaded, but its ID is not a target (metabase#31663)
+      expect(within(listbox).queryByText(/Model → ID/)).not.toBeInTheDocument();
+    });
+
+    it("loads the model once and picks a line chart for questions based on it (metabase#31905, metabase#32963)", async () => {
+      setupStructuredRuns({ model: MODEL, modelDataset: DATASET });
+      await setup({ card: MODEL, dataset: DATASET, database: SAMPLE_DB });
+      const cardFetches = fetchMock.callHistory.calls(
+        `path:/api/card/${MODEL.id}`,
+        { method: "GET" },
+      );
+      // QueryBuilder and the navbar each fetch the card
+      expect(cardFetches.length).toBeGreaterThanOrEqual(1);
+      expect(cardFetches.length).toBeLessThanOrEqual(2);
+
+      await userEvent.click(
+        within(screen.getByTestId("qb-header")).getByRole("button", {
+          name: /Summarize/,
+        }),
+      );
+      const sidebar = await screen.findByTestId("sidebar-right");
+      // The model's own column, listed before "Product → Created At"
+      const [createdAt] = within(sidebar).getAllByText("Created At");
+      await userEvent.click(createdAt);
+      await userEvent.click(
+        within(sidebar).getByRole("button", { name: "Done" }),
+      );
+      await waitForBreakoutRunAfter(0);
+      await expectSelectedDisplay({ selected: "Line", other: "Table" });
+
+      await userEvent.click(
+        within(screen.getByTestId("qb-header")).getByText("Orders Model"),
+      );
+      await expectSelectedDisplay({ selected: "Table" });
+
+      const breakoutRunCount = getBreakoutRunCount();
+      await userEvent.click(screen.getByTestId("notebook-button"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Summarize" }),
+      );
+      await userEvent.click(await screen.findByText("Count of rows"));
+      await userEvent.click(screen.getByText("Pick a column to group by"));
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByText("Created At"),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Visualize" }));
+      await waitForBreakoutRunAfter(breakoutRunCount);
+      await expectSelectedDisplay({ selected: "Line", other: "Table" });
+    });
+  });
+});
