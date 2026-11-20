@@ -80,11 +80,9 @@ Metabase supports these features on every database on this page:
 | ----------------------------------------------------------------- | ------------- | --------------- | -------- | ---------- | ---------- | ---------- | ------- | ------- | ----- | ------ | ---------- | ------ | --------- | --------- | ---------- | ------ | ----------------- | ------- |
 | [Model persistence](../data-modeling/models/model-persistence.md) | ❌             | ✅               | ❌        | ❌          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ❌          | ❌      | ❌                 | ❌       |
 | [JSON unfolding](../data-modeling/metadata/json-unfolding.md)     | ❌             | ❌               | ✅        | ❌          | ❌          | ✅          | ❌       | ✅       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ❌          | ❌      | ❌                 | ❌       |
-| [Query transforms](../data-modeling/transforms/query.md)          | ❌             | ✅               | ✅        | ✅ (1)      | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
-| [Python transforms](../data-modeling/transforms/python.md)        | ❌             | ✅               | ✅        | ✅ (1)      | ❌          | ❌          | ✅       | ✅       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
+| [Query transforms](../data-modeling/transforms/query.md)          | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
+| [Python transforms](../data-modeling/transforms/python.md)        | ❌             | ✅               | ✅        | ✅          | ❌          | ❌          | ✅       | ✅       | ✅     | ❌      | ✅          | ❌      | ✅         | ❌         | ✅          | ❌      | ❌                 | ❌       |
 | [Transform tests](../data-modeling/transforms/tests.md)           | ❌             | ✅               | ❌        | ✅          | ❌          | ❌          | ✅       | ❌       | ✅     | ❌      | ✅          | ❌      | ❌         | ❌         | ✅          | ❌      | ❌                 | ❌       |
-
-1. ClickHouse Cloud and self-managed single-node deployments.
 
 ## Writing data
 

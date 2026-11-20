@@ -106,6 +106,8 @@
                               :test/date-time-type              false
                               :test/jvm-timezone-setting        false
                               :test/time-type                   false
+                              :transforms/python                true
+                              :transforms/table                 true
                               :transforms/testing               true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
@@ -213,11 +215,9 @@
    ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
    {"testConnectionOnCheckout" false}))
 
-;; These features write a table. On a self-managed cluster, the table is only on the node that wrote it.
-(doseq [feature [:uploads :transforms/table :transforms/python]]
-  (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature db]
-    (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
-      (boolean (or cloud single-node)))))
+(defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
+  (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
+    (boolean (or cloud single-node))))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
