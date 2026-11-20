@@ -657,6 +657,24 @@
           (is (= 1 (count (re-seq #"(?i)\bWITH\b" sql))))
           (is (re-find #"LEFT JOIN \"__mb_stage_0\" AS \"__mb_source\"|FROM \"__mb_stage_0\" AS \"__mb_source\"" sql)))))))
 
+(deftest ^:parallel single-row-aggregation-stage-cte-test
+  (testing "A last stage that aggregates without breakouts goes in its own stage CTE, so Postgres can use its MIN/MAX
+            index optimization, which it skips in a query level with a WITH list"
+    (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+          query  (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          id-col (m/find-first #(= (:name %) "ID") (lib/visible-columns query))
+          query  (lib/aggregate query (lib/max id-col))]
+      (qp.store/with-metadata-provider mp
+        (testing "without breakouts"
+          (let [sql (:query (qp.compile/compile query))]
+            (is (re-find #"\"__mb_stage_1\" AS \(\s*SELECT\s+MAX\(" sql))
+            (is (re-find #"SELECT\s+\"__mb_source\"\.\"max\" AS \"max\"\s+FROM\s+\"__mb_stage_1\" AS \"__mb_source\"\s*$" sql))))
+        (testing "with a breakout, the aggregation stays at the top level"
+          (let [sql (:query (qp.compile/compile (lib/breakout query (m/find-first #(= (:name %) "NAME")
+                                                                                  (lib/breakoutable-columns query)))))]
+            (is (not (re-find #"__mb_stage_1" sql)))
+            (is (re-find #"\)\s*SELECT\s+.*MAX\(" sql))))))))
+
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
     (testing "Pivot with a nested-field (JSON-unfolded) breakout compiles to a derived table that pre-computes the JSON path expression and references plain identifiers in GROUPING SETS / GROUPING"

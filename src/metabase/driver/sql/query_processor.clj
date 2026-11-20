@@ -2226,6 +2226,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(declare use-stage-ctes?)
+
 (defmethod preprocess :sql
   [driver mbql5-query]
   ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
@@ -2236,6 +2238,8 @@
       driver-api/nest-breakouts-in-stages-with-window-aggregation
       (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
       driver-api/nest-expressions
+      ;; Put a single-row aggregation in its own stage CTE, see [[driver-api/nest-single-row-aggregation]].
+      (cond-> (use-stage-ctes? driver (:stages mbql5-query) mbql5-query) driver-api/nest-single-row-aggregation)
       driver-api/add-alias-info
       :stages))
 
