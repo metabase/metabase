@@ -86,7 +86,8 @@
       (recur (min max-restart-backoff-ms (* 2 backoff-ms))))))
 
 (mu/defn listen!
-  "Starts an async listener on the given queue. This should generally be called from `init-listener!` in a task namespace.
+  "Starts an async listener on the given queue.
+  This should generally be called from [[init-listener!]] in a task namespace.
 
   Arguments:
   - listener-name: A unique string. Calls to register another listener with the same name will be a no-op
@@ -94,8 +95,9 @@
   - handler: A function taking a list of 1 or more values that have been sent to the queue.
 
   Options:
-  - success-handler: A function called when handler does not throw an exception. Accepts [result-of-handler, duration-in-ms, listener-name]
-  - err-handler: A function called when the handler throws an exception. Accepts [exception, duration-in-ms, listener-name]
+  - success-handler: A function called when handler does not throw an exception.
+    Accepts [result-of-handler, duration-in-ms, listener-name]
+  - err-handler: A function called when the handler throws an exception. Accepts [exception, listener-name]
   - pool-size: Number of threads in the listener. Default: 1
   - max-batch-messages: Max number of items to batch up before calling handler. Default 50
   - max-next-ms: Max number of ms to wait for each additional message before calling the handler. Default 100"
@@ -125,14 +127,14 @@
       (swap! listeners assoc listener-name executor))))
 
 (mu/defn stop-listening!
-  "Stops the listener previously started with (listen!).
+  "Stops the listener previously started with [[listen!]].
   If there is no running listener with the given name, it is a no-op"
   [listener-name :- :string]
   (if-let [^ExecutorService executor (get @listeners listener-name)]
     (do
       (log/infof "Stopping listener %s..." listener-name)
       (cp/shutdown! executor)
-      ;; wait up to 10 seconds for executor to stop. Largely for CI/tests FAIL in (listener-handler-test) (queue_test.clj:178)
+      ;; wait up to 10 seconds for executor to stop, largely so tests such as listener-handler-test see it gone
       (.awaitTermination executor 10 TimeUnit/SECONDS)
       (swap! listeners dissoc listener-name)
       (log/infof "Stopping listener %s...done" listener-name))
@@ -144,8 +146,8 @@
   implementations of this method to start new listeners they define (i.e., with a call to [[listen!]].)
 
   The dispatch value for this function can be any unique keyword, but by convention is a namespaced keyword version of
-  the name of the listener being initialized; for sake of consistency with the listener name itself, the keyword should be left
-  CamelCased.
+  the name of the listener being initialized; for sake of consistency with the listener name itself, the keyword should
+  be left CamelCased.
 
     (defmethod queue-listener/init-listener! ::ExampleListener [_]
       (queue-listener/listen! \"example-listener\" queue handler)"
@@ -168,7 +170,7 @@
         (log/errorf "Error initializing listener %s: %s" k (ex-message e))))))
 
 (defn start-listeners!
-  "Call every implementation of [[init-listener!]], unless they were already started. Called by metabase.core/init!"
+  "Call every implementation of [[init-listener!]], unless they were already started."
   []
   (global-system/start! listeners-component
                         (fn []
