@@ -166,8 +166,9 @@
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
   them down, and pushed_dashcard_ids lists them. Filter connections lost without unwire_parameter or
-  patch_dashcard are listed in dropped_connections; reconnect them or tell the user. Returns the resulting dashboard,
-  so no follow-up read is needed.
+  patch_dashcard are listed in dropped_connections; reconnect them or tell the user. Removing a filter archives the
+  subscriptions that set a value for it: archived_subscription_count counts them, and archived_subscriptions lists
+  the ones you can read; tell the user. Returns the resulting dashboard, so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
