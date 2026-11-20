@@ -1,7 +1,10 @@
 (ns metabase-enterprise.remote-sync.sync-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.protocol.folder :as folder]
+   [metabase-enterprise.remote-sync.sync :as sync]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -105,6 +108,29 @@
                     (remote-sync.tu/pull! url v1)))
             (is (= "Renamed remotely" (t2/select-one-fn :name :model/Card :id (:id card))))
             (is (not (t2/exists? :model/Card :id (:id gone))))))))))
+
+(deftest import-folder-test
+  (remote-sync.tu/with-repository [url]
+    (remote-sync.tu/with-remote-sync [url :read-write]
+      (mt/with-temp-dir [dir nil]
+        (mt/with-temp [:model/Collection synced {:name "Synced" :is_remote_synced true :location "/"}
+                       :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
+          (remote-sync.tu/push! url nil)
+          (doseq [path (remote-sync.tu/files! url "main")]
+            (io/make-parents (io/file dir path))
+            (spit (io/file dir path) (remote-sync.tu/read-file! url "main" path)))
+          (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
+          (mt/with-temp [:model/Card other {:name "Not in the folder" :collection_id (:id synced)}]
+            (testing "an import makes the app DB hold what the folder holds"
+              (is (=? {:status :success :outcome {:kind "imported" :count 2}}
+                      (sync/import! (folder/source dir) folder/version)))
+              (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card)))))
+            (testing "and deletes nothing the folder lacks"
+              (is (t2/exists? :model/Card :id (:id other))))
+            (testing "an import of the same folder again changes nothing"
+              (is (=? {:status :success :outcome {:kind "imported" :count 2}}
+                      (sync/import! (folder/source dir) folder/version)))
+              (is (= "Synced card" (t2/select-one-fn :name :model/Card :id (:id card)))))))))))
 
 (deftest pull-keeps-local-changes-test
   (remote-sync.tu/with-repository [url]
