@@ -51,10 +51,12 @@
 
 (defn- save-rate-minutes
   "Read the save rate from MB_MONITOR_PERFORMANCE_SAVE_RATE (in minutes), falling back to `default-minutes`.
-  A value that is blank, as by default, or not a whole number also falls back."
+  A value that is blank, as by default, or not a positive whole number also falls back."
   [default-minutes]
-  (or (some-> (config/config-str :mb-monitor-performance-save-rate) str/trim parse-long)
-      default-minutes))
+  (let [minutes (some-> (config/config-str :mb-monitor-performance-save-rate) str/trim parse-long)]
+    (if (and minutes (pos? minutes))
+      minutes
+      default-minutes)))
 
 (defn- directory-mode?
   "Returns true if the setting value should be treated as a directory for rolling JFR files.
