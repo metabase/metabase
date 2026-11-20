@@ -20,7 +20,9 @@
       ],
       "metabase/utils/csp": ["../src/metabase/utils/csp.ts"],
       "metabase/env": ["../src/metabase/env.ts"],
-      "metabase/dayjs": ["../src/metabase/dayjs/index.ts"]
+      "metabase/dayjs": ["../src/metabase/dayjs/index.ts"],
+      "metabase/utils/deep-merge": ["../src/metabase/utils/deep-merge.ts"],
+      "metabase-types/utils/types": ["../src/metabase-types/utils/types.ts"]
     }
   },
   "include": [

@@ -10,6 +10,9 @@ export const APP_ALLOWLIST: Record<string, string> = {
   "metabase/utils/resize-observer": `${src}/metabase/utils/resize-observer.ts`,
   "metabase/utils/measure-container": `${src}/metabase/utils/measure-container.ts`,
   "metabase/utils/csp": `${src}/metabase/utils/csp.ts`,
+  "metabase/utils/deep-merge": `${src}/metabase/utils/deep-merge.ts`,
+  // Type-only import of deep-merge.
+  "metabase-types/utils/types": `${src}/metabase-types/utils/types.ts`,
   "metabase/env": `${src}/metabase/env.ts`,
   // Its locale loader is unused by /ui, so the bundler drops it; check-dist verifies that.
   "metabase/dayjs": `${src}/metabase/dayjs/index.ts`,
