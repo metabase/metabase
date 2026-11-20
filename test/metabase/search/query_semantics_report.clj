@@ -250,7 +250,7 @@
 (defn- double-values [values]
   (update-vals values double))
 
-(defn- engine-data [context row corpus engine]
+(defn- engine-data [context corpus row engine]
   (let [{:keys [best typed]} (get-in row [:scores engine])
         query                (if (= corpus :translations) (get-in row [:specs engine :query]) (:query row))]
     (cond-> {:id (name engine), :hits (labels (get-in row [:results engine]))}
@@ -279,7 +279,7 @@
              :config          (:config row)
              :query           (:query row)
              :docs            (document-data (:docs row))
-             :engines         (mapv (partial engine-data context row corpus) stats/engines)
+             :engines         (mapv (partial engine-data context corpus row) stats/engines)
              :matchingPairs   (stats/matching-pair-count (:results row))
              :agreementGroups (stats/result-group-sizes (:results row))}
       (not same-query?)

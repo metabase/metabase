@@ -556,6 +556,7 @@ __REPORT_MODEL__
     const data = JSON.parse(document.getElementById("report-data").textContent);
     const goalGroups = groupGoals(data.goalKinds, data.translations.cases);
     const goalsByKind = new Map(goalGroups.map(group => [group.kind, group.goals]));
+    const goalsOf = kind => goalsByKind.get(kind) ?? [];
     const labels = { "in-place": "In-place", "appdb-h2": "appdb/H2", "appdb-mysql": "appdb/MySQL", "appdb-postgres": "appdb/PostgreSQL", "semantic-only": "Semantic only", "semantic-with-fallback": "Semantic with fallback" };
     const state = { corpus: "sameQuery", collapsed: new Set(), keyOpen: false, selected: null, sort: "theme" };
     const $ = id => document.getElementById(id);
@@ -727,8 +728,8 @@ __REPORT_MODEL__
       const rows = data.engines.map(engine => `<tr><td>${escape(labels[engine])}</td>${columns.map(([, value, show, groupStart], index) => {
         const v = value(engine);
         const [low, high] = bounds[index];
-        const best = v >= high - 1e-9;
-        const relative = high - low < 1e-9 ? 1 : (v - low) / (high - low);
+        const best = v >= high - epsilon;
+        const relative = high - low < epsilon ? 1 : (v - low) / (high - low);
         return `<td class="metric-cell${best ? " best" : ""}${groupStart ? " group-start" : ""}" style="background: rgb(var(--tint) / ${(0.03 + 0.42 * relative).toFixed(2)})">${show(v, engine)}</td>`;
       }).join("")}</tr>`).join("");
       return `<table class="fidelity-table">${header}<tbody>${rows}</tbody></table>`;
@@ -875,21 +876,18 @@ __REPORT_MODEL__
     }
 
     const engineIn = (item, id) => item.engines.find(engine => engine.id === id);
-    const topScore = item => Math.max(...item.engines.map(engine => engine.bestScore.f1));
-    const wins = (item, id) => engineIn(item, id).bestScore.f1 >= topScore(item) - 1e-9;
     const scoreTitle = engine => `Original query: precision ${percent(engine.typedScore.precision)}, recall ${percent(engine.typedScore.recall)}. `
       + `Best query: precision ${percent(engine.bestScore.precision)}, recall ${percent(engine.bestScore.recall)}.`;
     // The typed score shows only when adapting changed it, so unchanged cells read as one number.
     const scorePair = (typed, best, winner = false, title = "") => {
-      const classes = ["sc", winner ? "winner" : "", best < 1e-9 ? "zero" : ""].filter(Boolean).join(" ");
-      const typedPart = Math.abs(best - typed) < 1e-9 ? "" : `<span class="typed">${fixed(typed)} → </span>`;
+      const classes = ["sc", winner ? "winner" : "", best < epsilon ? "zero" : ""].filter(Boolean).join(" ");
+      const typedPart = Math.abs(best - typed) < epsilon ? "" : `<span class="typed">${fixed(typed)} → </span>`;
       return `<span class="${classes}" title="${escape(title)}"><span class="nums">${typedPart}<span class="best">${fixed(best)}</span></span><span class="bar"><i style="width:${(100 * best).toFixed(0)}%; --v:${best.toFixed(3)}"></i></span></span>`;
     };
     const weightsState = () => {
       const changed = data.goalKinds.filter(kind => goalsOf(kind).length && weightOf(kind) !== 1);
       return changed.length ? ` · ${changed.map(kind => `${kindLabel(kind)} ${weightOf(kind)}`).join(", ")}` : " · all equal";
     };
-    const goalsOf = kind => goalsByKind.get(kind) ?? [];
 
     // One-click weight sets for common readers. A kind left out keeps the default weight of 1.
     const weightPresets = [
@@ -901,7 +899,7 @@ __REPORT_MODEL__
         description: "Agents type complete queries and use quotes and operators freely, so exact titles and exclusions matter and unfinished typing does not." }
     ];
     const presetWeight = (preset, kind) => preset.weights[kind] ?? 1;
-    const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => Math.abs(presetWeight(preset, kind) - weightOf(kind)) < 1e-9));
+    const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => Math.abs(presetWeight(preset, kind) - weightOf(kind)) < epsilon));
 
     function storeWeights() {
       try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
@@ -957,15 +955,21 @@ __REPORT_MODEL__
       const meanTitle = "Each kind's goals are averaged first, then the kinds are averaged by their weights.";
       const meanRow = (label, key, extra) => {
         const top = totalWeight ? Math.max(...data.engines.map(id => mean(id, key))) : 0;
-        return `<tr class="mean-row${extra}"><td title="${meanTitle}">${label}</td>${data.engines.map(id => `<td class="score-cell">${totalWeight ? scorePair(mean(id, key), mean(id, key), mean(id, key) >= top - 1e-9) : "n/a"}</td>`).join("")}</tr>`;
+        return `<tr class="mean-row${extra}"><td title="${meanTitle}">${label}</td>${data.engines.map(id => {
+          const value = mean(id, key);
+          return `<td class="score-cell">${totalWeight ? scorePair(value, value, value >= top - epsilon) : "n/a"}</td>`;
+        }).join("")}</tr>`;
       };
       const topGain = totalWeight ? Math.max(...data.engines.map(id => model.scores[id].gain)) : 0;
       const header = `<thead><tr><th>Goal</th>${data.engines.map(id => `<th>${escape(labels[id])}</th>`).join("")}</tr></thead>`;
       const body = kinds.map(kind => {
-        const goalRows = goalsOf(kind).map(item => `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td><a href="${caseHash("translations", item.id)}">${escape(item.focus)}</a></td>${data.engines.map(id => {
+        const goalRows = goalsOf(kind).map(item => {
+          const top = Math.max(...item.engines.map(engine => engine.bestScore.f1));
+          return `<tr class="goal-row${weightOf(kind) ? "" : " muted-row"}" data-id="${escape(item.id)}"><td><a href="${caseHash("translations", item.id)}">${escape(item.focus)}</a></td>${data.engines.map(id => {
           const engine = engineIn(item, id);
-          return `<td class="score-cell">${scorePair(engine.typedScore.f1, engine.bestScore.f1, wins(item, id), scoreTitle(engine))}</td>`;
-        }).join("")}</tr>`).join("");
+          return `<td class="score-cell">${scorePair(engine.typedScore.f1, engine.bestScore.f1, engine.bestScore.f1 >= top - epsilon, scoreTitle(engine))}</td>`;
+        }).join("")}</tr>`;
+        }).join("");
         return `<tr class="kind-row" style="--c: ${kindColor(kind)}"><th colspan="${data.engines.length + 1}" title="${escape(kindDescriptions[kind] ?? "")}">${escape(kindLabel(kind))}${weightOf(kind) === 1 ? "" : `<span class="kind-weight">weight ${weightOf(kind)}</span>`}</th></tr>${goalRows}`;
       }).join("");
       const footer = `<tfoot>
