@@ -275,6 +275,28 @@
   (testing "a Revision of an entity that feeds no document reindexes nothing"
     (is (= [] (capture-enqueues! #(revision/publish-created! {:model "Segment" :model_id 1 :user_id 1}))))))
 
+(deftest revision-create-reindexes-only-documents-that-read-it-test
+  (testing "the Revision of a model reindexes the model's own documents, not its indexed values or actions"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (mt/with-temp [:model/Card       {card-id :id} {:name "Indexed Model", :type :model}
+                     :model/ModelIndex _             {:model_id   card-id
+                                                      :pk_ref     (mt/$ids $venues.id)
+                                                      :value_ref  (mt/$ids $venues.name)
+                                                      :schedule   "0 0 0 * * ? *"
+                                                      :state      "indexed"
+                                                      :creator_id (mt/user->id :rasta)}]
+        (is (= #{"card" "dataset" "metric"}
+               (enqueued-search-models
+                (capture-enqueues! #(revision/publish-created! {:model    "Card"
+                                                                :model_id card-id
+                                                                :user_id  (mt/user->id :crowberto)})))))))))
+
+(deftest revision-readers-test
+  (testing "the search models that read a Revision are the ones whose spec joins it"
+    (is (= {"Card"      #{"card" "dataset" "metric"}
+            "Dashboard" #{"dashboard"}}
+           (#'search.events/revision-readers)))))
+
 ;;; Purges
 
 (deftest purge-one-on-delete-test

@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -19,24 +20,37 @@
       (isa? model :search/indexed)
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
 
-(def ^:private revisioned-search-models
-  "The models of the entities whose documents take their last editor and edit time from a Revision, by the `:model`
-  that a Revision names them with."
-  {"Card"      :model/Card
-   "Dashboard" :model/Dashboard})
+(defn- revision-readers
+  "The search models whose documents read the latest Revision of their entity, by the `:model` that a Revision names
+  the entity with, such as `{\"Card\" #{\"card\" \"dataset\" \"metric\"}}`."
+  []
+  (reduce-kv (fn [readers search-model {:keys [model joins]}]
+               (cond-> readers
+                 (some (comp #{:model/Revision} first) (vals joins))
+                 (update (name model) (fnil conj #{}) search-model)))
+             {}
+             (search.spec/specifications)))
 
 (defn- revised-model
-  "The model of the entity whose document the `event` of the creation of a Revision refreshes, or nil for any other
-  event."
+  "The `:model` that names the entity whose documents the `event` of the creation of a Revision refreshes, or nil for
+  any other event."
   [{:keys [model operation object]}]
-  (when (and (= :model/Revision model) (= :create operation))
-    (revisioned-search-models (:model object))))
+  (when (and (= :model/Revision model)
+             (= :create operation)
+             (contains? (revision-readers) (:model object)))
+    (:model object)))
 
-(defn- revised-entity
-  "The entity that the `event` of the creation of a Revision names, as the instance that the search hooks of its model
-  select by."
-  [{:keys [object] :as event}]
-  (t2/instance (revised-model event) {:id (:model_id object)}))
+(defn- reindex-revised!
+  "Reindex, by its own id, each entity that the Revision create `events` name, but only the documents that read its
+  Revision."
+  [events]
+  (let [readers (revision-readers)]
+    (doseq [[revised-model ids] (update-vals (group-by revised-model events)
+                                             #(into [] (comp (map (comp :model_id :object)) (distinct)) %))]
+      ;; The other documents that join the entity, such as a model's indexed values and actions, read none of the
+      ;; Revision, so a model's every save would re-derive them all for nothing.
+      (search/reindex-documents! (map #(t2/instance (keyword "model" revised-model) {:id %}) ids)
+                                 (readers revised-model)))))
 
 (defn- capture-dependents
   "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
@@ -92,7 +106,7 @@
       ;; A Revision is no row of a document: the entity it records is reindexed by its own id, whichever Revisions
       ;; the batch inserted after it.
       (when (seq revised)
-        (search/bulk-update! (into [] (comp (map revised-entity) (distinct)) revised)))
+        (reindex-revised! revised))
       (when (seq created)
         (search/bulk-update! created))
       (when (seq updated)
