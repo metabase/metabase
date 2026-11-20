@@ -4631,12 +4631,14 @@
            measures.schema
            models
            native-query-snippets
+           plugins
            premium-features
            queries
            remote-sync
            segments.schema
            serialization
            settings
+           setup
            startup
            task
            timeline
