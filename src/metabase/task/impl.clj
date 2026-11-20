@@ -176,7 +176,7 @@
 
 (defn standby-scheduler!
   "Stop the scheduler firing triggers, and leave the jobs already running to finish.
-   Does nothing when there is no scheduler."
+  Does nothing when there is no scheduler."
   []
   (some-> (scheduler) .standby))
 
