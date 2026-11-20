@@ -1,8 +1,18 @@
 import type * as Lib from "metabase-lib";
-import type { IconName } from "metabase-types/api";
+import type {
+  ColumnNameColumnSplitSetting,
+  IconName,
+} from "metabase-types/api";
 
-/** `values` is Summarize by, `columns` is Group by. */
-export type SummaryWellId = "values" | "columns";
+/** `values` is Summarize by, `columns` is Group by, `rows` is the Rows well of pivot mode. */
+export type SummaryWellId = "values" | "columns" | "rows";
+
+export type SummaryDimensionWellId = Exclude<SummaryWellId, "values">;
+
+/** What a change of the wells does to the pivot table of the question. */
+export type SummaryPivotChange =
+  | { type: "show"; columnSplit: ColumnNameColumnSplitSetting }
+  | { type: "hide" };
 
 export type SummaryQueryChangeOptions = {
   isFormulaCreated?: boolean;
@@ -72,4 +82,8 @@ export type SummaryDimensionItem = {
 export type SummaryDragItem =
   | { kind: "field"; field: SummaryField; label: string }
   | { kind: "value"; item: SummaryValueItem }
-  | { kind: "dimension"; item: SummaryDimensionItem };
+  | {
+      kind: "dimension";
+      item: SummaryDimensionItem;
+      wellId: SummaryDimensionWellId;
+    };

@@ -6,6 +6,7 @@ import type { SummaryFormulaInput } from "../SummaryFormulaBar";
 import type {
   SummaryBucketOption,
   SummaryDimensionItem,
+  SummaryDimensionWellId,
   SummaryQueryChangeOptions,
 } from "../types";
 import { changeDimensionBucket } from "../utils";
@@ -20,6 +21,7 @@ import { splitBucketLabel } from "./utils";
 type DimensionChipProps = {
   query: Lib.Query;
   stageIndex: number;
+  wellId: SummaryDimensionWellId;
   item: SummaryDimensionItem;
   isEditing: boolean;
   /** Absent when the database can't take formulas in this well. */
@@ -31,6 +33,7 @@ type DimensionChipProps = {
 export function DimensionChip({
   query,
   stageIndex,
+  wellId,
   item,
   isEditing,
   formulaInput,
@@ -88,7 +91,7 @@ export function DimensionChip({
 
   return (
     <WellChip
-      drag={{ kind: "dimension", item }}
+      drag={{ kind: "dimension", item, wellId }}
       rename={
         expression && !isEditing ? getFormulaRename(expression) : undefined
       }
