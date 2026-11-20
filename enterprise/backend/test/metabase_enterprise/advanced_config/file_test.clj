@@ -130,7 +130,7 @@
 
 (deftest ^:parallel keywordize-matches-environ-test
   (testing "our copy of keywordize normalizes names exactly like environ"
-    (doseq [s ["MY_PG2_PASSWORD" "MY_PG_2_PASSWORD" "my-pg2-password" "user.dir" "MyVar" "MB_DB_HOST"]]
+    (doseq [s ["FOO" "foo" "MY_PG2_PASSWORD" "MY_PG_2_PASSWORD" "my-pg2-password" "user.dir" "MyVar" "MB_DB_HOST"]]
       (is (= (@#'environ.core/keywordize s)
              (#'advanced-config.file/keywordize s))
           s))))
