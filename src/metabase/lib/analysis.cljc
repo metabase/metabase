@@ -1,17 +1,7 @@
 (ns metabase.lib.analysis
   (:require
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.column :as column]
-   [metabase.util.time :as time]))
-
-(def ^:private units {"d" :day "w" :week "m" :month "q" :quarter "y" :year})
-
-;; it would be better to use metabase.query-processor.parameters.dates for this
-;; but that's got a lot of JVM-specific bits in it.
-(defn- date-range->date [date-range]
-  (if-let [[_ n unit] (re-find #"^(\d+)([dwmqy])$" date-range)]
-    (time/add (time/local-date) (units unit) (- (parse-long n)))
-    (throw (ex-info "unsupported date range" {:date-range date-range}))))
+   [metabase.lib.metadata.column :as column]))
 
 (defn ->mbql
   "Convert the given analysis stage into MBQL."
@@ -27,7 +17,6 @@
                                   (lib/with-temporal-bucket timestamp-column
                                     (keyword granularity))))
                   (lib/breakout person-column)
-                  (lib/filter (lib/<= (date-range->date date_range) timestamp-column))
                   lib/append-stage
                   (lib/aggregate (case habit-values
                                    "count" (lib/count)
