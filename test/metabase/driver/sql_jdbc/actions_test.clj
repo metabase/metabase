@@ -42,7 +42,8 @@
     (binding [actions/*misc-value-cache* (atom {})]
       (is (= {"CATEGORY_ID" (h2x/cast "INTEGER" 50)}
              (cast-values :h2 {"CATEGORY_ID" 50} (mt/id :venues))))
-      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:base_type :type/Float}
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:base_type      :type/Float
+                                                                            :effective_type :type/Float}
         (is (= {"CATEGORY_ID" (h2x/cast "INTEGER" 40)}
                (cast-values :h2 {"CATEGORY_ID" 40} (mt/id :venues))))))))
 

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.sync.sync-metadata.comments-test
+(ns metabase.sync.sync-metadata.comments-test
   "Test for the logic that syncs Table column descriptions with the comments fetched from a DB."
   (:require
    [clojure.test :refer :all]
@@ -36,7 +36,7 @@
     [_driver _feature _database]
     true))
 
-(deftest ^:parallel basic-field-comments-test
+(deftest ^:mb/driver-tests ^:parallel basic-field-comments-test
   (testing "test basic field comments sync"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset basic-field-comments
@@ -50,7 +50,7 @@
     [{:field-name "updated_desc", :base-type :type/Text, :field-comment "original comment"}]
     [["foo"]]]])
 
-(deftest comment-should-not-overwrite-custom-description-test
+(deftest ^:mb/driver-tests comment-should-not-overwrite-custom-description-test
   (testing "user-set description is never overwritten by resyncing comment from source db"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset update-desc
@@ -65,7 +65,7 @@
             (is (=? {:description "updated description" :description_set true}
                     (t2/select-one :model/FieldUserSettings :field_id field-id)))))))))
 
-(deftest sync-comment-on-existing-field-test
+(deftest ^:mb/driver-tests sync-comment-on-existing-field-test
   (testing "resync of a field whose description was cleared"
     (mt/test-drivers (mt/normal-driver-select {:+features [::field-comments-sync]})
       (mt/dataset basic-field-comments
@@ -106,7 +106,7 @@
       last
       mt/format-name))
 
-(deftest ^:parallel table-comments-test
+(deftest ^:mb/driver-tests ^:parallel table-comments-test
   (testing "test basic comments on table"
     (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
       (mt/dataset (basic-table "table_with_comment" "table comment")
@@ -114,7 +114,7 @@
                   :description "table comment"}}
                (db->tables (mt/db))))))))
 
-(deftest dont-overwrite-table-custom-description-test
+(deftest ^:mb/driver-tests dont-overwrite-table-custom-description-test
   (testing (str "test changing the description in metabase on table to check it is not overwritten by comment in "
                 "source db when resyncing")
     (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
@@ -128,7 +128,7 @@
                     :description "updated table description"}}
                  (db->tables (mt/db)))))))))
 
-(deftest sync-existing-table-comment-test
+(deftest ^:mb/driver-tests sync-existing-table-comment-test
   (testing "test adding a comment to the source table that was initially empty, so we can check that the resync picks it up"
     (mt/test-drivers (mt/normal-driver-select {:+features [::table-comments-sync]})
       (let [table-name (u/lower-case-en (apply str (take 10 (mt/random-name))))

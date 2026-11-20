@@ -1,11 +1,11 @@
-(ns ^:mb/driver-tests metabase.sync.sync-metadata.default-schema-test
+(ns metabase.sync.sync-metadata.default-schema-test
   (:require
    [clojure.test :refer :all]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest sync-default-schema-test
+(deftest ^:mb/driver-tests sync-default-schema-test
   (mt/test-driver :h2
     (mt/dataset test-data
       (let [database (mt/db)]

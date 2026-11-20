@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.postgres.index-test
+(ns metabase.driver.postgres.index-test
   "Tests for the Postgres standalone index driver methods (Index Manager, milestone 0):
   `supported-index-methods`, `compile-create-index`, and `refresh-table-stats!`.
 
@@ -142,7 +142,7 @@
     :structured {:kind :gist :name "gist_p" :columns [{:name "p"}] :if-not-exists true}
     :expected   {:access-method "gist", :unique? false}}])
 
-(deftest standalone-create-path-test
+(deftest ^:mb/driver-tests standalone-create-path-test
   (testing "the standalone-create path runs the rendered DDL and then ANALYZE against a real table"
     (mt/test-driver :postgres
       (mt/with-empty-db
@@ -172,7 +172,7 @@
                   (finally
                     (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])))))))))))
 
-(deftest create-index!-shared-render-path-test
+(deftest ^:mb/driver-tests create-index!-shared-render-path-test
   (testing "driver/create-index! executes through the same per-driver rendering as compile-create-index"
     (mt/test-driver :postgres
       (mt/with-empty-db

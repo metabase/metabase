@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.test.data.dataset-definition-test
+(ns metabase.test.data.dataset-definition-test
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -6,7 +6,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest dataset-with-custom-pk-test
+(deftest ^:mb/driver-tests dataset-with-custom-pk-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:metadata/key-constraints]})
     (mt/dataset (mt/dataset-definition "custom-pk"
@@ -40,7 +40,7 @@
      {:field-name "song_id",   :base-type :type/Integer, :pk? true}]
     [[1 2]]]])
 
-(deftest dataset-with-custom-composite-pk-test
+(deftest ^:mb/driver-tests dataset-with-custom-composite-pk-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:metadata/key-constraints]})
     (mt/dataset composite-pk

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.app-db.liquibase.rollback-test
+(ns metabase.app-db.liquibase.rollback-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -74,7 +74,7 @@
 
 ;;; ---------------------------------------------- target resolution ----------------------------------------------
 
-(deftest rollback-target-resolution-test
+(deftest ^:mb/driver-tests rollback-target-resolution-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -113,7 +113,7 @@
               (is (= #{"d99" "d100"} (changelog-deployments conn ct)))
               (is (= #{"d99" "d100"} (version-deployments conn)) "the dropped deployments' version rows go with them"))))))))
 
-(deftest bare-major-rollback-targets-latest-deployment-of-major-test
+(deftest ^:mb/driver-tests bare-major-rollback-targets-latest-deployment-of-major-test
   (testing "a bare-major target rolls back to the LATEST deployment of that major, whatever the recorded version format"
     ;; Regression: version strings of different lengths (a backfilled `x.64.0.0` vs a real-tag `x.64.9`) used to be
     ;; compared with Clojure's count-first vector sort, which resolved "64" to 64.0.0 and rolled back the 64.9 hotfix.
@@ -134,7 +134,7 @@
                 "the 65 changeset was rolled back; the 64.9 hotfix (the latest 64 deployment) is retained")
             (is (= #{"d64a" "d64b"} (version-deployments conn)) "only the 65 version row was removed")))))))
 
-(deftest booted-major-is-a-rollback-target-test
+(deftest ^:mb/driver-tests booted-major-is-a-rollback-target-test
   (testing "a major recorded only as a boot row (it shipped no migrations) is still a valid rollback boundary"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -154,7 +154,7 @@
               (is (= ["cs56"] (changelog-ids conn ct))
                   "the current-major deployment was rolled back and the booted deployment retained"))))))))
 
-(deftest default-rollback-target-test
+(deftest ^:mb/driver-tests default-rollback-target-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (liquibase/with-liquibase [liquibase conn]
@@ -173,7 +173,7 @@
               (is (= ["c65"] (changelog-ids conn ct)))
               (is (= ["x.65.0.0"] (versions-recorded))))))))))
 
-(deftest default-rollback-does-not-skip-a-release-without-migrations-test
+(deftest ^:mb/driver-tests default-rollback-does-not-skip-a-release-without-migrations-test
   (testing "v64 migrate down is a no-op when v64 booted on the schema v63 produced"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -189,7 +189,7 @@
             (is (= ["c62" "c63"] (changelog-ids conn ct))
                 "the default target is v63 at the current deployment, so no schema changes are reversed")))))))
 
-(deftest rollback-force-widens-to-full-history-test
+(deftest ^:mb/driver-tests rollback-force-widens-to-full-history-test
   (testing "force widens the rollback window from the recent history to the full recorded history"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -212,7 +212,7 @@
                 (is (= #{"d43"} (changelog-deployments conn ct)) "only the major-43 deployment remains")
                 (is (= #{"d43"} (version-deployments conn)) "the rolled-back deployments' version rows were also removed")))))))))
 
-(deftest rollback-from-older-binary-guard-test
+(deftest ^:mb/driver-tests rollback-from-older-binary-guard-test
   (testing "a binary older than the schema refuses to roll back: its changelog cannot reverse the newer changesets,
             so proceeding would delete their bookkeeping and leave the schema silently corrupted"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -239,7 +239,7 @@
                 (rollback/rollback-major-version! conn liquibase true "64")
                 (is (not (has-changeset? conn ct "future65cs")))))))))))
 
-(deftest rollback-from-older-patch-guard-test
+(deftest ^:mb/driver-tests rollback-from-older-patch-guard-test
   (testing "an older patch of the schema's major refuses to roll back too: the newer patch's changesets are not in its
             changelog either, so it could only clear their bookkeeping and leave their DDL behind"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -269,7 +269,7 @@
                 (rollback/rollback-major-version! conn liquibase true "64")
                 (is (not (has-changeset? conn ct "future655cs")))))))))))
 
-(deftest rollback-from-older-patch-after-it-booted-guard-test
+(deftest ^:mb/driver-tests rollback-from-older-patch-after-it-booted-guard-test
   (testing "an older patch that booted the newer patch's schema since still refuses: a re-run (a runAlways changeset,
             or a runOnChange one the patches differ in) recorded the newest deployment as its own, but the newer
             patch's changesets are still in the schema"
@@ -291,7 +291,7 @@
 
 ;;; ------------------------------------------ rolling back real deployments ----------------------------------------
 
-(deftest rollback-to-the-major-before-the-first-backfill-test
+(deftest ^:mb/driver-tests rollback-to-the-major-before-the-first-backfill-test
   (testing "an install that went 63 -> 64 before version tracking can still `migrate down` to 63 from a 64 patch"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -308,7 +308,7 @@
             (is (= ["v63.2026-01-01T00:00:00"] (changelog-ids conn ct)))
             (is (= #{"d63"} (version-deployments conn)))))))))
 
-(deftest rollback-after-upgrade-backfill-test
+(deftest ^:mb/driver-tests rollback-after-upgrade-backfill-test
   (testing "an install upgraded from 53 to 55 backfills the old major, records the new one, and downgrades back to 53"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -336,7 +336,7 @@
                     "the 53 install's changesets (including older unrecorded history) are retained")
                 (is (= #{"d52older" "d53install"} (version-deployments conn)) "the 55 version row was deleted")))))))))
 
-(deftest migrate-up-backfills-pre-tracking-install-test
+(deftest ^:mb/driver-tests migrate-up-backfills-pre-tracking-install-test
   (testing "the first `migrate up` on an install that predates version tracking backfills the pre-upgrade version,
             so `migrate down` still has a boundary to roll back to (CLI upgrades skip the boot-time checks)"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -369,7 +369,7 @@
                   (is (not-any? #{(format "x.%d.0" (inc pre-major))} (versions-recorded))
                       "the upgrade's version row was removed"))))))))))
 
-(deftest release-migrate-down-reverses-version-less-ddl-test
+(deftest ^:mb/driver-tests release-migrate-down-reverses-version-less-ddl-test
   (testing "the release `migrate down` reverses a version-less changeset's DDL, not just its bookkeeping"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -395,7 +395,7 @@
               (is (true? (table? "dev_run_a_table")) "65's table survives")
               (is (= ["x.65.0"] (versions-recorded))))))))))
 
-(deftest legacy-version-tracking-removed-by-rollback-test
+(deftest ^:mb/driver-tests legacy-version-tracking-removed-by-rollback-test
   (testing "rolling back several version-less majors (68 -> 66) removes the v67 and v68 markers with their deployments, leaving v66"
     ;; No special handling: each marker belongs to the deployment that created it, so delete-deployment-rows! sweeps it up.
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -418,7 +418,7 @@
             (is (= 66 (versions/latest-applied-major-version conn db)) "older binaries now correctly see 66")
             (is (= #{"d66"} (changelog-deployments conn ct)) "only the v66 deployment remains")))))))
 
-(deftest rollback-failure-preserves-history-test
+(deftest ^:mb/driver-tests rollback-failure-preserves-history-test
   (testing "a rollback that cannot reverse a changeset throws and leaves the deployment's history intact"
     ;; Otherwise we would clear the deployment's rows -- including its legacy-version-tracking row -- while the schema
     ;; is still (partly) at the higher major, so an older binary would read the lower major and start against it.
@@ -461,7 +461,7 @@
           (is (not (re-find #"left unchanged" (msg db-type))) db-type)
           (is (re-find #"may (already )?have been committed" (msg db-type)) db-type))))))
 
-(deftest rollback-logs-rows-it-cannot-reverse-test
+(deftest ^:mb/driver-tests rollback-logs-rows-it-cannot-reverse-test
   (testing "rows cleared by a rollback without a matching changeset to reverse are called out, not silently dropped"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -482,7 +482,7 @@
 
 ;;; ---------------------------------------------- the development rollback ----------------------------------------
 
-(deftest rollback-to-deployment-test
+(deftest ^:mb/driver-tests rollback-to-deployment-test
   (testing "rollback-to-deployment! rolls back everything after the given deployment, whatever versions are recorded"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -518,7 +518,7 @@
                 (is (thrown-with-msg? IllegalArgumentException #"nope.*not a deployment"
                                       (rollback/rollback-to-deployment! conn liquibase "nope")))))))))))
 
-(deftest rollback-to-deployment-onto-a-release-install-test
+(deftest ^:mb/driver-tests rollback-to-deployment-onto-a-release-install-test
   (testing "rolling a dev deployment back onto a release install leaves a schema the release rollback accepts again"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -538,7 +538,7 @@
               (testing "the schema is at a real major again, so the release rollback works (nothing earlier here: no-op)"
                 (is (nil? (rollback/rollback-major-version! conn liquibase false)))))))))))
 
-(deftest rollback-to-deployment-repairs-rewritten-filenames-test
+(deftest ^:mb/driver-tests rollback-to-deployment-repairs-rewritten-filenames-test
   (testing "the deployment rollback repairs version-less filenames an older binary rewrote, without relying on the
             release migrate! path having consolidated first (dev.migrate/rollback! does not go through migrate!)"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -561,7 +561,7 @@
                 (is (not-any? #(re-find #"could not be reversed" (:message %)) (messages))))
               (is (false? (versions/table-exists? "DEV_RUN_A_TABLE" conn)) "the DDL was reversed, not orphaned"))))))))
 
-(deftest dev-consecutive-migration-runs-are-separate-deployments-test
+(deftest ^:mb/driver-tests dev-consecutive-migration-runs-are-separate-deployments-test
   (testing "two `migrate up` runs in ONE process (a long-lived dev REPL) create separate deployments, so `migrate down`
             reverts exactly the last run"
     ;; Regression: the deployment id was generated once per process (Liquibase root Scope), so a fresh install plus a
@@ -599,7 +599,7 @@
 
 ;;; ------------------------------------------------- re-run changesets --------------------------------------------
 
-(deftest rollback-does-not-reverse-reran-changesets-test
+(deftest ^:mb/driver-tests rollback-does-not-reverse-reran-changesets-test
   (testing "migrate down must not reverse changesets that merely re-ran (RERAN) in the newer deployment"
     ;; Liquibase moves a re-executed changeset (runOnChange whose checksum changed, or anything re-run by `migrate
     ;; force`) into the CURRENT run's deployment: new deployment_id, new dateexecuted, exectype RERAN. Those rows are
@@ -643,7 +643,7 @@
               (mdb/migrate! (mdb/data-source) :up))
             (is (= 1 (view-x)))))))))
 
-(deftest rollback-reverses-reran-changesets-newer-than-the-target-test
+(deftest ^:mb/driver-tests rollback-reverses-reran-changesets-newer-than-the-target-test
   (testing "a re-run changeset whose vNN. major is above the rollback target did not exist there, so it is reversed:
             keeping it would leave 65's view over the 65 column the rollback drops"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -673,7 +673,7 @@
             (is (nil? (row-of "v65.roc-column")))
             (is (= ["x.64.0"] (versions-recorded)))))))))
 
-(deftest rollback-keeps-reran-changesets-of-the-target-major-test
+(deftest ^:mb/driver-tests rollback-keeps-reran-changesets-of-the-target-major-test
   (testing "a re-run changeset whose vNN. major is at or below the target existed there, so it is kept"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -714,7 +714,7 @@
     {:row-of (fn [id] (first (jdbc/query spec [(format "SELECT deployment_id, exectype FROM %s WHERE id = ?" ct) id])))
      :view?  (fn [] (try (jdbc/query spec ["SELECT x FROM v_lroc"]) true (catch Exception _ false)))}))
 
-(deftest rollback-reverses-version-less-reran-changesets-newer-than-the-target-test
+(deftest ^:mb/driver-tests rollback-reverses-version-less-reran-changesets-newer-than-the-target-test
   (testing "a version-less re-run changeset that first ran after the rollback target is reversed: where it first ran is
             recorded when it re-runs"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -732,7 +732,7 @@
           (is (empty? (versions/first-runs (.getConnection ^javax.sql.DataSource (mdb/data-source))))
               "the reversed changeset's first run is forgotten with it"))))))
 
-(deftest rollback-to-deployment-reverses-reran-changesets-after-the-boundary-test
+(deftest ^:mb/driver-tests rollback-to-deployment-reverses-reran-changesets-after-the-boundary-test
   (testing "the development rollback, where every deployment records the same version, also reverses a re-run
             changeset that first ran after the boundary deployment"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -752,7 +752,7 @@
           (is (nil? (row-of "late_roc_column")))
           (is (= #{"d0"} (changelog-deployments (.getConnection ^javax.sql.DataSource (mdb/data-source)) ct))))))))
 
-(deftest rollback-reverses-run-always-changesets-newer-than-the-target-test
+(deftest ^:mb/driver-tests rollback-reverses-run-always-changesets-newer-than-the-target-test
   (testing "a runAlways changeset that first ran after the rollback target is reversed, though every run re-ran it"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -788,7 +788,7 @@
                           changelog-table changelog-table)
                   deployment-id id]))
 
-(deftest rollback-keeps-re-runs-first-run-by-an-emptied-deployment-test
+(deftest ^:mb/driver-tests rollback-keeps-re-runs-first-run-by-an-emptied-deployment-test
   (testing "a deployment whose only changeset re-ran later still holds where it first ran: an old 64 binary that re-ran
             a 64 view on its own, then 67 re-ran it, then `migrate down` to 64 keeps the view"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -811,7 +811,7 @@
             (is (contains? (version-deployments conn) "d64b")
                 "the emptied deployment keeps its version row: the view's first run still places it")))))))
 
-(deftest rollback-removes-version-rows-of-emptied-deployments-test
+(deftest ^:mb/driver-tests rollback-removes-version-rows-of-emptied-deployments-test
   (testing "a rollback removes the version rows of deployments with no changelog rows left -- every runAlways run, and
             any run that only re-ran changesets, empties the deployment of the run before it"
     (mt/test-drivers #{:h2 :mysql :postgres}
@@ -828,7 +828,7 @@
               (rollback/rollback-major-version! conn liquibase false))
             (is (= #{"d65"} (version-deployments conn)))))))))
 
-(deftest rollback-tells-re-run-changesets-apart-by-file-test
+(deftest ^:mb/driver-tests rollback-tells-re-run-changesets-apart-by-file-test
   (testing "first runs are kept per [filename author id]: the same id and author in two files are two changesets"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -855,7 +855,7 @@
             (is (nil? (row-in "b.yaml")) "the view that first ran in 65 goes with 65")
             (is (= #{["a.yaml" "test" "same_view"]} (set (keys (versions/first-runs conn)))))))))))
 
-(deftest rollback-of-reran-only-deployment-test
+(deftest ^:mb/driver-tests rollback-of-reran-only-deployment-test
   (testing "a deployment consisting ONLY of a re-run changeset can still be rolled back: the boundary steps back and
             the deployment's version row is removed, even though there is nothing to reverse"
     ;; The dev flow that produces this: edit just a runOnChange changeset (no new changesets) and re-run migrate up.
@@ -883,7 +883,7 @@
               (is (nil? (rollback-last-deployment!)) "a further rollback with no earlier deployment is a clean no-op")
               (is (= [versions/dev-version] (versions-recorded))))))))))
 
-(deftest rollback-leaves-a-marker-as-the-newest-row-test
+(deftest ^:mb/driver-tests rollback-leaves-a-marker-as-the-newest-row-test
   (testing "rows a rollback keeps can be newer than the boundary's marker; old binaries must still read a marker last"
     (mt/test-drivers #{:h2 :mysql :postgres}
       (mt/with-temp-empty-app-db [conn driver/*driver*]

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.uuid-test
+(ns metabase.query-processor.uuid-test
   "Tests for queries involving uuids."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.uuid-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.query-processor.uuid-test]}}}}}}
@@ -10,7 +10,7 @@
 
 ;; Athena supports uuids in queries, but not in create table
 
-(deftest ^:parallel simple-uuid-query-test
+(deftest ^:mb/driver-tests ^:parallel simple-uuid-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type :test/uuids-in-create-table-statements)
     (testing "Simple query"
       (mt/dataset uuid-dogs
@@ -23,7 +23,7 @@
 
 ;;; see also [[metabase.lib.field.resolution-test/resolve-field-missing-join-alias-test]]
 ;;; and [[metabase.query-processor.util.add-alias-info-test/resolve-field-missing-join-alias-test]]
-(deftest ^:parallel joined-uuid-query-test
+(deftest ^:mb/driver-tests ^:parallel joined-uuid-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uuid-type :test/uuids-in-create-table-statements)
     (testing "Query with joins"
       (mt/dataset uuid-dogs
@@ -39,7 +39,7 @@
                             [:field (mt/id :dogs :id) {:base-type "type/UUID"}]
                             "27e164bc-54f8-47a0-a85a-9f0e90dd7667"]}))))))))
 
-(deftest ^:parallel field-filter-uuid-test
+(deftest ^:mb/driver-tests ^:parallel field-filter-uuid-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :uuid-type
                                                    :test/uuids-in-create-table-statements)
     (testing "uuid field filters"

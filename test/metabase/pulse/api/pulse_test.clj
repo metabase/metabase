@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.pulse.api.pulse-test
+(ns metabase.pulse.api.pulse-test
   "Tests for /api/pulse endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.pulse.api.pulse-test]}}}}}}
   (:require
@@ -1518,7 +1518,7 @@
                   :recipient-type nil}
                  (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans"))))))))
 
-(deftest array-query-can-be-emailed-test
+(deftest ^:mb/driver-tests array-query-can-be-emailed-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/arrays)
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query (tx/native-array-query driver/*driver*)})}
                    :model/Dashboard {dashboard-id :id} {:name "Venues by Category"}

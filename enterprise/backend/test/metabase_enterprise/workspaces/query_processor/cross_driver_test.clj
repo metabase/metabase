@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.workspaces.query-processor.cross-driver-test
+(ns metabase-enterprise.workspaces.query-processor.cross-driver-test
   "End-to-end read-path coverage for workspace table remapping against real
    warehouses.
 
@@ -205,7 +205,7 @@
 
 ;;; --------------------------------- Tests -------------------------------------
 
-(deftest single-remapped-table-cross-driver-test
+(deftest ^:mb/driver-tests single-remapped-table-cross-driver-test
   (testing "QP read against canonical name resolves to the workspace copy on the warehouse"
     (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
@@ -225,7 +225,7 @@
                   (is (= 2 (count-via-qp))
                       (str "count came from workspace (2 rows), not canonical (" canonical-count " rows)")))))))))))
 
-(deftest non-remapped-passthrough-cross-driver-test
+(deftest ^:mb/driver-tests non-remapped-passthrough-cross-driver-test
   (testing "0/1: a query against a non-remapped table still hits canonical even when an unrelated remap exists"
     (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
@@ -253,7 +253,7 @@
                     (is (= canonical-count people-count)
                         "people read passes through canonical when only orders is remapped")))))))))))
 
-(deftest join-one-side-remapped-cross-driver-test
+(deftest ^:mb/driver-tests join-one-side-remapped-cross-driver-test
   (testing "1/2: an MBQL join with only the orders side remapped reads workspace orders + canonical people"
     (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))
@@ -287,7 +287,7 @@
                   (is (= 2 result-count)
                       "join count = workspace orders rows that match canonical people"))))))))))
 
-(deftest join-both-sides-remapped-cross-driver-test
+(deftest ^:mb/driver-tests join-both-sides-remapped-cross-driver-test
   (testing "2/2: an MBQL join with both sides remapped reads workspace orders + workspace people"
     (mt/test-drivers (filter cross-driver-test-drivers
                              (mt/normal-drivers-with-feature :workspace))

@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.query-processor.middleware.parameters.native-test
+(ns metabase.query-processor.middleware.parameters.native-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.query-processor.middleware.parameters.native-test]}}}}}}
   (:require
    [clojure.test :refer :all]
@@ -42,7 +42,7 @@
                     (-> (qp.native/expand-stage query 0)
                         (lib/query-stage 0))))))))
 
-(deftest ^:parallel native-query-with-card-template-tag-include-referenced-card-ids-test
+(deftest ^:mb/driver-tests ^:parallel native-query-with-card-template-tag-include-referenced-card-ids-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
     (testing (str "Expanding a Card template tag should add the card ID(s) to"
                   " `:query-permissions/referenced-card-ids`")

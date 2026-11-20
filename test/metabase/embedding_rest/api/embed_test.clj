@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.embedding-rest.api.embed-test
+(ns metabase.embedding-rest.api.embed-test
   "Tests for /api/embed endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.embedding-rest.api.embed-test]}}}}}}
   (:require
@@ -1633,7 +1633,7 @@
        "/query"
        response-format))
 
-(deftest pivot-embed-query-test
+(deftest ^:mb/driver-tests pivot-embed-query-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
@@ -1715,7 +1715,7 @@
         "/dashcard/" (u/the-id dashcard)
         "/card/" (:card_id dashcard))))
 
-(deftest pivot-dashcard-success-test
+(deftest ^:mb/driver-tests pivot-dashcard-success-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!

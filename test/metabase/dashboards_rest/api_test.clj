@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.dashboards-rest.api-test
+(ns metabase.dashboards-rest.api-test
   "Tests for /api/dashboard endpoints."
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.dashboards-rest.api-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.dashboards-rest.api-test]}}}}}}
@@ -2630,7 +2630,7 @@
           (is (= #{0}
                  (t2/select-fn-set :position :model/DashboardCardSeries, :dashboardcard_id (:id (first dashboard-cards))))))))))
 
-(deftest dashcard-action-create-update-test
+(deftest ^:mb/driver-tests dashcard-action-create-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (doseq [action-type [:implicit :query]]
@@ -2657,7 +2657,7 @@
                                                    :database_id              (mt/id)}}]}
                             (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))
 
-(deftest dashcard-action-database-enabled-actions-test
+(deftest ^:mb/driver-tests dashcard-action-database-enabled-actions-test
   (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data
@@ -2671,7 +2671,7 @@
                   (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
-(deftest dashcard-action-can-write-test
+(deftest ^:mb/driver-tests dashcard-action-can-write-test
   (testing "Dashcard actions hydrate can_write, which only admins have"
     (mt/test-driver :h2
       (mt/with-actions-test-data-and-actions-enabled
@@ -4001,7 +4001,7 @@
                  (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                 :filtered [%venues.price] :filtering [%categories.name])))))))))
 
-(deftest uuid-id-column-is-not-implicitly-remapped-test
+(deftest ^:mb/driver-tests uuid-id-column-is-not-implicitly-remapped-test
   (mt/test-drivers
     (mt/normal-drivers-with-feature :native-parameters :uuid-type
                                     :test/uuids-in-create-table-statements
@@ -4033,7 +4033,7 @@
                                                                 ;; a0 is part of first 2 rows of queried table
                                                                 "a0")))))))))
 
-(deftest field-filter-uuid-operator-dashboard-test
+(deftest ^:mb/driver-tests field-filter-uuid-operator-dashboard-test
   (testing "Dashboard ID filter with operator parameter type on a UUID native field filter (#73758)"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :uuid-type
                                                      :test/uuids-in-create-table-statements)
@@ -4315,7 +4315,7 @@
 (defn- dashcard-pivot-query-endpoint [dashboard-id card-id dashcard-id]
   (format "dashboard/pivot/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id))
 
-(deftest dashboard-card-query-pivot-test
+(deftest ^:mb/driver-tests dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
     (mt/test-drivers (api.pivots/applicable-drivers)
       (mt/dataset test-data
@@ -4335,7 +4335,7 @@
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))
 
-(deftest dashcard-archived-action-execution-test
+(deftest ^:mb/driver-tests dashcard-archived-action-execution-test
   (testing "A dashcard can't run an archived action until an admin unarchives it"
     (mt/test-driver :h2
       (mt/with-actions-test-data-and-actions-enabled
@@ -4352,7 +4352,7 @@
               (is (partial= {:rows-affected 1}
                             (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1}}))))))))))
 
-(deftest dashcard-query-action-execution-test
+(deftest ^:mb/driver-tests dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-actions [{:keys [action-id model-id]} {}]
@@ -4414,7 +4414,7 @@
                           :user-id (str (mt/user->id :crowberto))}
                          (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
-(deftest dashcard-implicit-action-execution-insert-test
+(deftest ^:mb/driver-tests dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard insert"
@@ -4441,7 +4441,7 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {}})))))))))))
 
-(deftest dashcard-implicit-action-execution-update-test
+(deftest ^:mb/driver-tests dashcard-implicit-action-execution-update-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard update"
@@ -4468,7 +4468,7 @@
                               (mt/user-http-request :crowberto :post 400 execute-path
                                                     {:parameters {"id" 1}})))))))))))
 
-(deftest dashcard-implicit-action-execution-delete-test
+(deftest ^:mb/driver-tests dashcard-implicit-action-execution-delete-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Executing dashcard delete"
@@ -4525,7 +4525,7 @@
                                    field-name)
                     :template-tags {field-name {:id field-name, :name field-name, :type :text, :display-name field-name}}})})
 
-(deftest dashcard-action-execution-type-test
+(deftest ^:mb/driver-tests dashcard-action-execution-type-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
     (let [types [{:field-name "atext" :base-type :type/Text ::good "hello"}
                  {:field-name "aboolean" :base-type :type/Boolean ::good true ::bad "not boolean"}
@@ -4658,7 +4658,7 @@
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}})))))))))))))
 
-(deftest dashcard-execution-fetch-prefill-test
+(deftest ^:mb/driver-tests dashcard-execution-fetch-prefill-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
       (testing "Prefetching dashcard update"
@@ -4678,7 +4678,7 @@
                                :crowberto :post 400
                                path {:parameters {"name" 1}})))))))))))
 
-(deftest dashcard-implicit-action-only-expose-and-allow-model-fields
+(deftest ^:mb/driver-tests dashcard-implicit-action-only-expose-and-allow-model-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}
       (mt/with-actions-test-data-and-actions-enabled
@@ -4724,7 +4724,7 @@
                   (is (= {:id 1 :name "African"}
                          (mt/user-http-request :crowberto :post 200 (str path "/values") {:parameters {"id" 1}}))))))))))))
 
-(deftest dashcard-implicit-action-only-expose-unhidden-fields
+(deftest ^:mb/driver-tests dashcard-implicit-action-only-expose-unhidden-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}
       (mt/with-actions-test-data-and-actions-enabled
@@ -6817,7 +6817,7 @@
                                             :embedding_params {:downloads "enabled"}})]
             (is (=? {:embedding_type "guest-embed" :embedding_params {:downloads "enabled"}} resp))))))))
 
-(deftest dashcard-action-execution-additional-types-test
+(deftest ^:mb/driver-tests dashcard-action-execution-additional-types-test
   (testing "implicit actions correctly coerce/persist additional column types, including on MySQL"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (let [types [{:field-name "adate" :base-type :type/Date ::good "2020-02-02"}
@@ -6856,7 +6856,7 @@
                           (format "%s was persisted with the correct coerced value (expected %s, got %s)"
                                   field-name (pr-str value) (pr-str actual))))))))))))))
 
-(deftest dashcard-query-action-optional-hidden-param-test
+(deftest ^:mb/driver-tests dashcard-query-action-optional-hidden-param-test
   (testing "a query action's optional/hidden template-tag parameter can be omitted, and is not a valid explicit destination"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data-and-actions-enabled

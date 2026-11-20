@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.driver.postgres.workspace-test
+(ns metabase.driver.postgres.workspace-test
   "Tests for the Postgres workspace isolation methods against a real warehouse, run as the database's admin connection,
   whose login is not a superuser."
   (:require
@@ -114,7 +114,7 @@
   (:owner (first (jdbc/query spec ["SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = ?"
                                    schema]))))
 
-(deftest methods-run-as-the-admin-login-test
+(deftest ^:mb/driver-tests methods-run-as-the-admin-login-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (workspace-with-details database 2001)
@@ -187,7 +187,7 @@
   (provisioning #(driver/init-workspace-isolation! :postgres database workspace))
   (provisioning #(driver/grant-workspace-read-access! :postgres database workspace ["sales"])))
 
-(deftest init-refuses-an-existing-user-test
+(deftest ^:mb/driver-tests init-refuses-an-existing-user-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2101)
@@ -211,7 +211,7 @@
     (catch java.sql.SQLException e
       (ex-message e))))
 
-(deftest init-refuses-an-existing-schema-test
+(deftest ^:mb/driver-tests init-refuses-an-existing-schema-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2120)
@@ -241,7 +241,7 @@
        (testing "the schema, its table and its row are still there"
          (is (= [{:id 1}] (rows-or-error spec kept))))))))
 
-(deftest init-refuses-a-schema-created-after-its-check-test
+(deftest ^:mb/driver-tests init-refuses-a-schema-created-after-its-check-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2123)
@@ -257,7 +257,7 @@
        (is (not (role-exists? spec user)))
        (is (some? (schema-owner spec schema)))))))
 
-(deftest init-then-destroy-twice-test
+(deftest ^:mb/driver-tests init-then-destroy-twice-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2121)
@@ -270,7 +270,7 @@
        (testing "a second destroy returns without error"
          (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace)))))))))
 
-(deftest init-again-after-a-failed-init-or-a-destroy-test
+(deftest ^:mb/driver-tests init-again-after-a-failed-init-or-a-destroy-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2122)
@@ -290,7 +290,7 @@
          (is (role-exists? spec user)))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
-(deftest concurrent-init-test
+(deftest ^:mb/driver-tests concurrent-init-test
   (do-with-warehouse!
    (fn [spec database]
      (testing "two inits of one workspace: one creates the user, the other gets the 409 that forbids cleanup"
@@ -313,7 +313,7 @@
            (is (every? #{(:schema workspace)} (keep :schema results)))
            (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
 
-(deftest init-keeps-the-password-out-of-statements-test
+(deftest ^:mb/driver-tests init-keeps-the-password-out-of-statements-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2103)
@@ -346,7 +346,7 @@
          (is (= [{:one 1}] (as-workspace-user workspace "SELECT 1 AS one"))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
-(deftest init-lock-timeout-leaves-nothing-to-clean-up-test
+(deftest ^:mb/driver-tests init-lock-timeout-leaves-nothing-to-clean-up-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2112)
@@ -372,7 +372,7 @@
        (is (nil? (schema-owner spec (:schema workspace))))
        (is (not (role-exists? spec ws-user)))))))
 
-(deftest init-connection-failure-at-commit-leaves-cleanup-to-the-caller-test
+(deftest ^:mb/driver-tests init-connection-failure-at-commit-leaves-cleanup-to-the-caller-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2113)
@@ -394,7 +394,7 @@
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
        (is (not (role-exists? spec ws-user)))))))
 
-(deftest init-connection-failure-before-commit-forbids-cleanup-test
+(deftest ^:mb/driver-tests init-connection-failure-before-commit-forbids-cleanup-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2114)
@@ -409,7 +409,7 @@
          (is (role-exists? spec ws-user)))
        (drop-role-if-exists! spec ws-user)))))
 
-(deftest destroy-ends-the-workspace-users-sessions-test
+(deftest ^:mb/driver-tests destroy-ends-the-workspace-users-sessions-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2104)
@@ -432,7 +432,7 @@
              (doseq [^java.sql.Connection conn [reader locker]]
                (.close conn)))))))))
 
-(deftest destroy-fails-closed-while-a-session-stays-open-test
+(deftest ^:mb/driver-tests destroy-fails-closed-while-a-session-stays-open-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2105)
@@ -459,7 +459,7 @@
              (.close session))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
-(deftest destroy-while-the-user-holds-its-own-role-row-test
+(deftest ^:mb/driver-tests destroy-while-the-user-holds-its-own-role-row-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2106)
@@ -477,7 +477,7 @@
            (finally
              (.close session))))))))
 
-(deftest destroy-restores-its-membership-and-drops-other-members-test
+(deftest ^:mb/driver-tests destroy-restores-its-membership-and-drops-other-members-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2107)
@@ -509,7 +509,7 @@
                                             "WHERE m.rolname = 'mb_ws_test_accomplice'")]))))
        (exec! spec ["DROP ROLE mb_ws_test_accomplice"])))))
 
-(deftest a-failed-destroy-leaves-the-user-locked-out-test
+(deftest ^:mb/driver-tests a-failed-destroy-leaves-the-user-locked-out-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2108)
@@ -532,7 +532,7 @@
 
 (defn- other-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name other-db-name}))
 
-(deftest destroy-drops-what-the-user-made-in-another-database-test
+(deftest ^:mb/driver-tests destroy-drops-what-the-user-made-in-another-database-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2109)
@@ -550,7 +550,7 @@
            (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
            (is (not (role-exists? spec user)))))))))
 
-(deftest destroy-reports-objects-in-another-database-test
+(deftest ^:mb/driver-tests destroy-reports-objects-in-another-database-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2110)
@@ -579,7 +579,7 @@
 (defn- public-create! [spec schema]
   (exec! spec [(format "GRANT CREATE ON SCHEMA %s TO PUBLIC" schema)]))
 
-(deftest grant-preconditions-test
+(deftest ^:mb/driver-tests grant-preconditions-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2201)
@@ -615,7 +615,7 @@
              (is (= [{:kind "schema", :name (:schema workspace)}] (distinct (grants-to spec user)))))))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
-(deftest init-refuses-public-create-anywhere-test
+(deftest ^:mb/driver-tests init-refuses-public-create-anywhere-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2202)
@@ -637,7 +637,7 @@
          (is (role-exists? spec user)))
        (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))
 
-(deftest public-create-check-includes-this-database-test
+(deftest ^:mb/driver-tests public-create-check-includes-this-database-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2203)]
@@ -649,7 +649,7 @@
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
              (is (= [(str db-name ".loose")] (:schemas (ex-data e)))))))))))
 
-(deftest cluster-public-create-test
+(deftest ^:mb/driver-tests cluster-public-create-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace  (new-workspace! spec database 2204)
@@ -682,7 +682,7 @@
            (is (nil? (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))
            (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))))))
 
-(deftest cluster-check-reports-a-database-it-cannot-name-test
+(deftest ^:mb/driver-tests cluster-check-reports-a-database-it-cannot-name-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2205)
@@ -694,7 +694,7 @@
                                 (provisioning #(driver/init-workspace-isolation! :postgres database workspace))))]
              (is (= {:status-code 412, :workspace/cleanup? false, :databases [], :schemas [], :unverifiable [bad]} (ex-data e))))))))))
 
-(deftest connectable-databases-test
+(deftest ^:mb/driver-tests connectable-databases-test
   (do-with-warehouse!
    (fn [spec _database]
      (tx/drop-if-exists-and-create-db! :postgres "workspace_isolation_noconnect")
@@ -708,7 +708,7 @@
          (is (not-any? dbs ["workspace_isolation_noconnect" "workspace_isolation_noallow" "template0"]))))
      (exec! spec ["ALTER DATABASE workspace_isolation_noallow ALLOW_CONNECTIONS true"]))))
 
-(deftest planted-functions-never-run-as-the-admin-login-test
+(deftest ^:mb/driver-tests planted-functions-never-run-as-the-admin-login-test
   (do-with-warehouse!
    (fn [spec database]
      (let [planter (new-workspace! spec database 2206)
@@ -739,7 +739,7 @@
        (exec! spec [(format "DROP OWNED BY \"%s\"" user)])
        (provisioning #(driver/destroy-workspace-isolation! :postgres database planter))))))
 
-(deftest init-refuses-a-noinherit-admin-login-test
+(deftest ^:mb/driver-tests init-refuses-a-noinherit-admin-login-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2208)
@@ -759,7 +759,7 @@
          (finally
            (exec! spec [(format "ALTER ROLE %s INHERIT" (:user admin-login))])))))))
 
-(deftest init-gives-connect-where-public-lacks-it-test
+(deftest ^:mb/driver-tests init-gives-connect-where-public-lacks-it-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2209)
@@ -783,7 +783,7 @@
          (finally
            (exec! spec [(format "GRANT CONNECT ON DATABASE %s TO PUBLIC" db-name)])))))))
 
-(deftest init-names-missing-provisioning-privileges-test
+(deftest ^:mb/driver-tests init-names-missing-provisioning-privileges-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2210)
@@ -803,7 +803,7 @@
            (exec! spec [(format "ALTER ROLE %s CREATEROLE" (:user admin-login))
                         (format "GRANT CREATE ON DATABASE %s TO %s" db-name (:user admin-login))])))))))
 
-(deftest destroy-revokes-grants-the-admin-login-recorded-as-grantor-test
+(deftest ^:mb/driver-tests destroy-revokes-grants-the-admin-login-recorded-as-grantor-test
   ;; The admin login is a member of the input tables' owner role and also holds USAGE and SELECT WITH GRANT OPTION
   ;; directly, so Postgres's best-grantor rule records the login, not the owner, as grantor of the workspace user's
   ;; read grants. DROP OWNED BY, which acts as the owner, misses those grants.
@@ -829,7 +829,7 @@
          (is (not (role-exists? spec user)))
          (is (nil? (schema-owner spec (:schema workspace)))))))))
 
-(deftest grant-covers-tables-the-input-owner-creates-later-test
+(deftest ^:mb/driver-tests grant-covers-tables-the-input-owner-creates-later-test
   ;; MBCWS-60: an input schema gains tables after the grant, created by the role that owns its tables, which is not
   ;; the admin login. Default privileges apply only to tables their FOR ROLE creates, the current role when omitted.
   (do-with-warehouse!
@@ -845,7 +845,7 @@
          (is (nil? (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))))
          (is (not (role-exists? spec user))))))))
 
-(deftest grant-refuses-a-membership-that-does-not-inherit-test
+(deftest ^:mb/driver-tests grant-refuses-a-membership-that-does-not-inherit-test
   ;; From Postgres 16 a membership may not inherit. `pg_has_role(.., 'MEMBER')` is true for it, but `ALTER DEFAULT
   ;; PRIVILEGES FOR ROLE` needs the role's privileges, so grant must refuse it before any change. The login holds its
   ;; grant options directly, so the grant-option preconditions pass without the owner's privileges.
@@ -876,7 +876,7 @@
              (exec! spec [(format "GRANT mb_ws_test_etl TO %s WITH INHERIT TRUE" login)])
              (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace)))))))))
 
-(deftest destroy-retries-the-lock-out-after-a-lock-timeout-test
+(deftest ^:mb/driver-tests destroy-retries-the-lock-out-after-a-lock-timeout-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2303)
@@ -931,7 +931,7 @@
                               (getConnection [_] (conn-proxy (.getConnection ds)))
                               (getConnection [_ u p] (conn-proxy (.getConnection ds u p)))))))
 
-(deftest init-sends-no-statement-with-the-password-test
+(deftest ^:mb/driver-tests init-sends-no-statement-with-the-password-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2304)
@@ -951,7 +951,7 @@
 (defn- login-spec [user password]
   (sql-jdbc.conn/connection-details->spec :postgres (assoc (superuser-details) :user user :password password)))
 
-(deftest init-refuses-public-create-on-the-database-test
+(deftest ^:mb/driver-tests init-refuses-public-create-on-the-database-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2211)
@@ -989,7 +989,7 @@
            (provisioning #(driver/destroy-workspace-isolation! :postgres database workspace))
            (drop-role-if-exists! spec "mb_ws_test_analyst")))))))
 
-(deftest planted-oid-operator-never-runs-as-the-admin-login-test
+(deftest ^:mb/driver-tests planted-oid-operator-never-runs-as-the-admin-login-test
   (do-with-warehouse!
    (fn [spec database]
      (let [planter (new-workspace! spec database 2301)
@@ -1016,7 +1016,7 @@
        (exec! spec [(format "DROP OWNED BY \"%s\"" user)])
        (provisioning #(driver/destroy-workspace-isolation! :postgres database planter))))))
 
-(deftest init-refuses-public-create-in-a-database-public-may-connect-to-test
+(deftest ^:mb/driver-tests init-refuses-public-create-in-a-database-public-may-connect-to-test
   (do-with-warehouse!
    (fn [spec database]
      (let [workspace (new-workspace! spec database 2305)

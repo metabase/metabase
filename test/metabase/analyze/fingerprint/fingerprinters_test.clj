@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.analyze.fingerprint.fingerprinters-test
+(ns metabase.analyze.fingerprint.fingerprinters-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -21,7 +21,7 @@
    :type   {:type/DateTime (select-keys (get-in result [:type :type/DateTime])
                                         [:earliest :latest])}})
 
-(deftest fingerprint-temporal-values-test
+(deftest ^:mb/driver-tests fingerprint-temporal-values-test
   ;; we want to test h2 and postgres, because h2 doesn't
   ;; support overriding the timezone for a session / report
   (mt/test-drivers #{:h2 :postgres}
@@ -229,7 +229,7 @@
                       (fingerprinters/fingerprinter (mi/instance :model/Field {:base_type :type/Text}))
                       ["metabase" "more" "like" "metabae" truncated-json])))))
 
-(deftest ^:parallel fingerprints-in-db-test
+(deftest ^:mb/driver-tests ^:parallel fingerprints-in-db-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "Text fingerprints"
@@ -242,7 +242,7 @@
                                       :average-length #(< 15 % 16)}}}
                 (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :name))))))))
 
-(deftest ^:parallel fingerprints-in-db-test-2
+(deftest ^:mb/driver-tests ^:parallel fingerprints-in-db-test-2
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "date fingerprints"
@@ -254,7 +254,7 @@
                                           :latest   #(str/starts-with? % "2015-12-29")}}}
                 (t2/select-one-fn :fingerprint :model/Field :id (mt/id :checkins :date))))))))
 
-(deftest ^:parallel fingerprints-in-db-test-3
+(deftest ^:mb/driver-tests ^:parallel fingerprints-in-db-test-3
   (mt/test-drivers (mt/normal-drivers)
     (testing "Fingerprints should actually get saved with the correct values"
       (testing "number fingerprints"

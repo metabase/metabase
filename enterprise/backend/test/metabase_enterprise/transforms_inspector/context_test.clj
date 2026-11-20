@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.context-test
+(ns metabase-enterprise.transforms-inspector.context-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-inspector.context :as context]
@@ -136,7 +136,7 @@
         (is (string? (:table-name s)))
         (is (= (mt/id) (:db-id s)))))))
 
-(deftest extract-sources-mbql-with-joins-test
+(deftest ^:mb/driver-tests extract-sources-mbql-with-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "MBQL: extracts multiple source tables from joined query"
       (let [transform {:source {:type :query :query (joined-orders-products-query)}
@@ -221,7 +221,7 @@
       (is (nil? (:target ctx)))
       (is (false? (:has-column-matches? ctx))))))
 
-(deftest build-context-with-joins-test
+(deftest ^:mb/driver-tests build-context-with-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context extracts join structure from MBQL query with LEFT JOIN"
       (let [transform {:id     1
@@ -241,7 +241,7 @@
         (testing "multiple source tables detected"
           (is (>= (count (:sources ctx)) 2)))))))
 
-(deftest build-context-column-matches-test
+(deftest ^:mb/driver-tests build-context-column-matches-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context populates column-matches when target exists"
       ;; Use products table as a fake target to avoid running a transform

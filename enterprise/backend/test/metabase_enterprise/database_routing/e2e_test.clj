@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
+(ns metabase-enterprise.database-routing.e2e-test
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query     {:namespaces [metabase-enterprise.database-routing.e2e-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase-enterprise.database-routing.e2e-test]}
                                                             metabase.test.data/query          {:namespaces [metabase-enterprise.database-routing.e2e-test]}}}}}}
@@ -415,7 +415,7 @@
                                           ["routed-bar"]]]])]
     (assoc dataset :hash-key (:hash-key router))))
 
-(deftest db-routing-e2e-test
+(deftest ^:mb/driver-tests db-routing-e2e-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:database-routing]})
     (mt/with-premium-features #{:database-routing}
       ;; Router: a normal synced DB that owns the Table/Field rows (matches prod + the H2 `with-routing-setup!`).
@@ -470,7 +470,7 @@
                     (is (=? {:updated-tables 0 :total-tables pos-int?}
                             (step-with-name "sync-tables")))))))))))))
 
-(deftest athena-region-bucket-routing-test
+(deftest ^:mb/driver-tests athena-region-bucket-routing-test
   (mt/test-driver :athena
     (mt/with-premium-features #{:database-routing}
       ;; Router: a normal synced DB that owns the Table/Field rows (matches prod + the H2 `with-routing-setup!`).
