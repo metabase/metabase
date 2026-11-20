@@ -44,7 +44,9 @@ export function getTreemapFormatters(
   tree: TreemapTree,
 ): TreemapFormatters {
   const valueColumn = columns.value.column;
-  const percentDecimals = getPercentDecimals(tree);
+  // A fixed setting is used as-is, like Pie. Unset keeps the automatic precision.
+  const fixedDecimals = settings["treemap.decimal_places"];
+  const autoDecimals = fixedDecimals == null ? getPercentDecimals(tree) : 0;
   return {
     value: getTreemapColumnFormatter(valueColumn, settings),
     percent: (ratio: number) =>
@@ -52,7 +54,7 @@ export function getTreemapFormatters(
         formatValue(ratio, {
           column: valueColumn,
           number_style: "percent",
-          decimals: Math.abs(ratio) === 1 ? 0 : percentDecimals,
+          decimals: fixedDecimals ?? (Math.abs(ratio) === 1 ? 0 : autoDecimals),
         }),
       ),
   };

@@ -603,6 +603,7 @@ export type VisualizationSettings = {
   "treemap.show_parent_values"?: boolean;
   "treemap.show_leaf_labels"?: boolean;
   "treemap.show_leaf_values"?: boolean;
+  "treemap.decimal_places"?: number;
 
   /** Box plot whisker calculation, such as Tukey or min/max. */
   "boxplot.whisker_type"?: BoxPlotWhiskerType;

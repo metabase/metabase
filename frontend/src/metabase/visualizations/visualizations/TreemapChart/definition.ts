@@ -251,6 +251,19 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     }),
     readDependencies: ["treemap.show_leaf_labels"],
   },
+  "treemap.decimal_places": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Number of decimal places`;
+    },
+    widget: "number",
+    getProps: () => ({
+      get placeholder() {
+        return t`Auto`;
+      },
+      options: { isInteger: true, isNonNegative: true },
+    }),
+  },
 };
 
 export const TREEMAP_CHART_DEFINITION: VisualizationDefinition = {
