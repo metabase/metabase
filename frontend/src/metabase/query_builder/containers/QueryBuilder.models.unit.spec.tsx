@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupDatabaseIdFieldsEndpoints } from "__support__/server-mocks";
@@ -113,9 +112,6 @@ describe("QueryBuilder - models", () => {
   afterEach(() => {
     HTMLElement.prototype.scrollBy = scrollBy;
     window.history.replaceState(null, "", "/");
-
-    jest.resetAllMocks();
-    setupJestCanvasMock();
   });
 
   it("keeps the model's collection in the header of an ad-hoc question based on the model (metabase#46221)", async () => {
