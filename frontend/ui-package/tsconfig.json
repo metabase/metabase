@@ -19,7 +19,8 @@
         "../src/metabase/utils/measure-container.ts"
       ],
       "metabase/utils/csp": ["../src/metabase/utils/csp.ts"],
-      "metabase/env": ["../src/metabase/env.ts"]
+      "metabase/env": ["../src/metabase/env.ts"],
+      "metabase/dayjs": ["../src/metabase/dayjs/index.ts"]
     }
   },
   "include": [
