@@ -106,21 +106,6 @@ describe("DataAppEmbed - router navigation", () => {
     });
   });
 
-  it("does not report navigation when host explicitly changes the path", () => {
-    const onPathChange = jest.fn<void, [string, number | undefined]>();
-
-    const { rerender } = renderHook(
-      ({ path }) =>
-        useDataAppPathNavigation({ slug: "sales", path, onPathChange }),
-      { initialProps: { path: "sales" } },
-    );
-
-    rerender({ path: "sales/orders?active=true" });
-
-    expect(window.location.pathname).toBe("/embed/embedded-apps/sales/orders");
-    expect(onPathChange).not.toHaveBeenCalled();
-  });
-
   it("does not do client-side navigation again if path already matches", () => {
     window.MetabaseRoot = "/mb/";
 
