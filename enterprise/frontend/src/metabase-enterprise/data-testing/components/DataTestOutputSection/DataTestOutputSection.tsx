@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { t } from "ttag";
 
+import { useLocation } from "metabase/router";
 import type { DataTestData, DataTestExpectation } from "metabase-types/api";
 
+import { getExpectationAnchor } from "../../utils";
 import { DataTestDataCard } from "../DataTestDataCard";
 import { DataTestSection } from "../DataTestSection";
 
@@ -14,11 +17,21 @@ export function DataTestOutputSection({
   description,
   expectations,
 }: DataTestOutputSectionProps) {
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    const card = document.getElementById(hash.slice(1));
+    if (hash.length > 1 && card != null) {
+      card.scrollIntoView({ block: "center" });
+    }
+  }, [hash]);
+
   return (
     <DataTestSection label={t`Output`} description={description}>
       {expectations.map((expectation) => (
         <DataTestDataCard
           key={expectation.name}
+          id={getExpectationAnchor(expectation.name)}
           name={expectation.name}
           icon="list"
           description={getExpectationDescription(expectation)}

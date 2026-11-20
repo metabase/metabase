@@ -192,12 +192,12 @@ describe("TransformTestRunsPage", () => {
     expect(await screen.findByText("No runs found")).toBeInTheDocument();
   });
 
-  it("shows the details of a run in a sidebar", async () => {
-    setup({
+  it("opens the page of a run", async () => {
+    const { router } = setup({
       response: createMockListDataTestRunsResponse({
         data: [
           createMockDataTestRunWithUser({
-            id: 1,
+            id: 7,
             status: "failed",
             initiated_by_user: createMockDataTestRunUser({
               common_name: "Ada Admin",
@@ -212,21 +212,10 @@ describe("TransformTestRunsPage", () => {
       await screen.findByRole("row", { name: /Ada Admin/ }),
     );
 
-    const sidebar = await screen.findByTestId("data-test-run-sidebar");
-    const info = within(sidebar).getByRole("region", { name: "Info" });
-    expect(
-      within(info).getByRole("group", { name: "Status" }),
-    ).toHaveTextContent("Failed");
-    expect(
-      within(info).getByRole("group", { name: "Run by" }),
-    ).toHaveTextContent("Ada Admin");
-    expect(
-      within(info).getByRole("group", { name: "Started at" }),
-    ).toBeInTheDocument();
-
-    await userEvent.click(within(sidebar).getByLabelText("Close"));
-    expect(
-      screen.queryByTestId("data-test-run-sidebar"),
-    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(
+        Urls.dataTestRun(Urls.transformTest(1, 2), 7),
+      ),
+    );
   });
 });

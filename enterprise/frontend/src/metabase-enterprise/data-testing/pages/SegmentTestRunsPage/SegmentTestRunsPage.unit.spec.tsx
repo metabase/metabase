@@ -14,6 +14,7 @@ import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
+  waitFor,
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -97,7 +98,7 @@ function setup({ location = "published-table" }: SetupOpts = {}) {
     }),
   );
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <>
       <Route
         path="/data-studio/library/tables/:tableId/segments/:segmentId/tests/:testId/runs"
@@ -120,6 +121,7 @@ function setup({ location = "published-table" }: SetupOpts = {}) {
             ),
     },
   );
+  return { router };
 }
 
 describe("SegmentTestRunsPage", () => {
@@ -137,35 +139,41 @@ describe("SegmentTestRunsPage", () => {
     expect(searchParams.get("test-id")).toBe(String(TEST_ID));
   });
 
-  it("links the selected run back to the published table segment", async () => {
-    setup();
+  it("opens the page of a run of a published table segment test", async () => {
+    const { router } = setup();
 
     await userEvent.click(
       await screen.findByRole("row", { name: /Ada Admin/ }),
     );
 
-    const sidebar = await screen.findByTestId("data-test-run-sidebar");
-    expect(
-      await within(sidebar).findByRole("link", { name: "Paid orders" }),
-    ).toHaveAttribute(
-      "href",
-      Urls.dataStudioPublishedTableSegment(TABLE_ID, SEGMENT_ID),
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(
+        Urls.dataTestRun(
+          Urls.dataStudioPublishedTableSegmentTest(
+            TABLE_ID,
+            SEGMENT_ID,
+            TEST_ID,
+          ),
+          1,
+        ),
+      ),
     );
   });
 
-  it("links the selected run back to the data model segment", async () => {
-    setup({ location: "data-model" });
+  it("opens the page of a run of a data model segment test", async () => {
+    const { router } = setup({ location: "data-model" });
 
     await userEvent.click(
       await screen.findByRole("row", { name: /Ada Admin/ }),
     );
 
-    const sidebar = await screen.findByTestId("data-test-run-sidebar");
-    expect(
-      await within(sidebar).findByRole("link", { name: "Paid orders" }),
-    ).toHaveAttribute(
-      "href",
-      Urls.dataStudioDataModelSegment(DATA_MODEL_PARAMS),
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(
+        Urls.dataTestRun(
+          Urls.dataStudioDataModelSegmentTest(DATA_MODEL_PARAMS, TEST_ID),
+          1,
+        ),
+      ),
     );
   });
 });

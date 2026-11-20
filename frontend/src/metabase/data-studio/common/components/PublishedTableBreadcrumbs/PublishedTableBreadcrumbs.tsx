@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Link } from "metabase/common/components/Link";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
@@ -12,6 +14,7 @@ type PublishedTableBreadcrumbsProps = {
   tableListUrl: string;
   entityUrl?: string;
   entityChildName?: string;
+  children?: ReactNode;
 };
 
 export function PublishedTableBreadcrumbs({
@@ -21,6 +24,7 @@ export function PublishedTableBreadcrumbs({
   tableListUrl,
   entityUrl,
   entityChildName,
+  children,
 }: PublishedTableBreadcrumbsProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
@@ -44,7 +48,7 @@ export function PublishedTableBreadcrumbs({
       ) : (
         <span>{entityName ?? newEntityLabel}</span>
       )}
-      {entityChildName != null && <span>{entityChildName}</span>}
+      {children || (entityChildName != null && <span>{entityChildName}</span>)}
     </DataStudioBreadcrumbs>
   );
 }

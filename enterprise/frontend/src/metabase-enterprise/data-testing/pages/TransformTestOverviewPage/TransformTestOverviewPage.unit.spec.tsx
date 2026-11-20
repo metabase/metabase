@@ -258,6 +258,10 @@ describe("TransformTestOverviewPage", () => {
     ).toBeInTheDocument();
 
     const equals = within(output).getByLabelText("revenue per customer");
+    expect(equals).toHaveAttribute(
+      "id",
+      "expectation-revenue%20per%20customer",
+    );
     expect(
       within(equals).getByText("Must hold exactly these rows"),
     ).toBeInTheDocument();
