@@ -9,6 +9,7 @@
   that commits later than that gets its position after the next logged write, on any node."
   (:require
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
    [metabase.global-system.system :as system]
    [metabase.util.log :as log])
@@ -24,22 +25,24 @@
 (def ^:private batch-size 10000)
 
 (defn- statement-size
-  "How many entries one UPDATE numbers: 1,000, or one on MariaDB. There an update of many rows can wait for rows that
-  open transactions inserted (`ids-out-of-order-test`)."
+  "How many entries one UPDATE numbers: 1,000, or one on MariaDB."
   []
-  (if (change-log.db/mariadb?) 1 1000))
+  ;; On MariaDB an update of many rows can wait for rows that open transactions inserted (`ids-out-of-order-test`).
+  (if (mdb/mariadb?) 1 1000))
 
 (defn- number-entries!
   "Numbers the committed entries that have no position. The first gets the clock in microseconds, or the next free
   position if that is higher, and the rest rise with their ids."
   []
   (when (seq (change-log.db/unnumbered-ids 1))
-    (cluster-lock/with-cluster-lock ::number-entries
-      (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
-        (let [start (max (* 1000 (System/currentTimeMillis))
-                         (inc (or (change-log.db/highest-position) 0)))]
-          (doseq [statement-ids (partition-all (statement-size) ids)]
-            (change-log.db/set-positions! statement-ids start (first ids))))))))
+    ;; Before the lock: the first call on a node can take a connection of its own to read the product name.
+    (let [size (statement-size)]
+      (cluster-lock/with-cluster-lock ::number-entries
+        (when-let [ids (seq (change-log.db/unnumbered-ids batch-size))]
+          (let [start (max (* 1000 (System/currentTimeMillis))
+                           (inc (or (change-log.db/highest-position) 0)))]
+            (doseq [statement-ids (partition-all size ids)]
+              (change-log.db/set-positions! statement-ids start (first ids)))))))))
 
 ;; The numbering of this node: `{:executor ..., :awake-until ...}`. `:awake-until` is an atom that holds when the
 ;; numbering goes to sleep, in milliseconds since the epoch.

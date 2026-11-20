@@ -513,6 +513,24 @@
       (let [payload (compile-with-stub-cards dash [{:op "update_parameter" :parameter_id "p1" :name "Status"}])]
         (is (= (:dashcards dash) (:dashcards payload)))))))
 
+(deftest ^:parallel existing-overlaps-stay-unless-a-placed-card-reaches-them-test
+  (let [overlapping [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}
+                     {:id 8 :card_id 9 :row 2 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id nil}]
+        dash        (dash-with (conj overlapping {:id 9 :card_id 9 :row 20 :col 0 :size_x 12 :size_y 4
+                                                  :dashboard_tab_id nil}))]
+    (testing "adding the first tab, which the stored cards now show on, moves none of them"
+      (let [payload (compile-with-stub-cards dash [{:op "add_tab" :id -1 :name "Details"}])]
+        (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 12 4]} (layout payload)))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+    (testing "resizing a card that covers neither leaves them as they are"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 9 :size {:size_x 24 :size_y 4}}])]
+        (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 24 4]} (layout payload)))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
+    (testing "a placed card that covers one of them pushes it below the other too"
+      (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 12 :size_y 8}}])]
+        (is (= {7 [0 0 12 8], 8 [8 0 12 6], 9 [20 0 12 4]} (layout payload)))
+        (is (= [8] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))))
+
 (deftest ^:parallel positioned-cards-must-not-overlap-test
   (testing "two cards given positions in one call that cover each other fail, naming both"
     (is (= {::dashboard-ops/error :overlapping-cards, :dashcard-ids [9 10]}
@@ -535,8 +553,8 @@
                                             [{:op "resize" :dashcard_id 7 :size {:size_x 24 :size_y 6}}
                                              {:op "resize" :dashcard_id 8 :size {:size_x 12 :size_y 8}}]))))))
 
-(deftest ^:parallel new-tabs-are-settled-test
-  (testing "a tab duplicated after a resize gets a valid layout, though none of its copies was placed"
+(deftest ^:parallel duplicated-tabs-settle-like-their-source-test
+  (testing "a tab duplicated after a resize gets a valid layout, as its copies carry the resize"
     (let [dash    (assoc empty-dash
                          :tabs      [{:id 1 :name "A"}]
                          :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 12 :size_y 6 :dashboard_tab_id 1}
@@ -924,6 +942,15 @@
                                 [{:op "update_parameter" :parameter_id "p1" :name "Y"}]
                                 {})]
       (is (= [{:id "p1" :name "Y" :slug "y" :type "string/="}] parameters)))))
+
+(deftest update-parameter-clears-test
+  (testing "update_parameter removes the properties it clears and keeps the rest"
+    (let [{:keys [parameters]} (compile-with-stub-cards
+                                (assoc empty-dash :parameters [{:id "p1", :name "X", :slug "x", :type "string/="
+                                                                :default "a", :isMultiSelect true}])
+                                [{:op "update_parameter" :parameter_id "p1" :clear ["default"]}]
+                                {})]
+      (is (= [{:id "p1", :name "X", :slug "x", :type "string/=", :isMultiSelect true}] parameters)))))
 
 (deftest update-parameter-preserves-slug-when-not-renaming-test
   (testing "GHY-4147: an update that does not touch the name leaves the slug alone, so an edit to
