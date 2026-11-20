@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -155,17 +156,20 @@
 
 (mu/defn write-all-or-each! :- :nil
   "Call `write!` on all of `xs`, or, when that throws an Exception, on each of them alone, calling `on-failure!` with
-  each one whose own write throws, so that one bad item fails only itself."
+  each one whose own write throws, so that one bad item fails only itself. Rethrows instead while the app DB is
+  unreachable: that failure isn't about any item."
   [write!      :- [:fn {:error/message "a function"} ifn?]
    on-failure! :- [:fn {:error/message "a function"} ifn?]
    xs          :- [:sequential [:fn {:error/message "a value"} some?]]]
   (try
     (write! xs)
-    (catch Exception _
+    (catch Exception e
+      (dependencies.db/throw-unless-app-db-reachable! e)
       (doseq [x xs]
         (try
           (write! [x])
           (catch Exception e
+            (dependencies.db/throw-unless-app-db-reachable! e)
             (on-failure! x e))))))
   nil)
 
