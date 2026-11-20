@@ -54,20 +54,24 @@
   "The `dropped-connections` that redaction showed on `stored`, the dashboard before the ops, nil on a create.
    The user must be able to read the stored dashcard's card, unless it has none, and a series entry's card.
    An entry whose card the user can't read in `dash`, the saved or dry-run dashboard, keeps its filter and dashcard
-   with a nil `:card_id`."
+   with a nil `:card_id`, unless that card was a series card on the stored dashcard."
   [stored dash dropped-connections]
   ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
-  ;; card, so a lost connection it hid isn't reported either. A text or heading card has no card, and redaction keeps
-  ;; its mappings.
+  ;; card, so a lost connection it hid isn't reported either. A `replace_card` that promotes a hidden series card
+  ;; reports that card's lost connection as the dashcard's own, so the stored series are checked too. A text or
+  ;; heading card has no card, and redaction keeps its mappings.
   (when (seq dropped-connections)
     (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
           shown?          #(or (nil? %) (contains? readable %))
-          stored-card-ids (u/index-by :id :card_id (:dashcards stored))]
+          stored-card-ids (u/index-by :id :card_id (:dashcards stored))
+          stored-series   (u/index-by :id #(into #{} (keep :id) (:series %)) (:dashcards stored))]
       (into []
             (keep (fn [{:keys [dashcard_id card_id series] :as entry}]
                     (let [card-shown? (shown? card_id)]
                       (when (and (shown? (stored-card-ids dashcard_id))
-                                 (or card-shown? (not series)))
+                                 (or card-shown?
+                                     (and (not series)
+                                          (not (contains? (stored-series dashcard_id) card_id)))))
                         (cond-> entry
                           (not card-shown?) (assoc :card_id nil))))))
             dropped-connections))))

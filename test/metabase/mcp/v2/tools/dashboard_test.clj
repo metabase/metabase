@@ -410,6 +410,43 @@
               (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id nil, :series false}]
                      (call :rasta validate-only?))))))))))
 
+(deftest dropped-connections-leave-out-promoted-unreadable-series-test
+  (testing "a hidden series card's lost connection isn't reported when replace_card promotes that card"
+    (mt/with-temp [:model/Collection          {open-id :id}     {}
+                   :model/Collection          {locked-id :id}   {}
+                   :model/Dashboard           {dash-id :id}     {:name          "Sales"
+                                                                 :collection_id open-id
+                                                                 :parameters    [{:id   "cat"
+                                                                                  :name "Category"
+                                                                                  :slug "category"
+                                                                                  :type "category"}]}
+                   :model/Card                {open-card :id}   {:collection_id open-id
+                                                                 :dataset_query (venues-query)}
+                   :model/Card                {hidden-card :id} {:collection_id locked-id
+                                                                 :dataset_query (venues-query)}
+                   :model/DashboardCard       {dc-id :id}       {:dashboard_id dash-id
+                                                                 :card_id      open-card
+                                                                 ;; Only the series card is connected.
+                                                                 :parameter_mappings
+                                                                 [{:parameter_id "cat"
+                                                                   :card_id      hidden-card
+                                                                   :target       (category-target)}]}
+                   :model/DashboardCardSeries _                 {:dashboardcard_id dc-id
+                                                                 :card_id          hidden-card
+                                                                 :position         0}]
+      (mt/with-non-admin-groups-no-collection-perms locked-id
+        (let [call (fn [user]
+                     (tool-result (call-tool! user v2.tu/all-scopes "dashboard_write"
+                                              (wire {:method        "update"
+                                                     :id            dash-id
+                                                     :validate_only true
+                                                     :ops           [{:op          "replace_card"
+                                                                      :dashcard_id dc-id
+                                                                      :card_id     hidden-card}]}))))]
+          (is (=? [{:parameter_id "cat", :card_id hidden-card}] (:dropped_connections (call :crowberto)))
+              "a user who can read the series card is told")
+          (is (not (contains? (call :rasta) :dropped_connections))))))))
+
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
             `:card_id`, so a stale one would report the replace as a no-op and an agent validating before
