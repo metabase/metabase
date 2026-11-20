@@ -998,12 +998,14 @@
 
 (deftest notification-dispatcher-sends-nothing-taken-after-the-deadline-test
   (testing "a notification a worker takes after the drain deadline is not sent"
-    (let [release    (promise)
+    (let [taking     (java.util.concurrent.CountDownLatch. 1)
+          release    (promise)
           sent       (promise)
           ;; a take that ignores interrupts and returns only once released, after the deadline
           queue      (reify notification.send/NotificationQueueProtocol
                        (put-notification! [_ _] nil)
                        (take-notification-with-timeout! [_ _]
+                         (.countDown taking)
                          (while (not (realized? release))
                            (Thread/onSpinWait))
                          {:id 1, :payload_type :notification/testing})
@@ -1012,6 +1014,8 @@
       ;; dispatcher spawns worker threads without our dynamic binding
       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync! (fn [{:keys [id]}] (deliver sent id))]
+        ;; the worker must be inside its take before the deadline, or it never takes anything
+        (is (.await taking 5 java.util.concurrent.TimeUnit/SECONDS))
         (let [drained? ((:shutdown-fn dispatcher) 100)]
           (deliver release true)
           (is (= {:drained? false, :sent nil}
