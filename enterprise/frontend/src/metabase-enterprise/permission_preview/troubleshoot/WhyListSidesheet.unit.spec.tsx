@@ -575,12 +575,12 @@ describe("WhyListSidesheet", () => {
     );
     expect(
       screen.getByText(
-        "Sales needs the attributes category and state, which Sandy Sales doesn't have. Set them on Sandy Sales, or pick values for them in the preview.",
+        "Sales needs the attributes category and state, which Sandy Sales doesn't have. Set them on Sandy Sales in Admin › People, or in their sign-in provider.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Sales needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales, or pick a value for it in the preview.",
+        "Sales needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales in Admin › People, or in their sign-in provider.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -607,7 +607,7 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Set it on Sandy Sales, or pick a value for it in the preview.",
+        "Set it on Sandy Sales in Admin › People, or in their sign-in provider.",
       ),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Set by")).toHaveLength(1);
@@ -653,7 +653,7 @@ describe("WhyListSidesheet", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Sales needs the attribute category, which Sandy Sales doesn't have. Finance readers needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales, or pick a value for it in the preview.",
+        "Sales needs the attribute category, which Sandy Sales doesn't have. Finance readers needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales in Admin › People, or in their sign-in provider.",
       ),
     ).toBeInTheDocument();
   });
@@ -733,7 +733,7 @@ describe("WhyListSidesheet", () => {
     );
     expect(
       screen.getAllByText(
-        "Finance readers needs the attribute role to pick the database role on Sample Database, which Sandy Sales doesn't have. Sample Database routes by the attribute tenant, which Sandy Sales doesn't have. Set them on Sandy Sales, or pick values for them in the preview.",
+        "Finance readers needs the attribute role to pick the database role on Sample Database, which Sandy Sales doesn't have. Sample Database routes by the attribute tenant, which Sandy Sales doesn't have. Set them on Sandy Sales in Admin › People, or in their sign-in provider.",
       ),
     ).toHaveLength(2);
   });

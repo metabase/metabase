@@ -178,7 +178,8 @@ function getStandInSubject({ name }: NonNullable<WhyTarget["standIn"]>) {
 }
 
 /**
- * What fixes it: give the person a value, or try one in the preview. A group has no value to set, only one to try.
+ * What fixes it: give the person a value, in Admin › People or their sign-in provider. A group has no value to set, only
+ * one to try in the preview.
  */
 export function getMissingAttributeFix({
   who,
@@ -199,8 +200,8 @@ export function getMissingAttributeFix({
     );
   }
   return ngettext(
-    msgid`Set it on ${who}, or pick a value for it in the preview.`,
-    `Set them on ${who}, or pick values for them in the preview.`,
+    msgid`Set it on ${who} in Admin › People, or in their sign-in provider.`,
+    `Set them on ${who} in Admin › People, or in their sign-in provider.`,
     count,
   );
 }
