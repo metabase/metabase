@@ -230,12 +230,24 @@
                   (not= v (get old k)))
                 new)))
 
+(defn- check-cards-not-in-documents
+  "Throws a 400 when one of the Cards with `card-ids` belongs to a Document, reading them in one query."
+  [card-ids]
+  (when-let [document-cards (some-> (seq card-ids) dashboards.db/document-cards-among seq)]
+    (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                    {:status-code        400
+                     :in-report-card-ids (map :id document-cards)}))))
+
 (mu/defn update-dashboard-cards!
   "Update existing DashboardCards, each given as a `[dashboard-card old-dashboard-card]` pair with `old-dashboard-card`
   sparing a DB call when nothing changed, rewriting their DashboardCardSeries in one statement for all of them, and
   returning nil."
   [pairs :- [:sequential [:tuple DashboardCardUpdates DashboardCardUpdates]]]
   (t2/with-transaction [_conn]
+    (check-cards-not-in-documents (for [[dashboard-card old-dashboard-card] pairs
+                                        :let  [card-id (:card_id dashboard-card)]
+                                        :when (and card-id (not= card-id (:card_id old-dashboard-card)))]
+                                    card-id))
     (let [update-ks [:action_id :card_id :row :col :size_x :size_y
                      :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]]
       (doseq [[dashboard-card old-dashboard-card] pairs
@@ -275,10 +287,7 @@
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
-      (when-let [document-cards (some-> (seq (keep :card_id dashboard-cards)) dashboards.db/document-cards-among seq)]
-        (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
-                        {:status-code        400
-                         :in-report-card-ids (map :id document-cards)})))
+      (check-cards-not-in-documents (keep :card_id dashboard-cards))
       (let [dashboard-card-ids (dashboards.db/insert-dashcards!
                                 (for [dashcard dashboard-cards]
                                   (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level)))]

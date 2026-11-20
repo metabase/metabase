@@ -90,15 +90,6 @@
              (not= dashboard_id (:dashboard_id (dashboards.db/dashboard-tab dashboard_tab_id))))
     (throw (ex-info (tru "The tab of a dashboard card must belong to its dashboard.") {:status-code 400}))))
 
-(defn- check-card-not-in-document
-  "Throws a 400 when the Card of `dashcard` belongs to a Document."
-  [{:keys [card_id]}]
-  (when card_id
-    (when-let [document-cards (seq (dashboards.db/document-cards-among [card_id]))]
-      (throw (ex-info (tru "Cards with {0} cannot be added to dashboards" "'document_id'")
-                      {:status-code        400
-                       :in-report-card-ids (map :id document-cards)})))))
-
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (check-tab dashcard)
@@ -115,8 +106,6 @@
       (throw (ex-info (tru "You cannot move a dashboard card to another dashboard.") {:status-code 400})))
     (when (contains? changes :dashboard_tab_id)
       (check-tab dashcard))
-    (when (contains? changes :card_id)
-      (check-card-not-in-document dashcard))
     (validate-dashcard-on-write dashcard)))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids

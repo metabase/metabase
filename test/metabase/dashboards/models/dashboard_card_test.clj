@@ -502,7 +502,7 @@
                           {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
 
 (deftest dashcard-card-not-in-document-test
-  (testing "A Card of a Document is not put on a Dashboard by the create function or by a change of the card"
+  (testing "A Card of a Document is not put on a Dashboard by the create function or by the update function"
     (mt/with-temp [:model/Dashboard dash      {}
                    :model/Document  document  {}
                    :model/Card      card      {}
@@ -512,7 +512,7 @@
                             (dashboards.write/create-dashboard-cards! [{:dashboard_id (u/the-id dash) :card_id (u/the-id doc-card)
                                                                         :size_x 4 :size_y 4 :row 0 :col 0}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cards with 'document_id' cannot be added to dashboards"
-                            (t2/update! :model/DashboardCard :id (u/the-id dashcard) {:card_id (u/the-id doc-card)})))
+                            (dashboards.write/update-dashboard-card! (assoc dashcard :card_id (u/the-id doc-card)) dashcard)))
       (is (= (u/the-id card) (t2/select-one-fn :card_id :model/DashboardCard :id (u/the-id dashcard))))
       (is (= 1 (t2/count :model/DashboardCard :dashboard_id (u/the-id dash)))))))
 
