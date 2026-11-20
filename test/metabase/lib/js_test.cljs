@@ -761,11 +761,26 @@
       (is (= column (lib.js/legacy-column->type-info column))))))
 
 (deftest ^:parallel xray-cell-query-test
-  (testing "returns last stage filter as legacy clause"
+  (testing "returns the last stage filter as an MBQL 5 clause"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                     (lib/filter (lib/= (meta/field-metadata :venues :price) 2)))]
-      (is (=? ["=" ["field" (meta/id :venues :price) any?] 2]
+      (is (=? ["=" {"lib/uuid" string?}
+               ["field" {"lib/uuid" string?, "base-type" "type/Integer"} (meta/id :venues :price)]
+               2]
               (js->clj (lib.js/xray-cell-query query))))))
+  (testing "combines several filters with :and"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2))
+                    (lib/filter (lib/> (meta/field-metadata :venues :id) 10)))]
+      (is (=? ["and" {"lib/uuid" string?}
+               ["=" {"lib/uuid" string?} ["field" map? (meta/id :venues :price)] 2]
+               [">" {"lib/uuid" string?} ["field" map? (meta/id :venues :id)] 10]]
+              (js->clj (lib.js/xray-cell-query query))))))
+  (testing "reads the filters of the last stage"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 2))
+                    lib/append-stage)]
+      (is (nil? (lib.js/xray-cell-query query)))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
 

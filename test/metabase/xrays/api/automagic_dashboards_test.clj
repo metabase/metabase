@@ -22,7 +22,7 @@
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
+   [metabase.xrays.test-util.automagic-dashboards :refer [mbql5-cell-query with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
    [metabase.xrays.test-util.transforms :as transforms.test]
    [metabase.xrays.transforms.core :as tf]
@@ -144,13 +144,18 @@
   (testing "GET /api/automagic-dashboards/field/:id"
     (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
 
+(defn- encoded-cell-query
+  "Base64-encode `legacy-filter-clause` as the MBQL 5 cell query of an X-Ray URL."
+  [legacy-filter-clause]
+  (magic.util/encode-base64-json (mbql5-cell-query legacy-filter-clause)))
+
 (defn- revoke-collection-permissions!
   [collection-id]
   (perms/revoke-collection-permissions! (perms-group/all-users) collection-id))
 
 (deftest question-xray-test
   (mt/with-non-admin-groups-no-root-collection-perms
-    (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+    (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
       (doseq [test-fn
               [(fn [collection-id card-id]
                  (testing "GET /api/automagic-dashboards/question/:id"
@@ -177,7 +182,7 @@
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
   even though the underlying API will assert that dataset is true and the returned dashboard will be different."
     (mt/with-non-admin-groups-no-root-collection-perms
-      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])]
+      (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
         (doseq [test-fn
                 [(fn [collection-id card-id]
                    (testing "GET /api/automagic-dashboards/model/:id"
@@ -222,8 +227,7 @@
   (let [query (magic.util/encode-base64-json
                (mt/mbql-query venues
                  {:filter [:> $price 10]}))
-        cell-query (magic.util/encode-base64-json
-                    [:> [:field (mt/id :venues :price) nil] 5])]
+        cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])]
     (testing "GET /api/automagic-dashboards/adhoc/:query"
       (is (some? (api-call! "adhoc/%s" [query]))))
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query"
@@ -253,8 +257,7 @@
                       [(->> (mt/mbql-query venues
                               {:filter [:> $price 10]})
                             (magic.util/encode-base64-json))
-                       (->> [:= [:field (mt/id :venues :price) nil] 15]
-                            (magic.util/encode-base64-json))
+                       (encoded-cell-query [:= [:field (mt/id :venues :price) nil] 15])
                        segment-id]))))))
 
 (deftest compare-nested-query-test
@@ -270,7 +273,7 @@
                           :query    {:source-table (format "card__%d" card-id)
                                      :breakout     [[:field "SOURCE" {:base-type :type/Text}]]
                                      :aggregation  [[:count]]}}
-              cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"]]
+              cell-query (mbql5-cell-query [:= [:field "SOURCE" {:base-type :type/Text}] "Affiliate"])]
           (testing "X-Ray"
             (is (some? (api-call! "adhoc/%s/cell/%s"
                                   (map magic.util/encode-base64-json [query cell-query])
@@ -624,7 +627,7 @@
     (mt/with-temp [:model/Card {card-id :id} {:table_id      (mt/id :venues)
                                               :dataset_query (mt/mbql-query venues
                                                                {:filter [:> $price 10]})}]
-      (let [cell-query (magic.util/encode-base64-json [:> [:field (mt/id :venues :price) nil] 5])
+      (let [cell-query (encoded-cell-query [:> [:field (mt/id :venues :price) nil] 5])
             show-limit 2
             {:keys [base-count show-count]} (card-count-check show-limit "question/%s/cell/%s" [card-id cell-query])]
         (testing "The non-slimmed dashboard isn't already at \"limit\" cards"
@@ -641,8 +644,7 @@
                                                               [(->> (mt/mbql-query venues
                                                                       {:filter [:> $price 10]})
                                                                     (magic.util/encode-base64-json))
-                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
-                                                                    (magic.util/encode-base64-json))
+                                                               (encoded-cell-query [:= [:field (mt/id :venues :price) nil] 15])
                                                                segment-id])]
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
@@ -656,8 +658,7 @@
 
 (deftest ^:parallel allow-equals-in-base-64-encoding-for-now-test
   (testing "Allow `=` in the route part of X-Rays API requests... for now"
-    (doseq [schema [::api.magic/base-64-encoded-json
-                    ::api.magic/entity-id-or-query]]
+    (doseq [schema [::api.magic/entity-id-or-query]]
       (testing schema
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
@@ -674,6 +675,28 @@
         (is (map? opts))
         (is (not (contains? opts :a)))
         (is (not (contains? opts :a/b)))))))
+
+(deftest ^:parallel mbql5-cell-query-test
+  (testing "X-Ray endpoints take the cell query the FE sends: an MBQL 5 filter clause as JSON, base64-encoded"
+    (let [mp            (mt/metadata-provider)
+          adhoc-query   (magic.util/encode-base64-json (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          filter-clause ["=" {"lib/uuid" (str (random-uuid))}
+                         ["field" {"lib/uuid" (str (random-uuid)), "base-type" "type/Integer"} (mt/id :venues :price)]
+                         2]]
+      (testing "the ::cell-query schema"
+        (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?, :base-type :type/Integer} (mt/id :venues :price)] 2]
+                (api.macros/decode-and-validate-params
+                 :query ::api.magic/cell-query (u/encode-base64 (json/encode filter-clause))))))
+      (doseq [template ["adhoc/%s/cell/%s"
+                        "adhoc/%s/cell/%s/rule/example/indepth"
+                        (str "adhoc/%s/cell/%s/compare/table/" (mt/id :venues))
+                        (str "adhoc/%s/cell/%s/rule/example/indepth/compare/table/" (mt/id :venues))]]
+        (testing template
+          (let [url (format (str "automagic-dashboards/" template)
+                            adhoc-query
+                            (magic.util/encode-base64-json filter-clause))]
+            (is (=? {:dashcards seq}
+                    (mt/user-http-request :crowberto :get 200 url)))))))))
 
 (deftest adhoc-query-decode-strips-extra-keys-test
   (testing "adhoc queries are validated and stripped of the query processor's internal keys"
