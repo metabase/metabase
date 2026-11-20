@@ -1024,8 +1024,8 @@
 
 (defn- serialize-csv
   "The stored form of `value`, a list of entries or a CSV string of one line.
-   Returns nil, which stores nothing so the default applies, for nil or an empty string.
-   A list with no entries is stored as `,`, which reads back as an empty list.
+   Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]`,
+   an empty string or `,`.
    Any other value is stored as printed.
    Throws a 400 for a string that is not valid CSV or spans several lines."
   [value]
@@ -1042,13 +1042,11 @@
 
     (sequential? value)
     (let [entries (csv-entries value)]
-      (if (seq entries)
+      (when (seq entries)
         (with-open [writer (StringWriter.)]
           ;; Write the row without its line ending. An entry with a newline in it is quoted, so it stays in this row.
           (csv/write-csv writer [entries] :newline :lf)
-          (str/replace (str writer) #"\n\z" ""))
-        ;; Storing nothing would bring back a non-empty default, so an empty list needs a value of its own.
-        ","))
+          (str/replace (str writer) #"\n\z" ""))))
 
     (nil? value)
     nil
