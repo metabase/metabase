@@ -50,4 +50,5 @@
 (defn halts?
   "Whether a halt of the global system would stop the component behind `handle` now."
   [handle]
-  (boolean (some #{handle} (halt-order))))
+  ;; by key, since a namespace reload makes a new handle for a component the system registered under the old one
+  (boolean (some #{(mc/component-key handle)} (map mc/component-key (halt-order)))))
