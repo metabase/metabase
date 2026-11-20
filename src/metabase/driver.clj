@@ -286,13 +286,13 @@
 
 (defmulti disallowed-connection-parameters
   "The names of client connection parameters a user may never set for this driver, whether written into
-  `:additional-options` or sent as a detail key -- several drivers hand detail keys they do not recognize to the client
-  as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
-  to none.
+  one of the [[connection-option-strings]] or sent as a detail key -- several drivers hand detail keys they do not
+  recognize to the client as connection properties. Typically parameters whose value the client loads and instantiates
+  as a Java class. Defaults to none.
 
-  Matched as substrings of `:additional-options` and of each detail key, after normalization: case folded, percent
-  escapes decoded once, and `_ . - +` and whitespace ignored. So a name here also catches its longer and disguised
-  spellings (`socketFactory` covers `socketFactoryClass` and `SOCKET_FACTORY`). Enforced by
+  Matched as substrings of each of the [[connection-option-strings]] and of each detail key, after normalization: case
+  folded, percent escapes decoded once, and `_ . - +` and whitespace ignored. So a name here also catches its longer
+  and disguised spellings (`socketFactory` covers `socketFactoryClass` and `SOCKET_FACTORY`). Enforced by
   [[metabase.driver.util/validate-connection-parameters!]], which runs when a connection is tested, a connection pool
   is created, and a Database is saved. Extend a parent's list rather than replacing it:
 
@@ -306,6 +306,18 @@
 (defmethod disallowed-connection-parameters :default
   [_driver]
   [])
+
+(defmulti connection-option-strings
+  "The strings in `details` in which a user writes client connection options for this driver.
+  [[metabase.driver.util/validate-connection-parameters!]] searches each for the
+  [[disallowed-connection-parameters]], ignoring nil entries. Defaults to the `:additional-options` string."
+  {:added "0.66.0" :arglists '([driver details])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod connection-option-strings :default
+  [_driver details]
+  [(:additional-options details)])
 
 (defmulti url-building-detail-keys
   "The connection-detail keys whose values this driver splices into its connection URL.

@@ -333,8 +333,8 @@
 
 (defn validate-connection-parameters!
   "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
-  `:additional-options` or as a detail key, or if a value of one of the [[driver/url-building-detail-keys]] contains a
-  URL separator. Returns nil when the details are acceptable.
+  one of the [[driver/connection-option-strings]] or as a detail key, or if a value of one of the
+  [[driver/url-building-detail-keys]] contains a URL separator. Returns nil when the details are acceptable.
 
   Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
   Metabase sets itself, which are not the user's to have chosen. An auth provider's response is merged into the details
@@ -342,8 +342,9 @@
   [driver details]
   (letfn [(refuse! [where match]
             (throw (ex-info (str "Potentially dangerous keys in " where) {:status-code 400, :disallowed-key match})))]
-    (when-let [match (some->> (:additional-options details) (disallowed-connection-parameter driver))]
-      (refuse! "additional options" match))
+    (when-let [match (some #(disallowed-connection-parameter driver %)
+                           (remove nil? (driver/connection-option-strings driver details)))]
+      (refuse! "connection options" match))
     (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
       (refuse! "connection details" match)))
   (validate-url-building-details! driver details))

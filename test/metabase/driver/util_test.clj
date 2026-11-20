@@ -1011,6 +1011,12 @@
   [_driver]
   ["testSetting" "otherSetting"])
 
+(driver/register! ::own-option-strings-driver, :parent ::denylist-driver, :abstract? true)
+
+(defmethod driver/connection-option-strings ::own-option-strings-driver
+  [_driver details]
+  [(:uri-options details) (:more-options details)])
+
 (deftest ^:parallel disallowed-connection-parameter-normalizes-both-sides-test
   (is (= "testSetting" (driver.u/disallowed-connection-parameter ::denylist-driver "x=te%C5%BFT_setting")))
   (is (= "otherSetting" (driver.u/disallowed-connection-parameter ::denylist-driver "OTHER-setting.x")))
@@ -1027,7 +1033,7 @@
 (deftest ^:parallel validate-connection-parameters!-normalizes-names-test
   (doseq [opts ["testSetting=x" "TEST_SETTING=x" "test.setting=x" "%74est%53etting=x" "teſtSetting=x"]]
     (testing (pr-str opts)
-      (is (= {:status-code 400 :disallowed-key "testSetting" :message "Potentially dangerous keys in additional options"}
+      (is (= {:status-code 400 :disallowed-key "testSetting" :message "Potentially dangerous keys in connection options"}
              (validation-error ::denylist-driver {:additional-options opts})))))
   (doseq [k [:TEST_SETTING :test-setting "test%53etting" :teſtSetting]]
     (testing (pr-str k)
@@ -1038,6 +1044,19 @@
             (validation-error ::denylist-driver {:db "a?testSetting=x"}))))
   (is (nil? (validation-error ::denylist-driver {:host "db.example.com" :port 5432 :db "d" :user "u" :password "p&q;r"
                                                  :additional-options "harmless=1&other=2"}))))
+
+(deftest ^:parallel validate-connection-parameters!-searches-connection-option-strings-test
+  (doseq [details [{:uri-options "a=1&TEST_SETTING=x"}
+                   {:uri-options "a=1" :more-options "b=2;%74estSetting=x"}
+                   {:more-options "testSetting=x"}]]
+    (testing (pr-str details)
+      (is (= {:status-code 400 :disallowed-key "testSetting" :message "Potentially dangerous keys in connection options"}
+             (validation-error ::own-option-strings-driver details)))))
+  (is (nil? (validation-error ::own-option-strings-driver {:uri-options "a=1" :more-options "b=2"})))
+  (testing "a string the driver does not name is not searched"
+    (is (nil? (validation-error ::own-option-strings-driver {:password "testSetting=x"})))
+    (is (nil? (validation-error ::own-option-strings-driver {:additional-options "testSetting=x"})))
+    (is (nil? (validation-error ::denylist-driver {:uri-options "testSetting=x"})))))
 
 (deftest ^:parallel validate-connection-parameters!-url-building-details-test
   (doseq [k   [:host :port :db :dbname :catalog :account]
