@@ -115,6 +115,8 @@ export type WhyList = {
 export type WhyPreview = {
   /** Whether the preview is of a real user, or of a group or tenant that a stand-in user stands for. */
   principalType: PrincipalType;
+  /** The name of the group or tenant, when the preview is of one. */
+  principalName?: string;
   userId: number;
   previewId?: string;
   unsavedEditsId?: string;
@@ -230,9 +232,16 @@ export function useWhyList(
       dataPreview,
       readCheck,
       queryCheck,
+      getStandIn(preview),
     ),
     summary,
   };
+}
+
+function getStandIn(preview: WhyPreview | null): WhyTarget["standIn"] {
+  return preview?.principalType !== "user" && preview?.principalName != null
+    ? { type: preview.principalType, name: preview.principalName }
+    : undefined;
 }
 
 /** The list with its personal collection named `name`; a group or tenant preview has no one whose name could go there. */
@@ -453,6 +462,7 @@ function getItemPage(
   dataPreview: PreviewDataResponse,
   readCheck: PermissionDebugResponse,
   queryCheck: PermissionDebugResponse,
+  standIn: WhyTarget["standIn"],
 ): ItemWhyPage {
   const itemType = item.type === "dashboard" ? "dashboard" : item.cardType;
   const collectionTarget = getCollectionTarget(
@@ -484,6 +494,7 @@ function getItemPage(
       "view_data",
       missingAttributes,
       getDatabaseProblems(database.id, queryCheck.data, groups),
+      standIn,
     ),
   );
   const filtered = viewTargets.filter(isFiltered);
@@ -705,12 +716,14 @@ function getTableWhyTarget(
   column: Extract<PreviewColumn, "view_data" | "create_queries">,
   missingAttributes: MissingAttribute[] = [],
   databaseProblems: DatabaseProblems = {},
+  standIn?: WhyTarget["standIn"],
 ): WhyTarget {
   const tableName = table.display_name ?? table.name;
   return {
     title: tableName,
     databaseName: database.name,
     who,
+    standIn,
     subject: { label: t`Table`, value: `${database.name} / ${tableName}` },
     column,
     cell: table[column],

@@ -282,6 +282,7 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
         isOpen={isWhyOpen}
         preview={{
           principalType: state.principalType,
+          principalName: state.principalName,
           userId: state.userId,
           previewId: state.previewId,
           unsavedEditsId: state.unsavedEdits?.isApplied

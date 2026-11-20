@@ -248,6 +248,7 @@ export function TroubleshootPage() {
           preview != null
             ? {
                 principalType,
+                principalName: preview.principal_name,
                 userId: preview.user_id,
                 previewId: preview.preview_id,
               }

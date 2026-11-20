@@ -30,6 +30,7 @@ import type {
 
 import { WhyListSidesheet } from "./WhyListSidesheet";
 import type { OpenedItem } from "./item-path";
+import type { WhyPreview } from "./use-why-list";
 
 const SANDY: PreviewPrincipal = {
   type: "user",
@@ -235,6 +236,40 @@ const MISSING_ATTRIBUTES_QUERY: PermissionDebugResponse = {
       },
     ],
   },
+};
+
+/** What the query check says when the one attribute impersonation or routing reads on the sample database is missing. */
+function getMissingDatabaseAttributeQuery(
+  missing: MissingDatabaseAttribute,
+): PermissionDebugResponse {
+  return {
+    decision: "denied",
+    data: {
+      "card-count": 1,
+      "blocked-card-count": 1,
+      "missing-database-attributes": [missing],
+      "blocked-cards": [
+        {
+          id: 134,
+          name: "Revenue by month",
+          tables: [],
+          "missing-database-attributes": [missing],
+        },
+      ],
+    },
+  };
+}
+
+const SALES_GROUP_PREVIEW: WhyPreview = {
+  principalType: "group",
+  principalName: "Sales",
+  userId: SANDY.id,
+};
+
+const ACME_TENANT_PREVIEW: WhyPreview = {
+  principalType: "tenant",
+  principalName: "Acme",
+  userId: SANDY.id,
 };
 
 const REVIEWS: PreviewTableAccess = {
@@ -707,6 +742,118 @@ describe("WhyListSidesheet", () => {
         "Finance readers needs the attribute role to pick the database role on Sample Database, which Sandy Sales doesn't have. Sample Database routes by the attribute tenant, which Sandy Sales doesn't have. Set them on Sandy Sales, or pick values for them in the preview.",
       ),
     ).toHaveLength(2);
+  });
+
+  it("says a group's members need the attributes a rule reads, and to pick values in the preview, not to set them", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS_WITHOUT_VALUES],
+      dashboardQuery: MISSING_ATTRIBUTES_QUERY,
+      preview: SALES_GROUP_PREVIEW,
+      sentenceWhoName: "A member of Sales",
+    });
+
+    expect(
+      await screen.findByText(
+        "Members of Sales need the attributes category and state (rule set by Sales). Pick values for them in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Members of Sales need the attribute category (rule set by Sales). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
+  });
+
+  it("says a tenant's users need the attributes a rule reads, and to pick values in the preview, not to set them", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS_WITHOUT_VALUES],
+      dashboardQuery: MISSING_ATTRIBUTES_QUERY,
+      preview: ACME_TENANT_PREVIEW,
+      sentenceWhoName: "A user of Acme",
+    });
+
+    expect(
+      await screen.findByText(
+        "Users of Acme need the attributes category and state (rule set by Sales). Pick values for them in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Users of Acme need the attribute category (rule set by Sales). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
+  });
+
+  it("says a group's members need the attribute impersonation reads, not that it can be set on a stand-in", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [{ ...ORDERS, security: null, policies: [] }],
+      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROLE),
+      preview: SALES_GROUP_PREVIEW,
+      sentenceWhoName: "A member of Sales",
+    });
+
+    expect(
+      await screen.findByText(
+        "Members of Sales need the attribute role to pick the database role on Sample Database (rule set by Finance readers). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
+  });
+
+  it("says a tenant's users need the attribute impersonation reads, not that it can be set on a stand-in", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [{ ...ORDERS, security: null, policies: [] }],
+      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROLE),
+      preview: ACME_TENANT_PREVIEW,
+      sentenceWhoName: "A user of Acme",
+    });
+
+    expect(
+      await screen.findByText(
+        "Users of Acme need the attribute role to pick the database role on Sample Database (rule set by Finance readers). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
+  });
+
+  it("says a group's members need the attribute a database's router reads, not that it can be set on a stand-in", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [{ ...ORDERS, security: null, policies: [] }],
+      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROUTE),
+      preview: SALES_GROUP_PREVIEW,
+      sentenceWhoName: "A member of Sales",
+    });
+
+    expect(
+      await screen.findByText(
+        "Members of Sales need the attribute tenant (Sample Database routes by it). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
+  });
+
+  it("says a tenant's users need the attribute a database's router reads, not that it can be set on a stand-in", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [{ ...ORDERS, security: null, policies: [] }],
+      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROUTE),
+      preview: ACME_TENANT_PREVIEW,
+      sentenceWhoName: "A user of Acme",
+    });
+
+    expect(
+      await screen.findByText(
+        "Users of Acme need the attribute tenant (Sample Database routes by it). Pick a value for it in the preview to see their view.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
   });
 
   it("keeps Rows filtered for a table with one group's rule that the dashboard reaches", async () => {
@@ -1651,6 +1798,8 @@ type SetupOpts = {
   /** How the sheet names the person, Sandy Sales unless given. */
   whoName?: string;
   sentenceWhoName?: string;
+  /** What the preview is of, Sandy Sales unless given. */
+  preview?: WhyPreview;
 };
 
 function setup({
@@ -1676,6 +1825,7 @@ function setup({
   dashboardQuery = ALLOW,
   whoName = "Sandy Sales",
   sentenceWhoName = whoName,
+  preview,
 }: SetupOpts) {
   setupPermissionPreviewCollectionsEndpoint("default", mainCollections);
   setupPermissionPreviewCollectionsEndpoint("shared", sharedCollections);
@@ -1720,6 +1870,7 @@ function setup({
   return renderWithProviders(
     <WhyListSidesheet
       {...getProps(openedItem)}
+      {...(preview != null && { preview })}
       whoName={whoName}
       sentenceWhoName={sentenceWhoName}
       isAllCollections={isAllCollections}

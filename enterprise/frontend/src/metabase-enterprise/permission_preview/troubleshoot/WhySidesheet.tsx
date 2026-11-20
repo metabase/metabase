@@ -20,6 +20,8 @@ export type WhyTarget = {
   /** A table's database, shown after the title. */
   databaseName?: string;
   who: string;
+  /** The group or tenant a preview is of, whose stand-in user has no attribute values to set; absent for a person. */
+  standIn?: { type: "group" | "tenant"; name: string };
   /** What the value is about, such as "Sample Database / Products", under its label. */
   subject: { label: string; value: string };
   column: PreviewColumn;
@@ -121,15 +123,18 @@ export function hasMissingAttributes({
 
 /**
  * "Sales needs the attributes category and state, which Sandy Sales doesn't have.", one per group whose rule needs one,
- * then one per group whose connection impersonation, or database whose router, reads one.
+ * then one per group whose connection impersonation, or database whose router, reads one. A group or tenant preview
+ * has no person to set them on: "Members of Sales need the attribute category (rule set by Sales)."
  */
 export function getMissingAttributeSentences(target: WhyTarget) {
   const {
     who,
+    standIn,
     databaseName,
     missingAttributes = [],
     missingDatabaseAttributes = [],
   } = target;
+  const subject = standIn != null ? getStandInSubject(standIn) : null;
   const groups = getPolicies(target).map(({ group_id, group_name }) => ({
     group: group_name,
     attributes: missingAttributes
@@ -140,6 +145,13 @@ export function getMissingAttributeSentences(target: WhyTarget) {
     .filter(({ attributes }) => attributes.length > 0)
     .map(({ group, attributes }) => {
       const list = formatList(attributes);
+      if (subject != null) {
+        return ngettext(
+          msgid`${subject} need the attribute ${list} (rule set by ${group}).`,
+          `${subject} need the attributes ${list} (rule set by ${group}).`,
+          attributes.length,
+        );
+      }
       return ngettext(
         msgid`${group} needs the attribute ${list}, which ${who} doesn't have.`,
         `${group} needs the attributes ${list}, which ${who} doesn't have.`,
@@ -147,17 +159,31 @@ export function getMissingAttributeSentences(target: WhyTarget) {
       );
     });
   const databaseSentences = missingDatabaseAttributes.map(
-    ({ attribute, kind, group }) =>
-      kind === "impersonation"
+    ({ attribute, kind, group }) => {
+      if (subject != null) {
+        return kind === "impersonation"
+          ? t`${subject} need the attribute ${attribute} to pick the database role on ${databaseName} (rule set by ${group}).`
+          : t`${subject} need the attribute ${attribute} (${databaseName} routes by it).`;
+      }
+      return kind === "impersonation"
         ? t`${group} needs the attribute ${attribute} to pick the database role on ${databaseName}, which ${who} doesn't have.`
-        : t`${databaseName} routes by the attribute ${attribute}, which ${who} doesn't have.`,
+        : t`${databaseName} routes by the attribute ${attribute}, which ${who} doesn't have.`;
+    },
   );
   return [...ruleSentences, ...databaseSentences];
 }
 
-/** What fixes it: give the person a value, or try one in the preview. */
+function getStandInSubject({ type, name }: NonNullable<WhyTarget["standIn"]>) {
+  return type === "group" ? t`Members of ${name}` : t`Users of ${name}`;
+}
+
+/**
+ * What fixes it: give the person a value, or try one in the preview. A group or tenant has no value to set, only one
+ * to try.
+ */
 export function getMissingAttributeFix({
   who,
+  standIn,
   missingAttributes,
   missingDatabaseAttributes,
 }: WhyTarget) {
@@ -166,6 +192,13 @@ export function getMissingAttributeFix({
       ({ attribute }) => attribute,
     ),
   ).size;
+  if (standIn != null) {
+    return ngettext(
+      msgid`Pick a value for it in the preview to see their view.`,
+      `Pick values for them in the preview to see their view.`,
+      count,
+    );
+  }
   return ngettext(
     msgid`Set it on ${who}, or pick a value for it in the preview.`,
     `Set them on ${who}, or pick values for them in the preview.`,
