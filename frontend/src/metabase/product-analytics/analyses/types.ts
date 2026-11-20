@@ -1,8 +1,10 @@
 import type { CompleteSettingDefinitions } from "metabase/viz-core";
 import type {
+  CardDisplayType,
   DateTimeAbsoluteUnit,
   ProductAnalyticsKind,
   Table,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 /** What an analysis counts. */
@@ -40,4 +42,9 @@ export type AnalysisSettingDefinitions<TSettings> = CompleteSettingDefinitions<
 
 export type AnalysisConfig<K extends ProductAnalyticsKind> = {
   settings: AnalysisSettingDefinitions<AnalysisSettingsByKind[K]>;
+  getTitle: (settings: AnalysisSettingsByKind[K]) => string;
+  getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
+  getVizSettings: (
+    settings: AnalysisSettingsByKind[K],
+  ) => VisualizationSettings;
 };

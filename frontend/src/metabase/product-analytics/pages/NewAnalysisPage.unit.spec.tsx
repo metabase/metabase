@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  setupAdhocQueryEndpoint,
   setupTableQueryMetadataEndpointError,
   setupTablesEndpoints,
 } from "__support__/server-mocks";
@@ -8,14 +9,18 @@ import { createMockState } from "__support__/state";
 import { act, renderRoutes, screen, waitFor } from "__support__/ui";
 import { toRouteObjects } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { registerVisualizations } from "metabase/visualizations/register";
 import type { Table } from "metabase-types/api";
 import {
+  createMockDataset,
   createMockField,
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
 
 import { getRoutes } from "../routes";
+
+registerVisualizations();
 
 const createFields = (tableId: number) => [
   createMockField({
@@ -71,6 +76,7 @@ const setup = ({
   tables = [SET_UP_TABLE, UNFINISHED_TABLE],
 }: SetupOpts) => {
   setupTablesEndpoints(tables);
+  setupAdhocQueryEndpoint(createMockDataset());
   const { router } = renderRoutes(toRouteObjects(getRoutes()), {
     initialRoute,
     storeInitialState: createMockState({
