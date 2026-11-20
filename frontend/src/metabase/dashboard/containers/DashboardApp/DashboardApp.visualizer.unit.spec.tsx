@@ -31,13 +31,17 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import {
+  resetMockExplicitSize,
+  setMockExplicitSize,
+} from "metabase/common/components/ExplicitSize/tests/mock-size";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { GOAL_LINE_DASH } from "metabase/viz-core";
+import { GOAL_LINE_DASH, TREND_LINE_WIDTH } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -70,6 +74,7 @@ import {
   createMockDatasetData,
   createMockDatetimeColumn,
   createMockField,
+  createMockInsight,
   createMockNumericColumn,
   createMockSearchResult,
   createMockVisualizerDashboardCard,
@@ -241,6 +246,14 @@ const timeseriesDataset = (
         ["2024-01-01T00:00:00Z", counts[0]],
         ["2024-02-01T00:00:00Z", counts[1]],
         ["2024-03-01T00:00:00Z", counts[2]],
+      ],
+      // the backend computes insights for a timeseries breakout
+      insights: [
+        createMockInsight({
+          col: countColumn.name,
+          unit: "month",
+          "best-fit": ["+", counts[0], ["*", counts[1] - counts[0], "x"]],
+        }),
       ],
     }),
   });
@@ -534,6 +547,11 @@ const FUNNEL_DASHCARD = createMockVisualizerDashboardCard({
   },
 });
 
+const SERIES_B_COLOR = "#F9D45C";
+const HOVERED_SERIES_COLOR = "#88BF4D";
+// the sum of the Products by Category counts
+const PIE_TOTAL = "26";
+
 const VISUALIZER_DASHBOARD_DASHCARDS = [
   MULTI_SERIES_LINE_DASHCARD,
   MULTI_SERIES_BAR_DASHCARD,
@@ -551,6 +569,244 @@ const ALL_CARDS = [
   VIEWS_COLUMN,
   ORDERS_TABLE,
 ];
+
+const DEFAULT_SERIES_COLOR = "#509EE3";
+
+const PIVOT_YEARS = ["2022", "2023", "2024", "2025", "2026"];
+const PIVOT_CATEGORIES = ["Doohickey", "Gadget", "Gizmo", "Widget"];
+const COUNTRY_STEPS = ["(empty)", "AE", "AF", "AG"];
+
+const breakoutColumn = (column: DatasetColumn): DatasetColumn => ({
+  ...column,
+  source: "breakout",
+});
+
+const PIVOT_TABLE = createMockCard({
+  id: 55,
+  name: "Pivot table",
+  display: "pivot",
+  dataset_query: STRUCTURED_QUERY,
+  visualization_settings: {},
+});
+const ORDERS_BY_CREATED_AT_AND_CATEGORY = createMockCard({
+  id: 50,
+  name: "Orders by Created At (Month) & Category",
+  display: "line",
+  dataset_query: STRUCTURED_QUERY,
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+    "graph.metrics": ["count"],
+  },
+});
+const ORDERS_BY_CREATED_AT_AND_CATEGORY_WITH_HIDDEN_SERIES = createMockCard({
+  ...ORDERS_BY_CREATED_AT_AND_CATEGORY,
+  id: 53,
+  name: "Orders by Created At (Month) & Category with hidden series",
+  visualization_settings: {
+    ...ORDERS_BY_CREATED_AT_AND_CATEGORY.visualization_settings,
+    "graph.series_order": [
+      { key: "Gadget", name: "Gadget", color: "#F9D45C", enabled: false },
+      { key: "Doohickey", name: "Doohickey", color: "#88BF4D", enabled: true },
+      { key: "Gizmo", name: "Gizmo", color: "#A989C5", enabled: true },
+      { key: "Widget", name: "Widget", color: "#F2A86F", enabled: false },
+    ],
+    "graph.series_order_dimension": "CATEGORY",
+  },
+});
+const ACCOUNTS_BY_COUNTRY = createMockCard({
+  id: 54,
+  name: "Accounts by Country",
+  display: "bar",
+  dataset_query: STRUCTURED_QUERY,
+  visualization_settings: {
+    "graph.dimensions": ["COUNTRY"],
+    "graph.metrics": ["count"],
+  },
+});
+
+const ratioCard = (id: number, name: string, metric: string) =>
+  createMockCard({
+    id,
+    name,
+    display: "line",
+    dataset_query: STRUCTURED_QUERY,
+    visualization_settings: {
+      "graph.dimensions": ["CREATED_AT"],
+      "graph.metrics": [metric],
+      column_settings: {
+        [`["name","${metric}"]`]: { number_style: "percent" },
+      },
+    },
+  });
+const TAX_OVER_SUBTOTAL = ratioCard(56, "Question A for 61521", "Tax over Sub");
+const TAX_OVER_TOTAL = ratioCard(57, "Question B for 61521", "Tax over Total");
+
+const ratioDataset = (metric: string, ratios: number[]) =>
+  createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        breakoutColumn(createdAtColumn(ORDERS.CREATED_AT)),
+        createMockNumericColumn({
+          id: undefined,
+          name: metric,
+          display_name: metric,
+          base_type: "type/Float",
+          effective_type: "type/Float",
+          source: "aggregation",
+        }),
+      ],
+      rows: ratios.map((ratio, index) => [
+        `2024-0${index + 1}-01T00:00:00Z`,
+        ratio,
+      ]),
+    }),
+  });
+
+const averageColumn = createMockNumericColumn({
+  id: undefined,
+  name: "avg",
+  display_name: "Average of Quantity",
+  base_type: "type/Float",
+  effective_type: "type/Float",
+  source: "aggregation",
+});
+// the pivot grouping column that the pivot QP adds after the breakouts
+const pivotGroupingColumn = createMockNumericColumn({
+  id: undefined,
+  name: "pivot-grouping",
+  display_name: "pivot-grouping",
+});
+const yearColumn = breakoutColumn(
+  createMockDatetimeColumn({
+    id: 101,
+    name: "CREATED_AT",
+    display_name: "Created At: Year",
+    unit: "year",
+  }),
+);
+const pivotYear = (year: string) => `${year}-01-01T00:00:00Z`;
+// A pivot card without pivot settings returns all its breakout combinations:
+// both breakouts (grouping 0), the category (1), the year (2) and the total (3)
+const pivotDataset = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      yearColumn,
+      breakoutColumn(ordersCategoryColumn),
+      pivotGroupingColumn,
+      countColumn,
+      averageColumn,
+    ],
+    rows: [
+      ...PIVOT_YEARS.flatMap((year, yearIndex) =>
+        PIVOT_CATEGORIES.map((category, categoryIndex) => [
+          pivotYear(year),
+          category,
+          0,
+          100 * (yearIndex + 1) + categoryIndex,
+          3 + categoryIndex / 10,
+        ]),
+      ),
+      ...PIVOT_CATEGORIES.map((category, categoryIndex) => [
+        null,
+        category,
+        1,
+        1000 + categoryIndex,
+        3.5,
+      ]),
+      ...PIVOT_YEARS.map((year, yearIndex) => [
+        pivotYear(year),
+        null,
+        2,
+        400 * (yearIndex + 1),
+        3.2,
+      ]),
+      [null, null, 3, 6000, 3.3],
+    ],
+  }),
+});
+
+const CARTESIAN_CARDS = [
+  ...ALL_CARDS,
+  PIVOT_TABLE,
+  ORDERS_BY_CREATED_AT_AND_CATEGORY,
+  ORDERS_BY_CREATED_AT_AND_CATEGORY_WITH_HIDDEN_SERIES,
+  ACCOUNTS_BY_COUNTRY,
+  TAX_OVER_SUBTOTAL,
+  TAX_OVER_TOTAL,
+];
+
+const ordersByCreatedAtAndCategoryDataset = createMockDataset({
+  data: createMockDatasetData({
+    cols: [
+      createdAtColumn(ORDERS.CREATED_AT),
+      ordersCategoryColumn,
+      countColumn,
+    ],
+    rows: ["2024-01-01T00:00:00Z", "2024-02-01T00:00:00Z"].flatMap(
+      (month, monthIndex) =>
+        PIVOT_CATEGORIES.map((category, categoryIndex) => [
+          month,
+          category,
+          10 * (monthIndex + 1) + categoryIndex,
+        ]),
+    ),
+  }),
+});
+
+const CARTESIAN_DATASETS: Record<CardId, Dataset> = {
+  ...DATASETS,
+  [ORDERS_BY_CREATED_AT.id]: timeseriesDataset([400, 500, 600]),
+  [PRODUCTS_BY_CREATED_AT.id]: timeseriesDataset(
+    [8, 9, 10],
+    PRODUCTS.CREATED_AT,
+  ),
+  [ORDERS_BY_CATEGORY.id]: categoryDataset(
+    [4000, 5100, 4800, 5000],
+    ordersCategoryColumn,
+  ),
+  [PRODUCTS_BY_CATEGORY.id]: createMockDataset({
+    data: createMockDatasetData({
+      cols: [productsCategoryColumn, countColumn],
+      rows: [
+        ["Doohickey", 42],
+        ["Gadget", 53],
+        ["Gizmo", 51],
+        ["Widget", 54],
+      ],
+    }),
+  }),
+  [PIVOT_TABLE.id]: pivotDataset,
+  [ORDERS_BY_CREATED_AT_AND_CATEGORY.id]: ordersByCreatedAtAndCategoryDataset,
+  [ORDERS_BY_CREATED_AT_AND_CATEGORY_WITH_HIDDEN_SERIES.id]:
+    ordersByCreatedAtAndCategoryDataset,
+  [ACCOUNTS_BY_COUNTRY.id]: createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockCategoryColumn({
+          id: 104,
+          name: "COUNTRY",
+          display_name: "Country",
+          semantic_type: "type/Country",
+        }),
+        countColumn,
+      ],
+      rows: [
+        [null, 5],
+        ["AE", 8],
+        ["AF", 3],
+        ["AG", 6],
+      ],
+    }),
+  }),
+  [TAX_OVER_SUBTOTAL.id]: ratioDataset(
+    "Tax over Sub",
+    [0.061, 0.062, 0.06, 0.063, 0.061, 0.062],
+  ),
+  [TAX_OVER_TOTAL.id]: ratioDataset(
+    "Tax over Total",
+    [0.051, 0.052, 0.05, 0.053, 0.051, 0.052],
+  ),
+};
 
 interface SetupOpts {
   dashcards: DashboardCard[];
@@ -981,6 +1237,88 @@ function getGoalLine(container: HTMLElement) {
   );
 }
 
+function getLegendItemNames(container: HTMLElement) {
+  return within(within(container).getByLabelText("Legend"))
+    .getAllByTestId("legend-item")
+    .map((item) => item.textContent);
+}
+
+/** Finds a dashcard once its legend is shown */
+async function findDashcardWithLegend(dashcardId: number) {
+  const dashcard = await findDashcard(dashcardId);
+  await within(dashcard).findByLabelText("Legend");
+  return dashcard;
+}
+
+function expectColumnSelected(
+  dataSourceName: string,
+  columnName: string,
+  isSelected = true,
+) {
+  expect(
+    getColumnListItem(getDataSourceItem(dataSourceName), columnName),
+  ).toHaveAttribute("aria-selected", String(isSelected));
+}
+
+function expectCurrentDisplay(modal: HTMLElement, display: string) {
+  expect(
+    within(within(modal).getByTestId("viz-picker-main")).getByDisplayValue(
+      display,
+    ),
+  ).toBeChecked();
+}
+
+/** The y-axis labels of a cartesian chart, on both sides */
+function getYAxisLabels(chart: HTMLElement) {
+  return Array.from(
+    chart.querySelectorAll(
+      "text[text-anchor='end'], text[text-anchor='start']",
+    ),
+  ).map((text) => text.textContent?.trim() ?? "");
+}
+
+/**
+ * Shows the ECharts tooltip of a data point of the series drawn in a color.
+ * jsdom has no layout for a real hover, so this dispatches the action that a
+ * hover triggers, and the chart renders the tooltip with its own formatter.
+ */
+async function showChartTooltip(
+  chart: HTMLElement,
+  { seriesColor, dataIndex }: { seriesColor: string; dataIndex: number },
+) {
+  const instance = checkNotNull(getInstanceByDom(chart));
+  const { series } = instance.getOption();
+  const seriesIndex = Array.isArray(series)
+    ? series.findIndex(
+        (option) =>
+          isObject(option.lineStyle) && option.lineStyle.color === seriesColor,
+      )
+    : -1;
+  expect(seriesIndex).toBeGreaterThanOrEqual(0);
+  act(() => {
+    instance.dispatchAction({ type: "showTip", seriesIndex, dataIndex });
+  });
+  return screen.findByTestId("echarts-tooltip");
+}
+
+function getTrendLines(container: HTMLElement) {
+  return container.querySelectorAll(
+    `path[stroke-width='${TREND_LINE_WIDTH}'][stroke-linejoin='bevel']`,
+  );
+}
+
+function getPathsWithFill(container: HTMLElement, color: string) {
+  return container.querySelectorAll(`path[fill='${color}']`);
+}
+
+function getPathsWithStroke(container: HTMLElement, color: string) {
+  return container.querySelectorAll(`path[stroke='${color}']`);
+}
+
+function getPieSlices(container: HTMLElement) {
+  return container.querySelectorAll("path[stroke-linejoin='bevel']");
+}
+
 async function hoverInfoIcon(dashcardId: number) {
   const dashcard = await findDashcard(dashcardId);
   await userEvent.hover(within(dashcard).getByLabelText("info icon"));
@@ -1091,6 +1429,7 @@ async function findClickActions() {
 describe("DashboardApp > visualizer", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    resetMockExplicitSize();
   });
 
   describe("editing a dashcard", () => {
@@ -2311,6 +2650,661 @@ describe("DashboardApp > visualizer", () => {
         aggregations: ["Count"],
         breakouts: ["Created At: Month"],
       });
+    });
+  });
+
+  describe("cartesian and pie charts", () => {
+    it("should change cartesian and pie viz settings (metabase#61197)", async () => {
+      await setup({ dashcards: [MULTI_SERIES_LINE_DASHCARD, PIE_DASHCARD] });
+      await editDashboard();
+
+      const modal = await openVisualizer(
+        MULTI_SERIES_LINE_DASHCARD.id,
+        "Edit visualization",
+      );
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Settings" }),
+      );
+      const getSidebar = () =>
+        within(modal).getByTestId("chartsettings-sidebar");
+      const canvas = within(modal).getByTestId("visualization-canvas");
+
+      expect(getGoalLine(canvas)).not.toBeInTheDocument();
+      await userEvent.click(within(getSidebar()).getByText("Goal line"));
+      await waitFor(() => expect(getGoalLine(canvas)).toBeInTheDocument());
+
+      expect(getTrendLines(canvas)).toHaveLength(0);
+      await userEvent.click(within(getSidebar()).getByText("Trend line"));
+      await waitFor(() => expect(getTrendLines(canvas)).toHaveLength(2));
+
+      expect(
+        within(within(modal).getByLabelText("Legend")).getByText(
+          PRODUCTS_BY_CREATED_AT.name,
+        ),
+      ).toBeInTheDocument();
+
+      const seriesSettings =
+        within(getSidebar()).getByTestId("series-settings");
+      const secondSeriesName =
+        within(seriesSettings).getAllByTestId("series-name-input")[1];
+      expect(secondSeriesName).toHaveValue(PRODUCTS_BY_CREATED_AT.name);
+      await userEvent.clear(secondSeriesName);
+      await userEvent.type(secondSeriesName, "Series B");
+      await userEvent.tab();
+
+      expect(getPathsWithFill(canvas, SERIES_B_COLOR)).toHaveLength(0);
+      await userEvent.click(
+        within(seriesSettings).getAllByRole("img", {
+          name: "chevrondown icon",
+        })[1],
+      );
+      const displayTypes = within(seriesSettings).getByTestId(
+        "chart-settings-widget-display",
+      );
+      expect(
+        within(displayTypes).getByRole("radio", { name: /line/i }),
+      ).toBeChecked();
+      await userEvent.click(
+        within(displayTypes).getByRole("radio", { name: /bar/i }),
+      );
+      await userEvent.click(
+        within(
+          within(seriesSettings).getAllByTestId("color-selector-button")[1],
+        ).getByRole("button"),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("color-selector-popover")).getByRole(
+          "button",
+          { name: SERIES_B_COLOR },
+        ),
+      );
+
+      const assertUpdatedSettingsApplied = async (container: HTMLElement) => {
+        await waitFor(() =>
+          expect(getPathsWithFill(container, SERIES_B_COLOR)).not.toHaveLength(
+            0,
+          ),
+        );
+        expect(getGoalLine(container)).toBeInTheDocument();
+        expect(getTrendLines(container)).toHaveLength(2);
+        const legend = within(container).getByLabelText("Legend");
+        expect(within(legend).getByText("Series B")).toBeInTheDocument();
+        expect(
+          within(legend).queryByText(PRODUCTS_BY_CREATED_AT.name),
+        ).not.toBeInTheDocument();
+      };
+      await assertUpdatedSettingsApplied(modal);
+
+      await saveVisualizer();
+      await assertUpdatedSettingsApplied(
+        await findDashcard(MULTI_SERIES_LINE_DASHCARD.id),
+      );
+
+      // pie chart
+      expect(
+        await within(await findDashcard(PIE_DASHCARD.id)).findByText("Total"),
+      ).toBeInTheDocument();
+      const pieModal = await openVisualizer(
+        PIE_DASHCARD.id,
+        "Edit visualization",
+      );
+      await userEvent.click(
+        within(pieModal).getByRole("button", { name: "Settings" }),
+      );
+      const pieSidebar = within(pieModal).getByTestId("chartsettings-sidebar");
+      await userEvent.click(within(pieSidebar).getByText("Display"));
+      const getPieChart = () => within(pieModal).getByTestId("chart-container");
+      expect(within(getPieChart()).getByText(PIE_TOTAL)).toBeInTheDocument();
+      expect(within(getPieChart()).getByText("Total")).toBeInTheDocument();
+      await userEvent.click(within(pieSidebar).getByText("Show total"));
+      await waitFor(() =>
+        expect(
+          within(getPieChart()).queryByText("Total"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(getPieSlices(getPieChart())).toHaveLength(4);
+      expect(
+        within(getPieChart()).queryByText(PIE_TOTAL),
+      ).not.toBeInTheDocument();
+      await saveVisualizer();
+
+      const getDashcardPieChart = () =>
+        within(getDashcard(PIE_DASHCARD.id)).getByTestId("chart-container");
+      await waitFor(() =>
+        expect(getPieSlices(getDashcardPieChart())).toHaveLength(4),
+      );
+      expect(
+        within(getDashcardPieChart()).queryByText("Total"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(getDashcardPieChart()).queryByText(PIE_TOTAL),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should build a chart from a non-cartesian chart without its pivot grouping column (VIZ-668)", async () => {
+      await setup({
+        dashcards: [],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(PIVOT_TABLE.name);
+      await addDataset(ORDERS_BY_CREATED_AT.name);
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Done" }),
+      );
+      await userEvent.click(
+        getColumnListItem(
+          getDataSourceItem(ORDERS_BY_CREATED_AT.name),
+          "Count",
+        ),
+      );
+
+      const pivotSource = getDataSourceItem(PIVOT_TABLE.name);
+      expect(getColumnListItem(pivotSource, "Count")).toBeInTheDocument();
+      expect(
+        within(pivotSource).getByText("Average of Quantity"),
+      ).toBeInTheDocument();
+      expect(
+        within(pivotSource).queryByText("pivot-grouping"),
+      ).not.toBeInTheDocument();
+
+      expect(getWellItems("vertical-well")).toEqual([
+        "Count",
+        `Count (${ORDERS_BY_CREATED_AT.name})`,
+      ]);
+      expect(getWellItems("horizontal-well")).toEqual(["Created At: Year"]);
+      expect(getLegendItemNames(modal)).toHaveLength(2);
+    });
+
+    it("should keep all dimensions when changing to another cartesian chart (VIZ-648)", async () => {
+      await setup({
+        dashcards: [],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(
+        ORDERS_BY_CREATED_AT_AND_CATEGORY.name,
+      );
+      await userEvent.click(
+        within(within(modal).getByTestId("viz-picker-main")).getByTestId(
+          "area",
+        ),
+      );
+
+      expectCurrentDisplay(modal, "area");
+      for (const column of [
+        "Count",
+        "Created At: Month",
+        "Product → Category",
+      ]) {
+        expectColumnSelected(ORDERS_BY_CREATED_AT_AND_CATEGORY.name, column);
+      }
+      expect(getWellItems("horizontal-well")).toEqual([
+        "Created At: Month",
+        "Product → Category",
+      ]);
+    });
+
+    it("should keep the default color of a question's series (VIZ-1211)", async () => {
+      await setup({ dashcards: [] });
+      await editDashboard();
+
+      await userEvent.click(screen.getByLabelText("Add questions"));
+      const sidebar = await screen.findByTestId("add-card-sidebar");
+      await userEvent.click(
+        await within(sidebar).findByRole("menuitem", {
+          name: ORDERS_BY_CATEGORY.name,
+        }),
+      );
+      const dashcard = await findDashcardByTitle(ORDERS_BY_CATEGORY.name);
+      await userEvent.click(
+        await within(dashcard).findByLabelText("Visualize another way"),
+      );
+      const modal = await findVisualizerModal();
+
+      const canvas = within(modal).getByTestId("visualization-canvas");
+      await waitFor(() =>
+        expect(getPathsWithFill(canvas, DEFAULT_SERIES_COLOR)).toHaveLength(4),
+      );
+    });
+
+    it("should remap columns when changing the display to pie and funnel", async () => {
+      await setup({ dashcards: [] });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(
+        ORDERS_BY_CATEGORY.name,
+      );
+      const vizPicker = within(modal).getByTestId("viz-picker-main");
+
+      await userEvent.click(within(vizPicker).getByTestId("pie"));
+      expectColumnSelected(ORDERS_BY_CATEGORY.name, "Count");
+      expectColumnSelected(ORDERS_BY_CATEGORY.name, "Product → Category");
+      expect(getWellItems("pie-metric-well")).toEqual(["Count"]);
+      expect(getWellItems("pie-dimension-well")).toEqual([
+        "Product → Category",
+      ]);
+      // the sum of the Orders by Product Category counts
+      await waitFor(() =>
+        expect(
+          within(within(modal).getByTestId("chart-container")).getByText("10"),
+        ).toBeInTheDocument(),
+      );
+
+      await userEvent.click(within(vizPicker).getByTestId("funnel"));
+      expectColumnSelected(ORDERS_BY_CATEGORY.name, "Count");
+      expectColumnSelected(ORDERS_BY_CATEGORY.name, "Product → Category");
+      expect(getWellItems("vertical-well")).toEqual(["Count"]);
+      expect(getWellItems("horizontal-well")).toEqual([
+        "Product → Category",
+        "Doohickey",
+        "Gadget",
+        "Gizmo",
+        "Widget",
+      ]);
+    });
+
+    it("should keep the column mapping when switching between cartesian, pie and funnel", async () => {
+      await setup({
+        dashcards: [],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(
+        ACCOUNTS_BY_COUNTRY.name,
+      );
+      const vizPicker = within(modal).getByTestId("viz-picker-main");
+      const selectDisplay = (display: string) =>
+        userEvent.click(within(vizPicker).getByTestId(display));
+      const expectCartesianWells = () => {
+        expect(getWellItems("horizontal-well")).toEqual(["Country"]);
+        expect(getWellItems("vertical-well")).toEqual(["Count"]);
+      };
+      const expectFunnelWells = () => {
+        expect(getWellItems("horizontal-well")).toEqual([
+          "Country",
+          ...COUNTRY_STEPS,
+        ]);
+        expect(getWellItems("vertical-well")).toEqual(["Count"]);
+      };
+
+      expectCartesianWells();
+
+      // cartesian -> funnel -> scatter
+      await selectDisplay("funnel");
+      expectFunnelWells();
+      await selectDisplay("scatter");
+      expectCartesianWells();
+
+      await userEvent.click(within(modal).getByLabelText("Undo"));
+      await userEvent.click(within(modal).getByLabelText("Undo"));
+      expectCurrentDisplay(modal, "bar");
+
+      // cartesian -> pie -> funnel -> scatter
+      await selectDisplay("pie");
+      expect(getWellItems("pie-dimension-well")).toEqual(["Country"]);
+      expect(getWellItems("pie-metric-well")).toEqual(["Count"]);
+      await selectDisplay("funnel");
+      expectFunnelWells();
+      await selectDisplay("scatter");
+      expectCartesianWells();
+    });
+
+    it("should handle implicit viz settings of a pivot table (VIZ-947)", async () => {
+      await setup({
+        dashcards: [],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      await editDashboard();
+
+      const modal = await openVisualizerFromQuestionsSidebar(PIVOT_TABLE.name);
+      const canvas = () => within(modal).getByTestId("visualization-canvas");
+      const expectSelectedColumns = (selected: Record<string, boolean>) =>
+        Object.entries(selected).forEach(([column, isSelected]) =>
+          expectColumnSelected(PIVOT_TABLE.name, column, isSelected),
+        );
+      const clickColumn = (column: string) =>
+        userEvent.click(
+          getColumnListItem(getDataSourceItem(PIVOT_TABLE.name), column),
+        );
+      const removeColumn = (column: string) =>
+        userEvent.click(
+          within(
+            getColumnListItem(getDataSourceItem(PIVOT_TABLE.name), column),
+          ).getByLabelText("Remove"),
+        );
+
+      expectSelectedColumns({
+        Count: true,
+        "Average of Quantity": false,
+        "Created At: Year": true,
+        "Product → Category": false,
+      });
+      // a bar for each year
+      await waitFor(() =>
+        expect(getPathsWithFill(canvas(), DEFAULT_SERIES_COLOR)).toHaveLength(
+          PIVOT_YEARS.length,
+        ),
+      );
+      expect(getWellItems("vertical-well")).toEqual(["Count"]);
+      expect(getWellItems("horizontal-well")).toEqual(["Created At: Year"]);
+
+      await clickColumn("Product → Category");
+      expectSelectedColumns({
+        Count: true,
+        "Average of Quantity": false,
+        "Created At: Year": true,
+        "Product → Category": true,
+      });
+      // a series for each category, and one for the subtotal rows
+      await waitFor(() =>
+        expect(getLegendItemNames(modal)).toEqual([
+          ...PIVOT_CATEGORIES,
+          "(empty)",
+        ]),
+      );
+      expect(getWellItems("vertical-well")).toEqual(["Count"]);
+      expect(getWellItems("horizontal-well")).toEqual([
+        "Created At: Year",
+        "Product → Category",
+      ]);
+
+      await clickColumn("Average of Quantity");
+      expectSelectedColumns({
+        Count: true,
+        "Average of Quantity": true,
+        "Created At: Year": true,
+        "Product → Category": true,
+      });
+      expect(getLegendItemNames(modal)).toHaveLength(5);
+      expect(getWellItems("vertical-well")).toEqual([
+        "Count",
+        "Average of Quantity",
+      ]);
+      expect(getWellItems("horizontal-well")).toHaveLength(2);
+
+      await removeColumn("Created At: Year");
+      await removeColumn("Product → Category");
+      expectSelectedColumns({
+        Count: true,
+        "Average of Quantity": true,
+        "Created At: Year": false,
+        "Product → Category": false,
+      });
+      await waitFor(() =>
+        expect(
+          within(modal).queryByTestId("chart-container"),
+        ).not.toBeInTheDocument(),
+      );
+      expect(getWellItems("vertical-well")).toHaveLength(2);
+      expect(getWellItems("horizontal-well")).toEqual([]);
+
+      await clickColumn("Created At: Year");
+      expectSelectedColumns({
+        Count: true,
+        "Average of Quantity": true,
+        "Created At: Year": true,
+        "Product → Category": false,
+      });
+      expect(
+        await within(modal).findByTestId("chart-container"),
+      ).toBeInTheDocument();
+      expect(getWellItems("vertical-well")).toHaveLength(2);
+      expect(getWellItems("horizontal-well")).toEqual(["Created At: Year"]);
+      expect(getLegendItemNames(modal)).toEqual([
+        "Count",
+        "Average of Quantity",
+      ]);
+    });
+
+    it.each([
+      {
+        breakout: "timeseries",
+        firstCard: ORDERS_BY_CREATED_AT,
+        secondCard: PRODUCTS_BY_CREATED_AT,
+        firstDimension: "Created At: Month",
+        secondDimension: "Created At: Month",
+        display: "line",
+        chartSize: undefined,
+        xAxisLabels: ["January 2024", "March 2024"],
+        yAxisLabels: ["600", "10"],
+        // both data sources share the dimension
+        dimensionWellItems: ["Created At: Month"],
+      },
+      {
+        breakout: "category",
+        firstCard: ORDERS_BY_CATEGORY,
+        secondCard: PRODUCTS_BY_CATEGORY,
+        firstDimension: "Product → Category",
+        secondDimension: "Category",
+        display: "bar",
+        xAxisLabels: ["Doohickey", "Widget"],
+        // a chart below the fullscreen size uses compact tick labels
+        chartSize: { width: 800, height: 400 },
+        yAxisLabels: ["6.0k", "3.0k"],
+        dimensionWellItems: ["Product → Category", "Category"],
+      },
+    ])(
+      "should use the columns of a new data source with a $breakout breakout",
+      async ({
+        firstCard,
+        secondCard,
+        firstDimension,
+        secondDimension,
+        display,
+        chartSize,
+        xAxisLabels,
+        yAxisLabels,
+        dimensionWellItems,
+      }) => {
+        if (chartSize) {
+          setMockExplicitSize(chartSize);
+        }
+        await setup({
+          dashcards: [],
+          cards: CARTESIAN_CARDS,
+          datasets: CARTESIAN_DATASETS,
+        });
+        await editDashboard();
+
+        const modal = await openVisualizerFromQuestionsSidebar(firstCard.name);
+        await addDataset(secondCard.name);
+        await userEvent.click(
+          within(modal).getByRole("button", { name: "Done" }),
+        );
+
+        const secondCount = `Count (${secondCard.name})`;
+        expect(getWellItems("vertical-well")).toEqual(["Count", secondCount]);
+        expect(getWellItems("horizontal-well")).toEqual(dimensionWellItems);
+        expectCurrentDisplay(modal, display);
+
+        for (const label of [...xAxisLabels, ...yAxisLabels]) {
+          await waitFor(() =>
+            expect(
+              within(within(modal).getByTestId("chart-container")).getByText(
+                label,
+              ),
+            ).toBeInTheDocument(),
+          );
+        }
+
+        expectColumnSelected(firstCard.name, "Count");
+        expectColumnSelected(firstCard.name, firstDimension);
+        expectColumnSelected(secondCard.name, "Count");
+        expectColumnSelected(secondCard.name, secondDimension);
+        expect(getLegendItemNames(modal)).toEqual([
+          firstCard.name,
+          secondCard.name,
+        ]);
+
+        // remove the second count column from the data sources
+        const getColumn = (card: Card, column: string) =>
+          getColumnListItem(getDataSourceItem(card.name), column);
+        await userEvent.click(
+          within(getColumn(secondCard, "Count")).getByLabelText("Remove"),
+        );
+        expectColumnSelected(secondCard.name, "Count", false);
+        expect(getWellItems("vertical-well")).toEqual(["Count"]);
+        // the legend is shown only for several series
+        expect(
+          within(modal).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument();
+
+        // add it back
+        await userEvent.click(getColumn(secondCard, "Count"));
+        expectColumnSelected(secondCard.name, "Count");
+        expect(getWellItems("vertical-well")).toEqual(["Count", secondCount]);
+        expect(getLegendItemNames(modal)).toHaveLength(2);
+
+        // remove both count columns from the well
+        const removeFirstWellItem = (wellTestId: string) =>
+          userEvent.click(
+            within(
+              within(screen.getByTestId(wellTestId)).getAllByTestId(
+                "well-item",
+              )[0],
+            ).getByLabelText("Remove"),
+          );
+        await removeFirstWellItem("vertical-well");
+        await removeFirstWellItem("vertical-well");
+        expect(getWellItems("vertical-well")).toEqual([]);
+        expectColumnSelected(firstCard.name, "Count", false);
+        expectColumnSelected(secondCard.name, "Count", false);
+        expect(
+          within(modal).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument();
+
+        // removing the dimension from the well removes it from both data sources
+        await removeFirstWellItem("horizontal-well");
+        expectColumnSelected(firstCard.name, firstDimension, false);
+        expectColumnSelected(secondCard.name, secondDimension, false);
+        expect(
+          within(modal).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument();
+
+        // add all columns back
+        await userEvent.click(getColumn(firstCard, "Count"));
+        await userEvent.click(getColumn(firstCard, firstDimension));
+        await userEvent.click(getColumn(secondCard, "Count"));
+        await userEvent.click(getColumn(secondCard, secondDimension));
+        expect(getWellItems("vertical-well")).toEqual(["Count", secondCount]);
+        expect(getWellItems("horizontal-well")).toEqual(dimensionWellItems);
+        expect(getLegendItemNames(modal)).toHaveLength(2);
+
+        // remove the second data source
+        await userEvent.click(
+          within(getDataSourceItem(secondCard.name)).getAllByLabelText(
+            "Remove",
+          )[0],
+        );
+        const dataImporter = within(modal).getByTestId(
+          "visualizer-data-importer",
+        );
+        expect(
+          within(dataImporter).queryByText(secondCard.name),
+        ).not.toBeInTheDocument();
+        expect(within(dataImporter).getAllByText("Count")).toHaveLength(1);
+        expect(within(dataImporter).getAllByText(firstDimension)).toHaveLength(
+          1,
+        );
+        // the dimension of the second data source is gone, unless both share it
+        expect(
+          within(dataImporter).queryAllByText(secondDimension),
+        ).toHaveLength(secondDimension === firstDimension ? 1 : 0);
+        expect(getWellItems("vertical-well")).toEqual(["Count"]);
+        expect(getWellItems("horizontal-well")).toEqual([firstDimension]);
+        expect(
+          within(modal).queryByLabelText("Legend"),
+        ).not.toBeInTheDocument();
+      },
+    );
+
+    it("should show only the series that the card's viz settings enable", async () => {
+      const dashcard = createMockDashboardCard({
+        id: 51,
+        dashboard_id: DASHBOARD_ID,
+        card_id: ORDERS_BY_CREATED_AT_AND_CATEGORY_WITH_HIDDEN_SERIES.id,
+        card: ORDERS_BY_CREATED_AT_AND_CATEGORY_WITH_HIDDEN_SERIES,
+        size_x: 12,
+        size_y: 8,
+      });
+      await setup({
+        dashcards: [dashcard],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+
+      const enabledSeries = ["Doohickey", "Gizmo"];
+      expect(
+        getLegendItemNames(await findDashcardWithLegend(dashcard.id)),
+      ).toEqual(enabledSeries);
+
+      await editDashboard();
+      const modal = await openVisualizer(dashcard.id, "Visualize another way");
+      expect(getLegendItemNames(modal)).toEqual(enabledSeries);
+      await userEvent.click(
+        within(modal).getByRole("button", { name: "Settings" }),
+      );
+      expect(
+        within(modal)
+          .getAllByTestId("series-name-input")
+          .map((input) => input.getAttribute("value")),
+      ).toEqual(enabledSeries);
+    });
+
+    it("should keep the percent formatting of an added series (metabase#61521)", async () => {
+      const dashcard = createMockDashboardCard({
+        id: 52,
+        dashboard_id: DASHBOARD_ID,
+        card_id: TAX_OVER_SUBTOTAL.id,
+        card: TAX_OVER_SUBTOTAL,
+        size_x: 12,
+        size_y: 8,
+      });
+      await setup({
+        dashcards: [dashcard],
+        cards: CARTESIAN_CARDS,
+        datasets: CARTESIAN_DATASETS,
+      });
+      await editDashboard();
+
+      const modal = await openVisualizer(dashcard.id, "Visualize another way");
+      await addDataset(TAX_OVER_TOTAL.name);
+      expect(getLegendItemNames(modal)).toEqual([
+        TAX_OVER_SUBTOTAL.name,
+        TAX_OVER_TOTAL.name,
+      ]);
+
+      const getChart = () => within(modal).getByTestId("chart-container");
+      await waitFor(() =>
+        expect(
+          getPathsWithStroke(getChart(), HOVERED_SERIES_COLOR),
+        ).not.toHaveLength(0),
+      );
+      await waitFor(() => expect(getYAxisLabels(getChart())).toContain("6%"));
+      // a single percent axis: no axis with the unformatted ratios of the added series
+      for (const label of getYAxisLabels(getChart())) {
+        expect(label).toMatch(/^\d+(\.\d+)?%$/);
+      }
+
+      // hover the 6th point, as the e2e test did; the tooltip lists both series
+      const tooltip = await showChartTooltip(getChart(), {
+        seriesColor: HOVERED_SERIES_COLOR,
+        dataIndex: 5,
+      });
+      const addedSeriesRow = checkNotNull(
+        within(tooltip)
+          .getAllByRole("row")
+          .find((row) => within(row).queryByText(TAX_OVER_TOTAL.name) != null),
+      );
+      expect(within(addedSeriesRow).getByText("5.2%")).toBeInTheDocument();
     });
   });
 });
