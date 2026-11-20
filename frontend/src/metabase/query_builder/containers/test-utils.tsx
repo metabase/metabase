@@ -42,6 +42,7 @@ import type {
   Bookmark,
   Card,
   CardQueryMetadata,
+  Collection,
   Database,
   Dataset,
   Timeline,
@@ -249,6 +250,16 @@ interface SetupOpts {
    * Set to false to look at the page while the question is still loading.
    */
   waitForLoad?: boolean;
+  hasAcknowledgedModelModal?: boolean;
+  collections?: Collection[];
+  /**
+   * The query builder reads `window.location` to decide whether a URL update
+   * adds a history entry, as it does in a browser. The memory test router
+   * leaves `window.location` alone, so back and forward land on duplicate
+   * entries. This keeps `window.location` in step with the router. Reset it in
+   * `afterEach` with `window.history.replaceState(null, "", "/")`.
+   */
+  syncWindowLocation?: boolean;
 }
 
 export const setup = async ({
@@ -275,6 +286,9 @@ export const setup = async ({
     }),
   }),
   waitForLoad = true,
+  hasAcknowledgedModelModal = false,
+  collections = [TEST_COLLECTION],
+  syncWindowLocation = false,
 }: SetupOpts) => {
   setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([database]);
@@ -284,7 +298,7 @@ export const setup = async ({
   setupCollectionsEndpoints({ collections: [] });
   setupBookmarksEndpoints(bookmarks);
   setupTimelinesEndpoints(timelinesResponse ?? timelines);
-  setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
+  setupCollectionByIdEndpoint({ collections });
   setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
@@ -293,7 +307,7 @@ export const setup = async ({
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
-    value: false,
+    value: hasAcknowledgedModelModal,
   });
 
   setupAdhocQueryMetadataEndpoint(metadata);
@@ -313,6 +327,10 @@ export const setup = async ({
   }
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
+
+  if (syncWindowLocation) {
+    window.history.replaceState(null, "", initialRoute);
+  }
 
   const { container, router, store } = renderWithProviders(
     <>
@@ -349,6 +367,12 @@ export const setup = async ({
       }),
     },
   );
+
+  if (syncWindowLocation) {
+    checkNotNull(router).onLocationChange(({ pathname, search, hash }) => {
+      window.history.replaceState(null, "", `${pathname}${search}${hash}`);
+    });
+  }
 
   const result = {
     container,
