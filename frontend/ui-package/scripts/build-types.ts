@@ -4,7 +4,11 @@ import { dirname, relative, resolve } from "path";
 
 import ts from "typescript";
 
-import { APP_ALLOWLIST } from "./app-allowlist";
+import {
+  APP_ALLOWLIST,
+  isAllowedSourceFile,
+  isAppCodeFile,
+} from "./app-allowlist";
 
 const packageDir = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(packageDir, "../..");
@@ -72,12 +76,67 @@ const program = ts.createProgram({
   options,
   host,
 });
-// /ui imports itself as `metabase/ui[/...]` and a few app files by alias, which
-// consumers cannot resolve. An AST transformer (not a regex) only touches real
-// module specifiers and resolves them with the same paths mapping that type-checking uses.
-const frontendDir = resolve(repoRoot, "frontend");
+// The same file rule as the JS build, applied to the program's sources.
+const importerOf = new Map<string, string>();
+for (const file of program.getSourceFiles()) {
+  for (const { fileName: text } of ts.preProcessFile(file.text, true, true)
+    .importedFiles) {
+    const resolved = ts.resolveModuleName(text, file.fileName, options, host)
+      .resolvedModule?.resolvedFileName;
+    if (resolved && !importerOf.has(resolved)) {
+      importerOf.set(resolved, file.fileName);
+    }
+  }
+}
+const outsideAllowlist = program
+  .getSourceFiles()
+  .filter(
+    (file) =>
+      isAppCodeFile(file.fileName) &&
+      !isAllowedSourceFile(file.fileName) &&
+      // Ambient declarations that tsconfig.lib.json lists itself.
+      !(file.isDeclarationFile && config.fileNames.includes(file.fileName)),
+  )
+  .map((file) => {
+    const importer = importerOf.get(file.fileName);
+    return `${relative(repoRoot, file.fileName)}${importer ? ` (imported by ${relative(repoRoot, importer)})` : ""}`;
+  });
+if (outsideAllowlist.length > 0) {
+  console.error(
+    `App code outside the package allowlist (scripts/app-allowlist.ts):\n${outsideAllowlist.join("\n")}`,
+  );
+  process.exit(1);
+}
+
+// Node's ESM resolution (moduleResolution NodeNext) needs `.js` on every relative specifier.
+// /ui also imports itself as `metabase/ui[/...]` and a few app files by alias, which consumers
+// cannot resolve. Both are rewritten to a relative path to the resolved file, using the same
+// resolver and paths mapping as type-checking.
 const isRewritten = (specifier: string) =>
-  /^metabase\/ui(\/|$)/.test(specifier) || specifier in APP_ALLOWLIST;
+  specifier.startsWith(".") ||
+  /^metabase\/ui(\/|$)/.test(specifier) ||
+  specifier in APP_ALLOWLIST;
+function rewriteSpecifier(containingFile: string, specifier: string) {
+  const resolved = ts.resolveModuleName(
+    specifier,
+    containingFile,
+    options,
+    host,
+  ).resolvedModule;
+  if (!resolved || !isAllowedSourceFile(resolved.resolvedFileName)) {
+    throw new Error(
+      `${containingFile}: cannot resolve "${specifier}" inside /ui or the app allowlist`,
+    );
+  }
+  if (!/\.(ts|tsx)$/.test(resolved.resolvedFileName)) {
+    throw new Error(
+      `${containingFile}: "${specifier}" resolves to ${resolved.resolvedFileName}, which has no declaration to point to`,
+    );
+  }
+  const target = resolved.resolvedFileName.replace(/(\.d)?\.(ts|tsx)$/, "");
+  const path = relative(dirname(containingFile), target);
+  return `${path.startsWith(".") ? path : `./${path}`}.js`;
+}
 function relativizeSelfImports(
   context: ts.TransformationContext,
 ): ts.Transformer<ts.SourceFile | ts.Bundle> {
@@ -86,31 +145,11 @@ function relativizeSelfImports(
     if (!ts.isSourceFile(root)) {
       return root;
     }
-    const rewrite = (specifier: string) => {
-      const resolved = ts.resolveModuleName(
-        specifier,
-        root.fileName,
-        options,
-        host,
-      ).resolvedModule;
-      if (
-        !resolved ||
-        !(
-          resolved.resolvedFileName.startsWith(`${uiDir}/`) ||
-          Object.values(APP_ALLOWLIST).includes(resolved.resolvedFileName)
-        )
-      ) {
-        throw new Error(
-          `${root.fileName}: cannot resolve "${specifier}" inside /ui or the app allowlist`,
-        );
-      }
-      const target = resolved.resolvedFileName.replace(/(\.d)?\.(ts|tsx)$/, "");
-      const path = relative(dirname(root.fileName), target);
-      return path.startsWith(".") ? path : `./${path}`;
-    };
     const literal = (node: ts.Node) =>
       ts.isStringLiteral(node) && isRewritten(node.text)
-        ? factory.createStringLiteral(rewrite(node.text))
+        ? factory.createStringLiteral(
+            rewriteSpecifier(root.fileName, node.text),
+          )
         : undefined;
     const visit = (node: ts.Node): ts.Node => {
       if (ts.isImportDeclaration(node)) {
@@ -199,26 +238,41 @@ if (diagnostics.length > 0) {
 }
 
 // tsc does not emit .d.ts inputs, so copy the Mantine augmentation next to the
-// declarations that its imports point to, rewriting its app specifiers.
-const typesDir = resolve(distDir, "types");
+// declarations that its imports point to, rewriting its module specifiers.
 const augmentation = "types/src/metabase/ui/mantine";
 const augmentationPath = resolve(distDir, `${augmentation}.d.ts`);
 mkdirSync(dirname(augmentationPath), { recursive: true });
-let augmentationText = readFileSync(resolve(uiDir, "mantine.d.ts"), "utf-8");
-for (const [specifier, file] of Object.entries(APP_ALLOWLIST)) {
-  const target = resolve(typesDir, relative(frontendDir, file)).replace(
-    /\.ts$/,
-    "",
-  );
-  augmentationText = augmentationText.replaceAll(
-    `"${specifier}"`,
-    `"${relative(dirname(augmentationPath), target)}"`,
-  );
+const augmentationSource = resolve(uiDir, "mantine.d.ts");
+const augmentationFile = ts.createSourceFile(
+  augmentationSource,
+  readFileSync(augmentationSource, "utf-8"),
+  ts.ScriptTarget.Latest,
+);
+const specifierLiterals: ts.StringLiteral[] = [];
+const collectSpecifiers = (node: ts.Node) => {
+  const literal =
+    ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
+      ? node.moduleSpecifier
+      : ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)
+        ? node.argument.literal
+        : undefined;
+  if (literal && ts.isStringLiteral(literal) && isRewritten(literal.text)) {
+    specifierLiterals.push(literal);
+  }
+  ts.forEachChild(node, collectSpecifiers);
+};
+collectSpecifiers(augmentationFile);
+let augmentationText = augmentationFile.text;
+for (const literal of specifierLiterals.reverse()) {
+  augmentationText =
+    augmentationText.slice(0, literal.getStart(augmentationFile) + 1) +
+    rewriteSpecifier(augmentationSource, literal.text) +
+    augmentationText.slice(literal.getEnd() - 1);
 }
 writeFileSync(augmentationPath, augmentationText);
 
 writeFileSync(
   resolve(distDir, "index.d.ts"),
-  `import "./${augmentation}";\nexport * from "./types/ui-package/src/index";\n`,
+  `import "./${augmentation}.js";\nexport * from "./types/ui-package/src/index.js";\n`,
 );
 console.log("Wrote declarations to dist/types and dist/index.d.ts");

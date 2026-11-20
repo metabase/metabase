@@ -1,7 +1,8 @@
 /* eslint-disable no-console -- build script */
 import { existsSync, readFileSync, readdirSync, statSync } from "fs";
-import { join, relative, resolve } from "path";
+import { dirname, join, relative, resolve } from "path";
 
+import { isAllowedSourceFile } from "./app-allowlist";
 import { readPackageJson } from "./package-json";
 
 const packageDir = resolve(import.meta.dirname, "..");
@@ -38,7 +39,9 @@ const SPECIFIER_PATTERNS = [
   /\bimport\s*["']([^"']+)["']/g,
   /\bimport\(\s*["']([^"']+)["']\s*\)/g,
   /\brequire\(\s*["']([^"']+)["']\s*\)/g,
+  /\/\/\/\s*<reference\s+path=["']([^"']+)["']/g,
 ];
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".css"];
 
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((name) => {
@@ -58,6 +61,32 @@ const declared = new Set([
 ]);
 const usedDependencies = new Set<string>();
 const errors: string[] = [];
+// dist/src/** and dist/types/src/** mirror frontend/src/**; dist/ui-package/** and
+// dist/types/ui-package/** mirror frontend/ui-package/**.
+function sourceCandidates(rel: string) {
+  const match = rel.match(
+    /^dist\/(?:types\/)?((?:src|ui-package)\/.+?)(?:\.d\.ts|\.js)$/,
+  );
+  return match
+    ? SOURCE_EXTENSIONS.map((ext) => resolve(packageDir, "..", match[1] + ext))
+    : [];
+}
+
+// Node's ESM resolver and NodeNext need the extension, and a file that exists on disk.
+function relativeSpecifierError(rel: string, specifier: string) {
+  const target = resolve(dirname(join(packageDir, rel)), specifier);
+  if (!/\.\w+$/.test(specifier)) {
+    return `${rel}: relative specifier "${specifier}" has no file extension`;
+  }
+  const onDisk =
+    rel.endsWith(".d.ts") && specifier.endsWith(".js")
+      ? target.replace(/\.js$/, ".d.ts")
+      : target;
+  if (!existsSync(onDisk) || statSync(onDisk).isDirectory()) {
+    return `${rel}: relative specifier "${specifier}" does not point to an existing file`;
+  }
+}
+
 const files = walk(distDir).map((file) => relative(packageDir, file));
 
 for (const required of REQUIRED_FILES) {
@@ -79,6 +108,12 @@ for (const rel of files) {
     continue;
   }
   const isDts = rel.endsWith(".d.ts");
+  if (
+    /^dist\/(types\/)?(src|ui-package)\//.test(rel) &&
+    !sourceCandidates(rel).some(isAllowedSourceFile)
+  ) {
+    errors.push(`${rel}: not built from an allowed source file`);
+  }
   const text = readFileSync(join(packageDir, rel), "utf-8");
   // metabase/dayjs loads locales with a dynamic require, which must not reach an ESM package.
   if (!isDts && /\brequire\(/.test(text)) {
@@ -90,6 +125,10 @@ for (const rel of files) {
   for (const pattern of SPECIFIER_PATTERNS) {
     for (const [, specifier] of text.matchAll(pattern)) {
       if (specifier.startsWith(".")) {
+        const error = relativeSpecifierError(rel, specifier);
+        if (error) {
+          errors.push(error);
+        }
         continue;
       }
       if (REPO_SPECIFIER.test(specifier)) {
