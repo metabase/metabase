@@ -57,19 +57,19 @@
    with a nil `:card_id`."
   [stored dash dropped-connections]
   ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
-  ;; card, so a lost connection it hid isn't reported either. A connection the user saw is reported even when
-  ;; `replace_card` puts a hidden card in its place, but without that card's id. A text or heading card has no card,
-  ;; and redaction keeps its mappings.
+  ;; card, so a lost connection it hid isn't reported either. A text or heading card has no card, and redaction keeps
+  ;; its mappings.
   (when (seq dropped-connections)
     (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
           shown?          #(or (nil? %) (contains? readable %))
           stored-card-ids (u/index-by :id :card_id (:dashcards stored))]
       (into []
             (keep (fn [{:keys [dashcard_id card_id series] :as entry}]
-                    (when (and (shown? (stored-card-ids dashcard_id))
-                               (or (not series) (shown? card_id)))
-                      (cond-> entry
-                        (not (shown? card_id)) (assoc :card_id nil)))))
+                    (let [card-shown? (shown? card_id)]
+                      (when (and (shown? (stored-card-ids dashcard_id))
+                                 (or card-shown? (not series)))
+                        (cond-> entry
+                          (not card-shown?) (assoc :card_id nil))))))
             dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------

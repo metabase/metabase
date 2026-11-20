@@ -242,6 +242,11 @@
         (is (not (contains? (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write" (wire args)))
                             :pushed_dashcard_ids)))))))
 
+(defn- category-target
+  "A filter mapping target on the venues category field."
+  []
+  [:dimension [:field (mt/id :venues :category_id) nil]])
+
 (deftest replace-card-reports-dropped-connections-test
   (mt/with-temp [:model/Card          old  {:name "Old revenue"}
                  :model/Card          new  {:name "New revenue"}
@@ -254,9 +259,7 @@
                                             :card_id            (:id old)
                                             :parameter_mappings [{:parameter_id "cat"
                                                                   :card_id      (:id old)
-                                                                  :target       [:dimension
-                                                                                 [:field (mt/id :venues :category_id)
-                                                                                  nil]]}]}]
+                                                                  :target       (category-target)}]}]
     (let [args {:method "update"
                 :id     (:id dash)
                 :ops    [{:op "replace_card", :dashcard_id (:id dc), :card_id (:id new)}]}]
@@ -366,11 +369,6 @@
                  (is (= dash-id (:id result)))
                  (is (not (contains? result :dropped_connections))))))))))))
 
-(defn- category-target
-  "A filter mapping target on the venues category field."
-  []
-  [:dimension [:field (mt/id :venues :category_id) nil]])
-
 (deftest dropped-connections-report-replacements-with-unreadable-cards-test
   (testing "a connection the user saw is reported without the card when replace_card puts a hidden card in its place"
     (mt/with-temp [:model/Collection    {open-id :id}     {}
@@ -394,17 +392,23 @@
                                                            :card_id      hidden-card
                                                            :row          6}]
       (mt/with-non-admin-groups-no-collection-perms locked-id
-        (let [args {:method        "update"
-                    :id            dash-id
-                    :validate_only true
-                    :ops           [{:op "replace_card", :dashcard_id dc-id, :card_id hidden-card}]}
-              call (fn [user]
-                     (-> (call-tool! user v2.tu/all-scopes "dashboard_write" (wire args))
+        (let [call (fn [user validate-only?]
+                     (-> (call-tool! user v2.tu/all-scopes "dashboard_write"
+                                     (wire {:method        "update"
+                                            :id            dash-id
+                                            :validate_only validate-only?
+                                            :ops           [{:op          "replace_card"
+                                                             :dashcard_id dc-id
+                                                             :card_id     hidden-card}]}))
                          tool-result
                          :dropped_connections))]
-          (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id hidden-card, :series false}] (call :crowberto))
+          (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id hidden-card, :series false}]
+                 (call :crowberto true))
               "a user who can read the new card is told its id")
-          (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id nil, :series false}] (call :rasta))))))))
+          (doseq [validate-only? [true false]]
+            (testing (if validate-only? "dry run" "save")
+              (is (= [{:parameter_id "cat", :dashcard_id dc-id, :card_id nil, :series false}]
+                     (call :rasta validate-only?))))))))))
 
 (deftest validate-only-reports-the-replacement-card-test
   (testing "a dry run of replace_card must name the NEW card: the projection prefers the hydrated `:card` over
