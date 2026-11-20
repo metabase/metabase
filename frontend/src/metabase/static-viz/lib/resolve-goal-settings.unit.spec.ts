@@ -1,11 +1,9 @@
 import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import type { DatasetData, VisualizationDisplay } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -19,14 +17,14 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
 describe("resolveGoalSettings", () => {
   it("passes static and unset goals through", () => {
     const settings = { "graph.goal_value": 10 };
-    const series = createSeries(createData({}), "line");
+    const series = createSeries("line");
 
     expect(resolveGoalSettings(series, settings)).toBe(settings);
     expect(resolveGoalSettings(series, {})).toEqual({});
   });
 
   it("passes references through for a display that does not resolve graph goals", () => {
-    const series = createSeries(createData({}), "scalar");
+    const series = createSeries("scalar");
 
     expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toBe(
       REFERENCED_SETTINGS,
@@ -36,35 +34,24 @@ describe("resolveGoalSettings", () => {
   describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
     it("passes a hidden goal line through", () => {
       const settings = { ...REFERENCED_SETTINGS, "graph.show_goal": false };
-      const series = createSeries(createData({}), display);
+      const series = createSeries(display);
 
       expect(resolveGoalSettings(series, settings)).toBe(settings);
     });
 
-    it("substitutes the referenced value", () => {
-      const answered = createData(
-        createMockReferencedEntitiesResults({ column: "goal", value: 250 }),
-      );
-      const series = createSeries(answered, display);
+    it("substitutes the value of a column of the chart", () => {
+      const settings = { "graph.show_goal": true, "graph.goal_value": "count" };
+      const series = createSeries(display);
 
-      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
-        ...REFERENCED_SETTINGS,
-        "graph.goal_value": 250,
+      expect(resolveGoalSettings(series, settings)).toEqual({
+        ...settings,
+        "graph.goal_value": 1,
       });
     });
 
-    it("hides the goal line for an unanswered reference", () => {
-      const series = createSeries(createData({}), display);
-
-      expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
-        "graph.show_goal": false,
-        "graph.goal_value": null,
-      });
-    });
-
-    it("hides the goal line for a failed reference", () => {
-      const failed = createData(createMockFailedReferencedEntitiesResults());
-      const series = createSeries(failed, display);
+    // the backend resolves references before rendering, so one left over couldn't resolve
+    it("hides the goal line for a reference to another entity", () => {
+      const series = createSeries(display);
 
       expect(resolveGoalSettings(series, REFERENCED_SETTINGS)).toEqual({
         "graph.show_goal": false,
@@ -74,14 +61,11 @@ describe("resolveGoalSettings", () => {
   });
 });
 
-function createSeries(data: DatasetData, display: VisualizationDisplay) {
-  return createMockSingleSeries({ display }, { data });
-}
-
-function createData(referencedEntities: DatasetData["referenced_entities"]) {
-  return createMockDatasetData({
+function createSeries(display: VisualizationDisplay) {
+  const data = createMockDatasetData({
     cols: [createMockColumn({ name: "count" })],
     rows: [[1]],
-    referenced_entities: referencedEntities,
   });
+
+  return createMockSingleSeries({ display }, { data });
 }

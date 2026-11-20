@@ -10,7 +10,7 @@ import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
 import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
-import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
+import { useResolvedGoalValues } from "metabase/visualizations/hooks/use-resolved-goal-values";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalErrors } from "metabase/viz-core";
 
@@ -37,7 +37,7 @@ function ProgressComponent(props: VisualizationProps) {
     className,
     isMobile,
     isQueryBuilder,
-    series: [{ card, data }],
+    series: [{ data }],
     settings,
     onOpenChartSettings,
     onVisualizationClick,
@@ -46,9 +46,7 @@ function ProgressComponent(props: VisualizationProps) {
   const { rows, cols } = data;
 
   const goalSetting = settings["progress.goal"];
-  const goalData = useResolvedGoalData(card.dataset_query, data, [
-    goalSetting ?? null,
-  ]);
+  const goalData = useResolvedGoalValues(data, [goalSetting ?? null]);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -68,7 +66,7 @@ function ProgressComponent(props: VisualizationProps) {
     getGoalErrors(goalData.results).length > 0;
   const goal =
     goalData.status === "resolved"
-      ? getGoalValue(goalSetting, goalData.data)
+      ? getGoalValue(goalSetting, data, goalData.sourceResults)
       : 0;
 
   const metrics = calculateProgressMetrics(value, goal);

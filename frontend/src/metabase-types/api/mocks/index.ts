@@ -15,6 +15,7 @@ export * from "./database";
 export * from "./dataset";
 export * from "./dependencies";
 export * from "./document";
+export * from "./dynamic-goal";
 export * from "./erd";
 export * from "./field";
 export * from "./geojson";

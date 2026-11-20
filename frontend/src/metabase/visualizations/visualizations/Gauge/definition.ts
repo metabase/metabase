@@ -49,8 +49,10 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
     "gauge.range": {
       // currently not exposed in settings, just computed from gauge.segments
       getDefault(series, vizSettings) {
+        // goals that read other entities resolve in the chart, not here
         const segments = resolveGoalSegments(
           series[0].data,
+          {},
           vizSettings["gauge.segments"],
         );
         return getSegmentsRange(segments) ?? DEFAULT_GAUGE_RANGE;
@@ -84,7 +86,6 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
 
         return {
           data,
-          datasetQuery: card.dataset_query,
           display: card.display,
           formatOptions: column && settings.column?.(column),
         };

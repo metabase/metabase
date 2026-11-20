@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount } from "react-use";
 
 import { embedApi, publicApi } from "metabase/api";
@@ -18,15 +18,18 @@ import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
+import { fetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { parseSearchQuery } from "metabase/utils/browser";
+import { GoalSourcesScopeProvider } from "metabase/visualizations/components/GoalSourcesScope";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   Dataset,
+  GoalSourcesScope,
   ParameterId,
   ParameterValuesMap,
 } from "metabase-types/api";
@@ -57,6 +60,11 @@ export const PublicOrEmbeddedQuestion = () => {
   const canWhitelabel = useSelector(getCanWhitelabel);
 
   usePublicEndpoints({ uuid, token });
+
+  const goalSourcesScope = useMemo(
+    () => getGoalSourcesScope({ token, uuid }),
+    [token, uuid],
+  );
 
   useMount(async () => {
     try {
@@ -130,6 +138,8 @@ export const PublicOrEmbeddedQuestion = () => {
     try {
       setResult(null);
 
+      fetchGoalSourceResults(dispatch, goalSourcesScope, card);
+
       const runQuery = makePivotAwareQueryRunner(dispatch);
 
       let resultPromise: Promise<Dataset>;
@@ -182,7 +192,7 @@ export const PublicOrEmbeddedQuestion = () => {
       console.error("error", error);
       dispatch(setErrorPage(error));
     }
-  }, [card, store, dispatch, parameterValues, token, uuid]);
+  }, [card, store, dispatch, goalSourcesScope, parameterValues, token, uuid]);
 
   useEffect(() => {
     run();
@@ -204,22 +214,42 @@ export const PublicOrEmbeddedQuestion = () => {
       shouldWaitForLocale
     >
       <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
-        <PublicOrEmbeddedQuestionView
-          initialized={initialized}
-          card={card}
-          result={result}
-          getParameters={getParameters}
-          parameterValues={parameterValues}
-          setParameterValue={setParameterValue}
-          setParameterValueToDefault={setParameterValueToDefault}
-          bordered={bordered}
-          hide_parameters={hide_parameters}
-          theme={theme}
-          titled={titled}
-          setCard={setCard}
-          downloadsEnabled={downloadsEnabled}
-        />
+        <GoalSourcesScopeProvider scope={goalSourcesScope}>
+          <PublicOrEmbeddedQuestionView
+            initialized={initialized}
+            card={card}
+            result={result}
+            getParameters={getParameters}
+            parameterValues={parameterValues}
+            setParameterValue={setParameterValue}
+            setParameterValueToDefault={setParameterValueToDefault}
+            bordered={bordered}
+            hide_parameters={hide_parameters}
+            theme={theme}
+            titled={titled}
+            setCard={setCard}
+            downloadsEnabled={downloadsEnabled}
+          />
+        </GoalSourcesScopeProvider>
       </EmbeddingEntityContextProvider>
     </LocaleProvider>
   );
 };
+
+function getGoalSourcesScope({
+  token,
+  uuid,
+}: {
+  token: EntityToken | undefined;
+  uuid: string | undefined;
+}): GoalSourcesScope {
+  if (token) {
+    return { type: "embed-card", token };
+  }
+
+  if (uuid) {
+    return { type: "public-card", uuid };
+  }
+
+  return { type: "signed-in" };
+}

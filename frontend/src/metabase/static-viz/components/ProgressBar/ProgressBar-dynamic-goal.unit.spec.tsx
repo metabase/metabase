@@ -1,41 +1,36 @@
 import ReactDOMServer from "react-dom/server";
 
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
-import type {
-  RawSeries,
-  ReferencedEntitiesResults,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
-  createMockFailedReferencedEntitiesResults,
-  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import { StaticVisualization } from "../StaticVisualization";
 
-const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
+const COLS = [
+  createMockColumn({ name: "count", base_type: "type/Integer" }),
+  createMockColumn({ name: "target", base_type: "type/Integer" }),
+];
 const SETTINGS: VisualizationSettings = {
   "progress.goal": { type: "card", id: 9, column: "goal" },
 };
 
 type SetupOpts = {
   settings?: VisualizationSettings;
-  referencedEntities?: ReferencedEntitiesResults | null;
 };
 
-function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+function setup({ settings = SETTINGS }: SetupOpts = {}) {
   const rawSeries: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "progress", visualization_settings: settings }),
       {
         data: createMockDatasetData({
           cols: COLS,
-          rows: [[50]],
-          referenced_entities: referencedEntities,
+          rows: [[50, 300]],
         }),
       },
     ),
@@ -60,35 +55,25 @@ describe("static progress chart with a dynamic goal", () => {
     expect(root).toHaveTextContent("Goal 250");
   });
 
-  it("measures progress against the value answered by the dataset", () => {
-    const root = setup({
-      referencedEntities: createMockReferencedEntitiesResults({ value: 250 }),
-    });
+  it("measures progress against a column of this chart", () => {
+    const root = setup({ settings: { "progress.goal": "target" } });
 
-    expect(root).toHaveTextContent("Goal 250");
+    expect(root).toHaveTextContent("Goal 300");
   });
 
   it("formats the goal with this chart's column settings", () => {
     const root = setup({
       settings: {
-        ...SETTINGS,
+        "progress.goal": 2500,
         column_settings: { '["name","count"]': { prefix: "$" } },
       },
-      referencedEntities: createMockReferencedEntitiesResults({ value: 2500 }),
     });
 
     expect(root).toHaveTextContent("Goal $2,500");
   });
 
-  it("measures progress against a goal of 0 for a reference the dataset has not answered (metabase#85219)", () => {
+  // the backend resolves references before rendering, so one left over couldn't resolve
+  it("measures progress against a goal of 0 for a reference to another entity (metabase#85219)", () => {
     expect(setup()).toHaveTextContent("Goal 0");
-  });
-
-  it("measures progress against a goal of 0 for a reference the dataset reports as failed (metabase#85219)", () => {
-    const root = setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-    });
-
-    expect(root).toHaveTextContent("Goal 0");
   });
 });
