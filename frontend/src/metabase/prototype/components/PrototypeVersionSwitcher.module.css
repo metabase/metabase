@@ -1,0 +1,51 @@
+/* The column of switchers at the bottom of the window. Clicks go through its
+   empty space. */
+.stack {
+  position: fixed;
+  z-index: 200;
+  bottom: var(--mantine-spacing-md);
+  left: 50%;
+  display: flex;
+  width: max-content;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xs);
+  padding-right: var(--mantine-spacing-xs);
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 999px;
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: var(--mantine-shadow-sm_outline);
+  pointer-events: auto;
+}
+
+.hideButton,
+.collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.collapsed {
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: var(--mantine-shadow-sm_outline);
+  pointer-events: auto;
+}

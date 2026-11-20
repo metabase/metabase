@@ -55,6 +55,17 @@ export function enclosingFunction(doc: string, pos: number) {
   return res;
 }
 
+/** Both are 1-based, matching the line numbers in the editor gutter. */
+export function getLineAndColumn(
+  source: string,
+  pos: number,
+): { line: number; column: number } {
+  const precedingLines = source.slice(0, Math.max(pos, 0)).split("\n");
+  const line = precedingLines.length;
+  const column = precedingLines[line - 1].length + 1;
+  return { line, column };
+}
+
 export function tokenAtPos(source: string, pos: number): Token | null {
   const tokens = lexify(source);
 

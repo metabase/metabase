@@ -13,7 +13,10 @@ export function checkDoubleCommas({ tokens }: { tokens: Token[] }) {
     }
 
     if (token.type === COMMA && prevToken.type === COMMA) {
-      error(token, t`Expected expression but got: ,`);
+      error(
+        token,
+        t`There are two commas in a row. Remove one, or add the missing value between them.`,
+      );
     }
   }
 }

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
 import SidebarHeaderS from "./SidebarHeader.module.css";
@@ -54,7 +54,7 @@ export function SidebarHeader({
 
   return (
     <Flex
-      align="flex-start"
+      align="center"
       className={className}
       data-testid="sidebar-header"
       gap="sm"
@@ -88,13 +88,15 @@ export function SidebarHeader({
       <Flex align="center" gap="sm">
         {actions}
         {onClose && (
-          <a
-            className={SidebarHeaderS.CloseButton}
+          /* TODO: replace with ActionIcon (GDGT-2457) */
+          <Button
+            variant="subtle"
+            color="neutral"
+            size="sm"
             aria-label={t`Close`}
             onClick={onClose}
-          >
-            <Icon name="close" size={18} aria-hidden />
-          </a>
+            leftSection={<Icon name="close" />}
+          />
         )}
       </Flex>
     </Flex>

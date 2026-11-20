@@ -1,0 +1,84 @@
+.container {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--mb-color-background_surface-primary);
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.cell {
+  padding: 13px 32px 13px 0;
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+  text-align: left;
+  white-space: nowrap;
+  box-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
+
+  &:first-child {
+    padding-left: 24px;
+  }
+
+  th& {
+    background-color: var(--mb-color-background_page-secondary);
+    font-weight: bold;
+    box-shadow:
+      inset 0 0.5px 0 rgba(0, 0, 0, 0.15),
+      inset 0 -0.5px 0 rgba(0, 0, 0, 0.15);
+  }
+
+  tbody tr:last-child & {
+    box-shadow: none;
+  }
+}
+
+.value {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The primary key of the row. */
+.key {
+  td& {
+    color: var(--mb-color-text-disabled);
+    font-family: var(--mb-default-monospace-font-family);
+  }
+
+  /* The monospace font sits higher than the text next to it. */
+  td& .value {
+    transform: translateY(1px);
+  }
+}
+
+/* A column that tells what the row is about. The expression does not use it. */
+.context {
+  td& {
+    color: var(--mb-color-text-secondary);
+  }
+}
+
+/* The result of the expression, after a dashed line. It takes the rest of
+   the width. */
+.result {
+  position: relative;
+  width: 100%;
+  padding-left: 32px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 1px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--mb-color-border-neutral-strong) 0 1px,
+      transparent 1px 3px
+    );
+  }
+}

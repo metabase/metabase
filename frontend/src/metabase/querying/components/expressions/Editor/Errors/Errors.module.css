@@ -1,9 +1,62 @@
 .errors {
   background-color: var(--mb-color-background_surface-error);
   color: var(--mb-color-text-primary);
-  line-height: 1em;
+  line-height: 1.4;
 }
 
+/* Sized to line up with the first line of text */
 .icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
   color: var(--mb-color-feedback-negative);
+}
+
+.position {
+  color: var(--mb-color-text-secondary);
+  white-space: nowrap;
+
+  &::before {
+    content: "•";
+    margin-right: var(--mantine-spacing-sm);
+  }
+}
+
+.inline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--mantine-spacing-md);
+  min-height: 40px;
+  padding: 12px var(--mantine-spacing-xl);
+  background-color: var(--mb-color-background_surface-primary);
+  box-shadow: inset 0 0.5px 0 0 var(--mb-color-border-neutral-strong);
+  font-size: 12px;
+  line-height: 1.15;
+
+  .title,
+  .message {
+    color: var(--mb-color-feedback-warning-strong);
+  }
+}
+
+.title {
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.noteIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.sqlHint {
+  color: var(--mb-color-text-primary);
+}
+
+.link {
+  color: var(--mb-color-text-brand);
+  text-decoration: underline;
+}
+
+.code {
+  font-size: 12px;
 }

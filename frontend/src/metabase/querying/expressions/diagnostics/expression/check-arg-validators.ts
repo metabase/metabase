@@ -22,7 +22,7 @@ export function checkArgValidators({
     if (clause.validator) {
       const validationError = clause.validator(...args);
       if (validationError) {
-        error(node, validationError);
+        error(node, validationError, "arguments");
       }
     }
   });

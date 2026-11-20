@@ -16,6 +16,7 @@ import { Box, Flex, rem } from "metabase/ui";
 import { setNotebookNativePreviewSidebarWidth } from "../../../../actions";
 import { getUiControls } from "../../../../store/selectors";
 import { canShowNativePreview } from "../../ViewHeader/utils";
+import { ExpressionSidebarSlot } from "../ExpressionSidebarSlot";
 
 import { NotebookNativePreview } from "./NotebookNativePreview";
 
@@ -148,6 +149,8 @@ export const NotebookContainer = ({
           />
         </Box>
       )}
+
+      <ExpressionSidebarSlot />
 
       {renderNativePreview && (
         <>

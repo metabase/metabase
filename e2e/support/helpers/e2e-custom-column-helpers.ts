@@ -1,5 +1,3 @@
-import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
-
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 
 export function expressionEditorWidget() {
@@ -62,12 +60,29 @@ export function enterCustomColumnDetails({
   }
 
   if (name) {
-    cy.findByTestId("expression-name").clear().type(name).blur();
+    setExpressionName(name);
   }
 
   if (clickDone) {
-    popover().button("Done").click();
+    expressionEditorWidget().button("Done").click();
   }
+}
+
+/**
+ * The popover names a column in a footer field, the notebook's inline editor by
+ * editing the open pill. Reveal the field first where it is behind the pill.
+ */
+export function setExpressionName(name: string) {
+  revealExpressionName();
+  cy.findByTestId("expression-name").clear().type(name).blur();
+}
+
+function revealExpressionName() {
+  cy.get("body").then(($body) => {
+    if ($body.find('[data-testid="expression-name"]').length === 0) {
+      cy.findByTestId("selected-expression-pill").click();
+    }
+  });
 }
 
 export const CustomExpressionEditor = codeMirrorHelpers(
@@ -88,6 +103,7 @@ export const CustomExpressionEditor = codeMirrorHelpers(
       return cy.findByTestId("expression-helper");
     },
     nameInput() {
+      revealExpressionName();
       return cy.findByTestId("expression-name");
     },
     functionBrowser() {

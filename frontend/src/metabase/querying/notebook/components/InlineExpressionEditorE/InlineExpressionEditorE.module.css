@@ -1,0 +1,165 @@
+/* The box around the editor and its preview. */
+.panel {
+  background-color: var(--mb-color-background_page-primary);
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+  border-radius: 8px;
+  box-shadow: var(--mantine-shadow-xs);
+  overflow: hidden;
+}
+
+/* The f button and Done (or Cancel), 24px apart. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The switch between the AI prompt and the code: two icons in a grey
+   track, the current one on a white pill. 24px tall. */
+.modeSwitch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-background_surface-secondary);
+}
+
+.modeOption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  border-radius: var(--mantine-radius-lg);
+  color: var(--mb-color-text-secondary);
+
+  &:hover:not(:disabled) {
+    color: var(--mb-color-text-primary);
+  }
+
+  &[aria-checked="true"] {
+    background-color: var(--mb-color-background_surface-primary);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.07),
+      var(--mantine-shadow-xs);
+    color: var(--mb-color-text-primary);
+  }
+}
+
+/* Done and Cancel: text buttons in the brand color. */
+.textButton {
+  color: var(--mb-color-text-brand);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 16px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+/* The AI mode: the prompt, an error, and the code it changes, in a column.
+   The prompt's padding is the code's, so that the text doesn't move when
+   the mode changes. */
+.ai {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  /* The row has the left padding, before the mode switch. */
+  padding: 22px 0;
+}
+
+/* The loading dots and the prompt, 12px apart. */
+.promptRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.loadingDots {
+  flex-shrink: 0;
+  width: 18px;
+  color: var(--mb-color-text-secondary);
+}
+
+/* The prompt and its placeholder, drawn over it. */
+.promptField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.promptRoot,
+.promptWrapper {
+  width: 100%;
+}
+
+.promptInput {
+  min-height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font-family: var(--mb-default-font-family);
+  font-size: 14px;
+  line-height: 20px;
+  resize: none;
+
+  /* While the AI works, the prompt is greyed out. */
+  &.isGenerating {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* "Ask AI, or press = to write an expression". */
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--mb-color-text-disabled);
+  font-size: 14px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+/* "AI can't do this", below the prompt. */
+.error {
+  color: var(--mb-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* The code that the prompt changes, as a pill below the prompt, 22px down
+   like the padding above the prompt. */
+.context {
+  display: flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 10px;
+  height: 20px;
+  margin-top: 14px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background-color: var(--mb-color-background_surface-brand-subtle);
+  box-shadow: inset 0 0 0 0.5px var(--mb-color-border-brand);
+  color: var(--mb-color-text-brand-strong);
+}
+
+.contextCode {
+  overflow: hidden;
+  max-width: 200px;
+  font-family: var(--mb-default-monospace-font-family);
+  font-size: 11px;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextRemove {
+  display: flex;
+  color: var(--mb-color-text-brand-strong);
+}

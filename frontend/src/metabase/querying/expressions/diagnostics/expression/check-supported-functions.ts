@@ -32,7 +32,11 @@ export function checkSupportedFunctions({
       database == null ||
       !hasRequiredFeature(database, clause.requiresFeature)
     ) {
-      error(node, t`Unsupported function ${clause.displayName}`);
+      error(
+        node,
+        t`This database doesn't support ${clause.displayName}(). Try a different function.`,
+        "unsupported",
+      );
     }
   });
 }

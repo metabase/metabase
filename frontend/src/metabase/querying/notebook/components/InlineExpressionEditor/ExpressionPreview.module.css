@@ -1,0 +1,28 @@
+/* Between the code and the footer of the editor layout. */
+.preview {
+  position: relative;
+  grid-row: 3;
+  grid-column: 1;
+  min-width: 0;
+}
+
+/* The rows of an outdated preview fade. */
+.outdated .body {
+  opacity: 0.5;
+}
+
+/* A message in place of the table. */
+.message {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  box-shadow: inset 0 0.5px 0 rgba(0, 0, 0, 0.15);
+}
+
+/* Runs an outdated preview again. It sits on the middle of the faded rows. */
+.preview .runButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  box-shadow: var(--mantine-shadow-md);
+}

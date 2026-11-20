@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
-import { CompileError } from "./errors";
+import { CompileError, type ExpressionErrorKind } from "./errors";
 import type { Node } from "./pratt";
 
 /**
@@ -24,8 +24,9 @@ export function check(
   condition: any,
   msg: string,
   node: Node,
+  kind?: ExpressionErrorKind,
 ): asserts condition {
   if (!condition) {
-    throw new CompileError(msg, node);
+    throw new CompileError(msg, node, kind);
   }
 }

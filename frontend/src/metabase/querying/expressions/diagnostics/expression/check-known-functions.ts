@@ -23,7 +23,11 @@ export function checkKnownFunctions({
 
     const clause = getClauseDefinition(operator);
     if (!clause) {
-      error(node, t`Unknown function ${operator}`);
+      error(
+        node,
+        t`There's no function called ${operator}(). Check the spelling, or start typing to see matching functions.`,
+        "function",
+      );
     }
   });
 }

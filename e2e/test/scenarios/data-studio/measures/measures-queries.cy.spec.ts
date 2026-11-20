@@ -220,7 +220,9 @@ describe("scenarios > data studio > measures > queries", () => {
 
       H.CustomExpressionEditor.type("[OrdersCount]").blur();
       H.popover()
-        .findByText("Unknown Aggregation, Measure or Metric: OrdersCount")
+        .findByText(
+          'There\'s no metric or measure called "OrdersCount". Check the spelling, or use a function like Sum([Total]).',
+        )
         .should("be.visible");
       H.popover().button("Done").should("be.disabled");
     });

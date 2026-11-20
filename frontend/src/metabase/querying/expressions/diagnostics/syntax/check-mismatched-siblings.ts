@@ -36,7 +36,10 @@ export function checkMismatchedSiblings({ tokens }: { tokens: Token[] }) {
     }
 
     if (left.includes(prevToken.type) && right.includes(token.type)) {
-      error(token, t`Expecting operator but got ${token.text} instead`);
+      error(
+        token,
+        t`Something's missing before ${token.text}. Add a comma between values, or a symbol like + or = to connect them.`,
+      );
     }
   }
 }

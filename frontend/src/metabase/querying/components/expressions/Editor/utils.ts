@@ -1,7 +1,6 @@
 import {
   hasNextSnippetField,
   hasPrevSnippetField,
-  snippet,
 } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
@@ -10,6 +9,7 @@ import { useCallback } from "react";
 import {
   expressionClauseSnippet,
   getClauseDefinition,
+  insertWithPlaceholders,
 } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
 
@@ -26,12 +26,10 @@ export function useInitialClause({
 
       const clause = getClauseDefinition(initialExpressionClause);
 
-      snippet(expressionClauseSnippet(clause))(
-        {
-          state: view.state,
-          dispatch: view.dispatch,
-        },
-        null,
+      // Like any other function: grey placeholders and the column list.
+      insertWithPlaceholders(
+        view,
+        expressionClauseSnippet(clause),
         view.state.selection.main.from,
         view.state.selection.main.to,
       );
