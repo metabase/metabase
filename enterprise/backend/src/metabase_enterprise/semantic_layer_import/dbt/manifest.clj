@@ -382,8 +382,9 @@
    mtx/json-transformer))
 
 (mr/def ::json
-  "A manifest as parsed from JSON with string keys, before decoding: any shape, which decoding checks."
-  [:map-of {::mr/deliberately-open true, :description "the raw JSON of a manifest, of any shape"} :string :any])
+  "A manifest as parsed from JSON with string keys, before decoding: JSON values under string keys, whose shape
+  decoding checks."
+  [:map-of {:description "the raw JSON of a manifest"} :string [:maybe [:or :boolean number? :string sequential? map?]]])
 
 (mu/defn decode-manifest :- ::manifest
   "Decode a manifest parsed from JSON *with string keys* into the shape described by `::manifest`, and validate it.

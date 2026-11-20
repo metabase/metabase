@@ -2797,7 +2797,10 @@
 
   serialization
   {:team "Data Apps"
-   :api  #{metabase.serialization.core metabase.serialization.protocol.mp metabase.serialization.resolve}
+   :api  #{metabase.serialization.core
+           metabase.serialization.protocol
+           metabase.serialization.protocol.mp
+           metabase.serialization.resolve}
    :uses #{app-db
            lib
            lib.legacy-mbql
@@ -2960,7 +2963,7 @@
    :model-imports #{:model/User}}
 
   sql-to-mbql
-  {:team "Querying Platform"
+  {:team "Querying"
    :api  #{metabase.sql-to-mbql.core}
    :uses #{lib lib.schema sql-tools.parsing util}}
 
@@ -4789,7 +4792,7 @@
                     :model/User}}
 
   enterprise/semantic-layer-import
-  {:team "Querying Platform"
+  {:team "Querying"
    :api  #{}
    :uses #{collections
            driver
@@ -4798,8 +4801,8 @@
            lib.metric
            lib.schema
            metrics
-           models
            queries
+           serialization
            sql-to-mbql
            sql-tools
            util
@@ -4807,8 +4810,10 @@
            enterprise/serialization}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Database
                     :model/Field
-                    :model/Table}}
+                    :model/Table
+                    :model/User}}
 
   enterprise/semantic-layer-import.dbt
   {:api  #{}

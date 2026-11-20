@@ -3,16 +3,16 @@
   Field the cards name exist, and is it active?
 
   Serdes import never fails on a name it cannot resolve: for a Database it does not find it creates a stub (no
-  connection details), for a Table or Field an inactive row (see
-  [[metabase.models.serialization.resolve.default/import-table-fk]] and its neighbours), the import reports success, and
+  connection details), for a Table or Field an inactive row (see [[serdes.resolve/row-ids]]), the import reports
+  success, and
   the card fails when it is run. The import names things the way the driver says the warehouse stores them (see
   [[metabase-enterprise.semantic-layer-import.metadata]]: a name the project wrote unquoted is upper-cased for a driver
   with the `:upper-case-unquoted-identifiers` feature and lower-cased otherwise, a driver without the `:schemas` feature
   gets no schema), which an instance can still disagree with: a Snowflake account with `QUOTED_IDENTIFIERS_IGNORE_CASE`,
   a MySQL table created with a mixed-case name, a project built into one schema and synced from another. So [[check]]
-  resolves every reference first, with the import's own walk ([[serdes/import-mbql]], [[metrics/import-dimensions]] and
-  [[metrics/import-dimension-mappings]]) and the import's own lookups ([[serdes/load-find-local]]) but nothing that
-  writes, and reports what the import would have made up, with what is there instead when a near miss (another letter
+  resolves every reference first, with the import's own walks ([[serdes/walk-import]], [[metrics/walk-import-dimensions]]
+  and [[metrics/walk-import-dimension-mappings]]) and the import's own queries ([[serdes/rows-by-refs]]) but nothing
+  that writes, and reports what the import would have made up, with what is there instead when a near miss (another letter
   case, another schema) explains it, and the config keys that fix it (`:identifier-case`, `:schema-mapping`).
 
   It runs against the current app DB, the one the REPL was started with, which has to be the instance the import
@@ -24,7 +24,8 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serdes]
+   [metabase.serialization.resolve :as serdes.resolve]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -60,7 +61,7 @@
   [:sequential ::card])
 
 (mr/def ::entity
-  "A Card as [[serialization/ingest-one]] reads it from YAML, keys as the import sees them."
+  "A Card as [[serialization/ingested]] reads it from YAML, keys as the import sees them."
   [:map {::mr/deliberately-open true, :description "a serdes Card entity, whose keys are the model's"}
    [:name      :string]
    [:entity_id ms/NanoIdString]])
@@ -132,20 +133,27 @@
                " or a %s a sync no longer finds")
           model (u/lower-case-en model)))
 
+(mu/defn- row :- [:maybe :map]
+  "The row of `model` the import binds `ref` to, the oldest with that ref, with `columns`, or nil."
+  [model   :- :keyword
+   ref     :- [:or :string [:sequential [:maybe :string]]]
+   columns :- [:sequential :keyword]]
+  (get (serdes/rows-by-refs model #{ref} columns) ref))
+
 (mu/defn- lookups :- [:map {:closed true}
                       [:database ifn?]
                       [:table    ifn?]
                       [:field    ifn?]]
-  "The import's three lookups with the writes taken out: each finds its row with [[serdes/load-find-local]], the
-  import's own query, and when there is no active row, records what is missing in `found`, an atom of
-  `::unresolved`, and answers [[placeholder-id]]. A Table whose Database is missing, or a Field whose Table is, is not
-  recorded on top of its parent."
+  "The import's three lookups with the writes taken out: each finds its row with the import's own query (see [[row]]),
+  and when there is no active row, records what is missing in `found`, an atom of `::unresolved`, and answers
+  [[placeholder-id]]. A Table whose Database is missing, or a Field whose Table is, is not recorded on top of its
+  parent."
   [found :- (ms/InstanceOfClass clojure.lang.Atom)]
   (let [record!  (fn [model portable-ref hint]
                    (swap! found conj {:model model, :ref portable-ref, :hint hint})
                    placeholder-id)
         database (fn [db-name]
-                   (let [{:keys [id is_stub]} (serdes/load-find-local [{:model "Database" :id db-name}])]
+                   (let [{:keys [id is_stub]} (row :model/Database db-name [:id :is_stub])]
                      (cond
                        (nil? id) (record! "Database" db-name (database-hint db-name))
                        is_stub   (record! "Database" db-name
@@ -156,7 +164,7 @@
                    (let [db-id (database (first table-ref))]
                      (if (= db-id placeholder-id)
                        placeholder-id
-                       (let [{:keys [id active]} (serdes/load-find-local (serdes/table->path table-ref))]
+                       (let [{:keys [id active]} (row :model/Table table-ref [:id :active])]
                          (cond
                            (nil? id)    (record! "Table" table-ref (table-hint db-id table-ref))
                            (not active) (record! "Table" table-ref (inactive-hint "Table"))
@@ -165,30 +173,38 @@
                    (let [table-id (table (vec (take 3 field-ref)))]
                      (if (= table-id placeholder-id)
                        placeholder-id
-                       ;; the import's Field lookup selects only the id
-                       (let [{:keys [id]} (serdes/load-find-local (serdes/field->path field-ref))]
+                       (let [{:keys [id active]} (row :model/Field (vec field-ref) [:id :active])]
                          (cond
-                           (nil? id)                   (record! "Field" field-ref (field-hint table-id field-ref))
-                           (not (db/field-active? id)) (record! "Field" field-ref (inactive-hint "Field"))
-                           :else                       id)))))]
+                           (nil? id)    (record! "Field" field-ref (field-hint table-id field-ref))
+                           (not active) (record! "Field" field-ref (inactive-hint "Field"))
+                           :else        id)))))]
     {:database database, :table table, :field field}))
+
+(mu/defn- walk-card :- :any
+  "`card`'s query, dimensions and dimension mappings, walked by the import's own walks with `visit`."
+  [visit :- ifn?
+   card  :- ::entity]
+  [(serdes/walk-import visit (:dataset_query card))
+   (metrics/walk-import-dimensions visit (:dimensions card))
+   (metrics/walk-import-dimension-mappings visit (:dimension_mappings card))])
 
 (mu/defn unresolved-refs :- [:sequential ::unresolved]
   "The references in `card`, a Card as the import reads it, that the import would not bind to an active row, each
-  once. The card's query, dimensions and dimension mappings are walked by the import's own functions, with its
-  lookups replaced (see [[lookups]]); references to other Cards (a ratio or derived metric's `[:metric id]`) are the
+  once. The card's query, dimensions and dimension mappings are walked by the import's own walks, with its lookups
+  replaced (see [[lookups]]); references to other Cards (a ratio or derived metric's `[:metric id]`) are the
   collection's own and are not checked."
   [card :- ::entity]
-  (let [found (atom [])
-        {:keys [database table field]} (lookups found)]
-    (binding [serdes/*import-database-fk*     database
-              serdes/*import-table-fk*        table
-              serdes/*import-field-fk*        field
-              serdes/*import-fk*              (fn [_entity-id _model] placeholder-id)
-              serdes/*skip-schema-validation?* true]
-      (serdes/import-mbql (:dataset_query card))
-      (metrics/import-dimensions (:dimensions card))
-      (metrics/import-dimension-mappings (:dimension_mappings card)))
+  (let [found  (atom [])
+        lookup (lookups found)
+        by     {:model/Database (:database lookup)
+                :model/Table    (:table lookup)
+                :model/Field    (:field lookup)}]
+    (serdes.resolve/walk-in-bulk [card]
+                                 {:skip-schema-validation? true}
+                                 walk-card
+                                 (fn [model inputs]
+                                   (let [f (by model (constantly placeholder-id))]
+                                     (into {} (map (juxt identity f)) inputs))))
     (vec (distinct @found))))
 
 (mu/defn check :- ::report
@@ -198,16 +214,14 @@
   tree the way the import does, so a file the import cannot read fails here too."
   [out-dir :- :string]
   (let [ingestion (serialization/ingest-yaml (io/file out-dir))
-        paths     (vec (serialization/ingest-list ingestion))]
+        card-keys (into [] (filter #(= :model/Card (first %))) (serialization/ingest-list ingestion))]
     (when-let [errors (seq (serialization/ingest-errors ingestion))]
       (throw (ex-info (format "%d file(s) under %s could not be read: %s" (count errors) out-dir
                               (str/join "; " (map ex-message errors)))
                       {:out-dir out-dir}
                       (first errors))))
-    (vec (for [path  paths
-               :when (= "Card" (-> path last :model))
-               :let  [card       (serialization/ingest-one ingestion path)
-                      unresolved (unresolved-refs card)]
+    (vec (for [[_k card] (serialization/ingested ingestion card-keys)
+               :let       [unresolved (unresolved-refs card)]
                :when (seq unresolved)]
            {:name       (:name card)
             :entity-id  (:entity_id card)
