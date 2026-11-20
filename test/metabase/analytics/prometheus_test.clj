@@ -10,7 +10,6 @@
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.global-system.test-util :as global-system.tu]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -361,11 +360,12 @@
         (is (approx= 1 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
         (is (approx= 1 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))))))
 
-(deftest shutdown-stops-a-system-the-global-system-does-not-hold-test
-  (testing "shutdown stops a system left set by a start that threw, as it did before the global system held it"
+(deftest start-system-stops-a-system-whose-reporter-fails-test
+  (testing "a start that fails after creating the system stops it again and rethrows"
     (let [stopped (atom [])]
-      (global-system.tu/with-root @#'prometheus/system-component nil
-        (with-redefs [prometheus/system ::left-behind]
-          (mt/with-dynamic-fn-redefs [prometheus/stop-system! #(swap! stopped conj %)]
-            (prometheus/shutdown!)
-            (is (= [::left-behind] @stopped))))))))
+      (with-redefs [prometheus/system nil]
+        (mt/with-dynamic-fn-redefs [prometheus/make-prometheus-system (constantly ::system)
+                                    prometheus/install-real-reporter! #(throw (ex-info "reporter failed" {}))
+                                    prometheus/stop-system!           #(swap! stopped conj %)]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reporter failed" (#'prometheus/start-system! 0)))
+          (is (= [::system] @stopped)))))))
