@@ -50,6 +50,13 @@
   [db-id]
   (database-routing.db/delete-router! db-id))
 
+(defenterprise refuses-anonymous-access?
+  "Enterprise version. Whether the Database with `database-id` is a router database not granted anonymous access."
+  :feature :none
+  [database-id]
+  (and (database-routing.db/router-exists? database-id)
+       (not (database-routing.db/router-anonymous-access-granted? database-id))))
+
 (defenterprise-schema db-routing-enabled? :- :boolean
   "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database, even while
   the `:database-routing` feature is unavailable."

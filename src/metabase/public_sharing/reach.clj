@@ -254,3 +254,14 @@
                                         (get-in published [model id]))]
            :when (seq surfaces)]
        {:model model, :id id, :surfaces surfaces, :indirect? (not shows-directly?)}))))
+
+(mr/def ::public-link-model
+  [:enum :model/Card :model/Dashboard :model/Document])
+
+(mu/defn databases-reached-by-public-link :- [:set ::lib.schema.id/database]
+  "The ids of the Databases a public link on the entity `id` of `model` would let anonymous traffic get data from."
+  [model :- ::public-link-model
+   id    :- ms/PositiveInt]
+  (into #{}
+        (remove nil?)
+        (vals (card-database-ids (card-ids-in {model (chunk-cards model {id #{:public-link}})})))))
