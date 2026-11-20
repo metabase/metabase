@@ -614,3 +614,71 @@ describe("StrategyEditorForDatabases (cache_preemptive enabled)", () => {
     },
   );
 });
+
+describe("StrategyEditorForDatabases (clear cache)", () => {
+  beforeEach(() => {
+    // No default policy config: databases without their own config inherit
+    // "Don't cache", so there is no cache to clear for them
+    setup({
+      cacheConfigs: [
+        createMockCacheConfig({
+          model: "database",
+          model_id: 2,
+          strategy: { type: "ttl", min_duration_ms: 1000, multiplier: 10 },
+        }),
+      ],
+    });
+    fetchMock.post(
+      "path:/api/cache/invalidate",
+      ({ url }) => {
+        const params = new URL(url).searchParams;
+        return params.get("include") === "overrides" &&
+          params.get("database") === "2"
+          ? { message: "Invalidated cache for database 2" }
+          : 400;
+      },
+      { name: "invalidate-database-cache" },
+    );
+  });
+
+  it("does not offer to clear the cache of a database that inherits 'Don't cache'", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 1' (currently inheriting the default policy, No caching)",
+      ),
+    );
+    expect(await screen.findByTestId("cache-strategy-select")).toHaveValue(
+      "Default",
+    );
+    expect(
+      screen.queryByRole("button", { name: /Clear cache/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the cache of the selected database after confirmation", async () => {
+    await userEvent.click(
+      await screen.findByLabelText(
+        "Edit policy for database 'Database 2' (currently: Adaptive)",
+      ),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: /Clear cache for this database/,
+      }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Clear all cached results for Database 2?",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Clear cache" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: /Cache cleared/ }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls("invalidate-database-cache"),
+    ).toHaveLength(1);
+  });
+});

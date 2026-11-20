@@ -1,9 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { findRequests } from "__support__/server-mocks/util";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   changeInput,
+  getCacheStrategySelect,
   getSaveButton,
   selectCacheStrategy,
   setupStrategyEditorForDatabases as setup,
@@ -30,6 +32,16 @@ describe("StrategyEditorForDatabases (OSS)", () => {
       screen.queryByRole("button", { name: "Save changes" }),
     ).not.toBeInTheDocument();
 
+    // The form loads only the root policy: the OSS backend rejects any other model
+    await screen.findByTestId("cache-strategy-select");
+    const cacheRequests = (await findRequests("GET")).filter(
+      ({ url }) => new URL(url).pathname === "/api/cache",
+    );
+    expect(cacheRequests).toHaveLength(1);
+    expect(new URL(cacheRequests[0].url).searchParams.getAll("model")).toEqual([
+      "root",
+    ]);
+
     await selectCacheStrategy(/Adaptive/i);
 
     expect((await screen.findAllByRole("spinbutton")).length).toBe(2);
@@ -43,8 +55,21 @@ describe("StrategyEditorForDatabases (OSS)", () => {
       await screen.findByTestId("strategy-form-submit-button"),
     );
 
-    // NOTE: There is no need to check that the submission of the form was successful.
-    // It doesn't meaningfully change the state of the component on OSS
+    const putRequests = await findRequests("PUT");
+    expect(putRequests).toHaveLength(1);
+    expect(putRequests[0].body).toEqual({
+      model: "root",
+      model_id: 0,
+      strategy: { type: "ttl", min_duration_ms: 5000, multiplier: 3 },
+    });
+    // The refetched config becomes the form's saved state: the form shows it
+    // and, once the post-save "Saved" window elapses, is no longer dirty
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("strategy-form-submit-button"),
+      ).not.toBeInTheDocument();
+    });
+    expect(getCacheStrategySelect()).toHaveValue("Adaptive");
 
     await selectCacheStrategy(/Don.t cache/i);
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
