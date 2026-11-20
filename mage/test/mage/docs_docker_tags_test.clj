@@ -18,20 +18,24 @@
 
 (deftest branch-major-test
   (are [branch major] (= major (docs-docker-tags/branch-major branch))
-    "release-x.64.x" 64
-    "release-x.65.x" 65
-    "master"         nil
-    "doc-529-pin"    nil
-    ""               nil))
+    "release-x.64.x"      64
+    "release-x.65.x"      65
+    "master"              :latest
+    "doc-529-backport-64" nil
+    ""                    nil
+    nil                   nil))
+
+(deftest latest-major-test
+  (is (= 65 (docs-docker-tags/latest-major version-info))))
 
 (deftest newest-release-test
   (testing "the newest release of a major version, compared as numbers"
     (is (= "64.10" (docs-docker-tags/newest-release version-info 64)))
     (is (= "58.41" (docs-docker-tags/newest-release version-info 58))))
-  (testing "the `latest` release when there is no major version"
-    (is (= "65.5" (docs-docker-tags/newest-release version-info nil))))
+  (testing "the `latest` release for `:latest`"
+    (is (= "65.5" (docs-docker-tags/newest-release version-info :latest))))
   (testing "a release in `older` that is newer than `latest`, because a new release goes into `older` first"
-    (is (= "65.6" (docs-docker-tags/newest-release (update version-info :older conj {:version "v0.65.6"}) nil))))
+    (is (= "65.6" (docs-docker-tags/newest-release (update version-info :older conj {:version "v0.65.6"}) :latest))))
   (testing "nil for a major version that has no release yet (the beta does not count)"
     (is (nil? (docs-docker-tags/newest-release version-info 66)))))
 
@@ -55,3 +59,13 @@
       "ca072cd44a49        metabase/metabase        \"/app/run_metabase.sh\""
       "mycompany/metabase-custom"
       "foometabase/metabase:v0.65.2")))
+
+(deftest pin-pages-test
+  (testing "only the pages whose text changes, with their new text"
+    (is (= {"a.md" "docker pull metabase/metabase:v0.65.5"}
+           (docs-docker-tags/pin-pages {"a.md" "docker pull metabase/metabase:v0.64.4"
+                                        "b.md" "docker pull metabase/metabase:v0.65.5"
+                                        "c.md" "no tags here"}
+                                       "65.5"))))
+  (testing "nothing when no page changes"
+    (is (= {} (docs-docker-tags/pin-pages {"a.md" "metabase/metabase:latest"} "65.5")))))

@@ -49,7 +49,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase:v0.65.6
 
 Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-Assuming you have [Docker](https://www.docker.com/) installed and running, pull the image of a Metabase release. Pro and Enterprise tags start with `v1.` rather than `v0.`. To find the newest release of each version, check out [version support](https://www.metabase.com/version-support).
+Assuming you have [Docker](https://www.docker.com/) installed and running, pull the image of a Metabase release. Pro and Enterprise tags start with `v1.` rather than `v0.`. To find the newest release of each version, check out [version support](https://www.metabase.com/version-support). Use a fixed tag rather than `latest`: `latest` moves to each new major version, so pulling `latest` can upgrade your Metabase to a new major version.
 
 ```
 docker pull metabase/metabase-enterprise:v1.65.6
