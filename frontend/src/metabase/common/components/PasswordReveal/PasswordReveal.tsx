@@ -29,7 +29,6 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
           value={password}
           readOnly
           variant="read-only"
-          size="lg"
           flex={1}
         />
         <CopyButton value={password} timeout={2000}>
@@ -40,7 +39,6 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
                 data-testid="copy-button"
                 aria-label={t`Copy password`}
                 variant="subtle"
-                size="lg"
               >
                 <Icon name={copied ? "check" : "copy"} />
               </ActionIcon>
