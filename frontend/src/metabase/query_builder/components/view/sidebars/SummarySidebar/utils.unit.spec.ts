@@ -40,6 +40,7 @@ import {
 } from "./utils";
 
 const STAGE_INDEX = -1;
+const GROUPING_WELL_IDS: SummaryDimensionWellId[] = ["columns", "rows"];
 
 function createOrdersQuery(spec: TestQuerySpec = DEFAULT_TEST_QUERY) {
   return Lib.createTestQuery(SAMPLE_PROVIDER, spec);
@@ -241,21 +242,16 @@ describe("getWellFieldSections", () => {
     ]);
   });
 
-  it("offers the table columns to Group by", () => {
-    expect(getSectionNames(getWellFieldSections(sections, "columns"))).toEqual([
-      "Orders",
-      "Product",
-      "User",
-    ]);
-  });
-
-  it("offers the table columns to Rows", () => {
-    expect(getSectionNames(getWellFieldSections(sections, "rows"))).toEqual([
-      "Orders",
-      "Product",
-      "User",
-    ]);
-  });
+  it.each(GROUPING_WELL_IDS)(
+    "offers the table columns to the %s well",
+    (wellId) => {
+      expect(getSectionNames(getWellFieldSections(sections, wellId))).toEqual([
+        "Orders",
+        "Product",
+        "User",
+      ]);
+    },
+  );
 });
 
 describe("filterFieldSections", () => {
@@ -583,25 +579,18 @@ describe("addField", () => {
     );
   }
 
-  it("groups by a column with its default bucket", () => {
-    expect(getDimensionLabels(addTimes(query, "Created At", 1))).toEqual([
-      "Created At: Month",
-    ]);
-    expect(getDimensionLabels(addTimes(query, "Total", 1))).toEqual([
-      "Total: Auto binned",
-    ]);
-  });
+  it.each(GROUPING_WELL_IDS)(
+    "groups by a column that is added to the %s well with its default bucket",
+    (wellId) => {
+      const add = (fieldName: string) =>
+        addField(query, STAGE_INDEX, wellId, findField(sections, fieldName));
 
-  it("groups by a column that is added to Rows", () => {
-    const nextQuery = addField(
-      query,
-      STAGE_INDEX,
-      "rows",
-      findField(sections, "Created At"),
-    );
-
-    expect(getDimensionLabels(nextQuery)).toEqual(["Created At: Month"]);
-  });
+      expect(getDimensionLabels(add("Created At"))).toEqual([
+        "Created At: Month",
+      ]);
+      expect(getDimensionLabels(add("Total"))).toEqual(["Total: Auto binned"]);
+    },
+  );
 
   it("groups by a date again with the next unused unit: coarser, then finer, then the parts of a date", () => {
     const labels = getDimensionLabels(addTimes(query, "Created At", 15));

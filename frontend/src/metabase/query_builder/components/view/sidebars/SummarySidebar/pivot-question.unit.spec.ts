@@ -148,16 +148,13 @@ describe("getPivotColumnSplit", () => {
     expect(getPivotColumnSplit(question)).toEqual(columnSplit);
   });
 
-  it("gives nothing when the question shows another visualization", () => {
-    const question = createQuestion({
+  it("gives nothing when the question shows another visualization or has no column split", () => {
+    const tableQuestion = createQuestion({
       display: "table",
       visualization_settings: { "pivot_table.column_split": columnSplit },
     });
 
-    expect(getPivotColumnSplit(question)).toBeUndefined();
-  });
-
-  it("gives nothing for a pivot table without a column split", () => {
+    expect(getPivotColumnSplit(tableQuestion)).toBeUndefined();
     expect(
       getPivotColumnSplit(createQuestion({ display: "pivot" })),
     ).toBeUndefined();
