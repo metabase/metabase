@@ -53,6 +53,20 @@
   ["assumeminserverversion" "hostrecheckseconds" "isserverless" "kerberosservername" "loadbalancehosts"
    "logservererrordetail" "serverlessacctid" "serverlessworkgroup" "sslhostnameverifier" "targetservertype"])
 
+(defmethod driver/disallowed-connection-parameters :redshift
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :postgres) driver)
+        [;; Loads connection properties from a server-side profile, which can set any of these
+         "AuthProfile"
+         ;; Loads connection properties from a local file
+         "IniFile"
+         ;; Can pick a profile from the host's AWS config files
+         "Profile"
+         ;; Instantiates an arbitrary class (an IAM credentials provider)
+         "plugin_name"
+         ;; Writes the driver log to a chosen local directory
+         "LogPath"]))
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true
