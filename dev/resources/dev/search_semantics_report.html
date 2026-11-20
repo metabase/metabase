@@ -149,10 +149,9 @@
     .case-list.sort-conformance .case-button .right.right-level-4, .badge.right-level-4 { background: #f2f1cf; color: #6b6210; }
     .case-list.sort-conformance .case-button .right.right-level-3, .badge.right-level-3 { background: #fbe9cf; color: #8a5300; }
     .case-list.sort-conformance .case-button .right.right-level-2, .badge.right-level-2 { background: #fbdcd0; color: #9a3a12; }
-    .case-list.sort-conformance .case-button .right.right-level-0, .badge.right-level-0 { background: #fbe0e3; color: #b42635; }
     .case-list.sort-conformance .case-button .right.right-level-1, .badge.right-level-1 { background: #fbd9d1; color: #ab3d29; }
+    .case-list.sort-conformance .case-button .right.right-level-0, .badge.right-level-0 { background: #fbe0e3; color: #b42635; }
     .badge { display: inline-block; border-radius: 999px; padding: 2px 7px; background: #e6f4e8; color: #18632c; font-size: .74rem; font-weight: 650; }
-    .badge.divergent { background: #fff0de; color: #8a4d00; }
     .badge.neutral { background: #eef1f5; color: #465a71; }
     .badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
     .detail-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
@@ -266,7 +265,7 @@
     @media (max-width: 980px) { .tables, .explorer { grid-template-columns: 1fr; } #detail { position: static; max-height: none; } }
     @media (max-width: 600px) { body { padding: 18px 12px 50px; } .view-switch { grid-template-columns: 1fr; } }
     @media (prefers-color-scheme: dark) {
-      :root { color-scheme: dark; background: #101722; color: #e4edf7; }
+      :root { --tint: 106 168 239; color-scheme: dark; background: #101722; color: #e4edf7; }
       .muted, .note, .support-notes, .empty { color: #aabbd0; }
       .support-notes a { color: #91c1ff; }
       .card { background: #1b2839; border-color: #354963; box-shadow: none; }
@@ -284,7 +283,6 @@
       .label-key { background: #172335; }
       .label-key dd, .label-key .key-foot { color: #aabbd0; }
       .group-head > span:first-child::before { background: color-mix(in srgb, var(--c, #8a99ab) 65%, white); }
-      .sort-button { color: #aabbd0; }
       .explorer .group-head { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
       .explorer .group-head:hover { background: color-mix(in srgb, var(--c, #8a99ab) 30%, transparent); }
 
@@ -298,7 +296,6 @@
       .weight-presets { color: #aabbd0; }
       .goal-scores .caveat { background: #2b2618; border-left-color: #b8892f; color: #eadcb8; }
       .goal-scores .caveat h3 { color: #f3d48f; }
-      .case-list.sort-conformance .case-button .right.right-level-1, .badge.right-level-1 { background: #4f2525; color: #f6adac; }
       .rank-table { border-color: #354963; }
       .rank-table h3 { color: #e4edf7; }
       .rank-bar { background: #2a3b50; }
@@ -328,23 +325,22 @@
       .case-list.sort-conformance .case-button .right.right-level-4, .badge.right-level-4 { background: #45441d; color: #e8df8f; }
       .case-list.sort-conformance .case-button .right.right-level-3, .badge.right-level-3 { background: #503a1c; color: #ffd08a; }
       .case-list.sort-conformance .case-button .right.right-level-2, .badge.right-level-2 { background: #522c20; color: #ffb39a; }
+      .case-list.sort-conformance .case-button .right.right-level-1, .badge.right-level-1 { background: #4f2525; color: #f6adac; }
       .case-list.sort-conformance .case-button .right.right-level-0, .badge.right-level-0 { background: #4d2228; color: #ffb3bb; }
       .query-table .sub, .query-table .same { color: #aabbd0; }
       .query-table .missing { color: #ff929d; }
       .query-table .extra-hits { color: #ffc26b; }
       .query-table .check { color: #72d999; }
       .query-table tr.correct-row td { background: #183326; }
-      .query-table tr.correct-row td:first-child { box-shadow: inset 3px 0 #3f8a5a; }
       th.conforms { background: #204632; color: #a4e2b6; }
       code { background: #293c52; }
       .badge { background: #204632; color: #a4e2b6; }
-      .badge.divergent { background: #523b1e; color: #ffd08a; }
       .badge.neutral { background: #35465a; color: #c3d0dd; }
       .hit { color: #72d999; }
       .miss { color: #8295aa; }
       .extra { color: #ffc26b; }
       .absent { color: #ff929d; }
-      .score-table .typed, .weights output, .distance { color: #aabbd0; }
+      .weights output, .distance { color: #aabbd0; }
       .distance.near { color: #ffc26b; }
       .findings a { color: #91c1ff; }
       details.reference > summary { color: #e4edf7; }
@@ -352,14 +348,13 @@
       .reading-guide { background: #172335; }
       .reading-guide h3 { color: #e4edf7; }
       .reading-guide, details.weights-panel > summary .weights-state { color: #aabbd0; }
-      .score-table tr.kind-row th { border-bottom-color: #53677e; }
       .score-table tr.goal-row:hover { background: #22334a; }
       .sc .typed { color: #8295aa; }
       .sc .best { color: #e4edf7; }
       .sc.zero .best { color: #6f8297; }
       .sc .bar { background: #2a3b50; }
       .sc .bar i { background: hsl(calc(4deg + 128deg * var(--v)) 55% 55%); }
-      .score-table tr.kind-row th { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); }
+      .score-table tr.kind-row th { background: color-mix(in srgb, var(--c, #8a99ab) 20%, transparent); color: color-mix(in srgb, var(--c, #8a99ab) 35%, white); border-bottom-color: #53677e; }
       .score-table tfoot tr.mean-row td { background: #1d2c40; }
       .score-table tfoot tr.mean-row td:first-child { color: #c3d0dd; }
       .score-table tfoot tr.mean-row.final td { background: #26395a; }
@@ -370,7 +365,6 @@
       .score-table tfoot td { border-top-color: #53677e; }
       .gain { background: color-mix(in srgb, #2fbf6e calc(15% + 60% * var(--g)), #24344a); color: #eafbf0; }
       .gain.none { background: transparent; color: #8295aa; }
-      :root { --tint: 106 168 239; }
       .pair-legend, .pair-table .vs { color: #aabbd0; }
       .rel-equal { background: #3b4d63; color: #e4edf7; }
       .rel-left-superset { background: #4f8fd6; color: white; }
@@ -541,7 +535,7 @@
       <h3>How to read the table</h3>
       <ul>
       <li>F1 combines precision, the share of returned cards that are correct, and recall, the share of correct cards that come back. It is their harmonic mean, so it is high only when both are high. Returning one of three correct cards and nothing else scores 0.5.</li>
-      <li><span class="sc-legend">0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
+      <li><span>0.40 → <strong>1.00</strong></span> means 0.40 for the goal's original query and 1.00 for the engine's best query. One number means the best query scores the same.</li>
       <li>A best query uses words a user could think of for the goal without knowing which cards exist, and any syntax the engine supports.</li>
       <li>Bars run from red at 0 to green at 1. A bold score is the best, or tied best, for that goal.</li>
       <li>Hover a cell for precision and recall. Click a goal to open its case.</li>
@@ -641,8 +635,8 @@ __REPORT_MODEL__
     function caseHash(corpus, id) {
       const params = new URLSearchParams({ tab: corpus });
       if (id) params.set("case", id);
-      const changed = data.goalKinds.filter(kind => weightOf(kind) !== 1).map(kind => `${kind}:${weightOf(kind)}`);
-      if (changed.length) params.set("weights", changed.join(","));
+      const changed = formatWeights(data.goalKinds, weights);
+      if (changed) params.set("weights", changed);
       return `#${params}`;
     }
 
@@ -658,13 +652,7 @@ __REPORT_MODEL__
       if (state.selected) openCase(state.selected);
       // A shared link carries its sender's weights, or none when they were the defaults. A link followed within
       // the page, such as a finding, keeps the reader's weights unless it carries its own.
-      if (initial || params.has("weights")) {
-        weights = {};
-        for (const pair of (params.get("weights") || "").split(",").filter(Boolean)) {
-          const [kind, value] = pair.split(":");
-          if (data.goalKinds.includes(kind) && /^\d(\.\d)?$/.test(value)) weights[kind] = clampWeight(Number(value));
-        }
-      }
+      if (initial || params.has("weights")) weights = parseWeights(data.goalKinds, params.get("weights") || "");
       return true;
     }
 
@@ -710,11 +698,12 @@ __REPORT_MODEL__
       const rows = pairs.map(pair => {
         const total = pairRelations.reduce((sum, [key]) => sum + pair.counts[key], 0);
         const [left, right] = [labels[pair.left], labels[pair.right]];
-        const segments = pairRelations.filter(([key]) => pair.counts[key]).map(([key, , sentence]) => {
+        const present = pairRelations.filter(([key]) => pair.counts[key]);
+        const segments = present.map(([key, , sentence]) => {
           const count = pair.counts[key];
           return `<span class="rel-${key}" style="flex: ${count}" title="${escape(`${count} of ${total}: ${sentence(left, right)}`)}">${count}</span>`;
         }).join("");
-        return `<tr><td>${escape(left)}<span class="vs">vs</span>${escape(right)}</td><td><div class="pair-bar" role="img" aria-label="${escape(pairRelations.filter(([key]) => pair.counts[key]).map(([key, text]) => `${text}: ${pair.counts[key]}`).join(", "))}">${segments}</div></td></tr>`;
+        return `<tr><td>${escape(left)}<span class="vs">vs</span>${escape(right)}</td><td><div class="pair-bar" role="img" aria-label="${escape(present.map(([key, text]) => `${text}: ${pair.counts[key]}`).join(", "))}">${segments}</div></td></tr>`;
       }).join("");
       return `${legend}<table class="pair-table"><tbody>${rows}</tbody></table>`;
     }
@@ -730,11 +719,14 @@ __REPORT_MODEL__
         ["F1, original query", engine => summary.typedScores[engine].f1, percent, true],
         ["Exact, original query", engine => summary.typedScores[engine].exact / summary.count, (_, engine) => `${summary.typedScores[engine].exact}/${summary.count}`]
       ];
-      const header = `<thead><tr><th>Engine</th>${columns.map(([text, , , groupStart]) => `<th class="${groupStart ? "group-start" : ""}">${escape(text)}</th>`).join("")}</tr></thead>`;
-      const rows = data.engines.map(engine => `<tr><td>${escape(labels[engine])}</td>${columns.map(([, value, show, groupStart]) => {
-        const v = value(engine);
+      const bounds = columns.map(([, value]) => {
         const all = data.engines.map(value);
-        const [low, high] = [Math.min(...all), Math.max(...all)];
+        return [Math.min(...all), Math.max(...all)];
+      });
+      const header = `<thead><tr><th>Engine</th>${columns.map(([text, , , groupStart]) => `<th class="${groupStart ? "group-start" : ""}">${escape(text)}</th>`).join("")}</tr></thead>`;
+      const rows = data.engines.map(engine => `<tr><td>${escape(labels[engine])}</td>${columns.map(([, value, show, groupStart], index) => {
+        const v = value(engine);
+        const [low, high] = bounds[index];
         const best = v >= high - 1e-9;
         const relative = high - low < 1e-9 ? 1 : (v - low) / (high - low);
         return `<td class="metric-cell${best ? " best" : ""}${groupStart ? " group-start" : ""}" style="background: rgb(var(--tint) / ${(0.03 + 0.42 * relative).toFixed(2)})">${show(v, engine)}</td>`;
@@ -760,9 +752,13 @@ __REPORT_MODEL__
 
     function renderList() {
       const cases = visibleCases();
-      const order = grouped()
-        ? themes().filter(theme => !state.collapsed.has(theme.id)).flatMap(theme => cases.filter(item => themeOf(item) === theme.id))
-        : cases;
+      // Sorted by theme, each case sits in exactly one theme band, and a heading folds its band away.
+      const groups = grouped()
+        ? themes()
+          .map(theme => ({ theme, members: cases.filter(item => themeOf(item) === theme.id), open: !state.collapsed.has(theme.id) }))
+          .filter(group => group.members.length)
+        : null;
+      const order = groups ? groups.filter(group => group.open).flatMap(group => group.members) : cases;
       if (!order.some(item => item.id === state.selected)) state.selected = order[0]?.id ?? null;
       const noun = state.corpus === "translations" ? "goal" : "case";
       $("list-count").textContent = `${cases.length} ${cases.length === 1 ? noun : `${noun}s`}`;
@@ -771,13 +767,10 @@ __REPORT_MODEL__
           ${state.sort === "conformance" ? `<span class="right right-level-${conformanceLevel(item)}" title="${escape(conformanceTitle(item))}">${escape(conformance(item))}</span>` : ""}
           ${state.sort === "agreement" ? `<span class="agree agree-level-${agreementLevel(item.matchingPairs)}" title="${escape(agreementTitle(item))}">${escape(agreement(item))}</span>` : ""}
         </button>`;
-      // Sorted by theme, each case sits in exactly one theme band, and a heading folds its band away.
       $("case-list").className = `case-list sort-${state.sort}`;
-      $("case-list").innerHTML = !grouped() ? cases.map(caseButton).join("") : themes().map(theme => [theme, cases.filter(item => themeOf(item) === theme.id)]).filter(([, members]) => members.length)
-        .map(([theme, members]) => {
-          const open = !state.collapsed.has(theme.id);
-          return `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" aria-expanded="${open}" title="${escape(theme.description)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${open ? members.map(caseButton).join("") : ""}</div>`;
-        }).join("");
+      $("case-list").innerHTML = !groups ? cases.map(caseButton).join("") : groups
+        .map(({ theme, members, open }) => `<div class="case-group"><button type="button" class="group-head" style="--c: ${themeColor(theme.id)}" data-theme="${escape(theme.id)}" aria-expanded="${open}" title="${escape(theme.description)}"><span>${escape(theme.label)}</span><span>${members.length}</span></button>${open ? members.map(caseButton).join("") : ""}</div>`)
+        .join("");
       for (const button of $("case-list").querySelectorAll(".case-button")) {
         button.addEventListener("click", () => {
           state.selected = button.dataset.id;
@@ -796,7 +789,6 @@ __REPORT_MODEL__
       renderDetail(cases.find(item => item.id === state.selected), grouped() && cases.length > 0);
       writeHash();
     }
-
 
     // The key sits beside the labels it explains and marks the current case's own labels.
     function labelKey(item) {
@@ -911,8 +903,12 @@ __REPORT_MODEL__
     const presetWeight = (preset, kind) => preset.weights[kind] ?? 1;
     const activePreset = () => weightPresets.find(preset => data.goalKinds.every(kind => Math.abs(presetWeight(preset, kind) - weightOf(kind)) < 1e-9));
 
-    function applyWeights() {
+    function storeWeights() {
       try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
+    }
+
+    function applyWeights() {
+      storeWeights();
       renderWeights();
       renderScoreTable();
       writeHash();
@@ -944,7 +940,8 @@ __REPORT_MODEL__
           weights[input.dataset.kind] = clampWeight(Number(input.value));
           input.nextElementSibling.textContent = weightOf(input.dataset.kind).toFixed(1);
           $("weights-state").textContent = weightsState();
-          try { localStorage.setItem("goalWeights", JSON.stringify(weights)); } catch {}
+          // Re-rendering the sliders, as applyWeights does, would interrupt the drag.
+          storeWeights();
           renderPresets();
           renderScoreTable();
           writeHash();
