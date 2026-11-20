@@ -150,12 +150,12 @@
      lib.types
      measures
      metabot
-     mq
      notification
      permissions
      premium-features
      public-sharing
      pulse
+     queue-listener
      remote-sync
      request
      sample-data
