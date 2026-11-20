@@ -6,11 +6,10 @@
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
-   [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -23,20 +22,12 @@
   [thunk :- ifn?]
   (data-testing.errors/refusing "segment-test" thunk))
 
-(mu/defn- testable-segment
-  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test: its
-  definition reads back empty, or names a table that does not exist."
-  [segment-id :- ms/PositiveInt]
-  (doto (data-testing.db/segment segment-id)
-    (data-testing.subject.segment/check-testable)))
-
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Segment `segment-id` with `inputs` and `expectations` unless it could run."
-  [segment-id   :- ms/PositiveInt
+  [segment-id   :- ::lib.schema.id/segment
    inputs       :- ::data-testing.schema/inputs
    expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :segment (testable-segment segment-id)
-                                                {:inputs inputs :expectations expectations})))
+  (refusing #(data-testing.models.segment-test/validate-test segment-id {:inputs inputs :expectations expectations})))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/segment-test.response]
   "List the segment tests the caller can read, with their newest runs, optionally only those of one segment. The tests
@@ -78,8 +69,8 @@
 
   A test of an archived segment is refused.
 
-  A test of a segment whose definition is empty, cannot be read, or names a table that does not exist is refused as
-  one whose query cannot be compiled."
+  A test of a segment whose definition is empty, cannot be read, names no table, or names a table that no longer
+  exists is refused as one whose query cannot be compiled."
   [_route-params
    _query-params
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
@@ -95,11 +86,7 @@
    body :- ::data-testing.schema/segment-test.update]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/update-check segment-test body)
-    (refusing #(data-testing.subject/check-not-archived
-                :segment (data-testing.db/segment (:segment_id (merge segment-test body)))))
-    (when (some #(contains? body %) [:segment_id :inputs :expectations])
-      (let [{:keys [segment_id inputs expectations]} (merge segment-test body)]
-        (validate-test! segment_id inputs expectations)))
+    (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
       (data-testing.models.segment-test/update-segment-test! id body)))
   (data-testing.db/segment-test id))
@@ -114,7 +101,8 @@
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result
   "Run a segment test. Needs read access to the test, permission to run its segment's definition, and native query
-  access to the segment's database.
+  access to the segment's database. These are checked before any refusal of the test; only an admin has them for a
+  segment whose definition is empty.
 
   A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,
   including one that could not be evaluated, which comes back as that expectation's own `:error`.
@@ -124,13 +112,15 @@
   carries none.
 
   A run of a test whose segment is archived is refused. A run of a test of a segment whose definition is empty,
-  cannot be read, or names a table that does not exist is refused as one whose query cannot be compiled."
+  cannot be read, names no table, or names a table that no longer exists is refused as one whose query cannot be
+  compiled."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [segment-test (api/read-check :model/SegmentTest id)]
     (api/check-403 (data-testing.models.segment-test/can-run? segment-test))
     (refusing #(data-testing.runner/run-test! :segment
-                                              (testable-segment (:segment_id segment-test))
+                                              (data-testing.models.segment-test/testable-segment
+                                               (:segment_id segment-test))
                                               segment-test))))
 
 (def ^{:arglists '([request respond raise])} routes

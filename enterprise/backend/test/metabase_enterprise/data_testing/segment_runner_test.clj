@@ -171,7 +171,10 @@
       (testing "control: with every products column declared, the test runs and finds the one Gizmo order"
         (is (= {:status :passed}
                (validated-outcome! (gizmo-orders) [orders (products every-product-column)] one-order))))
-      (testing "with only the products columns the filter reads declared, the test is refused when saved: the join through the foreign key selects every products column"
+      (testing (str "with only the products columns the filter reads declared, the test is refused when saved: the "
+                    "join through the foreign key selects every products column")
+        ;; The refusal depends on the query processor adding every column of the joined table to an implicit join
+        ;; (#67002).
         (is (= {:refused ::data-testing.errors/missing-input-columns}
                (validated-outcome! (gizmo-orders) [orders (products [product-pk category])] one-order)))))))
 

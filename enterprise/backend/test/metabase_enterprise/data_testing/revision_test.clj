@@ -28,7 +28,10 @@
   {:name "Test" :inputs [] :expectations []})
 
 (def ^:private one-input
-  [{:table {:schema "PUBLIC" :name "PEOPLE"} :format :rows :columns [{:name "ID" :cast_type "INTEGER"}] :rows [{"ID" 1}]}])
+  [{:table   {:schema "PUBLIC" :name "PEOPLE"}
+    :format  :rows
+    :columns [{:name "ID" :cast_type "INTEGER"}]
+    :rows    [{"ID" 1}]}])
 
 (def ^:private one-expectation
   [{:type :empty :name "none" :sql "SELECT 1 WHERE 1 = 0"}])
@@ -120,9 +123,9 @@
     (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Transform     {transform-id :id}      (data-testing.test-util/id-transform :people)
-                       :model/TransformTest {transform-test-id :id} (merge revertible
-                                                                           {:transform_id transform-id
-                                                                            :now          (t/offset-date-time "2026-10-13T00:00:00Z")})]
+                       :model/TransformTest {transform-test-id :id}
+                       (merge revertible {:transform_id transform-id
+                                          :now          (t/offset-date-time "2026-10-13T00:00:00Z")})]
           (t2/update! :model/TransformTest :id transform-test-id {:now nil})
           (testing "an update of `now` is recorded"
             (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
@@ -468,10 +471,9 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :post 403 "revision/revert" body)))
                 (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id)))
-                (testing "an admin passes the permission check, and is refused because the card has no query"
-                  (is (=? {:error-code "card-test.uncompilable-subject"}
-                          (mt/user-http-request :crowberto :post 422 "revision/revert" body)))
-                  (is (= "Renamed" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
+                (testing "control: an admin reverts, since a revert of the name alone is not validated"
+                  (mt/user-http-request :crowberto :post 200 "revision/revert" body)
+                  (is (= "Original" (t2/select-one-fn :name :model/CardTest :id card-test-id))))))))))))
 
 (deftest card-test-revert-without-the-feature-answers-402-and-writes-nothing-test
   (testing "Without :transforms-testing, a revert that passes the checks gets 402 and changes nothing"
@@ -661,7 +663,8 @@
 (deftest segment-test-revert-requires-feature-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment     {segment-id :id}      (data-testing.test-util/segment-on (mt/id :people) "A segment")
-                   :model/SegmentTest {segment-test-id :id} (merge revertible {:segment_id segment-id :name "Original"})]
+                   :model/SegmentTest {segment-test-id :id} (merge revertible
+                                                                   {:segment_id segment-id :name "Original"})]
       (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
       (check-revert-requires-the-feature :model/SegmentTest "segment-test" segment-test-id #{} #{:transforms-testing}))))
 
@@ -688,10 +691,12 @@
       (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/Card          {card-id :id}           (id-card)
-                         :model/CardTest      {card-test-id :id}      (merge revertible {:card_id card-id :name "Before"})
+                         :model/CardTest      {card-test-id :id}      (merge revertible
+                                                                             {:card_id card-id :name "Before"})
                          :model/Transform     {transform-id :id}      (data-testing.test-util/id-transform :people)
                          :model/TransformTest {transform-test-id :id} (merge revertible
-                                                                             {:transform_id transform-id :name "Before"})]
+                                                                             {:transform_id transform-id
+                                                                              :name         "Before"})]
             (doseq [[model model-name entity id subject] [[:model/CardTest "CardTest" "card-test" card-test-id
                                                            {:card_id card-id}]
                                                           [:model/TransformTest "TransformTest" "transform-test"

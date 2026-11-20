@@ -82,7 +82,8 @@
     (throw (data-testing.errors/ex ::data-testing.errors/archived-subject
                                    (case subject-type
                                      :card    (tru "The card is archived. Restore it to test it.")
-                                     :segment (tru "The segment is archived. Restore it to test it."))
+                                     :segment (tru "The segment is archived. Restore it to test it.")
+                                     (tru "The subject of this test is archived. Restore it to test it."))
                                    {}))))
 
 (def output-token

@@ -199,16 +199,18 @@
   (t2/select-one :model/CardTest :id id))
 
 (defn- tests-of-subjects
-  "The saved tests of `model` in name order, whose `subject-key` column holds the id of a row of `subject-table`: only
+  "The saved tests of `model` in name order, whose `subject-key` column holds the id of a row of `subject-model`: only
   those of the row `subject-id` when it is given, and those of an archived row only when `include-archived?`."
-  [model subject-key subject-table subject-id include-archived?]
-  (let [clauses (cond-> []
-                  subject-id              (conj [:= subject-key subject-id])
-                  (not include-archived?) (conj [:not-in subject-key ^:allow-subquery {:select [:id]
-                                                                                       :from   [subject-table]
-                                                                                       :where  [:= :archived true]}]))]
-    (t2/select model (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                       (seq clauses) (assoc :where (into [:and] clauses))))))
+  [model subject-key subject-model subject-id include-archived?]
+  (t2/select model {:where    (cond-> [:and]
+                                subject-id
+                                (conj [:= subject-key subject-id])
+
+                                (not include-archived?)
+                                (conj [:not-in subject-key ^:allow-subquery {:select [:id]
+                                                                             :from   [(t2/table-name subject-model)]
+                                                                             :where  [:= :archived true]}]))
+                    :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn card-tests :- [:sequential ::data-testing.schema/card-test]
   "The CardTests in name order: only those of the Card with `:card-id` when it is given, and those of archived Cards
@@ -216,7 +218,7 @@
   [{:keys [card-id include-archived?]} :- [:map {:closed true}
                                            [:card-id           {:optional true} [:maybe ::lib.schema.id/card]]
                                            [:include-archived? {:optional true} [:maybe :boolean]]]]
-  (tests-of-subjects :model/CardTest :card_id :report_card card-id include-archived?))
+  (tests-of-subjects :model/CardTest :card_id :model/Card card-id include-archived?))
 
 (mu/defn insert-card-test! :- ::data-testing.schema/card-test
   "Insert the CardTest `card-test` and return the inserted instance."
@@ -265,7 +267,7 @@
   [{:keys [segment-id include-archived?]} :- [:map {:closed true}
                                               [:segment-id        {:optional true} [:maybe ::lib.schema.id/segment]]
                                               [:include-archived? {:optional true} [:maybe :boolean]]]]
-  (tests-of-subjects :model/SegmentTest :segment_id :segment segment-id include-archived?))
+  (tests-of-subjects :model/SegmentTest :segment_id :model/Segment segment-id include-archived?))
 
 (mu/defn insert-segment-test! :- ::data-testing.schema/segment-test
   "Insert the SegmentTest `segment-test` and return the inserted instance."
@@ -308,10 +310,10 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn table-exists?
-  "Whether a Table with `table-id` exists."
+(mu/defn active-table-exists?
+  "Whether a Table with `table-id` exists and is active. Sync marks a Table inactive when its table is dropped."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Table :id table-id))
+  (t2/exists? :model/Table :id table-id :active true))
 
 (mu/defn transform-test-by-entity-id :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `entity-id`, or nil."

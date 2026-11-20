@@ -118,7 +118,9 @@
 
 (defmethod where :model/SegmentTest [_ opts]
   ;; The tests of the Segments that an export with the same options takes. `:ids` names segment tests, not Segments.
-  [:in :segment_id ^:allow-subquery {:select [:id] :from [:segment] :where (where-clause :model/Segment (dissoc opts :ids))}])
+  [:in :segment_id ^:allow-subquery {:select [:id]
+                                     :from   [:segment]
+                                     :where  (where-clause :model/Segment (dissoc opts :ids))}])
 
 (defn select-rows
   "A reducible of the realized rows of `model` an export of `opts` takes, in stable export order: the ones with the

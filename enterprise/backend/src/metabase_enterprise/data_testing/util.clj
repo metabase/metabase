@@ -29,8 +29,8 @@
 
 (defmethod column-names-ignore-case? :default [_driver] false)
 
-;; Every driver that runs data tests states its answer, so that a new one cannot take the default by omission. SQL Server
-;; ignores case under its default collation, and Redshift unless `enable_case_sensitive_identifier` is on.
+;; Every driver that runs data tests states its answer, so that a new one cannot take the default by omission. SQL
+;; Server ignores case under its default collation, and Redshift unless `enable_case_sensitive_identifier` is on.
 (doseq [[driver ignores-case?] {:h2         false
                                 :postgres   false
                                 :clickhouse false

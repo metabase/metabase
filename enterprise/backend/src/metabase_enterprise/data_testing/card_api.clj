@@ -6,11 +6,10 @@
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
-   [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -23,17 +22,11 @@
   [thunk :- ifn?]
   (data-testing.errors/refusing "card-test" thunk))
 
-(mu/defn- testable-card
-  "The Card with `card-id`, or nil when there is none. Throws a typed refusal when the card has no query."
-  [card-id :- ms/PositiveInt]
-  (doto (data-testing.db/card card-id)
-    (data-testing.subject.card/check-testable)))
-
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Card `card-id` with the inputs, expectations and `now` of `definition` unless it could run."
-  [card-id    :- ms/PositiveInt
+  [card-id    :- ::lib.schema.id/card
    definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :card (testable-card card-id) definition)))
+  (refusing #(data-testing.models.card-test/validate-test card-id definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. The tests of
@@ -42,7 +35,7 @@
   A card test, with its inputs and expectations, is readable by every user who can read its card."
   [_route-params
    {:keys [card-id include-archived]} :- [:map {:closed true}
-                                          [:card-id       {:optional true} [:maybe ms/PositiveInt]]
+                                          [:card-id          {:optional true} [:maybe ms/PositiveInt]]
                                           [:include-archived {:default false} [:maybe ms/BooleanValue]]]]
   (api/check-data-studio-access)
   (-> (mi/readable (data-testing.db/card-tests {:card-id card-id :include-archived? include-archived}))
@@ -94,10 +87,7 @@
    body :- ::data-testing.schema/card-test.update]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (refusing #(data-testing.subject/check-not-archived :card (data-testing.db/card (:card_id (merge card-test body)))))
-    (when (some #(contains? body %) (cons :card_id data-testing.runner/definition-keys))
-      (let [{:keys [card_id] :as merged} (merge card-test body)]
-        (validate-test! card_id (data-testing.runner/test-definition merged))))
+    (refusing #(data-testing.models.card-test/check-edit (merge card-test body) (vec (keys body))))
     (when (seq body)
       (data-testing.models.card-test/update-card-test! id body)))
   (data-testing.db/card-test id))
@@ -131,7 +121,9 @@
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/check-403 (data-testing.models.card-test/can-run? card-test))
-    (refusing #(data-testing.runner/run-test! :card (testable-card (:card_id card-test)) card-test))))
+    (refusing #(data-testing.runner/run-test! :card
+                                              (data-testing.models.card-test/testable-card (:card_id card-test))
+                                              card-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/card-test` routes."

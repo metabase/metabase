@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -123,6 +124,36 @@
   [segment-id]
   (data-testing.db/delete-segment-tests! segment-id))
 
+;;; -------------------------------------------------- Validation --------------------------------------------------
+
+(mu/defn testable-segment :- [:maybe :map]
+  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test (see
+  [[data-testing.subject.segment/check-testable]])."
+  [segment-id :- ::lib.schema.id/segment]
+  (doto (data-testing.db/segment segment-id)
+    (data-testing.subject.segment/check-testable)))
+
+(mu/defn validate-test :- :nil
+  "Throws the typed refusal of a test of the Segment `segment-id` with the inputs and expectations of `definition`
+  that could not run."
+  [segment-id :- ::lib.schema.id/segment
+   definition :- ::data-testing.runner/definition]
+  (data-testing.runner/validate-test :segment (testable-segment segment-id) definition))
+
+(mu/defn check-edit :- :nil
+  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a segment test and leaves it as `edited`. An
+  edit that sets the segment or what a run reads is refused as a new test like `edited` would be. Any other edit is
+  refused when the segment is archived."
+  [edited      :- [:map [:segment_id ::lib.schema.id/segment]]
+   edited-keys :- [:sequential :keyword]]
+  (if (data-testing.models/validates-edit? :segment_id edited-keys)
+    (validate-test (:segment_id edited) (data-testing.runner/test-definition edited))
+    (let [segment (data-testing.db/segment (:segment_id edited))]
+      ;; A new test of an archived segment with no query is refused for having no query; so is this edit.
+      (when (:archived segment)
+        (data-testing.subject.segment/check-testable segment))
+      (data-testing.subject/check-not-archived :segment segment))))
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -134,13 +165,11 @@
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
-  [_id _user-id snapshot]
+  [id _user-id snapshot]
   (data-testing.models/check-revert-available)
   (data-testing.errors/refusing
    "segment-test"
-   #(let [segment (data-testing.db/segment (:segment_id snapshot))]
-      (data-testing.subject.segment/check-testable segment)
-      (data-testing.runner/validate-test :segment segment (data-testing.runner/test-definition snapshot))))
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/segment-test id) snapshot)))
   snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------

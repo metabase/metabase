@@ -18,7 +18,8 @@
 
 (defn check-testable
   "Throws `::data-testing.errors/uncompilable-subject` when `segment` has no query to test: its definition reads back
-  empty, or names a table that does not exist. Nil `segment` passes."
+  empty, names no table, or names a table that no longer exists or that sync has marked inactive. Nil `segment`
+  passes."
   [{:keys [definition] :as segment}]
   (when segment
     (when (empty? definition)
@@ -26,11 +27,17 @@
               ::data-testing.errors/uncompilable-subject
               (tru "The segment''s definition is empty or unreadable, so there is no query to test.")
               {})))
-    (when-not (some-> (lib/primary-source-table-id definition) data-testing.db/table-exists?)
-      (throw (data-testing.errors/ex
-              ::data-testing.errors/uncompilable-subject
-              (tru "The segment''s table does not exist, so there is no query to test.")
-              {})))))
+    (let [table-id (lib/primary-source-table-id definition)]
+      (when-not table-id
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncompilable-subject
+                (tru "The segment''s definition names no table, so there is no query to test.")
+                {})))
+      (when-not (data-testing.db/active-table-exists? table-id)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/uncompilable-subject
+                (tru "The segment''s table no longer exists, so there is no query to test.")
+                {}))))))
 
 (mu/defn- with-declared-columns :- ::lib.schema/query
   "`definition` selecting only the columns of its table that the `:rows` input for that table declares, names compared

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.util :as data-testing.u]
@@ -121,6 +122,22 @@
                   (mt/user-http-request :crowberto :put 422 (str "ee/card-test/" test-id)
                                         {:inputs [(assoc (first inputs) :rows [{"ID" 2 "NAME" "def"}])]})))
           (is (= before (t2/select-one :model/CardTest :id test-id))))))))
+
+(deftest an-archived-card-with-no-query-gets-one-refusal-test
+  (testing "a card that is archived and has no query is refused for having no query, on every write and on a run"
+    (mt/with-premium-features #{:transforms-testing}
+      (mt/with-temp [:model/Card     {card-id :id} (assoc (card) :dataset_query {} :archived true)
+                     :model/CardTest {test-id :id} {:card_id card-id :inputs inputs :expectations expectations}]
+        (let [path    (str "ee/card-test/" test-id)
+              refused {:error-code "card-test.uncompilable-subject"}]
+          (testing "premise: the card is archived and has no query"
+            (is (=? {:archived true :dataset_query {}} (t2/select-one :model/Card :id card-id))))
+          (is (=? refused (mt/user-http-request :crowberto :post 422 "ee/card-test" (body card-id))))
+          (is (=? refused (mt/user-http-request :crowberto :post 422 (str path "/run"))))
+          (testing "an edit of the name"
+            (is (=? refused (mt/user-http-request :crowberto :put 422 path {:name "Renamed"}))))
+          (testing "an edit of the inputs"
+            (is (=? refused (mt/user-http-request :crowberto :put 422 path {:inputs inputs})))))))))
 
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (mt/with-premium-features #{:transforms-testing}
@@ -434,22 +451,21 @@
       (let [test-id     (:id (mt/user-http-request :crowberto :post 200 "ee/card-test" (body archived-id)))
             path        (str "ee/card-test/" test-id)
             _           (mt/user-http-request :crowberto :put 200 path {:card_id active-id})
-            creation-id (:id (first (filter :is_creation
-                                            (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id)))))]
+            creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                             (m/find-first :is_creation)
+                             :id)]
         (try
           (t2/update! :model/Card :id archived-id {:archived true})
           (testing "a revert to the revision on the archived card is refused, and leaves the test where it is"
             (is (pos-int? creation-id))
             (is (=? {:error-code "card-test.archived-subject"}
-                    (mt/user-http-request :crowberto :post 422 "revision/revert" {:entity      "card-test"
-                                                                                  :id          test-id
-                                                                                  :revision_id creation-id})))
+                    (mt/user-http-request :crowberto :post 422 "revision/revert"
+                                          {:entity "card-test" :id test-id :revision_id creation-id})))
             (is (= active-id (t2/select-one-fn :card_id :model/CardTest :id test-id))))
           (testing "control: once the card is restored, the same revert moves the test back"
             (t2/update! :model/Card :id archived-id {:archived false})
-            (mt/user-http-request :crowberto :post 200 "revision/revert" {:entity      "card-test"
-                                                                          :id          test-id
-                                                                          :revision_id creation-id})
+            (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                  {:entity "card-test" :id test-id :revision_id creation-id})
             (is (= archived-id (t2/select-one-fn :card_id :model/CardTest :id test-id))))
           (finally
             (t2/delete! :model/CardTest :id test-id)))))))
@@ -467,8 +483,9 @@
                                  :expectations (mapv #(update % :type keyword) expectations)
                                  :creator_id   (mt/user->id :crowberto)})))
             path        (str "ee/card-test/" test-id)
-            creation-id (:id (first (filter :is_creation
-                                            (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id)))))]
+            creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                             (m/find-first :is_creation)
+                             :id)]
         (try
           (is (pos-int? creation-id) "premise: the test has a creation revision")
           (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
@@ -477,9 +494,23 @@
                     (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
           (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
             (is (=? {:error-code "card-test.missing-inputs"}
-                    (mt/user-http-request :crowberto :post 400 "revision/revert" {:entity      "card-test"
-                                                                                  :id          test-id
-                                                                                  :revision_id creation-id})))
+                    (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                          {:entity "card-test" :id test-id :revision_id creation-id})))
             (is (= 1 (count (:inputs (t2/select-one :model/CardTest :id test-id))))))
+          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the inputs is refused"
+            (let [revision-id (-> (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id))
+                                  first
+                                  :id)]
+              (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})
+              ;; The card now reads a column that the inputs lack.
+              (t2/update! :model/Card :id subject-id
+                          {:dataset_query (lib/native-query (mt/metadata-provider)
+                                                            "SELECT ID, NAME, EMAIL FROM PUBLIC.PEOPLE")})
+              (testing "premise: an edit of the inputs is refused"
+                (is (=? {:error-code "card-test.missing-input-columns"}
+                        (mt/user-http-request :crowberto :put 400 path {:inputs inputs}))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "card-test" :id test-id :revision_id revision-id})
+              (is (= "No inputs" (t2/select-one-fn :name :model/CardTest :id test-id)))))
           (finally
             (t2/delete! :model/CardTest :id test-id)))))))

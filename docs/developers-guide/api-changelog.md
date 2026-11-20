@@ -68,6 +68,12 @@ summary: Breaking changes to the Metabase API, listed by release.
   `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
   `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
 
+- `POST /api/revision/revert` with `entity` `transform-test` refuses a revert that an edit of the test to the same
+  state, `PUT /api/ee/transform-test/:id`, would refuse, with the status and `error-code` of that edit's refusal, such
+  as `400` and `transform-test.missing-input-columns`. Only a revert that changes the test's transform, inputs,
+  expectations or `now` is checked; a revert that changes only its name or description is not. Such a revert
+  succeeded before.
+
 - Data apps name their slug and their display name as their `data_app.yaml` does: `slug` holds the slug that
   `name` held, and `name` holds the display name that `display_name` held. The `/api/ee/apps` endpoints return `slug` and
   `name`, and a data app node of the dependency endpoints has `slug` and `name`.

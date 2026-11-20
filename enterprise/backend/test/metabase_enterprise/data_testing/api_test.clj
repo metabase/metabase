@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib-be.core :as lib-be]
@@ -462,8 +463,9 @@
                                  :expectations (mapv #(update % :type keyword) expectations)
                                  :creator_id   (mt/user->id :crowberto)})))
             path        (str "ee/transform-test/" test-id)
-            creation-id (:id (first (filter :is_creation
-                                            (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id)))))]
+            creation-id (->> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                             (m/find-first :is_creation)
+                             :id)]
         (try
           (is (pos-int? creation-id) "premise: the test has a creation revision")
           (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
@@ -472,9 +474,24 @@
                     (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
           (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
             (is (=? {:error-code "transform-test.missing-inputs"}
-                    (mt/user-http-request :crowberto :post 400 "revision/revert" {:entity      "transform-test"
-                                                                                  :id          test-id
-                                                                                  :revision_id creation-id})))
+                    (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                          {:entity "transform-test" :id test-id :revision_id creation-id})))
             (is (= 1 (count (:inputs (t2/select-one :model/TransformTest :id test-id))))))
+          (testing "a revert of the name alone is not validated, so it succeeds where an edit of the inputs is refused"
+            (let [revision-id (-> (mt/user-http-request :crowberto :get 200 (str "revision/transform-test/" test-id))
+                                  first
+                                  :id)]
+              (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})
+              ;; The transform now reads a column that the inputs lack.
+              (t2/update! :model/Transform :id subject-id
+                          {:source {:type  :query
+                                    :query (lib/native-query (mt/metadata-provider)
+                                                             "SELECT ID, NAME, EMAIL FROM PUBLIC.PEOPLE")}})
+              (testing "premise: an edit of the inputs is refused"
+                (is (=? {:error-code "transform-test.missing-input-columns"}
+                        (mt/user-http-request :crowberto :put 400 path {:inputs inputs}))))
+              (mt/user-http-request :crowberto :post 200 "revision/revert"
+                                    {:entity "transform-test" :id test-id :revision_id revision-id})
+              (is (= "No inputs" (t2/select-one-fn :name :model/TransformTest :id test-id)))))
           (finally
             (t2/delete! :model/TransformTest :id test-id)))))))

@@ -3025,4 +3025,5 @@
        (fn [^java.sql.Connection conn]
          (is (false? (.getAutoCommit conn)))
          (is (thrown-with-msg? Exception #"more parameters than we can handle"
-                               (with-open [_stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1 -- ?" [1])]))))))))
+                               (with-open [_stmt (sql-jdbc.execute/prepared-statement
+                                                  :postgres conn "SELECT 1 -- ?" [1])]))))))))
