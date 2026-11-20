@@ -103,6 +103,7 @@
    [:name                                     ::lib.schema.common/non-blank-string]
    [:schema                   {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:is_writable              {:optional true} [:maybe :boolean]]
+   [:is_upload                {:optional true} [:maybe :boolean]]
    [:estimated_row_count      {:optional true} [:maybe :int]]
    [:database_require_filter {:optional true} [:maybe :boolean]]
    [:description             {:optional true} [:maybe :string]]
@@ -169,6 +170,8 @@
                                         (warehouse-schema.humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
            :is_writable             (:is_writable table)}
+          (when (:is_upload table)
+            {:is_upload true})
           (when (:field_order table)
             {:field_order (:field_order table)})
           (when (:data_source table)
@@ -185,6 +188,22 @@
   [database :- i/DatabaseInstance
    table    :- TableMetadata]
   (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
+
+(mu/defn set-table-schema!
+  "Record `schema` as the schema of the Table with `table-id`."
+  [table-id :- ::lib.schema.id/table
+   schema   :- [:maybe :string]]
+  (sync.db/update-table! table-id {:schema schema}))
+
+(mu/defn activate-table!
+  "Mark the Table with `table-id` active."
+  [table-id :- ::lib.schema.id/table]
+  (sync.db/update-table! table-id {:active true}))
+
+(mu/defn deactivate-table!
+  "Mark the Table with `table-id` inactive."
+  [table-id :- ::lib.schema.id/table]
+  (sync.db/update-table! table-id {:active false}))
 
 (mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`

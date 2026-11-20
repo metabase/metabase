@@ -29,10 +29,11 @@
         user-settable-field-columns))
 
 (def user-settable-table-columns
-  "The Table columns users can set, whose values `metabase_table` holds while `metabase_table_user_settings` records
-  which ones a user set."
+  "The Table columns users and other writers than sync set, whose values `metabase_table` holds while
+  `metabase_table_user_settings` records which ones were set."
   #{:display_name :description :entity_type :visibility_type :caveats :points_of_interest :data_layer :data_source
-    :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id})
+    :owner_email :owner_user_id :field_order :show_in_getting_started :data_authority :is_published :collection_id
+    :transform_id})
 
 (def table-set-flags
   "The user-settable Table columns something besides users also writes, mapped to the flag that says the user set the

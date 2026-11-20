@@ -1,6 +1,8 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -130,3 +132,22 @@
       (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
+
+(deftest transform-owner-recorded-in-settings-test
+  (testing "the Transform that writes a Table is recorded in its settings and its row"
+    (mt/with-temp [:model/Table     {table-id :id :as table} {}
+                   :model/Transform {transform-id :id}       {:name   "Owner"
+                                                              :source {:type  :query
+                                                                       :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                                              :target {:database (mt/id) :type "table" :name "owned"}}]
+      (table-user-settings/upsert-table-user-settings! table {:transform_id transform-id})
+      (is (= transform-id (t2/select-one-fn :transform_id :model/TableUserSettings :table_id table-id)))
+      (is (= transform-id (:transform_id (user-table table-id)))))))
+
+(deftest unpublish-in-collections-leaves-no-empty-settings-test
+  (testing "unpublishing Tables whose Collection goes away leaves no settings behind for Tables without other values"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Table      {table-id :id}      {:collection_id collection-id :is_published true}]
+      (is (= #{table-id} (collection/unpublish-in-collections! :model/Table [collection-id])))
+      (is (nil? (t2/select-one :model/TableUserSettings :table_id table-id)))
+      (is (nil? (:collection_id (user-table table-id)))))))

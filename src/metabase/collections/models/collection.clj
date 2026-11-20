@@ -1636,6 +1636,12 @@
   `(binding [*allow-modifying-tenant-root-collections?* true]
      (do ~@body)))
 
+(defmulti unpublish-in-collections!
+  "Detach the items of `model` from the Collections with `collection-ids`, which are going away, returning the ids of the
+  ones that were published."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
 (defenterprise unpublish-downstream-fk-tables!
   "When Library tables are unpublished because their collection is archived or deleted, also unpublish any tables that
   depend on them via FK remapping (Dimensions) so implicit joins are not broken. OSS no-op."
@@ -2059,9 +2065,7 @@
     (collections.db/archive-items-in-collections! :model/Action ids)
     (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
       (when (seq library-data-ids)
-        (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-          (collections.db/unpublish-tables-in-collections! library-data-ids)
-          (unpublish-downstream-fk-tables! published-table-ids))))))
+        (unpublish-downstream-fk-tables! (unpublish-in-collections! :model/Table library-data-ids))))))
 
 (defn- restore-subtree!
   "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
@@ -2172,10 +2176,8 @@
     (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
   ;; delete all collection children
   (collections.db/delete-collections-at-location! (children-location collection))
-  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
-        published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
-    (collections.db/unpublish-tables-in-collections! affected-collection-ids)
-    (unpublish-downstream-fk-tables! published-table-ids)
+  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+    (unpublish-downstream-fk-tables! (unpublish-in-collections! :model/Table affected-collection-ids))
     (collections.db/delete-cards-in-collections! affected-collection-ids)
     (collections.db/delete-dashboards-in-collections! affected-collection-ids)
     (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)

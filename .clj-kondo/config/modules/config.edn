@@ -707,7 +707,6 @@
                     :model/Permissions
                     :model/Pulse
                     :model/Table
-                    :model/TableUserSettings
                     :model/Timeline
                     :model/User}}
 
@@ -3328,6 +3327,7 @@
            transforms.indexes
            util
            warehouses
+           warehouses.schema
            workspaces}}
 
   transforms.feature-gating

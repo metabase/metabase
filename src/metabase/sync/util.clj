@@ -471,6 +471,14 @@
             0
             (partition-all *batch-size* ids))))
 
+(defn set-initial-tables-sync-complete!
+  "Marks initial sync as complete for the Tables with `table-ids`, so that they become usable in the UI."
+  [table-ids]
+  (reduce (fn [acc ids']
+            (+ acc (sync.db/update-tables! ids' {:initial_sync_status "complete"})))
+          0
+          (partition-all *batch-size* table-ids)))
+
 (defn set-initial-database-sync-complete!
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]

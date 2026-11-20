@@ -94,10 +94,12 @@
         entities))
 
 (defn table-user-settings-import-dependencies
-  "The Collection each of the TableUserSettings `entities` depends on, if any."
+  "The Collection and the Transform each of the TableUserSettings `entities` depends on, if any."
   [entities]
-  (mapv (fn [{:keys [collection_id]}]
-          (cond-> #{} collection_id (conj [:model/Collection collection_id])))
+  (mapv (fn [{:keys [collection_id transform_id]}]
+          (cond-> #{}
+            collection_id (conj [:model/Collection collection_id])
+            transform_id  (conj [:model/Transform transform_id])))
         entities))
 
 (defn- without-derived-half

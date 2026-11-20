@@ -9,6 +9,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.core :as warehouse-schema]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (mu/defn current-database
@@ -62,28 +63,21 @@
    name->display-name :- [:map-of :string :string]]
   (let [user-edited        (user-edited-field-names table-id (set (keys name->display-name)))
         name->display-name (apply dissoc name->display-name user-edited)]
-    (doseq [{:keys [id name display_name]} (when (seq name->display-name)
-                                             (t2/select [:model/Field :id :name :display_name]
-                                                        {:where [:and
-                                                                 [:= :table_id table-id]
-                                                                 [:in [:lower :name] (keys name->display-name)]]}))
+    (doseq [{:keys [name display_name] :as field} (when (seq name->display-name)
+                                                    (t2/select :model/Field
+                                                               {:where [:and
+                                                                        [:= :table_id table-id]
+                                                                        [:in [:lower :name] (keys name->display-name)]]}))
             :let  [lower-name (u/lower-case-en name)]
             :when (= display_name (humanization/name->human-readable-name lower-name))]
-      (t2/update! :model/Field :id id {:display_name (name->display-name lower-name)}))))
-
-(mu/defn mark-table-upload!
-  "Flag the Table with `table-id` as an authoritative, writable upload table."
-  [table-id :- ::lib.schema.id/table]
-  (t2/update! :model/Table :id table-id {:is_upload      true
-                                         :data_authority :authoritative
-                                         :data_source    :upload
-                                         :is_writable    true}))
+      (field-user-settings/upsert-field-user-settings! field {:display_name (name->display-name lower-name)}))))
 
 (mu/defn set-field-display-name!
   "Set the display name of the Field with `field-id`."
   [field-id     :- ::lib.schema.id/field
    display-name :- :string]
-  (t2/update! :model/Field :id field-id {:display_name display-name}))
+  (field-user-settings/upsert-field-user-settings! (t2/select-one :model/Field :id field-id)
+                                                   {:display_name display-name}))
 
 (mu/defn unarchived-models-for-table
   "The query-relevant columns of the unarchived model Cards of the Table with `table-id`."
@@ -106,11 +100,6 @@
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
   (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
-
-(mu/defn deactivate-table!
-  "Mark the Table with `table-id` inactive."
-  [table-id :- ::lib.schema.id/table]
-  (t2/update! :model/Table :id table-id {:active false}))
 
 (mu/defn archive-cards-for-table!
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
