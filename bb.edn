@@ -406,11 +406,12 @@
 
   print-json-schema
   {:group "Local dev"
-   :doc "Print the JSON Schema of a registered Malli schema."
+   :doc "Print one JSON Schema for the given registered Malli schemas, as serialization writes them."
    :examples [["./bin/mage print-json-schema :metabase.lib.schema/external-query" "Print the JSON Schema of an MBQL 5 query"]
-              ["./bin/mage print-json-schema :metabase.lib.schema/external-query > query.json" "Write it to a file"]]
+              ["./bin/mage print-json-schema :metabase.queries.schema/external-card :metabase.dashboards.schema/external-dashboard > schema.json"
+               "Write one schema with a property per keyword, sharing their definitions"]]
    :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
-   :arg-schema [:tuple [:string {:description "Namespaced keyword of the Malli schema"}]]
+   :arg-schema [:sequential {:min 1} [:string {:name "schema" :description "Namespaced keyword of a Malli schema"}]]
    :requires [[mage.print-json-schema :as print-json-schema]]
    :task (task! (print-json-schema/print! parsed))}
 
