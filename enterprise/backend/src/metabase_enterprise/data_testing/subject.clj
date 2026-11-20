@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -27,7 +28,7 @@
 
 (mr/def ::subject-type
   "The kinds of entity a test can run."
-  [:enum :transform :card :segment])
+  [:enum :transform :card :action :segment])
 
 (mr/def ::card
   "A saved Card a test can run, with its MBQL 5 query."
@@ -37,6 +38,10 @@
     [:id            ::lib.schema.id/card]
     [:name          :string]
     [:dataset_query ::lib.schema/query]]])
+
+(mr/def ::action
+  "A saved Action a test can run, as `metabase.actions.core/select-action` returns it."
+  ::actions.schema/action)
 
 (mr/def ::segment
   "A saved Segment a test can run, with its MBQL 5 definition."
@@ -48,7 +53,7 @@
 
 (mr/def ::subject
   "An entity a test can run, of one of the [[::subject-type]]s."
-  [:or ::transforms.schema/transform ::card ::segment])
+  [:or ::transforms.schema/transform ::card ::action ::segment])
 
 (mr/def ::subject-plan
   "What a run needs from its subject: the database it runs on, its SQL before any temp-table rewrite, compiled with

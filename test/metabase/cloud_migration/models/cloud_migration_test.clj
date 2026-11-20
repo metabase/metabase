@@ -252,7 +252,8 @@
           :model/TransformTag
           :model/TransformTransformTag}
         (when config/ee-available?
-          [:model/CardTest
+          [:model/ActionTest
+           :model/CardTest
            :model/ConnectionImpersonation
            :model/ContentDiagnosticsFinding
            :model/CustomVizPlugin

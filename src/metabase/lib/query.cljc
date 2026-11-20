@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -332,6 +333,14 @@
    table-id :- [:or ::lib.schema.id/table :string]]
   (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
     (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
+
+(mu/defn with-parameters :- ::lib.schema/query
+  "`a-query` with `parameters` in place of the parameters it had. Nil leaves it without parameters."
+  [a-query    :- ::lib.schema/query
+   parameters :- [:maybe [:ref ::lib.schema.parameter/parameters]]]
+  (if (nil? parameters)
+    (dissoc a-query :parameters)
+    (assoc a-query :parameters parameters)))
 
 (defn- occurs-in-expression?
   [expression-clause clause-type expression-body]

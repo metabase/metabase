@@ -13,6 +13,8 @@
    [metabase.driver.connection :as driver.conn]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
@@ -47,6 +49,19 @@
     (throw (ex-info (tru "You do not have permissions to run this action.")
                     {:type qp.error-type/missing-required-permissions, :status-code 403}))))
 
+(mu/defn query-with-parameter-values :- ::lib.schema/query
+  "The query of `action`, a query action, with `parameter-values`, of shape `{<parameter-id> <value>}`, as the values of
+  the action's parameters."
+  [{query :dataset_query, :as action} :- ::actions.schema/action.executable
+   parameter-values                   :- RequestParameters]
+  (lib/with-parameters
+    query
+    (vec (for [parameter (:parameters action)]
+           ;; the query gets the parameter values, not the frontend's widget settings
+           (-> parameter
+               (select-keys [:id :type :target :slug :name :default :required :options])
+               (assoc :value (get parameter-values (:id parameter))))))))
+
 (mu/defn- execute-query-action!
   "Execute a `QueryAction` with parameters as passed in from an
   endpoint of shape `{<parameter-id> <value>}`.
@@ -58,13 +73,8 @@
   (log/tracef "Executing action %d" action-id)
   (driver.conn/with-write-connection
     (try
-      (let [parameters        (for [parameter (:parameters action)]
-                                ;; the query gets the parameter values, not the frontend's widget settings
-                                (-> parameter
-                                    (select-keys [:id :type :target :slug :name :default :required :options])
-                                    (assoc :value (get request-parameters (:id parameter)))))
-            substituted-query (-> query
-                                  (assoc :parameters parameters))
+      (let [substituted-query (query-with-parameter-values action request-parameters)
+            parameters        (:parameters substituted-query)
             ;; the routed destination database and the impersonation flag are only knowable from inside the
             ;; writeback QP's middleware stack
             execution-context (volatile! nil)]
@@ -236,6 +246,63 @@
                                                             :check-access #(check-action-read-perms action)})
           (with-parameter-columns-only action pk-column)))))
 
+(defn remap-parameter-keys
+  "Translate incoming `parameters` keys to the destination parameter `:id` the
+   downstream executor expects.
+
+   Query-action parameters have UUID `:id`s with human-readable `:slug` aliases;
+   the FE typically sends keys by `:slug` (that's what shows up in the typed
+   schema export and in the action editor UI). Implicit-action parameters use
+   a slug-form value as their `:id`, so the keys already match.
+
+   Resolution order per incoming key:
+     1. Already matches a destination `:id` → passed through.
+     2. Matches a destination `:slug` → remapped to that parameter's `:id`.
+     3. No match → passed through unchanged so the downstream validator still
+        reports it as 'no destination parameter found'."
+  [{action-params :parameters} parameters]
+  (let [valid-ids (into #{} (map :id) action-params)
+        slug->id  (into {} (keep (fn [p] (when-let [s (:slug p)] [s (:id p)]))) action-params)]
+    (update-keys parameters
+                 (fn [k]
+                   (cond
+                     (contains? valid-ids k) k
+                     (contains? slug->id k)  (get slug->id k)
+                     :else                   k)))))
+
+(mu/defn- with-default-values :- RequestParameters
+  "`request-parameters`, of shape `{<parameter-id> <value>}`, with the default value of each parameter of `action` that
+  `request-parameters` leaves out and that has a default. Throws a 400 when `request-parameters` gives a value for a
+  hidden parameter or for no parameter of `action`."
+  [action             :- ::actions.schema/action.executable
+   request-parameters :- RequestParameters]
+  (let [;; if a value is supplied for a hidden parameter, it should raise an error
+        field-settings         (get-in action [:visualization_settings :fields])
+        hidden-param-ids       (->> (vals field-settings)
+                                    (filter :hidden)
+                                    (map :id))
+        destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
+        _ (check-no-extra-parameters request-parameters destination-param-ids)
+        ;; add default values for missing parameters (including hidden ones)
+        all-param-ids          (set (map :id (:parameters action)))
+        provided-param-ids     (set (keys request-parameters))
+        missing-param-ids      (set/difference all-param-ids provided-param-ids)
+        missing-param-defaults (into {}
+                                     (keep (fn [param-id]
+                                             (when-let [default-value (get-in field-settings [param-id :defaultValue])]
+                                               [param-id default-value])))
+                                     missing-param-ids)]
+    (merge missing-param-defaults request-parameters)))
+
+(mu/defn parameter-values :- RequestParameters
+  "Returns the values of the parameters of `action` for a run from an `/api/action` execute endpoint with
+  `request-parameters`, keyed by parameter id. `request-parameters` maps a parameter's id or slug to its value, and a
+  parameter it leaves out takes its default value; one with no default has no entry. Throws a 400 when
+  `request-parameters` gives a value for a hidden parameter or for no parameter of `action`."
+  [action             :- ::actions.schema/action.executable
+   request-parameters :- RequestParameters]
+  (with-default-values action (remap-parameter-keys action request-parameters)))
+
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
   ([action              :- ::actions.schema/action.executable
@@ -245,23 +312,7 @@
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
    (workspaces/check-not-in-workspace-mode! "Actions")
-   (let [;; if a value is supplied for a hidden parameter, it should raise an error
-         field-settings         (get-in action [:visualization_settings :fields])
-         hidden-param-ids       (->> (vals field-settings)
-                                     (filter :hidden)
-                                     (map :id))
-         destination-param-ids  (set/difference (set (map :id (:parameters action))) (set hidden-param-ids))
-         _ (check-no-extra-parameters request-parameters destination-param-ids)
-         ;; add default values for missing parameters (including hidden ones)
-         all-param-ids          (set (map :id (:parameters action)))
-         provided-param-ids     (set (keys request-parameters))
-         missing-param-ids      (set/difference all-param-ids provided-param-ids)
-         missing-param-defaults (into {}
-                                      (keep (fn [param-id]
-                                              (when-let [default-value (get-in field-settings [param-id :defaultValue])]
-                                                [param-id default-value])))
-                                      missing-param-ids)
-         request-parameters     (merge missing-param-defaults request-parameters)]
+   (let [request-parameters (with-default-values action request-parameters)]
      (case (:type action)
        :implicit
        (execute-implicit-action! action request-parameters opts)

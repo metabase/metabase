@@ -3,7 +3,12 @@ import type { Card } from "./card";
 import type { Collection, RegularCollectionId } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { DataApp } from "./data-app";
-import type { CardTest, SegmentTest, TransformTest } from "./data-test";
+import type {
+  ActionTest,
+  CardTest,
+  SegmentTest,
+  TransformTest,
+} from "./data-test";
 import type { Document } from "./document";
 import type { FieldDimension, FieldUserSettings } from "./field";
 import type { GlossaryItem } from "./glossary";
@@ -24,6 +29,13 @@ export type RemoteSyncActionData = Pick<
   WritebackAction,
   "id" | "name" | "type" | "model_id" | "collection_id" | "model" | "collection"
 >;
+
+export type RemoteSyncActionTestData = Pick<
+  ActionTest,
+  "id" | "name" | "action_id"
+> & {
+  action?: RemoteSyncActionData | null;
+};
 
 export type RemoteSyncCardData = Pick<
   Card,
@@ -112,6 +124,7 @@ export type RemoteSyncTransformTestData = Pick<
 
 type RemoteSyncItemDataByModel = {
   action: RemoteSyncActionData;
+  actiontest: RemoteSyncActionTestData;
   card: RemoteSyncCardData;
   cardtest: RemoteSyncCardTestData;
   collection: RemoteSyncCollectionData;

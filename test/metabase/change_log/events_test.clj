@@ -317,6 +317,7 @@
   "The models we do not want tracked. [[tracked-models-test]] checks that none has a change-log spec. A new model
   goes here, or in [[tracked-models]] when a reader of the change log needs its changes."
   #{:model/Action
+    :model/ActionTest
     :model/AgentApiCallLog
     :model/AiUsageLog
     :model/AnalysisFinding

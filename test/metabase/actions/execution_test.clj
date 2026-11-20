@@ -7,6 +7,7 @@
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -270,3 +271,89 @@
                          (actions.execution/execute-action! action {"id" 1 "name" "Bird"}))))
                 (is (= 1 @attempts)))
               (is (empty? (mt/action-executions since))))))))))
+
+(deftest remap-parameter-keys-test
+  (testing "remap-parameter-keys translates incoming parameter keys to the destination parameter's :id"
+    (let [action {:parameters [{:id "d800e41d-edde-49cb-b63b-2386aba34334"
+                                :slug "id"
+                                :name "ID"}
+                               {:id "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b"
+                                :slug "discount"
+                                :name "Discount"}]}]
+      (testing "slug-keyed input is remapped to :id"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (actions.execution/remap-parameter-keys action
+                                                       {"id" 1 "discount" 0.1}))))
+      (testing "already-:id-keyed input is passed through unchanged"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (actions.execution/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}))))
+      (testing "display-name keys (`:name`) are NOT accepted — they pass through unchanged"
+        (is (= {"ID" 1 "Discount" 0.1}
+               (actions.execution/remap-parameter-keys action
+                                                       {"ID" 1 "Discount" 0.1}))))
+      (testing "unknown keys pass through unchanged so downstream validation still fires"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "bogus" 42}
+               (actions.execution/remap-parameter-keys action
+                                                       {"id" 1 "bogus" 42}))))
+      (testing "a mix of :id and :slug keys resolve together"
+        (is (= {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                "58c9e1ca-2f3a-4e57-96d9-2507c21a9a4b" 0.1}
+               (actions.execution/remap-parameter-keys
+                action
+                {"d800e41d-edde-49cb-b63b-2386aba34334" 1
+                 "discount" 0.1}))))
+      (testing "empty parameters map → empty result"
+        (is (= {}
+               (actions.execution/remap-parameter-keys action {}))))
+      (testing "implicit-action style (no :slug) — :id-keyed input still passes through"
+        (let [implicit-action {:parameters [{:id "name" :name "Name"}
+                                            {:id "email" :name "Email"}]}]
+          (is (= {"name" "Foo" "email" "foo@bar.com"}
+                 (actions.execution/remap-parameter-keys
+                  implicit-action
+                  {"name" "Foo" "email" "foo@bar.com"}))))))))
+
+(deftest parameter-values-test
+  (let [action {:id                     1
+                :name                   "Refund"
+                :type                   :query
+                :parameters             [{:id "p-order" :slug "order_id" :name "Order ID" :type :number}
+                                         {:id "p-status" :slug "status" :name "Status" :type :text}
+                                         {:id "p-note" :slug "note" :name "Note" :type :text}]
+                :visualization_settings {:fields {"p-status" {:id "p-status" :hidden true :defaultValue "refunded"}
+                                                  "p-note"   {:id "p-note" :defaultValue "none"}}}}
+        refusal (fn [request-parameters]
+                  (try (actions.execution/parameter-values action request-parameters)
+                       nil
+                       (catch ExceptionInfo e (select-keys (ex-data e) [:status-code]))))]
+    (testing "a value keyed by slug goes to the parameter's id, and a missing parameter takes its default"
+      (is (= {"p-order" 1 "p-status" "refunded" "p-note" "none"}
+             (actions.execution/parameter-values action {"order_id" 1}))))
+    (testing "a value given for a parameter with a default replaces the default"
+      (is (= {"p-order" 1 "p-status" "refunded" "p-note" "late"}
+             (actions.execution/parameter-values action {"p-order" 1 "note" "late"}))))
+    (testing "a parameter with no value and no default has none"
+      (is (= {"p-status" "refunded" "p-note" "none"}
+             (actions.execution/parameter-values action {}))))
+    (testing "a value for a hidden parameter is refused"
+      (is (= {:status-code 400} (refusal {"order_id" 1 "status" "paid"}))))
+    (testing "a value for no parameter is refused"
+      (is (= {:status-code 400} (refusal {"order_id" 1 "bogus" 2}))))))
+
+(deftest query-with-parameter-values-test
+  (mt/test-driver :h2
+    (mt/with-actions-enabled
+      (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories)}
+                        {:keys [action-id]} {}]
+        (testing "the action's query, given parameter values, compiles to the SQL a run of the action executes"
+          (is (=? {:query  #"(?s)UPDATE categories.*concat\(\?, ' ', 'Sh', 'op'\).*WHERE id = 1"
+                   :params ["Toy"]}
+                  (qp.compile/compile
+                   (actions.execution/query-with-parameter-values (action/select-action :id action-id)
+                                                                  {"id" 1 "name" "Toy"})))))))))

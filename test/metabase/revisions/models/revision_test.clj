@@ -137,6 +137,7 @@
                                        :model/Transform   "Transform"}
                                 config/ee-available? (assoc :model/TransformTest "Transform test"
                                                             :model/CardTest      "Card test"
+                                                            :model/ActionTest    "Action test"
                                                             :model/SegmentTest   "Segment test"))]
       ;; a model with a revision spec has Revisions.
       (is (= (set (remove revisions.spec/parent (filter #(= "model" (namespace %)) (revisions.spec/revisioned-models))))

@@ -301,13 +301,6 @@
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
 
-(deftest last-run-hydration-finds-only-transform-runs-test
-  (mt/with-temp [:model/Transform   {transform-id :id} {}
-                 :model/TransformTest {test-id :id :as transform-test} {:transform_id transform-id}
-                 :model/DataTestRun {transform-run :id} {:test_type :transform, :test_id test-id}
-                 :model/DataTestRun _                   {:test_type :card, :test_id test-id}]
-    (is (= transform-run (-> (t2/hydrate transform-test :last_run) :last_run :id)))))
-
 (deftest deleting-transform-test-keeps-runs-of-other-test-types-test
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}

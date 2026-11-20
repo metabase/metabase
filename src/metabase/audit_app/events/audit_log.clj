@@ -254,6 +254,8 @@
    :event/transform-test-run-timeout      [:test_type :test_id :status]
    :event/card-test-run-start             [:test_type :test_id :status]
    :event/card-test-run-timeout           [:test_type :test_id :status]
+   :event/action-test-run-start           [:test_type :test_id :status]
+   :event/action-test-run-timeout         [:test_type :test_id :status]
    :event/segment-test-run-start          [:test_type :test_id :status]
    :event/segment-test-run-timeout        [:test_type :test_id :status]
    :event/security-advisory-acknowledge   [:advisory_id :title :severity :match_status]
@@ -515,6 +517,14 @@
 (events/derive! :event/card-test-run-timeout ::card-test-event)
 
 (methodical/defmethod events/publish-event! ::card-test-event
+  [topic event]
+  (record-manual! topic event))
+
+(events/derive! ::action-test-event ::event)
+(events/derive! :event/action-test-run-start ::action-test-event)
+(events/derive! :event/action-test-run-timeout ::action-test-event)
+
+(methodical/defmethod events/publish-event! ::action-test-event
   [topic event]
   (record-manual! topic event))
 

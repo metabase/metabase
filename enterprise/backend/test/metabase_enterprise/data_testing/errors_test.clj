@@ -44,6 +44,7 @@
    ::errors/colliding-columns          400
    ::errors/not-a-single-write         400
    ::errors/no-output                  400
+   ::errors/invalid-parameters         400
    ::errors/write-returns-rows         400
    ::errors/parameters-not-taken       400
    ::errors/unsupported-transform      422
@@ -54,6 +55,8 @@
    ::errors/setup-failed               422
    ::errors/expectation-failed         422
    ::errors/uncheckable-write          422
+   ::errors/unsupported-action         422
+   ::errors/actions-disabled           422
    ::errors/unsupported-format         501
    ::errors/now-on-native-sql          501})
 
@@ -84,6 +87,7 @@
              ::errors/colliding-columns
              ::errors/not-a-single-write
              ::errors/no-output
+             ::errors/invalid-parameters
              ::errors/write-returns-rows
              ::errors/parameters-not-taken}
            (types-with-status 400))))
@@ -95,7 +99,9 @@
              ::errors/duplicate-output-columns
              ::errors/setup-failed
              ::errors/expectation-failed
-             ::errors/uncheckable-write}
+             ::errors/uncheckable-write
+             ::errors/unsupported-action
+             ::errors/actions-disabled}
            (types-with-status 422))))
   (testing "what is not built yet is 501"
     (is (= #{::errors/unsupported-format ::errors/now-on-native-sql}
@@ -133,6 +139,9 @@
    ::errors/write-returns-rows         "transform-test.write-returns-rows"
    ::errors/parameters-not-taken       "transform-test.parameters-not-taken"
    ::errors/uncheckable-write          "transform-test.uncheckable-write"
+   ::errors/invalid-parameters         "transform-test.invalid-parameters"
+   ::errors/unsupported-action         "transform-test.unsupported-action"
+   ::errors/actions-disabled           "transform-test.actions-disabled"
    ::errors/unsupported-transform      "transform-test.unsupported-transform"
    ::errors/unsupported-driver         "transform-test.unsupported-driver"
    ::errors/uncompilable-subject       "transform-test.uncompilable-subject"

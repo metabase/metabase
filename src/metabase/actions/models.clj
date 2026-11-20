@@ -19,6 +19,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.models.query :as query]
    [metabase.remote-sync.core :as remote-sync]
@@ -231,6 +232,19 @@
   [query-action]
   (check-details-type (some-> (:action_id query-action) actions.db/action-type-and-model) :query)
   (set-query-database query-action))
+
+(defenterprise delete-action-tests!
+  "Delete the tests of the action `action-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  metabase-enterprise.data-testing.models.action-test
+  [_action-id]
+  nil)
+
+(t2/define-before-delete :model/Action
+  [action]
+  ;; The `action_test.action_id` FK is ON DELETE CASCADE, but a cascade runs no hook, and the ActionTest hook is what
+  ;; sets the test id of the test's runs to null.
+  (delete-action-tests! (:id action))
+  action)
 
 (t2/define-before-update :model/QueryAction
   [query-action]

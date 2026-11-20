@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-testing.models.segment-test-test
-  "SegmentTest model behavior: JSON columns, the newest run, what deleting a test or its segment does, and permissions."
+  "SegmentTest model behavior: JSON columns, what deleting a test or its segment does, and permissions."
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models :as data-testing.models]
@@ -53,18 +53,6 @@
                                                  :inputs       []
                                                  :expectations [{:type "empty" :name "no sql"}]})))
     (is (zero? (t2/count :segment_test :segment_id segment-id)))))
-
-(deftest last-run-hydration-finds-only-segment-runs-test
-  (mt/with-temp [:model/Segment     {segment-id :id}                  (data-testing.test-util/from-google-segment)
-                 :model/SegmentTest {test-id :id :as segment-test}    {:segment_id segment-id}
-                 :model/DataTestRun _                                 {:test_type :segment, :test_id test-id}
-                 :model/DataTestRun {segment-run :id}                 {:test_type :segment, :test_id test-id}
-                 :model/DataTestRun _                                 {:test_type :card, :test_id test-id}]
-    (testing "the newest run of the test, not a run of a card test with the same id"
-      (is (= segment-run (-> (t2/hydrate segment-test :last_run) :last_run :id))))
-    (testing "a test with no runs has none"
-      (mt/with-temp [:model/SegmentTest other {:segment_id segment-id}]
-        (is (nil? (:last_run (t2/hydrate other :last_run))))))))
 
 (deftest deleting-a-segment-test-keeps-its-runs-test
   (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)

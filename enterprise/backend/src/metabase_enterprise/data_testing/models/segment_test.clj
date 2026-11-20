@@ -36,11 +36,6 @@
   {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :last_run]
-  "Add the newest run, or nil, to each segment test."
-  [_model _k segment-tests]
-  (data-testing.models/with-last-runs :segment segment-tests))
-
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
@@ -69,25 +64,6 @@
   ;; Input SQL can read any table of the Database, and the guards do not check what it reads, so reading the
   ;; segment is not enough.
   (segment-allows? mi/can-read? :can_read (:segment_id segment-test)))
-
-(methodical/defmethod t2/batched-hydrate [:model/SegmentTest :can_read]
-  "Add whether the current user can read the segment of each segment test, loading the segments at once."
-  [_model k segment-tests]
-  (data-testing.models/with-readable-subjects k segment-tests :segment_id
-    (data-testing.db/segments-by-ids (into [] (comp (keep :segment_id) (distinct)) segment-tests))))
-
-(methodical/defmethod t2/simple-hydrate [:model/SegmentTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:segment_id instance)))))
-
-(defmethod mi/can-create? :model/SegmentTest
-  [_model instance]
-  (can-save-test? (:segment_id instance)))
-
-(defmethod mi/can-update? :model/SegmentTest
-  [instance changes]
-  (and (mi/can-write? instance)
-       (can-save-test? (:segment_id changes (:segment_id instance)))))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
@@ -129,6 +105,13 @@
   (update-segment-test! id (select-keys snapshot revision-columns)))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod data-testing.models/saved-test-spec :model/SegmentTest
+  [_model]
+  {:test-type   :segment
+   :subject-key :segment_id
+   :subjects    data-testing.db/segments-by-ids
+   :can-save?   can-save-test?})
 
 (defmethod events/spec :model/SegmentTest
   [_model]

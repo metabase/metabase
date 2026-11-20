@@ -2963,6 +2963,142 @@
         } ],
         "description" : "What an `equals` expectation found.\n\n  Unless `:status` is `error`, every key is present on a pass as well as a failure:\n  `:extra-rows`, `:missing-rows` and `:cell-mismatches` come back empty rather than missing.\n  `:row-counts` sets the output's row count against the number of rows the expectation declared.\n  `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.\n  `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
       },
+      "metabase-enterprise.data-testing.schema..action-test.create" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to create an action test: a test definition, and the value of each of the action's parameters,\n  by the parameter's id or slug.",
+        "properties" : {
+          "action_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.action"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "parameters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.parameters"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "action_id", "name", "inputs", "expectations" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..action-test.response" : {
+        "additionalProperties" : false,
+        "description" : "An action test as the read endpoints return it, with its newest run.",
+        "properties" : {
+          "action" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.actions.schema.action"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "action_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.action"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "last_run" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.data-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "parameters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.parameters"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "last_run" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.data-testing.schema..action-test.update" : {
+        "additionalProperties" : false,
+        "description" : "What a client sends to update an action test. Omitted fields are left unchanged.",
+        "properties" : {
+          "action_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.action"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "parameters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.parameters"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema..card-test.create" : {
         "additionalProperties" : false,
         "description" : "What a client sends to create a card test.",
@@ -3501,6 +3637,68 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.data-testing.schema.action-test" : {
+        "additionalProperties" : false,
+        "description" : "A saved action test.",
+        "properties" : {
+          "action" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.actions.schema.action"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "action_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.action"
+          },
+          "created_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "type" : "string"
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.expectations"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.inputs"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "parameters" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.parameters"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "updated_at" : {
+            "description" : "value must be a valid date/time/datetime",
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "required" : [ "id" ],
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema.card-test" : {
         "additionalProperties" : false,
         "description" : "A saved card test.",
@@ -3693,6 +3891,23 @@
         },
         "type" : "array"
       },
+      "metabase-enterprise.data-testing.schema.parameters" : {
+        "additionalProperties" : {
+          "anyOf" : [ {
+            "anyOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "boolean"
+            }, {
+              "type" : "number"
+            } ]
+          }, {
+            "type" : "null"
+          } ]
+        },
+        "description" : "The value of each parameter of the subject, by the parameter's id or slug.",
+        "type" : "object"
+      },
       "metabase-enterprise.data-testing.schema.result-column" : {
         "additionalProperties" : false,
         "description" : "A column reported by a test run, with its database native type.",
@@ -3863,7 +4078,7 @@
       },
       "metabase-enterprise.data-testing.schema.test-type" : {
         "description" : "The kind of test a run ran. It selects the table that `test_id` points into.",
-        "enum" : [ "transform", "card", "segment" ],
+        "enum" : [ "transform", "card", "action", "segment" ],
         "type" : "string"
       },
       "metabase-enterprise.data-testing.schema.transform-test" : {
@@ -45015,6 +45230,232 @@
         "tags" : [ "/api/document" ]
       }
     },
+    "/api/ee/action-test" : {
+      "get" : {
+        "description" : "List the action tests the caller can read, with their newest runs, optionally only those of one action. Needs Data\n  Studio access.\n\n  An action test, with its parameter values, inputs and expectations, is readable by every user who can read its\n  action.",
+        "operationId" : "get-api-ee-action-test",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "action-id",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..action-test.response"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/action-test",
+        "tags" : [ "/api/ee/action-test" ]
+      },
+      "post" : {
+        "description" : "Create an action test. A run gives the action's parameters the test's `parameters`, by parameter id or slug, as\n  `POST /api/action/:id/execute` does: a parameter left out takes its default, and a value for a hidden parameter or\n  for no parameter of the action is refused. A test that leaves a required parameter with no value and no default is\n  refused. The action's SQL then runs against the test's inputs, and the expectations read the tables after it, by\n  their real names.\n\n  Only query actions can be tested, on a database with actions enabled. The action's SQL must be one INSERT, UPDATE or\n  DELETE statement, with no RETURNING clause (OUTPUT in SQL Server) and no call of a function the write check refuses,\n  such as `nextval`. An `equals` expectation is refused: an action has no output to compare.",
+        "operationId" : "post-api-ee-action-test",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..action-test.create"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.action-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/action-test",
+        "tags" : [ "/api/ee/action-test" ]
+      }
+    },
+    "/api/ee/action-test/{id}" : {
+      "delete" : {
+        "description" : "Delete an action test.",
+        "operationId" : "delete-api-ee-action-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "DELETE /api/ee/action-test/{id}",
+        "tags" : [ "/api/ee/action-test" ]
+      },
+      "get" : {
+        "description" : "Get an action test with its newest run.\n\n  An action test, with its parameter values, inputs and expectations, is readable by every user who can read its\n  action.",
+        "operationId" : "get-api-ee-action-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..action-test.response"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/action-test/{id}",
+        "tags" : [ "/api/ee/action-test" ]
+      },
+      "put" : {
+        "description" : "Update an action test. When the request body holds the action, the parameter values, the inputs or the expectations,\n  the updated test is checked as a new test is checked; an update of only the name or description is not checked.",
+        "operationId" : "put-api-ee-action-test-id",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema..action-test.update"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.action-test"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/ee/action-test/{id}",
+        "tags" : [ "/api/ee/action-test" ]
+      }
+    },
+    "/api/ee/action-test/{id}/run" : {
+      "post" : {
+        "description" : "Run an action test. Needs read access to the test, permission to run the action's query with the test's parameter\n  values, and native query access to the database of that query.\n  The action's SQL runs on the test's temp tables, in a transaction that is rolled back, so the tables the SQL names do\n  not change. The rollback does not undo what is not transactional or not on the run's connection, such as an advanced\n  sequence or the work of a function that commits on a connection of its own. The run refuses the functions the write\n  check knows to do this, such as `nextval` and `setval`; one it does not know passes. A persisted model that the\n  action's SQL includes runs as its query, not from its cache table. The run is recorded in the test's run history and\n  in the audit log as an action-test run, not as an execution of the action.\n\n  A 200 means the run happened: `:status` is then `passed` or `failed`, and every expectation reports what it found,\n  including one that could not be evaluated, which comes back as that expectation's own `:error`.\n\n  Any other status means the run was refused and nothing meaningful ran. A refusal of the test itself carries the\n  `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)\n  carries none.",
+        "operationId" : "post-api-ee-action-test-id-run",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.data-testing.schema.run-result"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/ee/action-test/{id}/run",
+        "tags" : [ "/api/ee/action-test" ]
+      }
+    },
     "/api/ee/action-v2/execute" : {
       "post" : {
         "description" : "Execute an action with a single input.\n\n   Takes:\n   - `action`            - an identifier or an expression for what we want to execute.\n   - `scope`             - where the action is being invoked from.\n   - `input`             - a single map. currently these are typically a database table row pk, or query result.\n   - `params` (optional) - a map of values for the parameters taken by the action's mapping.\n\n   The `input` and `params` are used by the relevant mapping to calculate a map argument to the underlying action fn.\n   If there is no mapping, `params` are simply used as overrides for `input`.\n\n   Returns the outputs from the performed action.",
@@ -72381,7 +72822,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
+            "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
             "type" : "string"
           }
         } ],
@@ -72412,7 +72853,7 @@
                 "additionalProperties" : false,
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
+                    "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -72456,7 +72897,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform", "transform-test", "card-test", "segment-test" ],
+            "enum" : [ "dashboard", "transform-test", "segment", "measure", "segment-test", "transform", "document", "card-test", "card", "action-test" ],
             "type" : "string"
           }
         }, {

@@ -37,11 +37,6 @@
    :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
 
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
-  "Add the newest run, or nil, to each card test."
-  [_model _k card-tests]
-  (data-testing.models/with-last-runs :card card-tests))
-
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/CardTest [card-test]
@@ -74,25 +69,6 @@
   ;; Input SQL can read any table of the Database: the validator checks the tables that the query under test and the
   ;; expectations read, and not the tables an input reads. So reading the card is not enough.
   (card-allows? mi/can-read? :can_read (:card_id card-test)))
-
-(methodical/defmethod t2/batched-hydrate [:model/CardTest :can_read]
-  "Add whether the current user can read the card of each card test, loading the cards at once."
-  [_model k card-tests]
-  (data-testing.models/with-readable-subjects k card-tests :card_id
-    (data-testing.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) card-tests))))
-
-(methodical/defmethod t2/simple-hydrate [:model/CardTest :can_write]
-  [_model k instance]
-  (assoc instance k (boolean (can-save-test? (:card_id instance)))))
-
-(defmethod mi/can-create? :model/CardTest
-  [_model instance]
-  (can-save-test? (:card_id instance)))
-
-(defmethod mi/can-update? :model/CardTest
-  [instance changes]
-  (and (mi/can-write? instance)
-       (can-save-test? (:card_id changes (:card_id instance)))))
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
@@ -136,6 +112,13 @@
   (update-card-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
+
+(defmethod data-testing.models/saved-test-spec :model/CardTest
+  [_model]
+  {:test-type   :card
+   :subject-key :card_id
+   :subjects    data-testing.db/cards-by-ids
+   :can-save?   can-save-test?})
 
 (defmethod events/spec :model/CardTest
   [_model]
