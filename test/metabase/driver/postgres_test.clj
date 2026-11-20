@@ -49,6 +49,7 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -618,6 +619,32 @@
                   "FROM"
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+(deftest ^:parallel multi-stage-join-source-stage-ctes-test
+  (testing "Stage CTEs of a multi-stage join source go in the top-level WITH, not inside the JOIN (#87571)"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+                    {:cards [{:id            1
+                              :database-id   (meta/id)
+                              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                                                 (lib/aggregate (lib/count))
+                                                 (lib/breakout (meta/field-metadata :checkins :venue-id))
+                                                 lib/append-stage)}]})
+          card     (lib.metadata/card mp 1)
+          query    (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+          card-col (m/find-first #(= (:name %) "VENUE_ID")
+                                 (lib/join-condition-rhs-columns query card nil nil))
+          query    (lib/join query (lib/join-clause card [(lib/= (lib.metadata/field mp (meta/id :venues :id))
+                                                                 card-col)]))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql        (driver/with-driver :postgres
+                            (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query)))
+              join-source (get-in hsql [:join-by 1 0 0])]
+          (is (= ["__mb_stage_0" "__mb_stage_1"]
+                 (map first (:with hsql))))
+          (is (not (contains? join-source :with)))
+          (is (=? {:from [[[::h2x/identifier :table-alias ["__mb_stage_1"]] some?]]}
+                  join-source)))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
