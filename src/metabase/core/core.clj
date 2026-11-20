@@ -122,22 +122,22 @@
   "Shutdown step label -> the labels of the steps whose stops it uses, each of which must run after it."
   {;; scheduled jobs feed the queue listeners, MQ and notifications, so no job may start once those stop
    "put the scheduler in standby" #{"stop queue listeners" "run shutdown logic" "shut down notifications"}
-   "stop the web server"      #{"stop queue listeners"
-                                "run shutdown logic"
-                                "shut down notifications"
-                                "shut down tracing"
-                                "shut down analytics"
-                                "halt the global system"}
+   "stop the web server"          #{"stop queue listeners"
+                                    "run shutdown logic"
+                                    "shut down notifications"
+                                    "shut down tracing"
+                                    "shut down analytics"
+                                    "halt the global system"}
    ;; the field-value listener runs warehouse queries on pools the halt closes
-   "stop queue listeners"     #{"shut down tracing" "shut down analytics" "halt the global system"}
-   "stop the token refresher" #{"shut down analytics"}
-   "run shutdown logic"       #{"stop the scheduler"}
-   "stop the scheduler"       #{"shut down notifications"
-                                "shut down tracing"
-                                "shut down analytics"
-                                "halt the global system"}
-   "shut down notifications"  #{"shut down tracing" "shut down analytics" "halt the global system"}
-   "release migration locks"  #{"halt the global system"}})
+   "stop queue listeners"         #{"shut down tracing" "shut down analytics" "halt the global system"}
+   "stop the token refresher"     #{"shut down analytics"}
+   "run shutdown logic"           #{"stop the scheduler"}
+   "stop the scheduler"           #{"shut down notifications"
+                                    "shut down tracing"
+                                    "shut down analytics"
+                                    "halt the global system"}
+   "shut down notifications"      #{"shut down tracing" "shut down analytics" "halt the global system"}
+   "release migration locks"      #{"halt the global system"}})
 
 ;; TODO (Chris 2026-11-13) -- Move these stops into the halt one component at a time, until the halt stops them all.
 ;; A component can move once it is started through the global system and what it uses is in [[system-dependencies]],
