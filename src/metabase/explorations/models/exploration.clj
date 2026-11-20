@@ -49,6 +49,7 @@
 (methodical/defmethod t2/table-name :model/Exploration [_model] :exploration)
 
 (doto :model/Exploration
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)

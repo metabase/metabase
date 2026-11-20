@@ -2,6 +2,7 @@
   "`/api/ee/remote-sync` endpoints."
   (:require
    [metabase-enterprise.remote-sync.content :as content]
+   [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.merge :as remote-sync.merge]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.protocol :as protocol]
@@ -9,6 +10,7 @@
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.sync :as sync]
    [metabase-enterprise.remote-sync.tasks :as tasks]
+   [metabase-enterprise.remote-sync.write :as remote-sync.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -23,15 +25,15 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-configured!
+(defn- check-configured
   "Throws a 400 when remote sync is not configured."
   []
   (api/check-400 (remote-sync.settings/remote-sync-enabled) (tru "Remote sync isn''t set up.")))
 
-(defn- check-branch!
+(defn- check-branch
   "Throws a 409 when `branch`, the branch the client believes is synced, is not the synced branch."
   [branch]
-  (let [current (setting/get :remote-sync-branch)]
+  (let [current (remote-sync.settings/branch)]
     (when-not (= branch current)
       (throw (ex-info (tru "The branch changed to {0} in another session. Refresh the page and try again." current)
                       {:status-code     409
@@ -39,11 +41,11 @@
                        :current_branch  current
                        :response/keys   #{:branch_mismatch :current_branch}})))))
 
-(defn- check-read-write!
-  "Throws a 400 unless this instance pushes to the remote."
+(defn- check-writable
+  "Throws a 400 unless the current request can push: in a worktree, or in the main app of a read-write instance."
   []
-  (api/check-400 (= :read-write (setting/get :remote-sync-type))
-                 (tru "You can only push from a read-write instance.")))
+  (api/check-400 (remote-sync.settings/writable?)
+                 (tru "You can only push from a read-write instance or a worktree.")))
 
 (defn- started
   "`task`, throwing a 400 when it is nil because another task is running."
@@ -142,10 +144,10 @@
        [:merge {:optional true} :boolean]
        [:expected_branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
-  (check-configured!)
-  (let [branch (or branch (setting/get :remote-sync-branch))
+  (check-configured)
+  (let [branch (or branch (remote-sync.settings/branch))
         user   api/*current-user-id*]
-    (some-> expected_branch check-branch!)
+    (some-> expected_branch check-branch)
     (when-not (or force merge)
       (when-let [changes (seq (local-changes))]
         (throw (ex-info (tru "You have changes that aren''t pushed yet. Pull again to keep or discard them.")
@@ -177,10 +179,10 @@
   "Whether the remote branch moved on since the last sync."
   []
   (api/check-superuser)
-  (check-configured!)
+  (check-configured)
   (let [repo  (remote-sync.settings/repository)
         _     (protocol/fetch! repo)
-        tip   (protocol/version repo (setting/get :remote-sync-branch))
+        tip   (protocol/version repo (remote-sync.settings/branch))
         local (tasks/base-version)]
     (cond-> {:has_changes    (and (some? tip) (not= tip local))
              :remote_version tip
@@ -198,10 +200,10 @@
                                             [:force {:optional true} :boolean]
                                             [:merge {:optional true} :boolean]]]
   (api/check-superuser)
-  (check-configured!)
+  (check-configured)
   (let [user api/*current-user-id*]
-    (check-read-write!)
-    (check-branch! branch)
+    (check-writable)
+    (check-branch branch)
     (let [task (started (tasks/start! {:type "export" :branch branch :user-id user :event :event/remote-sync-export}
                                       (fn [report]
                                         (sync/push! (remote-sync.settings/repository) branch (tasks/base-version)
@@ -217,8 +219,8 @@
   [_route
    {:keys [branch]} :- [:map {:closed true} [:branch ms/NonBlankString]]]
   (api/check-superuser)
-  (check-configured!)
-  (check-branch! branch)
+  (check-configured)
+  (check-branch branch)
   (let [{:keys [base ours theirs remote-changed? history-rewritten?]}
         (sync/state (remote-sync.settings/repository) branch (tasks/base-version))
         {:keys [conflicts summary casualties]} (remote-sync.merge/merge-documents base ours theirs)]
@@ -307,7 +309,7 @@
   "The branches of the repository."
   []
   (api/check-superuser)
-  (check-configured!)
+  (check-configured)
   (try
     {:items (protocol/branches (remote-sync.settings/repository))}
     (catch Exception e
@@ -322,18 +324,97 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
-  (check-configured!)
+  (check-configured)
   (let [user api/*current-user-id*]
-    (check-read-write!)
+    (check-writable)
     (let [task (started (tasks/start! {:type "export" :branch new-branch :user-id user :event :event/remote-sync-stash}
                                       (fn [report]
                                         (let [repo (remote-sync.settings/repository)
                                               base (or (tasks/base-version)
                                                        (do (protocol/fetch! repo)
-                                                           (protocol/version repo (setting/get :remote-sync-branch))))]
+                                                           (protocol/version repo (remote-sync.settings/branch))))]
                                           (protocol/create-branch! repo new-branch base)
                                           (sync/push! repo new-branch base {:message message :report report})))))]
       {:status "success" :message (tru "Pushing changes to {0}" new-branch) :task_id (:id task)})))
+
+(defn- check-worktrees-supported
+  "Throws a 400 unless the app DB keeps worktrees apart: Postgres, with a role that row-level security applies to."
+  []
+  (api/check-400 (remote-sync.settings/remote-sync-worktrees-enabled)
+                 (tru "Worktrees need a PostgreSQL application database."))
+  (api/check-400 (not (remote-sync.db/row-level-security-bypassed?))
+                 (tru "Worktrees need an application database user that row-level security applies to, not a superuser or a user with BYPASSRLS.")))
+
+(defn- present-user
+  "`user` as a worktree lists them."
+  [user]
+  (some-> user (select-keys [:id :email :first_name :last_name :common_name])))
+
+(defn- present-worktree
+  "`worktree`, hydrated with `:creator` and `:users`, as the API returns it."
+  [worktree]
+  (-> worktree
+      (update :creator present-user)
+      (update :users #(mapv present-user %))))
+
+(api.macros/defendpoint :get "/worktree" :- [:sequential ::remote-sync.schema/worktree]
+  "The worktrees, with the user who created each and the users working in each."
+  []
+  (api/check-superuser)
+  (mapv present-worktree (t2/hydrate (remote-sync.db/worktrees) :creator :users)))
+
+(api.macros/defendpoint :get "/worktree/:id" :- ::remote-sync.schema/worktree
+  "The worktree with `id`, with the user who created it and the users working in it."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (present-worktree (t2/hydrate (api/read-check (remote-sync.db/worktree id)) :creator :users)))
+
+(api.macros/defendpoint :post "/worktree" :- ::remote-sync.schema/worktree
+  "Create a worktree checking out `branch`, a branch of the repository, empty until someone working in it pulls."
+  [_route
+   _query
+   {:keys [branch]} :- [:map {:closed true}
+                        [:branch ms/NonBlankString]]]
+  (let [worktree {:branch branch :creator_id api/*current-user-id*}]
+    (api/create-check :model/RemoteSyncWorktree worktree)
+    (check-configured)
+    (check-worktrees-supported)
+    (let [repo (remote-sync.settings/repository)]
+      (protocol/fetch! repo)
+      (api/check-400 (protocol/version repo branch) (tru "The branch {0} doesn''t exist in the repository." branch))
+      (present-worktree (t2/hydrate (remote-sync.write/create-worktree! worktree) :creator :users)))))
+
+(api.macros/defendpoint :delete "/worktree/:id" :- ::api/generic-204-no-content
+  "Delete the worktree with `id` and its content, moving the users working in it to the main app."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (remote-sync.write/delete-worktree! (:id (api/write-check (remote-sync.db/worktree id))))
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :post "/create-branch" :- [:map {:closed true}
+                                                   [:status [:= "success"]]
+                                                   [:message :string]]
+  "Create the branch `name` in the repository at the tip of the main app's branch, whichever worktree the request works
+  in."
+  [_route
+   _query
+   {branch-name :name} :- [:map {:closed true} [:name ms/NonBlankString]]]
+  (api/check-superuser)
+  (check-configured)
+  (let [repo        (remote-sync.settings/repository)
+        _           (protocol/fetch! repo)
+        base-branch (setting/get :remote-sync-branch)
+        base        (api/check-400 (protocol/version repo base-branch) (tru "Base commit not found"))]
+    (api/check-400 (nil? (protocol/version repo branch-name))
+                   (tru "The branch {0} already exists in the repository." branch-name))
+    (try
+      (protocol/create-branch! repo branch-name base)
+      (events/publish-event! :event/remote-sync-create-branch
+                             {:details {:branch_name branch-name
+                                        :base_branch base-branch}
+                              :user-id api/*current-user-id*})
+      {:status  "success"
+       :message (tru "Branch ''{0}'' created from ''{1}''" branch-name base-branch)}
+      (catch Exception e
+        (throw (ex-info (tasks/error-message e) {:status-code 400} e))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."

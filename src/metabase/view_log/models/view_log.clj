@@ -14,6 +14,7 @@
 (m/defmethod t2/table-name :model/ViewLog [_model] :view_log)
 
 (doto :model/ViewLog
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.always-allow))

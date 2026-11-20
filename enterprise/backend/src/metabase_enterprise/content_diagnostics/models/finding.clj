@@ -13,6 +13,7 @@
 (methodical/defmethod t2/table-name :model/ContentDiagnosticsFinding [_model] :content_diagnostics_finding)
 
 (doto :model/ContentDiagnosticsFinding
+  (derive :hook/worktree-id)
   (derive :metabase/model))
 
 (t2/deftransforms :model/ContentDiagnosticsFinding

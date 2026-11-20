@@ -22,6 +22,7 @@
 (methodical/defmethod t2/table-name :model/ExplorationBlock [_model] :exploration_block)
 
 (doto :model/ExplorationBlock
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

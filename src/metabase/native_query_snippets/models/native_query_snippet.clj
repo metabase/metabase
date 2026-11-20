@@ -31,6 +31,7 @@
 (methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
 
 (doto :model/NativeQuerySnippet
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)

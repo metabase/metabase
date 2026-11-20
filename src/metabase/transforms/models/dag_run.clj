@@ -21,6 +21,7 @@
 (methodical/defmethod t2/table-name :model/TransformDagRun [_model] :transform_dag_run)
 
 (doto :model/TransformDagRun
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

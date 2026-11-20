@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.change-log.core :as change-log]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -33,6 +34,7 @@
    :settings          mi/transform-json})
 
 (doto :model/FieldUserSettings
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events))
@@ -108,7 +110,8 @@
         (remove-remappings-ended-by! field settings)
         (warehouse-schema.db/update-or-insert-field-user-settings!
          id (fn [existing] (cond->> settings existing (with-set-flags settings))))
-        (warehouse-schema.db/update-field! id settings)))))
+        (when-not (mdb/worktree-id)
+          (warehouse-schema.db/update-field! id settings))))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
@@ -121,7 +124,8 @@
          (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
       (when (seq existing)
         (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))
-      (warehouse-schema.db/update-field-custom-positions! field-id->position))))
+      (when-not (mdb/worktree-id)
+        (warehouse-schema.db/update-field-custom-positions! field-id->position)))))
 
 (mu/defn unset-field-user-settings!
   "Drop the user values of the Field columns `ks` for `field` from its settings, leaving its row as it is for sync to

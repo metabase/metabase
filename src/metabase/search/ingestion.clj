@@ -471,11 +471,12 @@
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
   Can also be forced to run synchronously for testing.
-  Async updates are queued when the outermost transaction commits, and dropped if it rolls back."
+  Async updates are queued when the outermost transaction commits, and dropped if it rolls back. Writes in a
+  worktree update nothing: no index holds worktree rows."
   ([updates]
    (ingest-maybe-async! updates (or *force-sync* (not (index-worker-exists?)))))
   ([updates sync?]
-   (when-not *disable-updates*
+   (when-not (or *disable-updates* (mdb/worktree-id))
      (if sync?
        (bulk-ingest! updates)
        (do

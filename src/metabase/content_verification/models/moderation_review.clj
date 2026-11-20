@@ -35,6 +35,7 @@
 (methodical/defmethod t2/table-name :model/ModerationReview [_model] :moderation_review)
 
 (doto :model/ModerationReview
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events)

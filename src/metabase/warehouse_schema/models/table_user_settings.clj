@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -42,7 +43,8 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/events)
+  (derive :hook/worktree-id))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -135,9 +137,12 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
+        (when (mdb/worktree-id)
+          (table/check-update settings (warehouse-schema.db/table id)))
         (warehouse-schema.db/update-or-insert-table-user-settings!
          id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
-        (warehouse-schema.db/update-table! id settings)))))
+        (when-not (mdb/worktree-id)
+          (warehouse-schema.db/update-table! id settings))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
@@ -147,13 +152,17 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (events/with-batched-events
+        (when (mdb/worktree-id)
+          (doseq [table (warehouse-schema.db/tables table-ids)]
+            (table/check-update settings table)))
         (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
           (when-let [missing (not-empty (remove existing table-ids))]
             (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
           (when (seq existing)
             (warehouse-schema.db/update-table-user-settings-for-tables!
              existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids settings)))))
+        (when-not (mdb/worktree-id)
+          (warehouse-schema.db/update-tables! table-ids settings))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -168,7 +177,8 @@
   (t2/with-transaction [_]
     (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
-    (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
+    (when-not (mdb/worktree-id)
+      (table/update-field-positions! (warehouse-schema.db/table (u/the-id table))))))
 
 (mu/defn unset-table-user-settings!
   "Drop the user values of the Table columns `ks` for `table` from its settings, leaving its row as it is for sync to

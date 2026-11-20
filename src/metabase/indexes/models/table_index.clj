@@ -23,6 +23,7 @@
 (methodical/defmethod t2/table-name :model/TableIndex [_model] :metabase_table_indexes)
 
 (doto :model/TableIndex
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

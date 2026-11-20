@@ -11,6 +11,7 @@
 (methodical/defmethod t2/table-name :model/ExplorationThreadTimeline [_model] :exploration_thread_timeline)
 
 (doto :model/ExplorationThreadTimeline
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?))
 

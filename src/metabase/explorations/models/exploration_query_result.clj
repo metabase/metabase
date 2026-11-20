@@ -21,6 +21,7 @@
   :exploration_query_result)
 
 (doto :model/ExplorationQueryResult
+  (derive :hook/worktree-id)
   (derive :metabase/model))
 
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose

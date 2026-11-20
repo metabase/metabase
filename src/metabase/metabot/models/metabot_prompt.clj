@@ -12,6 +12,7 @@
 (methodical/defmethod t2/table-name :model/MetabotPrompt [_model] :metabot_prompt)
 
 (doto :model/MetabotPrompt
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive ::mi/write-policy.superuser)
   (derive :hook/entity-id)

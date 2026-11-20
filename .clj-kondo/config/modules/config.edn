@@ -2565,9 +2565,12 @@
    :api  #{metabase.remote-sync.core metabase.remote-sync.schema}
    :uses #{app-db
            events
+           models
            premium-features
            serialization
-           util}}
+           util}
+   :model-exports #{:model/RemoteSyncWorktree}
+   :model-imports #{:model/User}}
 
   replacement
   {:team "Data Apps"
@@ -2864,7 +2867,7 @@
            users
            util
            util.config}
-   :model-imports #{:model/Session}}
+   :model-imports #{:model/RemoteSyncWorktree :model/Session}}
 
   session
   {:team "Security"
@@ -4652,6 +4655,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/NativeQuerySnippet
+                    :model/RemoteSyncWorktree
                     :model/Segment
                     :model/TableUserSettings
                     :model/Timeline

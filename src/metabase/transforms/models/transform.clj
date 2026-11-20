@@ -51,7 +51,7 @@
 
 (methodical/defmethod t2/table-name :model/Transform [_model] :transform)
 
-(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events]]
+(doseq [trait [:metabase/model :hook/entity-id :hook/timestamped? :hook/events :hook/worktree-id]]
   (derive :model/Transform trait))
 
 (mu/defn transform-source-out :- ::transforms.schema/transform-source

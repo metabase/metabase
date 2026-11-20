@@ -15,6 +15,7 @@
 (methodical/defmethod t2/table-name :model/TransformTransformTag [_model] :transform_transform_tag)
 
 (doto :model/TransformTransformTag
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id))
 

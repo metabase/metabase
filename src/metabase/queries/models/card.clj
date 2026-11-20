@@ -148,6 +148,7 @@
    :dimension_mappings     metrics/transform-dimension-mappings})
 
 (doto :model/Card
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)

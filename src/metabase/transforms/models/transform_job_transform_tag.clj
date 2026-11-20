@@ -13,6 +13,7 @@
 (methodical/defmethod t2/table-name :model/TransformJobTransformTag [_model] :transform_job_transform_tag)
 
 (doto :model/TransformJobTransformTag
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/entity-id))
 

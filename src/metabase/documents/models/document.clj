@@ -52,6 +52,7 @@
    :public_uuid (mi/transform-encrypted-text "document.public_uuid")})
 
 (doto :model/Document
+  (derive :hook/worktree-id)
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/entity-id)

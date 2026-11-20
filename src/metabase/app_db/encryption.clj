@@ -7,6 +7,7 @@
    [metabase.app-db.db :as mdb.db]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.setting :as mdb.setting]
+   [metabase.app-db.worktree :as mdb.worktree]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -428,9 +429,11 @@
     (throw (ex-info "Cannot encrypt database with an empty key" {})))
   (when (and (nil? to-key) (not (encryption/default-encryption-enabled?)))
     (throw (ex-info "Cannot encrypt database: MB_ENCRYPTION_SECRET_KEY is not set" {})))
-  (do-encryption db-type data-source true (some-> to-key encryption/validate-and-hash-secret-key)))
+  (mdb.worktree/with-worktree-scope {:type :all}
+    (do-encryption db-type data-source true (some-> to-key encryption/validate-and-hash-secret-key))))
 
 (defn decrypt-db
   "Decrypts the database using the current `MB_ENCRYPTION_SECRET_KEY` to read existing data"
   [db-type data-source]
-  (do-encryption db-type data-source false nil))
+  (mdb.worktree/with-worktree-scope {:type :all}
+    (do-encryption db-type data-source false nil)))

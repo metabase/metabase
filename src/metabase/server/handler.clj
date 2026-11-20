@@ -25,6 +25,7 @@
    [metabase.server.middleware.settings-cache :as mw.settings-cache]
    [metabase.server.middleware.ssl :as mw.ssl]
    [metabase.server.middleware.trace :as mw.trace]
+   [metabase.server.middleware.worktree :as mw.worktree]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.core.protocols :as ring.protocols]
@@ -104,6 +105,7 @@
         #'mw.body-limit/wrap-limit-request-body      ; bounds unauthenticated request body sizes; must be inside wrap-current-user-info and outside everything that reads the body
         #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
         #'mw.session/reset-session-timeout           ; Resets the timeout cookie for user activity to [[metabase.request.cookies/session-timeout]]
+        #'mw.worktree/wrap-worktree                  ; Binds api/*worktree-id* and the app DB connections' worktree to the X-Metabase-Worktree-Id header of a superuser, or the user's worktree
         #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
         #'mw.data-app-scope/wrap-data-app-scope      ; narrows a data-app request (X-Metabase-Client: data-app) to the `data-app` scope (runs after current-user-info so it sees any resolved token scopes)
         #(#'mw.session/wrap-current-user-info % options) ; looks for :metabase-session-key and sets :metabase-user-id and other info if Session ID is valid
