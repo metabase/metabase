@@ -41,7 +41,7 @@
   (testing "the app DB registers with the global system, so a halt releases the migration locks, and only once"
     (let [handle   @#'mdb/app-db-component
           releases (atom [])
-          halts?   #(boolean (some #{handle} (#'global-system/halt-order (#'global-system/dependency-graph {}))))]
+          halts?   #(global-system.tu/halts? handle)]
       (global-system.tu/with-root handle nil
         (mt/with-dynamic-fn-redefs [mdb/release-migration-locks! #(swap! releases conj %)]
           (try
