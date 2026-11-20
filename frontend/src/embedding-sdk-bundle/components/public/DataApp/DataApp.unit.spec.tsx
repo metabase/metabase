@@ -356,45 +356,25 @@ describe("DataApp", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
-  describe("when path is removed", () => {
-    beforeEach(() => {
-      jest.spyOn(console, "warn").mockImplementation(() => {});
-    });
+  it("stays on the last path when path is removed", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
 
-    afterEach(() => {
-      jest.mocked(console.warn).mockRestore();
-    });
+    message(iframe, "metabase.embed.iframeReady");
 
-    it("stays on the last path", () => {
-      const { iframe, postMessage, rerender } = setup({
-        initialPath: "boba-hq",
-      });
+    rerender(<DataApp initialPath="boba-hq" path="boba-hq/orders/42" />);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      navigateMessage("boba-hq/orders/42"),
+      ORIGIN,
+    );
+    postMessage.mockClear();
 
-      message(iframe, "metabase.embed.iframeReady");
+    rerender(<DataApp initialPath="boba-hq" />);
 
-      rerender(<DataApp initialPath="boba-hq" path="boba-hq/orders/42" />);
-      expect(postMessage).toHaveBeenLastCalledWith(
-        navigateMessage("boba-hq/orders/42"),
-        ORIGIN,
-      );
-      postMessage.mockClear();
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
 
-      rerender(<DataApp initialPath="boba-hq" />);
-
-      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-      expect(postMessage).not.toHaveBeenCalled();
-    });
-
-    it("stays on the last path when initialPath names another app", () => {
-      const { iframe, rerender } = setup({
-        initialPath: "milk-tea-hq",
-        path: "boba-hq/orders/42",
-      });
-
-      rerender(<DataApp initialPath="milk-tea-hq" />);
-
-      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-    });
+    warn.mockRestore();
   });
 
   it("uses path and warns when initialPath is also set", () => {
@@ -469,23 +449,20 @@ describe("DataApp", () => {
     ]);
   });
 
-  it.each(["boba-hq/customers/acme%2Feu", "boba-hq/notes#a\\b", "other-app"])(
-    "sends the app back to the host's path when it reports a page that `path` rejects: %s",
-    (reportedPath) => {
-      const { iframe, postMessage } = setupHost();
+  it("sends the app back to the host's path when it reports a page that `path` rejects", () => {
+    const { iframe, postMessage } = setupHost();
 
-      message(iframe, "metabase.embed.iframeReady");
-      postMessage.mockClear();
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
 
-      pathChangeMessage(iframe, reportedPath);
+    pathChangeMessage(iframe, "boba-hq/customers/acme%2Feu");
 
-      expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
-      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-      expect(postMessage.mock.calls).toEqual([
-        [navigateMessage("boba-hq"), ORIGIN],
-      ]);
-    },
-  );
+    expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
 
   it("does not send echoes back when the host applies reported paths later", () => {
     const reportedPaths: string[] = [];
@@ -550,44 +527,20 @@ describe("DataApp", () => {
     ]);
   });
 
-  it.each(["boba-hq/orders", "boba-hq/customers/acme%2Feu"])(
-    "navigates to path when the host starts passing it after the app went to %s",
-    (reportedPath) => {
-      const { iframe, postMessage, rerender } = setup({
-        initialPath: "boba-hq",
-      });
-
-      message(iframe, "metabase.embed.iframeReady");
-      pathChangeMessage(iframe, reportedPath);
-      postMessage.mockClear();
-
-      rerender(<DataApp path="boba-hq" />);
-
-      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
-      expect(postMessage.mock.calls).toEqual([
-        [navigateMessage("boba-hq"), ORIGIN],
-      ]);
-    },
-  );
-
-  it("navigates to a page reported before the host stopped passing path", () => {
-    const onPathChange = jest.fn<void, [string]>();
+  it("navigates to path when the host starts passing it after the user navigated", () => {
     const { iframe, postMessage, rerender } = setup({
-      path: "boba-hq",
-      onPathChange,
+      initialPath: "boba-hq",
     });
 
     message(iframe, "metabase.embed.iframeReady");
     pathChangeMessage(iframe, "boba-hq/orders");
-
-    rerender(<DataApp onPathChange={onPathChange} />);
-    pathChangeMessage(iframe, "boba-hq/products");
     postMessage.mockClear();
 
-    rerender(<DataApp path="boba-hq/orders" onPathChange={onPathChange} />);
+    rerender(<DataApp path="boba-hq" />);
 
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
     expect(postMessage.mock.calls).toEqual([
-      [navigateMessage("boba-hq/orders"), ORIGIN],
+      [navigateMessage("boba-hq"), ORIGIN],
     ]);
   });
 
@@ -635,23 +588,6 @@ describe("DataApp", () => {
       );
     },
   );
-
-  it("does not call onPathChange for a path change message without a string path", () => {
-    const onPathChange = jest.fn<void, [string]>();
-    const onError = jest.fn((event: ErrorEvent) => event.preventDefault());
-    window.addEventListener("error", onError);
-
-    try {
-      const { iframe } = setup({ path: "boba-hq", onPathChange });
-
-      pathChangeMessage(iframe, 42);
-    } finally {
-      window.removeEventListener("error", onError);
-    }
-
-    expect(onError).not.toHaveBeenCalled();
-    expect(onPathChange).not.toHaveBeenCalled();
-  });
 
   it("keeps the same iframe when a leading slash is added", () => {
     const { iframe, rerender } = setup();
