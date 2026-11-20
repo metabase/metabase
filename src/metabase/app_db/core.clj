@@ -26,6 +26,7 @@
    [metabase.app-db.value-guard]
    [metabase.config.core :as config]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as global-system]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -172,6 +173,29 @@
   (if (db-is-set-up?)
     :done
     (mdb.setup/release-migration-locks! (data-source) timeout-seconds)))
+
+;; This process's use of the application DB, as a global-system component, so a halt releases the migration locks it
+;; holds once the components that use the DB have stopped.
+(def ^:private app-db-component
+  (global-system/mutable-component-handle ::app-db (constantly nil)))
+
+;; Chosen for Kubernetes' default termination grace period of 30 seconds.
+(def ^:private shutdown-lock-timeout-seconds 20)
+
+(defn start-app-db!
+  "Register this process's use of the application DB with the global system, so a halt releases its migration locks.
+  Does nothing if it is already registered."
+  []
+  (global-system/start! app-db-component
+                        app-db
+                        (fn [_] (release-migration-locks! shutdown-lock-timeout-seconds)))
+  nil)
+
+(defn stop-app-db!
+  "Release the migration locks this process holds, waiting up to 20 seconds for a migration to finish first."
+  []
+  (when-not (global-system/stop! app-db-component)
+    (release-migration-locks! shutdown-lock-timeout-seconds)))
 
 (defn memoize-for-application-db
   "Like [[clojure.core/memoize]], but only memoizes for the current application database; memoized values will be
