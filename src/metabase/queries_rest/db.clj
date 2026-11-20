@@ -48,7 +48,10 @@
   (t2/select :model/Card {:select    [:card.*]
                           :from      [[(t2/table-name :model/CardBookmark) :bookmark]]
                           :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :bookmark.card_id]]
-                          :where     [:and [:= :bookmark.user_id user-id] [:not= :card.id nil] [:= :card.archived false]]
+                          :where     [:and
+                                      [:= :bookmark.user_id user-id]
+                                      [:or [:= :bookmark.card_id nil] [:not= :card.id nil]]
+                                      [:= :card.archived false]]
                           :order-by  [[[:lower :card.name] :asc]]}))
 
 (mu/defn cards-using-model

@@ -336,30 +336,26 @@
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/ReplacementRun]
-          (mt/with-temp [:model/Card {old-id :id} {}
-                         :model/Card {new-id :id} {}]
-            ;; Insert a run directly so we can cancel it without racing the async completion
-            (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))
-                  _   (replacement-run/start-run! (:id run))
-                  response (mt/user-http-request :crowberto :post 200
-                                                 (str "ee/replacement/runs/" (:id run) "/cancel"))]
-              (is (true? (:success response)))
-              (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
-                (is (= :canceled (:status updated)))
-                (is (nil? (:is_active updated)))))))))))
+          ;; Insert a run directly so we can cancel it without racing the async completion
+          (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))
+                _   (replacement-run/start-run! (:id run))
+                response (mt/user-http-request :crowberto :post 200
+                                               (str "ee/replacement/runs/" (:id run) "/cancel"))]
+            (is (true? (:success response)))
+            (let [updated (t2/select-one :model/ReplacementRun :id (:id run))]
+              (is (= :canceled (:status updated)))
+              (is (nil? (:is_active updated))))))))))
 
 (deftest cancel-inactive-run-returns-409-test
   (testing "POST /runs/:id/cancel — returns 409 for already-completed run"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/ReplacementRun]
-          (mt/with-temp [:model/Card {old-id :id} {}
-                         :model/Card {new-id :id} {}]
-            (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
-              (replacement-run/start-run! (:id run))
-              (replacement-run/succeed-run! (:id run))
-              (mt/user-http-request :crowberto :post 409
-                                    (str "ee/replacement/runs/" (:id run) "/cancel")))))))))
+          (let [run (replacement-run/create-run! :card 1 :card 2 (mt/user->id :crowberto))]
+            (replacement-run/start-run! (:id run))
+            (replacement-run/succeed-run! (:id run))
+            (mt/user-http-request :crowberto :post 409
+                                  (str "ee/replacement/runs/" (:id run) "/cancel"))))))))
 
 (deftest cancel-not-found-run-returns-404-test
   (testing "POST /runs/:id/cancel — returns 404 for non-existent run"

@@ -286,7 +286,15 @@
 (mr/def ::include-archived-items
   [:enum :exclude :all :only])
 
-(mu/defn- current-user-visibility :- ::deps.schema/visible-opts
+(mr/def ::visible-opts
+  "The `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
+  [:map {:closed true}
+   [:user-id                ::lib.schema.id/user]
+   [:is-superuser?          {:optional true} [:maybe :boolean]]
+   [:is-data-analyst?       {:optional true} [:maybe :boolean]]
+   [:include-archived-items {:optional true} ::include-archived-items]])
+
+(mu/defn- current-user-visibility :- ::visible-opts
   "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.
 
   Analyst-wide visibility comes with the role rather than a permissions graph, so it pauses while the

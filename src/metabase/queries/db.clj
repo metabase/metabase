@@ -174,27 +174,19 @@
                                                                                      [:= :dashcard.id :series.dashboardcard_id]]
                                                                          :where     [:and
                                                                                      [:in :series.card_id card-ids]
-                                                                                     [:not= :dashcard.id nil]]}]}
+                                                                                     [:or
+                                                                                      [:= :series.dashboardcard_id nil]
+                                                                                      [:not= :dashcard.id nil]]]}]}
                          :placements]]
              :group-by [:card_id]}))
 
 (mu/defn parameter-card-counts-by-card
-  "Rows of `:card_id` and `:count` of the ParameterCards for each of `card-ids` whose Dashboards or Cards exist."
+  "Rows of `:card_id` and `:count` of ParameterCards for each of `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/query {:select    [[:%count.* :count] :usage.card_id]
-             :from      [[(t2/table-name :model/ParameterCard) :usage]]
-             :left-join [[(t2/table-name :model/Dashboard) :dashboard]
-                         [:and
-                          [:= :usage.parameterized_object_type (h2x/literal "dashboard")]
-                          [:= :dashboard.id :usage.parameterized_object_id]]
-                         [(t2/table-name :model/Card) :card]
-                         [:and
-                          [:= :usage.parameterized_object_type (h2x/literal "card")]
-                          [:= :card.id :usage.parameterized_object_id]]]
-             :where     [:and
-                         [:in :usage.card_id card-ids]
-                         [:or [:not= :dashboard.id nil] [:not= :card.id nil]]]
-             :group-by  [:usage.card_id]}))
+  (t2/query {:select   [[:%count.* :count] :card_id]
+             :from     [:parameter_card]
+             :where    [:in :card_id card-ids]
+             :group-by [:card_id]}))
 
 (mu/defn average-running-times-by-card
   "Rows of `:card_id` and average `:running_time` of uncached executions for each of `card-ids`."

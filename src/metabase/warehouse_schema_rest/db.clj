@@ -5,8 +5,6 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
-   [metabase.dependencies.core :as dependencies]
-   [metabase.dependencies.schema :as dependencies.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -50,12 +48,11 @@
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
   using `*` as a wildcard, matched against `:name` and `:display_name`), optionally narrowed to `visibility-type`,
   `data-layer`, `data-source`, `owner-user-id`, and/or `owner-email`; restricted to ownerless Tables when
-  `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents the
-  user described by `user-info` can read, ordered by name."
-  [{:keys [user-info term visibility-type data-layer data-source owner-user-id owner-email orphan-only?
-           published-only? check-unused? include-transform-targets?]}
+  `orphan-only?`, published Tables when `published-only?`, and (when `check-unused?`) Tables with no dependents,
+  ordered by name."
+  [{:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only? published-only?
+           check-unused? include-transform-targets?]}
    :- [:map {:closed true}
-       [:user-info                  ::dependencies.schema/visible-opts]
        [:term                       {:optional true} [:maybe :string]]
        [:visibility-type            {:optional true} [:maybe :string]]
        [:data-layer                 {:optional true} [:maybe [:or :keyword :string]]]
@@ -95,15 +92,11 @@
                      orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
                      published-only?         (conj [:= :is_published true])
                      check-unused?
-                     (conj [:not-exists
-                            ^:allow-subquery
-                            {:select [:*]
-                             :from   [[(t2/table-name :model/Dependency) :d]]
-                             :where  [:and
-                                      [:= :d.to_entity_id :metabase_table.id]
-                                      [:= :d.to_entity_type "table"]
-                                      (dependencies/visible-entities-clause :d.from_entity_type :d.from_entity_id
-                                                                            user-info)]}]))]
+                     (conj [:not-exists ^:allow-subquery {:select [:*]
+                                                          :from   [[:dependency :d]]
+                                                          :where  [:and
+                                                                   [:= :d.to_entity_id :metabase_table.id]
+                                                                   [:= :d.to_entity_type "table"]]}]))]
     (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
 
 (mu/defn tables-by-ids

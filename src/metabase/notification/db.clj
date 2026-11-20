@@ -93,8 +93,9 @@
    [(t2/table-name :model/Card) :payload_card_card] [:= :payload_card_card.id :payload_card.card_id]])
 
 (def ^:private existing-card-clause
-  "Matches the Notifications that are not card Notifications, or whose Card exists, with [[card-payload-join]]."
-  [:or [:not= :notification.payload_type "notification/card"] [:not= :payload_card_card.id nil]])
+  "Matches the Notifications without a NotificationCard pointing at a Card, or whose Card exists, with
+  [[card-payload-join]]."
+  [:or [:= :payload_card.card_id nil] [:not= :payload_card_card.id nil]])
 
 (mu/defn notification
   "The Notification with `notification-id`, a card one only when its Card exists, or nil."
@@ -192,7 +193,7 @@
                                   :where     [:and
                                               [:in :notification.id notification-ids]
                                               [:= :notification.payload_type "notification/card"]
-                                              [:not= :payload_card_card.id nil]]}))
+                                              existing-card-clause]}))
 
 (mu/defn active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
@@ -639,7 +640,7 @@
               :where  [:and
                        [:= :notification.payload_type "notification/card"]
                        [:is-not :notification.payload_id nil]
-                       [:not= :c.id nil]]}
+                       [:or [:= :nc.card_id nil] [:not= :c.id nil]]]}
 
        true
        (-> (sql.helpers/left-join [(t2/table-name :model/NotificationCard) :nc] [:= :nc.id :notification.payload_id])

@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.task-history.schema :as task-history.schema]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,37 +34,19 @@
              :where    [:in :run_id run-ids]
              :group-by [:run_id]}))
 
-(defn- run-entity-join
-  "The left join of the Card and the Dashboard of each TaskRun as `entity_card` and `entity_dash`."
-  []
-  [[(t2/table-name :model/Card) :entity_card]
-   [:and [:= :task_run.entity_type "card"] [:= :task_run.entity_id :entity_card.id]]
-   [(t2/table-name :model/Dashboard) :entity_dash]
-   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :entity_dash.id]]])
-
-(def ^:private existing-entity-clause
-  "Matches the TaskRuns whose Card or Dashboard exists, or that run for neither, with [[run-entity-join]]."
-  [:or
-   [:= :task_run.entity_type nil]
-   [:not-in :task_run.entity_type ["card" "dashboard"]]
-   [:not= :entity_card.id nil]
-   [:not= :entity_dash.id nil]])
-
 (defn- run-where
-  ;; columns are qualified because the entity joins and the entity_name/task_count sorts add tables that may share
-  ;; column names (e.g. report_card.entity_id)
+  ;; columns are qualified because the entity_name/task_count sorts add joins whose tables may share column names
+  ;; (e.g. report_card.entity_id)
   [{:keys [run-type entity-type entity-id status started-at-start started-at-end]}]
-  (let [conditions (cond-> [existing-entity-clause]
+  (let [conditions (cond-> []
                      run-type          (conj [:= :task_run.run_type run-type])
                      entity-type       (conj [:= :task_run.entity_type entity-type])
                      entity-id         (conj [:= :task_run.entity_id entity-id])
                      status            (conj [:= :task_run.status status])
                      started-at-start  (conj [:>= :task_run.started_at started-at-start])
                      started-at-end    (conj [:< :task_run.started_at started-at-end]))]
-    {:select    [:task_run.*]
-     :from      [[(t2/table-name :model/TaskRun) :task_run]]
-     :left-join (run-entity-join)
-     :where     (into [:and] conditions)}))
+    (when (seq conditions)
+      {:where (into [:and] conditions)})))
 
 (defn- runs-order-by
   "Build the honeysql fragment used to order the task runs list. Direct columns order in place; `:entity_name`
@@ -76,19 +57,25 @@
   (let [secondary [:task_run.id :desc]]
     (case sort-column
       :entity_name
-      {:left-join [[(t2/table-name :model/Database) :sort_db]
-                   [:and [:= :task_run.entity_type "database"] [:= :task_run.entity_id :sort_db.id]]]
-       :order-by  [[[:coalesce :sort_db.name :entity_card.name :entity_dash.name] sort-direction] secondary]}
+      {:select    [:task_run.*]
+       :left-join [[:metabase_database :sort_db]
+                   [:and [:= :task_run.entity_type "database"]  [:= :task_run.entity_id :sort_db.id]]
+                   [:report_card :sort_card]
+                   [:and [:= :task_run.entity_type "card"]      [:= :task_run.entity_id :sort_card.id]]
+                   [:report_dashboard :sort_dash]
+                   [:and [:= :task_run.entity_type "dashboard"] [:= :task_run.entity_id :sort_dash.id]]]
+       :order-by  [[[:coalesce :sort_db.name :sort_card.name :sort_dash.name] sort-direction] secondary]}
 
       :task_count
-      {:left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
+      {:select    [:task_run.*]
+       :left-join [[^:allow-subquery {:select   [:run_id [[:count :*] :task_count]]
                                       :from     [:task_history]
                                       :group-by [:run_id]}
                     :sort_tc]
                    [:= :sort_tc.run_id :task_run.id]]
        :order-by  [[[:coalesce :sort_tc.task_count [:inline 0]] sort-direction] secondary]}
 
-      {:order-by [[(u/qualified-key :task_run sort-column) sort-direction] secondary]})))
+      {:order-by [[sort-column sort-direction] secondary]})))
 
 (def ^:private RunFilters
   [:map {:closed true}
@@ -109,26 +96,19 @@
    offset         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select :model/TaskRun
              (h2x/assert-map-or-nil!
-              (let [where    (run-where filters)
-                    order-by (runs-order-by sort-column sort-direction)]
-                (cond-> (-> where
-                            (assoc :order-by (:order-by order-by))
-                            (update :left-join into (:left-join order-by)))
-                  limit  (assoc :limit limit)
-                  offset (assoc :offset offset))))))
+              (cond-> (merge (run-where filters) (runs-order-by sort-column sort-direction))
+                limit  (assoc :limit limit)
+                offset (assoc :offset offset)))))
 
 (mu/defn task-run-count
   "The number of TaskRuns matching `filters` (see [[run-where]] for the supported keys)."
   [filters :- RunFilters]
-  (t2/count :model/TaskRun (dissoc (run-where filters) :select)))
+  (t2/count :model/TaskRun (h2x/assert-map-or-nil! (or (run-where filters) {}))))
 
 (mu/defn task-run
-  "The TaskRun with `id` whose Card or Dashboard exists, or nil."
+  "The TaskRun with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TaskRun {:select    [:task_run.*]
-                                 :from      [[(t2/table-name :model/TaskRun) :task_run]]
-                                 :left-join (run-entity-join)
-                                 :where     [:and [:= :task_run.id id] existing-entity-clause]}))
+  (t2/select-one :model/TaskRun :id id))
 
 (mu/defn tasks-for-run
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
@@ -136,18 +116,16 @@
   (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
 
 (mu/defn distinct-run-entities
-  "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)
-  whose Card or Dashboard exists."
+  "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
   [run-type          :- :string
    started-at-start  :- [:maybe ms/TemporalInstant]
    started-at-end    :- [:maybe ms/TemporalInstant]]
-  (t2/query {:select-distinct [:task_run.entity_type :task_run.entity_id]
-             :from            [[(t2/table-name :model/TaskRun) :task_run]]
-             :left-join       (run-entity-join)
-             :where           (into [:and [:= :task_run.run_type run-type] existing-entity-clause]
+  (t2/query {:select-distinct [:entity_type :entity_id]
+             :from            :task_run
+             :where           (into [:and [:= :run_type run-type]]
                                     (keep identity)
-                                    [(when started-at-start [:>= :task_run.started_at started-at-start])
-                                     (when started-at-end [:< :task_run.started_at started-at-end])])}))
+                                    [(when started-at-start [:>= :started_at started-at-start])
+                                     (when started-at-end [:< :started_at started-at-end])])}))
 
 (mu/defn nth-newest-task-history-ended-at
   "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil."

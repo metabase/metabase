@@ -6,52 +6,22 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn- side-join
-  "The left join of the Card and the Transform at `side` (`:source` or `:target`) of each ReplacementRun."
-  [side]
-  (let [entity-type (keyword (str "run." (name side) "_entity_type"))
-        entity-id   (keyword (str "run." (name side) "_entity_id"))
-        card        (keyword (str (name side) "_card"))
-        transform   (keyword (str (name side) "_transform"))]
-    [[(t2/table-name :model/Card) card]
-     [:and [:= entity-type "card"] [:= (u/qualified-key card :id) entity-id]]
-     [(t2/table-name :model/Transform) transform]
-     [:and [:= entity-type "transform"] [:= (u/qualified-key transform :id) entity-id]]]))
-
-(defn- existing-side-clause
-  "Matches the ReplacementRuns whose Card or Transform at `side` exists, or whose entity there is a Table, with
-  [[side-join]]."
-  [side]
-  [:or
-   [:= (keyword (str "run." (name side) "_entity_type")) "table"]
-   [:not= (u/qualified-key (keyword (str (name side) "_card")) :id) nil]
-   [:not= (u/qualified-key (keyword (str (name side) "_transform")) :id) nil]])
-
-(defn- existing-runs-query
-  "The query of the ReplacementRuns whose source and target exist, aliased `run`."
-  []
-  {:select    [:run.*]
-   :from      [[(t2/table-name :model/ReplacementRun) :run]]
-   :left-join (into (side-join :source) (side-join :target))
-   :where     [:and (existing-side-clause :source) (existing-side-clause :target)]})
-
 (mu/defn run
-  "The ReplacementRun with `run-id` whose source and target exist, or nil."
+  "The ReplacementRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/ReplacementRun (update (existing-runs-query) :where conj [:= :run.id run-id])))
+  (t2/select-one :model/ReplacementRun :id run-id))
 
 (mu/defn runs
-  "The ReplacementRuns whose source and target exist, newest first, restricted to the `is-active` flag when given."
+  "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."
   [is-active :- [:maybe :boolean]]
   (t2/select :model/ReplacementRun
-             (cond-> (assoc (existing-runs-query) :order-by [[:run.start_time :desc]])
-               (some? is-active) (update :where conj [:= :run.is_active is-active]))))
+             (cond-> {:order-by [[:start_time :desc]]}
+               (some? is-active) (assoc :where [:= :is_active is-active]))))
 
 (mu/defn active-run
   "The active ReplacementRun, or nil."

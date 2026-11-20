@@ -613,7 +613,7 @@
                              [:= :model-index.id :model-index-value.model_index_id])
       (sql.helpers/left-join [(t2/table-name :model/Card) :model] [:= :model-index.model_id :model.id])
       (sql.helpers/left-join [(t2/table-name :model/Collection) :collection] [:= :model.collection_id :collection.id])
-      (sql.helpers/where [:not= :model.id nil])
+      (sql.helpers/where [:or [:= :model-index.model_id nil] [:not= :model.id nil]])
       (add-model-index-permissions-clause search-ctx)))
 
 (defmethod search-query-for-model "measure"

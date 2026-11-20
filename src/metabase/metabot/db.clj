@@ -66,7 +66,9 @@
   (t2/select :model/MetabotPrompt {:select    [:prompt.*]
                                    :from      [[(t2/table-name :model/MetabotPrompt) :prompt]]
                                    :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :prompt.card_id]]
-                                   :where     [:and [:in :prompt.metabot_id metabot-ids] [:not= :card.id nil]]}))
+                                   :where     [:and
+                                               [:in :prompt.metabot_id metabot-ids]
+                                               [:or [:= :prompt.card_id nil] [:not= :card.id nil]]]}))
 
 (defn- prompts-for-metabot-query
   "Honey SQL `:join`/`:where` restricting to MetabotPrompts of the Metabot with `metabot-id` whose Card is within
@@ -128,7 +130,9 @@
   [metabot-id :- ms/PositiveInt]
   (t2/count :model/MetabotPrompt {:from      [[(t2/table-name :model/MetabotPrompt) :prompt]]
                                   :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :prompt.card_id]]
-                                  :where     [:and [:= :prompt.metabot_id metabot-id] [:not= :card.id nil]]}))
+                                  :where     [:and
+                                              [:= :prompt.metabot_id metabot-id]
+                                              [:or [:= :prompt.card_id nil] [:not= :card.id nil]]]}))
 
 (mu/defn insert-prompts!
   "Insert the MetabotPrompt `rows`."

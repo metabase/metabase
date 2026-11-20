@@ -46,8 +46,8 @@
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
 (mu/defn recent-dashboard-and-table-views
-  "Up to `limit` most recently viewed unarchived, active Dashboards and Tables that exist, with their view counts
-  and last viewer."
+  "Up to `limit` most recently viewed unarchived, active Dashboards and Tables with their view counts and last
+  viewer."
   [limit :- ms/PositiveInt]
   (t2/select [:model/RecentViews
               [[:min :recent_views.user_id] :user_id]
@@ -58,14 +58,12 @@
              {:group-by  [:model :model_id]
               :where     [:and
                           [:= :context "view"]
-                          [:or
-                           [:and [:= :model "dashboard"] [:not= :d.id nil]]
-                           [:and [:= :model "table"] [:not= :t.id nil]]]
+                          [:in :model #{"dashboard" "table"}]
                           [:or [:= :active true] [:= :active nil]]
                           [:or [:= :archived false] [:= :archived nil]]]
               :order-by  [[:max_ts :desc] [:model :desc]]
               :limit     limit
-              :left-join [[(t2/table-name :model/Dashboard) :d]
+              :left-join [[:report_dashboard :d]
                           [:and
                            [:= :model "dashboard"]
                            [:= :d.id :model_id]]
@@ -75,21 +73,18 @@
                            [:= :t.id :model_id]]]}))
 
 (mu/defn recent-card-runs
-  "Up to `limit` most recently run question Cards that exist, with their run counts and last runner."
+  "Up to `limit` most recently run question Cards with their run counts and last runner."
   [limit :- ms/PositiveInt]
   (t2/select [:model/QueryExecution
-              [[:min :execution.executor_id] :user_id]
-              [:execution.card_id :model_id]
+              [:%min.executor_id :user_id]
+              [:query_execution.card_id :model_id]
               [:%count.* :cnt]
-              [[:max :execution.started_at] :max_ts]]
-             {:from      [[(t2/table-name :model/QueryExecution) :execution]]
-              :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :execution.card_id]]
-              :group-by  [:execution.card_id :execution.context]
-              :where     [:and
-                          [:= :execution.context (h2x/literal :question)]
-                          [:not= :card.id nil]]
-              :order-by  [[:max_ts :desc]]
-              :limit     limit}))
+              [:%max.started_at :max_ts]]
+             {:group-by [:query_execution.card_id :context]
+              :where    [:and
+                         [:= :context (h2x/literal :question)]]
+              :order-by [[:max_ts :desc]]
+              :limit    limit}))
 
 (mu/defn card-exists?
   "Whether a Card with `id` exists."
@@ -152,17 +147,9 @@
    context :- [:or :keyword :string]]
   (t2/select :model/RecentViews :user_id user-id :context context {:order-by [[:timestamp :desc]]}))
 
-(def ^:private viewed-models
-  "The model of the viewed rows of each `model` of RecentViews."
-  {"card"       :model/Card
-   "dashboard"  :model/Dashboard
-   "collection" :model/Collection
-   "document"   :model/Document
-   "table"      :model/Table})
-
 (mu/defn recent-view-ids-to-prune
   "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
-  them whose viewed rows exist, restricted to the Cards of `card-type` when non-nil."
+  them, restricted to the Cards of `card-type` when non-nil."
   [db-model  :- :string
    user-id   :- ::lib.schema.id/user
    context   :- :string
@@ -171,15 +158,17 @@
   (t2/select-fn-set :id
                     :model/RecentViews
                     {:select [:rv.id]
-                     :from [[(t2/table-name :model/RecentViews) :rv]]
+                     :from [[:recent_views :rv]]
                      :where [:and
                              [:= :rv.model db-model]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal context)]
-                             [:not= :viewed.id nil]
                              (when card-type
-                               [:= :viewed.type (h2x/literal card-type)])]
-                     :left-join [[(t2/table-name (viewed-models db-model)) :viewed] [:= :viewed.id :rv.model_id]]
+                               [:= :rc.type (h2x/literal card-type)])]
+                     :left-join [[:report_card :rc]
+                                 [:and
+                                  [:= :rc.id :rv.model_id]
+                                  [:= :rv.model (h2x/literal "card")]]]
                      :order-by [[:rv.timestamp :desc]]
                      ;; mysql doesn't support offset without limit :derp:
                      :limit 100000
@@ -206,10 +195,9 @@
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
                [:> :timestamp since]
-               [:not= :d.id nil]
                [:not= :d.archived true]]
     :order-by [[:recent_views.id :desc]]
-    :left-join [[(t2/table-name :model/Dashboard) :d]
+    :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
 (mu/defn recent-view-collections
@@ -226,8 +214,7 @@
    :effective_parent :can_read :can_write))
 
 (mu/defn recent-views-with-card-type
-  "The RecentViews of the User with `user-id` in `contexts` whose viewed rows exist, newest first, with the type
-  of the viewed Card. Narrowed
+  "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
   to `db-models` and to the Cards of `card-types` when given; excludes trashed and namespaced Collections, exploration
   Documents, and, when `selections?`, the instance analytics Collection."
   [user-id     :- ::lib.schema.id/user
@@ -237,7 +224,7 @@
    selections? :- :boolean]
   (t2/select :model/RecentViews
              {:select    [:rv.* [:rc.type :card_type]]
-              :from      [[(t2/table-name :model/RecentViews) :rv]]
+              :from      [[:recent_views :rv]]
               :where     [:and
                           [:= :rv.user_id user-id]
                           [:in :rv.context contexts]
@@ -262,32 +249,18 @@
                               [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]
                           ;; exploration documents are accessible only through their owning Exploration;
                           ;; hide them from recents to match search and collection-listing behavior.
-                          [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]
-                          [:or
-                           [:and [:= :rv.model "card"] [:not= :rc.id nil]]
-                           [:and [:= :rv.model "dashboard"] [:not= :dash.id nil]]
-                           [:and [:= :rv.model "collection"] [:not= :coll.id nil]]
-                           [:and [:= :rv.model "document"] [:not= :doc.id nil]]
-                           [:and [:= :rv.model "table"] [:not= :tab.id nil]]]]
-              :left-join [[(t2/table-name :model/Card) :rc]
+                          [:or [:!= :rv.model "document"] [:= :doc.exploration_id nil]]]
+              :left-join [[:report_card :rc]
                           [:and
                            ;; only want to join on card_type if it's a card
                            [:= :rv.model "card"]
                            [:= :rc.id :rv.model_id]]
-                          [(t2/table-name :model/Collection) :coll]
+                          [:collection :coll]
                           [:and
                            [:= :rv.model "collection"]
                            [:= :coll.id :rv.model_id]]
-                          [(t2/table-name :model/Document) :doc]
+                          [:document :doc]
                           [:and
                            [:= :rv.model "document"]
-                           [:= :doc.id :rv.model_id]]
-                          [(t2/table-name :model/Dashboard) :dash]
-                          [:and
-                           [:= :rv.model "dashboard"]
-                           [:= :dash.id :rv.model_id]]
-                          [(t2/table-name :model/Table) :tab]
-                          [:and
-                           [:= :rv.model "table"]
-                           [:= :tab.id :rv.model_id]]]
+                           [:= :doc.id :rv.model_id]]]
               :order-by  [[:rv.timestamp :desc]]}))

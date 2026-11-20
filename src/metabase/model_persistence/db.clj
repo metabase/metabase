@@ -124,13 +124,13 @@
   (t2/select-one-fn :state :model/PersistedInfo :id id))
 
 (mu/defn persisted-database-ids
-  "The set of Database ids with PersistedInfos whose Cards exist."
+  "The set of Database ids with PersistedInfos whose Cards exist, or that have none."
   []
   (t2/select-fn-set :database_id :model/PersistedInfo
                     {:select    [:persisted.database_id]
                      :from      [[(t2/table-name :model/PersistedInfo) :persisted]]
                      :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :persisted.card_id]]
-                     :where     [:not= :card.id nil]}))
+                     :where     [:or [:= :persisted.card_id nil] [:not= :card.id nil]]}))
 
 (mu/defn persisted-card-ids-in-states
   "The Card ids among `card-ids` whose PersistedInfo is in one of `states`."

@@ -256,7 +256,7 @@
                   :where     [:and
                               [:= :notification.id id]
                               [:= :notification.payload_type (u/qualified-name payload-type)]
-                              [:or [:not= :notification.payload_type "notification/card"] [:not= :card.id nil]]]}))
+                              [:or [:= :payload_card.card_id nil] [:not= :card.id nil]]]}))
 
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."

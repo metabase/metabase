@@ -298,14 +298,15 @@
                                                                      :is-data-analyst? (:is-data-analyst? user-scope)}
                                                                     {:include-archived-items :all :root-namespace nil}))
         readable-conditions [:or
-                             [:and [:= :bookmark.type (h2x/literal "card")] [:not= :card.id nil] (visible? :card.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "dashboard")] [:not= :dashboard.id nil]
+                             [:and [:= :bookmark.type (h2x/literal "card")] [:or [:= :bookmark.card_id nil] [:not= :card.id nil]]
+                              (visible? :card.collection_id)]
+                             [:and [:= :bookmark.type (h2x/literal "dashboard")] [:or [:= :bookmark.dashboard_id nil] [:not= :dashboard.id nil]]
                               (visible? :dashboard.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "collection")] [:not= :collection.id nil]
+                             [:and [:= :bookmark.type (h2x/literal "collection")] [:or [:= :bookmark.collection_id nil] [:not= :collection.id nil]]
                               (visible? :collection.id)]
-                             [:and [:= :bookmark.type (h2x/literal "document")] [:not= :document.id nil]
+                             [:and [:= :bookmark.type (h2x/literal "document")] [:or [:= :bookmark.document_id nil] [:not= :document.id nil]]
                               (visible? :document.collection_id)]
-                             [:and [:= :bookmark.type (h2x/literal "exploration")] [:not= :exploration.id nil]
+                             [:and [:= :bookmark.type (h2x/literal "exploration")] [:or [:= :bookmark.exploration_id nil] [:not= :exploration.id nil]]
                               (visible? :exploration.collection_id)]]]
     (mdb/query
      {:select select-fields

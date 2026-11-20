@@ -250,7 +250,7 @@
                     {:select    [:link.*]
                      :from      [[(t2/table-name :model/TransformJobTransformTag) :link]]
                      :left-join [[(t2/table-name :model/TransformTag) :tag] [:= :tag.id :link.tag_id]]
-                     :where     [:and [:= :link.job_id job-id] [:not= :tag.id nil]]}))
+                     :where     [:and [:= :link.job_id job-id] [:or [:= :link.tag_id nil] [:not= :tag.id nil]]]}))
 
 (mu/defn job-tag-links
   "The tag links of the TransformJobs with `job-ids` whose tags exist, ordered by position."
@@ -259,7 +259,7 @@
              {:select    [:link.*]
               :from      [[(t2/table-name :model/TransformJobTransformTag) :link]]
               :left-join [[(t2/table-name :model/TransformTag) :tag] [:= :tag.id :link.tag_id]]
-              :where     [:and [:in :link.job_id job-ids] [:not= :tag.id nil]]
+              :where     [:and [:in :link.job_id job-ids] [:or [:= :link.tag_id nil] [:not= :tag.id nil]]]
               :order-by  [[:link.position :asc]]}))
 
 (mu/defn insert-job-tag-links!

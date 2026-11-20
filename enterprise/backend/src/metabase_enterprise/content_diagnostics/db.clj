@@ -462,7 +462,7 @@
   (t2/select :model/Transform {:where where}))
 
 (mu/defn finished-transform-run-spans
-  "The `(transform_id, start_time, end_time)` of each existing Transform's latest finished run - succeeded, failed
+  "The `(transform_id, start_time, end_time)` of each Transform's latest finished run - succeeded, failed
   or timed out, started at or after `cutoff`. Canceled runs are excluded: their duration measures when
   someone hit cancel, not the transform. Runs per transform are serialized
   (`idx_unique_active_transform_run` allows one active run at a time), so the MAX of each timestamp
@@ -476,7 +476,7 @@
              :where     [:and
                          [:in :run.status ["succeeded" "failed" "timeout"]]
                          [:>= :run.start_time cutoff]
-                         [:not= :transform.id nil]]
+                         [:or [:= :run.transform_id nil] [:not= :transform.id nil]]]
              :group-by  [:run.transform_id]}))
 
 ;;; ------------------------------------------------ Task history ---------------------------------------------

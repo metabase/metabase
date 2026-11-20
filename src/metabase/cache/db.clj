@@ -93,19 +93,9 @@
   "Build the base query for cache configs with JOINs for name/collection access."
   [models collection id]
   (if id
-    {:select    [:cache_config.*]
-     :from      [[(t2/table-name :model/CacheConfig) :cache_config]]
-     :left-join [[(t2/table-name :model/Card) :report_card]
-                 [:and [:= :cache_config.model "question"] [:= :cache_config.model_id :report_card.id]]
-                 [(t2/table-name :model/Dashboard) :report_dashboard]
-                 [:and [:= :cache_config.model "dashboard"] [:= :cache_config.model_id :report_dashboard.id]]]
-     :where     [:and
-                 [:in :cache_config.model models]
-                 [:= :cache_config.model_id id]
-                 [:case
-                  [:= :cache_config.model "question"]  [:!= :report_card.id nil]
-                  [:= :cache_config.model "dashboard"] [:!= :report_dashboard.id nil]
-                  :else                                true]]}
+    {:select [:cache_config.*]
+     :from   [:cache_config]
+     :where  [:and [:in :model models] [:= :model_id id]]}
     {:select    [:cache_config.*
                  [[:coalesce :report_card.name :report_dashboard.name] :item_name]
                  [[:coalesce :report_card.collection_id :report_dashboard.collection_id] :collection_id]

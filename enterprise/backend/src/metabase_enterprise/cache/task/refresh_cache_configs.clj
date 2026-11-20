@@ -56,9 +56,8 @@
     ([result _row] result)))
 
 (defn- refresh-task
-  "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results, skipping the
-  Cards that do not exist. Each refresh definition contains a card-id, an optional dashboard-id, and a list of queries
-  to rerun."
+  "Returns a function that serially reruns queries based on `refresh-defs`, and discards the results. Each refresh
+  definition contains a card-id, an optional dashboard-id, and a list of queries to rerun."
   [refresh-defs]
   (fn []
     (let [card-ids      (into #{} (map :card-id refresh-defs))
@@ -69,9 +68,9 @@
                           #{})]
       (doseq [{:keys [card-id dashboard-id queries]} refresh-defs]
         (let [card (get cards-by-id card-id)]
-          ;; Skip cards that do not exist, and cards on router databases — cache refresh runs without a user
-          ;; context, so database routing will always fail for these cards (anonymous access is not allowed).
-          (when (and card (not (contains? router-db-ids (:database_id card))))
+          ;; Skip cards on router databases — cache refresh runs without a user context, so database
+          ;; routing will always fail for these cards (anonymous access is not allowed).
+          (when-not (contains? router-db-ids (:database_id card))
             ;; Annotate the query with its cache strategy in the format expected by the QP
             (let [cache-strategy (strategies/cache-strategy card dashboard-id)]
               (doseq [query queries]
