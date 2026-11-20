@@ -73,7 +73,7 @@
    [taoensso.nippy :as nippy]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection SQLException)
+   (java.sql Connection)
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
@@ -751,14 +751,14 @@
 
 (defn- set-standard-conforming-strings!
   "Sets `standard_conforming_strings` to `value` on `conn`, and returns whether the server accepted it.
-   Newer servers refuse `off` with SQLSTATE 0A000, feature not supported."
+   Returns false when the server refuses `value` as unsupported, and rethrows any other error."
   [^Connection conn value]
   (try
     (with-open [stmt (.createStatement conn)]
       (.execute stmt (str "SET standard_conforming_strings TO " value)))
     true
-    (catch SQLException e
-      (if (= "0A000" (.getSQLState e))
+    (catch PSQLException e
+      (if (= (.getState PSQLState/NOT_IMPLEMENTED) (.getSQLState e))
         false
         (throw e)))))
 
@@ -767,10 +767,10 @@
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
 ;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
-;;; (#73721). Servers that no longer allow the setting off run only the `on` case.
+;;; (#73721). PostgreSQL 19 no longer allows the setting off, so there only the `on` case runs.
 (deftest contains-filter-jdbc-parser-test
   (mt/test-driver :postgres
-    (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
+    (testing "PGJDBC parses LIKE filters under each standard_conforming_strings setting the server allows (#73721)"
       (let [mp       (mt/metadata-provider)
             venues   (lib.metadata/table mp (mt/id :venues))
             name-col (lib.metadata/field mp (mt/id :venues :name))]
