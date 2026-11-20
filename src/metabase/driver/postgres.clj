@@ -66,6 +66,16 @@
   ["assumeMinServerVersion" "hostRecheckSeconds" "loadBalanceHosts" "logServerErrorDetail" "tcpNoDelay"
    "targetServerType" "localSocketAddress" "kerberosServerName" "sslhostnameverifier"])
 
+(defmethod driver/disallowed-connection-parameters :postgres
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Instantiates an arbitrary class
+         "authenticationPluginClassName"
+         ;; Instantiates an arbitrary class
+         "connectExecutor"
+         ;; `datatype.<type>` loads the class it names, and instantiates it when a column of that type is read
+         "datatype"]))
+
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 ;; Features that are supported by Postgres and all of its child drivers like Redshift

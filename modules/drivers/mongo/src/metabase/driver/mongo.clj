@@ -49,6 +49,14 @@
 
 (driver/register! :mongo)
 
+(defmethod driver/disallowed-connection-parameters :mongo
+  [_driver]
+  [;; Sends every connection through a chosen SOCKS5 proxy, which skips the checks on the addresses connected to
+   "proxyHost"
+   ;; The `authMechanism` that sends the host's own service-account token to the server. A value rather than a
+   ;; parameter name, caught because the whole options string is searched
+   "MONGODB-OIDC"])
+
 (def ^DnsClient ^:private no-op-dns-client
   ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
   ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address
