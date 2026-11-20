@@ -208,8 +208,8 @@
     #(or (not (string? %)) (mr/validate ::now (->offset-date-time %)))]])
 
 (def ^:private subject-keys-with-now
-  "The subject keys of the test types that have `now`. The `segment_test` table has no `now` column."
-  #{:card_id :transform_id})
+  "The subject keys of the test types that have `now`."
+  #{:card_id :transform_id :segment_id})
 
 (defn- with-now
   "`map-schema`, a closed map schema of a test of the subject under `subject-key`, with an optional `now` entry of

@@ -2,6 +2,7 @@
   "`/api/ee/segment-test`."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -219,15 +220,23 @@
             (finally
               (t2/delete! :model/DataTestRun :test_type "segment" :test_id test-id))))))))
 
-(deftest segment-test-ignores-now-test
-  (testing "a segment test has no `now`: the API drops it as it drops any key a request does not declare"
-    (mt/with-premium-features #{:transforms-testing}
-      (mt/with-temp [:model/Segment     {segment-id :id} (data-testing.test-util/from-google-segment)
-                     :model/SegmentTest {test-id :id}    {:segment_id segment-id}]
-        (let [path (str "ee/segment-test/" test-id)]
-          (mt/with-model-cleanup [:model/SegmentTest]
-            (is (not (contains? (mt/user-http-request :crowberto :post 200 "ee/segment-test"
-                                                      (assoc (body segment-id) :now "2020-06-17T12:00:00Z"))
-                                :now))))
-          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now "2020-06-17T12:00:00Z"}) :now)))
-          (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now nil}) :now))))))))
+(deftest now-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment {segment-id :id} (data-testing.test-util/from-google-segment)]
+      (mt/with-model-cleanup [:model/SegmentTest]
+        (let [created (mt/user-http-request :crowberto :post 200 "ee/segment-test"
+                                            (assoc (body segment-id) :now "2026-10-13T09:00:00+09:00"))
+              path    (str "ee/segment-test/" (:id created))]
+          (testing "POST saves `now` as the moment it names"
+            (is (= (t/instant "2026-10-13T00:00:00Z") (t/instant (:now created))))
+            (is (= (t/instant "2026-10-13T00:00:00Z")
+                   (t/instant (:now (mt/user-http-request :crowberto :get 200 path))))))
+          (testing "PUT with a null `now` returns the test to the real clock"
+            (is (=? {:now nil} (mt/user-http-request :crowberto :put 200 path {:now nil}))))
+          (testing "a date-time without an offset is refused, since it names no moment, and only for that"
+            (let [[refusal & more] (-> (mt/user-http-request :crowberto :post 400 "ee/segment-test"
+                                                             (assoc (body segment-id) :now "2026-10-13T00:00:00"))
+                                       (get-in [:specific-errors :now])
+                                       vec)]
+              (is (empty? more))
+              (is (re-find #"with an offset" refusal)))))))))
