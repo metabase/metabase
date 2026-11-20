@@ -50,9 +50,10 @@
     (.toAbsolutePath path)))
 
 (defn- save-rate-minutes
-  "Read the save rate from MB_MONITOR_PERFORMANCE_SAVE_RATE (in minutes), falling back to `default-minutes`."
+  "Read the save rate from MB_MONITOR_PERFORMANCE_SAVE_RATE (in minutes), falling back to `default-minutes`.
+  A value that is blank, as by default, or not a whole number also falls back."
   [default-minutes]
-  (or (config/config-int :mb-monitor-performance-save-rate)
+  (or (some-> (config/config-str :mb-monitor-performance-save-rate) str/trim parse-long)
       default-minutes))
 
 (defn- directory-mode?
