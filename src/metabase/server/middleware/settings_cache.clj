@@ -12,40 +12,40 @@
    :max-age   (* 5 60)
    :same-site :lax})
 
-(defn- check-and-update-settings-cache
+(defn- check-settings-cache-if-cookie-differs
   "If the request's cookie holds a marker other than the cached `settings-last-updated` marker, check whether the
   settings cache is stale and reload it if so. Returns truthy iff the cookie differs."
   [request]
   (when-let [cookie-marker (get-in request [:cookies settings-last-updated-cookie-name :value])]
-    (when (not= cookie-marker (setting/cache-last-updated-at))
+    (when (not= cookie-marker (setting/cached-marker))
       (log/info "Settings cookie differs from the cached settings marker. Checking whether the cache is stale...")
       (setting/restore-cache-if-needed! :force-check? true)
-      ::checked)))
+      ::cookie-differed)))
 
 (defn- maybe-set-settings-last-updated-cookie
-  "When `checked?` (the request's cookie differed from the cached marker) or when this request changed a setting (the
-  response has `:cookie/settings-cache-timestamp`), set the cookie to the cached marker. With no cached marker,
-  expire the cookie if `checked?`."
-  [checked? response]
-  (if (or checked?
+  "When `cookie-differed?` or when this request changed a setting (the response has
+  `:cookie/settings-cache-timestamp`), set the cookie to the cached marker. With no cached marker, expire the cookie if
+  `cookie-differed?`."
+  [cookie-differed? response]
+  (if (or cookie-differed?
           (-> response :mb/cookies :cookie/settings-cache-timestamp))
-    (if-let [marker (setting/cache-last-updated-at)]
+    (if-let [marker (setting/cached-marker)]
       (response/set-cookie (update response :mb/cookies dissoc :cookie/settings-cache-timestamp)
                            settings-last-updated-cookie-name
                            marker
                            cookie-options)
       ;; A cookie left in place would force a check on every request until it expires.
       (cond-> response
-        checked? (response/set-cookie settings-last-updated-cookie-name "" (assoc cookie-options :max-age 0))))
+        cookie-differed? (response/set-cookie settings-last-updated-cookie-name "" (assoc cookie-options :max-age 0))))
     response))
 
 (defn wrap-settings-cache-check
-  "Middleware that checks if settings need to be refreshed based on a cookie value.
-
-  When a request changes a setting, its response sets a cookie holding the cached `settings-last-updated` marker. A
-  later request whose cookie differs from this instance's cached marker forces a check of the settings cache, so an
-  instance sees another instance's change without waiting for the periodic check."
+  "Middleware that forces a check of the settings cache when the request's settings cookie differs from the cached
+  `settings-last-updated` marker, and sets the cookie to the cached marker in the response to such a request or to one
+  that changed a setting."
   [handler]
+  ;; The cookie carries the marker of a setting change from the instance that made it to the instance that serves the
+  ;; user's next request, so that instance sees the change without waiting for the periodic check.
   (fn [request respond raise]
-    (let [checked? (check-and-update-settings-cache request)]
-      (handler request (comp respond #(maybe-set-settings-last-updated-cookie checked? %)) raise))))
+    (let [cookie-differed? (check-settings-cache-if-cookie-differs request)]
+      (handler request (comp respond #(maybe-set-settings-last-updated-cookie cookie-differed? %)) raise))))

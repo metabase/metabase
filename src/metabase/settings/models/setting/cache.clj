@@ -120,10 +120,10 @@
   ;; this cache was loaded, so this cache would otherwise miss that instance's values until the marker next changes.
   (restore-cache!))
 
-(defn cache-last-updated-at
+(defn cached-marker
   "The `settings-last-updated` marker that the cache in `state` (by default, the state for the application DB this
   thread sees) was loaded with. Nil when the cache is not loaded or holds no marker."
-  ([] (cache-last-updated-at (current-state)))
+  ([] (cached-marker (current-state)))
   ([state]
    (core/get (cache state) settings-last-updated-key)))
 

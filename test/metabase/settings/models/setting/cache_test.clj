@@ -107,7 +107,7 @@
     (mt/discard-setting-changes [test-setting-1]
       (setting-test/test-setting-1! "this instance")
       (with-open [conn (open-another-instance-connection)]
-        (let [cached-marker (setting.cache/cache-last-updated-at)
+        (let [cached-marker (setting.cache/cached-marker)
               marker        (write-as-another-instance! conn {"test-setting-1" "another instance"} "2000-01-01 00:00:00")]
           (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
           (is (= "another instance" (force-check-and-read-test-setting-1!))))))))
@@ -118,7 +118,7 @@
       (setting-test/test-setting-1! "this instance")
       (setting-test/clear-settings-last-updated-value-in-db!)
       (setting.cache/restore-cache!)
-      (is (nil? (setting.cache/cache-last-updated-at)) "premise: the cache holds no marker")
+      (is (nil? (setting.cache/cached-marker)) "premise: the cache holds no marker")
       (with-open [conn (open-another-instance-connection)]
         (write-as-another-instance! conn {"test-setting-1" "another instance"}))
       (is (= "another instance" (force-check-and-read-test-setting-1!))))))
@@ -163,7 +163,7 @@
           ;; this zone. The westernmost zone renders the lowest wall time, whatever this instance's zone is.
           (t2/with-connection [_ conn]
             (t2/query ["SET TIME ZONE 'Etc/GMT+12'"]))
-          (let [cached-marker (setting.cache/cache-last-updated-at)
+          (let [cached-marker (setting.cache/cached-marker)
                 marker        (write-as-another-instance! conn {"test-setting-1" "another instance"})]
             (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
             (is (= "another instance" (force-check-and-read-test-setting-1!)))))))))

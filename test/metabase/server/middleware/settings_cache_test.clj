@@ -17,7 +17,7 @@
 
 (def cookie-name (var-get #'mw.settings-cache/settings-last-updated-cookie-name))
 
-(deftest setting-settings-include-timestamp
+(deftest setting-a-setting-sets-the-marker-cookie-test
   (mt/discard-setting-changes [site-name]
     (let [^CookieStore cs (cookies/cookie-store)]
       (testing "it sets the cookie when updating settings"
@@ -26,13 +26,13 @@
                                {:value "foo"})
         (let [setting-cookie (get (cookies/get-cookies cs) cookie-name)]
           (is (some? setting-cookie) "No cookie set")
-          (is (= (setting/cache-last-updated-at)
+          (is (= (setting/cached-marker)
                  (-> setting-cookie :value codec/form-decode))
-              "Cookie value is not most recent cache updated at timestamp")))
+              "Cookie value is not the cached marker")))
       (testing "a cookie that differs from the cached marker triggers a staleness check, not an unconditional reload"
         ;; The cookie value only prompts us to check the DB; it does not by itself say the cache is stale. Here the
         ;; cookie claims a far-future time but the DB has not actually changed, so the check finds nothing to reload.
-        (let [check   #'mw.settings-cache/check-and-update-settings-cache
+        (let [check   #'mw.settings-cache/check-settings-cache-if-cookie-differs
               request {:cookies {cookie-name {:value "2999-01-01 00:00:00.0+00"}}}
               calls   (atom 0)]
           (mt/with-dynamic-fn-redefs [setting.cache/restore-cache! (fn [_state] (swap! calls inc))]
@@ -54,7 +54,7 @@
 
 (deftest cookie-differing-from-the-cached-marker-forces-a-check-test
   (setting/restore-cache!)
-  (let [marker  (setting/cache-last-updated-at)
+  (let [marker  (setting/cached-marker)
         handler (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200})))
         checks  (fn [cookie]
                   (:checks (forced-checks! handler {:cookies (when cookie {cookie-name {:value cookie}})})))]
@@ -68,23 +68,23 @@
 (deftest response-cookie-stops-the-forced-checks-test
   (testing "the cookie a response sets, sent back through cookie parsing, forces no further check"
     (setting/restore-cache!)
-    (let [handler  (wrap-cookies
-                    (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200}))))
-          request  (fn [cookie-header]
-                     (forced-checks! handler {:headers {"cookie" cookie-header}}))
-          lagging  (request (str cookie-name "=2000-01-01+00%3A00%3A00"))
-          returned (some-> lagging :response (get-in [:headers "Set-Cookie"]) first (str/split #";") first)]
-      (is (= {:lagging-cookie-checks 1, :returned-cookie-checks 0}
-             {:lagging-cookie-checks  (:checks lagging)
-              :returned-cookie-checks (when returned
-                                        (:checks (request returned)))})))))
+    (let [handler   (wrap-cookies
+                     (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200}))))
+          request   (fn [cookie-header]
+                      (forced-checks! handler {:headers {"cookie" cookie-header}}))
+          differing (request (str cookie-name "=2000-01-01+00%3A00%3A00"))
+          returned  (some-> differing :response (get-in [:headers "Set-Cookie"]) first (str/split #";") first)]
+      (is (= {:differing-cookie-checks 1, :returned-cookie-checks 0}
+             {:differing-cookie-checks (:checks differing)
+              :returned-cookie-checks  (when returned
+                                         (:checks (request returned)))})))))
 
 (deftest no-marker-expires-the-cookie-test
   (testing "with no marker stored, the response to a request with a cookie expires it"
     (try
       (t2/delete! :setting :key setting.cache/settings-last-updated-key)
       (setting/restore-cache!)
-      (is (nil? (setting/cache-last-updated-at)) "premise: no marker")
+      (is (nil? (setting/cached-marker)) "premise: no marker")
       (let [handler  (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200})))
             response (:response (forced-checks! handler {:cookies {cookie-name {:value "2000-01-01 00:00:00"}}}))]
         (is (=? {cookie-name {:max-age 0}}
