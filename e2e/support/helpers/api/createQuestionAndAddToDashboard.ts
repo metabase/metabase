@@ -1,4 +1,4 @@
-import type { Card, DashboardCard, DashboardId } from "metabase-types/api";
+import type { DashboardCard, DashboardId } from "metabase-types/api";
 
 import {
   type NativeQuestionDetails,
@@ -12,7 +12,7 @@ import {
 export const createQuestionAndAddToDashboard = (
   query: NativeQuestionDetails | StructuredQuestionDetails,
   dashboardId: DashboardId,
-  card?: Partial<Card>,
+  card?: Partial<DashboardCard>,
 ): Cypress.Chainable<Cypress.Response<DashboardCard>> =>
   (isNative(query) ? createNativeQuestion(query) : createQuestion(query)).then(
     ({ body: { id: card_id } }) =>
