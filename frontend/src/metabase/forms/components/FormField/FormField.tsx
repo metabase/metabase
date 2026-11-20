@@ -33,12 +33,22 @@ export const FormField = forwardRef(function FormField(
   const hasTitle = Boolean(title);
   const hasDescription = Boolean(description);
   const hasError = Boolean(error);
+  const hasInput = Boolean(children);
+  const labelGap = hasDescription ? "xxs" : "xs";
 
   return (
     <Flex {...props} ref={ref} direction="column">
       {(hasTitle || hasDescription) && (
         <Box>
-          <Flex align="center" mb={hasDescription ? "xxs" : undefined}>
+          {/* Same spacing under the label as the metabase/ui input label; none when nothing
+              follows it. lh="md" is 122%, so the row's line height is fixed in px from fz="md"
+              and the smaller "(optional)" inherits that same height. */}
+          <Flex
+            align="center"
+            fz="md"
+            lh="md"
+            mb={hasDescription || hasInput ? labelGap : undefined}
+          >
             {hasTitle && (
               <Text
                 component="label"
@@ -46,10 +56,16 @@ export const FormField = forwardRef(function FormField(
                 htmlFor={htmlFor}
                 fw="bold"
                 fz="md"
+                lh="md"
               >
                 {title}
                 {hasError && (
-                  <Text component="span" c="feedback-negative" role="alert">
+                  <Text
+                    component="span"
+                    c="feedback-negative"
+                    lh="md"
+                    role="alert"
+                  >
                     : {error}
                   </Text>
                 )}
@@ -61,13 +77,14 @@ export const FormField = forwardRef(function FormField(
                 c={"text-secondary"}
                 fw="900"
                 fz="sm"
+                lh="inherit"
                 ml="xxs"
               >{t`(optional)`}</Text>
             )}
             {(infoLabel || infoTooltip) && (
               <Tooltip multiline label={infoTooltip}>
                 {infoLabel ? (
-                  <Text c="text-secondary" mb="sm" fz="md" ml="auto">
+                  <Text c="text-secondary" fz="md" lh="md" ml="auto">
                     {infoLabel}
                   </Text>
                 ) : (

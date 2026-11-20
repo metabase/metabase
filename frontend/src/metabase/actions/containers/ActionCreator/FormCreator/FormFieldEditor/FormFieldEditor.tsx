@@ -155,9 +155,14 @@ export function FormFieldEditor({
           hidden={hidden}
           actions={
             <Checkbox
+              // Box row and label line as tall as the 16px box (20px by
+              // default), so the checkbox fits the 17px field title line and
+              // the preview field doesn't sit lower than one without it.
               styles={{
+                inner: { height: "auto" },
                 label: {
                   fontSize: "12px",
+                  lineHeight: "var(--checkbox-size)",
                   color: "var(--mb-color-text-secondary)",
                 },
               }}
