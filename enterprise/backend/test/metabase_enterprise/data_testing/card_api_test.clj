@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase.lib.core :as lib]
@@ -101,6 +102,25 @@
           (mt/user-http-request :crowberto :put 403 (str "ee/card-test/" test-id) {:card_id missing-id}))
         (testing "control: the same requests on the existing card succeed"
           (mt/user-http-request :crowberto :put 200 (str "ee/card-test/" test-id) {:card_id card-id}))))))
+
+(deftest a-test-of-a-card-with-no-query-is-refused-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card     {card-id :id} (assoc (card) :dataset_query {})
+                   :model/CardTest {test-id :id} {:card_id card-id :inputs inputs :expectations expectations}]
+      (testing "premise: the card has no query"
+        (is (= {} (t2/select-one-fn :dataset_query :model/Card :id card-id))))
+      (testing "POST refuses a test of a card with no query, as one whose query cannot be compiled"
+        (is (=? {:error-code "card-test.uncompilable-subject"}
+                (mt/user-http-request :crowberto :post 422 "ee/card-test" (body card-id)))))
+      (testing "a run of a saved test of it is refused the same way"
+        (is (=? {:error-code "card-test.uncompilable-subject"}
+                (mt/user-http-request :crowberto :post 422 (str "ee/card-test/" test-id "/run")))))
+      (testing "an edit of the inputs of a saved test of it is refused the same way, and changes nothing"
+        (let [before (t2/select-one :model/CardTest :id test-id)]
+          (is (=? {:error-code "card-test.uncompilable-subject"}
+                  (mt/user-http-request :crowberto :put 422 (str "ee/card-test/" test-id)
+                                        {:inputs [(assoc (first inputs) :rows [{"ID" 2 "NAME" "def"}])]})))
+          (is (= before (t2/select-one :model/CardTest :id test-id))))))))
 
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (mt/with-premium-features #{:transforms-testing}
@@ -431,5 +451,35 @@
                                                                           :id          test-id
                                                                           :revision_id creation-id})
             (is (= archived-id (t2/select-one-fn :card_id :model/CardTest :id test-id))))
+          (finally
+            (t2/delete! :model/CardTest :id test-id)))))))
+
+(deftest a-revert-to-a-state-that-an-edit-would-refuse-is-refused-card-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Card {subject-id :id} (card)]
+      ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
+      ;; recorded only under a current user.
+      (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
+                          (:id (data-testing.models.card-test/create-card-test!
+                                {:card_id      subject-id
+                                 :name         "No inputs"
+                                 :inputs       []
+                                 :expectations (mapv #(update % :type keyword) expectations)
+                                 :creator_id   (mt/user->id :crowberto)})))
+            path        (str "ee/card-test/" test-id)
+            creation-id (:id (first (filter :is_creation
+                                            (mt/user-http-request :crowberto :get 200 (str "revision/card-test/" test-id)))))]
+        (try
+          (is (pos-int? creation-id) "premise: the test has a creation revision")
+          (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
+          (testing "control: an edit back to no inputs is refused"
+            (is (=? {:error-code "card-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
+          (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
+            (is (=? {:error-code "card-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :post 400 "revision/revert" {:entity      "card-test"
+                                                                                  :id          test-id
+                                                                                  :revision_id creation-id})))
+            (is (= 1 (count (:inputs (t2/select-one :model/CardTest :id test-id))))))
           (finally
             (t2/delete! :model/CardTest :id test-id)))))))

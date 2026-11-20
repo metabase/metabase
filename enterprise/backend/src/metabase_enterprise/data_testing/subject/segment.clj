@@ -2,6 +2,8 @@
   "The `:segment` subject: the rows of a segment's table that match its filter. Expectation SQL names those rows
   `{{output}}`."
   (:require
+   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.util :as data-testing.u]
@@ -9,9 +11,26 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
+
+(defn check-testable
+  "Throws `::data-testing.errors/uncompilable-subject` when `segment` has no query to test: its definition reads back
+  empty, or names a table that does not exist. Nil `segment` passes."
+  [{:keys [definition] :as segment}]
+  (when segment
+    (when (empty? definition)
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/uncompilable-subject
+              (tru "The segment''s definition is empty or unreadable, so there is no query to test.")
+              {})))
+    (when-not (some-> (lib/primary-source-table-id definition) data-testing.db/table-exists?)
+      (throw (data-testing.errors/ex
+              ::data-testing.errors/uncompilable-subject
+              (tru "The segment''s table does not exist, so there is no query to test.")
+              {})))))
 
 (mu/defn- with-declared-columns :- ::lib.schema/query
   "`definition` selecting only the columns of its table that the `:rows` input for that table declares, names compared

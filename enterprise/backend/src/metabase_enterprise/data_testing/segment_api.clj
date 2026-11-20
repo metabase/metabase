@@ -7,12 +7,11 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -28,19 +27,8 @@
   "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test: its
   definition reads back empty, or names a table that does not exist."
   [segment-id :- ms/PositiveInt]
-  (let [{:keys [definition] :as segment} (data-testing.db/segment segment-id)]
-    (when segment
-      (when (empty? definition)
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/uncompilable-subject
-                (tru "The segment''s definition is empty or unreadable, so there is no query to test.")
-                {})))
-      (when-not (some-> (lib/primary-source-table-id definition) data-testing.db/table-exists?)
-        (throw (data-testing.errors/ex
-                ::data-testing.errors/uncompilable-subject
-                (tru "The segment''s table does not exist, so there is no query to test.")
-                {}))))
-    segment))
+  (doto (data-testing.db/segment segment-id)
+    (data-testing.subject.segment/check-testable)))
 
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Segment `segment-id` with `inputs` and `expectations` unless it could run."

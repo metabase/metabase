@@ -4,9 +4,10 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -132,12 +133,22 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
-  (data-testing.errors/refusing "card-test"
-                                #(data-testing.subject/check-not-archived
-                                  :card (data-testing.db/card (:card_id snapshot))))
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
   (update-card-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [_id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (data-testing.errors/refusing
+   "card-test"
+   #(let [card (data-testing.db/card (:card_id snapshot))]
+      (data-testing.subject.card/check-testable card)
+      (data-testing.runner/validate-test :card
+                                         card
+                                         ;; A revision written before tests had `now` has no `:now`.
+                                         (data-testing.runner/test-definition (merge {:now nil} snapshot)))))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -165,10 +176,11 @@
    :synced-filter-clause data-testing.db/synced-card-tests-clause})
 
 (defmethod revisions/spec :model/CardTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-card-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-card-test!})
 
 (defmethod audit/spec :model/CardTest [_model]
   {:track          [:card_id :name :description :now]

@@ -2,6 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -230,9 +232,20 @@
 
 (defn- revert-transform-test!
   [id _user-id snapshot]
-  (check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
   (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [_id _user-id snapshot]
+  (check-revert-available)
+  (data-testing.errors/refusing
+   "transform-test"
+   #(data-testing.runner/validate-test :transform
+                                       (data-testing.db/transform (:transform_id snapshot))
+                                       ;; A revision written before tests had `now` has no `:now`.
+                                       (data-testing.runner/test-definition (merge {:now nil} snapshot))))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -260,10 +273,11 @@
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
 
 (defmethod revisions/spec :model/TransformTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-transform-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
   {:track          [:transform_id :name :description :now]

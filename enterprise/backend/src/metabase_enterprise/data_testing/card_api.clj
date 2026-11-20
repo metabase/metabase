@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -22,11 +23,17 @@
   [thunk :- ifn?]
   (data-testing.errors/refusing "card-test" thunk))
 
+(mu/defn- testable-card
+  "The Card with `card-id`, or nil when there is none. Throws a typed refusal when the card has no query."
+  [card-id :- ms/PositiveInt]
+  (doto (data-testing.db/card card-id)
+    (data-testing.subject.card/check-testable)))
+
 (mu/defn- validate-test! :- :nil
   "Refuse a test of the Card `card-id` with the inputs, expectations and `now` of `definition` unless it could run."
   [card-id    :- ms/PositiveInt
    definition :- ::data-testing.runner/definition]
-  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) definition)))
+  (refusing #(data-testing.runner/validate-test :card (testable-card card-id) definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. The tests of
@@ -65,7 +72,9 @@
   retired. A test that it accepts can still fail when it runs. On a database that keeps the case of column names, a
   declared name that differs from the table's only in case does not match it.
 
-  A test of an archived card is refused."
+  A test of an archived card is refused.
+
+  A test of a card with no query is refused as one whose query cannot be compiled."
   [_route-params
    _query-params
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
@@ -116,12 +125,13 @@
   `:error-code` naming which refusal it was; a missing test (404), missing permission (403) or missing feature (402)
   carries none.
 
-  A run of a test whose card is archived is refused."
+  A run of a test whose card is archived is refused. A run of a test of a card with no query is refused as one whose
+  query cannot be compiled."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/check-403 (data-testing.models.card-test/can-run? card-test))
-    (refusing #(data-testing.runner/run-test! :card (data-testing.db/card (:card_id card-test)) card-test))))
+    (refusing #(data-testing.runner/run-test! :card (testable-card (:card_id card-test)) card-test))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/card-test` routes."

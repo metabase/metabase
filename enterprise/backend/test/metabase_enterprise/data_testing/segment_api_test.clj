@@ -2,6 +2,7 @@
   "`/api/ee/segment-test`."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -359,3 +360,33 @@
                                 :now))))
           (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now "2020-06-17T12:00:00Z"}) :now)))
           (is (not (contains? (mt/user-http-request :crowberto :put 200 path {:now nil}) :now))))))))
+
+(deftest a-revert-to-a-state-that-an-edit-would-refuse-is-refused-segment-test
+  (mt/with-premium-features #{:transforms-testing}
+    (mt/with-temp [:model/Segment {subject-id :id} (data-testing.test-util/from-google-segment)]
+      ;; Created through the model, which does not validate, so that its creation revision has no inputs. A revision is
+      ;; recorded only under a current user.
+      (let [test-id     (mt/with-current-user (mt/user->id :crowberto)
+                          (:id (data-testing.models.segment-test/create-segment-test!
+                                {:segment_id   subject-id
+                                 :name         "No inputs"
+                                 :inputs       []
+                                 :expectations (mapv #(update % :type keyword) expectations)
+                                 :creator_id   (mt/user->id :crowberto)})))
+            path        (str "ee/segment-test/" test-id)
+            creation-id (:id (first (filter :is_creation
+                                            (mt/user-http-request :crowberto :get 200 (str "revision/segment-test/" test-id)))))]
+        (try
+          (is (pos-int? creation-id) "premise: the test has a creation revision")
+          (mt/user-http-request :crowberto :put 200 path {:inputs inputs})
+          (testing "control: an edit back to no inputs is refused"
+            (is (=? {:error-code "segment-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :put 400 path {:inputs []}))))
+          (testing "a revert to the creation revision is refused the same way, and leaves the inputs"
+            (is (=? {:error-code "segment-test.missing-inputs"}
+                    (mt/user-http-request :crowberto :post 400 "revision/revert" {:entity      "segment-test"
+                                                                                  :id          test-id
+                                                                                  :revision_id creation-id})))
+            (is (= 1 (count (:inputs (t2/select-one :model/SegmentTest :id test-id))))))
+          (finally
+            (t2/delete! :model/SegmentTest :id test-id)))))))

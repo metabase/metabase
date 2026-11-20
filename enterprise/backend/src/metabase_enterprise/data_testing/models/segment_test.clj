@@ -4,9 +4,10 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
-   [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -129,11 +130,18 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
-  (data-testing.errors/refusing "segment-test"
-                                #(data-testing.subject/check-not-archived
-                                  :segment (data-testing.db/segment (:segment_id snapshot))))
   (update-segment-test! id (select-keys snapshot revision-columns)))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [_id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (data-testing.errors/refusing
+   "segment-test"
+   #(let [segment (data-testing.db/segment (:segment_id snapshot))]
+      (data-testing.subject.segment/check-testable segment)
+      (data-testing.runner/validate-test :segment segment (data-testing.runner/test-definition snapshot))))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -160,10 +168,11 @@
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
 
 (defmethod revisions/spec :model/SegmentTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-segment-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-segment-test!})
 
 (defmethod audit/spec :model/SegmentTest [_model]
   {:track          [:segment_id :name :description]
