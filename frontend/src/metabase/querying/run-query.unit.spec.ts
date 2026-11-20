@@ -6,6 +6,7 @@ import { setupGoalSourceResultsEndpoint } from "__support__/server-mocks";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
+import { defer } from "metabase/utils/promise";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -13,6 +14,7 @@ import type {
   Card,
   DashCardId,
   DashboardId,
+  GoalSourceResults,
   UnsavedCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -294,6 +296,29 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       await runQuestionQuery(question, { dispatch });
       await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(1));
       await runQuestionQuery(question, { dispatch, ignoreCache: true });
+      await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(2));
+
+      expect(await getGoalSourceBodies()).toEqual([
+        { sources: [{ type: "card", id: 7 }] },
+        { sources: [{ type: "card", id: 7 }], ignore_cache: true },
+      ]);
+    });
+
+    it("fetches the goal source results again when the query ignores the cache while they load", async () => {
+      const goalSourceResults = defer<GoalSourceResults>();
+      setupGoalSourceResultsEndpoint(() => goalSourceResults.promise);
+      const question = createMockAdHocQuestion({
+        display: "gauge",
+        visualization_settings: GAUGE_SETTINGS,
+      });
+      fetchMock.post(getQueryEndpointPath(question), createMockDataset());
+      const { dispatch } = getRtkStore();
+
+      await runQuestionQuery(question, { dispatch });
+      await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(1));
+      await runQuestionQuery(question, { dispatch, ignoreCache: true });
+      expect(getGoalSourceCalls()).toHaveLength(1);
+      goalSourceResults.resolve({});
       await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(2));
 
       expect(await getGoalSourceBodies()).toEqual([

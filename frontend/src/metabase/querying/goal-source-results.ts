@@ -39,7 +39,7 @@ export function prefetchGoalSourceResults(
   });
 }
 
-function initiateGoalSourceResults(
+async function initiateGoalSourceResults(
   dispatch: Dispatch,
   scope: GoalSourcesScope,
   card: GoalCard,
@@ -47,17 +47,30 @@ function initiateGoalSourceResults(
     forceRefetch,
     ignoreCache,
   }: { forceRefetch: boolean; ignoreCache: boolean },
-): void {
+): Promise<void> {
   const sources = getChartGoalSources(card);
 
   if (sources.length === 0) {
     return;
   }
 
+  const request = {
+    ...scope,
+    sources,
+    ignore_cache: ignoreCache || undefined,
+  };
+
+  if (ignoreCache) {
+    // RTK skips even a forced request while one with the same cache key is in flight
+    await dispatch(
+      dynamicGoalApi.util.getRunningQueryThunk("getGoalSourceResults", request),
+    );
+  }
+
   dispatch(
-    dynamicGoalApi.endpoints.getGoalSourceResults.initiate(
-      { ...scope, sources, ignore_cache: ignoreCache || undefined },
-      { forceRefetch, subscribe: false },
-    ),
+    dynamicGoalApi.endpoints.getGoalSourceResults.initiate(request, {
+      forceRefetch,
+      subscribe: false,
+    }),
   );
 }
