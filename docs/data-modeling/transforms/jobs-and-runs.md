@@ -35,7 +35,7 @@ Jobs run one or more transforms on schedule based on transform tags.
 
 Jobs have two components: schedule and tags.
 
-- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). The times are given in your Metabase's system timezone.
+- **Schedule** determines when the job will be executed: daily, hourly, etc. You can specify a custom cron schedule (e.g. "Every weekday at 9:05 AM"). Jobs run in your Metabase's [report timezone](../../configuring-metabase/localization.md#set-default-instance-report-timezone), or in the system timezone if no report timezone is set.
 - **Tags** determine _which_ transforms a job runs, not when the job runs. For example, you can create a `Weekdays` tag, add that tag to a few transforms, then create a job that runs all the transforms with the `Weekdays` tag every weekday at 9:05AM.
 
 Jobs will run all transforms tagged with any of the tags, plus any transforms that the tagged transforms depend on that aren't already up to date, see [Jobs include all dependent transforms](#jobs-include-all-dependent-transforms).
