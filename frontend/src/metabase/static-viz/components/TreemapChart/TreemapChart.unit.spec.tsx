@@ -98,6 +98,29 @@ describe("static TreemapChart", () => {
     expect(screen.queryByTestId("legend-dot")).not.toBeInTheDocument();
   });
 
+  it("uses the fixed number of decimal places for the percentages", () => {
+    render(
+      <TreemapChart
+        rawSeries={makeRawSeries([
+          ["Legumes", null, 80],
+          ["Soy", null, 20],
+        ])}
+        settings={{
+          ...settings,
+          "treemap.sub_grouping": undefined,
+          "treemap.decimal_places": 1,
+        }}
+        renderingContext={getRenderingContext()}
+        isStorybook
+      />,
+    );
+
+    expect(screen.getAllByText("80.0%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("20.0%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("100.0%").length).toBeGreaterThan(0);
+    expect(screen.queryByText("80.00%")).not.toBeInTheDocument();
+  });
+
   it("uses the fixed intrinsic size when no output box is provided", () => {
     render(
       <TreemapChart
