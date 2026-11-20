@@ -1,12 +1,20 @@
 import {
+  type CheckRun,
+  type LatestJob,
+  MARKER_CHECK_NAME,
   type PullRequest,
+  RESULT_JOB_NAMES,
   RUN_TESTS_PATH,
   type WorkflowRun,
   autoPassComment,
   decideAutoPass,
   failedJobNames,
+  failedResultJobNames,
   fetchFlakeProbability,
   formatPercent,
+  markerCoverage,
+  markerExternalId,
+  parseMarker,
   readContext,
   runMismatch,
   unfinishedJobNames,
@@ -269,5 +277,144 @@ describe("comment", () => {
     expect(body).toContain(
       "(https://github.com/metabase/metabase/actions/runs/1)",
     );
+  });
+});
+
+describe("failedResultJobNames", () => {
+  it("names only the failed required result jobs", () => {
+    expect(
+      failedResultJobNames([
+        { name: "frontend-tests / fe-tests-unit (2)", conclusion: "failure" },
+        { name: "frontend-tests / fe-tests-result", conclusion: "failure" },
+        { name: "e2e-tests / e2e-tests-result", conclusion: "failure" },
+        { name: "loki-tests / visual-test", conclusion: "success" },
+        { name: "backend-tests / be-tests-result", conclusion: "skipped" },
+      ]),
+    ).toEqual([
+      "frontend-tests / fe-tests-result",
+      "e2e-tests / e2e-tests-result",
+    ]);
+  });
+
+  it("knows Loki's result job by its check name", () => {
+    expect(RESULT_JOB_NAMES.has("loki-tests / visual-test")).toBe(true);
+    expect(RESULT_JOB_NAMES.has("loki-tests / loki-run")).toBe(false);
+  });
+});
+
+describe("marker", () => {
+  it("round-trips the run and attempt", () => {
+    expect(parseMarker(markerExternalId(44645389371, 2))).toEqual({
+      runId: 44645389371,
+      attempt: 2,
+    });
+  });
+
+  it.each([null, undefined, "", "44645389371", "a:1", "1:2:3"])(
+    "reads %p as no marker",
+    (externalId) => {
+      expect(parseMarker(externalId)).toBeNull();
+    },
+  );
+
+  it("is not one of the required checks", () => {
+    expect(RESULT_JOB_NAMES.has(MARKER_CHECK_NAME)).toBe(false);
+  });
+});
+
+describe("markerCoverage", () => {
+  const RUN = 100;
+  const marker = (
+    externalId: string,
+    override: Partial<CheckRun> = {},
+  ): CheckRun => ({
+    external_id: externalId,
+    conclusion: "success",
+    app: { slug: "github-actions" },
+    ...override,
+  });
+  const job = (
+    name: string,
+    conclusion: string | null,
+    run_attempt: number,
+    status = "completed",
+  ): LatestJob => ({ name, status, conclusion, run_attempt });
+
+  // Attempt 1 failed fe-tests-unit (2); the auto-pass marked attempt 1 and is
+  // re-running the result job in attempt 2.
+  const jobs = [
+    job("frontend-tests / fe-tests-unit (1)", "success", 1),
+    job("frontend-tests / fe-tests-unit (2)", "failure", 1),
+    job("frontend-tests / fe-tests-result", null, 2, "in_progress"),
+    job("e2e-tests / e2e-tests-result", "failure", 1),
+    job("driver-tests / be-tests-oracle", "skipped", 1),
+  ];
+
+  it("covers failures from the attempt the marker judged", () => {
+    expect(
+      markerCoverage({ runId: RUN, checkRuns: [marker("100:1")], jobs }),
+    ).toEqual({ covered: true, attempt: 1 });
+  });
+
+  it("covers failures from an earlier attempt", () => {
+    expect(
+      markerCoverage({ runId: RUN, checkRuns: [marker("100:3")], jobs })
+        .covered,
+    ).toBe(true);
+  });
+
+  it("does not cover a job that failed again after the marked attempt", () => {
+    const rerun = [
+      ...jobs.filter((j) => j.name !== "frontend-tests / fe-tests-unit (2)"),
+      job("frontend-tests / fe-tests-unit (2)", "failure", 2),
+    ];
+    const coverage = markerCoverage({
+      runId: RUN,
+      checkRuns: [marker("100:1")],
+      jobs: rerun,
+    });
+    expect(coverage.covered).toBe(false);
+    expect(coverage).toMatchObject({
+      reason: expect.stringContaining("fe-tests-unit (2)"),
+    });
+  });
+
+  it("does not cover a test job that is running again", () => {
+    expect(
+      markerCoverage({
+        runId: RUN,
+        checkRuns: [marker("100:1")],
+        jobs: [...jobs, job("e2e-tests / e2e-tests (3)", null, 1, "queued")],
+      }).covered,
+    ).toBe(false);
+  });
+
+  it("does not cover a job whose attempt is unknown", () => {
+    expect(
+      markerCoverage({
+        runId: RUN,
+        checkRuns: [marker("100:1")],
+        jobs: [
+          {
+            name: "backend-tests / be-tests (1)",
+            status: "completed",
+            conclusion: "failure",
+          },
+        ],
+      }).covered,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["no marker", []],
+    ["a marker for another run", [marker("200:1")]],
+    ["a failed marker", [marker("100:1", { conclusion: "failure" })]],
+    [
+      "a marker from another app",
+      [marker("100:1", { app: { slug: "ci-conductor" } })],
+    ],
+    ["a marker without a run", [marker("")]],
+  ])("does not cover with %s", (_, checkRuns) => {
+    expect(markerCoverage({ runId: RUN, checkRuns, jobs }).covered).toBe(false);
   });
 });

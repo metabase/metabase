@@ -2,8 +2,9 @@ name: Auto-pass a confirmed-flaky run
 
 # CI Conductor's "make pass" button dispatches this for a PR's failed "Run tests" run. Asks
 # ci-conductor whether the failures are flakes. If a person has confirmed it for the PR's head
-# commit, passes the jobs that failed; otherwise passes nothing. The test suites know nothing of
-# this. See .github/scripts/flaky-rerun-auto-pass.ts.
+# commit, leaves a `flaky-auto-pass` marker check on the commit and re-runs only the run's failed
+# `*-result` jobs, which pass when they find the marker (.github/actions/flaky-auto-pass-result).
+# Otherwise it passes nothing. See .github/scripts/flaky-rerun-auto-pass.ts.
 #
 # A dispatch, not `workflow_run: requested`: GitHub sends no `requested` event for a re-run.
 # Dispatch with ref master. The script checks the run and the PR itself, so a dispatch by hand is
@@ -36,13 +37,15 @@ concurrency:
 jobs:
   auto-pass:
     name: Auto-pass the failed jobs
-    # Only master's copy of the script may post passing checks.
+    # Only master's copy of the script may mark a run as auto-passed.
     if: ${{ github.repository == 'metabase/metabase' && github.ref == 'refs/heads/master' }}
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
-    timeout-minutes: 10
+    # Re-runs the failed result jobs one at a time, waiting for each.
+    timeout-minutes: 45
     permissions:
       contents: read
-      actions: read
+      # Re-running the result jobs.
+      actions: write
       checks: write
       pull-requests: write
     steps:

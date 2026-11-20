@@ -137,12 +137,32 @@ jobs:
     runs-on: ${{ vars.SLIM_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
+      # A confirmed-flaky auto-pass (flaky-rerun-auto-pass.yml) re-runs only this job; these steps
+      # let it pass then. They run only when something failed.
+      - uses: actions/checkout@v7
+        if: ${{ github.event_name == 'pull_request' && contains(needs.*.result, 'failure') }}
+        continue-on-error: true
+        with:
+          sparse-checkout: .github
+      - name: Check for a flaky auto-pass
+        id: auto-pass
+        if: ${{ github.event_name == 'pull_request' && contains(needs.*.result, 'failure') }}
+        continue-on-error: true
+        uses: ./.github/actions/flaky-auto-pass-result
+        with:
+          enable-auto-pass: ${{ vars.ENABLE_AUTO_PASS }}
       - name: Check Loki job status
         uses: actions/github-script@v9
         env:
           needs: ${{ toJson(needs) }}
+          AUTO_PASSED: ${{ steps.auto-pass.outputs.passed }}
         with:
           script: | # js
+            if (process.env.AUTO_PASSED === 'true') {
+              console.log('Every failure in this run was confirmed as a flake and auto-passed');
+              process.exit(0);
+            }
+
             const needs = JSON.parse(process.env.needs);
             const jobs = Object.entries(needs).map(
               ([jobName, jobValues]) => ({
