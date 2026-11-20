@@ -31,49 +31,55 @@ type GoalSourceResultsOpts = {
   result: GoalSourceResult;
 } & ({ type: "card"; id: CardId } | { type: "measure"; id: MeasureId });
 
-export const createMockGoalSourceResults = ({
+export function createMockGoalSourceResults({
   column,
   id = 9,
   type = "card",
   value,
-}: MockGoalSourceResultsOpts = {}): GoalSourceResults =>
-  createGoalSourceResults({
+}: MockGoalSourceResultsOpts = {}): GoalSourceResults {
+  return createGoalSourceResults({
     id,
     result: createMockGoalSourceResult({ column, value }),
     type,
   });
+}
 
-export const createMockFailedGoalSourceResults = ({
+export function createMockFailedGoalSourceResults({
   error,
   error_type,
   id = 9,
   type = "card",
-}: MockFailedGoalSourceResultsOpts = {}): GoalSourceResults =>
-  createGoalSourceResults({
+}: MockFailedGoalSourceResultsOpts = {}): GoalSourceResults {
+  return createGoalSourceResults({
     id,
     result: createMockFailedGoalSourceResult({ error, error_type }),
     type,
   });
+}
 
-export const createMockGoalSourceResult = ({
+export function createMockGoalSourceResult({
   column = "goal",
   value = 250,
-}: MockGoalSourceResultOpts = {}): GoalSourceResult => ({
-  status: "completed",
-  data: {
-    cols: [createMockColumn({ name: column })],
-    rows: [[value]],
-  },
-});
+}: MockGoalSourceResultOpts = {}): GoalSourceResult {
+  return {
+    status: "completed",
+    data: {
+      cols: [createMockColumn({ name: column })],
+      rows: [[value]],
+    },
+  };
+}
 
-export const createMockFailedGoalSourceResult = ({
+export function createMockFailedGoalSourceResult({
   error,
   error_type,
-}: MockFailedGoalSourceResultOpts = {}): GoalSourceResult => ({
-  status: "failed",
-  error,
-  error_type,
-});
+}: MockFailedGoalSourceResultOpts = {}): GoalSourceResult {
+  return {
+    status: "failed",
+    error,
+    error_type,
+  };
+}
 
 function createGoalSourceResults({
   id,
