@@ -41,7 +41,9 @@
       (is (thread-name-running? thread-name))
       (is (queue-listener/listener-exists? listener-name))
       (is (nil? (queue-listener/listen! listener-name queue
-                                        (fn [batch] (throw (ex-info "Second listener with the same name cannot be created" {:batch batch})))
+                                        (fn [batch]
+                                          (throw (ex-info "Second listener with the same name cannot be created"
+                                                          {:batch batch})))
                                         {:max-next-ms 5})))
       (try
         (queue/put-with-delay! queue 0 "a")
@@ -78,7 +80,7 @@
                                                   (is (< 0 duration))
                                                   (swap! result-count + result))
                                :err-handler     (fn [e _] (swap! error-count inc) (reset! last-error e))
-                               :max-next-ms    5})
+                               :max-next-ms     5})
       (try
         (queue/put-with-delay! queue 0 "a")
         (await-test-while (zero? @result-count)
@@ -107,7 +109,9 @@
       (queue-listener/listen! listener-name
                               queue
                               (fn [batch] (is (<= (count batch) 10)) (count batch))
-                              {:success-handler    (fn [result _ name] (swap! batches-handled + result) (swap! handlers-used conj name))
+                              {:success-handler    (fn [result _ name]
+                                                     (swap! batches-handled + result)
+                                                     (swap! handlers-used conj name))
                                :pool-size          3
                                :max-batch-messages 10
                                :max-next-ms        5})
@@ -167,10 +171,10 @@
                                 (when (some #{"fail"} batch)
                                   (throw (Exception. "handler exception")))
                                 (count batch))
-                              {:err-handler  (fn [_e _name]
-                                               (reset! err-handler-ran true)
-                                               ;; err-handler itself throws an Error, escaping the inner catch
-                                               (throw (AssertionError. "err-handler assertion error")))
+                              {:err-handler (fn [_e _name]
+                                              (reset! err-handler-ran true)
+                                              ;; err-handler itself throws an Error, escaping the inner catch
+                                              (throw (AssertionError. "err-handler assertion error")))
                                :max-next-ms 5})
       (try
         ;; First message triggers the handler exception -> err-handler -> AssertionError
@@ -205,6 +209,7 @@
               (is (= {:after-start {:halts? true, :running? true}
                       :after-stop  {:halts? false, :running? false}}
                      {:after-start after-start
-                      :after-stop  {:halts? (halts?), :running? (boolean (queue-listener/listener-exists? listener-name))}})))
+                      :after-stop  {:halts?   (halts?)
+                                    :running? (boolean (queue-listener/listener-exists? listener-name))}})))
             (finally
               (queue-listener/stop-listening! listener-name))))))))
