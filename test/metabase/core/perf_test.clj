@@ -3,6 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
    [metabase.core.perf :as perf]
+   [metabase.global-system.system :as global-system]
+   [metabase.global-system.test-util :as global-system.tu]
    [metabase.test :as mt])
   (:import
    (java.nio.file Path)))
@@ -42,3 +44,29 @@
     (is (#'perf/directory-mode? "/tmp/perf-data")))
   (testing "relative path is directory mode"
     (is (#'perf/directory-mode? "perf-data"))))
+
+(def ^:private later-component
+  (global-system/mutable-component-handle ::later (constantly nil)))
+
+(deftest recording-starts-through-the-global-system-test
+  (testing "the recording starts through the global system, so a halt stops it after what started later"
+    (let [handle     @#'perf/recording-component
+          halt-order #(filterv #{handle later-component} (#'global-system/halt-order (#'global-system/dependency-graph {})))
+          stops      (atom 0)]
+      (global-system.tu/with-root handle nil
+        (global-system.tu/with-root later-component nil
+          (mt/with-dynamic-fn-redefs [config/config-str    (constantly "true")
+                                      perf/start-recording! (constantly ::recording)
+                                      perf/stop-recording!  #(swap! stops inc)]
+            (try
+              (perf/maybe-enable-monitoring!)
+              (global-system/start! later-component (constantly ::later) (constantly nil))
+              (let [after-start (halt-order)]
+                (perf/stop-monitoring!)
+                (is (= {:after-start [later-component handle]
+                        :after-stop  {:halt-order [later-component], :stops 1}}
+                       {:after-start after-start
+                        :after-stop  {:halt-order (halt-order), :stops @stops}})))
+              (finally
+                (global-system/stop! later-component)
+                (global-system/stop! handle)))))))))
