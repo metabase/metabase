@@ -8,7 +8,6 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.classloader.core :as classloader]
    [metabase.global-system.mutable-component :as mc]
-   [metabase.global-system.system :as system]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.task.core :as task]
    [metabase.task.impl :as task.impl]
@@ -568,8 +567,7 @@
   (testing "the scheduler starts through the global system, so a halt stops it, and stopping it unregisters it"
     (let [quartz (reify Scheduler
                    (standby [_]))
-          halts? #(boolean (some #{(task.impl/scheduler-handle)}
-                                 (#'system/halt-order (#'system/dependency-graph {}))))]
+          halts? #(global-system.tu/halts? (task.impl/scheduler-handle))]
       (global-system.tu/with-root (task.impl/scheduler-handle) nil
         (mt/with-dynamic-fn-redefs [qs/initialize                          (constantly quartz)
                                     task.impl/set-jdbc-backend-properties! (constantly nil)
