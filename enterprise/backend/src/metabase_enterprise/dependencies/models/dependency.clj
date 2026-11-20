@@ -242,30 +242,53 @@
                     {:status-code 400, :id id})))
   id)
 
+(defn- dependency-changes
+  "The IDs of the `current-dependencies` of the entity `entity-type` `entity-id` that are not in
+  `dependencies-by-type`, as `:to-remove`, and the rows of those in it that are not current, as `:to-add`."
+  [entity-type entity-id current-dependencies dependencies-by-type]
+  (let [current-by-type (-> (group-by :to_entity_type current-dependencies)
+                            (update-vals #(into #{} (map :to_entity_id) %)))]
+    {:to-remove (vec (keep (fn [{:keys [id to_entity_type to_entity_id]}]
+                             (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
+                               id))
+                           current-dependencies))
+     :to-add    (vec (for [[to-entity-type ids] dependencies-by-type
+                           to-entity-id         (set/difference ids (current-by-type to-entity-type))]
+                       {:from_entity_type entity-type
+                        :from_entity_id   entity-id
+                        :to_entity_type   to-entity-type
+                        :to_entity_id     (ensure-entity-id to-entity-id)}))}))
+
 (mu/defn replace-dependencies! :- [:maybe :int]
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with the ones specified in
   `dependencies-by-type`, returning the number inserted, or nil when none are."
   [entity-type          :- ::dependencies.schema/entity-type
    entity-id            :- ms/PositiveInt
    dependencies-by-type :- DependenciesByType]
-  (let [current-dependencies (dependencies.db/dependencies-from entity-type entity-id)
-        to-remove (keep (fn [{:keys [id to_entity_type to_entity_id]}]
-                          (when-not (get-in dependencies-by-type [to_entity_type to_entity_id])
-                            id))
-                        current-dependencies)
-        current-by-type (-> (group-by :to_entity_type current-dependencies)
-                            (update-vals #(into #{} (map :to_entity_id) %)))
-        to-add (for [[to-entity-type ids] dependencies-by-type
-                     to-entity-id (set/difference ids (current-by-type to-entity-type))]
-                 {:from_entity_type entity-type
-                  :from_entity_id entity-id
-                  :to_entity_type to-entity-type
-                  :to_entity_id (ensure-entity-id to-entity-id)})]
+  (let [{:keys [to-remove to-add]} (dependency-changes entity-type entity-id
+                                                       (dependencies.db/dependencies-from entity-type entity-id)
+                                                       dependencies-by-type)]
     (t2/with-transaction [_conn]
       (when (seq to-remove)
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
+
+(mu/defn replace-dependencies-of-entities! :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]
+  "[[replace-dependencies!]] for each of the entities `entity-type` in `dependencies-by-id`, in a few statements,
+  returning how many dependencies each one gained."
+  [entity-type        :- ::dependencies.schema/entity-type
+   dependencies-by-id :- [:map-of ms/PositiveInt DependenciesByType]]
+  (let [current (group-by :from_entity_id
+                          (dependencies.db/dependencies-from-entities entity-type (vec (keys dependencies-by-id))))
+        changes (into {} (for [[entity-id dependencies-by-type] dependencies-by-id]
+                           [entity-id (dependency-changes entity-type entity-id (current entity-id) dependencies-by-type)]))]
+    (t2/with-transaction [_conn]
+      (doseq [batch (partition-all 1000 (mapcat :to-remove (vals changes)))]
+        (dependencies.db/delete-dependencies! (vec batch)))
+      (doseq [batch (partition-all 500 (mapcat :to-add (vals changes)))]
+        (dependencies.db/insert-dependencies! (vec batch))))
+    (update-vals changes (comp count :to-add))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

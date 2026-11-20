@@ -36,6 +36,13 @@
   (dependencies.db/clear-dependency-status!
    entity-type entity-id stale models.dependency/current-dependency-analysis-version))
 
+(mu/defn clear-statuses! :- :nil
+  "[[clear-status!]] for each of the entities `entity-type` in `stale-by-id`, in a few statements."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   stale-by-id :- [:map-of ms/PositiveInt ms/IntGreaterThanOrEqualToZero]]
+  (dependencies.db/clear-dependency-statuses!
+   entity-type stale-by-id models.dependency/current-dependency-analysis-version))
+
 (mu/defn has-pending-entities? :- :boolean
   "Returns true if there are any entities whose dependencies are stale, not computed yet or computed by an older
   analysis, or deleted entities whose status the dependency job has yet to clean up."

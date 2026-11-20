@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -15,6 +16,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (java.util Date)
+   (java.util.concurrent ExecutionException Executors Future)
    (java.util.concurrent.locks ReentrantLock)
    (org.quartz Scheduler)))
 
@@ -126,6 +128,50 @@
   "Whether `job` runs, which a batch size that isn't positive prevents."
   [{:keys [batch-size]} :- Job]
   (pos? (batch-size)))
+
+(mu/defn map-in-parallel :- [:sequential :any]
+  "What `f` returns for each of `xs`, in order, calling it on up to `threads` threads in the caller's dynamic bindings,
+  rethrowing the first call's Throwable."
+  [threads :- ms/PositiveInt
+   f       :- [:fn {:error/message "a function"} ifn?]
+   xs      :- [:sequential [:fn {:error/message "a value"} some?]]]
+  (if (or (= 1 threads) (< (count xs) 2))
+    (mapv f xs)
+    (let [pool (Executors/newFixedThreadPool (min threads (count xs)))
+          f    (bound-fn* f)]
+      (try
+        (mapv (fn [^Future result]
+                (try
+                  (.get result)
+                  (catch ExecutionException e
+                    (throw (or (ex-cause e) e)))))
+              (mapv (fn [x] (.submit pool ^Callable (fn [] (f x)))) xs))
+        (finally
+          (.shutdownNow pool))))))
+
+(def write-chunk-size
+  "How many entities' results and statuses one transaction of a job writes. It holds their status rows locked, which a
+  save marking them stale waits for."
+  100)
+
+(mu/defn write-all-or-each! :- :nil
+  "Call `write!` on all of `xs`, or, when that throws an Exception, on each of them alone, calling `on-failure!` with
+  each one whose own write throws, so that one bad item fails only itself. Rethrows instead while the app DB is
+  unreachable: that failure isn't about any item."
+  [write!      :- [:fn {:error/message "a function"} ifn?]
+   on-failure! :- [:fn {:error/message "a function"} ifn?]
+   xs          :- [:sequential [:fn {:error/message "a value"} some?]]]
+  (try
+    (write! xs)
+    (catch Exception e
+      (dependencies.db/throw-unless-app-db-reachable! e)
+      (doseq [x xs]
+        (try
+          (write! [x])
+          (catch Exception e
+            (dependencies.db/throw-unless-app-db-reachable! e)
+            (on-failure! x e))))))
+  nil)
 
 (mr/def ::batch-outcome
   "A batch run in place: took entities (`:worked`), found none (`:idle`), or the batch size isn't positive

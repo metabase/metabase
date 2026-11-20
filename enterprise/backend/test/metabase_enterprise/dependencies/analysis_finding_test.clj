@@ -41,13 +41,19 @@
 (defn- analyzed-ids!
   "The IDs of the cards `thunk` analyzes, in order."
   [thunk]
-  (let [analyzed (atom [])
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
+  (let [analyzed  (atom [])
+        upsert!   (mt/original-fn #'models.analysis-finding/upsert-analysis!)
+        upsert-n! (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
     (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
                                 (fn [entity-type entity-id & args]
                                   (when (= :card entity-type)
                                     (swap! analyzed conj entity-id))
-                                  (apply upsert! entity-type entity-id args))]
+                                  (apply upsert! entity-type entity-id args))
+                                models.analysis-finding/upsert-analyses!
+                                (fn [entity-type analyses]
+                                  (when (= :card entity-type)
+                                    (swap! analyzed into (map :entity-id) analyses))
+                                  (upsert-n! entity-type analyses))]
       (thunk))
     @analyzed))
 
@@ -179,7 +185,7 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-model-cleanup [:model/AnalysisFindingError]
           (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}]
-            (with-redefs-fn {#'deps.analysis-finding/upsert-analysis! (fn [_] (throw (ex-info "Broken" {})))}
+            (with-redefs-fn {#'deps.analysis-finding/analysis (fn [_] (throw (ex-info "Broken" {})))}
               run-jobs!)
             (is (false? (t2/select-one-fn :result :model/AnalysisFinding
                                           :entity_type :card :entity_id card-id)))
@@ -244,7 +250,7 @@
                          :model/Card {good-id :id} {:dataset_query (lib/query mp products)}]
             (deps.test/synchronously-run-dependency-job!)
             (let [analysis         (mt/original-fn #'queries.dependencies/analysis)
-                  upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)
+                  analyze          (mt/original-fn #'deps.analysis-finding/analysis)
                   fail-bad-check   (fn [card]
                                      (when (= bad-id (:id card))
                                        (throw (ex-info "connection lost" {})))
@@ -252,19 +258,19 @@
                   fail-bad-outside (fn [entity]
                                      (when (= bad-id (:id entity))
                                        (throw (ex-info "connection lost" {})))
-                                     (upsert-analysis! entity))]
+                                     (analyze entity))]
               (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
                 (testing "when checking the entity fails"
                   (mt/with-dynamic-fn-redefs [queries.dependencies/analysis fail-bad-check]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000)))))
                 (testing "when the analysis fails outside the check"
-                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                  (mt/with-dynamic-fn-redefs [deps.analysis-finding/analysis fail-bad-outside]
                     (is (thrown-with-msg? Exception #"connection lost" (deps.analysis-finding/analyze-batch! 1000))))))
               (is (nil? (finding bad-id)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card bad-id)))
               (is (=? {:fail_count 0 :terminal false} (status :card bad-id)))
               (testing "and records and counts it while the app DB answers, without blocking the rest"
-                (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis! fail-bad-outside]
+                (mt/with-dynamic-fn-redefs [deps.analysis-finding/analysis fail-bad-outside]
                   (deps.analysis-finding/analyze-batch! 1000))
                 (is (=? {:result false} (finding bad-id)))
                 (is (=? {:fail_count 1} (status :card bad-id)))
@@ -387,14 +393,14 @@
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
-          (let [wanted #{card1-id card2-id}
-                upsert-analysis! (mt/original-fn #'deps.analysis-finding/upsert-analysis!)]
-            (mt/with-dynamic-fn-redefs [deps.analysis-finding/upsert-analysis!
-                                        (fn [entity & args]
-                                          (when (wanted (:id entity))
-                                            (swap! providers conj (:lib/metadata (:dataset_query entity))))
-                                          (apply upsert-analysis! entity args))]
-              (run-jobs!)))
+          (let [wanted   #{card1-id card2-id}
+                analysis @#'deps.analysis-finding/analysis]
+            (with-redefs-fn {#'deps.analysis-finding/analysis
+                             (fn [entity & args]
+                               (when (wanted (:id entity))
+                                 (swap! providers conj (:lib/metadata (:dataset_query entity))))
+                               (apply analysis entity args))}
+              run-jobs!))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))
           (testing "and they carry the same provider instance"
@@ -407,12 +413,17 @@
   job it waits for."
   []
   (deps.test/synchronously-run-dependency-job!)
-  (let [analyzed (atom #{})
-        upsert!  (mt/original-fn #'models.analysis-finding/upsert-analysis!)]
+  (let [analyzed  (atom #{})
+        upsert!   (mt/original-fn #'models.analysis-finding/upsert-analysis!)
+        upsert-n! (mt/original-fn #'models.analysis-finding/upsert-analyses!)]
     (mt/with-dynamic-fn-redefs [models.analysis-finding/upsert-analysis!
                                 (fn [entity-type entity-id & args]
                                   (swap! analyzed conj [entity-type entity-id])
-                                  (apply upsert! entity-type entity-id args))]
+                                  (apply upsert! entity-type entity-id args))
+                                models.analysis-finding/upsert-analyses!
+                                (fn [entity-type analyses]
+                                  (swap! analyzed into (map #(vector entity-type (:entity-id %))) analyses)
+                                  (upsert-n! entity-type analyses))]
       (deps.test/run-analysis-finding-job!))
     @analyzed))
 
