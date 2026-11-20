@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -57,7 +58,10 @@
       (content-verification.db/delete-moderation-reviews! ids))))
 
 (t2/define-before-insert :model/ModerationReview
-  [review]
+  [{:keys [moderated_item_id moderated_item_type] :as review}]
+  (when-not (content-verification.db/moderated-item-exists? (moderation/moderated-item-type->model moderated_item_type)
+                                                            moderated_item_id)
+    (throw (ex-info (tru "Not found.") {:status-code 404})))
   (assoc review :most_recent true))
 
 (t2/define-after-insert :model/ModerationReview

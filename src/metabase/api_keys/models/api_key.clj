@@ -233,13 +233,11 @@
                          [:prefix       ::api-keys.schema/prefix]]
   "Generate a new API key for an existing key with `id`."
   [id :- ::api-keys.schema/id]
-  (let [api-key-before (api-keys.db/api-key id)
-        new-key        (key-with-unique-prefix)
-        new-prefix     (prefix new-key)]
+  (let [new-key    (key-with-unique-prefix)
+        new-prefix (prefix new-key)]
     (t2/with-transaction [_conn]
-      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key (:scope api-key-before))
-                                       :key_prefix    new-prefix
-                                       :updated_by_id api/*current-user-id*}))
+      (api-keys.db/update-api-key! id {::api-keys/unhashed-key new-key
+                                       :updated_by_id          api/*current-user-id*}))
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))

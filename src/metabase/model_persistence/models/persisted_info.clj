@@ -31,8 +31,14 @@
   (let [changes (t2/changes persisted-info)
         state   (some-> (:state changes) name)]
     (cond-> persisted-info
+      state
+      (assoc :active (= state "persisted"))
+
       (and state (not (contains? changes :state_change_at)))
       (assoc :state_change_at (mi/now))
+
+      (= state "refreshing")
+      (assoc :refresh_end nil)
 
       (and (= state "refreshing") (not (contains? changes :refresh_begin)))
       (assoc :refresh_begin (mi/now))

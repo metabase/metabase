@@ -127,3 +127,29 @@
                             "model_id" (:id model)}
                      :user-id (str (mt/user->id :crowberto))}
                     (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+
+(deftest plain-insert-fills-schedule-and-state-test
+  (testing "plain insert of ModelIndex fills its schedule and state"
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+      (mt/with-temp [:model/Card model (assoc (mt/card-with-source-metadata-for-query query)
+                                              :type :model
+                                              :name "model index defaults")]
+        (mt/with-model-cleanup [:model/ModelIndex]
+          (let [model-index (t2/insert-returning-instance! :model/ModelIndex
+                                                           {:model_id   (:id model)
+                                                            :pk_ref     (mt/$ids $products.id)
+                                                            :value_ref  (mt/$ids $products.title)
+                                                            :creator_id (mt/user->id :crowberto)})]
+            (is (=? {:state    "initial"
+                     :schedule string?}
+                    model-index))
+            (testing "given values are kept"
+              (is (=? {:state "indexed", :schedule "0 0 23 * * ? *"}
+                      (t2/insert-returning-instance! :model/ModelIndex
+                                                     {:model_id   (:id model)
+                                                      :pk_ref     (mt/$ids $products.id)
+                                                      :value_ref  (mt/$ids $products.title)
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :schedule   "0 0 23 * * ? *"
+                                                      :state      "indexed"}))))))))))

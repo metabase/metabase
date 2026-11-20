@@ -1,7 +1,6 @@
 (ns metabase-enterprise.content-verification.api.moderation-review
   "`api/ee/moderation-review` routes."
   (:require
-   [metabase-enterprise.content-verification.db :as content-verification.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.content-verification.core :as moderation]
@@ -27,7 +26,4 @@
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
-    (api/check-404 (case (get moderation/moderated-item-type->model moderated_item_type)
-                     :model/Card      (content-verification.db/card-exists? moderated_item_id)
-                     :model/Dashboard (content-verification.db/dashboard-exists? moderated_item_id)))
     (moderation/create-review! review-data)))

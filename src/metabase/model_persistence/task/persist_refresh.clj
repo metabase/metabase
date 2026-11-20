@@ -78,7 +78,6 @@
                                                  (:card_id persisted-info) (ex-message e))
                                       {:state :error :error (ex-message e)}))]
         (model-persistence.db/end-persisted-info-refresh! (u/the-id persisted-info)
-                                                          (= state :success)
                                                           (if (= state :success) "persisted" "error")
                                                           (when (= state :error) error))
         (if (= :success state)

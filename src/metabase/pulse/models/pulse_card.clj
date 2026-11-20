@@ -7,7 +7,6 @@
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -33,6 +32,11 @@
       (some-> inc)
       (or 0)))
 
+(t2/define-before-insert :model/PulseCard
+  [{:keys [position pulse_id] :as pulse-card}]
+  (cond-> pulse-card
+    (nil? position) (assoc :position (next-position-for pulse_id))))
+
 (def ^:private NewPulseCard
   [:map {:closed true}
    [:card_id                            ms/PositiveInt]
@@ -53,7 +57,7 @@
      {:card_id           card_id
       :pulse_id          pulse_id
       :dashboard_card_id dashboard_card_id
-      :position          (u/or-with some? position (next-position-for pulse_id))
+      :position          position
       :include_csv       (boolean include_csv)
       :include_xls       (boolean include_xls)
       :format_rows       (boolean format_rows)

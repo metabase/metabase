@@ -4076,10 +4076,8 @@
    :api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
            content-verification
-           lib.schema
            util
-           enterprise/api}
-   :model-imports #{:model/Card :model/Dashboard}}
+           enterprise/api}}
 
   enterprise/core
   {:team "Gadget"
