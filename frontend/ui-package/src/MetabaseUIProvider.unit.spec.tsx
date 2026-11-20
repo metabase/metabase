@@ -138,4 +138,45 @@ describe("MetabaseUIProvider", () => {
     );
     expect(readVariable(getStyleText(), "--mb-overlay-z-index")).toBe("9999");
   });
+
+  it("renders a tooltip into an element passed as its portal target", async () => {
+    const target = document.createElement("div");
+    document.body.appendChild(target);
+
+    render(
+      <MetabaseUIProvider
+        theme={{
+          components: {
+            Tooltip: { defaultProps: { portalProps: { target } } },
+          },
+        }}
+      >
+        <Tooltip label="Tip" opened>
+          <span>Target</span>
+        </Tooltip>
+      </MetabaseUIProvider>,
+    );
+
+    expect(target).toContainElement(await screen.findByText("Tip"));
+    target.remove();
+  });
+
+  it("keeps an object-form primaryShade from the override", () => {
+    const primaryShade = { light: 4, dark: 6 } as const;
+    const Shade = () => (
+      <div data-testid="shade">
+        {JSON.stringify(useMantineTheme().primaryShade)}
+      </div>
+    );
+
+    render(
+      <MetabaseUIProvider theme={{ primaryShade }}>
+        <Shade />
+      </MetabaseUIProvider>,
+    );
+
+    expect(screen.getByTestId("shade")).toHaveTextContent(
+      JSON.stringify(primaryShade),
+    );
+  });
 });
