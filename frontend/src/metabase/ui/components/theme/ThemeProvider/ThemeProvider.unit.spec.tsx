@@ -1,5 +1,6 @@
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { useMantineTheme } from "@mantine/core";
+import { render as renderWithoutProviders } from "@testing-library/react";
 import Color from "color";
 
 import { render, screen } from "__support__/ui";
@@ -7,7 +8,7 @@ import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui/component-theme";
 import { getThemeOverrides } from "metabase/ui/theme";
 import { getColorShades } from "metabase/ui/utils/colors";
 
-import { Text } from "../..";
+import { Text, Tooltip } from "../..";
 
 import { ThemeProvider } from "./ThemeProvider";
 
@@ -145,6 +146,48 @@ describe("ThemeProvider theme override", () => {
       events: { hover: true, focus: false, touch: true },
       transitionProps: { transition: "fade" },
       withinPortal: true,
+    });
+  });
+  // `render` wraps the tree in another ThemeProvider, and Mantine merges a nested
+  // provider's theme into its parent's itself. These cover a single provider.
+  describe("as the only provider", () => {
+    it("keeps an object-form primaryShade from the override", () => {
+      const primaryShade = { light: 4, dark: 6 } as const;
+      let theme: MantineTheme | undefined;
+      const Reader = () => {
+        theme = useMantineTheme();
+        return null;
+      };
+
+      renderWithoutProviders(
+        <ThemeProvider theme={{ primaryShade }}>
+          <Reader />
+        </ThemeProvider>,
+      );
+
+      expect(theme?.primaryShade).toEqual(primaryShade);
+    });
+
+    it("renders a tooltip into an element passed as its portal target", async () => {
+      const target = document.createElement("div");
+      document.body.appendChild(target);
+
+      renderWithoutProviders(
+        <ThemeProvider
+          theme={{
+            components: {
+              Tooltip: { defaultProps: { portalProps: { target } } },
+            },
+          }}
+        >
+          <Tooltip label="Tip" opened>
+            <span>Target</span>
+          </Tooltip>
+        </ThemeProvider>,
+      );
+
+      expect(target).toContainElement(await screen.findByText("Tip"));
+      target.remove();
     });
   });
 });
