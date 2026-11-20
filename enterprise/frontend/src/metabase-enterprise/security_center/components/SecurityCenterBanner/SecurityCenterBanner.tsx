@@ -1,39 +1,30 @@
 import { jt, t } from "ttag";
 
-import { useGetChannelInfoQuery } from "metabase/api";
 import { Banner } from "metabase/common/components/Banner";
 import { Link } from "metabase/common/components/Link";
-import { getPlan, useSetting } from "metabase/settings";
+import { useLocation } from "metabase/router";
 import { Anchor, Text } from "metabase/ui";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
-import { isAffected } from "../../utils";
+import { isAcknowledged, isAffected } from "../../utils";
 
 export function SecurityCenterBanner() {
-  const tokenFeatures = useSetting("token-features");
-  const plan = getPlan(tokenFeatures);
-  const { data: channelInfo, isLoading: isChannelInfoLoading } =
-    useGetChannelInfoQuery();
+  const location = useLocation();
   const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
     useListSecurityAdvisoriesQuery();
 
-  if (plan !== "pro-self-hosted") {
+  if (isAdvisoriesLoading) {
     return null;
   }
 
-  if (isChannelInfoLoading || isAdvisoriesLoading) {
-    return null;
-  }
-
-  const hasEmail = !!channelInfo?.channels?.email?.configured;
-  const hasSlack = !!channelInfo?.channels?.slack?.configured;
-
-  if (hasEmail || hasSlack) {
+  if (location.pathname.startsWith("/admin/security-center")) {
     return null;
   }
 
   const advisories = advisoriesResponse?.advisories ?? [];
-  const hasActiveAdvisory = advisories.some(isAffected);
+  const hasActiveAdvisory = advisories.some(
+    (advisory) => isAffected(advisory) && !isAcknowledged(advisory),
+  );
 
   if (!hasActiveAdvisory) {
     return null;
@@ -44,22 +35,21 @@ export function SecurityCenterBanner() {
       key="link"
       component={Link}
       fw="bold"
-      to="/admin/security-center?open=notifications"
+      to="/admin/security-center"
       c="inherit"
       td="underline"
     >
-      {t`Security center`}
+      {t`Security Center`}
     </Anchor>
   );
 
-  // eslint-disable-next-line metabase/no-literal-metabase-strings -- only visible to admins on self-hosted instances
-  const body = jt`Please configure notification channels in the ${securityCenterLink} so that you get notified about security vulnerabilities in your Metabase instance`;
+  const body = jt`A security update is available. See ${securityCenterLink} for more details.`;
 
   return (
     <Banner
       contentGroupProps={{ wrap: "nowrap" }}
       icon="warning_round_filled"
-      bg="feedback-negative"
+      bg="background_surface-warning"
       body={<Text lh="inherit">{body}</Text>}
       py="lg"
     />

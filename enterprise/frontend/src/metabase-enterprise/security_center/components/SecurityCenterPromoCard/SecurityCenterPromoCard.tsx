@@ -6,11 +6,7 @@ import { useGetChannelInfoQuery } from "metabase/api";
 import { getUserIsAdmin } from "metabase/current-user";
 import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
-import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
-
-import { useListSecurityAdvisoriesQuery } from "../../api";
-import { isAffected } from "../../utils";
 
 const DISMISSED_KEY = "security-center-promo-dismissed";
 
@@ -29,12 +25,8 @@ function useDismissed() {
 
 export function SecurityCenterPromoCard() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const tokenFeatures = useSetting("token-features");
-  const plan = getPlan(tokenFeatures);
   const { data: channelInfo, isLoading: isChannelInfoLoading } =
     useGetChannelInfoQuery(isAdmin ? undefined : skipToken);
-  const { data: advisoriesResponse, isLoading: isAdvisoriesLoading } =
-    useListSecurityAdvisoriesQuery(isAdmin ? undefined : skipToken);
   const { dismissed, dismiss } = useDismissed();
 
   // The promo links to /admin/security-center, so only admins should see it.
@@ -42,11 +34,7 @@ export function SecurityCenterPromoCard() {
     return null;
   }
 
-  if (plan !== "pro-self-hosted") {
-    return null;
-  }
-
-  if (isChannelInfoLoading || isAdvisoriesLoading) {
+  if (isChannelInfoLoading) {
     return null;
   }
 
@@ -54,14 +42,6 @@ export function SecurityCenterPromoCard() {
   const hasSlack = !!channelInfo?.channels?.slack?.configured;
 
   if (hasEmail || hasSlack) {
-    return null;
-  }
-
-  const advisories = advisoriesResponse?.advisories ?? [];
-  const hasActiveAdvisory = advisories.some(isAffected);
-
-  // Active advisories are shown in the red top-of-page banner instead.
-  if (hasActiveAdvisory) {
     return null;
   }
 

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupNotificationChannelsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSettingEndpoint,
 } from "__support__/server-mocks";
@@ -61,6 +62,11 @@ function setup(
     settingKey: "version-info",
     settingValue: versionInfo ?? createMockVersionInfo(),
   });
+  setupNotificationChannelsEndpoints({
+    email: { configured: true },
+    slack: { configured: false },
+  });
+
   jest.spyOn(notificationHook, "useNotificationConfigState").mockReturnValue({
     config: {
       email: {

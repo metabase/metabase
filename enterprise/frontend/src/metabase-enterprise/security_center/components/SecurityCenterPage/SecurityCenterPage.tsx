@@ -30,6 +30,7 @@ import { filterAdvisories, getTargetUpgradeVersion } from "../../utils";
 import { AdvisoryFilterBar } from "../AdvisoryFilterBar/AdvisoryFilterBar";
 import { AdvisoryList } from "../AdvisoryList/AdvisoryList";
 import { NotificationChannelConfigModal } from "../NotificationChannelConfigModal/NotificationChannelConfigModal";
+import { NotificationConfigBanner } from "../NotificationConfigBanner/NotificationConfigBanner";
 import { UpgradeBanner } from "../UpgradeBanner/UpgradeBanner";
 
 import S from "./SecurityCenterPage.module.css";
@@ -175,6 +176,9 @@ export function SecurityCenterPage() {
               {t`Current version`}: {currentVersion}
             </Text>
             <UpgradeBanner targetVersion={targetVersion} />
+            <NotificationConfigBanner
+              onConfigureClick={() => setSettingsOpen(true)}
+            />
           </Stack>
           <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar

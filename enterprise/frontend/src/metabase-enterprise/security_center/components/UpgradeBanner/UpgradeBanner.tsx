@@ -2,11 +2,11 @@ import { c, t } from "ttag";
 
 import { getEolReachedMessage } from "metabase/admin/settings/components/widgets/VersionUpdateNotice/utils";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useEolDate } from "metabase/settings";
-import { Anchor, Flex, Icon, Text } from "metabase/ui";
+import { Anchor } from "metabase/ui";
 
-import S from "./UpgradeBanner.module.css";
+import { WarningBanner } from "../WarningBanner/WarningBanner";
+import S from "../WarningBanner/WarningBanner.module.css";
 
 const UPGRADE_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This component only renders inside the admin-only Security Center page.
@@ -17,7 +17,6 @@ interface UpgradeBannerProps {
 }
 
 export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
-  const isSmallScreen = useIsSmallScreen();
   const { isEol } = useEolDate();
 
   const message = targetVersion
@@ -32,28 +31,20 @@ export function UpgradeBanner({ targetVersion }: UpgradeBannerProps) {
   }
 
   return (
-    <Flex
-      className={S.root}
-      gap="lg"
-      wrap="nowrap"
+    <WarningBanner
+      message={message}
       data-testid="upgrade-banner"
-      direction={isSmallScreen ? "column" : "row"}
-    >
-      <Flex gap="lg" align="center">
-        <Icon name="warning" className={S.icon} />
-        <Text fw="bold" size="md" className={S.text}>
-          {message}
-        </Text>
-      </Flex>
-      <Anchor
-        component={ExternalLink}
-        href={UPGRADE_DOCS_URL}
-        className={S.link}
-        fw="bold"
-        size="md"
-      >
-        {t`View upgrade instructions`}
-      </Anchor>
-    </Flex>
+      rightContent={
+        <Anchor
+          component={ExternalLink}
+          href={UPGRADE_DOCS_URL}
+          className={S.link}
+          fw="bold"
+          size="md"
+        >
+          {t`View upgrade instructions`}
+        </Anchor>
+      }
+    />
   );
 }
