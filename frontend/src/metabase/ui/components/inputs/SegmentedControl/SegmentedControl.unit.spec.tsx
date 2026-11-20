@@ -1,13 +1,16 @@
 import userEvent from "@testing-library/user-event";
 
 import { act, render, screen, waitFor, within } from "__support__/ui";
+import { isFocusVisible } from "metabase/utils/focus-visible";
 
 import { Icon } from "../../icons";
 
 import { SegmentedControl, type SegmentedControlItem } from "./index";
 
-const isFocusVisible = jest.fn(() => false);
-const originalMatches = Element.prototype.matches;
+jest.mock("metabase/utils/focus-visible", () => ({
+  ...jest.requireActual("metabase/utils/focus-visible"),
+  isFocusVisible: jest.fn(() => false),
+}));
 
 type Value = "code" | "preview";
 
@@ -46,22 +49,6 @@ const setup = ({ data, value = "code" }: SetupOpts) => {
 };
 
 describe("SegmentedControl", () => {
-  beforeEach(() => {
-    isFocusVisible.mockReturnValue(false);
-    jest.spyOn(Element.prototype, "matches").mockImplementation(function (
-      this: Element,
-      selector: string,
-    ) {
-      return selector === ":focus-visible"
-        ? isFocusVisible()
-        : originalMatches.call(this, selector);
-    });
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
   it("should render text-only items", () => {
     setup({
       data: [
@@ -184,7 +171,7 @@ describe("SegmentedControl", () => {
 
   describe("tooltips", () => {
     beforeEach(() => {
-      isFocusVisible.mockReturnValue(false);
+      jest.mocked(isFocusVisible).mockReturnValue(false);
     });
 
     it("should not show a tooltip for icon-only items without withTooltip", async () => {
@@ -217,7 +204,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should show the tooltip for the keyboard-focused item and follow arrow keys", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({ data: TOOLTIP_DATA });
 
       await userEvent.tab();
@@ -253,7 +240,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should keep the keyboard-focused tooltip after hovering another item", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({ data: TOOLTIP_DATA });
 
       await userEvent.tab();
@@ -275,7 +262,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should show the keyboard-focused tooltip over a hovered item", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({ data: TOOLTIP_DATA });
 
       await userEvent.hover(screen.getByRole("img", { name: "Code" }));
@@ -294,7 +281,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should hide a hovered tooltip when keyboard focus moves to an item without one", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({
         data: [
           {
@@ -332,7 +319,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should hide a keyboard-focused tooltip on Escape", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({ data: TOOLTIP_DATA });
 
       await userEvent.tab();
@@ -354,7 +341,7 @@ describe("SegmentedControl", () => {
     let rangeRectSpy: jest.SpyInstance;
 
     beforeEach(() => {
-      isFocusVisible.mockReturnValue(false);
+      jest.mocked(isFocusVisible).mockReturnValue(false);
       // jsdom has no layout: give every label the same width, and its text a width that grows with its length.
       elementRectSpy = jest
         .spyOn(HTMLElement.prototype, "getBoundingClientRect")
@@ -392,7 +379,7 @@ describe("SegmentedControl", () => {
     });
 
     it("should show the full label as a tooltip on keyboard focus only when it's truncated", async () => {
-      isFocusVisible.mockReturnValue(true);
+      jest.mocked(isFocusVisible).mockReturnValue(true);
       setup({ data: LONG_LABEL_DATA });
 
       await userEvent.tab();

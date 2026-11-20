@@ -1,6 +1,4 @@
-const IS_MAC = /^Mac/.test(navigator.platform ?? "");
-const METAKEY = IS_MAC ? "⌘" : "Ctrl";
-const ALTKEY = IS_MAC ? "⌥" : "Alt";
+import { ALTKEY, METAKEY } from "metabase/utils/key-labels";
 
 const KEY_LABELS: Record<string, string> = {
   $mod: METAKEY,
