@@ -364,6 +364,7 @@ export type VisualizationSettingsDefinitions = {
     Value,
     TreemapGroupsPickerProps
   >;
+  "treemap.decimal_places"?: SeriesSettingDefinition<Value, Props>;
   "treemap.grouping"?: SeriesSettingDefinition<Value, Props>;
   "treemap.rows"?: SeriesSettingDefinition<Value, Props>;
   "treemap.show_leaf_labels"?: SeriesSettingDefinition<Value, Props>;

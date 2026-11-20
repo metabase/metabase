@@ -29,10 +29,15 @@ function makeTree(...values: number[]): TreemapTree {
 
 type SetupOpts = {
   tree: TreemapTree;
+  decimals?: number;
 };
 
-function setup({ tree }: SetupOpts) {
-  return getTreemapFormatters(columns, { column: () => ({}) }, tree);
+function setup({ tree, decimals }: SetupOpts) {
+  return getTreemapFormatters(
+    columns,
+    { column: () => ({}), "treemap.decimal_places": decimals },
+    tree,
+  );
 }
 
 describe("getTreemapFormatters percent", () => {
@@ -70,5 +75,34 @@ describe("getTreemapFormatters percent", () => {
     const { percent } = setup({ tree });
 
     expect(percent(100000 / total)).toBe("99.999%");
+  });
+
+  describe("treemap.decimal_places", () => {
+    const tree = makeTree(100000, 1, 3333, 777);
+    const total = 100000 + 1 + 3333 + 777;
+
+    it("overrides the automatic precision with a fixed value", () => {
+      const { percent } = setup({ tree, decimals: 1 });
+
+      expect(percent(100000 / total)).toBe("96.1%");
+    });
+
+    it("supports zero decimals", () => {
+      const { percent } = setup({ tree, decimals: 0 });
+
+      expect(percent(100000 / total)).toBe("96%");
+    });
+
+    it("applies the fixed value to a whole share too, like Pie", () => {
+      const { percent } = setup({ tree: makeTree(10), decimals: 2 });
+
+      expect(percent(1)).toBe("100.00%");
+    });
+
+    it("keeps the automatic precision when unset", () => {
+      const { percent } = setup({ tree });
+
+      expect(percent(100000 / total)).toBe("96.05133%");
+    });
   });
 });
