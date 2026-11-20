@@ -171,6 +171,17 @@ export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.to_js_query(query);
 }
 
+/**
+ * A copy of RTK Query args with every Lib clause UUID replaced by its position,
+ * for use as an endpoint's `serializeQueryArgs`. The same args object returns
+ * the same copy.
+ */
+export function canonicalizeLibUuids(
+  queryArgs: object,
+): Record<string, unknown> {
+  return ML.canonicalize_lib_uuids(queryArgs);
+}
+
 export function createTestQuery(
   metadataProvider: MetadataProvider,
   querySpec: TestQuerySpec,

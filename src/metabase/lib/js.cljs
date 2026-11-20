@@ -2847,6 +2847,56 @@
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
 
+(defn- lib-uuids
+  "The `lib/uuid` values in the plain JS value `x`, in the order a walk of `x` meets them. Object keys are walked in
+  sorted order, so the order does not depend on the order the keys were inserted in."
+  [x]
+  (cond
+    (array? x)
+    (mapcat lib-uuids x)
+
+    (object? x)
+    (mapcat (fn [k]
+              (let [v (gobject/get x k)]
+                (if (and (= k "lib/uuid") (string? v))
+                  [v]
+                  (lib-uuids v))))
+            (sort (js-keys x)))))
+
+(defn- replace-lib-uuids
+  "A copy of the plain JS value `x` with every string that is a key of `uuid->canonical` replaced by its value."
+  [x uuid->canonical]
+  (cond
+    (string? x) (get uuid->canonical x x)
+    (array? x)  (.map ^js x (fn [v] (replace-lib-uuids v uuid->canonical)))
+    (object? x) (gobject/map x (fn [v _k _obj] (replace-lib-uuids v uuid->canonical)))
+    :else       x))
+
+(def ^:private ^js/WeakMap canonicalize-lib-uuids-cache
+  (js/WeakMap.))
+
+(defn ^:export canonicalize-lib-uuids
+  "A copy of the plain JS object `query-args` with every Lib clause UUID replaced by its position (`uuid-0`,
+  `uuid-1`...), for use as an RTK Query endpoint's `serializeQueryArgs`.
+
+  Lib generates new UUIDs whenever a query or metric definition is rebuilt, so without this an otherwise unchanged
+  request gets a new cache key and refetches after an unrelated metadata update. A UUID keeps one positional value
+  wherever it appears, including in a reference to the clause that owns it, so two requests that reference different
+  clauses still get different keys.
+
+  The same `query-args` object returns the same copy, which lets RTK Query reuse its own serialization cache.
+
+  > **Code health:** Special use"
+  [query-args]
+  (or (.get canonicalize-lib-uuids-cache query-args)
+      (let [uuid->canonical (into {}
+                                  (comp (distinct)
+                                        (map-indexed (fn [i lib-uuid]
+                                                       [lib-uuid (str "uuid-" i)])))
+                                  (lib-uuids query-args))]
+        (u/prog1 (replace-lib-uuids query-args uuid->canonical)
+          (.set canonicalize-lib-uuids-cache query-args <>)))))
+
 (defn ^:export validate-template-tags
   "Validates if the template tags in `query` are all valid and well-formed."
   [js-query]

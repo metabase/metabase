@@ -1,3 +1,4 @@
+import * as Lib from "metabase-lib";
 import type {
   AddMetricDimensionsRequest,
   Dataset,
@@ -31,7 +32,6 @@ import {
   provideMetricListTags,
   provideMetricTags,
 } from "./tags/utils";
-import { canonicalizeLibUuids } from "./utils/canonicalize-lib-uuids";
 
 /**
  * Curation edits change the dimensions embedded in the metric card itself,
@@ -213,7 +213,8 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric/dataset",
         body,
       }),
-      serializeQueryArgs: ({ queryArgs }) => canonicalizeLibUuids(queryArgs),
+      serializeQueryArgs: ({ queryArgs }) =>
+        Lib.canonicalizeLibUuids(queryArgs),
       providesTags: ["metric-dimension"],
       keepUnusedDataFor: 30 * 60,
     }),

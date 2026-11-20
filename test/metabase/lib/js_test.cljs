@@ -757,3 +757,75 @@
     (testing "expression column returns nil IDs"
       (is (= {:id nil, :tableId nil}
              (js->clj (lib.js/picker-info query expr) :keywordize-keys true))))))
+
+(defn- metric-dataset-request
+  "A `POST /api/metric/dataset` request body, as a plain JS object."
+  ([source-uuid projection-uuid]
+   (metric-dataset-request source-uuid projection-uuid source-uuid))
+
+  ([source-uuid projection-uuid projection-source-uuid]
+   (clj->js {"definition" {"expression"  ["metric" {"lib/uuid" source-uuid} 42]
+                           "projections" [{"type"       "metric"
+                                           "id"         42
+                                           "lib/uuid"   projection-source-uuid
+                                           "projection" [["dimension"
+                                                          {"lib/uuid" projection-uuid, "temporal-unit" "month"}
+                                                          "created-at"]]}]}})))
+
+(defn- canonicalize-lib-uuids [x]
+  (js->clj (lib.js/canonicalize-lib-uuids x)))
+
+(deftest ^:parallel canonicalize-lib-uuids-test
+  (testing "equivalent metric definitions with regenerated UUIDs get the same value"
+    (is (= {"definition" {"expression"  ["metric" {"lib/uuid" "uuid-0"} 42]
+                          "projections" [{"type"       "metric"
+                                          "id"         42
+                                          "lib/uuid"   "uuid-0"
+                                          "projection" [["dimension"
+                                                         {"lib/uuid" "uuid-1", "temporal-unit" "month"}
+                                                         "created-at"]]}]}}
+           (canonicalize-lib-uuids (metric-dataset-request "a" "b"))
+           (canonicalize-lib-uuids (metric-dataset-request "c" "d")))))
+  (testing "UUID relationships that identify source instances are preserved"
+    (is (not= (canonicalize-lib-uuids (metric-dataset-request "a" "b"))
+              (canonicalize-lib-uuids (metric-dataset-request "a" "b" "other-source")))))
+  (testing "the result does not depend on key order"
+    (is (= {"first"  {"lib/uuid" "uuid-0"}
+            "second" {"lib/uuid" "uuid-1"}}
+           (canonicalize-lib-uuids #js {"first"  #js {"lib/uuid" "a"}
+                                        "second" #js {"lib/uuid" "b"}})
+           (canonicalize-lib-uuids #js {"second" #js {"lib/uuid" "d"}
+                                        "first"  #js {"lib/uuid" "c"}}))))
+  (testing "args without UUIDs stay as they are"
+    (let [request {"type" "internal", "fn" "audit", "args" [], "limit" nil, "cached" false}]
+      (is (= request
+             (canonicalize-lib-uuids (clj->js request)))))))
+
+(deftest ^:parallel canonicalize-lib-uuids-query-test
+  (letfn [(ordered-query [order-by-index]
+            (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                            (lib/aggregate (lib/count))
+                            (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))]
+              (-> query
+                  (lib/order-by (nth (lib/orderable-columns query) order-by-index))
+                  lib.js/to-js-query)))]
+    (testing "a rebuilt query gets the same value"
+      (let [query-1 (ordered-query 0)
+            query-2 (ordered-query 0)]
+        (is (not= (js->clj query-1)
+                  (js->clj query-2)))
+        (is (= (canonicalize-lib-uuids query-1)
+               (canonicalize-lib-uuids query-2)))))
+    (testing "queries whose references point at different clauses get different values"
+      (is (not= (canonicalize-lib-uuids (ordered-query 0))
+                (canonicalize-lib-uuids (ordered-query 1)))))))
+
+(deftest ^:parallel canonicalize-lib-uuids-cache-test
+  (let [request   (metric-dataset-request "a" "b")
+        canonical (lib.js/canonicalize-lib-uuids request)]
+    (testing "the args are left unchanged"
+      (is (= (js->clj (metric-dataset-request "a" "b"))
+             (js->clj request))))
+    (testing "the same args object returns the same value"
+      (is (identical? canonical
+                      (lib.js/canonicalize-lib-uuids request))))))
