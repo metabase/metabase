@@ -40,7 +40,7 @@ const sampleArgs = {
 
 const argTypes = {
   variant: {
-    options: ["default", "unstyled"],
+    options: ["default", "unstyled", "read-only"],
     control: { type: "inline-radio" },
   },
   size: {
@@ -125,6 +125,16 @@ const STATES: {
     id: "read-only",
     label: "Read only",
     props: { readOnly: true },
+  },
+  {
+    id: "read-only-variant",
+    label: 'variant="read-only"',
+    props: { readOnly: true, variant: "read-only" },
+  },
+  {
+    id: "read-only-variant-focus",
+    label: 'variant="read-only" (focused)',
+    props: { readOnly: true, variant: "read-only" },
   },
 ];
 
@@ -334,6 +344,7 @@ export const Overview = {
       focusWithin: [
         'input[data-state-row="focus"]',
         'input[data-state-row="error-focus"]',
+        'input[data-state-row="read-only-variant-focus"]',
       ],
     },
     controls: { include: ["filled", "theme"] },

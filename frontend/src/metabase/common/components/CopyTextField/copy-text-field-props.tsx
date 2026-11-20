@@ -32,6 +32,7 @@ export function getCopyTextFieldProps<E extends CopyableElement>({
 
   return {
     readOnly: isReadOnly,
+    variant: isReadOnly ? "read-only" : undefined,
     onClick: (event: MouseEvent<E>) => {
       if (isReadOnly) {
         event.currentTarget.setSelectionRange(
