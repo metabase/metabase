@@ -2,6 +2,7 @@
   (:require
    [mb.hawk.parallel]
    [metabase.global-system.mutable-component :as mc]
+   [metabase.global-system.system :as system]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -40,3 +41,13 @@
   {:style/indent [:defn]}
   [handle value & body]
   `(do-with-root ~handle ~value (^:once fn* [] ~@body)))
+
+(defn halt-order
+  "The components a halt of the global system would stop now, in the order it would stop them."
+  []
+  (#'system/halt-order (#'system/dependency-graph {})))
+
+(defn halts?
+  "Whether a halt of the global system would stop the component behind `handle` now."
+  [handle]
+  (boolean (some #{handle} (halt-order))))
