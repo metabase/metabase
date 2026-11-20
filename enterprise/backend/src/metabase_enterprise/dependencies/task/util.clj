@@ -7,6 +7,7 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -135,7 +136,8 @@
   "Run a batch of `job` now, under the lock its scheduled runs take."
   [job :- Job]
   (if (enabled? job)
-    (if (some? (run-batch-locked! job))
+    ;; a caller's metadata provider cache would still hold entities as they were before an earlier batch rewrote them
+    (if (some? (lib-be/with-existing-metadata-provider-cache nil (run-batch-locked! job)))
       :worked
       :idle)
     :disabled))

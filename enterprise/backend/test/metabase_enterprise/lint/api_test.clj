@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
@@ -190,6 +191,21 @@
          (create-card-filtering-total! user intermediate-card "Lint dependent")))
      (fn [_model-card dependent-card]
        (is (= ["missing-column"] (map :ruleId (card-results (lint-report) dependent-card))))))))
+
+(deftest ^:synchronized source-read-before-drain-test
+  (testing "POST /api/ee/lint reports an entity broken through a card the request read before re-deriving it"
+    (do-with-broken-model!
+     (fn [user model-card]
+       (let [intermediate-card (create-card! user "Lint intermediate" :model (deps.test/card-query (:id model-card)))]
+         [intermediate-card (create-card-filtering-total! user intermediate-card "Lint dependent")]))
+     (fn [_model-card [intermediate-card dependent-card]]
+       (let [drain-pending! (mt/original-fn #'deps.findings/drain-pending!)]
+         (mt/with-dynamic-fn-redefs [deps.findings/drain-pending!
+                                     (fn []
+                                       (lib.metadata/card (lib-be/application-database-metadata-provider (mt/id))
+                                                          (:id intermediate-card))
+                                       (drain-pending!))]
+           (is (= ["missing-column"] (map :ruleId (card-results (lint-report) dependent-card))))))))))
 
 (deftest ^:synchronized fails-when-analysis-cannot-run-test
   (do-with-broken-native-card!
