@@ -42,6 +42,11 @@
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :bundle :model/CustomVizPlugin :id plugin-id))
 
+(mu/defn plugin-bundle-hash :- [:maybe :string]
+  "The bundle hash of the CustomVizPlugin with `plugin-id`, or nil."
+  [plugin-id :- ms/PositiveInt]
+  (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :id plugin-id))
+
 (mu/defn plugin-dev-bundle-url
   "The dev bundle URL of the CustomVizPlugin with `plugin-id`."
   [plugin-id :- ms/PositiveInt]

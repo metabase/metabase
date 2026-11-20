@@ -73,7 +73,7 @@
                                 (or (not (remote-sync/read-only?))
                                     (nil? (if (contains? plugin :bundle_hash)
                                             (:bundle_hash plugin)
-                                            (t2/select-one-fn :bundle_hash :model/CustomVizPlugin (:id plugin)))))))))
+                                            (custom-viz-plugin.db/plugin-bundle-hash (:id plugin)))))))))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _plugin]
