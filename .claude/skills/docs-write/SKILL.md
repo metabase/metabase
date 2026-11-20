@@ -6,13 +6,17 @@ allowed-tools: Read, Write, Edit, Grep, Bash, Glob
 
 # Documentation writing skill
 
-@./../_shared/metabase-style-guide.md
+If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) (relative to this skill's directory) before anything else.
 
-If you haven't already, read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else.
+## State only facts that someone confirmed in the code
 
-## Write from the material you're given
+Before you write a product fact, like a setting, a default, a limit, a UI label, a permission, or a plan, make sure the code backs it:
 
-This skill covers clarity, style, and formatting. Accuracy is a separate check, so look something up only when you need it to write the page, and leave auditing the material against the source code to that check. If the material looks wrong on its face, or doesn't say where the feature stops, keep what the material says and flag the problem in your reply instead of guessing.
+- **If you have a fact table from `docs-research`**, write only the facts it confirms.
+- **If you don't**, run `docs-research` with the facts you plan to state. Pass the facts themselves, since `docs-research` can't see this conversation.
+- **A change with no new product facts**, like a link fix or a rewrite for clarity, needs no research.
+
+Leave facts the code didn't confirm out of the page, and list them in your reply. If the material doesn't say where the feature stops, say so in your reply instead of guessing.
 
 ## Give a new page front matter, then format it
 

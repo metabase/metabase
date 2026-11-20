@@ -14,15 +14,17 @@ metadata:
 
 # Documentation review skill
 
-@./../_shared/metabase-style-guide.md
-
 ## Read the guide, then read the change for intent
 
-If you haven't already, read `../_shared/metabase-style-guide.md` (relative to this skill's directory) before anything else. Then read the diff once for intent before you flag anything. When you review a file instead of a diff, every line is in scope.
+If you haven't already, read [the style guide](../_shared/metabase-style-guide.md) (relative to this skill's directory) before anything else. Then read the diff once for intent before you flag anything. When you review a file instead of a diff, every line is in scope.
 
-## Review clarity, style, and formatting, not accuracy
+## Check the facts nobody confirmed
 
-Accuracy is a separate check, so skip verifying facts against the source code. If something looks wrong on its face, say so in one line at the end of the review, marked "Not checked," and move on.
+Check only the product facts in scope: a setting, a default, a limit, a UI label, a permission, or a plan.
+
+- **A fact with a link to code**: If the PR body or the author links the fact to code, open the link and check that the lines say what the page says. Don't search further.
+- **A fact with no link**: Run `docs-research` on those facts only. Pass the facts themselves, since `docs-research` can't see this conversation.
+- **If you can't run `docs-research`**: List each unlinked fact in one line at the end of the review, marked "Not checked."
 
 ## Rank issues by tier
 
@@ -30,7 +32,7 @@ Existential questions come first, then broken things, then clarity, then style. 
 
 **Tier 0: Existential.** Ask whether the page, section, or sentence needs to exist at all. Be ruthless with cutting. A page or section nobody reads costs maintenance and clutters the content people actually need. If the content really helps people solve problems in or with Metabase, look for a relevant section to merge it into, or trim it. If you don't think readers care about it, wince and cut it completely.
 
-**Tier 1: Broken.** Check these only in a diff.
+**Tier 1: Broken.** A fact that the code contradicts is broken. In a diff, also check for:
 
 - A moved or renamed page with no `redirect_from` entry for its old path, like `/docs/latest/old-section/old-page`, or one that drops the old page's own `redirect_from` entries.
 - A link that still points at a moved page's old path, in `docs/`, in a frontend `useDocsUrl` call, or in backend code. Search for the old page name:
@@ -75,15 +77,18 @@ Cut anything that won't materially help the reader, then number remaining issues
 ```markdown
 ## Issues
 
-**Issue 1 (Clarity)**: Line 8
+**Issue 1 (Broken)**: Line 5
+The page says public sharing is off by default. The `enable-public-sharing` setting defaults to `true`.
+
+**Issue 2 (Clarity)**: Line 8
 "Cache configuration" names the topic. State the point: "Turn on caching for slow questions."
 
-**Issue 2 (Clarity)**: Lines 12–14
+**Issue 3 (Clarity)**: Lines 12–14
 The command comes after two sentences of explanation. Lead with the command, then explain.
 
-**Issue 3 (Style)**: Lines 15–22
+**Issue 4 (Style)**: Lines 15–22
 "cannot" → "can't," "users" → "people."
 
 **Not checked**: Line 30
-The page says caching is on by default, but the steps start by turning it on.
+The page says caching is on by default.
 ```

@@ -48,6 +48,8 @@ Task headings are imperative: "Create a dashboard," not "Creating a dashboard." 
 
 **Write versions, limits, and quotas so they survive a change.** Point at where the value lives, or word the sentence so it stays true.
 
+**State facts you can point to in the code.** A hedge doesn't fix a fact that nobody checked. Confirm the fact or cut it.
+
 **Explain in prose, not bullets.** Bullets are for parallel items, like options and requirements, and for reference material readers scan. Steps go in numbered lists, not in bullets or in a click path inside a paragraph.
 
 **Answer the questions you had when learning.** State the answer, not the question: "Metabase supports pivot tables," not "Does Metabase support pivot tables?"
