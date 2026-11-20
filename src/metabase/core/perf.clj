@@ -175,8 +175,9 @@
         (log/warnf "Error stopping performance monitoring: %s" (ex-message e))))))
 
 ;; The recording, as a global-system component, so halting the system stops it too.
-;; Startup starts it before any other component, so the halt, which stops components in reverse start order unless
-;; their dependencies say otherwise, stops it after them, and it records the rest of the shutdown.
+;; Startup starts it before any other component, the web server included, so the halt, which stops components in
+;; reverse start order unless their dependencies say otherwise, stops it after them, and it records the rest of the
+;; shutdown.
 (def ^:private recording-component
   (global-system/mutable-component-handle ::recording (constantly nil)))
 
@@ -198,4 +199,6 @@
 (defn stop-monitoring!
   "Stops and closes the JFR recording if one is active."
   []
-  (global-system/stop! recording-component))
+  ;; a start that threw part way registered nothing, but may have left a recording running
+  (when-not (global-system/stop! recording-component)
+    (stop-recording!)))
