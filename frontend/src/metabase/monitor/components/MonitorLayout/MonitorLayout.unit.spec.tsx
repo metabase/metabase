@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { type ReactNode, memo, useState } from "react";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -38,6 +39,8 @@ interface SetupOpts {
   mcpEnabled?: boolean;
   /** What the data apps plugin sets on an instance with the data-apps feature. */
   hasDataApps?: boolean;
+  /** Initializes the real data apps plugin, which reads the token, instead of `hasDataApps`. */
+  withDataAppsPlugin?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
   children?: ReactNode;
@@ -87,6 +90,7 @@ const setup = ({
   isConfigured = true,
   mcpEnabled = true,
   hasDataApps = false,
+  withDataAppsPlugin = false,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
   children = <div data-testid="content">{"Content"}</div>,
@@ -98,6 +102,9 @@ const setup = ({
     "llm-metabot-configured?": isConfigured,
     "mcp-enabled?": mcpEnabled,
   });
+  if (withDataAppsPlugin) {
+    setupEnterpriseOnlyPlugin("data-apps");
+  }
 
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(
@@ -683,6 +690,34 @@ describe("MonitorLayout", () => {
     expect(
       within(link).getByRole("img", { name: "app icon" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows Data app analytics in the monitor nav when the token has the data-apps feature", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, "data-apps": true },
+      withDataAppsPlugin: true,
+    });
+
+    const nav = await screen.findByTestId("monitor-nav");
+    expect(
+      within(nav).getByRole("link", { name: "Data app analytics" }),
+    ).toHaveAttribute("href", Urls.monitorAiAuditingDataApps());
+  });
+
+  it("hides Data app analytics in the monitor nav when the token lacks the data-apps feature", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, "data-apps": false },
+      withDataAppsPlugin: true,
+    });
+
+    const nav = await screen.findByTestId("monitor-nav");
+    // A positive control on the same nav, so the absence isn't a nav that hasn't rendered.
+    expect(
+      within(nav).getByRole("link", { name: "CLI analytics" }),
+    ).toBeInTheDocument();
+    expect(
+      within(nav).queryByRole("link", { name: "Data app analytics" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides Data app analytics while the data apps plugin is off, whatever the token says", async () => {
