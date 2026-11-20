@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 
-import type { AffectingAttribute, PrincipalType } from "../api";
+import type { AffectingAttribute } from "../api";
 
 import { AttributeBar, AttributeTag } from "./AttributeBar";
 
@@ -71,16 +71,6 @@ describe("AttributeBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("says a user's value comes from their tenant when the tenant has no name", async () => {
-    setup({ attributes: [{ ...CATEGORY, source: "tenant" }] });
-
-    await userEvent.click(screen.getByRole("button", { name: /category/ }));
-
-    expect(
-      await screen.findByText("Sandy Sales's value: Gizmo, from their tenant"),
-    ).toBeInTheDocument();
-  });
-
   it("hides the User attributes used by rules label while the attributes load", () => {
     setup({ attributes: [], isLoading: true });
 
@@ -104,7 +94,6 @@ describe("AttributeBar", () => {
           ],
         },
       ],
-      principalType: "group",
       groupMemberCount: 7,
     });
 
@@ -113,8 +102,8 @@ describe("AttributeBar", () => {
     );
   });
 
-  it("doesn't count members on a user's chip", () => {
-    setup({ attributes: [CATEGORY], groupMemberCount: 7 });
+  it("guard: counts no members while the group's size is unknown", () => {
+    setup({ attributes: [CATEGORY] });
 
     expect(screen.getByRole("button", { name: /category/ })).toHaveTextContent(
       /^categoryGizmo$/,
@@ -138,7 +127,6 @@ describe("AttributeBar", () => {
       attributes: [
         { ...CATEGORY, member_values: [{ value: "Gizmo", count: 2 }] },
       ],
-      principalType: "group",
       groupMemberCount: 7,
     });
 
@@ -198,7 +186,6 @@ type SetupOpts = {
   attributes: AffectingAttribute[];
   isLoading?: boolean;
   isLabelOnOwnRow?: boolean;
-  principalType?: PrincipalType;
   groupMemberCount?: number;
 };
 
@@ -206,13 +193,10 @@ function setup({
   attributes,
   isLoading = false,
   isLabelOnOwnRow,
-  principalType = "user",
   groupMemberCount,
 }: SetupOpts) {
   renderWithProviders(
     <AttributeBar
-      principalType={principalType}
-      whoName="Sandy Sales"
       attributes={attributes}
       isLoading={isLoading}
       isLabelOnOwnRow={isLabelOnOwnRow}

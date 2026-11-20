@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import {
   Box,
-  Button,
   Group,
   Icon,
   Popover,
@@ -18,32 +17,26 @@ import type {
   AffectingAttribute,
   AttributeRuleKind,
   AttributeUse,
-  PrincipalType,
 } from "../api";
 import { formatList } from "../format-list";
 
 type AttributeBarProps = {
-  principalType: PrincipalType;
-  whoName: string;
   attributes: AffectingAttribute[];
   isLoading: boolean;
-  /** The values picked for the preview; a user's replace their own in the preview only. */
+  /** The values picked for the group's preview. */
   pickedValues: Record<string, string>;
-  /** `null` resets the attribute to the person's own value. */
-  onPick: (attribute: string, value: string | null) => void;
+  onPick: (attribute: string, value: string) => void;
   /** "User attributes used by rules:" above the chips, for a narrow panel. */
   isLabelOnOwnRow?: boolean;
-  /** A group's size, so its chips say how many members share the value: "Gadget · 2 of 7 members". */
+  /** The group's size, so its chips say how many members share the value: "Gadget · 2 of 7 members". */
   groupMemberCount?: number | null;
 };
 
 /**
- * The previewed person's attributes that a permission rule reads, as chips under the band; each opens its picker and
- * says where it's used. Nothing when no rule reads any: the others can't change what the preview shows.
+ * The attributes that a permission rule reads, for a group's preview, as chips under the band; each opens its picker
+ * and says where it's used. Nothing when no rule reads any: the others can't change what the preview shows.
  */
 export function AttributeBar({
-  principalType,
-  whoName,
   attributes,
   isLoading,
   pickedValues,
@@ -74,8 +67,6 @@ export function AttributeBar({
         {ruleAttributes.map((attribute) => (
           <AttributeChip
             key={attribute.attribute}
-            principalType={principalType}
-            whoName={whoName}
             attribute={attribute}
             pickedValue={pickedValues[attribute.attribute]}
             groupMemberCount={groupMemberCount}
@@ -93,17 +84,13 @@ export function getRuleAttributes(attributes: AffectingAttribute[]) {
 }
 
 type AttributeChipProps = {
-  principalType: PrincipalType;
-  whoName: string;
   attribute: AffectingAttribute;
   pickedValue: string | undefined;
   groupMemberCount?: number | null;
-  onPick: (value: string | null) => void;
+  onPick: (value: string) => void;
 };
 
 function AttributeChip({
-  principalType,
-  whoName,
   attribute,
   pickedValue,
   groupMemberCount,
@@ -111,12 +98,8 @@ function AttributeChip({
 }: AttributeChipProps) {
   const [isOpened, setIsOpened] = useState(false);
   const value = pickedValue ?? attribute.value ?? "";
-  const isOverridden =
-    principalType === "user" &&
-    pickedValue != null &&
-    pickedValue !== (attribute.value ?? "");
 
-  const handlePick = (newValue: string | null) => {
+  const handlePick = (newValue: string) => {
     setIsOpened(false);
     onPick(newValue);
   };
@@ -129,11 +112,7 @@ function AttributeChip({
           px="sm"
           h="1.5rem"
           maw="100%"
-          bg={
-            isOverridden
-              ? "background_surface-brand-subtle"
-              : "background_page-primary"
-          }
+          bg="background_page-primary"
           c="text-primary"
           style={CHIP_BORDER}
           onClick={() => setIsOpened((opened) => !opened)}
@@ -145,7 +124,7 @@ function AttributeChip({
             <Text c="inherit" truncate>
               {value === "" ? t`No value` : value}
             </Text>
-            {principalType === "group" && groupMemberCount != null && (
+            {groupMemberCount != null && (
               <Text c="text-secondary" style={{ whiteSpace: "nowrap" }}>
                 {`· ${getMemberShare(attribute, value, groupMemberCount)}`}
               </Text>
@@ -167,18 +146,6 @@ function AttributeChip({
               {line}
             </Text>
           ))}
-          {principalType === "user" && (
-            <Group gap="xs" justify="space-between" wrap="nowrap">
-              <Text c="text-secondary">
-                {getOwnValueLabel(whoName, attribute)}
-              </Text>
-              {isOverridden && (
-                <Button size="compact-sm" onClick={() => handlePick(null)}>
-                  {t`Reset`}
-                </Button>
-              )}
-            </Group>
-          )}
         </Stack>
       </Popover.Dropdown>
     </Popover>
@@ -234,25 +201,6 @@ export function AttributeTag({ attribute, value }: AttributeTagProps) {
       </Text>
     </Group>
   );
-}
-
-/** "Sandy Sales's value: Gizmo, from JWT": a user's own value and where it comes from. */
-function getOwnValueLabel(whoName: string, attribute: AffectingAttribute) {
-  const value = attribute.value ?? t`No value`;
-  switch (attribute.source) {
-    case "jwt":
-      return t`${whoName}'s value: ${value}, from JWT`;
-    case "tenant": {
-      const tenantName = attribute.tenant_name;
-      return tenantName != null
-        ? t`${whoName}'s value: ${value}, from the ${tenantName} tenant`
-        : t`${whoName}'s value: ${value}, from their tenant`;
-    }
-    case "admin":
-      return t`${whoName}'s value: ${value}, set by an admin`;
-    default:
-      return t`${whoName}'s value: ${value}`;
-  }
 }
 
 /**

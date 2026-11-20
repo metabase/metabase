@@ -13,10 +13,6 @@ import {
   useStartPreviewMutation,
 } from "./api";
 import { getPreviewUrl } from "./preview-state";
-import {
-  type PrincipalSection,
-  usePrincipalSections,
-} from "./principal-sections";
 import { AttributeBar, getRuleAttributes } from "./troubleshoot/AttributeBar";
 import { useUnsavedEdits } from "./unsaved-edits";
 
@@ -45,9 +41,10 @@ export function ViewAsModal({
     principal != null && principal.id > 0 ? principal : null;
   const { data: attributes = [], isFetching: isLoadingAttributes } =
     useGetAffectingAttributesQuery(
-      pickedPrincipal != null ? { principal: pickedPrincipal } : skipToken,
+      pickedPrincipal?.type === "group"
+        ? { principal: pickedPrincipal }
+        : skipToken,
     );
-  const { sections } = usePrincipalSections(principal?.type ?? "user");
   const { edits, unsavedEditsId } = useUnsavedEdits();
   const hasEdits = edits.length > 0;
   const isReady =
@@ -60,10 +57,8 @@ export function ViewAsModal({
     setPickedValues({});
   };
 
-  const handlePick = (attribute: string, value: string | null) => {
-    setPickedValues(({ [attribute]: _previous, ...others }) =>
-      value == null ? others : { ...others, [attribute]: value },
-    );
+  const handlePick = (attribute: string, value: string) => {
+    setPickedValues((values) => ({ ...values, [attribute]: value }));
   };
 
   const handleOpen = async () => {
@@ -116,18 +111,14 @@ export function ViewAsModal({
             : t`Opens a read-only preview in this tab.`}
         </Text>
         <PrincipalPicker value={principal} onChange={handlePrincipalChange} />
-        {pickedPrincipal != null &&
+        {pickedPrincipal?.type === "group" &&
           getRuleAttributes(attributes).length > 0 && (
             <Stack gap="xs">
-              {pickedPrincipal.type !== "user" && (
-                <Text c="text-secondary" size="sm">
-                  {getAttributesHint(pickedPrincipal.type)}
-                </Text>
-              )}
+              <Text c="text-secondary" size="sm">
+                {getAttributesHint(pickedPrincipal.type)}
+              </Text>
               <AttributeBar
                 key={`${pickedPrincipal.type}-${pickedPrincipal.id}`}
-                principalType={pickedPrincipal.type}
-                whoName={getRowName(sections, pickedPrincipal.id)}
                 attributes={attributes}
                 isLoading={isLoadingAttributes}
                 pickedValues={pickedValues}
@@ -171,11 +162,4 @@ function getAttributesHint(type: Exclude<PrincipalType, "user">) {
     case "group":
       return t`Pick the user attribute values to preview this group with.`;
   }
-}
-
-function getRowName(sections: PrincipalSection[], id: number) {
-  const row = sections
-    .flatMap((section) => section.rows)
-    .find((candidate) => candidate.id === id);
-  return row?.name ?? "";
 }

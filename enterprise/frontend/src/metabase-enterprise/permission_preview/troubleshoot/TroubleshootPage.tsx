@@ -80,7 +80,7 @@ export function TroubleshootPage() {
   const openedItem = parseOpenedItem(framePath);
   const { data: attributes = [], isFetching: isLoadingAttributes } =
     useGetAffectingAttributesQuery(
-      principal != null ? { principal } : skipToken,
+      principal?.type === "group" ? { principal } : skipToken,
     );
   // The person changes, the open item stays.
   const keepFramePath = () => setOpenedPath(framePath);
@@ -178,24 +178,22 @@ export function TroubleshootPage() {
               onClick={() => setIsWhyOpen((isOpen) => !isOpen)}
             />
           </PreviewBand>
-          <AttributeBar
-            key={`${principal.type}-${principal.id}`}
-            principalType={principalType}
-            whoName={whoName}
-            attributes={attributes}
-            isLoading={isLoadingAttributes}
-            pickedValues={pickedValues}
-            groupMemberCount={groupMemberCount}
-            onPick={(attribute, value) => {
-              keepFramePath();
-              setPickedValues((values) => {
-                const { [attribute]: _previous, ...others } = values;
-                return value == null
-                  ? others
-                  : { ...others, [attribute]: value };
-              });
-            }}
-          />
+          {principal.type === "group" && (
+            <AttributeBar
+              key={`${principal.type}-${principal.id}`}
+              attributes={attributes}
+              isLoading={isLoadingAttributes}
+              pickedValues={pickedValues}
+              groupMemberCount={groupMemberCount}
+              onPick={(attribute, value) => {
+                keepFramePath();
+                setPickedValues((values) => ({
+                  ...values,
+                  [attribute]: value,
+                }));
+              }}
+            />
+          )}
           {error != null && (
             <Text c="feedback-negative">{getErrorMessage(error)}</Text>
           )}

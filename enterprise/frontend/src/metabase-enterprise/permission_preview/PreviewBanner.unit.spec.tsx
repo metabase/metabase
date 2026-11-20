@@ -10,7 +10,11 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 
 import { PreviewBanner } from "./PreviewBanner";
-import type { PreviewPrincipal } from "./api";
+import type {
+  AffectingAttribute,
+  PreviewPrincipal,
+  PrincipalType,
+} from "./api";
 import type { PreviewState } from "./preview-state";
 
 jest.mock("./PreviewBand.module.css", () => ({ bandButton: "bandButton" }));
@@ -35,6 +39,21 @@ const SANDY: PreviewPrincipal = {
   tenant_side: false,
   attributes: null,
   groups: [{ id: 1, name: "All internal users" }],
+};
+
+const CATEGORY: AffectingAttribute = {
+  attribute: "category",
+  value: "Doohickey",
+  uses: [
+    {
+      kind: "sandbox",
+      label: "Products",
+      table_id: 1,
+      column: "Products.Category",
+    },
+  ],
+  applies: false,
+  other_values: ["Gizmo"],
 };
 
 describe("PreviewBanner", () => {
@@ -140,6 +159,33 @@ describe("PreviewBanner", () => {
     });
   });
 
+  describe("with a rule that reads an attribute", () => {
+    it("shows no attribute chips in a user's panel", async () => {
+      await setup({ widthPx: 1440, attributes: [CATEGORY] });
+
+      expect(
+        screen.getByRole("navigation", { name: "Preview settings" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("toolbar", {
+          name: "User attributes used by rules",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("guard: shows the chips in a group's panel", async () => {
+      await setup({
+        widthPx: 1440,
+        attributes: [CATEGORY],
+        principalType: "group",
+      });
+
+      expect(
+        await screen.findByRole("button", { name: /category/ }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("on a wide screen (1440px)", () => {
     it("opens with the panel open and the buttons' full labels", async () => {
       await setup({ widthPx: 1440 });
@@ -186,11 +232,20 @@ describe("PreviewBanner", () => {
 type SetupOpts = {
   widthPx: number;
   unsavedEdits?: PreviewState["unsavedEdits"];
+  /** What the rules read, as the attributes endpoint lists them. */
+  attributes?: AffectingAttribute[];
+  /** Who is previewed: user 2, Sandy Sales, or group 2, Sales. */
+  principalType?: PrincipalType;
 };
 
-async function setup({ widthPx, unsavedEdits }: SetupOpts) {
+async function setup({
+  widthPx,
+  unsavedEdits,
+  attributes = [],
+  principalType = "user",
+}: SetupOpts) {
   mockWindowWidth(widthPx);
-  setupPermissionPreviewAttributesEndpoint([]);
+  setupPermissionPreviewAttributesEndpoint(attributes);
   setupPermissionPreviewPrincipalsEndpoint({
     users: [
       {
@@ -203,7 +258,16 @@ async function setup({ widthPx, unsavedEdits }: SetupOpts) {
         tenant_side: false,
       },
     ],
-    groups: [],
+    groups: [
+      {
+        id: 2,
+        name: "Sales",
+        detail: null,
+        member_count: 7,
+        tenant_side: false,
+        built_in: false,
+      },
+    ],
   });
   // the name's card, open while the name has focus
   setupPermissionPreviewCollectionsEndpoint("default", {
@@ -228,9 +292,17 @@ async function setup({ widthPx, unsavedEdits }: SetupOpts) {
     setupPermissionPreviewDataEndpoint({ principal: SANDY, databases: [] });
   }
 
-  renderWithProviders(<PreviewBanner state={{ ...STATE, unsavedEdits }} />, {
-    withRouter: true,
-  });
+  renderWithProviders(
+    <PreviewBanner
+      state={{
+        ...STATE,
+        principalType,
+        principalName: principalType === "user" ? "Sandy Sales" : "Sales",
+        unsavedEdits,
+      }}
+    />,
+    { withRouter: true },
+  );
   await screen.findByRole("status", { name: "Previewing as" });
 }
 

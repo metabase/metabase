@@ -8,11 +8,15 @@ import {
   setupPermissionPreviewPrincipalsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
-import type { PreviewSessionResponse } from "../api";
+import type {
+  AffectingAttribute,
+  PreviewSessionResponse,
+  PrincipalType,
+} from "../api";
 
 import { TroubleshootPage } from "./TroubleshootPage";
 
@@ -147,14 +151,73 @@ describe("TroubleshootPage", () => {
       screen.queryByRole("button", { name: "More preview options" }),
     ).not.toBeInTheDocument();
   });
+
+  it("shows no attribute chips in a user's preview, though a rule reads an attribute", async () => {
+    setup({ attributes: [CATEGORY] });
+
+    expect(
+      await screen.findByRole("button", { name: "Sandy Sales" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("toolbar", { name: "User attributes used by rules" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("guard: shows a group's attribute chips, and previews the group with the value picked", async () => {
+    setup({ principalType: "group", attributes: [CATEGORY] });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /category/ }),
+    );
+    await userEvent.click(await screen.findByRole("option", { name: "Gizmo" }));
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/permission_debug/preview/session",
+          {
+            body: {
+              principal_type: "group",
+              principal_id: 5,
+              attributes: { category: "Gizmo" },
+            },
+          },
+        ),
+      ).toBe(true),
+    );
+  });
 });
+
+const CATEGORY: AffectingAttribute = {
+  attribute: "category",
+  value: "Doohickey",
+  uses: [
+    {
+      kind: "sandbox",
+      label: "Products",
+      table_id: 1,
+      column: "Products.Category",
+    },
+  ],
+  applies: false,
+  member_values: [{ value: "Doohickey", count: 2 }],
+  other_values: ["Gizmo"],
+};
 
 type SetupOpts = {
   /** Below 1280px wide, where the bands used to shorten their controls. */
   isNarrow?: boolean;
+  /** Who the page previews: user 3, Sandy Sales, or group 5, Sales. */
+  principalType?: PrincipalType;
+  /** What the rules read, as the attributes endpoint lists them. */
+  attributes?: AffectingAttribute[];
 };
 
-function setup({ isNarrow = false }: SetupOpts) {
+function setup({
+  isNarrow = false,
+  principalType = "user",
+  attributes = [],
+}: SetupOpts) {
   jest.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
     matches: isNarrow,
     media: query,
@@ -169,7 +232,7 @@ function setup({ isNarrow = false }: SetupOpts) {
     createMockUserListResult({ id: 3, common_name: "Sandy Sales" }),
   ]);
   setupGroupsEndpoint([]);
-  setupPermissionPreviewAttributesEndpoint([]);
+  setupPermissionPreviewAttributesEndpoint(attributes);
   setupPermissionPreviewPrincipalsEndpoint({
     users: [
       {
@@ -182,7 +245,16 @@ function setup({ isNarrow = false }: SetupOpts) {
         group_ids: [1, 2],
       },
     ],
-    groups: [],
+    groups: [
+      {
+        id: 5,
+        name: "Sales",
+        detail: null,
+        member_count: 7,
+        tenant_side: false,
+        built_in: false,
+      },
+    ],
   });
   setupPermissionPreviewCollectionsEndpoint("default", {
     principal: {
@@ -224,7 +296,7 @@ function setup({ isNarrow = false }: SetupOpts) {
     </>,
     {
       withRouter: true,
-      initialRoute: "/admin/permissions/troubleshoot/user/3",
+      initialRoute: `/admin/permissions/troubleshoot/${principalType}/${principalType === "user" ? 3 : 5}`,
     },
   );
 }

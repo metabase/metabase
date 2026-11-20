@@ -80,7 +80,9 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
 
   const openedItem = parseOpenedItem(location.pathname);
   const { data: attributes = [], isFetching: isLoadingAttributes } =
-    useGetAffectingAttributesQuery({ principal });
+    useGetAffectingAttributesQuery(
+      state.principalType === "group" ? { principal } : skipToken,
+    );
   const [isWhyOpen, setIsWhyOpen] = useState(false);
   const standInGroupNames = useStandInGroupNames(principal);
   const groupMemberCount = useGroupMemberCount(principal);
@@ -133,12 +135,8 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
     );
   };
 
-  const handlePick = (attribute: string, value: string | null) => {
-    const { [attribute]: _previous, ...others } = state.attributes;
-    switchTo(
-      principal,
-      value == null ? others : { ...others, [attribute]: value },
-    );
+  const handlePick = (attribute: string, value: string) => {
+    switchTo(principal, { ...state.attributes, [attribute]: value });
   };
 
   const handleExit = () => {
@@ -250,26 +248,25 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
               onClick={() => handlePanelToggle(false)}
             />
           </Group>
-          {(isLoadingAttributes ||
-            getRuleAttributes(attributes).length > 0) && (
-            <Box
-              p="sm"
-              style={{
-                borderBottom: "1px solid var(--mb-color-border-neutral)",
-              }}
-            >
-              <AttributeBar
-                isLabelOnOwnRow
-                principalType={state.principalType}
-                whoName={whoName}
-                attributes={attributes}
-                isLoading={isLoadingAttributes}
-                pickedValues={state.attributes}
-                groupMemberCount={groupMemberCount}
-                onPick={handlePick}
-              />
-            </Box>
-          )}
+          {state.principalType === "group" &&
+            (isLoadingAttributes ||
+              getRuleAttributes(attributes).length > 0) && (
+              <Box
+                p="sm"
+                style={{
+                  borderBottom: "1px solid var(--mb-color-border-neutral)",
+                }}
+              >
+                <AttributeBar
+                  isLabelOnOwnRow
+                  attributes={attributes}
+                  isLoading={isLoadingAttributes}
+                  pickedValues={state.attributes}
+                  groupMemberCount={groupMemberCount}
+                  onPick={handlePick}
+                />
+              </Box>
+            )}
           <Text fw="bold" px="sm" pt="sm" pb="xs">{t`View as`}</Text>
           <PrincipalList
             principal={principal}
