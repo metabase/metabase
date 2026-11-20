@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.api.custom-expression :as custom-expression]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.claude :as self.claude]
@@ -27,7 +28,8 @@
            :metrics     ["[Revenue]"]
            :measures    ["[Total Sales]"]
            :table_name  "Orders"
-           :database_id (mt/id)}
+           :database_id (mt/id)
+           :metabot_id  metabot.config/internal-metabot-id}
           overrides)))
 
 (defn- do-with-llm
@@ -482,7 +484,57 @@
   (testing "generate reports that Metabot is off before the usage limit"
     (mt/with-temporary-setting-values [metabot-enabled? false]
       (mt/with-dynamic-fn-redefs [metabot.usage/check-usage-limits! (constantly "Over the limit")]
-        (check-error 403 "AI features are not enabled.")))))
+        (check-error 403 "Metabot is not enabled.")))))
+
+(deftest generate-ai-features-disabled-test
+  (testing "generate returns a 403 when AI features are off"
+    (mt/with-temporary-setting-values [ai-features-enabled? false]
+      (check-error 403 "AI features are not enabled."))))
+
+(deftest generate-embedded-metabot-disabled-test
+  (testing "generate checks the embedded Metabot setting for the embedded metabot_id"
+    (mt/with-temporary-setting-values [metabot-enabled?          true
+                                       embedded-metabot-enabled? false]
+      (check-error 403 "Embedded Metabot is not enabled." {:metabot_id metabot.config/embedded-metabot-id}))))
+
+(deftest generate-embedded-metabot-enabled-test
+  (testing "generate ignores the internal Metabot setting for the embedded metabot_id"
+    (mt/with-temporary-setting-values [metabot-enabled?          false
+                                       embedded-metabot-enabled? true]
+      (do-with-llm
+       {:expression "Count()" :name "Count"}
+       (fn [_calls]
+         (is (= {:expression "Count()" :name "Count"}
+                (mt/user-http-request :rasta :post 200 endpoint
+                                      (request-body {:metabot_id metabot.config/embedded-metabot-id})))))))))
+
+(deftest generate-internal-metabot-disabled-test
+  (testing "generate checks the internal Metabot setting for the internal metabot_id"
+    (mt/with-temporary-setting-values [metabot-enabled?          false
+                                       embedded-metabot-enabled? true]
+      (check-error 403 "Metabot is not enabled." {:metabot_id metabot.config/internal-metabot-id}))))
+
+(deftest generate-missing-metabot-id-test
+  (testing "generate returns a 400 without a metabot_id"
+    (do-with-llm
+     {:expression "Count()" :name "Count"}
+     (fn [calls]
+       (is (=? {:errors {:metabot_id some?}}
+               (mt/user-http-request :rasta :post 400 endpoint (dissoc (request-body) :metabot_id))))
+       (is (empty? @calls))))))
+
+(deftest generate-nil-metabot-id-test
+  (testing "generate returns a 400 for a null metabot_id"
+    (do-with-llm
+     {:expression "Count()" :name "Count"}
+     (fn [calls]
+       (is (=? {:errors {:metabot_id some?}}
+               (mt/user-http-request :rasta :post 400 endpoint (request-body {:metabot_id nil}))))
+       (is (empty? @calls))))))
+
+(deftest generate-unknown-metabot-test
+  (testing "generate returns a 400 for a metabot_id that matches no Metabot"
+    (check-error 400 "Unknown Metabot." {:metabot_id "notametabotnotametabo"})))
 
 (defn- do-without-nlq-permission
   "Call `f` with the current user lacking the natural-language query permission."
@@ -882,6 +934,10 @@
   (testing "generate counts a request while Metabot is off as a metabot-disabled error"
     (mt/with-temporary-setting-values [metabot-enabled? false]
       (check-metrics! 403 1 "metabot-disabled" {}))))
+
+(deftest generate-unknown-metabot-metrics-test
+  (testing "generate counts a request for an unknown metabot_id as an invalid-input error"
+    (check-metrics! 400 1 "invalid-input" {:metabot_id "notametabotnotametabo"})))
 
 (deftest generate-managed-lock-metrics-test
   (testing "generate counts a request blocked by the managed AI lock as a managed-limit error"

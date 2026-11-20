@@ -22740,6 +22740,16 @@
               "type" : "null"
             } ]
           },
+          "metabot_id" : {
+            "allOf" : [ {
+              "description" : "value must be a non-blank string.",
+              "minLength" : 1,
+              "type" : "string"
+            }, {
+              "maxLength" : 255,
+              "type" : "string"
+            } ]
+          },
           "metrics" : {
             "anyOf" : [ {
               "items" : {
@@ -22793,7 +22803,7 @@
             } ]
           }
         },
-        "required" : [ "mode", "prompt", "columns", "database_id" ],
+        "required" : [ "mode", "prompt", "columns", "database_id", "metabot_id" ],
         "type" : "object"
       },
       "metabase.metabot.api.custom-expression.response-schema" : {

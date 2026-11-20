@@ -9,6 +9,7 @@
    [metabase.api.common :as api]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.api.custom-expression :as custom-expression]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -286,7 +287,8 @@
                      (#'custom-expression/generate {:mode        "aggregation"
                                                     :prompt      "average total"
                                                     :columns     [{:name "[Total]" :type "number"}]
-                                                    :database_id (mt/id)}))))
+                                                    :database_id (mt/id)
+                                                    :metabot_id  metabot.config/internal-metabot-id}))))
             (is (= ["custom_expression_generate"]
                    (t2/select-fn-vec :source :model/AiUsageLog :user_id user-id)))))))))
 

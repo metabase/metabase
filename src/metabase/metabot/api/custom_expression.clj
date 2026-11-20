@@ -10,6 +10,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
@@ -94,7 +95,8 @@
    [:metrics     {:optional true} escaped-references-schema]
    [:measures    {:optional true} escaped-references-schema]
    [:table_name  {:optional true} [:maybe capped-non-blank-string-schema]]
-   [:database_id ms/PositiveInt]])
+   [:database_id ms/PositiveInt]
+   [:metabot_id  capped-non-blank-string-schema]])
 
 (mr/def ::response-schema
   [:map {:closed true}
@@ -267,13 +269,24 @@
       "aggregation" (when-not (or (seq columns) (seq metrics) (seq measures))
                       (invalid! :columns (tru "Provide at least one column, metric or measure."))))))
 
+(defn- with-error-reason
+  "Call `thunk`, tagging an `ExceptionInfo` it throws with `reason` for the errors metric."
+  [reason thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e) (assoc (ex-data e) ::error-reason reason) e)))))
+
+(defn- check-metabot-enabled!
+  "Throw a 400 if `metabot-id` matches no Metabot, or a 403 if AI features or that Metabot are off."
+  [metabot-id]
+  (let [metabot (with-error-reason "invalid-input" #(metabot.config/resolve-metabot metabot-id))]
+    (with-error-reason "metabot-disabled" #(metabot.config/check-metabot-enabled! metabot))))
+
 (defn- check-llm-available!
-  "Throw an HTTP exception when Metabot is off, `permissions` lack AI access, or `model` has no usable connection."
+  "Throw an HTTP exception when `permissions` lack AI access or `model` has no usable connection."
   [model permissions]
   (cond
-    (not (metabot.settings/metabot-enabled?))
-    (throw (ex-info (tru "AI features are not enabled.") {:status-code 403 ::error-reason "metabot-disabled"}))
-
     ;; The LLM call checks this too, but too late to come before the managed-limit and database checks.
     (metabot.scope/missing-permission permissions required-permission)
     (throw (ex-info (tru "You don''t have access to AI features.")
@@ -304,14 +317,6 @@
                  (ex-message e))
                (tru "The AI provider couldn''t draft a formula. Please try again."))])]
     (ex-info message {:status-code response-code ::error-reason reason} e)))
-
-(defn- with-error-reason
-  "Call `thunk`, tagging an `ExceptionInfo` it throws with `reason` for the errors metric."
-  [reason thunk]
-  (try
-    (thunk)
-    (catch clojure.lang.ExceptionInfo e
-      (throw (ex-info (ex-message e) (assoc (ex-data e) ::error-reason reason) e)))))
 
 (defn- call-llm
   [model messages]
@@ -345,6 +350,7 @@
   - `:metrics` and `:measures` are optional lists of named aggregation references, allowed only in aggregation mode.
   - `:table_name` is an optional table name for context.
   - `:database_id` identifies the query's database, which the current user must be allowed to query.
+  - `:metabot_id` is the entity ID of the Metabot whose enabled setting applies (e.g. embedded or internal).
 
   Column, metric and measure references must use escaped expression syntax, such as `[User → Name]` or `[Foo\\]]`.
   Inputs whose names contain a prompt block tag are dropped. Expression mode then requires at least one column, and
@@ -355,10 +361,11 @@
   Throws an HTTP exception when params are invalid, AI is unavailable, access is denied, or the LLM call fails."
   [request :- ::request-schema]
   ;; Drop tagged inputs before checking that enough are left.
-  (let [{:keys [database_id prompt] :as request} (remove-tagged-inputs request)
+  (let [{:keys [database_id metabot_id prompt] :as request} (remove-tagged-inputs request)
         model       (metabot.settings/llm-mini-model)
         permissions (metabot.scope/resolve-user-permissions api/*current-user-id*)]
     (check-inputs! request)
+    (check-metabot-enabled! metabot_id)
     (check-llm-available! model permissions)
     (with-error-reason "managed-limit" #(metabot.usage/check-metabase-managed-free-limit! model))
     (with-error-reason "database-access" #(api/query-check :model/Database database_id))
