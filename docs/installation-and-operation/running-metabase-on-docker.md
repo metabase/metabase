@@ -17,16 +17,16 @@ If you're trying to upgrade your Metabase version on Docker, check out these [up
 
 Use this quick start to run the Open Source version of Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
+Assuming you have [Docker](https://www.docker.com/) installed and running, pull the image of a Metabase release. Each release has a fixed tag: its version number with `v0.` in front. To find the newest release of each version, check out [version support](https://www.metabase.com/version-support). Use a fixed tag rather than `latest`: `latest` moves to each new major version, so pulling `latest` can upgrade your Metabase to a new major version.
 
 ```
-docker pull metabase/metabase:latest
+docker pull metabase/metabase:v0.65.6
 ```
 
 Then start the Metabase container:
 
 ```
-docker run -d -p 3000:3000 --name metabase metabase/metabase
+docker run -d -p 3000:3000 --name metabase metabase/metabase:v0.65.6
 ```
 
 This will launch a Metabase server on port 3000 by default.
@@ -42,23 +42,23 @@ Once startup completes, you can access your Open Source Metabase at `http://loca
 To run your Open Source Metabase on a different port, say port 12345:
 
 ```
-docker run -d -p 12345:3000 --name metabase metabase/metabase
+docker run -d -p 12345:3000 --name metabase metabase/metabase:v0.65.6
 ```
 
 ## Pro or Enterprise quick start
 
 Use this quick start if you have a [license token](../installation-and-operation/activating-the-enterprise-edition.md) for a [Pro or Enterprise version](https://www.metabase.com/pricing) of Metabase, and you want to run Metabase locally. See below for instructions on [running Metabase in production](#production-installation).
 
-Assuming you have [Docker](https://www.docker.com/) installed and running, get the latest Docker image:
+Assuming you have [Docker](https://www.docker.com/) installed and running, pull the image of a Metabase release. Pro and Enterprise tags start with `v1.` rather than `v0.`. To find the newest release of each version, check out [version support](https://www.metabase.com/version-support). Use a fixed tag rather than `latest`: `latest` moves to each new major version, so pulling `latest` can upgrade your Metabase to a new major version.
 
 ```
-docker pull metabase/metabase-enterprise:latest
+docker pull metabase/metabase-enterprise:v1.65.6
 ```
 
 Then start the Metabase container:
 
 ```
-docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise
+docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.65.6
 ```
 
 This will launch a Metabase server on port 3000 by default.
@@ -74,7 +74,7 @@ Once startup completes, you can access your Pro or Enterprise Metabase at `http:
 To run your Pro or Enterprise Metabase on a different port, say port 12345:
 
 ```
-docker run -d -p 12345:3000 --name metabase metabase/metabase-enterprise
+docker run -d -p 12345:3000 --name metabase metabase/metabase-enterprise:v1.65.6
 ```
 
 ## Production installation
@@ -105,7 +105,7 @@ docker run -d -p 3000:3000 \
   -e "MB_DB_USER=name" \
   -e "MB_DB_PASS=password" \
   -e "MB_DB_HOST=my-database-host" \
-   --name metabase metabase/metabase
+   --name metabase metabase/metabase:v0.65.6
 ```
 
 Keep in mind that Metabase will be connecting from _within_ your Docker container, so make sure that either: a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts file`.
@@ -120,12 +120,12 @@ Here's an example `docker-compose.yml` file for running Metabase with a PostgreS
 
 > You can use this example file to run Metabase locally, like when you want to try out Metabase or set up a development instance. It's not meant for production. To run Metabase in production, check out our guide on [how to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
-This example file runs the Open Source version of Metabase. To run a Pro or Enterprise version instead, change the Metabase image to `metabase/metabase-enterprise:latest`, and give Metabase your [license token](./activating-the-enterprise-edition.md), for example with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
+This example file runs the Open Source version of Metabase. To run a Pro or Enterprise version instead, change the Metabase image to `metabase/metabase-enterprise:v1.65.6`, and give Metabase your [license token](./activating-the-enterprise-edition.md), for example with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
 
 ```yml
 services:
   metabase:
-    image: metabase/metabase:latest
+    image: metabase/metabase:v0.65.6
     container_name: metabase
     hostname: metabase
     volumes:
@@ -187,7 +187,7 @@ In addition to the standard custom settings there are two docker specific enviro
 Here's how to use a database file, owned by your account and stored in your home directory:
 
 ```
-docker run -d -v ~/my-metabase-db:/metabase.db --name metabase -e MB_DB_FILE=/metabase.db -e MUID=$UID -e MGID=$GID -p 3000:3000 metabase/metabase
+docker run -d -v ~/my-metabase-db:/metabase.db --name metabase -e MB_DB_FILE=/metabase.db -e MUID=$UID -e MGID=$GID -p 3000:3000 metabase/metabase:v0.65.6
 ```
 
 ### Setting the Java Timezone
@@ -197,7 +197,7 @@ It's best to set your Java timezone to match the timezone you'd like all your re
 ```
 docker run -d -p 3000:3000 \
   -e "JAVA_TIMEZONE=US/Pacific" \
-  --name metabase metabase/metabase
+  --name metabase metabase/metabase:v0.65.6
 ```
 
 ### Copying the application database
@@ -218,7 +218,7 @@ To persist your data outside of the container and make it available for use betw
 docker run -d -p 3000:3000 \
   -v ~/metabase-data:/metabase-data \
   -e "MB_DB_FILE=/metabase-data/metabase.db" \
-  --name metabase metabase/metabase
+  --name metabase metabase/metabase:v0.65.6
 ```
 
 When you launch your container, Metabase will use the database file ([`MB_DB_FILE`](../configuring-metabase/environment-variables.md#mb_db_file)) at `~/metabase-data/metabase.db` instead of its default location, and we are mounting that folder from our local filesystem into the container.
@@ -266,7 +266,7 @@ For example, if you have a directory named `/path/to/plugins` on your host syste
 ```
 docker run -d -p 3000:3000 \
   --mount type=bind,source=/path/to/plugins,destination=/plugins \
-  --name metabase metabase/metabase
+  --name metabase metabase/metabase:v0.65.6
 ```
 
 Note that Metabase will use this directory to extract plugins bundled with the default Metabase distribution (such as drivers for various databases such as SQLite), thus it must be readable and writable by Docker.
@@ -289,7 +289,7 @@ Notice the "\_FILE" on the environment variables that have a secret:
 ```yml
 services:
   metabase:
-    image: metabase/metabase:latest
+    image: metabase/metabase:v0.65.6
     container_name: metabase
     hostname: metabase
     volumes:
