@@ -117,6 +117,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "lodash.debounce": "^4.0.8",
+    "lucide-react": "^1.73.0",
     "marked": "18.0.6",
     "mustache": "^2.3.2",
     "normalizr": "^3.0.2",
