@@ -2567,7 +2567,7 @@
    :uses #{premium-features serialization util}}
 
   replacement
-  {:team "Graphy"
+  {:team "Data Apps"
    :api  #{metabase.replacement.core metabase.replacement.spec metabase.replacement.walk}
    :uses #{lib lib.schema lib.source-swap parameters.schema util}}
 

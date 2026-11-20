@@ -34,7 +34,7 @@
    (com.mchange.v2.c3p0 ConnectionTester UnifiedConnectionTester)
    (com.mchange.v2.c3p0.impl DefaultConnectionTester)
    (java.sql Connection ResultSet ResultSetMetaData SQLException Statement Types)
-   (java.time LocalDateTime LocalTime OffsetTime ZoneOffset)))
+   (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZoneOffset)))
 
 (set! *warn-on-reflection* true)
 
@@ -536,6 +536,12 @@
                (sql.qp/compiled (h2x/->pg-timestamp expr)))]
     ((get-method sql.qp/->honeysql [:postgres :convert-timezone])
      driver [tag opts arg (h2x/literal target-timezone) (some-> source-timezone h2x/literal)])))
+
+;; DuckDB reads text after a space in a TIMESTAMPTZ literal as a zone name, so the inherited
+;; `'2020-06-07 12:00:00.000 +00:00'` fails with "Unknown TimeZone '+00:00'". Attach the offset to the time.
+(defmethod sql.qp/inline-value [:motherduck OffsetDateTime]
+  [_driver t]
+  (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSSxxx" t)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Executing queries                                                 |
