@@ -43,6 +43,11 @@
 (defn- problem-data [thunk]
   (try (thunk) nil (catch clojure.lang.ExceptionInfo e (ex-data e))))
 
+(defn- engine-entry
+  "The entry for engine `id` in a report row."
+  [row id]
+  (some #(when (= id (:id %)) %) (:engines row)))
+
 (defn- problems [changes]
   (report/problems (stats/scenario-rows [scenario]) (merge options changes)))
 
@@ -51,9 +56,46 @@
     (is (= (mapv name stats/engines) (:engines data)))
     (is (= {:commit "fixture", :model "fixture", :cutoff 0.7} (:provenance data)))
     (is (= [{:case "alpha", :text "Alpha matches."}] (:findings data)))
-    (is (= ["A"] (get-in data [:sameQuery :cases 0 :engines 2 :hits])))
-    (is (= {"A" 0.0} (get-in data [:sameQuery :cases 0 :engines 4 :distances])))
+    (is (= ["A"] (:hits (engine-entry (get-in data [:sameQuery :cases 0]) "appdb-mysql"))))
+    (is (= {"A" 0.0} (:distances (engine-entry (get-in data [:sameQuery :cases 0]) "semantic-only"))))
     (is (empty? (get-in data [:translations :cases])))))
+
+(deftest ^:parallel corpus-report-test
+  (let [frozen-input (-> "search/arctic_embed_l_v2_vectors.edn" io/resource slurp edn/read-string)
+        data         (report/report-data fixtures/cases frozen-input {})]
+    (is (= (mapv name stats/engines) (:engines data)))
+    (is (= (count fixtures/cases) (count (get-in data [:sameQuery :cases]))))
+    (is (= (count (mapcat :comparisons fixtures/cases)) (count (get-in data [:translations :cases]))))))
+
+(deftest ^:parallel goal-report-data-test
+  ;; PostgreSQL misses the typed query and finds the card with its adapted one.
+  (let [goal-scenario (-> scenario
+                          (assoc :note ["Alpha" "note."])
+                          (assoc-in [:expect :appdb-postgres] [])
+                          (assoc :comparisons [{:id           "alpha-prefix"
+                                                :focus        "alpha cards"
+                                                :kind         :typing
+                                                :note         ["Goal" "note."]
+                                                :correct      [:A]
+                                                :alternatives {:appdb-postgres {:query "alpha*", :hits [:A]}}}]))
+        data          (report/report-data [goal-scenario] (frozen [1 0]) {} options)
+        goal          (get-in data [:translations :cases 0])]
+    (is (=? {:id           "alpha/alpha-prefix"
+             :scenario     "alpha"
+             :kind         "typing"
+             :note         "Goal note."
+             :scenarioNote "Alpha note."
+             :correct      ["A"]
+             :conforming   (mapv name stats/engines)
+             :meanF1       1.0}
+            goal))
+    (is (=? {:query      "alpha*"
+             :hits       ["A"]
+             :typedHits  []
+             :bestScore  {:f1 1.0}
+             :typedScore {:f1 0.0}}
+            (engine-entry goal "appdb-postgres")))
+    (is (= ["A"] (:keywordHits (engine-entry (get-in data [:sameQuery :cases 0]) "semantic-with-fallback"))))))
 
 (deftest ^:parallel valid-report-claims-test
   (is (= [] (problems {}))))
@@ -157,12 +199,11 @@
                                             (frozen [1 0]) {} options)))))
 
 (deftest ^:parallel vector-cutoff-test
-  (let [vectors (assoc-in (frozen [1 0]) [:vectors "[card]\nname: Alpha"] (encode [0 1]))
-        adjusted (assoc-in scenario [:expect :semantic :vector] [])]
-    (is (= {"A" 1.0} (get-in (report/report-data [adjusted] vectors {} options)
-                             [:sameQuery :cases 0 :engines 4 :distances])))
-    (is (= {"A" 1.0} (get-in (report/report-data [scenario] vectors {} (assoc options :cutoff 1.0))
-                             [:sameQuery :cases 0 :engines 4 :distances])))))
+  (let [vectors  (assoc-in (frozen [1 0]) [:vectors "[card]\nname: Alpha"] (encode [0 1]))
+        adjusted (assoc-in scenario [:expect :semantic :vector] [])
+        distance #(:distances (engine-entry (get-in % [:sameQuery :cases 0]) "semantic-only"))]
+    (is (= {"A" 1.0} (distance (report/report-data [adjusted] vectors {} options))))
+    (is (= {"A" 1.0} (distance (report/report-data [scenario] vectors {} (assoc options :cutoff 1.0)))))))
 
 (deftest ^:parallel script-delimiter-escaping-test
   (is (= "<script>{\"query\":\"\\u003c/script>\"}</script>"
@@ -181,33 +222,26 @@
 
 (deftest ^:parallel problem-message-test
   ;; Each row checks the facts carried by one diagnostic type.
-  (doseq [[problem fragments]
-          [[{:type :scenario-ids, :repeated ["alpha"], :invalid []} ["alpha" "unique"]]
-           [{:type     :theme-placement
-             :unknown  ["beta"]
-             :missing  []
-             :repeated []} ["beta" "Themes"]]
-           [{:type :unknown-finding-scenario, :case "beta"} ["beta" "unknown scenario"]]
-           [{:type :unknown-finding-engine, :case "alpha", :engine :other} ["alpha" ":other"]]
-           [{:type   :unknown-finding-label
-             :case   "alpha"
-             :engine :appdb-mysql
-             :label  :B} ["alpha" ":B"]]
-           [{:type :invalid-finding-claim, :case "alpha", :engine :appdb-mysql} ["alpha" "boolean"]]
-           [{:type     :finding-mismatch
-             :case     "alpha"
-             :expected false
-             :actual   true} ["alpha" "false" "true"]]
-           [{:type :missing-vector, :input "query: alpha"} ["query: alpha" "freeze!"]]
-           [{:type :invalid-vector, :input "query: alpha", :reason :length} ["query: alpha" "length"]]
-           [{:type :vector-hits, :input "alpha"} ["alpha" "distances"]]
-           [{:type :missing-placeholder, :placeholder "__REPORT_DATA__"} ["__REPORT_DATA__"]]]]
+  (doseq [[fragments problem]
+          [[["alpha" "unique"]          {:type :scenario-ids, :repeated ["alpha"], :invalid []}]
+           [["beta" "Themes"]           {:type     :theme-placement
+                                         :unknown  ["beta"]
+                                         :missing  []
+                                         :repeated []}]
+           [["beta" "unknown scenario"] {:type :unknown-finding-scenario, :case "beta"}]
+           [["alpha" ":other"]          {:type :unknown-finding-engine, :case "alpha", :engine :other}]
+           [["alpha" ":B"]              {:type   :unknown-finding-label
+                                         :case   "alpha"
+                                         :engine :appdb-mysql
+                                         :label  :B}]
+           [["alpha" "boolean"]         {:type :invalid-finding-claim, :case "alpha", :engine :appdb-mysql}]
+           [["alpha" "false" "true"]    {:type     :finding-mismatch
+                                         :case     "alpha"
+                                         :expected false
+                                         :actual   true}]
+           [["query: alpha" "freeze!"]  {:type :missing-vector, :input "query: alpha"}]
+           [["query: alpha" "length"]   {:type :invalid-vector, :input "query: alpha", :reason :length}]
+           [["alpha" "distances"]       {:type :vector-hits, :input "alpha"}]
+           [["__REPORT_DATA__"]         {:type :missing-placeholder, :placeholder "__REPORT_DATA__"}]]]
     (doseq [fragment fragments]
       (is (str/includes? (report/message problem) fragment)))))
-
-(deftest ^:parallel corpus-report-test
-  (let [frozen-input (-> "search/arctic_embed_l_v2_vectors.edn" io/resource slurp edn/read-string)
-        data (report/report-data fixtures/cases frozen-input {})]
-    (is (= (mapv name stats/engines) (:engines data)))
-    (is (= (count fixtures/cases) (count (get-in data [:sameQuery :cases]))))
-    (is (= (count (mapcat :comparisons fixtures/cases)) (count (get-in data [:translations :cases]))))))
