@@ -138,17 +138,17 @@
   "A Quartz scheduler in standby, with our job factory attached. Shuts it down and throws if it cannot be readied."
   ^Scheduler []
   (set-jdbc-backend-properties!)
-  (let [new-scheduler (qs/initialize)]
+  (let [quartz (qs/initialize)]
     ;; Readied before [[system/start!]] publishes it, so nothing that finds it, such as [[start-scheduler!]], can run it
     ;; without our job factory. Until then nothing can reach it, [[stop-scheduler!]] included, so a failure here shuts
     ;; it down.
     (try
-      (qs/standby new-scheduler)
-      (job-factory/add-to-scheduler new-scheduler)
-      new-scheduler
+      (qs/standby quartz)
+      (job-factory/add-to-scheduler quartz)
+      quartz
       (catch Throwable e
         (try
-          (qs/shutdown new-scheduler)
+          (qs/shutdown quartz)
           (catch Throwable shutdown-error
             (when-not (identical? e shutdown-error)
               (.addSuppressed e shutdown-error))))
@@ -196,7 +196,7 @@
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler without waiting for the jobs still running, which are logged.
-   Halting the global system stops it too."
+  Halting the global system stops it too."
   []
   (system/stop! scheduler-component)
   nil)
