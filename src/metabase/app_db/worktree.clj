@@ -58,11 +58,17 @@
        "SELECT pg_advisory_unlock_all(); DISCARD PLANS; DISCARD TEMP; DISCARD SEQUENCES; "
        main-app-sql))
 
+(def ^:private worktree-views-sql
+  "The statement that makes a Postgres app DB connection read Tables and Fields through the worktree views: session
+  views named like the stored tables, which shadow them until check-in's `DISCARD TEMP` and refuse writes."
+  (str "CREATE TEMP VIEW metabase_table AS SELECT * FROM v_worktree_table; "
+       "CREATE TEMP VIEW metabase_field AS SELECT * FROM v_worktree_field;"))
+
 (defn checkout-sql
   "The statement a Postgres app DB connection, in the main app since check-in, runs when this thread checks it out, or
   nil when this thread works in the main app."
   []
   (case (:type *scope*)
     :main     nil
-    :worktree (format "SET metabase.worktree_id = '%d';" (long (:worktree-id *scope*)))
+    :worktree (str (format "SET metabase.worktree_id = '%d'; " (long (:worktree-id *scope*))) worktree-views-sql)
     :all      "RESET metabase.worktree_id;"))

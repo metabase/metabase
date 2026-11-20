@@ -187,23 +187,27 @@
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database :- i/DatabaseInstance
    table    :- TableMetadata]
-  (insert-table! database table {:sample? (sync.db/database-sample? (:id database))}))
+  (sync-util/in-main-app
+   (insert-table! database table {:sample? (sync.db/database-sample? (:id database))})))
 
 (mu/defn set-table-schema!
   "Record `schema` as the schema of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table
    schema   :- [:maybe :string]]
-  (sync.db/update-table! table-id {:schema schema}))
+  (sync-util/in-main-app
+   (sync.db/update-table! table-id {:schema schema})))
 
 (mu/defn activate-table!
   "Mark the Table with `table-id` active."
   [table-id :- ::lib.schema.id/table]
-  (sync.db/update-table! table-id {:active true}))
+  (sync-util/in-main-app
+   (sync.db/update-table! table-id {:active true})))
 
 (mu/defn deactivate-table!
   "Mark the Table with `table-id` inactive."
   [table-id :- ::lib.schema.id/table]
-  (sync.db/update-table! table-id {:active false}))
+  (sync-util/in-main-app
+   (sync.db/update-table! table-id {:active false})))
 
 (mu/defn- reactivate-table!
   "Mark an existing inactive Table active again, refreshing its cruft-dependent columns. `existing`

@@ -97,13 +97,14 @@
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (database-routing/with-anonymous-router-access
-    (let [database (driver.u/lib-database (:db_id table))]
-      (sync-metadata/sync-table-metadata! database table)
-      (analyze/analyze-table! table)
-      (sync.field-values/update-field-values-for-table! database table)
-      (sync-util/set-initial-table-sync-complete! table)
-      table)))
+  (sync-util/in-main-app
+   (database-routing/with-anonymous-router-access
+     (let [database (driver.u/lib-database (:db_id table))]
+       (sync-metadata/sync-table-metadata! database table)
+       (analyze/analyze-table! table)
+       (sync.field-values/update-field-values-for-table! database table)
+       (sync-util/set-initial-table-sync-complete! table)
+       table))))
 
 (mu/defn start-initial-sync!
   "Start the first sync of `database`, which a user created through the API when `previous-database` is nil, or
