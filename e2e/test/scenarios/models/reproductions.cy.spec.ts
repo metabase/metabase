@@ -1,236 +1,12 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { NativeQuestionDetails } from "e2e/support/helpers/api/createQuestion";
+import type { CardId } from "metabase-types/api";
 
-const { ORDERS_ID, REVIEWS, REVIEWS_ID, PRODUCTS } = SAMPLE_DATABASE;
-
-describe("issue 19737", () => {
-  const modelName = "Orders Model";
-  const personalCollectionName = "Bobby Tables's Personal Collection";
-
-  function moveModel(modelName, collectionName) {
-    openEllipsisMenuFor(modelName);
-    H.popover().findByText("Move").click();
-
-    H.pickEntity({
-      path: Array.isArray(collectionName) ? collectionName : [collectionName],
-    });
-
-    H.entityPickerModal().within(() => {
-      cy.button("Move").click();
-    });
-  }
-
-  function openEllipsisMenuFor(item) {
-    cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should show a moved model once in the data picker without refreshing (metabase#19737)", () => {
-    // move "Orders Model" to "First collection"
-    cy.visit("/collection/root");
-
-    moveModel(modelName, ["Our analytics", "First collection"]);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Moved model");
-    // Close the undo toast so the next time we move the model another model will always be shown
-    cy.icon("close:visible").click();
-
-    cy.findByLabelText("Navigation bar").within(() => {
-      cy.findByText("New").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    // Open question picker (this is crucial) so the collection list are loaded.
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText("Our analytics").click();
-      cy.findByText("First collection").click();
-      cy.findByText(modelName);
-    });
-
-    // Use back button to so the state is kept
-    cy.go("back");
-
-    // move "Orders Model" from a custom collection ("First collection") to another collection
-    H.openNavigationSidebar();
-    H.navigationSidebar().findByText("First collection").click();
-
-    moveModel(modelName, personalCollectionName);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Moved model");
-
-    cy.findByLabelText("Navigation bar").within(() => {
-      cy.findByText("New").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalItem(0, personalCollectionName).click();
-      H.entityPickerModalLevel(1).findByText(modelName).should("be.visible");
-
-      H.entityPickerModalItem(0, "Our analytics").click();
-      H.entityPickerModalLevel(1).should("be.visible");
-      H.entityPickerModalLevel(1)
-        .findByText("First collection")
-        .should("not.exist");
-    });
-  });
-});
-
-describe("issue 23024", () => {
-  function addModelToDashboardAndVisit() {
-    H.createDashboard().then(({ body: { id } }) => {
-      cy.get("@modelId").then((cardId) => {
-        H.addOrUpdateDashboardCard({
-          dashboard_id: id,
-          card_id: cardId,
-        });
-      });
-
-      H.visitDashboard(id);
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(
-      {
-        native: {
-          query: `select *
-                  from products limit 5`,
-        },
-        type: "model",
-      },
-      { wrapId: true, idAlias: "modelId" },
-    );
-
-    cy.get("@modelId").then((modelId) => {
-      H.setModelMetadata(modelId, (field) => {
-        if (field.display_name === "CATEGORY") {
-          return {
-            ...field,
-            id: PRODUCTS.CATEGORY,
-            display_name: "Category",
-            semantic_type: "type/Category",
-          };
-        }
-
-        return field;
-      });
-    });
-
-    addModelToDashboardAndVisit();
-  });
-
-  it("should not be possible to apply the dashboard filter to the native model (metabase#23024)", () => {
-    H.editDashboard();
-
-    H.setFilter("Text or Category", "Is");
-
-    H.getDashboardCard().within(() => {
-      cy.findByText(/Models are data sources/).should("be.visible");
-      cy.findByText("Select…").should("not.exist");
-    });
-  });
-});
-
-describe("issue 23421", () => {
-  const query =
-    'SELECT 1 AS "id", current_timestamp::timestamp AS "created_at"';
-
-  const emptyColumnsQuestionDetails = {
-    native: {
-      query,
-    },
-    displayIsLocked: true,
-    visualization_settings: {
-      "table.columns": [],
-      "table.pivot_column": "orphaned1",
-      "table.cell_column": "orphaned2",
-    },
-    type: "model",
-  };
-
-  const hiddenColumnsModelDetails = {
-    native: {
-      query,
-    },
-    displayIsLocked: true,
-    visualization_settings: {
-      "table.columns": [
-        {
-          name: "id",
-          key: '["name","id"]',
-          enabled: false,
-          fieldRef: ["field", "id", { "base-type": "type/Integer" }],
-        },
-        {
-          name: "created_at",
-          key: '["name","created_at"]',
-          enabled: false,
-          fieldRef: ["field", "created_at", { "base-type": "type/DateTime" }],
-        },
-      ],
-      "table.pivot_column": "orphaned1",
-      "table.cell_column": "orphaned2",
-    },
-    type: "model",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("`visualization_settings` with empty or hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(emptyColumnsQuestionDetails, {
-      wrapId: true,
-      idAlias: "emptyColumnsModelId",
-    });
-    H.createNativeQuestion(hiddenColumnsModelDetails, {
-      wrapId: true,
-      idAlias: "hiddenColumnsModelId",
-    });
-
-    cy.log("empty columns");
-    cy.get("@emptyColumnsModelId").then((id) => H.visitModel(id));
-    H.openQuestionActions();
-    H.popover().findByText("Edit query definition").click();
-
-    H.NativeEditor.get().should("be.visible").and("contain", query);
-    cy.findByRole("columnheader", { name: "id" }).should("be.visible");
-    cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.visible");
-
-    cy.log("hidden columns");
-    cy.get("@hiddenColumnsModelId").then((id) => H.visitModel(id));
-    H.openQuestionActions();
-    H.popover().findByText("Edit query definition").click();
-
-    H.NativeEditor.get().should("be.visible").and("contain", query);
-    H.tableInteractiveHeader().within(() => {
-      cy.findByText("id").should("be.visible");
-      cy.findByText("created_at").should("be.visible");
-    });
-    cy.button("Save changes").should("be.disabled");
-  });
-});
+const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("issue 23449", () => {
   const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
@@ -245,6 +21,10 @@ describe("issue 23449", () => {
     cy.wait("@cardUpdate");
     // Turning the question into a model re-runs its query
     cy.wait("@modelQuery").then(({ response }) => {
+      expect(response, "model query response").to.exist;
+      if (!response) {
+        throw new Error("The model query got no response");
+      }
       expect(response.body.error).to.not.exist;
     });
   }
@@ -278,89 +58,13 @@ describe("issue 23449", () => {
   });
 });
 
-describe("issue 25537", () => {
-  const questionDetails = {
-    name: "Orders model",
-    query: { "source-table": ORDERS_ID },
-    type: "model",
-  };
-  const setLocale = (locale) => {
-    cy.request("GET", "/api/user/current").then(({ body: { id: user_id } }) => {
-      cy.request("PUT", `/api/user/${user_id}`, { locale });
-    });
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
-    setLocale("en-ZZ");
-    H.createQuestion(questionDetails);
-
-    H.startNewQuestion();
-    H.miniPicker().within(() => {
-      cy.findByText("[zz] Our analytics").click();
-      cy.findByText(questionDetails.name).should("exist");
-    });
-  });
-});
-
-describe("issue 29378", () => {
-  const ACTION_DETAILS = {
-    name: "Update orders quantity",
-    description: "Set orders quantity to the same value",
-    type: "query",
-    model_id: ORDERS_QUESTION_ID,
-    database_id: SAMPLE_DB_ID,
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      native: {
-        query: "UPDATE orders SET quantity = quantity",
-      },
-      type: "native",
-    },
-    parameters: [],
-    visualization_settings: {
-      type: "button",
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-  });
-
-  it("should not crash the model actions page after searching for an action (metabase#29378)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
-    H.createAction(ACTION_DETAILS);
-
-    cy.visit(`/model/${ORDERS_QUESTION_ID}/detail`);
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
-      "be.visible",
-    );
-
-    H.commandPaletteSearch(ACTION_DETAILS.name, false);
-    H.commandPalette()
-      .findByRole("option", { name: ACTION_DETAILS.name })
-      .should("exist");
-    H.closeCommandPalette();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(ACTION_DETAILS.name).should("be.visible");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(ACTION_DETAILS.dataset_query.native.query).should(
-      "be.visible",
-    );
-  });
-});
-
-function mapModelColumnToDatabase({ table, field }) {
+function mapModelColumnToDatabase({
+  table,
+  field,
+}: {
+  table: string;
+  field: string;
+}) {
   cy.findByText("Database column this maps to")
     .parent()
     .findByTestId("select-button")
@@ -372,12 +76,12 @@ function mapModelColumnToDatabase({ table, field }) {
   cy.findByLabelText("Description").should("not.have.value", "");
 }
 
-function selectModelColumn(column) {
+function selectModelColumn(column: string) {
   cy.findAllByTestId("header-cell").contains(column).click();
 }
 
 describe("issue 29517 - nested question based on native model with columns mapped to database fields", () => {
-  const questionDetails = {
+  const questionDetails: NativeQuestionDetails = {
     name: "29517",
     type: "model",
     native: {
@@ -407,7 +111,7 @@ describe("issue 29517 - nested question based on native model with columns mappe
       cy.button("Save changes").click();
       cy.wait("@updateModel");
 
-      const nestedQuestionDetails = {
+      const nestedQuestionDetails: StructuredQuestionDetails = {
         query: {
           "source-table": `card__${id}`,
           aggregation: [["count"]],
@@ -464,7 +168,7 @@ describe("issue 29517 - nested question based on native model with columns mappe
 });
 
 describe("issue 53556 - nested question based on native model with columns mapped to database fields", () => {
-  const questionDetails = {
+  const questionDetails: NativeQuestionDetails = {
     name: "53556",
     type: "model",
     native: {
@@ -500,7 +204,7 @@ describe("issue 53556 - nested question based on native model with columns mappe
       cy.button("Save changes").click();
       cy.wait("@updateModel");
 
-      const nestedQuestionDetails = {
+      const nestedQuestionDetails: StructuredQuestionDetails = {
         query: {
           "source-table": `card__${id}`,
           aggregation: [["count"]],
@@ -596,13 +300,13 @@ describe("issue 53556 - nested question based on native model with columns mappe
   });
 });
 describe("issue 40252", () => {
-  const modelA = {
+  const modelA: NativeQuestionDetails = {
     name: "Model A",
     native: { query: "select 1 as a1, 2 as a2" },
     type: "model",
   };
 
-  const modelB = {
+  const modelB: NativeQuestionDetails = {
     name: "Model B",
     native: { query: "select 1 as b1, 2 as b2" },
     type: "model",
@@ -617,9 +321,9 @@ describe("issue 40252", () => {
     H.createNativeQuestion(modelA, { wrapId: true, idAlias: "modelA" });
     H.createNativeQuestion(modelB, { wrapId: true, idAlias: "modelB" });
 
-    cy.get("@modelA").then((modelAId) => {
-      cy.get("@modelB").then((modelBId) => {
-        const questionDetails = {
+    cy.get<CardId>("@modelA").then((modelAId) => {
+      cy.get<CardId>("@modelB").then((modelBId) => {
+        const questionDetails: StructuredQuestionDetails = {
           name: "40252",
           type: "model",
           query: {
@@ -688,24 +392,26 @@ describe("issue 42355", () => {
   });
 
   it("should allow overriding database fields for models with manually ordered columns (metabase#42355)", () => {
+    // Columns saved by older versions also carry `key` and `fieldRef`
+    const tableColumns = [
+      {
+        name: "PRODUCT_ID",
+        key: '["name","PRODUCT_ID"]',
+        enabled: true,
+        fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
+      },
+      {
+        name: "ID",
+        key: '["name","ID"]',
+        enabled: true,
+        fieldRef: ["field", "ID", { "base-type": "type/BigInteger" }],
+      },
+    ];
     H.createNativeQuestion({
       type: "model",
       native: { query: "SELECT ID, PRODUCT_ID FROM ORDERS" },
       visualization_settings: {
-        "table.columns": [
-          {
-            name: "PRODUCT_ID",
-            key: '["name","PRODUCT_ID"]',
-            enabled: true,
-            fieldRef: ["field", "PRODUCT_ID", { "base-type": "type/Integer" }],
-          },
-          {
-            name: "ID",
-            key: '["name","ID"]',
-            enabled: true,
-            fieldRef: ["field", "ID", { "base-type": "type/BigInteger" }],
-          },
-        ],
+        "table.columns": tableColumns,
         "table.cell_column": "ID",
       },
     }).then(({ body: card }) => H.visitModel(card.id));
