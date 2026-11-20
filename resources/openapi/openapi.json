@@ -62830,10 +62830,10 @@
         "tags" : [ "/api/metabot/conversations" ]
       }
     },
-    "/api/metabot/custom-expression/summary-formula" : {
+    "/api/metabot/custom-expression/generate" : {
       "post" : {
         "description" : "Draft a custom expression from the summary sidebar's natural-language request in `body`.",
-        "operationId" : "post-api-metabot-custom-expression-summary-formula",
+        "operationId" : "post-api-metabot-custom-expression-generate",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -62862,7 +62862,7 @@
             "description" : "Server error response"
           }
         },
-        "summary" : "POST /api/metabot/custom-expression/summary-formula",
+        "summary" : "POST /api/metabot/custom-expression/generate",
         "tags" : [ "/api/metabot/custom-expression" ]
       }
     },

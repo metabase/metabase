@@ -17,7 +17,7 @@ SELECT
         WHEN 'slackbot'                          THEN 'Slackbot'
         WHEN 'oss-sql-gen'                       THEN 'SQL'
         WHEN 'sql-gen'                           THEN 'SQL'
-        WHEN 'summary_formula'                   THEN 'Summary Formulas'
+        WHEN 'custom_expression_generate'        THEN 'Custom Expressions'
         WHEN 'unknown'                           THEN 'Unknown'
         ELSE a.source
     END                                                               AS source_name,

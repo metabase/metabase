@@ -1,10 +1,10 @@
-## Name summary formula calls in AI usage analytics
+## Name custom expression generation calls in AI usage analytics
 
 databaseChangeLog:
   - changeSet:
       id: ivquqe
       author: appleby
-      comment: Updated view v_ai_usage_log v7 - name the summary_formula source
+      comment: Updated view v_ai_usage_log v7 - name the custom_expression_generate source
       changes:
         - sqlFile:
             dbms: postgresql

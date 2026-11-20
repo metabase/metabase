@@ -24,11 +24,11 @@
 
 (def ^:private required-permission :permission/metabot-nlq)
 
-(def ^:private summary-formula-modes
+(def ^:private expression-modes
   ["aggregation" "expression"])
 
-(def ^:private summary-formula-error-reasons
-  "The `:reason` labels for the summary formula errors metric."
+(def ^:private error-reason-labels
+  "The `:reason` labels for the custom expression generation errors metric."
   #{"database-access"
     "invalid-input"
     "llm-error"
@@ -85,7 +85,7 @@
 (mr/def ::request-schema
   ;; The rules on which inputs each mode needs are in [[check-inputs!]], so that their errors have a message.
   [:map {:closed true}
-   [:mode        (into [:enum] summary-formula-modes)]
+   [:mode        (into [:enum] expression-modes)]
    [:prompt      [:and ms/NonBlankString [:string {:max max-prompt-chars}]]]
    [:columns     [:sequential {:max max-seq-items}
                   [:map {:closed true}
@@ -191,7 +191,7 @@
   (into []
         (remove (fn [item]
                   (when-let [found (find-tag (item-name item))]
-                    (log/warnf "Skipping summary formula input %s because it contains the prompt tag %s"
+                    (log/warnf "Skipping custom expression input %s because it contains the prompt tag %s"
                                (pr-str (item-name item)) found)
                     true)))
         items))
@@ -325,8 +325,8 @@
    nil
    max-formula-tokens
    {:request-id          (str (random-uuid))
-    :source              "summary_formula"
-    :tag                 "summary-formula"
+    :source              "custom_expression_generate"
+    :tag                 "custom-expression-generate"
     :required-permission required-permission}))
 
 (defn- llm-messages
@@ -337,7 +337,7 @@
                aggregation-system-prompt)}
    {:role "user" :content (user-message request)}])
 
-(mu/defn- summary-formula :- ::response-schema
+(mu/defn- generate :- ::response-schema
   "Draft a custom expression and result-column name for `request`.
 
   The request map follows `::request-schema`:
@@ -370,7 +370,7 @@
                                       (binding [metabot.scope/*current-user-metabot-permissions* permissions]
                                         (call-llm model (llm-messages request)))
                                       (catch Exception e
-                                        (log/warn e "Summary formula LLM call failed")
+                                        (log/warn e "Custom expression generation LLM call failed")
                                         (throw (llm-call-error model e))))
           expression (clean-expression expression)
           ;; a usable expression is still worth returning when its name cleans to blank
@@ -379,29 +379,29 @@
         (throw (ex-info (tru "Nothing in this data matches that.") {:status-code 422 ::error-reason "no-match"})))
       {:expression expression :name name})))
 
-(api.macros/defendpoint :post "/summary-formula" :- ::response-schema
+(api.macros/defendpoint :post "/generate" :- ::response-schema
   "Draft a custom expression from the summary sidebar's natural-language request in `body`."
   [_route-params
    _query-params
    body :- ::request-schema]
   (let [labels {:mode (:mode body)}]
-    (analytics/inc! :metabase-metabot/summary-formula-requests labels)
+    (analytics/inc! :metabase-metabot/custom-expression-generate-requests labels)
     (try
-      (summary-formula body)
+      (generate body)
       (catch Exception e
-        (analytics/inc! :metabase-metabot/summary-formula-errors
-                        (assoc labels :reason (get summary-formula-error-reasons
+        (analytics/inc! :metabase-metabot/custom-expression-generate-errors
+                        (assoc labels :reason (get error-reason-labels
                                                    (::error-reason (ex-data e))
                                                    "unexpected")))
         (throw e)))))
 
-(defmethod analytics.core/known-labels :metabase-metabot/summary-formula-requests [_]
-  (for [mode summary-formula-modes]
+(defmethod analytics.core/known-labels :metabase-metabot/custom-expression-generate-requests [_]
+  (for [mode expression-modes]
     {:mode mode}))
 
-(defmethod analytics.core/known-labels :metabase-metabot/summary-formula-errors [_]
-  (for [mode   summary-formula-modes
-        reason summary-formula-error-reasons]
+(defmethod analytics.core/known-labels :metabase-metabot/custom-expression-generate-errors [_]
+  (for [mode   expression-modes
+        reason error-reason-labels]
     {:mode mode :reason reason}))
 
 (def ^{:arglists '([request respond raise])} routes
