@@ -1,6 +1,7 @@
 (ns mage.docs-generate
   "Regenerates the docs that are built from source: environment variables, the config template, the API, AI providers,
-  MCP tools, CLI commands, the usage analytics reference, and the embedding SDK and EAJS references."
+  MCP tools, CLI commands, database feature support, the usage analytics reference, and the embedding SDK and EAJS
+  references."
   (:refer-clojure :exclude [run!])
   (:require
    [babashka.fs :as fs]
@@ -15,7 +16,8 @@
 (def ^:private suites
   "Each suite and its command, in the order the bare `docs-generate` command runs them."
   [;; One JVM runs every Clojure generator, so Metabase's namespaces load once rather than once per document.
-   ["backend"         ["clojure" "-M:ee:doc" "all-documentation"]]
+   ;; `:drivers` puts the driver modules on the classpath for the database feature support page.
+   ["backend"         ["clojure" "-M:ee:drivers:doc" "all-documentation"]]
    ;; `./bin/mage` installs `bin/bb` in its own checkout only, not in the `--dir` checkout.
    ["usage-analytics" [(str (fs/path u/project-root-directory "bin" "bb")) "bin/generate-usage-analytics-docs.bb"]]
    ["embedding-sdk"   ["bun" "run" "embedding-sdk:docs:generate"]]
