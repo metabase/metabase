@@ -73,8 +73,8 @@
       (is (string? (settings-last-updated-value-in-cache))))
     (testing "..and if I update it again, will the value be updated?"
       (let [first-value (setting-test/settings-last-updated-value-in-db)]
-        ;; the second marker must differ from the first, and MySQL timestamps here have a resolution of one second
-        (Thread/sleep (if (= (mdb/db-type) :mysql) 1200 50))
+        ;; the second marker must differ from the first
+        (Thread/sleep 50)
         (setting-test/toucan-name! "Bird Can")
         (let [second-value (setting-test/settings-last-updated-value-in-db)]
           (is (not= first-value second-value)))))))
@@ -108,7 +108,9 @@
       (setting-test/test-setting-1! "this instance")
       (with-open [conn (open-another-instance-connection)]
         (let [cached-marker (setting.cache/cached-marker)
-              marker        (write-as-another-instance! conn {"test-setting-1" "another instance"} "2000-01-01 00:00:00")]
+              marker        (write-as-another-instance! conn
+                                                        {"test-setting-1" "another instance"}
+                                                        "2000-01-01 00:00:00")]
           (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
           (is (= "another instance" (force-check-and-read-test-setting-1!))))))))
 
@@ -341,3 +343,16 @@
                   :root-check-due?        (#'setting.cache/time-for-another-update-check? last-update-check)})))
         (finally
           (.unlock restore-lock))))))
+
+(deftest in-transaction-write-survives-concurrent-check-test
+  (testing "a write committed by its caller's transaction is in the cache, even after another thread checked the cache
+           while the write was uncommitted"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "before")
+      (t2/with-transaction [_conn]
+        (setting-test/test-setting-1! "after")
+        ;; A plain Thread, so that the check runs on a connection of its own: `future` conveys this transaction's.
+        (doto (Thread. (fn [] (setting.cache/restore-cache-if-needed! :force-check? true)))
+          .start
+          (.join 10000)))
+      (is (= "after" (setting-test/test-setting-1))))))

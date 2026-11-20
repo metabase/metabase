@@ -32,7 +32,7 @@
       (testing "a cookie that differs from the cached marker triggers a staleness check, not an unconditional reload"
         ;; The cookie value only prompts us to check the DB; it does not by itself say the cache is stale. Here the
         ;; cookie claims a far-future time but the DB has not actually changed, so the check finds nothing to reload.
-        (let [check   #'mw.settings-cache/check-settings-cache-if-cookie-differs
+        (let [check   #'mw.settings-cache/check-settings-cache-if-cookie-differs!
               request {:cookies {cookie-name {:value "2999-01-01 00:00:00.0+00"}}}
               calls   (atom 0)]
           (mt/with-dynamic-fn-redefs [setting.cache/restore-cache! (fn [_state] (swap! calls inc))]
@@ -69,7 +69,8 @@
   (testing "the cookie a response sets, sent back through cookie parsing, forces no further check"
     (setting/restore-cache!)
     (let [handler   (wrap-cookies
-                     (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200}))))
+                     (mw.settings-cache/wrap-settings-cache-check
+                      (fn [_request respond _raise] (respond {:status 200}))))
           request   (fn [cookie-header]
                       (forced-checks! handler {:headers {"cookie" cookie-header}}))
           differing (request (str cookie-name "=2000-01-01+00%3A00%3A00"))
@@ -85,7 +86,8 @@
       (t2/delete! :setting :key setting.cache/settings-last-updated-key)
       (setting/restore-cache!)
       (is (nil? (setting/cached-marker)) "premise: no marker")
-      (let [handler  (mw.settings-cache/wrap-settings-cache-check (fn [_request respond _raise] (respond {:status 200})))
+      (let [handler  (mw.settings-cache/wrap-settings-cache-check
+                      (fn [_request respond _raise] (respond {:status 200})))
             response (:response (forced-checks! handler {:cookies {cookie-name {:value "2000-01-01 00:00:00"}}}))]
         (is (=? {cookie-name {:max-age 0}}
                 (:cookies response))))

@@ -118,7 +118,12 @@
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
   ;; The whole cache, not just the marker: the write above replaced the marker of any instance that committed since
   ;; this cache was loaded, so this cache would otherwise miss that instance's values until the marker next changes.
-  (restore-cache!))
+  (let [state (current-state)]
+    (restore-cache! state)
+    ;; Inside a transaction, another thread's check can replace this uncommitted snapshot with the committed one, so
+    ;; make the next check due once this one commits.
+    (when (mdb/in-transaction?)
+      (mdb/do-after-commit #(.set ^AtomicLong (:last-update-check state) 0)))))
 
 (defn cached-marker
   "The `settings-last-updated` marker that the cache in `state` (by default, the state for the application DB this
@@ -138,13 +143,14 @@
      (boolean
       (or
        (not current-cache)
-       (let [cached-marker (core/get current-cache settings-last-updated-key)
-             stored-marker (settings.db/setting-value settings-last-updated-key)]
-         (log/trace "cached Settings marker:" (pr-str cached-marker))
-         (log/trace "stored Settings marker:" (pr-str stored-marker))
-         (u/prog1 (not= stored-marker cached-marker)
-           (when <>
-             (log/info (u/format-color :red "Settings have changed since this cache was loaded and will be reloaded."))))))))))
+       (let [cached   (core/get current-cache settings-last-updated-key)
+             stored   (settings.db/setting-value settings-last-updated-key)
+             changed? (not= stored cached)]
+         (log/trace "cached Settings marker:" (pr-str cached))
+         (log/trace "stored Settings marker:" (pr-str stored))
+         (when changed?
+           (log/info (u/format-color :red "Settings have changed since this cache was loaded and will be reloaded.")))
+         changed?))))))
 
 (def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"

@@ -12,7 +12,7 @@
    :max-age   (* 5 60)
    :same-site :lax})
 
-(defn- check-settings-cache-if-cookie-differs
+(defn- check-settings-cache-if-cookie-differs!
   "If the request's cookie holds a marker other than the cached `settings-last-updated` marker, check whether the
   settings cache is stale and reload it if so. Returns truthy iff the cookie differs."
   [request]
@@ -29,7 +29,12 @@
   [cookie-differed? response]
   (if (or cookie-differed?
           (-> response :mb/cookies :cookie/settings-cache-timestamp))
-    (if-let [marker (setting/cached-marker)]
+    (if-let [marker (do
+                      ;; A setting written in a transaction leaves a check due after the commit, and the cookie must
+                      ;; carry that write's marker.
+                      (when-not cookie-differed?
+                        (setting/restore-cache-if-needed!))
+                      (setting/cached-marker))]
       (response/set-cookie (update response :mb/cookies dissoc :cookie/settings-cache-timestamp)
                            settings-last-updated-cookie-name
                            marker
@@ -47,5 +52,5 @@
   ;; The cookie carries the marker of a setting change from the instance that made it to the instance that serves the
   ;; user's next request, so that instance sees the change without waiting for the periodic check.
   (fn [request respond raise]
-    (let [cookie-differed? (check-settings-cache-if-cookie-differs request)]
+    (let [cookie-differed? (check-settings-cache-if-cookie-differs! request)]
       (handler request (comp respond #(maybe-set-settings-last-updated-cookie cookie-differed? %)) raise))))
