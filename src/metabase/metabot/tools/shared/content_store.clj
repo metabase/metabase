@@ -24,7 +24,11 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.models.interface :as mi]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.setup :as qp.setup]
    [metabase.serialization.protocol.mp :as serialization.protocol.mp]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -189,14 +193,42 @@
                          (t2/hydrate (metabot.db/cards-with-ids (into [] (distinct) card-ids)) :can_read))]
       (every? #(mi/can-read? (api/check-404 (id->card %))) card-ids))))
 
+(defn- permission-refusal?
+  "Whether `e`, or an exception in its cause chain, is a permission refusal."
+  [e]
+  (boolean (some #(let [data (ex-data %)]
+                    (or (:permissions-error? data) (= 403 (:status-code data))))
+                 (u/full-exception-chain e))))
+
+(defn card-sources-accessible?
+  "Whether the query processor's own permission check lets the current user run `normalized`.
+
+  Always true for an admin. Throws when the check fails for a reason that is not a permission refusal."
+  [normalized]
+  ;; an admin passes every check, so skip the preprocess
+  (or api/*is-superuser?*
+      (try
+        ;; the run path preprocesses as the current user, then checks the preprocessed query: that is where the
+        ;; saved questions under a card, their result_metadata and the EE block rule are checked
+        (qp.setup/with-qp-setup [query normalized]
+          (qp.perms/check-query-permissions* (qp.preprocess/preprocess query))
+          true)
+        (catch clojure.lang.ExceptionInfo e
+          ;; preprocessing wraps a refusal from a middleware in a `:type :qp` error, and a refusal such as the
+          ;; database-routing destination check carries only `:status-code 403`
+          (if (permission-refusal? e)
+            false
+            (throw e))))))
+
 (defn- runnable-normalized-query
-  "`resolved` normalized, when the current user may run it and see every table and field it
-  names: the query processor's own run check (a saved question authorizes through its collection, native
-  SQL through database-wide native access), then a per-table check on the ids the export
-  resolves to names and a column-sandbox check on its field refs. The saved questions the
-  query reads from are checked first with the caller's audit polarity, since the run check
-  refuses them without a trail. Measure / segment refs are not checked here; the stores gate
-  those with the caller's audit polarity.
+  "`resolved` normalized, when the current user may run it and see every table and field it names.
+
+  The checks are the query processor's own run check (a saved question authorizes through its collection,
+  native SQL through database-wide native access), then a per-table check on the ids the export resolves to
+  names and a column-sandbox check on its field refs. A query on a saved question also goes through
+  [[card-sources-accessible?]]. The saved questions the query reads from are checked first with the caller's
+  audit polarity, since the run check refuses them without a trail. Measure / segment refs are not checked
+  here; the stores gate those with the caller's audit polarity.
 
   Nil when they may not, and `::unchecked` when the check could not be made at all - a query that
   will not normalize, permissions that will not calculate. That is not a denial, so the caller
@@ -217,7 +249,11 @@
         (let [field-table (metabot.perms/field-id->table-id field)
               table-ids   (into (set table) (vals field-table))]
           (when (and (= table-ids (metabot.perms/queryable-table-ids table-ids))
-                     (sandbox-visible-fields? field-table))
+                     (sandbox-visible-fields? field-table)
+                     ;; the run check clears a query on a saved question on the card read alone, but the query
+                     ;; processor also checks the expanded query. Skip the extra preprocess for a query that reads
+                     ;; no saved question.
+                     (or (empty? card) (card-sources-accessible? normalized)))
             normalized))))
     (catch Exception e
       (log/debugf "Rendering a query unresolved, since it could not be permission-checked: %s"
@@ -240,8 +276,9 @@
 
 (defn query-for-export
   "How the caller should render `query`, or nil when the current user may not see it at all.
-  Run permission is the whole rule: reading the database is not enough, and a saved question the
-  user can read authorizes a query over a database they cannot. With `audited?` the saved-question
+  Run permission is the rule: reading the database is not enough, and a saved question the user
+  can read authorizes a query over a database they cannot query. A query on a saved question must
+  still pass the query processor's own permission check on the expanded query. With `audited?` the saved-question
   refusals are audited, for client-supplied queries where the ids are the caller's own.
 
   Three shapes come back, because a check that was never needed and a check that could not be made
