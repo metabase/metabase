@@ -121,6 +121,26 @@ describe("SaveQuestionContext", () => {
         );
       });
 
+      it("should not suggest a recently selected dashboard the user cannot write to", async () => {
+        setupRecentViewsAndSelectionsEndpoints(
+          [
+            createMockRecentCollectionItem({
+              model: "dashboard",
+              id: 10,
+              can_write: false,
+            }),
+          ],
+          ["selections"],
+        );
+
+        setup();
+
+        await waitFor(() =>
+          expect(screen.getByTestId("collectionId")).toHaveTextContent(/^1$/),
+        );
+        expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
+      });
+
       it("should suggest a collection if one has been recently selected", async () => {
         setupRecentViewsAndSelectionsEndpoints(
           [createMockRecentCollectionItem({ model: "collection", id: 10 })],
