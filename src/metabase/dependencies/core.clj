@@ -4,6 +4,7 @@
   (:require
    [metabase.dependencies.analysis]
    [metabase.dependencies.calculation]
+   [metabase.dependencies.db]
    [metabase.dependencies.items]
    [metabase.dependencies.registry]
    [metabase.dependencies.schema]
@@ -13,6 +14,7 @@
 (comment
   metabase.dependencies.analysis/keep-me
   metabase.dependencies.calculation/keep-me
+  metabase.dependencies.db/keep-me
   metabase.dependencies.items/keep-me
   metabase.dependencies.registry/keep-me
   metabase.dependencies.schema/keep-me
@@ -31,6 +33,9 @@
   query-dependencies
   visualization-settings-dependencies
   with-native-dependencies]
+ [metabase.dependencies.db
+  items-query
+  visible-entities-clause]
  [metabase.dependencies.registry
   entity-model
   entity-spec

@@ -2,6 +2,7 @@
   "Application database queries for the dependencies module, so the rest of the module only touches `toucan2.core` for
   model definitions, hydration methods, and transactions."
   (:require
+   [clojure.string :as str]
    [malli.util :as mut]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.schema :as dependencies.schema]
@@ -29,46 +30,6 @@
 ;;; The dependency graph is traversed generically over every entity type the module knows about; these private
 ;;; helpers build the permission and type-allowlist fragments the graph and item-list queries below restrict edges
 ;;; and items by.
-
-(mu/defn- visible-items-opts :- :metabase.dependencies.items/items-opts
-  "The options of the `:items` functions that select the entities readable by the user described by `user-id`,
-  `is-superuser?` and `is-data-analyst?`, the archived ones as `include-archived-items` says, default `:exclude`, and
-  nothing that only the lists leave out."
-  [{:keys [user-id is-superuser? is-data-analyst? include-archived-items]
-    :or   {include-archived-items :exclude}} :- ::dependencies.schema/visible-opts]
-  {:user-id                       user-id
-   :is-superuser?                 is-superuser?
-   :is-data-analyst?              is-data-analyst?
-   :include-archived              include-archived-items
-   :include-personal-collections? true
-   :include-internal?             true
-   :include-sample-databases?     true})
-
-(mu/defn- items-query :- [:maybe ::h2x/honeysql-clause-opts]
-  "The `:items` query of the spec of `model` for `opts`, marked as a subquery, or nil when the model is not listed or
-  the user reads none of its entities."
-  [model :- :keyword
-   opts  :- :metabase.dependencies.items/items-opts]
-  (when-let [items (:items (dependencies/spec model))]
-    (some-> (items opts) (vary-meta assoc :allow-subquery true))))
-
-(mu/defn- visible-entities-expr :- ::h2x/honeysql-expr
-  "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,
-  `is-superuser?`, and `is-data-analyst?`, honoring `include-archived-items` (`:exclude`, `:all`, or `:only`,
-  default `:exclude`): those that the `:items` query of the spec of their model selects for them, none of a model
-  without one."
-  [entity-type-field :- Column
-   entity-id-field   :- Column
-   visible           :- ::dependencies.schema/visible-opts]
-  (let [opts (visible-items-opts visible)]
-    (into [:or]
-          (keep (fn [[entity-type model]]
-                  (when-let [items (items-query model opts)]
-                    [:and
-                     [:= entity-type-field (name entity-type)]
-                     [:in entity-id-field ^:allow-subquery {:select [:items.entity_id]
-                                                            :from   [[items :items]]}]])))
-          (dependencies/type->model))))
 
 (mu/defn- broken-entities-expr :- ::h2x/honeysql-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that have failed analysis (an AnalysisFinding with
@@ -104,16 +65,40 @@
                                   [:ids         [:sequential ::deps.dependency-types/entity-id]]]]
   [:and [:= entity-type-field (name entity-type)] [:in entity-id-field ids]])
 
+(defn- entity-alias
+  "The alias of the left joined table of the entities of `entity-type`."
+  [entity-type]
+  (keyword (str "entity_" (str/replace (name entity-type) "-" "_"))))
+
+(mu/defn- existing-entity-clauses :- [:map {:closed true}
+                                      [:left-join [:sequential :any]]
+                                      [:where     ::h2x/honeysql-expr]]
+  "The `:left-join` of the table of each entity type to the entities at `entity-type-field`/`entity-id-field`, and the
+  `:where` matching those whose entities exist."
+  [entity-type-field :- Column
+   entity-id-field   :- Column]
+  (let [types (dependencies/type->model)]
+    {:left-join (into [] (mapcat (fn [[entity-type model]]
+                                   (let [alias (entity-alias entity-type)]
+                                     [[(t2/table-name model) alias]
+                                      [:and
+                                       [:= entity-type-field (name entity-type)]
+                                       [:= (u/qualified-key alias :id) entity-id-field]]])))
+                      types)
+     :where     (into [:or] (map (fn [[entity-type _model]]
+                                   [:not= (u/qualified-key (entity-alias entity-type) :id) nil]))
+                      types)}))
+
 (mu/defn- edge-restriction-expr :- [:maybe ::h2x/honeysql-expr]
   "The combined `:where` fragment for `restriction-spec` (nil for no filter), which may include `:visible` (opts for
-  [[visible-entities-expr]]), `:broken?` (restrict to [[broken-entities-expr]]), `:types` (restrict to
+  [[dependencies/visible-entities-clause]]), `:broken?` (restrict to [[broken-entities-expr]]), `:types` (restrict to
   [[allowed-entity-types-expr]]), or `:entity-type` + `:ids` (restrict to [[entity-ids-expr]]). Combinable
   fragments are AND-ed together."
   [entity-type-field                              :- Column
    entity-id-field                                :- Column
    {:keys [visible broken? types entity-type ids]} :- ::dependencies.schema/edge-restriction]
   (let [fragments (cond-> []
-                    visible               (conj (visible-entities-expr entity-type-field entity-id-field visible))
+                    visible               (conj (dependencies/visible-entities-clause entity-type-field entity-id-field visible))
                     broken?               (conj (broken-entities-expr entity-type-field entity-id-field))
                     types                 (conj (allowed-entity-types-expr entity-type-field types))
                     (and entity-type ids) (conj (entity-ids-expr entity-type-field entity-id-field
@@ -126,9 +111,9 @@
 (mu/defn dependency-edges
   "The Dependencies from the entities of type `entity-type` with `entity-ids`, where `src-type`/`src-id` name the
   Dependency columns identifying those entities and `dst-type`/`dst-id` name the columns identifying the related
-  entities on the other side of the edge, optionally restricted by `destination-restriction` (applied to
-  `dst-type`/`dst-id`) and `source-restriction` (applied to `src-type`/`src-id`) — see [[edge-restriction-expr]] for the
-  filter spec shape."
+  entities on the other side of the edge, those of them that exist, optionally restricted by
+  `destination-restriction` (applied to `dst-type`/`dst-id`) and `source-restriction` (applied to `src-type`/`src-id`)
+  — see [[edge-restriction-expr]] for the filter spec shape."
   [{:keys [src-type src-id dst-type dst-id entity-type entity-ids destination-restriction source-restriction]}
    :- [:map {:closed true}
        [:src-type [:enum :from_entity_type :to_entity_type]]
@@ -139,16 +124,22 @@
        [:entity-ids [:sequential ::deps.dependency-types/entity-id]]
        [:destination-restriction ::dependencies.schema/edge-restriction]
        [:source-restriction ::dependencies.schema/edge-restriction]]]
-  (into []
-        (mapcat (fn [batch]
-                  (t2/select :model/Dependency
-                             {:where (into [:and
-                                            [:= src-type (name entity-type)]
-                                            [:in src-id batch]]
-                                           (keep identity)
-                                           [(edge-restriction-expr dst-type dst-id destination-restriction)
-                                            (edge-restriction-expr src-type src-id source-restriction)])})))
-        (partition-all 1000 entity-ids)))
+  (let [existing (existing-entity-clauses (u/qualified-key :dependency dst-type)
+                                          (u/qualified-key :dependency dst-id))]
+    (into []
+          (mapcat (fn [batch]
+                    (t2/select :model/Dependency
+                               {:select    [:dependency.*]
+                                :from      [[(t2/table-name :model/Dependency) :dependency]]
+                                :left-join (:left-join existing)
+                                :where     (into [:and
+                                                  [:= (u/qualified-key :dependency src-type) (name entity-type)]
+                                                  [:in (u/qualified-key :dependency src-id) batch]
+                                                  (:where existing)]
+                                                 (keep identity)
+                                                 [(edge-restriction-expr dst-type dst-id destination-restriction)
+                                                  (edge-restriction-expr src-type src-id source-restriction)])})))
+          (partition-all 1000 entity-ids))))
 
 (mu/defn finding-errors-from-sources
   "The AnalysisFindingErrors caused by any of the entities `source-entity-type` `source-entity-ids`, whose analyzed
@@ -160,9 +151,9 @@
              {:where [:and
                       [:= :source_entity_type (name source-entity-type)]
                       [:in :source_entity_id source-entity-ids]
-                      (visible-entities-expr :analyzed_entity_type :analyzed_entity_id
-                                             {:user-id user-id :is-superuser? is-superuser?
-                                              :is-data-analyst? is-data-analyst?})]}))
+                      (dependencies/visible-entities-clause :analyzed_entity_type :analyzed_entity_id
+                                                            {:user-id user-id :is-superuser? is-superuser?
+                                                             :is-data-analyst? is-data-analyst?})]}))
 
 (mu/defn finding-errors-for-entities-with-visible-sources
   "The AnalysisFindingErrors analyzing any of the entities `entity-type` `entity-ids`, excluding those whose source
@@ -176,9 +167,9 @@
                       [:in :analyzed_entity_id entity-ids]
                       [:or
                        [:= :source_entity_type nil]
-                       (visible-entities-expr :source_entity_type :source_entity_id
-                                              {:user-id user-id :is-superuser? is-superuser?
-                                               :is-data-analyst? is-data-analyst?})]]}))
+                       (dependencies/visible-entities-clause :source_entity_type :source_entity_id
+                                                             {:user-id user-id :is-superuser? is-superuser?
+                                                              :is-data-analyst? is-data-analyst?})]]}))
 
 ;;; ------------------------------------------ Dependency item list queries -------------------------------------------
 ;;; The /graph/unreferenced and /graph/breaking endpoints union together one SELECT per entity type, each producing
@@ -291,15 +282,15 @@
   (when-not user-id
     (throw (ex-info "dependency-item-select requires a user-id so the visibility restriction is always applied"
                     {:query-type query-type :entity-type entity-type})))
-  (when-let [items (items-query (dependencies/entity-model entity-type)
-                                {:user-id                       user-id
-                                 :is-superuser?                 is-superuser?
-                                 :is-data-analyst?              is-data-analyst?
-                                 :include-archived              (if (= query-type :breaking) :all :exclude)
-                                 :include-personal-collections? include-personal-collections?
-                                 :include-internal?             (not= query-type :unreferenced)
-                                 :include-sample-databases?     false
-                                 :card-types                    card-types})]
+  (when-let [items (dependencies/items-query (dependencies/entity-model entity-type)
+                                             {:user-id                       user-id
+                                              :is-superuser?                 is-superuser?
+                                              :is-data-analyst?              is-data-analyst?
+                                              :include-archived              (if (= query-type :breaking) :all :exclude)
+                                              :include-personal-collections? include-personal-collections?
+                                              :include-internal?             (not= query-type :unreferenced)
+                                              :include-sample-databases?     false
+                                              :card-types                    card-types})]
     (let [default-visible-restriction {:visible {:user-id          user-id
                                                  :is-superuser?    is-superuser?
                                                  :is-data-analyst? is-data-analyst?}}
@@ -375,10 +366,10 @@
                             [:= :afe.source_entity_type (name source-entity-type)]
                             [:= :afe.source_entity_id source-entity-id]
                             [:= :af.result false]
-                            (visible-entities-expr :afe.analyzed_entity_type :afe.analyzed_entity_id
-                                                   {:user-id user-id :is-superuser? is-superuser?
-                                                    :is-data-analyst? is-data-analyst?
-                                                    :include-archived-items :exclude})]
+                            (dependencies/visible-entities-clause :afe.analyzed_entity_type :afe.analyzed_entity_id
+                                                                  {:user-id user-id :is-superuser? is-superuser?
+                                                                   :is-data-analyst? is-data-analyst?
+                                                                   :include-archived-items :exclude})]
                      dependent-types      (conj [:in :afe.analyzed_entity_type dependent-types])
                      dependent-card-types (conj [:or
                                                  [:!= :afe.analyzed_entity_type "card"]
@@ -713,9 +704,13 @@
 (mu/defn given-up-dependency-statuses :- [:sequential [:map
                                                        [:entity_type ::deps.dependency-types/dependency-types]
                                                        [:entity_id   ms/PositiveInt]]]
-  "The entities whose dependencies the dependency job gave up computing until a write changes them."
+  "The entities that exist whose dependencies the dependency job gave up computing until a write changes them."
   []
-  (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
+  (let [{:keys [left-join where]} (existing-entity-clauses :status.entity_type :status.entity_id)]
+    (t2/select [:model/DependencyStatus :status.entity_type :status.entity_id]
+               {:from      [[(t2/table-name :model/DependencyStatus) :status]]
+                :left-join left-join
+                :where     [:and [:= :status.terminal true] where]})))
 
 (mu/defn clear-dependency-status! :- :boolean
   "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis

@@ -69,11 +69,7 @@
 ;; return all Cards bookmarked by the current user.
 (defmethod cards-for-filter-option* :bookmarked
   [_]
-  (let [bookmarks (queries-rest.db/card-bookmarks-for-user api/*current-user-id*)]
-    (->> (t2/hydrate bookmarks :card)
-         (map :card)
-         (remove :archived)
-         (sort-by :name))))
+  (queries-rest.db/unarchived-cards-bookmarked-by api/*current-user-id*))
 
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database

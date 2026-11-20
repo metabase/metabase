@@ -42,10 +42,14 @@
   [pattern :- :string]
   (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query pattern]})))
 
-(mu/defn card-bookmarks-for-user
-  "The Card ids bookmarked by the User with `user-id`."
+(mu/defn unarchived-cards-bookmarked-by
+  "The unarchived Cards bookmarked by the User with `user-id`, in case-insensitive name order."
   [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/CardBookmark :card_id] :user_id user-id))
+  (t2/select :model/Card {:select    [:card.*]
+                          :from      [[(t2/table-name :model/CardBookmark) :bookmark]]
+                          :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :bookmark.card_id]]
+                          :where     [:and [:= :bookmark.user_id user-id] [:not= :card.id nil] [:= :card.archived false]]
+                          :order-by  [[[:lower :card.name] :asc]]}))
 
 (mu/defn cards-using-model
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in

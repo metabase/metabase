@@ -956,7 +956,8 @@
 
   dependencies
   {:team "Data Apps"
-   :api  #{metabase.dependencies.core}
+   :api  #{metabase.dependencies.core
+           metabase.dependencies.schema}
    :uses #{lib
            lib.schema
            models
@@ -2720,6 +2721,7 @@
                     :model/Document
                     :model/Exploration
                     :model/Measure
+                    :model/ModelIndex
                     :model/Segment
                     :model/Table
                     :model/Transform
@@ -3710,6 +3712,7 @@
            app-db
            collections
            database-routing
+           dependencies
            driver
            events
            lib
@@ -3729,6 +3732,7 @@
            xrays}
    :model-imports #{:model/Collection
                     :model/Database
+                    :model/Dependency
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
@@ -4287,7 +4291,8 @@
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
-                    :model/FieldValues}}
+                    :model/FieldValues}
+   :model-exports #{:model/Dependency}}
 
   enterprise/dependencies.replacement
   {:team "Data Apps"

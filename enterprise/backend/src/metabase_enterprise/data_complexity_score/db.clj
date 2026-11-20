@@ -33,12 +33,17 @@
   (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn verified-card-ids
-  "The IDs of the Cards whose most recent moderation review is verified."
+  "The IDs of the Cards that exist whose most recent moderation review is verified."
   []
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
+                    {:select    [:review.moderated_item_id]
+                     :from      [[(t2/table-name :model/ModerationReview) :review]]
+                     :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :review.moderated_item_id]]
+                     :where     [:and
+                                 [:= :review.moderated_item_type "card"]
+                                 [:= :review.most_recent true]
+                                 [:= :review.status "verified"]
+                                 [:not= :card.id nil]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."

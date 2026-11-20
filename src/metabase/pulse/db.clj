@@ -101,10 +101,25 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
 
+(defn- parents-join
+  "The left join of the Dashboard and the Collection of each Pulse aliased `:p`, as `:d` and `:coll`."
+  []
+  [[(t2/table-name :model/Dashboard) :d] [:= :p.dashboard_id :d.id]
+   [(t2/table-name :model/Collection) :coll] [:= :p.collection_id :coll.id]])
+
+(def ^:private existing-parents-clause
+  "Matches the Pulses aliased `:p` whose Dashboard and Collection, each when it has one, exist."
+  [:and
+   [:or [:= :p.dashboard_id nil] [:not= :d.id nil]]
+   [:or [:= :p.collection_id nil] [:not= :coll.id nil]]])
+
 (mu/defn pulse
-  "The Pulse with `pulse-id`, or nil."
+  "The Pulse with `pulse-id` whose Dashboard and Collection exist, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select-one :model/Pulse :id pulse-id))
+  (t2/select-one :model/Pulse {:select    [:p.*]
+                               :from      [[(t2/table-name :model/Pulse) :p]]
+                               :left-join (parents-join)
+                               :where     [:and [:= :p.id pulse-id] existing-parents-clause]}))
 
 (mu/defn pulse-id
   "The id of the Pulse with `pulse-id` if it exists, or nil."
@@ -152,22 +167,25 @@
                                    [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]}))))
 
 (mu/defn pulses
-  "The dashboard-subscription Pulses (unarchived unless `archived?`), optionally narrowed to `dashboard-id` and/or
-  those with a recipient or creator `user-id`, ordered by lower-cased name."
+  "The dashboard-subscription Pulses (unarchived unless `archived?`) whose Dashboard and Collection exist,
+  optionally narrowed to `dashboard-id` and/or those with a recipient or creator `user-id`, ordered by lower-cased
+  name."
   [archived?    :- :boolean
    dashboard-id :- [:maybe ::lib.schema.id/dashboard]
    user-id      :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Pulse
              {:select-distinct [:p.* [[:lower :p.name] :lower-name]]
-              :from            [[:pulse :p]]
+              :from            [[(t2/table-name :model/Pulse) :p]]
               :left-join       (concat
-                                [[:report_dashboard :d] [:= :p.dashboard_id :d.id]]
+                                (parents-join)
                                 (when user-id
-                                  [[:pulse_channel :pchan]         [:= :p.id :pchan.pulse_id]
-                                   [:pulse_channel_recipient :pcr] [:= :pchan.id :pcr.pulse_channel_id]]))
+                                  [[(t2/table-name :model/PulseChannel) :pchan] [:= :p.id :pchan.pulse_id]
+                                   [(t2/table-name :model/PulseChannelRecipient) :pcr]
+                                   [:= :pchan.id :pcr.pulse_channel_id]]))
               :where           [:and
                                 [:= :p.alert_condition nil]
                                 [:= :p.archived archived?]
+                                existing-parents-clause
                                 [:or
                                  [:= :p.dashboard_id nil]
                                  [:= :d.archived false]]

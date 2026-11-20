@@ -106,7 +106,10 @@
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables
-           {:term                       term
+           {:user-info                  {:user-id          api/*current-user-id*
+                                         :is-superuser?    api/*is-superuser?*
+                                         :is-data-analyst? (api/entitled-data-analyst?)}
+            :term                       term
             :visibility-type            visibility-type
             :data-layer                 data-layer
             :data-source                data-source

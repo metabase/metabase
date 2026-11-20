@@ -49,14 +49,16 @@
            :metered_as          (premium-features/transform-metered-as (:source_type transform)))
     run))
 
-;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
+  "A run is readable when its Transform exists and is readable, by a superuser even when it is not, and, without a
+  Transform, which its deletion leaves, by a superuser only."
   [_model k instance]
   (vary-meta instance assoc k
              (boolean
-              (or api/*is-superuser?*
-                  (boolean (when-let [transform-id (:transform_id instance)]
-                             (some-> (transforms.db/transform transform-id) (t2/hydrate :can_read) mi/can-read?)))))))
+              (if-let [transform-id (:transform_id instance)]
+                (when-let [transform (transforms.db/transform transform-id)]
+                  (or api/*is-superuser?* (mi/can-read? (t2/hydrate transform :can_read))))
+                api/*is-superuser?*))))
 
 (mi/define-simple-hydration-method add-transform-runs
   :transform-runs

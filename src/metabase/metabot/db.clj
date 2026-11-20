@@ -61,9 +61,12 @@
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
 (mu/defn prompts-for-metabots
-  "The MetabotPrompts of the Metabots with `metabot-ids`."
+  "The MetabotPrompts of the Metabots with `metabot-ids` whose Cards exist."
   [metabot-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/MetabotPrompt {:where [:in :metabot_id metabot-ids]}))
+  (t2/select :model/MetabotPrompt {:select    [:prompt.*]
+                                   :from      [[(t2/table-name :model/MetabotPrompt) :prompt]]
+                                   :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :prompt.card_id]]
+                                   :where     [:and [:in :prompt.metabot_id metabot-ids] [:not= :card.id nil]]}))
 
 (defn- prompts-for-metabot-query
   "Honey SQL `:join`/`:where` restricting to MetabotPrompts of the Metabot with `metabot-id` whose Card is within

@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.schema
   (:require
+   [metabase.dependencies.schema :as dependencies.schema]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
@@ -21,13 +22,8 @@
   [:map-of ::node [:set ::node]])
 
 (mr/def ::visible-opts
-  "The user whose readable entities a query is restricted to (`:user-id`, `:is-superuser?`, `:is-data-analyst?`), and
-  whether archived entities count (`:include-archived-items`, default `:exclude`)."
-  [:map {:closed true}
-   [:user-id                ::lib.schema.id/user]
-   [:is-superuser?          {:optional true} [:maybe :boolean]]
-   [:is-data-analyst?       {:optional true} [:maybe :boolean]]
-   [:include-archived-items {:optional true} [:enum :exclude :all :only]]])
+  "The user whose readable entities a query is restricted to, and whether archived entities count."
+  ::dependencies.schema/visible-opts)
 
 (mr/def ::edge-restriction
   "The restriction of one side of a dependency edge, nil for none: the entities readable by a user (`:visible`), the
