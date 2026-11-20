@@ -999,28 +999,37 @@ function getTableStatus(target: WhyTarget): TableStatus {
   return isFiltered(target) ? "filtered" : "view";
 }
 
-/** "2 Rows filtered · 6 Can view": the tables per status, Rows filtered first, then Can't load, Blocked, then Can view. */
-function getTablesBreakdown(tables: WhyTarget[]) {
-  const labels: Record<TableStatus, string> = {
+const TABLE_STATUSES: TableStatus[] = [
+  "filtered",
+  "failing",
+  "blocked",
+  "view",
+];
+
+function getTableStatusLabels(): Record<TableStatus, string> {
+  return {
     filtered: t`Rows filtered`,
     failing: t`Can't load`,
     blocked: t`Blocked`,
     view: t`Can view`,
   };
-  return (["filtered", "failing", "blocked", "view"] as const)
-    .map((status) => ({
-      count: tables.filter((target) => getTableStatus(target) === status)
-        .length,
-      label: labels[status],
-    }))
+}
+
+/** "2 Rows filtered · 6 Can view": the tables per status, Rows filtered first, then Can't load, Blocked, then Can view. */
+function getTablesBreakdown(tables: WhyTarget[]) {
+  const labels = getTableStatusLabels();
+  return TABLE_STATUSES.map((status) => ({
+    count: tables.filter((target) => getTableStatus(target) === status).length,
+    label: labels[status],
+  }))
     .filter(({ count }) => count > 0)
     .map(({ count, label }) => t`${count} ${label}`)
     .join(" · ");
 }
 
 /**
- * Every table: one that's filtered or blocked is a row of its own, a filtered one opening to its rules; two or more
- * that can be viewed fold into one closed row, a single one is a row of its own.
+ * Every table, one closed row per status at one level: "16 tables · Blocked". A status with a single table shows that
+ * table's row instead. A filtered table, or one that can't load, opens to its rules, with what's wrong first.
  */
 function SummaryTables({
   tables,
@@ -1029,59 +1038,97 @@ function SummaryTables({
   tables: WhyTarget[];
   onOpen: (target: WhyTarget) => void;
 }) {
-  // a table with conflicting policies opens to its rules too, with what's wrong first
-  const filtered = tables.filter((target) =>
-    ["filtered", "failing"].includes(getTableStatus(target)),
+  const labels = getTableStatusLabels();
+  const groups = TABLE_STATUSES.map((status) => ({
+    status,
+    targets: tables.filter((target) => getTableStatus(target) === status),
+  })).filter(({ targets }) => targets.length > 0);
+  const hasChevronSlot = groups.some(
+    ({ status, targets }) => targets.length > 1 || opensToRules(status),
   );
-  const blocked = tables.filter(
-    (target) => getTableStatus(target) === "blocked",
-  );
-  const viewable = tables.filter((target) => getTableStatus(target) === "view");
-  const viewableCount = viewable.length;
-  const hasChevronSlot = filtered.length > 0 || viewableCount > 1;
   return (
     <Box>
-      {filtered.map((target, index) => (
-        <ToggleRow
-          key={index}
-          rowKey={`summary-filtered-table-${index}`}
-          label={<TargetName target={target} />}
-          initiallyOpen={false}
-          status={<StatusLink target={target} onClick={() => onOpen(target)} />}
-        >
-          <PolicyRules target={target} />
-        </ToggleRow>
-      ))}
-      <AccessRows
-        targets={blocked}
-        hasChevronSlot={hasChevronSlot}
-        onOpen={onOpen}
-      />
-      {viewableCount > 1 ? (
-        <ToggleRow
-          rowKey="summary-full-access-tables"
-          label={
-            <Text truncate="end">
-              {ngettext(
-                msgid`${viewableCount} table`,
-                `${viewableCount} tables`,
-                viewableCount,
-              )}
-            </Text>
-          }
-          initiallyOpen={false}
-          status={<Text c="text-secondary">{t`Can view`}</Text>}
-        >
-          <AccessRows targets={viewable} onOpen={onOpen} />
-        </ToggleRow>
-      ) : (
-        <AccessRows
-          targets={viewable}
-          hasChevronSlot={hasChevronSlot}
-          onOpen={onOpen}
-        />
-      )}
+      {groups.map(({ status, targets }) => {
+        if (targets.length === 1) {
+          return (
+            <SummaryTableRow
+              key={status}
+              status={status}
+              target={targets[0]}
+              hasChevronSlot={hasChevronSlot}
+              onOpen={onOpen}
+            />
+          );
+        }
+        return (
+          <ToggleRow
+            key={status}
+            rowKey={`summary-${status}-tables`}
+            label={
+              <Text truncate="end">
+                {ngettext(
+                  msgid`${targets.length} table`,
+                  `${targets.length} tables`,
+                  targets.length,
+                )}
+              </Text>
+            }
+            initiallyOpen={false}
+            status={<Text c="text-secondary">{labels[status]}</Text>}
+          >
+            <Box>
+              {targets.map((target, index) => (
+                <SummaryTableRow
+                  key={index}
+                  status={status}
+                  rowKey={`summary-${status}-table-${index}`}
+                  target={target}
+                  onOpen={onOpen}
+                />
+              ))}
+            </Box>
+          </ToggleRow>
+        );
+      })}
     </Box>
+  );
+}
+
+function opensToRules(status: TableStatus) {
+  return status === "filtered" || status === "failing";
+}
+
+function SummaryTableRow({
+  status,
+  rowKey = `summary-${status}-table`,
+  target,
+  hasChevronSlot,
+  onOpen,
+}: {
+  status: TableStatus;
+  rowKey?: string;
+  target: WhyTarget;
+  hasChevronSlot?: boolean;
+  onOpen: (target: WhyTarget) => void;
+}) {
+  if (!opensToRules(status)) {
+    return (
+      <AccessRow
+        target={target}
+        hasChevronSlot={hasChevronSlot}
+        onOpen={() => onOpen(target)}
+      />
+    );
+  }
+  return (
+    <ToggleRow
+      rowKey={rowKey}
+      label={<TargetName target={target} />}
+      initiallyOpen={false}
+      status={<StatusLink target={target} onClick={() => onOpen(target)} />}
+    >
+      <PolicyRules target={target} />
+    </ToggleRow>
   );
 }
 

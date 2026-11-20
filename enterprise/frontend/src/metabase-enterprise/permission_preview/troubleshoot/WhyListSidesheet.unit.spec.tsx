@@ -277,6 +277,28 @@ const REVIEWS: PreviewTableAccess = {
   policies: [],
 };
 
+const FEEDBACK: PreviewTableAccess = {
+  ...REVIEWS,
+  id: 7,
+  name: "FEEDBACK",
+  display_name: "Feedback",
+};
+
+const PEOPLE: PreviewTableAccess = {
+  ...REVIEWS,
+  id: 8,
+  name: "PEOPLE",
+  display_name: "People",
+};
+
+/** Two groups of the person set row security here too, like Products. */
+const EVENTS: PreviewTableAccess = {
+  ...PRODUCTS,
+  id: 9,
+  name: "EVENTS",
+  display_name: "Events",
+};
+
 const ACCOUNTS: PreviewTableAccess = {
   ...ORDERS,
   id: ACCOUNTS_ID,
@@ -1092,6 +1114,60 @@ describe("WhyListSidesheet", () => {
     expect(getToggle("2 tables")).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("folds two or more Blocked tables into one closed row beside the Can view fold, and opens each one's detail from the opened row", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, REVIEWS, FEEDBACK, PEOPLE, ACCOUNTS, INVOICES],
+    });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (6)"));
+
+    const blocked = await findToggle("3 tables");
+    const viewable = getToggle("2 tables");
+    const blockedRow = getToggleRow(blocked);
+    /* eslint-disable testing-library/no-node-access */
+    const level = blockedRow.parentElement?.parentElement;
+    expect(level).toBeInTheDocument();
+    expect(level).toBe(getToggleRow(viewable).parentElement?.parentElement);
+    /* eslint-enable testing-library/no-node-access */
+    expect(within(blockedRow).getByText("Blocked")).toBeInTheDocument();
+    expect(blocked).toHaveAttribute("aria-expanded", "false");
+    expect(getVisibleTexts("Reviews")).toHaveLength(0);
+
+    await userEvent.click(blocked);
+    await userEvent.click(await findRowStatus("Reviews · Sample Database"));
+
+    expect(
+      screen.getByText(
+        "Sandy Sales is blocked in every group they're in. To let them see this table, give one of those groups access.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("folds two or more tables that can't load into one closed row, each opening to its reason", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, PRODUCTS, EVENTS],
+    });
+    await openSeeEverything();
+    await userEvent.click(getFold("Tables (3)"));
+
+    const cannotLoad = await findToggle("2 tables");
+    expect(
+      within(getToggleRow(cannotLoad)).getByText("Can't load"),
+    ).toBeInTheDocument();
+    expect(cannotLoad).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(cannotLoad);
+    await userEvent.click(await findToggle("Products · Sample Database"));
+
+    expect(
+      await screen.findByText(
+        "Sales and Finance readers both set row and column security on Products. Keep one policy, or give one of the groups Can view on Products.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("shows a single table that can be viewed as a row of its own in See everything, not a fold of one", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
@@ -1898,6 +1974,16 @@ function getToggle(name: string) {
     throw new Error(`No row named ${name} opens in place`);
   }
   return toggle;
+}
+
+/** The row that holds a toggle and its status, which sits beside it. */
+function getToggleRow(toggle: HTMLElement) {
+  // eslint-disable-next-line testing-library/no-node-access -- the status has no role or label to find it by
+  const row = toggle.closest("div");
+  if (row == null) {
+    throw new Error("The toggle is in no row");
+  }
+  return row;
 }
 
 /** The folded list stays mounted while folded, so count only what shows. */
