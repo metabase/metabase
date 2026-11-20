@@ -42,6 +42,9 @@
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables
-  create-table!]
+  activate-table!
+  create-table!
+  deactivate-table!
+  set-table-schema!]
  [metabase.sync.task.sync-database
   schedule-database-sync!])

@@ -1,0 +1,42 @@
+# The Transform that writes a Table, recorded like the other user values of the Table.
+
+databaseChangeLog:
+  - changeSet:
+      id: kin1qg
+      author: ranquild
+      comment: Add metabase_table_user_settings.transform_id, the Transform that writes the Table
+      changes:
+        - addColumn:
+            tableName: metabase_table_user_settings
+            columns:
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: The Transform that writes the Table, which metabase_table.transform_id mirrors
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: tusqqec
+      author: ranquild
+      comment: Index metabase_table_user_settings.transform_id, which a foreign key needs
+      changes:
+        - createIndex:
+            tableName: metabase_table_user_settings
+            indexName: idx_metabase_table_user_settings_transform_id
+            columns:
+              - column:
+                  name: transform_id
+
+  - changeSet:
+      id: tuseiaa
+      author: ranquild
+      comment: Add a foreign key from metabase_table_user_settings.transform_id to transform, cleared on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_table_user_settings
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            constraintName: fk_metabase_table_user_settings_transform_id
+            onDelete: SET NULL

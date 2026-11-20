@@ -215,11 +215,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Database :id database-id))
 
-(mu/defn mark-tables-sync-complete!
-  "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"}))
-
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]

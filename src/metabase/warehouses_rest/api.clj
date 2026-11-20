@@ -1029,7 +1029,7 @@
     (sync-util/set-initial-database-sync-complete! db)
     ;; avoid n+1
     (when-let [table-ids (seq (map :id tables))]
-      (warehouses-rest.db/mark-tables-sync-complete! table-ids)))
+      (sync-util/set-initial-tables-sync-complete! table-ids)))
   {:status :ok})
 
 ;;; ------------------------------------------ POST /api/database/:id/rescan_values -------------------------------------------
