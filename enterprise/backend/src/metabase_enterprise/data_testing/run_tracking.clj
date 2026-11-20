@@ -43,15 +43,26 @@
      run)))
 
 (mu/defn finish-run!
-  "Finish `run-id` if it is still started, then release this process's ownership.
+  "Finish `run-id` with `status` and `result`, what the run reported or nil, if it is still started, then release this
+  process's ownership. When the result cannot be stored, the run is finished without one.
 
   The status guard prevents a late completion from overwriting a timeout assigned by the cluster reaper."
-  [run-id :- ms/PositiveInt
-   status :- ::data-testing.schema/run-status]
-  (try
-    (data-testing.db/finish-started-test-run! run-id status)
-    (finally
-      (swap! active-runs disj run-id))))
+  ([run-id :- ms/PositiveInt
+    status :- ::data-testing.schema/run-status]
+   (finish-run! run-id status nil))
+  ([run-id :- ms/PositiveInt
+    status :- ::data-testing.schema/run-status
+    result :- [:maybe ::data-testing.schema/stored-run-result]]
+   (try
+     (try
+       (data-testing.db/finish-started-test-run! run-id status result)
+       (catch Throwable e
+         (when-not result
+           (throw e))
+         (log/warnf e "Failed to store the result of test run %s, finishing the run without it" run-id)
+         (data-testing.db/finish-started-test-run! run-id status nil)))
+     (finally
+       (swap! active-runs disj run-id)))))
 
 (mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."

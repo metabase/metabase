@@ -35,7 +35,7 @@
   A pass carries nothing beyond the shared keys. A failure adds the rows the query returned as
   `:sample`, with `:columns` describing them; the sample is capped, and `:truncated` is how many
   rows that cap dropped."
-  [:multi {:dispatch :status}
+  [:multi {:dispatch (comp keyword :status)}
    [:error  base]
    [:passed base]
    [:failed findings]])
