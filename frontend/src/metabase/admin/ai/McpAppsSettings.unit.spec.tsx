@@ -27,12 +27,14 @@ const setup = async ({
   enabled = true,
   commonOriginsSetByEnvVar = false,
   holdSettingDetails = false,
+  failSettingDetails = false,
 }: {
   commonOrigins?: string[];
   customOrigins?: string;
   enabled?: boolean;
   commonOriginsSetByEnvVar?: boolean;
   holdSettingDetails?: boolean;
+  failSettingDetails?: boolean;
 } = {}) => {
   const settings = createMockSettings({
     "mcp-enabled?": enabled,
@@ -41,16 +43,14 @@ const setup = async ({
     "site-url": SITE_URL,
   });
 
-  const settingDetails = commonOriginsSetByEnvVar
-    ? [
-        createMockSettingDefinition({
-          key: "mcp-apps-cors-enabled-clients",
-          value: null,
-          is_env_setting: true,
-          env_name: ENABLED_CLIENTS_ENV_VAR,
-        }),
-      ]
-    : [];
+  const settingDetails = [
+    createMockSettingDefinition({
+      key: "mcp-apps-cors-enabled-clients",
+      value: commonOriginsSetByEnvVar ? null : commonOrigins,
+      is_env_setting: commonOriginsSetByEnvVar,
+      env_name: commonOriginsSetByEnvVar ? ENABLED_CLIENTS_ENV_VAR : undefined,
+    }),
+  ];
   let releaseSettingDetails = () => {};
 
   setupPropertiesEndpoints(settings);
@@ -61,6 +61,8 @@ const setup = async ({
         releaseSettingDetails = () => resolve(settingDetails);
       }),
     );
+  } else if (failSettingDetails) {
+    fetchMock.get("path:/api/setting", 500);
   } else {
     setupSettingsEndpoints(settingDetails);
   }
@@ -76,7 +78,8 @@ const setup = async ({
     await screen.findByText("MCP server");
   }
 
-  if (enabled && !commonOriginsSetByEnvVar && !holdSettingDetails) {
+  const detailsWillLoad = !holdSettingDetails && !failSettingDetails;
+  if (enabled && !commonOriginsSetByEnvVar && detailsWillLoad) {
     // The client switches stay disabled until the setting details load.
     await waitFor(() => {
       expect(screen.getByRole("switch", { name: "Claude" })).toBeEnabled();
@@ -180,6 +183,15 @@ describe("McpAppsSettings", () => {
     await waitFor(() => {
       expect(claude).toBeEnabled();
     });
+  });
+
+  it("keeps MCP client toggles disabled when the setting details fail to load", async () => {
+    await setup({ failSettingDetails: true });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
+    });
+    expect(screen.getByRole("switch", { name: "Claude" })).toBeDisabled();
   });
 
   it("shows 'Install in Cursor' link only when the Cursor and VS Code switch is enabled", async () => {

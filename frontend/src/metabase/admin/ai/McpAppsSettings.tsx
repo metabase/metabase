@@ -102,7 +102,6 @@ function CommonMcpClientsSection() {
     value: savedValue,
     settingDetails,
     updateSetting,
-    isLoading,
   } = useAdminSetting("mcp-apps-cors-enabled-clients");
 
   const envName = settingDetails?.is_env_setting
@@ -147,8 +146,9 @@ function CommonMcpClientsSection() {
             aria-label={ariaLabel}
             data-testid={`mcp-client-${key}`}
             checked={enabledClients.includes(key)}
-            // Until the details load, we can't tell whether an env var sets this.
-            disabled={isLoading || isSetByEnvVar}
+            // Without the details, we can't tell whether an env var sets this,
+            // whether they are still loading or failed to load.
+            disabled={settingDetails == null || isSetByEnvVar}
             onChange={(e) => handleToggle(key, e.target.checked)}
             label={label}
             w="auto"
