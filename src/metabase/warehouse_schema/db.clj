@@ -658,6 +658,7 @@
   user queries, active or not, so that dependencies broken by a dropped or hidden table stay visible, without those of
   the sample and audit databases unless `:include-sample-databases?`, located by their database."
   [{:keys [include-sample-databases?] :as opts} :- :metabase.dependencies.items/items-opts]
+  ^:allow-subquery
   {:select    [[:metabase_table.id :entity_id] [:metabase_table.display_name :name] [:database.name :location]]
    :from      [:metabase_table]
    :left-join [[:metabase_database :database] [:= :metabase_table.db_id :database.id]]

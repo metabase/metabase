@@ -79,6 +79,7 @@
   (when-not (or (perms/sandboxed-user?)
                 (not (perms/user-has-highest-permission-anywhere? (perms/user-info user-id) :perms/create-queries)))
     (let [location (collections.listing/collection-location :collection :snippets)]
+      ^:allow-subquery
       {:select    [[:snippet.id :entity_id] [:snippet.name :name] [location :location]]
        :from      [[:native_query_snippet :snippet]]
        :left-join [:collection [:= :snippet.collection_id :collection.id]]

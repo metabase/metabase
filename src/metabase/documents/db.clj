@@ -231,6 +231,7 @@
   [{:keys [include-archived include-personal-collections?] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
+    ^:allow-subquery
     {:select    [[:document.id :entity_id] [:document.name :name] [location :location]]
      :from      [:document]
      :left-join [:collection [:= :document.collection_id :collection.id]]

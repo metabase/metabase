@@ -604,6 +604,7 @@
   [{:keys [include-archived include-personal-collections? include-internal?] :as opts}
    :- :metabase.dependencies.items/items-opts]
   (let [location (collections.listing/collection-location :collection nil)]
+    ^:allow-subquery
     {:select    [[:dashboard.id :entity_id] [:dashboard.name :name] [location :location]]
      :from      [[:report_dashboard :dashboard]]
      :left-join [:collection [:= :dashboard.collection_id :collection.id]]

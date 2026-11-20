@@ -219,5 +219,6 @@
   [{:keys [is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when is-superuser?
     (let [id-text [:cast :sandboxes.id (if (= :mysql (mdb/db-type)) :char :text)]]
+      ^:allow-subquery
       {:select [[:sandboxes.id :entity_id] [id-text :name] [id-text :location]]
        :from   [:sandboxes]})))

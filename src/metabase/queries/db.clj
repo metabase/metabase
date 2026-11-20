@@ -699,6 +699,7 @@
                   [:not= :card.dashboard_id nil] :dashboard.name
                   [:not= :card.document_id nil]  :document.name
                   :else                          (collections.listing/collection-location :collection nil)]]
+    ^:allow-subquery
     {:select    [[:card.id :entity_id] [:card.name :name] [location :location]]
      :from      [[:report_card :card]]
      :left-join [:collection                  [:= :card.collection_id :collection.id]

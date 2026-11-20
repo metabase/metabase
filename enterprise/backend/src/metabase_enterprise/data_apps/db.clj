@@ -299,6 +299,7 @@
   none: those the user reads, none without the data apps feature."
   [{:keys [user-id is-superuser?]} :- :metabase.dependencies.items/items-opts]
   (when-let [visible-ids (data-apps/visible-data-app-filter-select {:user-id user-id :is-superuser? is-superuser?})]
+    ^:allow-subquery
     {:select [[:data_app.id :entity_id] [:data_app.name :name] [nil :location]]
      :from   [:data_app]
      :where  (into [:and]

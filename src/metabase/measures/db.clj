@@ -82,6 +82,7 @@
   "The query of the Measures the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
   tables the user queries, located by their table."
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
+  ^:allow-subquery
   {:select    [[:measure.id :entity_id] [:measure.name :name] [:table.display_name :location]]
    :from      [:measure]
    :left-join [[:metabase_table :table] [:= :measure.table_id :table.id]]

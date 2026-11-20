@@ -75,6 +75,7 @@
   "The query of the Segments the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the
   tables the user queries, located by their table."
   [{:keys [include-archived] :as opts} :- :metabase.dependencies.items/items-opts]
+  ^:allow-subquery
   {:select    [[:segment.id :entity_id] [:segment.name :name] [:table.display_name :location]]
    :from      [:segment]
    :left-join [[:metabase_table :table] [:= :segment.table_id :table.id]]

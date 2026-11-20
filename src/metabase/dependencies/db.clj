@@ -26,12 +26,12 @@
    :include-sample-databases?     true})
 
 (mu/defn items-query :- [:maybe ::h2x/honeysql-clause-opts]
-  "The `:items` query of the spec of `model` for `opts`, marked as a subquery, or nil when the model is not listed or
-  the user reads none of its entities."
+  "The `:items` query of the spec of `model` for `opts`, or nil when the model is not listed or the user reads none
+  of its entities."
   [model :- :keyword
    opts  :- ::dependencies.items/items-opts]
   (when-let [items (:items (dependencies.spec/spec model))]
-    (some-> (items opts) (vary-meta assoc :allow-subquery true))))
+    (items opts)))
 
 (mu/defn visible-entities-clause :- ::h2x/honeysql-expr
   "Matches entities at `entity-type-field`/`entity-id-field` that are readable by the user described by `user-id`,

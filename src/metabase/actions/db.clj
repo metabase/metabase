@@ -314,6 +314,7 @@
                    (:name (collection.root/root-collection-with-ui-details :data-actions))
                    :else
                    (:name (collection.root/root-collection-with-ui-details nil))]]]
+    ^:allow-subquery
     {:select    [[:action.id :entity_id] [:action.name :name] [location :location]]
      :from      [:action]
      :left-join [:collection [:= :action.collection_id :collection.id]]

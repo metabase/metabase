@@ -982,6 +982,7 @@
   [{:keys [user-id is-superuser? is-data-analyst?]} :- :metabase.dependencies.items/items-opts]
   (when (or is-superuser? is-data-analyst?)
     (let [location (collections.listing/collection-location :collection :transforms)]
+      ^:allow-subquery
       {:select    [[:transform.id :entity_id] [:transform.name :name] [location :location]]
        :from      [:transform]
        :left-join [:collection [:= :transform.collection_id :collection.id]]
