@@ -50,7 +50,7 @@ export type Range = {
 export type SummaryGeneratedExpression = {
   stageIndex: number;
   name: string;
-  expression: string;
+  uuid: string;
 };
 
 export interface QueryBuilderUIControls {

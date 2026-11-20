@@ -103,6 +103,15 @@ export function replaceClause(
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
 
+/**
+ * The UUID of a clause in its query. It tells apart clauses that are otherwise equal, and finds
+ * a clause again in a later version of the query. Replacing the clause, or a clause that it
+ * refers to, can give it a new UUID.
+ */
+export function clauseUuid(clause: Clause): string {
+  return ML.clause_uuid(clause);
+}
+
 export function swapClauses(
   query: Query,
   stageIndex: number,

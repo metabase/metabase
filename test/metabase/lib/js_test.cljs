@@ -767,3 +767,18 @@
               (js->clj (lib.js/xray-cell-query query))))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel clause-uuid-test
+  (let [query (-> (lib.tu/venues-query)
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/count))
+                  (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))
+        [first-count second-count sum] (lib/aggregations query)]
+    (testing "tells apart clauses that are otherwise equal"
+      (is (string? (lib.js/clause-uuid first-count)))
+      (is (not= (lib.js/clause-uuid first-count)
+                (lib.js/clause-uuid second-count))))
+    (testing "finds a clause again after another clause is removed"
+      (let [query' (lib/remove-clause query -1 first-count)]
+        (is (= [(lib.js/clause-uuid second-count) (lib.js/clause-uuid sum)]
+               (map lib.js/clause-uuid (lib/aggregations query'))))))))

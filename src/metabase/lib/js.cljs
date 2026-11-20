@@ -85,6 +85,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query.test-spec :as lib.query.test-spec]
    [metabase.lib.schema.ref :as lib.schema.ref]
@@ -734,6 +735,16 @@
    a-query stage-number
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
+
+(defn ^:export clause-uuid
+  "Returns the `:lib/uuid` of `a-clause`, such as an aggregation, breakout, custom expression, filter, or order by.
+
+  Each clause in a query has its own UUID. It tells apart clauses that are otherwise equal, and finds a clause again in
+  a later version of the query. Replacing the clause, or a clause that it refers to, can give it a new UUID.
+
+  > **Code health:** Healthy"
+  [a-clause]
+  (lib.options/uuid a-clause))
 
 (defn- -unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.

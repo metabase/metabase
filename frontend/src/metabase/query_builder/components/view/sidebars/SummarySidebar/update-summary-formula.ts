@@ -25,19 +25,19 @@ export function updateSummaryFormula({
   generatedExpressions,
   isFormulaCreated,
   renamedFormula,
+  editedFormula,
 }: Options) {
   const index =
     stageIndex < 0 ? Lib.stageCount(query) + stageIndex : stageIndex;
   const owned = reconcileSummaryFormulas(query, generatedExpressions).map(
     (formula) => {
-      const isRenamedStage =
-        isNotNull(renamedFormula) && formula.stageIndex === index;
-      if (!isRenamedStage) {
+      const isRewrite = isNotNull(renamedFormula) || editedFormula === true;
+      if (!isRewrite || formula.stageIndex !== index) {
         return formula;
       }
-      // a rename also rewrites the formulas that refer to the renamed one
+      // a rename or an edit gives the changed formula a new UUID
       const name =
-        formula.name === renamedFormula.name
+        formula.name === renamedFormula?.name
           ? renamedFormula.nextName
           : formula.name;
       return makeSummaryFormula(nextQuery, index, name) ?? formula;
@@ -66,8 +66,7 @@ export function updateSummaryFormula({
     (formula) =>
       formula.stageIndex === index &&
       !groupingNames.includes(formula.name) &&
-      makeSummaryFormula(nextQuery, index, formula.name)?.expression ===
-        formula.expression,
+      makeSummaryFormula(nextQuery, index, formula.name)?.uuid === formula.uuid,
   );
   const cleanedQuery = removed.reduce((currentQuery, formula) => {
     const expression = Lib.expressions(currentQuery, index).find(

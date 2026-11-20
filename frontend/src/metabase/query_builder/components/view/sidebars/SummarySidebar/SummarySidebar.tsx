@@ -117,12 +117,18 @@ export function SummarySidebar({
     }
   };
 
-  const { bar, formulaInputs, draftFormula } = useSummaryFormulaBar({
-    query,
-    stageIndex,
-    onAdd: (nextQuery, wellId) =>
-      handleWellAdd(nextQuery, wellId, wellId === "columns"),
-  });
+  const { bar, formulaInputs, draftFormula, editingFormulaUuid } =
+    useSummaryFormulaBar({
+      query,
+      stageIndex,
+      onAdd: (nextQuery, wellId) =>
+        handleWellAdd(nextQuery, wellId, wellId === "columns"),
+      onEdit: (nextQuery, options) => {
+        if (!areQueriesEqual(query, nextQuery)) {
+          handleQueryChange(nextQuery, options);
+        }
+      },
+    });
 
   const handleAdd = (wellId: SummaryWellId, field: SummaryField) =>
     handleWellAdd(addField(query, stageIndex, wellId, field), wellId);
@@ -183,6 +189,7 @@ export function SummarySidebar({
             draggedItem={draggedItem}
             formulaInputs={formulaInputs}
             draftFormula={draftFormula}
+            editingFormulaUuid={editingFormulaUuid}
             onPick={handleAdd}
             onChange={handleQueryChange}
           />

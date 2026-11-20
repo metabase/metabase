@@ -8,12 +8,18 @@ export type NamedExpression = {
   clause: Lib.ExpressionClause;
 };
 
+export type FormulaSourceStatus = "loading" | "ready" | "failed";
+
 export type FormulaEditorProps = {
   query: Lib.Query;
   stageIndex: number;
   database: Database | undefined;
   expressionMode: Lib.ExpressionMode;
+  /** Position of the edited clause, so the formula cannot refer to itself. */
+  expressionIndex?: number;
   initialSource?: string;
+  /** Represents the formula loading status in the editor */
+  sourceStatus?: FormulaSourceStatus;
   submitLabel: string;
   onEditorCreate?: (view: EditorView) => void;
   onNameChange?: (name: string, source: string) => void;
