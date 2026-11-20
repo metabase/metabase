@@ -1,0 +1,90 @@
+import { type MantineThemeOverride, useMantineTheme } from "@mantine/core";
+import { type ReactNode, useMemo } from "react";
+import { createPortal } from "react-dom";
+
+import { deriveFullMetabaseTheme } from "../../src/metabase/ui/colors";
+import { OVERLAY_Z_INDEX } from "../../src/metabase/ui/component-theme";
+import { PortalContainer } from "../../src/metabase/ui/components/overlays/PortalContainer";
+import { OverlayStackProvider } from "../../src/metabase/ui/components/overlays/overlay-stack";
+import {
+  ColorSchemeContext,
+  type ColorSchemeContextType,
+} from "../../src/metabase/ui/components/theme/ColorSchemeProvider";
+import { ThemeProvider } from "../../src/metabase/ui/components/theme/ThemeProvider";
+
+const DEFAULT_FONT_FAMILY = '"Lato", Arial, sans-serif';
+
+export interface MetabaseUIProviderProps {
+  children: ReactNode;
+  colorScheme?: "light" | "dark";
+  /** CSS `font-family` value. */
+  fontFamily?: string;
+  /** `fontFamily`, `colors` and `other.colorScheme` are ignored. */
+  theme?: MantineThemeOverride;
+}
+
+const noop = () => undefined;
+
+// The provider owns these keys; ThemeProvider merges the override last.
+const withoutOwnedKeys = (
+  theme: MantineThemeOverride | undefined,
+): MantineThemeOverride => {
+  const { fontFamily: _font, colors: _colors, other, ...rest } = theme ?? {};
+  const { colorScheme: _scheme, ...otherRest } = other ?? {};
+  return { ...rest, other: otherRest };
+};
+
+const CssVariables = ({
+  colorScheme,
+  fontFamily,
+}: Required<Pick<MetabaseUIProviderProps, "colorScheme" | "fontFamily">>) => {
+  const theme = useMantineTheme();
+  const popoverZIndex: number | undefined = theme.other.popover?.zIndex;
+  const zIndex = popoverZIndex ?? OVERLAY_Z_INDEX;
+
+  const css = useMemo(() => {
+    const { colors } = deriveFullMetabaseTheme({ colorScheme });
+    const declarations = [
+      ...Object.entries(colors).map(
+        ([name, value]) => `--mb-color-${name}: ${value};`,
+      ),
+      `--mb-default-font-family: ${fontFamily};`,
+      `--mb-overlay-z-index: ${zIndex};`,
+    ];
+    return `:root { ${declarations.join(" ")} }`;
+  }, [colorScheme, fontFamily, zIndex]);
+
+  return <style>{css}</style>;
+};
+
+export const MetabaseUIProvider = ({
+  children,
+  colorScheme = "light",
+  fontFamily = DEFAULT_FONT_FAMILY,
+  theme,
+}: MetabaseUIProviderProps) => {
+  const themeOverride = useMemo(() => withoutOwnedKeys(theme), [theme]);
+  const colorSchemeContext = useMemo<ColorSchemeContextType>(
+    () => ({
+      colorScheme,
+      resolvedColorScheme: colorScheme,
+      systemColorScheme: colorScheme,
+      setColorScheme: noop,
+      toggleColorScheme: noop,
+    }),
+    [colorScheme],
+  );
+
+  return (
+    <ColorSchemeContext.Provider value={colorSchemeContext}>
+      <ThemeProvider theme={themeOverride} resolvedColorScheme={colorScheme}>
+        <CssVariables colorScheme={colorScheme} fontFamily={fontFamily} />
+        <OverlayStackProvider>
+          {children}
+          {/* Tooltips portal into this container. */}
+          {createPortal(<PortalContainer />, document.body)}
+        </OverlayStackProvider>
+      </ThemeProvider>
+    </ColorSchemeContext.Provider>
+  );
+};

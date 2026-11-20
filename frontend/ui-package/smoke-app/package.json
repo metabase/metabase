@@ -5,8 +5,10 @@
   "description": "Consumer of the packed @metabase/ui tarball: proves it installs, type-checks and builds",
   "type": "module",
   "scripts": {
-    "type-check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.nodenext.json",
-    "build": "vite build"
+    "type-check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.nodenext.json && tsc --noEmit -p tsconfig.tests.json",
+    "build": "vite build",
+    "test": "playwright test",
+    "test:release": "playwright test --grep @release"
   },
   "dependencies": {
     "@mantine/core": "8.3.18",
@@ -17,6 +19,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.0",

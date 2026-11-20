@@ -1,0 +1,182 @@
+import { useMantineTheme } from "@mantine/core";
+import { render, screen } from "@testing-library/react";
+
+import { Modal, Tooltip, useColorScheme } from "../../src/metabase/ui";
+import { PORTAL_CONTAINER_ID } from "../../src/metabase/ui/components/overlays/PortalContainer";
+
+import { MetabaseUIProvider } from "./MetabaseUIProvider";
+
+const getStyleText = () =>
+  // eslint-disable-next-line testing-library/no-node-access -- <style> has no role
+  [...document.querySelectorAll("style")]
+    .map((style) => style.textContent ?? "")
+    .find((text) => text.startsWith(":root { --mb-color-")) ?? "";
+
+const readVariable = (css: string, name: string) =>
+  new RegExp(`${name}: ([^;]+);`).exec(css)?.[1];
+
+const ThemeProbe = () => {
+  const theme = useMantineTheme();
+  const { colorScheme, resolvedColorScheme } = useColorScheme();
+  return (
+    <div
+      data-testid="probe"
+      data-scheme={theme.other.colorScheme}
+      data-font={theme.fontFamily}
+      data-radius={String(theme.defaultRadius)}
+      data-colors={Object.keys(theme.colors).includes("custom") ? "custom" : ""}
+      data-context={`${colorScheme}/${resolvedColorScheme}`}
+    />
+  );
+};
+
+describe("MetabaseUIProvider", () => {
+  it("writes the CSS variables for the light scheme", () => {
+    render(<MetabaseUIProvider>content</MetabaseUIProvider>);
+    const css = getStyleText();
+    expect(css).toMatch(/^:root \{/);
+    expect(readVariable(css, "--mb-color-core-brand")).toBeTruthy();
+    expect(readVariable(css, "--mb-default-font-family")).toBe(
+      '"Lato", Arial, sans-serif',
+    );
+    expect(readVariable(css, "--mb-overlay-z-index")).toMatch(/^\d+$/);
+  });
+
+  it("writes different colors for the dark scheme and updates on change", () => {
+    const { rerender } = render(
+      <MetabaseUIProvider>content</MetabaseUIProvider>,
+    );
+    const light = readVariable(
+      getStyleText(),
+      "--mb-color-background_page-secondary",
+    );
+
+    rerender(
+      <MetabaseUIProvider colorScheme="dark" fontFamily="Inter, sans-serif">
+        content
+      </MetabaseUIProvider>,
+    );
+    const css = getStyleText();
+    expect(readVariable(css, "--mb-color-background_page-secondary")).not.toBe(
+      light,
+    );
+    expect(readVariable(css, "--mb-default-font-family")).toBe(
+      "Inter, sans-serif",
+    );
+  });
+
+  it("applies the scheme, ignores owned keys and keeps other overrides", () => {
+    render(
+      <MetabaseUIProvider
+        colorScheme="dark"
+        theme={{
+          fontFamily: "Comic Sans MS",
+          colors: {
+            // @ts-expect-error -- "custom" is not a Metabase color; the provider must ignore it
+            custom: [
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+              "#000",
+            ],
+          },
+          defaultRadius: "xl",
+          other: { colorScheme: "light" },
+        }}
+      >
+        <ThemeProbe />
+      </MetabaseUIProvider>,
+    );
+    const probe = screen.getByTestId("probe");
+    expect(probe).toHaveAttribute("data-scheme", "dark");
+    expect(probe).toHaveAttribute("data-font", "var(--mb-default-font-family)");
+    expect(probe).toHaveAttribute("data-colors", "");
+    expect(probe).toHaveAttribute("data-radius", "xl");
+    expect(probe).toHaveAttribute("data-context", "dark/dark");
+  });
+
+  it("renders overlays and the portal container", async () => {
+    render(
+      <MetabaseUIProvider>
+        <Tooltip label="Tip" opened>
+          <button>target</button>
+        </Tooltip>
+        <Modal opened onClose={() => undefined} title="Title">
+          body
+        </Modal>
+      </MetabaseUIProvider>,
+    );
+    const tooltip = await screen.findByText("Tip");
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    // eslint-disable-next-line testing-library/no-node-access -- the container has no role
+    const container = document.getElementById(PORTAL_CONTAINER_ID);
+    expect(container).toBeInTheDocument();
+    expect(document.body).toContainElement(container);
+    expect(container).toContainElement(tooltip);
+  });
+
+  it("falls back to the default z-index when an override sets undefined", () => {
+    render(
+      <MetabaseUIProvider theme={{ other: { popover: { zIndex: undefined } } }}>
+        content
+      </MetabaseUIProvider>,
+    );
+    expect(readVariable(getStyleText(), "--mb-overlay-z-index")).toBe("200");
+  });
+
+  it("writes a custom popover z-index", () => {
+    render(
+      <MetabaseUIProvider theme={{ other: { popover: { zIndex: 9999 } } }}>
+        content
+      </MetabaseUIProvider>,
+    );
+    expect(readVariable(getStyleText(), "--mb-overlay-z-index")).toBe("9999");
+  });
+
+  it("renders a tooltip into an element passed as its portal target", async () => {
+    const target = document.createElement("div");
+    document.body.appendChild(target);
+
+    render(
+      <MetabaseUIProvider
+        theme={{
+          components: {
+            Tooltip: { defaultProps: { portalProps: { target } } },
+          },
+        }}
+      >
+        <Tooltip label="Tip" opened>
+          <span>Target</span>
+        </Tooltip>
+      </MetabaseUIProvider>,
+    );
+
+    expect(target).toContainElement(await screen.findByText("Tip"));
+    target.remove();
+  });
+
+  it("keeps an object-form primaryShade from the override", () => {
+    const primaryShade = { light: 4, dark: 6 } as const;
+    const Shade = () => (
+      <div data-testid="shade">
+        {JSON.stringify(useMantineTheme().primaryShade)}
+      </div>
+    );
+
+    render(
+      <MetabaseUIProvider theme={{ primaryShade }}>
+        <Shade />
+      </MetabaseUIProvider>,
+    );
+
+    expect(screen.getByTestId("shade")).toHaveTextContent(
+      JSON.stringify(primaryShade),
+    );
+  });
+});
