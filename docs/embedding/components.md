@@ -41,6 +41,14 @@ Embed an AI chat, so people can ask questions of their data in natural language.
 
 - [Embed an AI chat](./ai-chat.md), for the `<metabase-metabot>` attributes, the `MetabotQuestion` props, and the `useMetabot` hook
 
+## Data app
+
+{% include plans-blockquote.html feature="Data app component" convert_pro_link_to_embedding=true %}
+
+Embed a custom app that you build on your Metabase data with an AI coding agent, with its own pages, navigation, and forms.
+
+- [Embed a data app](./data-app.md), for the `<metabase-data-app>` web component and the `DataApp` component
+
 ## Things you can only do with the React SDK
 
 Web components cover the components above. A few features are React-only, because they take React components or hooks that an HTML attribute can't carry. For those, use the [Modular embedding SDK](./sdk/introduction.md).

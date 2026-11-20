@@ -56,7 +56,7 @@ On the app's **Permissions** tab:
 
 Admins can always open live apps, so you can't add the **Administrators** group. If an app has no groups, only admins can open it.
 
-[Tenant users](../embedding/tenants.md#user-types) can't open data apps, so you can add only [internal groups](../embedding/tenants.md#group-types) to an app. You can't add [tenant groups](../embedding/tenants.md#create-tenant-groups) or the **All tenant users** group.
+If you've turned on [tenants](../embedding/tenants.md), you can also add [tenant groups](../embedding/tenants.md#create-tenant-groups) and the **All tenant users** group. See [Give tenants access to a data app](../embedding/data-app.md#give-tenants-access-to-a-data-app).
 
 ### Check that groups can see the app's data
 
