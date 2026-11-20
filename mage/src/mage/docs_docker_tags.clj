@@ -21,8 +21,9 @@
 
 (def ^:private tag-pattern
   "`metabase/metabase:v0.65.5`, `metabase/metabase-enterprise:v1.64.3.1`, and the same with `docker.io/` in front.
-  Not mutable tags like `v0.65.x` or `v0.65.5.x`, and not prereleases like `v0.66.0-beta`."
-  #"(metabase/metabase(?:-enterprise)?):v[01]\.\d+(?:\.\d+){1,2}(?!\.?[\w-])")
+  Not mutable tags like `v0.65.x` or `v0.65.5.x`, not prereleases like `v0.66.0-beta`, and not other images like
+  `foometabase/metabase:v0.65.5`."
+  #"(?<![\w.-])(metabase/metabase(?:-enterprise)?):v[01]\.\d+(?:\.\d+){1,2}(?!\.?[\w-])")
 
 (defn- version-numbers
   "`\"v0.64.3.1\"` -> `[64 3 1]`. Drops the edition prefix, so OSS and Enterprise versions compare the same."
@@ -35,8 +36,10 @@
   (some->> branch (re-matches #"release-x\.(\d+)\.x") second parse-long))
 
 (defn newest-release
-  "The newest release in `version-info` (parsed `version-info.json`) for `major`, like `\"64.7\"`, or the `latest`
-  release when `major` is nil. Nil when `major` has no release yet, for example while it is in beta."
+  "The newest release in `version-info` (parsed `version-info.json`) for `major`, like `\"64.7\"`. When `major` is nil,
+  the newest release for the major version of the `latest` release. That can be newer than `latest`: a new release
+  goes into `older` first, and becomes `latest` later. Nil when `major` has no release yet, for example while it is
+  in beta."
   [version-info major]
   (let [major (or major (first (version-numbers (:version (:latest version-info)))))]
     (some->> (cons (:latest version-info) (:older version-info))
