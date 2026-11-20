@@ -178,16 +178,14 @@
         (is (= #_2 3 (index-hits "projected")))
         (is (= 2 (index-hits "revenue")))
         (is (= #_1 2 (index-hits "projected revenue")))
-        (testing "Simple dictionary allows searching for unstemmed words #60649"
-          (is (= #{"Organization Reference" "Nobody Expects Organi"} (index-names "organ")))
-          (is (= #{"Organization Reference" "Nobody Expects Organi"} (index-names "organi"))))
-        (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
-          ;; Older english stemmers reduce "organization" to "organ", a prefix of "Organi". PostgreSQL 19's stemmer
-          ;; gives "organiz" instead.
-          (is (= (if (< (postgres-major-version) 19)
-                   #{"Organization Reference" "Nobody Expects Organi"}
-                   #{"Organization Reference"})
-                 (index-names "organization"))))
+        (let [organ-cards #{"Nobody Expects Organi" "Organization Reference"}]
+          (testing "Simple dictionary allows searching for unstemmed words #60649"
+            (is (= organ-cards (index-names "organ")))
+            (is (= organ-cards (index-names "organi"))))
+          (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
+            ;; Older stemmers reduce "organization" to "organ", a prefix of "Organi". PostgreSQL 19's gives "organiz".
+            (is (= (if (< (postgres-major-version) 19) organ-cards #{"Organization Reference"})
+                   (index-names "organization")))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 

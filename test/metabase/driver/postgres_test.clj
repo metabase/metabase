@@ -767,7 +767,7 @@
 ;;; that setting off, PGJDBC's parser treats `\` as an escape inside string literals, so the
 ;;; `'\'` in `LIKE ? ESCAPE '\'` is parsed as an unterminated literal and the query crashes with
 ;;; `Unterminated string literal started at position N` before the SQL ever reaches the server
-;;; (#73721). PostgreSQL 19 no longer allows the setting off, so there only the `on` case runs.
+;;; (#73721). PostgreSQL 19 refuses the setting off, so only the `on` case runs there.
 (deftest contains-filter-jdbc-parser-test
   (mt/test-driver :postgres
     (testing "PGJDBC parses LIKE filters under each standard_conforming_strings setting the server allows (#73721)"
