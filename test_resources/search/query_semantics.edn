@@ -19,7 +19,8 @@
 ;; The keyword arm gives the appdb/PostgreSQL results for every scenario here, but not for every query.
 ;; With a language other than simple, appdb also indexes an unstemmed copy of the text and the semantic index
 ;; does not, so a half-typed word such as "shippi" finds "Shipping costs" on appdb but not in the keyword arm.
-;; Both arms are recorded. Statistics compare the vector arm alone and semantic search with its app-db fallback.
+;; Both arms are recorded.
+;; Statistics compare the vector arm alone and semantic search with its app-db fallback.
 ;; The fallback is modelled as PostgreSQL; semantic rewrites record :keyword and :fallback hits separately.
 ;; In-place hits are what in-place returns on a PostgreSQL app DB.
 ;; The integration tests record in-place differences on other app databases.

@@ -133,8 +133,8 @@
 
 (defn summary
   "Summarize how the engines' results relate, for identical and adapted queries.
-  Comparisons are scored against their correct results twice: `:scores` for each engine's adapted query, and
-  `:typed-scores` for the scenario query as typed."
+  Comparisons are scored against their correct results twice.
+  Each engine's adapted query gives `:scores`, and the scenario query as typed gives `:typed-scores`."
   ([cases]
    (summary (scenario-rows cases) (translation-rows cases)))
   ([scenarios translations]

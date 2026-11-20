@@ -193,7 +193,8 @@
 
 (defn problems
   "Return report problems as maps with a :type and the affected IDs or memberships.
-  Validate scenario IDs, theme placement, and finding claims against the scenario rows."
+  Validate scenario IDs, theme placement, and finding claims against the scenario rows.
+  See [[message]] for each :type."
   [scenarios {:keys [themes findings]}]
   (vec (concat (scenario-problems scenarios)
                (theme-problems scenarios themes)
@@ -332,7 +333,7 @@
 
 (defn render
   "Insert report data and optional scoring code into the standalone HTML template.
-  JSON script delimiters are escaped.
+  Every `<` in the JSON becomes `\\u003c`, so the data cannot close its script element.
   A missing placeholder throws an ExceptionInfo with type :missing-placeholder and the placeholder name."
   ([html json]
    (render html json nil))
