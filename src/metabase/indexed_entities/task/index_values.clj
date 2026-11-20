@@ -21,11 +21,9 @@
 #_#{"indexed" "initial" "error" "overflow"}
 
 (defn- should-deindex?
-  "Whether to unindex the the model indexing job.
-  Will deindex if the model_index does not exist, if the model is no longer a model, or if archived."
-  [model model-index]
-  (or (nil? model-index)
-      (not= (:type model) :model)
+  "Whether to unindex the the model indexing job of `model`, which is no longer a model or is archived."
+  [model]
+  (or (not= (:type model) :model)
       (:archived model)))
 
 (defn- refresh-index!
@@ -37,7 +35,7 @@
         model       (when model-index
                       (indexed-entities.db/card (:model_id model-index)))]
     (cond
-      (should-deindex? model model-index)
+      (or (nil? model-index) (and (some? model) (should-deindex? model)))
       (u/ignore-exceptions
         (let [trigger-key (model-index/trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
