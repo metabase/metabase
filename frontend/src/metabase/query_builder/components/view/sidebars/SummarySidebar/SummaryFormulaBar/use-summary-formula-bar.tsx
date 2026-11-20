@@ -31,6 +31,7 @@ import {
 export function useSummaryFormulaBar({
   query,
   stageIndex,
+  isPivotMode,
   onAdd,
   onEdit,
 }: SummaryFormulaBarOptions) {
@@ -53,14 +54,16 @@ export function useSummaryFormulaBar({
   // The edited chip can go away under the bar, from its remove button or Clear all.
   const isEditedFormulaGone =
     isActive && draft?.kind === "edit" && !editedFormula;
-  const openDraft = isActive && !isEditedFormulaGone ? draft : null;
+  const isRowsWellGone = isActive && draft?.wellId === "rows" && !isPivotMode;
+  const isDraftTargetGone = isEditedFormulaGone || isRowsWellGone;
+  const openDraft = isActive && !isDraftTargetGone ? draft : null;
   const openFormula = openDraft?.kind === "edit" ? editedFormula : null;
 
   useEffect(() => {
-    if (isEditedFormulaGone) {
+    if (isDraftTargetGone) {
       close();
     }
-  }, [isEditedFormulaGone, close]);
+  }, [isDraftTargetGone, close]);
 
   const handleDraftNameChange = useCallback(
     (name: string, source: string) =>

@@ -705,6 +705,24 @@ describe("formulas in Rows", () => {
     expect(getInput("rows")).toHaveFocus();
   });
 
+  it("closes a formula that is written in the Rows typeahead when the pivot mode ends", async () => {
+    const { onQueryChange } = await setup();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Pivot into rows and columns" }),
+    );
+    fireEvent.change(getInput("rows"), { target: { value: "=" } });
+    await screen.findByRole("textbox", { name: "Formula" });
+    await changeFormula("[Total] * 2");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to breakouts" }),
+    );
+
+    await expectClosed();
+    expect(screen.queryByTestId("summary-well-rows")).not.toBeInTheDocument();
+    expect(onQueryChange).not.toHaveBeenCalled();
+  });
+
   it("updates the formula of a Rows chip and keeps the chip in Rows", async () => {
     const { onQueryChange } = await setup({
       query: FORMULA_QUERY,
