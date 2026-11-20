@@ -3621,3 +3621,27 @@
             (is (= settings expected))
             (serdes.load/load-metabase! (serdes.ingest/ingest-yaml dump-dir))
             (is (= expected (t2/select-one-fn :settings :model/Database :id db-id)))))))))
+
+(deftest import-keeps-inline-parameter-moved-to-other-dashcard-test
+  (testing "Import of dashboard whose inline filter moved to another dashcard, with its old dashcard gone, keeps the filter"
+    (let [serialized (atom nil)
+          dash-eid   "dashdashdashdashdashd"
+          keep-eid   "keepkeepkeepkeepkeepk"
+          param      {:id "p1" :name "Category" :slug "category" :type "string/="}]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (let [dash (ts/create! :model/Dashboard :name "D" :entity_id dash-eid :parameters [param])]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :entity_id keep-eid :inline_parameters ["p1"]))
+          (reset! serialized (into [] (serdes.extract/extract {:include-h2? true :no-settings true}))))
+        (ts/with-db dest-db
+          (let [dash (ts/create! :model/Dashboard :name "D" :entity_id dash-eid :parameters [param])]
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :entity_id keep-eid :inline_parameters [])
+            (ts/create! :model/DashboardCard :dashboard_id (:id dash) :inline_parameters ["p1"] :row 4)
+            (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+            (let [loaded (t2/select-one :model/Dashboard :entity_id dash-eid)]
+              (is (= [keep-eid]
+                     (t2/select-fn-vec :entity_id :model/DashboardCard :dashboard_id (:id dash))))
+              (is (= [["p1"]]
+                     (t2/select-fn-vec :inline_parameters :model/DashboardCard :dashboard_id (:id dash))))
+              (is (= ["p1"]
+                     (mapv :id (:parameters loaded)))))))))))

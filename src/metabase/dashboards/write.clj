@@ -282,11 +282,32 @@
         (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
             (t2/hydrate :series))))))
 
+(defn- cleanup-orphaned-inline-parameters!
+  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
+   Since inline parameters can only be referenced by a single card, all inline parameters
+   from deleted cards become orphaned."
+  [dashboard-card-ids]
+  (when (seq dashboard-card-ids)
+    (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
+          orphaned-param-ids  (set (mapcat :inline_parameters cards-being-deleted))
+          dashboard-ids       (set (map :dashboard_id cards-being-deleted))]
+      (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
+        (let [dashboard-id   (first dashboard-ids)
+              dashboard      (dashboards.db/dashboard dashboard-id)
+              current-params (:parameters dashboard)
+              cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
+                                      current-params)]
+          (when (not= (count current-params) (count cleaned-params))
+            (dashboards.db/update-dashboard! dashboard-id {:parameters cleaned-params})
+            (count orphaned-param-ids)))))))
+
 (defn delete-dashboard-cards!
-  "Delete DashboardCards of a Dashboard, whose hook cleans up their orphaned inline parameters and PulseCards."
+  "Delete DashboardCards of a Dashboard. Automatically cleans up orphaned inline parameters."
   [dashboard-card-ids]
   {:pre [(coll? dashboard-card-ids)]}
   (t2/with-transaction [_conn]
+    (cleanup-orphaned-inline-parameters! dashboard-card-ids)
+    (dashboards.db/delete-pulse-cards-for-dashcards! dashboard-card-ids)
     (dashboards.db/delete-dashcards! dashboard-card-ids)))
 
 (defn- set-questions-archived!
@@ -749,6 +770,7 @@
   Questions (questions stored 'in' the dashboard rather than a collection) and reference the rest (assuming
   permissions)."
   [deep-copy? :- ms/MaybeBooleanValue
+   redact?   :- :boolean
    dashcards :- [:sequential :metabase.dashboards.schema/dashboard-card]]
   (let [card->cards (fn [{:keys [card series]}] (into [card] series))
         readable-ids (into #{} (map :id) (mi/readable (into [] (comp (mapcat card->cards) (filter mi/model)) dashcards)))
@@ -772,7 +794,7 @@
         split-cards (fn [{:keys [card] :as db-card}]
                       (let [cards (card->cards db-card)]
                         (-> (group-by (partial card->decision card) cards)
-                            (m/update-existing :discard #(mapv redact %)))))]
+                            (cond-> redact? (m/update-existing :discard #(mapv redact %))))))]
     (reduce (fn [acc db-card]
               (let [{:keys [discard copy reference]} (split-cards db-card)]
                 (-> acc
@@ -791,9 +813,9 @@
   dashboard can adjust accordingly. `:discarded` carries [[cards-to-copy]]'s redaction.
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
-  [deep-copy? authorize-card-copies? new-dashboard old-dashboard dest-coll-id]
+  [deep-copy? authorize-card-copies? redact-uncopied? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
+        {:keys [copy discard reference]} (cards-to-copy deep-copy? redact-uncopied? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (when authorize-card-copies?
@@ -904,7 +926,8 @@
            [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
            [:is_deep_copy            {:optional true} [:maybe :boolean]]
            [:load-source             {:optional true} ifn?]
-           [:authorize-card-copies?  {:optional true} :boolean]]])
+           [:authorize-card-copies?  {:optional true} :boolean]
+           [:redact-uncopied?        {:optional true} :boolean]]])
 
 (mu/defn copy-dashboard!
   "Copy the dashboard with `from-dashboard-id` into `:collection_id` (nil = root) and return the saved
@@ -912,11 +935,11 @@
   `:name`/`:description` and set `:collection_position`; `:is_deep_copy` also duplicates the dashboard's
   questions, which is mandatory when it holds Dashboard Questions. `:load-source` is a function of no arguments that
   returns the hydrated source dashboard, by default its read-checked row, and `:authorize-card-copies?` asks for the
-  create permission of every copied card.
+  create permission of every copied card; `:redact-uncopied?` reduces an uncopied card the caller cannot read to its id.
 
   Requires read permission on the source and create permission on the destination collection."
   [from-dashboard-id :- ms/PositiveInt
-   {:keys [name description collection_id collection_position is_deep_copy load-source authorize-card-copies?]} :- CopyOptions]
+   {:keys [name description collection_id collection_position is_deep_copy load-source authorize-card-copies? redact-uncopied?]} :- CopyOptions]
   (api/create-check :model/Dashboard {:name name, :description description, :collection_id collection_id
                                       :collection_position collection_position})
   (api/check-400 (not (and (false? is_deep_copy)
@@ -939,7 +962,7 @@
                                                            {id->new-card :copied
                                                             id->referenced-card :referenced
                                                             uncopied :discarded}
-                                                           (maybe-duplicate-cards is_deep_copy authorize-card-copies? dash existing-dashboard collection_id)
+                                                           (maybe-duplicate-cards is_deep_copy (boolean authorize-card-copies?) (boolean redact-uncopied?) dash existing-dashboard collection_id)
 
                                                            id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                                             (duplicate-tabs dash existing-tabs))]

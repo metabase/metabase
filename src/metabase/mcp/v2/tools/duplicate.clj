@@ -94,7 +94,8 @@
   (dashboards.write/copy-dashboard! (:id dashboard)
                                     {:name          new-name
                                      :collection_id collection-id
-                                     :is_deep_copy  deep-copy?}))
+                                     :is_deep_copy  deep-copy?
+                                     :redact-uncopied? true}))
 
 (defn- fetch-document
   [id-or-eid]

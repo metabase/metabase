@@ -1778,7 +1778,12 @@
                   ;; cards might be full cards or just a map {:id 1} due to permissions Any card with lack of
                   ;; permissions is just {:id 1}. Cards in a series which you have permissions for, but the base card
                   ;; you lack permissions for are also not copied, but you can see the whole card.
-                  (is (= 2 (->> resp :uncopied count))))))))))))
+                  (is (= 2 (->> resp :uncopied count)))
+                  (testing "Cards that are hidden keep the keys the dashboard response gives them"
+                    (is (every? #(contains? % :query_average_duration) (:uncopied resp))))
+                  (testing "A series card that can be read stays whole"
+                    (is (= ["Average orders per month"]
+                           (keep :name (:uncopied resp))))))))))))))
 
 (deftest copy-dashboard-test-5
   (testing "Deep copy: POST /api/dashboard/:id/copy"
@@ -1910,7 +1915,7 @@
         (is (= {:copy {1 {:id 1} 2 {:id 2} 3 {:id 3}}
                 :reference {}
                 :discard []}
-               (#'dashboards.write/cards-to-copy true dashcards))))))
+               (#'dashboards.write/cards-to-copy true false dashcards))))))
   (testing "Identifies cards which cannot be copied"
     (testing "If they are in a series"
       (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
@@ -1919,7 +1924,7 @@
           (is (= {:copy {1 {:id 1} 3 {:id 3}}
                   :reference {}
                   :discard [{:id 2}]}
-                 (#'dashboards.write/cards-to-copy true dashcards))))))
+                 (#'dashboards.write/cards-to-copy true false dashcards))))))
     (testing "When the base of a series lacks permissions"
       (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                        {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1927,7 +1932,7 @@
           (is (= {:copy {3 {:id 3}}
                   :reference {}
                   :discard [{:id 1} {:id 2}]}
-                 (#'dashboards.write/cards-to-copy true dashcards)))))))
+                 (#'dashboards.write/cards-to-copy true false dashcards)))))))
   (testing "Identifies cards to be referenced"
     (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1937,7 +1942,7 @@
                             3 {:id 3}}
                 :copy {}
                 :discard []}
-               (#'dashboards.write/cards-to-copy false dashcards))))))
+               (#'dashboards.write/cards-to-copy false false dashcards))))))
   (testing "Identifies cards that cannot be referenced"
     (let [dashcards [{:id 11, :card_id 1 :card (card-model {:id 1}) :series [(card-model {:id 2})]}
                      {:id 13, :card_id 3 :card (card-model {:id 3})}]]
@@ -1946,7 +1951,7 @@
                             3 {:id 3}}
                 :copy {}
                 :discard [{:id 2}]}
-               (#'dashboards.write/cards-to-copy false dashcards)))))))
+               (#'dashboards.write/cards-to-copy false false dashcards)))))))
 
 (deftest update-cards-for-copy-test
   (testing "Returns the original dashcards for referenced dashcards"

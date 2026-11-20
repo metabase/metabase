@@ -99,17 +99,6 @@
                       {:status-code        400
                        :in-report-card-ids (map :id document-cards)})))))
 
-(defn- remove-orphaned-inline-parameters!
-  "Removes the inline parameters of `dashcard` from the parameters of its Dashboard, since only one dashcard holds them."
-  [{:keys [dashboard_id inline_parameters]}]
-  (when (seq inline_parameters)
-    (when-let [dashboard (dashboards.db/dashboard dashboard_id)]
-      (let [orphaned-ids   (set inline_parameters)
-            current-params (:parameters dashboard)
-            cleaned-params (filterv #(not (contains? orphaned-ids (:id %))) current-params)]
-        (when (not= (count current-params) (count cleaned-params))
-          (dashboards.db/update-dashboard! dashboard_id {:parameters cleaned-params}))))))
-
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
   (check-tab dashcard)
@@ -130,11 +119,6 @@
     (when (contains? changes :card_id)
       (check-card-not-in-document dashcard))
     (validate-dashcard-on-write dashcard)))
-
-(t2/define-before-delete :model/DashboardCard
-  [dashcard]
-  (dashboards.db/delete-pulse-cards-for-dashcards! [(:id dashcard)])
-  (remove-orphaned-inline-parameters! dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
 (t2/define-after-select :model/DashboardCard

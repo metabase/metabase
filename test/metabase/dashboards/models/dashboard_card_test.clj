@@ -516,21 +516,41 @@
       (is (= (u/the-id card) (t2/select-one-fn :card_id :model/DashboardCard :id (u/the-id dashcard))))
       (is (= 1 (t2/count :model/DashboardCard :dashboard_id (u/the-id dash)))))))
 
-(deftest dashcard-delete-cleans-up-test
-  (testing "Deleting a DashboardCard removes its inline parameters from its Dashboard and its PulseCards"
+(deftest delete-dashboard-cards-cleans-up-test
+  (testing "Deleting dashcards through the write function removes their inline parameters and PulseCards"
     (mt/with-temp [:model/Dashboard dash {:parameters [{:id "keep" :name "Keep" :slug "keep" :type :string/=}
                                                        {:id "inline" :name "Inline" :slug "inline" :type :string/=}]}
                    :model/Card card {}
-                   :model/DashboardCard dashcard {:dashboard_id       (u/the-id dash)
-                                                  :card_id            (u/the-id card)
-                                                  :inline_parameters  ["inline"]}
+                   :model/DashboardCard dashcard {:dashboard_id      (u/the-id dash)
+                                                  :card_id           (u/the-id card)
+                                                  :inline_parameters ["inline"]}
                    :model/DashboardCard other {:dashboard_id (u/the-id dash)
                                                :card_id      (u/the-id card)}
                    :model/Pulse pulse {:dashboard_id (u/the-id dash)}
                    :model/PulseCard _ {:pulse_id          (u/the-id pulse)
                                        :card_id           (u/the-id card)
                                        :dashboard_card_id (u/the-id dashcard)}]
-      (t2/delete! :model/DashboardCard :id (u/the-id dashcard))
+      (dashboards.write/delete-dashboard-cards! [(u/the-id dashcard)])
       (is (= ["keep"] (map :id (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dash)))))
       (is (zero? (t2/count :model/PulseCard :dashboard_card_id (u/the-id dashcard))))
       (is (t2/exists? :model/DashboardCard :id (u/the-id other))))))
+
+(deftest dashcard-delete-statement-count-test
+  (testing "Removing dashcards through update-dashboard! does not add statements per dashcard"
+    (let [calls (fn [n inline?]
+                  (mt/with-temp [:model/Card {card-id :id} {}
+                                 :model/Dashboard {dash-id :id} {:parameters (if inline?
+                                                                               (vec (for [i (range n)]
+                                                                                      {:id (str "p" i) :name (str "p" i) :slug (str "p" i) :type :category}))
+                                                                               [])}]
+                    (doseq [i (range n)]
+                      (t2/insert! :model/DashboardCard (cond-> {:dashboard_id dash-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}
+                                                         inline? (assoc :inline_parameters [(str "p" i)]))))
+                    (t2/with-call-count [call-count]
+                      (mt/with-current-user (mt/user->id :crowberto)
+                        (dashboards.write/update-dashboard! dash-id {:dashcards []}))
+                      (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id)))
+                      (call-count))))]
+      (doseq [inline? [false true]]
+        (testing (str "inline parameters " inline?)
+          (is (= (calls 3 inline?) (calls 12 inline?))))))))
