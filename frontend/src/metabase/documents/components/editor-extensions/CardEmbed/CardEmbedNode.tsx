@@ -20,6 +20,7 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
+import { prefetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -327,6 +328,12 @@ export const CardEmbedComponent = memo(
     const { card, dataset, isLoading, series, error } = isExternalDocument
       ? externalCardDataResult
       : regularCardData;
+
+    useEffect(() => {
+      if (shouldLoadData && card != null) {
+        prefetchGoalSourceResults(dispatch, goalSourcesScope, card);
+      }
+    }, [card, dispatch, goalSourcesScope, shouldLoadData]);
 
     const highlighted = host.useHighlighted(
       commentChildTargetId,
