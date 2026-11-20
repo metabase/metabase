@@ -356,8 +356,24 @@ function getBackendFieldRef(column: DatasetColumn): DatasetColumn["field_ref"] {
   return column.field_ref;
 }
 
+const MONTHS_OF_2024 = Array.from(
+  { length: 12 },
+  (_, month) => `2024-${String(month + 1).padStart(2, "0")}-01T00:00:00Z`,
+);
+
+/** A year of monthly counts, so a brush can span several months */
+const PRODUCTS_BY_CREATED_AT_YEAR = createMockDataset({
+  data: createMockDatasetData({
+    cols: [createdAtColumn(PRODUCTS.CREATED_AT), countColumn],
+    rows: MONTHS_OF_2024.map((month, index) => [month, index + 1]),
+  }),
+});
+
 const DATASETS_WITH_FIELD_REFS: Record<CardId, Dataset> = Object.fromEntries(
-  Object.entries(DATASETS).map(([cardId, dataset]) => [
+  Object.entries({
+    ...DATASETS,
+    [PRODUCTS_BY_CREATED_AT.id]: PRODUCTS_BY_CREATED_AT_YEAR,
+  }).map(([cardId, dataset]) => [
     cardId,
     {
       ...dataset,
@@ -1060,6 +1076,7 @@ async function findDrilledQuestion(router: TestRouter) {
     clauses.map((clause) => Lib.displayInfo(query, -1, clause).longDisplayName);
   return {
     originalCardId: card.original_card_id,
+    display: card.display,
     sourceTableId: Lib.primarySourceTableId(query),
     filters: getNames(Lib.filters(query, -1)),
     aggregations: getNames(Lib.aggregations(query, -1)),
@@ -2108,6 +2125,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: PRODUCTS_BY_CREATED_AT.id,
+        display: "table",
         sourceTableId: PRODUCTS_ID,
         filters: ["Created At is Feb 1–29, 2024"],
         aggregations: [],
@@ -2135,6 +2153,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: ORDERS_BY_CREATED_AT.id,
+        display: "bar",
         sourceTableId: ORDERS_ID,
         filters: ["Created At is Feb 1–29, 2024"],
         aggregations: ["Count"],
@@ -2179,6 +2198,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: ORDERS_BY_CATEGORY.id,
+        display: "table",
         sourceTableId: ORDERS_ID,
         filters: ["Product → Category is Gadget"],
         aggregations: [],
@@ -2201,6 +2221,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: PRODUCTS_BY_CATEGORY.id,
+        display: "bar",
         sourceTableId: PRODUCTS_ID,
         filters: ["Count is greater than 7"],
         aggregations: [],
@@ -2223,6 +2244,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: PRODUCTS_BY_CATEGORY.id,
+        display: "table",
         sourceTableId: PRODUCTS_ID,
         filters: ["Category is Gadget"],
         aggregations: [],
@@ -2253,6 +2275,7 @@ describe("DashboardApp > visualizer", () => {
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: VIEWS_COLUMN.id,
+        display: "table",
         sourceTableId: null,
         filters: ["Views is equal to 100"],
         aggregations: [],
@@ -2276,16 +2299,17 @@ describe("DashboardApp > visualizer", () => {
 
       brushChart(
         singleSeries,
-        { type: "rect", color: ORDERS_COLOR, index: 1 },
-        { type: "rect", color: ORDERS_COLOR, index: 2 },
+        { type: "rect", color: ORDERS_COLOR, index: 4 },
+        { type: "rect", color: ORDERS_COLOR, index: 10 },
       );
 
       expect(await findDrilledQuestion(router)).toEqual({
         originalCardId: PRODUCTS_BY_CREATED_AT.id,
+        display: "bar",
         sourceTableId: PRODUCTS_ID,
-        filters: ["Created At is Feb 1, 12:00 AM – Mar 1, 2024, 12:00 AM"],
+        filters: ["Created At is May 1, 12:00 AM – Nov 1, 2024, 12:00 AM"],
         aggregations: ["Count"],
-        breakouts: ["Created At: Week"],
+        breakouts: ["Created At: Month"],
       });
     });
   });
