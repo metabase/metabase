@@ -7,24 +7,10 @@ import {
 } from "@mantine/dates";
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import dayjs from "dayjs";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import advancedFormat from "dayjs/plugin/advancedFormat";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import isoWeek from "dayjs/plugin/isoWeek";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import quarterOfYear from "dayjs/plugin/quarterOfYear";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import timezone from "dayjs/plugin/timezone";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import utc from "dayjs/plugin/utc";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import weekOfYear from "dayjs/plugin/weekOfYear";
-// eslint-disable-next-line eslint-js/no-restricted-imports -- package build uses plain dayjs
-import weekYear from "dayjs/plugin/weekYear";
 import { type Ref, forwardRef } from "react";
 import { c } from "ttag";
+
+import { dayjs } from "metabase/dayjs";
 
 import CalendarS from "../Calendar/Calendar.module.css";
 
@@ -99,7 +85,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
               selected={value != null && isSelected(value, quarter)}
               onClick={() => setValue(dayjs(quarter).toISOString())}
             >
-              {formatQuarter(quarter, quarterListFormat)}
+              {dayjs(quarter).format(quarterListFormat)}
             </PickerControl>
           ))}
         </SimpleGrid>
@@ -108,31 +94,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
   );
 });
 
-function registerDayjsPlugins() {
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(quarterOfYear);
-  // Custom formats can use advancedFormat's week, week-year, and time-zone tokens.
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(weekOfYear);
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(weekYear);
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(isoWeek);
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(utc);
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(timezone);
-  // eslint-disable-next-line eslint-js/no-restricted-syntax -- register the plugin where it is used
-  dayjs.extend(advancedFormat);
-}
-
-function formatQuarter(quarter: Date, format: string) {
-  registerDayjsPlugins();
-  return dayjs(quarter).format(format);
-}
-
 function getQuarters(date: Date) {
-  registerDayjsPlugins();
   return Array.from({ length: 4 }, (_, index) =>
     dayjs(date).startOf("year").add(index, "quarter").toDate(),
   );
@@ -145,7 +107,6 @@ function getQuarterFormat() {
 }
 
 function isSelected(value: DateStringValue, quarter: Date) {
-  registerDayjsPlugins();
   const date = dayjs(value);
   return date.isSame(quarter, "year") && date.isSame(quarter, "quarter");
 }
