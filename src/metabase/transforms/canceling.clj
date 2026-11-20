@@ -11,8 +11,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms.db :as transforms.db]
-   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
@@ -76,7 +76,7 @@
   (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
                                 :active     [:is_active true]
                                 :ids        (keys @connections)
-                                :heartbeat! transform-run/heartbeat-runs!
+                                :heartbeat! run-write/heartbeat-runs!
                                 :on-gone    chan-signal-cancel!}))
 
 (mu/defn chan-start-timeout-vthread! :- (ms/InstanceOfClass Future)
@@ -87,7 +87,7 @@
    (try
      (Thread/sleep (long (* timeout-minutes 60 1000)))
      (chan-signal-cancel! run-id)
-     (transform-run/timeout-run! run-id)
+     (run-write/timeout-run! run-id)
      (catch InterruptedException _ nil))))
 
 (defmacro with-cancelation
@@ -148,7 +148,7 @@
                                                      :transform/id (:transform_id run)}
     (try
       (when (chan-signal-cancel! run-id)
-        (let [result (transform-run/cancel-run! run-id)]
+        (let [result (run-write/cancel-run! run-id)]
           (log/infof "Canceled transform run %s" run-id)
           (record-completion! run-id run request-time "success")
           result))
@@ -163,7 +163,7 @@
   ;; (cancel-run!, timeout-run!) had already finished. "timeout" here = the *cancelation attempt* exceeded 2 min;
   ;; distinct from transform-execution timeout (`timeout-run!`), which never reaches this counter.
   (try
-    (when-let [transitioned (not-empty (transform-run/cancel-old-canceling-runs! 2 :minute))]
+    (when-let [transitioned (not-empty (run-write/cancel-old-canceling-runs! 2 :minute))]
       (log/infof "Force-canceled %d transform run(s) that were canceling for more than 2 minutes."
                  (count transitioned))
       (doseq [{run-id :id request-time :request_time :as run} transitioned]
@@ -212,7 +212,7 @@
 (defmethod task/init! ::TransformRunReaper [_]
   (rt/schedule-reaper! {:job-key "metabase.transforms.reaper"
                         :label   "transform run"
-                        :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
+                        :reap-fn #(run-write/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
 (mu/defn- app-db-checkout-timeout? :- :boolean
   "Is `e`, or anything in its cause chain, a c3p0 pool-checkout timeout? Then the app DB pool is exhausted, and this

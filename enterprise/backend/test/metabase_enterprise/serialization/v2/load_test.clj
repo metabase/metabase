@@ -17,6 +17,7 @@
    [metabase.actions.models :as action]
    [metabase.actions.schema :as actions.schema]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -2160,9 +2161,9 @@
             (serdes.load/load-metabase! (ts/ingestion-in-memory extract1))
             (ts/with-db source-db
               ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-              (t2/delete! :model/DashboardCardSeries :id (:id series1s))
-              (t2/update! :model/DashboardCardSeries :id (:id series3s) {:position 0})
-              (t2/update! :model/DashboardCardSeries :id (:id series2s) {:position 1})
+              (dashboards.write/delete-dashcard-series! [(:id series1s)] {})
+              (dashboards.write/update-dashcard-series! (:id series3s) {:position 0} {})
+              (dashboards.write/update-dashcard-series! (:id series2s) {:position 1} {})
               (let [extract2 (into [] (serdes.extract/extract {:include-h2? true :no-settings true :no-data-model true}))]
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
@@ -2362,8 +2363,7 @@
               dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
               card (ts/create! :model/Card :name "dq card" :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
-              _    (t2/update! :model/Dashboard :id (:id dash)
-                               {:parameters [(card-sourced-param (:id card))]})
+              _    (dashboards.write/update-dashboard-row! (:id dash) {:parameters [(card-sourced-param (:id card))]} {})
               ser  (into [] (serdes.extract/extract {:include-h2? true :no-settings   true
                                                      :no-data-model false}))]
           (testing "loading on top of the existing dashboard"

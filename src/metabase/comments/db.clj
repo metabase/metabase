@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.comments.schema :as comments.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -100,19 +99,24 @@
 
 (mu/defn insert-comment!
   "Insert the Comment `row` and return the inserted instance."
-  [row :- ::comments.schema/comment.update]
+  [row :- ::comments.schema/comment.create]
   (t2/insert-returning-instance! :model/Comment row))
+
+(mu/defn comments
+  "The Comments with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Comment :id [:in ids]))
 
 (mu/defn update-comment!
   "Apply `changes` to the Comment with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment :id id changes))
+   changes :- ::comments.schema/comment.changes]
+  (t2/update! :model/Comment :id [:auto/param id] changes))
 
-(mu/defn soft-delete-comment!
-  "Mark the Comment with `id` deleted now, returning the number updated."
-  [id :- ms/PositiveInt]
-  (t2/update! :model/Comment :id id {:deleted_at [:now]}))
+(mu/defn delete-comments!
+  "Delete the Comments with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Comment :id [:in ids]))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see

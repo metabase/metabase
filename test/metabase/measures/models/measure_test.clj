@@ -1,12 +1,16 @@
 (ns metabase.measures.models.measure-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.write :as measures.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.request.session :as session]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -57,7 +61,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing 99999)})))))
+           (measures.write/update-measure! measure-id {:definition (measure-definition-referencing 99999)} {})))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :creator_id (mt/user->id :rasta)
@@ -65,7 +69,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing measure-id)})))))
+           (measures.write/update-measure! measure-id {:definition (measure-definition-referencing measure-id)} {})))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :creator_id (mt/user->id :rasta)
@@ -76,7 +80,47 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure :id measure-1-id {:definition (measure-definition-referencing measure-2-id)}))))))
+           (measures.write/update-measure! measure-1-id {:definition (measure-definition-referencing measure-2-id)} {}))))))
+
+(deftest update-measure-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::measure-events
+                                     (fn [{:keys [model]}] (when (= :model/Measure model) :measure))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Measure measure {:name       "Measure"
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (measures.write/update-measure! (:id measure) {:name "Renamed Measure"} {:revision-message "rename"}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id measure)
+                    :user-id         (mt/user->id :crowberto)
+                    :context         {:revision-message "rename"}
+                    :previous-object {:name "Measure" :table_id (mt/id :venues) :updated_at (:updated_at measure)}
+                    :object          {:name "Renamed Measure" :table_id (mt/id :venues) :updated_at (:updated_at measure)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::measure-events)))))
+
+(deftest update-measure-query-count-test
+  (testing "a warm update-measure! issues no more queries than master's t2/update! with the hooks, 3 for a name and 3 for a definition without search ingestion"
+    (mt/with-temp [:model/Measure {id :id} {:name       "Measure"
+                                            :creator_id (mt/user->id :rasta)
+                                            :definition (measure-definition (lib/count))}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (measures.write/update-measure! id {:name "Warm Measure"} {})
+          (measures.write/update-measure! id {:definition (measure-definition (lib/sum (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price))))} {})
+          (t2/with-call-count [call-count]
+            (measures.write/update-measure! id {:name "Renamed Measure"} {})
+            (is (<= (call-count) 3)))
+          (let [definition (measure-definition (lib/avg (lib.metadata/field (mt/metadata-provider) (mt/id :venues :price))))]
+            (t2/with-call-count [call-count]
+              (measures.write/update-measure! id {:definition definition} {})
+              (is (<= (call-count) 3)))))))))
 
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
@@ -137,8 +181,9 @@
           (is (thrown-with-msg?
                Exception
                #"[Mm]easures cannot reference metrics"
-               (t2/update! :model/Measure :id measure-id
-                           {:definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
+               (measures.write/update-measure! measure-id
+                                               {:definition (measure-definition (lib.metadata/metric mp metric-id))}
+                                               {}))))))))
 
 ;;; ------------------------------------------------ MBQL4 Tests ------------------------------------------------
 ;;; The model accepts a full MBQL4 query and stores it normalized as MBQL5; anything that is not a full query is rejected.
@@ -164,7 +209,7 @@
   (mt/with-temp [:model/Measure {measure-id :id} {:name       "Good Measure"
                                                   :creator_id (mt/user->id :rasta)
                                                   :definition (measure-definition (lib/count))}]
-    (t2/update! :model/Measure :id measure-id {:definition (legacy-count-query)})
+    (measures.write/update-measure! measure-id {:definition (legacy-count-query)} {})
     (let [measure (t2/select-one :model/Measure :id measure-id)]
       (is (= (mt/id :venues) (:table_id measure)))
       (is (= :mbql/query (:lib/type (:definition measure))))
@@ -187,8 +232,9 @@
       (is (thrown-with-msg?
            Exception
            #"Measure definition must be a full query"
-           (t2/update! :model/Measure :id measure-id
-                       {:definition {:aggregation [[:count]]}}))))))
+           (measures.write/update-measure! measure-id
+                                           {:definition {:aggregation [[:count]]}}
+                                           {}))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 

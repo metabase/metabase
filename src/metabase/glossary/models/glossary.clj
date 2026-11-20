@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.glossary.write]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -17,8 +18,7 @@
 
 (doto :model/Glossary
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?)
+  (derive :hook/timestamped-on-insert?)
   (derive :hook/entity-id))
 
 (def GlossaryEntry
@@ -27,6 +27,13 @@
    [:id         ms/PositiveInt]
    [:term       ::glossary.schema/glossary.term]
    [:definition ::glossary.schema/glossary.definition]])
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-after-insert :model/Glossary
+  [entry]
+  (events/created! :model/Glossary entry)
+  entry)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

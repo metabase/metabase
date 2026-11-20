@@ -5,7 +5,6 @@
   (:require
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.channel.schema :as channel.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -200,31 +199,16 @@
   [notification :- NotificationRow]
   (t2/insert-returning-instance! :model/Notification notification))
 
-(mu/defn update-card-notifications!
-  "Apply `changes` to the card Notifications among `notification-ids`, returning the number updated."
+(mu/defn update-notifications!
+  "Apply `changes` to the Notifications with `notification-ids`, returning the number updated."
   [notification-ids :- [:sequential ms/PositiveInt]
-   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
-  (t2/update! :model/Notification :id [:in notification-ids] :payload_type :notification/card changes))
-
-(mu/defn deactivate-notification!
-  "Mark the Notification with `notification-id` inactive, returning the number updated."
-  [notification-id :- ms/PositiveInt]
-  (t2/update! :model/Notification :id notification-id {:active false}))
-
-(mu/defn delete-notification!
-  "Delete the Notification with `notification-id`, returning the number deleted."
-  [notification-id :- ms/PositiveInt]
-  (t2/delete! :model/Notification :id notification-id))
+   changes          :- ::notification.schema/notification.changes]
+  (t2/update! :model/Notification :id [:in notification-ids] changes))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Notification :id [:in notification-ids]))
-
-(mu/defn delete-notification-by-internal-id!
-  "Delete the seeded Notification with `internal-id`, returning the number deleted."
-  [internal-id :- :string]
-  (t2/delete! :model/Notification :internal_id internal-id))
 
 ;;; ------------------------------------------- NotificationCard -------------------------------------------
 
@@ -248,10 +232,21 @@
   [notification-card :- NotificationCardRow]
   (t2/insert-returning-pk! :model/NotificationCard notification-card))
 
-(mu/defn delete-notification-card!
-  "Delete the NotificationCard with `notification-card-id`, returning the number deleted."
-  [notification-card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/NotificationCard :id notification-card-id))
+(mu/defn notification-card
+  "The NotificationCard with `notification-card-id`, or nil."
+  [notification-card-id :- ms/PositiveInt]
+  (t2/select-one :model/NotificationCard :id [:auto/param notification-card-id]))
+
+(mu/defn update-notification-card!
+  "Apply `changes` to the NotificationCard with `notification-card-id`, returning the number updated."
+  [notification-card-id :- ms/PositiveInt
+   changes              :- ::notification.schema/notification-card.changes]
+  (t2/update! :model/NotificationCard :id [:auto/param notification-card-id] changes))
+
+(mu/defn delete-notification-cards!
+  "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."
+  [notification-card-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/NotificationCard :id [:in notification-card-ids]))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
@@ -291,6 +286,22 @@
                               [:= :ns.type "notification-subscription/cron"]
                               [:= :n.active true]]}))
 
+(mu/defn subscriptions-with-ids
+  "The NotificationSubscriptions with `subscription-ids`."
+  [subscription-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/NotificationSubscription :id [:in subscription-ids]))
+
+(mu/defn update-subscription!
+  "Apply `changes` to the NotificationSubscription with `subscription-id`, returning the number updated."
+  [subscription-id :- ms/PositiveInt
+   changes         :- ::notification.schema/notification-subscription.update]
+  (t2/update! :model/NotificationSubscription :id [:auto/param subscription-id] changes))
+
+(mu/defn delete-subscriptions!
+  "Delete the NotificationSubscriptions with `subscription-ids`, returning the number deleted."
+  [subscription-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/NotificationSubscription :id [:in subscription-ids]))
+
 (mu/defn insert-subscriptions!
   "Insert the NotificationSubscription `subscriptions`, returning the number inserted."
   [subscriptions :- [:sequential NotificationSubscriptionRow]]
@@ -325,6 +336,27 @@
   [handler :- NotificationHandlerRow]
   (t2/insert-returning-pk! :model/NotificationHandler handler))
 
+(mu/defn handler
+  "The NotificationHandler with `handler-id`, or nil."
+  [handler-id :- ms/PositiveInt]
+  (t2/select-one :model/NotificationHandler :id [:auto/param handler-id]))
+
+(mu/defn handlers-with-ids
+  "The NotificationHandlers with `handler-ids`."
+  [handler-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/NotificationHandler :id [:in handler-ids]))
+
+(mu/defn update-handler!
+  "Apply `changes` to the NotificationHandler with `handler-id`, returning the number updated."
+  [handler-id :- ms/PositiveInt
+   changes    :- ::notification.schema/notification-handler.changes]
+  (t2/update! :model/NotificationHandler :id [:auto/param handler-id] changes))
+
+(mu/defn delete-handlers!
+  "Delete the NotificationHandlers with `handler-ids`, returning the number deleted."
+  [handler-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/NotificationHandler :id [:in handler-ids]))
+
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
   [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]
@@ -348,21 +380,36 @@
   [recipients :- [:or NotificationRecipientRow [:sequential NotificationRecipientRow]]]
   (t2/insert! :model/NotificationRecipient recipients))
 
-(mu/defn delete-recipient!
-  "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
+(mu/defn recipient
+  "The NotificationRecipient with `recipient-id`, or nil."
   [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/NotificationRecipient :id recipient-id))
+  (t2/select-one :model/NotificationRecipient :id [:auto/param recipient-id]))
 
-(mu/defn delete-user-recipients-for-notification!
-  "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
-  returning the number deleted."
+(mu/defn recipients-with-ids
+  "The NotificationRecipients with `recipient-ids`."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/NotificationRecipient :id [:in recipient-ids]))
+
+(mu/defn update-recipient!
+  "Apply `changes` to the NotificationRecipient with `recipient-id`, returning the number updated."
+  [recipient-id :- ms/PositiveInt
+   changes      :- ::notification.schema/notification-recipient.changes]
+  (t2/update! :model/NotificationRecipient :id [:auto/param recipient-id] changes))
+
+(mu/defn delete-recipients!
+  "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/NotificationRecipient :id [:in recipient-ids]))
+
+(mu/defn user-recipient-ids-for-notification
+  "The ids of the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`."
   [notification-id :- ms/PositiveInt
    user-id         :- ::lib.schema.id/user]
-  (t2/delete! :model/NotificationRecipient
-              :user_id user-id
-              :notification_handler_id [:in ^:allow-subquery {:select [:id]
-                                                              :from   [:notification_handler]
-                                                              :where  [:= :notification_id notification-id]}]))
+  (t2/select-pks-vec :model/NotificationRecipient
+                     :user_id user-id
+                     :notification_handler_id [:in ^:allow-subquery {:select [:id]
+                                                                     :from   [:notification_handler]
+                                                                     :where  [:= :notification_id notification-id]}]))
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 
@@ -385,11 +432,6 @@
   "Insert `template` and return its ID."
   [template :- ChannelTemplateRow]
   (t2/insert-returning-pk! :model/ChannelTemplate template))
-
-(mu/defn delete-channel-templates!
-  "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
-  [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 

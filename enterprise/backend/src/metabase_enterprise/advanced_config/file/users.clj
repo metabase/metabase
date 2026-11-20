@@ -6,6 +6,7 @@
     :as advanced-config.file.i]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.setup.core :as setup]
+   [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -49,7 +50,7 @@
                        (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
                        (let [new-user (update user :login_attributes
                                               #(merge % (:login_attributes existing-user)))]
-                         (advanced-config.db/update-user! (:id existing-user) new-user))
+                         (users/update-user! (:id existing-user) new-user {}))
                        (:id existing-user))
                      ;; create a new user. If they are the first non-internal User, force them to be an admin.
                      (let [user (cond-> user

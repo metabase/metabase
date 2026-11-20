@@ -16,7 +16,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.settings :as dashboards.settings]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.eid-translation.core :as eid-translation]
@@ -440,7 +439,7 @@
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
-  (let [new-tab-ids (dashboards-rest.db/insert-dashboard-tabs!
+  (let [new-tab-ids (dashboards.write/insert-dashboard-tabs!
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))
@@ -556,7 +555,7 @@
                            ;; collection to change position, check that and fix up if needed
                            (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
                            ;; Ok, now save the Dashboard
-                           (let [dash (dashboards-rest.db/insert-dashboard! dashboard-data)
+                           (let [dash (dashboards.write/insert-dashboard! dashboard-data)
                                  {id->new-card :copied
                                   id->referenced-card :referenced
                                   uncopied :discarded}
@@ -568,7 +567,7 @@
                                                                               id->new-card
                                                                               id->referenced-card
                                                                               id->new-tab-id))]
-                               (api/check-500 (dashboard/add-dashcards! dash dashcards)))
+                               (api/check-500 (dashboards.write/add-dashcards! dash dashcards)))
                              (cond-> dash
                                (seq uncopied)
                                (assoc :uncopied uncopied)))))]
@@ -684,7 +683,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Dashboard id)
-  (dashboards-rest.db/delete-dashboard! id)
+  (dashboards.write/delete-dashboard-row! id {})
   api/generic-204-no-content)
 
 (def ^:private UpdatedDashboardCard
@@ -796,9 +795,10 @@
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
                      (t2/with-transaction [_conn]
-                       (dashboards-rest.db/update-dashboard! dashboard-id
-                                                             {:public_uuid       <>
-                                                              :made_public_by_id api/*current-user-id*}))))]
+                       (dashboards.write/update-dashboard-row! dashboard
+                                                               {:public_uuid       <>
+                                                                :made_public_by_id api/*current-user-id*}
+                                                               {}))))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -813,9 +813,10 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/with-transaction [_conn]
-    (dashboards-rest.db/update-dashboard! dashboard-id
-                                          {:public_uuid       nil
-                                           :made_public_by_id nil}))
+    (dashboards.write/update-dashboard-row! dashboard-id
+                                            {:public_uuid       nil
+                                             :made_public_by_id nil}
+                                            {}))
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -881,7 +882,7 @@
    dashboard :- TransientDashboard]
   (api/create-check :model/Dashboard (assoc dashboard :collection_id parent-collection-id))
   (check-create-transient-dashboard-cards dashboard parent-collection-id)
-  (dashboard/save-transient-dashboard! dashboard parent-collection-id))
+  (dashboards.write/save-transient-dashboard! dashboard parent-collection-id))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -898,7 +899,7 @@
                                      (collection/children-location
                                       (dashboards-rest.db/personal-collection-for-user api/*current-user-id*)))))
         _         (check-create-transient-dashboard-cards dashboard parent-collection-id)
-        dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
+        dashboard (dashboards.write/save-transient-dashboard! dashboard parent-collection-id)]
     dashboard))
 
 ;;; ------------------------------------- Chain-filtering param value endpoints --------------------------------------

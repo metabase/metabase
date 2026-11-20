@@ -68,7 +68,7 @@
   event, returning the number of Segments updated; for the REST API, revision revert, replacement and the SerDes
   import, whose `:import?` changes nothing, as master's hooks checked imports too."
   [segment-or-id :- [:or ::lib.schema.id/segment :map]
-   changes       :- ::segments.schema/segment.update
+   changes       :- ::segments.schema/segment.input
    opts          :- ::segments.schema/write-opts]
   (let [segment (if (map? segment-or-id) segment-or-id (segments.db/segment segment-or-id))
         id      (:id segment)
@@ -86,7 +86,7 @@
 (mu/defn delete-segments! :- :int
   "Delete the Segments with `ids` and their tests and publish their delete events, returning the number deleted; for
   remote sync and the SerDes import."
-  [ids   :- [:sequential ::lib.schema.id/segment]
+  [ids   :- [:maybe [:sequential ::lib.schema.id/segment]]
    _opts :- ::segments.schema/write-opts]
   (let [segments (when (seq ids) (segments.db/segments ids))]
     (if (empty? segments)

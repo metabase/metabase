@@ -22,6 +22,7 @@
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.sql.common :as sql.common]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    ;; Tests redefine `process-query` here, not in `metabase.query-processor.core`. The core var is a potemkin copy of
@@ -977,8 +978,7 @@
         (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
                                     (fn [driver sql]
                                       (u/prog1 (read-only? driver sql)
-                                        (t2/update! :model/NativeQuerySnippet :id snippet-id
-                                                    {:content "SELECT 2 AS N FOR UPDATE"})))]
+                                        (native-query-snippets.write/update-snippet! snippet-id {:content "SELECT 2 AS N FOR UPDATE"} {})))]
           (binding [qp.pipeline/*execute* (fn [_driver query respond]
                                             (swap! driver-ran-sql conj (:native (lib/query-stage query -1)))
                                             (respond {:cols [{:name "N"}]} []))]

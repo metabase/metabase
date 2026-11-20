@@ -1,8 +1,8 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase-enterprise.transforms-python.write :as transforms-python.write]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
@@ -16,27 +16,19 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
+(doseq [trait [:metabase/model :hook/timestamped-on-insert? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- normalize-path
-  "Ensure the path ends with .py extension."
-  [path]
-  (if (.endsWith ^String path ".py")
-    path
-    (str path ".py")))
-
 (t2/define-before-insert :model/PythonLibrary
   [library]
-  (update library :path normalize-path))
+  (update library :path transforms-python.write/normalize-path))
 
-(t2/define-before-update :model/PythonLibrary
+(t2/define-after-insert :model/PythonLibrary
   [library]
-  (cond-> library
-    (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
-    (:path library)                          (update :path normalize-path)))
+  (events/created! :model/PythonLibrary library)
+  library)
 
 ;; Event type hierarchy for remote-sync tracking
 (events/derive! ::event :metabase/event)
@@ -55,24 +47,10 @@
 
 ;;; ---------------------------------------------------- Library -----------------------------------------------------
 
-(def builtin-entity-id
-  "The entity_id of the built-in common.py PythonLibrary created by migration.
-   Used to protect it from deletion during remote-sync import."
-  "cWWH9qJPvHNB3rP2vLZrK")
-
 (defn get-python-library-by-path
   "Get the Python library by path."
   [path]
-  (transforms-python.db/python-library-by-path (normalize-path path)))
-
-(defn update-python-library-source!
-  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
-  [path source]
-  (let [normalized-path (normalize-path path)
-        id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
-        library         (transforms-python.db/python-library id)]
-    library))
+  (transforms-python.db/python-library-by-path (transforms-python.write/normalize-path path)))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 

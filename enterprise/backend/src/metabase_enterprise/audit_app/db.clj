@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -46,11 +47,6 @@
   "Delete every audit Database."
   []
   (t2/delete! :model/Database :is_audit true))
-
-(mu/defn delete-permissions-for-database!
-  "Delete the Permissions rows on the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
 
 (mu/defn tables-of-database-named
   "The Tables of the Database with `database-id` named one of `table-names`."
@@ -205,22 +201,22 @@
   []
   (t2/delete! :model/Collection :namespace "analytics"))
 
-(mu/defn delete-pulse-channel-recipients-of-user!
-  "Delete the PulseChannelRecipients of the User with `user-id`."
+(mu/defn pulse-channel-recipient-ids-of-user :- [:maybe [:sequential ms/PositiveInt]]
+  "The ids of the PulseChannelRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PulseChannelRecipient :user_id user-id))
+  (t2/select-pks-vec :model/PulseChannelRecipient :user_id [:auto/param user-id]))
 
-(mu/defn delete-notification-recipients-of-user!
-  "Delete the NotificationRecipients of the User with `user-id`."
+(mu/defn notification-recipient-ids-of-user :- [:maybe [:sequential ms/PositiveInt]]
+  "The ids of the NotificationRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/NotificationRecipient :user_id user-id))
+  (t2/select-pks-vec :model/NotificationRecipient :user_id [:auto/param user-id]))
 
-(mu/defn archive-pulses-of-creator!
-  "Archive the unarchived Pulses created by the User with `user-id`."
+(mu/defn unarchived-pulses-of-creator
+  "The unarchived Pulses created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/Pulse {:creator_id user-id, :archived false} {:archived true}))
+  (t2/select :model/Pulse :creator_id [:auto/param user-id] :archived false))
 
-(mu/defn deactivate-notifications-of-creator!
-  "Deactivate the active Notifications created by the User with `user-id`."
+(mu/defn active-notifications-of-creator
+  "The active Notifications created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/Notification {:creator_id user-id :active true} {:active false}))
+  (t2/select :model/Notification :creator_id [:auto/param user-id] :active true))

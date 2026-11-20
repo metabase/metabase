@@ -3,7 +3,10 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.glossary.write :as glossary.write]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
@@ -71,3 +74,32 @@
     (testing "every user can read entries"
       (mt/with-test-user :rasta
         (is (= [true] (map mi/can-read? (t2/hydrate [entry] :can_read))))))))
+
+(deftest update-glossary-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::glossary-events
+                                     (fn [{:keys [model]}] (when (= :model/Glossary model) :glossary))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Glossary entry {:term "Term" :definition "Definition"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (glossary.write/update-glossary! (:id entry) {:term "Renamed Term"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id entry)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:term "Term" :definition "Definition" :updated_at (:updated_at entry)}
+                    :object          {:term "Renamed Term" :definition "Definition" :updated_at (:updated_at entry)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::glossary-events)))))
+
+(deftest update-glossary-query-count-test
+  (testing "a warm update-glossary! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/Glossary {id :id} {:term "Term" :definition "Definition"}]
+      (mt/with-test-user :crowberto
+        (glossary.write/update-glossary! id {:term "Warm Term"} {})
+        (t2/with-call-count [call-count]
+          (glossary.write/update-glossary! id {:term "Renamed Term"} {})
+          (is (<= (call-count) 2)))))))

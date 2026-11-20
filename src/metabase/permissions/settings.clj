@@ -2,6 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
+   [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -56,10 +58,13 @@
 
 (defn- update-use-tenants! [new-val]
   (when-not new-val
-    ;; deactivate all tenants
-    (permissions.db/deactivate-all-tenants!)
-    ;; deactivate all tenant users, so if the tenant is reactivated someday they'll come back too
-    (permissions.db/deactivate-active-tenant-users!))
+    (when config/ee-available?
+      (let [update-tenant! (:update! (mi/write-fns :model/Tenant))]
+        (doseq [id (permissions.db/active-tenant-ids)]
+          (update-tenant! id {:is_active false} {}))))
+    (let [update-user! (:update! (mi/write-fns :model/User))]
+      (doseq [id (permissions.db/active-tenant-user-ids)]
+        (update-user! id {:is_active false :deactivated_with_tenant true} {}))))
   (setting/set-value-of-type! :boolean :use-tenants new-val))
 
 (defsetting use-tenants

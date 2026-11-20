@@ -4,6 +4,7 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -20,7 +21,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -30,8 +30,7 @@
 (doto :model/TransformTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events)
+  (derive :hook/timestamped-on-insert?)
   (derive ::saved-test))
 
 (mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
@@ -83,8 +82,8 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(t2/define-before-delete :model/TransformTest [transform-test]
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+(t2/define-after-insert :model/TransformTest [transform-test]
+  (events/created! :model/TransformTest transform-test)
   transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -190,33 +189,12 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(mu/defn create-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` returning the inserted test."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-transform-test! transform-test))
-
-(mu/defn update-transform-test! :- :nil
-  "Apply `changes` to the TransformTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/transform-test.update]
-  (data-testing.db/update-transform-test! id changes)
-  nil)
-
-(mu/defn delete-transform-test! :- :nil
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-transform-test! id)
-  nil)
-
 (defenterprise delete-transform-tests!
   "Deletes the tests of the transform `transform-id` whatever the token says,
   since the rows outlive the feature."
   :feature :none
   [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
+  (data-testing.write/delete-tests-of-transform! transform-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -232,7 +210,7 @@
   [id _user-id snapshot]
   (check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+  (data-testing.write/update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns)) {}))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

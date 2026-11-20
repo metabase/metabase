@@ -11,6 +11,7 @@
    [metabase.analytics.core :as analytics.core]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.llm.test-util :as llm.tu]
@@ -1649,7 +1650,7 @@
                                           claude/claude
                                           (fn [opts]
                                             (if (= 1 (count (swap! requests conj (claude/claude-request-body opts))))
-                                              (do (t2/update! :model/Dashboard :id dashboard-id {:name "Ops updated"})
+                                              (do (dashboards.write/update-dashboard-row! dashboard-id {:name "Ops updated"} {})
                                                   (metabot.settings/metabot-chat-system-prompt! "Use American spelling.")
                                                   (reset! semantic-search false)
                                                   (mut/mock-llm-response [{:type      :tool-input

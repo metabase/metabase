@@ -11,7 +11,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
@@ -20,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.write :as perms.write]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -38,49 +38,40 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
-(defn- magic-group [magic-group-type]
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (permissions.db/magic-group magic-group-type)
-       ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
-       ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
-       ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
-       (when-not <>
-         (throw (ex-info (format "Fatal error: magic Permissions Group '%s' has gone missing." magic-group-type)
-                         {:magic-group-type magic-group-type})))))))
-
 (def all-users-magic-group-type
   "The magic-group type of the \"All Users\" magic group."
-  "all-internal-users")
+  perms.write/all-users-magic-group-type)
 
-(def ^{:arglists '([])} all-users
-  "Fetch the `All Users` permissions group"
-  (magic-group all-users-magic-group-type))
+(defn all-users
+  "Fetch the `All Users` permissions group."
+  []
+  (perms.write/all-users))
 
 (def all-external-users-magic-group-type
   "The magic group type of the \"All tenant users\" magic group."
-  "all-external-users")
+  perms.write/all-external-users-magic-group-type)
 
-(def ^{:arglists '([])} all-external-users
-  "Fetch the `All tenant users` permissions group"
-  (magic-group all-external-users-magic-group-type))
+(defn all-external-users
+  "Fetch the `All tenant users` permissions group."
+  []
+  (perms.write/all-external-users))
 
 (def admin-magic-group-type
   "The magic-group type of the \"Administrators\" magic group."
-  "admin")
+  perms.write/admin-magic-group-type)
 
-(def ^{:arglists '([])} admin
-  "Fetch the `Administrators` permissions group"
-  (magic-group admin-magic-group-type))
+(defn admin
+  "Fetch the `Administrators` permissions group."
+  []
+  (perms.write/admin))
 
 (def data-analyst-magic-group-type
   "The magic-group type of the \"Data Analysts\" magic group."
-  "data-analyst")
+  perms.write/data-analyst-magic-group-type)
 
 (defn group-display-name
   "The group's display name, with internal membership explicit when tenants are enabled."
@@ -89,9 +80,10 @@
     "All internal users"
     name))
 
-(def ^{:arglists '([])} data-analyst
-  "Fetch the `Data Analysts` permissions group"
-  (magic-group data-analyst-magic-group-type))
+(defn data-analyst
+  "Fetch the `Data Analysts` permissions group."
+  []
+  (perms.write/data-analyst))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
@@ -137,27 +129,10 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-name-not-already-taken
-  [group-name]
-  (when (exists-with-name? group-name)
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
-
-(defn- check-not-magic-group
-  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
-
 (t2/define-before-insert :model/PermissionsGroup
   [{group-name :name, :as group}]
   (u/prog1 group
-    (check-name-not-already-taken group-name)))
+    (perms.write/check-name-not-already-taken group-name)))
 
 (defn- set-default-permission-values!
   [group]
@@ -167,31 +142,9 @@
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]
-  (u/prog1 group
-    (set-default-permission-values! group)))
-
-(t2/define-before-delete :model/PermissionsGroup
-  [{id :id, :as group}]
-  (check-not-magic-group group)
-  (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = id) val))))))
-
-(t2/define-before-update :model/PermissionsGroup
-  [group]
-  (let [changes (t2/changes group)]
-    (when (contains? changes :name)
-      (check-not-magic-group group))
-    (when-let [group-name (:name changes)]
-      (check-name-not-already-taken group-name))
-    (when (contains? changes :is_tenant_group)
-      (throw (ex-info (tru "You cannot change whether a group is a tenant group.") {:status-code 400})))
-    (when (contains? changes :magic_group_type)
-      (throw (ex-info (tru "You cannot change the type of a group.") {:status-code 400})))
-    group))
+  (set-default-permission-values! group)
+  (events/created! :model/PermissionsGroup group)
+  group)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

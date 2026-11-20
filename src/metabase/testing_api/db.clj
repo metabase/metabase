@@ -15,23 +15,11 @@
    last-used-at :- ms/TemporalInstant]
   (t2/update! :model/Card :id card-id {:last_used_at last-used-at}))
 
-(mu/defn set-dashboard-last-viewed-at!
-  "Set `last_viewed_at` of the Dashboard with `dashboard-id`."
-  [dashboard-id    :- ::lib.schema.id/dashboard
-   last-viewed-at  :- ms/TemporalInstant]
-  (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
-
 (mu/defn set-document-last-viewed-at!
   "Set `last_viewed_at` of the Document with `document-id`."
   [document-id    :- ms/PositiveInt
    last-viewed-at :- ms/TemporalInstant]
   (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
-
-(mu/defn set-transform-created-at!
-  "Set `created_at` of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   created-at   :- ms/TemporalInstant]
-  (t2/update! :model/Transform :id transform-id {:created_at created-at}))
 
 (mu/defn set-transform-run-times!
   "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id`."
@@ -90,9 +78,3 @@
   "Insert the AiUsageLog `row`."
   [row :- ::metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
-
-(mu/defn set-user-tenant!
-  "Set the `tenant_id` of the User with `user-id`."
-  [user-id   :- ::lib.schema.id/user
-   tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User :id user-id {:tenant_id tenant-id}))

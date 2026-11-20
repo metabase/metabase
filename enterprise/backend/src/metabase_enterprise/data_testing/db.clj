@@ -165,21 +165,26 @@
               :status "started"
               {:status status :end_time :%now}))
 
-(mu/defn update-transform-test!
-  "Apply `updates` to the TransformTest with `id`."
-  [id :- ms/PositiveInt
-   updates :- ::data-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest :id id updates))
+(mu/defn transform-tests-by-ids
+  "The TransformTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/TransformTest :id [:in ids]))
 
-(mu/defn delete-transform-test!
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTest :id id))
+(mu/defn transform-test-ids-of-transform
+  "The ids of the TransformTests of the Transform with `transform-id`."
+  [transform-id :- ::lib.schema.id/transform]
+  (vec (t2/select-pks-vec :model/TransformTest :transform_id [:auto/param transform-id])))
+
+(mu/defn update-transform-test!
+  "Apply `changes` to the TransformTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/transform-test.changes]
+  (t2/update! :model/TransformTest :id [:auto/param id] changes))
 
 (mu/defn delete-transform-tests!
-  "Delete the TransformTests of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/TransformTest :transform_id transform-id))
+  "Delete the TransformTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/TransformTest :id [:in ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -213,21 +218,26 @@
                   [:creator_id ::lib.schema.id/user]]]]
   (t2/insert-returning-instance! :model/CardTest card-test))
 
-(mu/defn update-card-test!
-  "Apply `updates` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/card-test.update]
-  (t2/update! :model/CardTest :id id updates))
+(mu/defn card-tests-by-ids
+  "The CardTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/CardTest :id [:in ids]))
 
-(mu/defn delete-card-test!
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/CardTest :id id))
+(mu/defn card-test-ids-of-card
+  "The ids of the CardTests of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (vec (t2/select-pks-vec :model/CardTest :card_id [:auto/param card-id])))
+
+(mu/defn update-card-test!
+  "Apply `changes` to the CardTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/card-test.changes]
+  (t2/update! :model/CardTest :id [:auto/param id] changes))
 
 (mu/defn delete-card-tests!
-  "Delete the CardTests of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/CardTest :card_id card-id))
+  "Delete the CardTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/CardTest :id [:in ids]))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
@@ -261,21 +271,26 @@
                      [:creator_id ::lib.schema.id/user]]]]
   (t2/insert-returning-instance! :model/SegmentTest segment-test))
 
-(mu/defn update-segment-test!
-  "Apply `updates` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/segment-test.update]
-  (t2/update! :model/SegmentTest :id id updates))
+(mu/defn segment-tests-by-ids
+  "The SegmentTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/SegmentTest :id [:in ids]))
 
-(mu/defn delete-segment-test!
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/SegmentTest :id id))
+(mu/defn segment-test-ids-of-segment
+  "The ids of the SegmentTests of the Segment with `segment-id`."
+  [segment-id :- ::lib.schema.id/segment]
+  (vec (t2/select-pks-vec :model/SegmentTest :segment_id [:auto/param segment-id])))
+
+(mu/defn update-segment-test!
+  "Apply `changes` to the SegmentTest with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/segment-test.changes]
+  (t2/update! :model/SegmentTest :id [:auto/param id] changes))
 
 (mu/defn delete-segment-tests!
-  "Delete the SegmentTests of the Segment with `segment-id`."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/delete! :model/SegmentTest :segment_id segment-id))
+  "Delete the SegmentTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/SegmentTest :id [:in ids]))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

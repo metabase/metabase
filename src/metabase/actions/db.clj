@@ -139,10 +139,10 @@
   [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
 
-(mu/defn delete-dashcards-for-action!
-  "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
+(mu/defn dashcard-ids-for-action :- [:maybe [:sequential ::lib.schema.id/dashcard]]
+  "The ids of the DashboardCards of the Action with `action-id`."
   [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/DashboardCard :action_id action-id))
+  (t2/select-pks-vec :model/DashboardCard :action_id action-id))
 
 (mu/defn insert-query-execution!
   "Insert the QueryExecution `row` and return its id."

@@ -5,8 +5,12 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -182,7 +186,7 @@
                    :model/TransformTest {test-id :id}      {:transform_id transform-id
                                                             :inputs       inputs
                                                             :expectations [empty-expectation]}]
-      (is (some? (caught #(t2/update! :model/TransformTest :id test-id {:expectations [{:type "empty" :name "x"}]}))))
+      (is (some? (caught #(data-testing.write/update-transform-test! test-id {:expectations [{:type "empty" :name "x"}]} {}))))
       (testing "and the stored value is unchanged"
         (is (= ["no orphan rows"]
                (mapv :name (:expectations (t2/select-one :model/TransformTest :id test-id)))))))))
@@ -202,7 +206,7 @@
                                                               :inputs       []
                                                               :expectations []}]
         (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-          (t2/delete! :model/Transform :id transform-id))
+          (transforms.core/delete-transforms! [transform-id] {}))
         (testing "the rows are gone"
           (is (false? (t2/exists? :model/TransformTest :id test-id)))
           (is (false? (t2/exists? :model/TransformTest :id other-id))))
@@ -296,7 +300,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
-      (t2/delete! :model/TransformTest :id transform-test-id)
+      (data-testing.write/delete-transform-tests! [transform-test-id] {})
       (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
@@ -312,7 +316,7 @@
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}
                  :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
-    (t2/delete! :model/TransformTest :id test-id)
+    (data-testing.write/delete-transform-tests! [test-id] {})
     (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
@@ -324,3 +328,35 @@
       (is (nil? (t2/select-one-fn :initiated_by :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
+
+(deftest update-transform-test-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::transform-test-events
+                                     (fn [{:keys [model]}] (when (= :model/TransformTest model) :transform-test))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Transform {parent-id :id} {}
+                     :model/TransformTest saved-test {:transform_id parent-id :name "Test"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (data-testing.write/update-transform-test! (:id saved-test) {:name "Renamed Test"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id saved-test)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Test" :updated_at (:updated_at saved-test)}
+                    :object          {:name "Renamed Test" :updated_at (:updated_at saved-test)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::transform-test-events)))))
+
+(deftest update-transform-test-query-count-test
+  (testing "a warm update-transform-test! issues 4 queries, as master's t2/update! with the hooks did"
+    (mt/with-temp [:model/Transform {parent-id :id} {}
+                   :model/TransformTest {id :id} {:transform_id parent-id :name "Test"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (data-testing.write/update-transform-test! id {:name "Warm Test"} {})
+          (t2/with-call-count [call-count]
+            (data-testing.write/update-transform-test! id {:name "Renamed Test"} {})
+            (is (<= (call-count) 4))))))))

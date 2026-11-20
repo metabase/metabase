@@ -13,6 +13,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -2049,7 +2050,7 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
         (testing "a dashboard moved in"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions"
-                                (t2/update! :model/Dashboard :id dashboard-id {:collection_id collection-id})))
+                                (dashboards.write/update-dashboard-row! dashboard-id {:collection_id collection-id} {})))
           (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
         (testing "a bookmark is not content"
           (mt/with-temp [:model/CollectionBookmark _ {:collection_id collection-id :user_id (mt/user->id :crowberto)}]

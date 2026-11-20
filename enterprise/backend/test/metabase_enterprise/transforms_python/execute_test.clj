@@ -6,6 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.util :as test.util]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.u]
@@ -40,14 +41,13 @@
                   (transforms.tu/wait-for-table table-name 10000)
                   (let [initial-rows (transforms.tu/table-rows table-name)]
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
-                    (t2/update! :model/Transform :id (:id transform)
-                                {:source {:type            :python
-                                          :source-tables   []
-                                          :source-database (mt/id)
-                                          :body            (str "import pandas as pd\n"
-                                                                "\n"
-                                                                "def transform():\n"
-                                                                "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
+                    (transforms.core/change-transform! (:id transform) {:source {:type            :python
+                                                                                 :source-tables   []
+                                                                                 :source-database (mt/id)
+                                                                                 :body            (str "import pandas as pd\n"
+                                                                                                       "\n"
+                                                                                                       "def transform():\n"
+                                                                                                       "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}} {}))
                   (let [swap-latch (CountDownLatch. 1)
                         original-rename-tables-atomic! (mt/original-fn #'transforms-base.u/rename-tables!)]
                     (mt/with-dynamic-fn-redefs [transforms-base.u/rename-tables! (fn [driver db-id rename-pairs]

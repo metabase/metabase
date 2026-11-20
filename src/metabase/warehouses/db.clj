@@ -144,11 +144,10 @@
                    :from   [(t2/table-name :model/Card)]
                    :where  [:in :id card-ids]})))
 
-(mu/defn delete-transforms-for-database! :- :int
-  "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number
-  deleted."
+(mu/defn transform-ids-for-database :- [:sequential ::lib.schema.id/transform]
+  "The ids of the Transforms reading from the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Transform :source_database_id database-id))
+  (vec (t2/select-pks-vec :model/Transform :source_database_id [:auto/param database-id])))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled, returning the number updated."

@@ -41,8 +41,39 @@
 (mu/defn update-channel!
   "Apply `changes` to the Channel with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- ChannelRow]
-  (t2/update! :model/Channel :id id changes))
+   changes :- ::channel.schema/channel.changes]
+  (t2/update! :model/Channel :id [:auto/param id] changes))
+
+(mu/defn channels-with-ids
+  "The Channels with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Channel :id [:in ids]))
+
+(mu/defn delete-channels!
+  "Delete the Channels with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Channel :id [:in ids]))
+
+(mu/defn channel-template
+  "The ChannelTemplate with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/ChannelTemplate :id [:auto/param id]))
+
+(mu/defn channel-templates-with-ids
+  "The ChannelTemplates with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/ChannelTemplate :id [:in ids]))
+
+(mu/defn update-channel-template!
+  "Apply `changes` to the ChannelTemplate with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::channel.schema/channel-template.changes]
+  (t2/update! :model/ChannelTemplate :id [:auto/param id] changes))
+
+(mu/defn delete-channel-templates!
+  "Delete the ChannelTemplates with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ChannelTemplate :id [:in ids]))
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."
@@ -80,10 +111,10 @@
                                       [:= :p.object permission-path]]}]
                  :group-by [:pgm.user_id]}))
 
-(mu/defn delete-pulse-channels-for-channel!
-  "Delete the PulseChannels of the Channel with `channel-id`, returning the number deleted."
+(mu/defn pulse-channel-ids-for-channel :- [:maybe [:sequential ms/PositiveInt]]
+  "The ids of the PulseChannels of the Channel with `channel-id`."
   [channel-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannel :channel_id channel-id))
+  (t2/select-pks-vec :model/PulseChannel :channel_id [:auto/param channel-id]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."

@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
+   [metabase.notification.write :as notification.write]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -53,7 +54,7 @@
     (let [recipients (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
-        (notification.db/delete-recipient! (:id matching-recipient))
+        (notification.write/delete-notification-recipients! [(:id matching-recipient)] {})
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
                                                              :object {:id notification-handler-id}})
@@ -77,9 +78,9 @@
     (let [recipients         (notification.db/raw-value-recipients-for-handler notification-handler-id)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if-not matching-recipient
-        (notification.db/insert-recipients! {:type                    :notification-recipient/raw-value
-                                             :details                 {:value email}
-                                             :notification_handler_id notification-handler-id})
+        (notification.write/create-notification-recipients! {:type                    :notification-recipient/raw-value
+                                                             :details                 {:value email}
+                                                             :notification_handler_id notification-handler-id})
         (throw (ex-info (tru "Email already exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-undo-ex {:details {:email email}
                                                                   :object {:id notification-handler-id}})

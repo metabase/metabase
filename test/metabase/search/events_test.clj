@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -166,7 +167,7 @@
                                                             :most_recent         true}]
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
-                 (capture-enqueues! #(t2/delete! :model/ModerationReview :id mr-id)))))))))
+                 (capture-enqueues! #(content-verification.write/delete-reviews! [mr-id] {})))))))))
 
 ;; Updates share the boolean fold with deletes. Without it, a superseded review's selector names its card beside a
 ;; false comparison, and ingestion would purge the card.
@@ -184,10 +185,10 @@
                                                             :moderator_id        (mt/user->id :crowberto)
                                                             :status              "verified"
                                                             :most_recent         true}]
-        (is (= [] (capture-enqueues! #(t2/update! :model/ModerationReview :id old-id {:status nil}))))
+        (is (= [] (capture-enqueues! #(content-verification.write/update-review! old-id {:status nil} {}))))
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
-                 (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
+                 (capture-enqueues! #(content-verification.write/update-review! new-id {:status nil} {})))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision publishes no event: the write of its entity refreshes the document it feeds"

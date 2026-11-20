@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.base :as base]
-   [metabase-enterprise.transforms-python.db :as transforms-python.db]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
@@ -12,6 +11,7 @@
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :as i18n]
@@ -27,7 +27,7 @@
 (defn- save-log-to-transform-run-message!
   "Saves the content of the log into the transform_run's message field. Lossy, string contains user facing information only."
   [run-id message-log]
-  (transforms-python.db/update-run-message! run-id (base/message-log->string message-log)))
+  (transforms.core/update-run! run-id {:message (base/message-log->string message-log)} {}))
 
 (def ^:private ^Duration python-message-loop-sleep-duration
   (Duration/ofMillis 1000))

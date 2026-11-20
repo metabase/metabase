@@ -18,6 +18,7 @@
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -439,9 +440,8 @@
                                                              :target {:schema "public"
                                                                       :name "sample"
                                                                       :type :table}}]
-           (is (= 1 (t2/update! :model/Transform :id transform-id
-                                {:source {:type :query
-                                          :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
+           (is (= 1 (transforms.core/change-transform! transform-id {:source {:type :query
+                                                                              :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}} {})))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -455,8 +455,8 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (analyzed-by-job!)
-           (t2/update! :model/Transform :id transform-id {:source {:type :query
-                                                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
+           (transforms.core/change-transform! transform-id {:source {:type :query
+                                                                     :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}} {})
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -469,9 +469,8 @@
                                                            :target {:schema "public"
                                                                     :name "sample"
                                                                     :type :table}}]
-         (is (= 1 (t2/update! :model/Transform :id transform-id
-                              {:source {:type :query
-                                        :query (lib/native-query mp "select * from orders")}}))))))))
+         (is (= 1 (transforms.core/change-transform! transform-id {:source {:type :query
+                                                                            :query (lib/native-query mp "select * from orders")}} {}))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!

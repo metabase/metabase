@@ -12,6 +12,7 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms.u]
+   [metabase.permissions.write :as perms.write]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -188,7 +189,7 @@
   "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
    called after the revision number is updated."
   [revision-id before changes]
-  (future (permissions.db/update-collection-graph-revision! revision-id {:before before :after changes})))
+  (future (perms.write/update-collection-graph-revision! revision-id {:before before :after changes} {})))
 
 (defn- personal-collection-ids
   "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.

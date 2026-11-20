@@ -22,6 +22,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-remaps :as remap]
@@ -314,12 +315,30 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
+(mu/defn- update-transform! :- :int
+  "Apply `changes` to the Transform `transform-id` through its model's write function, which this module reaches
+  through the model so as not to depend on the module that owns it."
+  [transform-id :- ::lib.schema.id/transform
+   changes      :- [:map {:closed true}
+                    [:last_checkpoint_value {:optional true} [:maybe :string]]
+                    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
+  ((:update! (mi/write-fns :model/Transform)) transform-id changes {}))
+
+(mu/defn- update-transform-run! :- :int
+  "Apply `changes` to the TransformRun `run-id` through its model's write function."
+  [run-id  :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
+               [:checkpoint_lo_value        {:optional true} [:maybe :string]]
+               [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
+  ((:update! (mi/write-fns :model/TransformRun)) run-id changes {}))
+
 (mu/defn save-watermark! :- :int
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [hi-value (:value (:hi source-range-params))]
-    (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+    (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -328,10 +347,10 @@
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (when (and run-id source-range-params)
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-      (transforms-base.db/update-transform-run! run-id
-                                                (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                                                  lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
-                                                  hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
+      (update-transform-run! run-id
+                             (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                               lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                               hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (mu/defn- coerce-to-local-datetime :- ::transforms-base.schema/temporal
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."
@@ -942,7 +961,7 @@
         table (sync-target! (canonical-sync-target db-id transform) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
-      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
+      (update-transform! (:id transform) {:target_table_id (:id table)})
       (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.

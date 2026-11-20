@@ -221,7 +221,7 @@
     (when-not (setting/get :use-tenants)
       (throw (ex-info (tru "Tenant groups cannot be created while the Tenants feature is disabled.")
                       {:status-code 400}))))
-  (permissions-rest.db/insert-permissions-group! name (boolean is_tenant_group)))
+  (perms/create-group! {:name name :is_tenant_group (boolean is_tenant_group)}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -234,9 +234,9 @@
    _query-params
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
-  (api/write-check (permissions-rest.db/permissions-group group-id))
-  (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (permissions-rest.db/rename-permissions-group! group-id name)
+  (let [group (api/write-check (permissions-rest.db/permissions-group group-id))]
+    (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
+    (perms/update-group! group {:name name} {}))
   (permissions-rest.db/permissions-group group-id))
 
 (api.macros/defendpoint :delete "/group/:group-id" :- ::api/generic-204-no-content
@@ -245,7 +245,7 @@
                           [:group-id ms/PositiveInt]]]
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (permissions-rest.db/delete-permissions-group! group-id)
+  (perms/delete-group! group-id {})
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
@@ -307,7 +307,7 @@
   (let [old (api/check-404 (permissions-rest.db/group-membership id))]
     (perms/check-tenant-groups-visible [(:group_id old)])
     (api/write-check old)
-    (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
+    (perms/update-membership! old {:is_group_manager is_group_manager} {})
     (permissions-rest.db/group-membership (:id old))))
 
 (api.macros/defendpoint :put "/membership/:group-id/clear" :- ::api/generic-204-no-content

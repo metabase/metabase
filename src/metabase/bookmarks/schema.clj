@@ -51,6 +51,11 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::write-opts
+  "The context of a write of bookmarks: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
+
 (mr/def ::dashboard-bookmark
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
   [:merge

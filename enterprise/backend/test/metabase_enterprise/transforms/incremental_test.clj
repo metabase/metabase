@@ -18,6 +18,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.index-test-util :as index-util]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -628,9 +629,7 @@
               (testing "second run with no new data"
                 (transforms.execute/execute! transform {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))))
-              (t2/update! :model/Transform
-                          :id (:id transform)
-                          {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")})
+              (transforms.core/change-transform! (:id transform) {:source (make-source "SELECT id FROM {{source_table}} AS s ORDER BY id DESC")} {})
               (testing "run after query change with no new data keeps same row count"
                 (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform)) {:run-method :manual})
                 (is (= 16 (count (pg-table-rows db-spec target-table)))

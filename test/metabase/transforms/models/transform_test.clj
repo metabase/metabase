@@ -5,6 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,17 +14,18 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
-   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.query-test-util :as query-test-util]
    [metabase.transforms.schema :as transforms.schema]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -52,8 +54,8 @@
                              :source-tables []
                              :body          "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))
-      (t2/update! :model/Transform :id (:id transform) {:source {:type  :query
-                                                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}})
+      (transforms.write/change-transform! (:id transform) {:source {:type  :query
+                                                                    :query (lib/native-query (mt/metadata-provider) "SELECT 1")}} {})
       (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id (:id transform)))))))
 
 (deftest source-database-deletion-deletes-transform-test
@@ -83,19 +85,17 @@
   (testing "editing the source query (output schema may change) marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform :id transform-id
-                   {:source {:type :query :query (query-test-util/make-query :source-table "checkins")}})
+       (transforms.write/change-transform! transform-id {:source {:type :query :query (query-test-util/make-query :source-table "checkins")}} {})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform :id transform-id
-                   {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
+       (transforms.write/change-transform! transform-id {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}} {})
        (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform :id transform-id {:name "renamed"})
+       (transforms.write/change-transform! transform-id {:name "renamed"} {})
        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id index-id)))))))
 
 (mt/when-ee-evailable
@@ -164,9 +164,8 @@
   (testing "a new source recomputes the columns, also when it reads another database"
     (mt/with-temp [:model/Database {other-db :id} {}
                    :model/Transform {id :id} {}]
-      (t2/update! :model/Transform :id id
-                  {:source {:type  :query
-                            :query (lib/native-query (lib-be/application-database-metadata-provider other-db) "SELECT 1")}})
+      (transforms.write/change-transform! id {:source {:type  :query
+                                                       :query (lib/native-query (lib-be/application-database-metadata-provider other-db) "SELECT 1")}} {})
       (is (=? {:source_database_id other-db
                :target_db_id       other-db}
               (t2/select-one :model/Transform :id id))))))
@@ -178,7 +177,7 @@
                      {:source_database_id other-db}
                      {:target_db_id other-db}]]
       (testing (str "changing only " (pr-str (keys changes)))
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id changes))))))))
+        (is (= 400 (status-code-of #(transforms.write/change-transform! id changes {}))))))))
 
 (deftest source-database-id-is-callers-when-source-names-none-test
   (mt/when-ee-evailable
@@ -190,15 +189,15 @@
                                                        :source_database_id other-db)]
          (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
          (testing "writing the same value again changes nothing"
-           (t2/update! :model/Transform :id id {:source_database_id other-db})
+           (transforms.write/change-transform! id {:source_database_id other-db} {})
            (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id))))
          (testing "it changes alone"
-           (t2/update! :model/Transform :id id {:source_database_id (mt/id)})
+           (transforms.write/change-transform! id {:source_database_id (mt/id)} {})
            (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id id))))
          (testing "a source that names a database derives it again"
-           (t2/update! :model/Transform :id id {:source {:type :python :source-tables [] :body "print(1)" :source-database other-db}})
+           (transforms.write/change-transform! id {:source {:type :python :source-tables [] :body "print(1)" :source-database other-db}} {})
            (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
-           (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:source_database_id (mt/id)}))))))))))
+           (is (= 400 (status-code-of #(transforms.write/change-transform! id {:source_database_id (mt/id)} {}))))))))))
 
 (deftest target-database-must-accept-transforms-test
   (mt/when-ee-evailable
@@ -216,10 +215,8 @@
        (is (= 400 (status-code-of #(t2/insert! :model/Transform (python-transform-writing-to dest-db))))))
      (testing "retargeting an existing transform onto such a database"
        (mt/with-temp [:model/Transform {id :id} (python-transform-writing-to (mt/id))]
-         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                 {:target {:type "table" :name "retargeted" :database audit-db}}))))
-         (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                 {:target {:type "table" :name "retargeted" :database dest-db}})))))))))
+         (is (= 400 (status-code-of #(transforms.write/change-transform! id {:target {:type "table" :name "retargeted" :database audit-db}} {}))))
+         (is (= 400 (status-code-of #(transforms.write/change-transform! id {:target {:type "table" :name "retargeted" :database dest-db}} {})))))))))
 
 (deftest schema-checks-source-and-target-test
   (testing "target without a name"
@@ -239,16 +236,15 @@
                                               :target {:type "table" :schema schema :name "cycle_table_2"}
                                               :target_table_id table2}]
       (testing "retargeting a transform onto its own source table"
-        (is (= 400 (status-code-of #(t2/update! :model/Transform :id id
-                                                {:target {:type "table" :schema schema :name "cycle_table_1"}})))))
+        (is (= 400 (status-code-of #(transforms.write/change-transform! id {:target {:type "table" :schema schema :name "cycle_table_1"}} {})))))
       (testing "an update that leaves the source and target alone checks no cycle"
-        (is (nil? (status-code-of #(t2/update! :model/Transform :id id {:name "renamed"}))))))))
+        (is (nil? (status-code-of #(transforms.write/change-transform! id {:name "renamed"} {}))))))))
 
 (deftest collection-is-checked-on-update-test
   (mt/with-temp [:model/Collection {transforms-id :id} {:namespace collection/transforms-ns}
                  :model/Collection {regular-id :id} {}
                  :model/Transform {id :id} {:collection_id transforms-id}]
-    (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:collection_id regular-id}))))
+    (is (= 400 (status-code-of #(transforms.write/change-transform! id {:collection_id regular-id} {}))))
     (is (= transforms-id (t2/select-one-fn :collection_id :model/Transform :id id)))))
 
 (deftest model-writes-publish-lifecycle-events-test
@@ -256,8 +252,8 @@
     (with-redefs [events/publish-event! (fn [topic _event]
                                           (swap! events-published conj topic))]
       (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
-        (t2/delete! :model/Transform :id transform-id)))
+        (transforms.write/change-transform! transform-id {:name "Updated Name"} {})
+        (transforms.write/delete-transforms! [transform-id] {})))
     (is (= [:event/transform-create :event/transform-update :event/transform-delete]
            (filterv #{:event/transform-create :event/transform-update :event/transform-delete} @events-published)))))
 
@@ -277,11 +273,10 @@
                     :source {:type  :query
                              :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
       ;; seed a cached value (as the lazy read path would)
-      (t2/update! :model/Transform :id id {:table_dependencies [{:table (mt/id :orders)}]})
+      (transforms.write/change-transform! id {:table_dependencies [{:table (mt/id :orders)}]} {})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
-      (t2/update! :model/Transform :id id
-                  {:source {:type  :query
-                            :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :people)))}})
+      (transforms.write/change-transform! id {:source {:type  :query
+                                                       :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :people)))}} {})
       (is (nil? (stored-deps id))))))
 
 (defn- insert-run! [transform-id status months-ago]
@@ -494,10 +489,10 @@
                                                          (Thread/sleep 1500))
                                                        (apply search-update! instance more))]
             (let [run     (future
-                            (transforms-base.db/update-transform! transform-id {:target_table_id (mt/id :venues)}))
+                            (transforms.write/change-transform! transform-id {:target_table_id (mt/id :venues)} {}))
                   delete  (future
                             (deref run-updated 30000 nil)
-                            (t2/delete! :model/Transform :id transform-id))
+                            (transforms.write/delete-transforms! [transform-id] {}))
                   outcome (fn [fut]
                             (try (deref fut 90000 ::timed-out)
                                  (catch Exception e (ex-message (or (ex-cause e) e)))))]
@@ -508,7 +503,7 @@
                   (is (not (re-find #"(?i)deadlock" (str run-outcome))))))
               (is (not (t2/exists? :model/Transform :id transform-id)))))
           (finally
-            (t2/delete! :model/Transform :id transform-id)))))))
+            (transforms.write/delete-transforms! [transform-id] {})))))))
 
 (defn- cycle-table-query [table-id]
   (let [mp (mt/metadata-provider)]
@@ -545,17 +540,17 @@
     (let [schema "PUBLIC"]
       (testing "an update that leaves the definition alone scans nothing"
         (is (zero? (with-cycle-scan-count
-                     (t2/update! :model/Transform :id reader {:name "renamed" :description "described"})
-                     (t2/update! :model/Transform :id reader {:last_checkpoint_value "5"})))))
+                     (transforms.write/change-transform! reader {:name "renamed" :description "described"} {})
+                     (transforms.write/change-transform! reader {:last_checkpoint_value "5"} {})))))
       (testing "closing a loop from the target side, with the source untouched, is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
-                              (t2/update! :model/Transform :id reader {:target {:schema schema :name "cycle_1" :type "table"}}))))
+                              (transforms.write/change-transform! reader {:target {:schema schema :name "cycle_1" :type "table"}} {}))))
       (testing "closing a loop from the source side is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cyclic transform definitions detected"
-                              (t2/update! :model/Transform :id writer {:source {:type :query :query (cycle-table-query table-2)}}))))
+                              (transforms.write/change-transform! writer {:source {:type :query :query (cycle-table-query table-2)}} {}))))
       (testing "an update of the source scans once"
         (is (= 1 (with-cycle-scan-count
-                   (t2/update! :model/Transform :id reader {:source {:type :query :query (cycle-table-query table-3)}}))))))))
+                   (transforms.write/change-transform! reader {:source {:type :query :query (cycle-table-query table-3)}} {}))))))))
 
 (deftest cycle-check-runs-once-per-update-test
   (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
@@ -573,4 +568,39 @@
             (testing "writing the stored definition again, as a SerDes reimport does, scans nothing"
               (let [stored (t2/select-one :model/Transform :id id)]
                 (is (zero? (with-cycle-scan-count
-                             (t2/update! :model/Transform :id id (select-keys stored [:name :source :target])))))))))))))
+                             (transforms.write/change-transform! id (select-keys stored [:name :source :target]) {}))))))))))))
+
+(deftest change-transform-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::transform-events
+                                     (fn [{:keys [model]}] (when (= :model/Transform model) :transform))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Transform transform {:name "Transform"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (transforms.write/change-transform! (:id transform) {:name "Renamed Transform"} {:revision-message "rename"}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id transform)
+                    :user-id         (mt/user->id :crowberto)
+                    :context         {:revision-message "rename"}
+                    :previous-object {:name "Transform" :updated_at (:updated_at transform)}
+                    :object          {:name "Renamed Transform" :updated_at (:updated_at transform)}}]
+                  @published)))
+        (reset! published [])
+        (transforms.write/change-transform! (:id transform) {:name "Renamed Transform"} {})
+        (testing "a change to the stored value publishes nothing"
+          (is (= [] @published))))
+      (finally
+        (events.tu/unregister! ::transform-events)))))
+
+(deftest change-transform-query-count-test
+  (testing "a warm change-transform! of a name issues 4 queries, as master's t2/update! with the hooks did"
+    (mt/with-temp [:model/Transform {id :id} {:name "Transform"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (transforms.write/change-transform! id {:name "Warm Transform"} {})
+          (t2/with-call-count [call-count]
+            (transforms.write/change-transform! id {:name "Renamed Transform"} {})
+            (is (<= (call-count) 4))))))))

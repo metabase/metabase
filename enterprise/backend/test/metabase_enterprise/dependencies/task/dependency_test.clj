@@ -16,14 +16,18 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.write :as measures.write]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.segments.write :as segments.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2])
   (:import
    (org.quartz JobKey)))
@@ -515,7 +519,7 @@
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
-        (t2/update! :model/NativeQuerySnippet :id inner-id {:content "CHECKINS"})
+        (native-query-snippets.write/update-snippet! inner-id {:content "CHECKINS"} {})
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
@@ -529,7 +533,7 @@
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: window outer}}")}]
         (backfill-all-existing-entities!)
-        (t2/update! :model/NativeQuerySnippet :id outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
+        (native-query-snippets.write/update-snippet! outer-id {:content "SELECT * FROM {{snippet: window inner}}"} {})
         (deps.test/record-analysis-finding-processed! :card card-id)
         (backfill-dependencies-single-trigger!)
         (is (deps.test/analysis-finding-pending? :card card-id))))))
@@ -588,8 +592,8 @@
                     :to_entity_id param-source-card-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-         (t2/delete! :model/DashboardCard :id basic-dashcard-id)
-         (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
+         (dashboards.write/delete-dashcards! [basic-dashcard-id] {})
+         (dashboards.write/update-dashboard-row! dashboard-id {:parameters []} {})
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
                                                           :display :scalar}
@@ -663,7 +667,7 @@
                       :to_entity_id column-click-target-dashboard-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-           (t2/delete! :model/Dashboard :id dashboard-id)
+           (dashboards.write/delete-dashboard-row! dashboard-id {})
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 
@@ -799,7 +803,7 @@
          (assert-pending :snippet snippet-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (not (pending? :snippet snippet-id)))
-         (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "SELECT 2"})
+         (native-query-snippets.write/update-snippet! snippet-id {:content "SELECT 2"} {})
          (assert-pending :snippet snippet-id))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test
@@ -894,7 +898,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (t2/update! :model/Transform :id transform-id {:source (update source :body str "\n")})
+             (transforms.core/change-transform! transform-id {:source (update source :body str "\n")} {})
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -903,7 +907,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform :id transform-id {:target (assoc target :name "test_table2")})
+             (transforms.core/change-transform! transform-id {:target (assoc target :name "test_table2")} {})
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -926,7 +930,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (t2/update! :model/Transform :id transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))})
+             (transforms.core/change-transform! transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))} {})
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -935,7 +939,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (t2/update! :model/Transform :id transform-id {:target (assoc target :name "test_table2")})
+             (transforms.core/change-transform! transform-id {:target (assoc target :name "test_table2")} {})
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -1019,8 +1023,10 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
-             (t2/update! :model/Measure :id measure-id {:definition (-> (lib/query mp orders)
-                                                                        (lib/aggregate (lib/sum subtotal)))})
+             (measures.write/update-measure! measure-id
+                                             {:definition (-> (lib/query mp orders)
+                                                              (lib/aggregate (lib/sum subtotal)))}
+                                             {})
              (assert-pending :measure measure-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
@@ -1030,7 +1036,7 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
-             (t2/delete! :model/Measure :id measure-id)
+             (measures.write/delete-measure! measure-id {})
              (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))
 

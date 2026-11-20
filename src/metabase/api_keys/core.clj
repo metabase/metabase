@@ -2,11 +2,13 @@
   (:require
    [metabase.api-keys.db]
    [metabase.api-keys.models.api-key]
+   [metabase.api-keys.write]
    [potemkin :as p]))
 
 (comment
   metabase.api-keys.models.api-key/keep-me
-  metabase.api-keys.db/keep-me)
+  metabase.api-keys.db/keep-me
+  metabase.api-keys.write/keep-me)
 
 (p/import-vars
  [metabase.api-keys.models.api-key
@@ -19,3 +21,9 @@
 (p/import-vars
  [metabase.api-keys.db
   update-api-keys-last-used-at!])
+
+(p/import-vars
+ [metabase.api-keys.write
+  delete-api-key!
+  delete-api-keys!
+  update-api-key!])

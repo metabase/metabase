@@ -4,6 +4,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.cron :as u.cron]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -148,6 +149,27 @@
    [:invalidated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:next_run_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::cache-config.changes
+  "What an UPDATE of a CacheConfig writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::cache-config.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::cache-config.create
+  "What a new CacheConfig takes: the target it configures caching for and its strategy."
+  [:map {:closed true}
+   [:model                 ::cache-config.model]
+   [:model_id              ::cache-config.model-id]
+   [:strategy              ::cache-config.strategy]
+   [:config                {:optional true} [:maybe ::cache-config.config]]
+   [:refresh_automatically {:optional true} [:maybe :boolean]]])
+
+(mr/def ::write-opts
+  "The context of a write of CacheConfigs: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
 
 (mr/def ::query-cache
   "A QueryCache as selected from the app DB: every column of `:query_cache`."

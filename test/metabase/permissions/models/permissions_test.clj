@@ -205,9 +205,10 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                  :model/Collection       {coll-id :id}  {}]
     (t2/insert! :model/Permissions {:group_id group-id :object (format "/collection/%d/read/" coll-id)})
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update a permissions entry"
-                          (t2/update! :model/Permissions {:group_id group-id :collection_id coll-id}
-                                      {:object (format "/collection/%d/" coll-id)})))))
+    (let [update! (:update! (mi/write-fns :model/Permissions))
+          id      (t2/select-one-pk :model/Permissions :group_id group-id :collection_id coll-id)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot update a permissions entry"
+                            (update! id {:object (format "/collection/%d/" coll-id)} {}))))))
 
 (deftest cannot-grant-read-or-write-permissions-on-analytics-to-tenant-group
   (mt/with-temp [:model/Collection {coll-id :id} {}

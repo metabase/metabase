@@ -7,6 +7,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
    [metabase.lib.core :as lib]
@@ -16,8 +17,7 @@
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.random :as u.random]
-   [toucan2.core :as t2]))
+   [metabase.util.random :as u.random]))
 
 ;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
 
@@ -648,9 +648,9 @@
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                               :embedding_params {"static_category"       "enabled"
-                                                                                  "static_category_label" "enabled"}})
+        (dashboards.write/update-dashboard-row! (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                                      :embedding_params {"static_category"       "enabled"
+                                                                                         "static_category_label" "enabled"}} {})
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"
@@ -676,8 +676,8 @@
   (testing "GET /api/preview_embed/dashboard/:token/params/:param-key/search/:prefix"
     (with-embedding-enabled-and-new-secret-key!
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! :model/Dashboard :id (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
-                                                               :embedding_params {"static_category_label" "enabled"}})
+        (dashboards.write/update-dashboard-row! (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                                      :embedding_params {"static_category_label" "enabled"}} {})
         (let [signed-token (dash-token dashboard)
               search-url   (format "preview_embed/dashboard/%s/params/%s/search/%s" signed-token "_STATIC_CATEGORY_LABEL_" "AF")]
           (testing "Should work if the param we're fetching values for is enabled"

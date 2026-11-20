@@ -10,13 +10,14 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.db :as permissions.db]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.write :as pulse.write]
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -74,9 +75,9 @@
           (mt/with-temp [:model/Pulse     pulse {}
                          :model/Card      card  {:database_id (:id db)}
                          :model/PulseCard pc    {:pulse_id (:id pulse), :card_id (:id card), :include_csv false}]
-            (is (= [] (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))
+            (is (= [] (logged-by #(pulse.write/update-pulse-card! (:id pc) {:include_csv false} {}))))
             (is (= [["pulse_card" (:id pc) "update"]]
-                   (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv true}))))))
+                   (logged-by #(pulse.write/update-pulse-card! (:id pc) {:include_csv true} {}))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [] (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 99}))))
@@ -165,7 +166,7 @@
         (testing "a write rolled back takes its log row with it"
           (is (= [] (logged-by #(try
                                   (t2/with-transaction [_conn]
-                                    (t2/update! :model/PermissionsGroup :id (:id group) {:name "rolled back"})
+                                    (perms/update-group! (:id group) {:name "rolled back"} {})
                                     (throw (ex-info "boom" {})))
                                   (catch Exception _))))))))))
 
@@ -207,7 +208,7 @@
         (testing "every tenant deactivated"
           (mt/with-temp [:model/Tenant tenant {}]
             (t2/with-transaction [_conn nil {:rollback-only true}]
-              (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
+              (is (contains? (set (logged-by #(mt/with-temporary-setting-values [use-tenants false])))
                              ["tenant" (:id tenant) "update"])))))
         (testing "`log-rows!` on a model that is not tracked throws in dev and test"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no `metabase.change-log.core/spec`"
@@ -555,7 +556,7 @@
         (testing "deleting a dashboard card, which is not logged, logs the subscription card deleted with it"
           (is (= [["pulse_card" (:id pc) "delete"]
                   ["pulse" (:id pulse) "update"]]
-                 (logged-by #(t2/delete! :model/DashboardCard :id (:id dc))))
+                 (logged-by #(dashboards.write/delete-dashcards! [(:id dc)] {})))
               "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
@@ -572,10 +573,10 @@
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
           (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(t2/delete! :model/DashboardTab :id (:id tab)))))
+                 (logged-by #(dashboards.write/delete-dashboard-tabs! [(:id tab)] {}))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
-(defn- call-counts
+(defn- call-counts!
   "The app-DB calls of an insert, an update and a delete of a permissions group."
   []
   (let [id (atom nil)]
@@ -583,20 +584,20 @@
                (reset! id (t2/insert-returning-pk! :model/PermissionsGroup {:name (str (random-uuid))}))
                (calls))
      :update (t2/with-call-count [calls]
-               (t2/update! :model/PermissionsGroup :id @id {:name (str (random-uuid))})
+               (perms/update-group! @id {:name (str (random-uuid))} {})
                (calls))
      :delete (t2/with-call-count [calls]
-               (t2/delete! :model/PermissionsGroup :id @id)
+               (perms/delete-group! @id {})
                (calls))}))
 
 (deftest call-count-test
   (mt/with-premium-features #{:change-log}
-    (call-counts))
+    (call-counts!))
   (let [off (mt/with-premium-features #{}
-              (call-counts))]
+              (call-counts!))]
     (when config/ee-available?
       (let [on (mt/with-premium-features #{:change-log}
-                 (call-counts))]
+                 (call-counts!))]
         (testing "while the change log is on, an insert and an update run one more query, and a delete runs more"
           (is (= (inc (:insert off)) (:insert on)))
           (is (= (inc (:update off)) (:update on)))
@@ -606,7 +607,7 @@
   (mt/with-temp [:model/PermissionsGroup group {}]
     (mt/with-premium-features #{}
       (testing "without the `:change-log` feature, nothing is logged"
-        (is (= [] (logged-by #(t2/update! :model/PermissionsGroup :id (:id group) {:name "unlicensed"})))))
+        (is (= [] (logged-by #(perms/update-group! (:id group) {:name "unlicensed"} {})))))
       (testing "while the change log is off, `log-rows!` runs no query"
         (t2/with-call-count [calls]
           (is (nil? (change-log/log-rows! :model/PermissionsGroup :update :id (:id group))))

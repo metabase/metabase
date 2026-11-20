@@ -1,6 +1,7 @@
 (ns metabase.permissions.models.permissions-revision-test
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.application-permissions-revision :as application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.permissions.models.permissions-revision :as permissions-revision]
@@ -11,7 +12,7 @@
   "The ex-data of the error updating the `model` row with `id` by `changes`, or nil when the update succeeds."
   [model id changes]
   (try
-    (t2/update! model :toucan/pk id changes)
+    ((:update! (mi/write-fns model)) id changes {})
     nil
     (catch clojure.lang.ExceptionInfo e
       (ex-data e))))

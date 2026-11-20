@@ -152,13 +152,13 @@
     (testing "making a tenant user's membership a group manager is refused"
       (t2/insert! :model/PermissionsGroupMembership {:user_id tenant-user-id :group_id tenant-group-id})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
-                            (t2/update! :model/PermissionsGroupMembership
-                                        {:user_id tenant-user-id :group_id tenant-group-id}
-                                        {:is_group_manager true}))))
+                            (perms/update-membership! (t2/select-one :model/PermissionsGroupMembership
+                                                                     :user_id tenant-user-id :group_id tenant-group-id)
+                                                      {:is_group_manager true}
+                                                      {}))))
     (testing "removing a tenant user from All tenant users is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All tenant users' group"
-                            (t2/delete! :model/PermissionsGroupMembership
-                                        :user_id tenant-user-id :group_id (u/the-id (perms/all-external-users-group))))))
+                            (perms/remove-user-from-group! tenant-user-id (perms/all-external-users-group)))))
     (is (= #{tenant-group-id (u/the-id (perms/all-external-users-group))}
            (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id tenant-user-id)))
     (is (= #{(u/the-id (perms/all-users-group))}

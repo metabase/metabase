@@ -1,9 +1,7 @@
 (ns metabase.transforms.models.transform-job
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -11,11 +9,10 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-tag :as transform-tag]
-   [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -27,148 +24,23 @@
 
 (doto :model/TransformJob
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 (t2/deftransforms :model/TransformJob
   {:ui_display_type mi/transform-keyword})
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(mu/defn- translated-name-and-description :- [:map {:closed true}
-                                              [:name        [:maybe mu/localized-string-schema]]
-                                              [:description [:maybe mu/localized-string-schema]]]
-  [job :- [:or ::transforms.schema/transform-job ::transforms.schema/transform-job.update]]
-  (let [values {"hourly"
-                [(i18n/deferred-trs "Hourly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
-
-                "daily"
-                [(i18n/deferred-trs "Daily job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
-
-                "weekly"
-                [(i18n/deferred-trs "Weekly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
-
-                "monthly"
-                [(i18n/deferred-trs "Monthly job")
-                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
-        [name description] (get values (:built_in_type job))]
-    {:name name :description description}))
-
-(mu/defn- sync-trigger! :- :nil
-  "Make the Quartz trigger of the job with `job-id` match its row: scheduled while the job is active, removed otherwise."
-  [job-id :- ms/PositiveInt]
-  (let [{:keys [active schedule] :as job} (transforms.db/job job-id)]
-    (if active
-      (when-not (= schedule (:schedule (transforms.schedule/existing-trigger job-id)))
-        (transforms.schedule/initialize-job! job))
-      (transforms.schedule/delete-trigger! job-id))
-    nil))
-
 (t2/define-after-insert :model/TransformJob [job]
-  (sync-trigger! (:id job))
+  (events/created! :model/TransformJob job)
+  (transforms.write/sync-job-trigger! (:id job))
   job)
 
 (t2/define-after-select :model/TransformJob [job]
   (if (nil? (:built_in_type job))
     job
-    (merge job (translated-name-and-description job))))
-
-(t2/define-before-update :model/TransformJob [job]
-  (if (nil? (:built_in_type job))
-    job
-    (-> (merge job
-               (translated-name-and-description job)
-               {:built_in_type nil}
-               (t2/changes job))
-        (update :name        str)
-        (update :description str))))
-
-(t2/define-after-update :model/TransformJob [job]
-  (sync-trigger! (:id job))
-  job)
-
-(t2/define-before-delete :model/TransformJob [job]
-  (transforms.schedule/delete-job! (:id job))
-  job)
-
-;;; -------------------------------------------------- Operations --------------------------------------------------
-
-(mu/defn- active-flip-lock-name :- :keyword
-  "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
-  cluster. Concurrent flips of *different* jobs run in parallel."
-  [job-id :- ms/PositiveInt]
-  (keyword "metabase.transforms.transform-job-active" (str job-id)))
-
-(mu/defn activate-job! :- :nil
-  "Activate a transform job: set `:active` to true, which creates its Quartz trigger from the
-  job's stored schedule so cron firings begin again. Idempotent — calling on an already-active
-  job is a no-op.
-
-  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock so
-  the app-DB row and the Quartz trigger cannot diverge. The lock is held across the trigger
-  write."
-  [job-id :- ms/PositiveInt]
-  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (transforms.db/activate-job! job-id)
-    nil))
-
-(mu/defn deactivate-job! :- :nil
-  "Deactivate a transform job: set `:active` to false, which removes its Quartz trigger so cron
-  firings stop. Manual runs via the API still work. Idempotent — calling on an already-inactive
-  job is a no-op.
-
-  Concurrent activate/deactivate of the same job is serialized by a per-job cluster lock — see
-  [[activate-job!]]."
-  [job-id :- ms/PositiveInt]
-  (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (transforms.db/deactivate-job! job-id)
-    nil))
-
-(mu/defn update-job-tags! :- :nil
-  "Update the tags associated with a job using smart diff logic.
-   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
-  [job-id  :- [:maybe ms/PositiveInt]
-   tag-ids :- [:sequential ms/PositiveInt]]
-  (when job-id
-    (t2/with-transaction [_conn]
-      (let [;; Deduplicate, just in case
-            deduped-tag-ids      (vec (distinct tag-ids))
-            ;; Get current associations
-            current-associations (transforms.db/job-tag-links [job-id])
-            current-tag-ids      (mapv :tag_id current-associations)
-            ;; Validate that new tag IDs exist
-            valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
-            ;; Filter to only valid tags, preserving order
-            new-tag-ids          (if valid-tag-ids
-                                   (filterv valid-tag-ids deduped-tag-ids)
-                                   [])
-            ;; Calculate what needs to change
-            current-set          (set current-tag-ids)
-            new-set              (set new-tag-ids)
-            to-delete            (set/difference current-set new-set)
-            to-insert            (set/difference new-set current-set)
-            ;; Build position map for new ordering
-            new-positions        (zipmap new-tag-ids (range))]
-        ;; Delete removed associations
-        (when (seq to-delete)
-          (transforms.db/delete-job-tag-links! job-id to-delete))
-        ;; Update positions for existing tags that moved
-        (doseq [tag-id (filter current-set new-tag-ids)]
-          (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-job-tag-position! job-id tag-id new-pos)))
-        ;; Insert new associations with correct positions
-        (when (seq to-insert)
-          (transforms.db/insert-job-tag-links! (for [tag-id to-insert]
-                                                 {:job_id   job-id
-                                                  :tag_id   tag-id
-                                                  :position (get new-positions tag-id)})))))
-    nil))
+    (merge job (transforms.write/translated-job-name-and-description job))))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

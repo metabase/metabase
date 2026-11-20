@@ -302,12 +302,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
 
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
-
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -318,25 +312,17 @@
   [dashcard :- ::dashboards.schema/dashboard-card.update]
   (t2/insert! :model/DashboardCard dashcard))
 
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
-
-(mu/defn delete-dashcards-for-card-on-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`, returning the
-  number deleted."
+(mu/defn dashcard-ids-for-card-on-dashboard :- [:maybe [:sequential ::lib.schema.id/dashcard]]
+  "The ids of the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
 
-(mu/defn delete-dashcards-for-card-off-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`, returning
-  the number deleted."
+(mu/defn dashcard-ids-for-card-off-dashboard :- [:maybe [:sequential ::lib.schema.id/dashcard]]
+  "The ids of the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
 
 (mu/defn dashcard-series-for-card-on-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
@@ -359,11 +345,6 @@
              :where  [:and
                       [:= :dcs.card_id card-id]
                       [:not= :dc.dashboard_id dashboard-id]]}))
-
-(mu/defn delete-dashcard-series!
-  "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
-  [series-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
 
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."
@@ -417,11 +398,6 @@
                      :payload_id [:in ^:allow-subquery {:select [:id]
                                                         :from   [:notification_card]
                                                         :where  [:= :card_id card-id]}]))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
 
 ;;; --------------------------------------------- ParameterCard ---------------------------------------------
 

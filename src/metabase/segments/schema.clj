@@ -63,10 +63,18 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::segment.input
+  "What a write function accepts for a Segment: the columns of an update, its `:definition` any map, a query of any MBQL
+  version or a fragment, which the write function checks with a 400 and the transform of the column normalizes."
+  [:merge
+   ::segment.update
+   [:map {:closed true}
+    [:definition {:optional true} [:maybe :map]]]])
+
 (mr/def ::segment.changes
   "What an UPDATE of a Segment writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
   [:merge
-   ::segment.update
+   ::segment.input
    [:map {:closed true}
     [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 

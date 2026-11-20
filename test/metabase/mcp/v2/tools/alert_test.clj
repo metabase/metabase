@@ -16,6 +16,7 @@
    [metabase.mcp.v2.tools.alert :as tools.alert]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.notification.write :as notification.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
@@ -538,7 +539,7 @@
                        :notification      {:creator_id (mt/user->id :crowberto)}
                        :notification-card {:send_condition :goal_above}
                        :handlers          []}]
-        (t2/update! :model/NotificationCard :id (:payload_id notification) {:card_id card-id})
+        (notification.write/update-notification-card! (:payload_id notification) {:card_id card-id} {})
         (testing "the fixture really stored a goal condition — with anything else stored, the
                   assertions below pass even against code that re-checks the goal on every update,
                   and this test guards nothing"

@@ -8,6 +8,7 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.cron :as u.cron]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -194,6 +195,24 @@
    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]
    [:table_dependencies    {:optional true} [:maybe [:sequential ::transform.table-dependency]]]
    [:run_trigger           {:optional true} [:maybe ::run-trigger]]])
+
+(mr/def ::sql-instant
+  "A moment, or an SQL expression the app DB evaluates to one."
+  [:or ms/TemporalInstant ::h2x/honeysql-expr])
+
+(mr/def ::transform.changes
+  "What an UPDATE of a Transform writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::transform.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::write-opts
+  "The context of a write of Transforms, jobs, tags and runs: `:revision-message`, the message of the revisions, and
+  `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:import?          {:optional true} :boolean]])
 
 (mr/def ::transform.definition
   "What a Transform computes and where it writes, as a client writes it."
@@ -459,3 +478,40 @@
     [:select-keys ::transform-tag [:entity_id :built_in_type :name]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::transform-job.changes
+  "What an UPDATE of a TransformJob writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::transform-job.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::transform-tag.changes
+  "What an UPDATE of a TransformTag writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::transform-tag.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::transform-run.changes
+  "What an UPDATE of a TransformRun writes: the columns of an update, its `:end_time` also an SQL expression."
+  [:merge
+   ::transform-run.update
+   [:map {:closed true}
+    [:end_time {:optional true} [:maybe ::sql-instant]]]])
+
+(mr/def ::transform-job-run.changes
+  "What an UPDATE of a TransformJobRun writes: the columns of an update, its times also SQL expressions."
+  [:merge
+   ::transform-job-run.update
+   [:map {:closed true}
+    [:end_time   {:optional true} [:maybe ::sql-instant]]
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::transform-dag-run.changes
+  "What an UPDATE of a TransformDagRun writes: the columns of an update, its times also SQL expressions."
+  [:merge
+   ::transform-dag-run.update
+   [:map {:closed true}
+    [:end_time   {:optional true} [:maybe ::sql-instant]]
+    [:updated_at {:optional true} ::sql-instant]]])

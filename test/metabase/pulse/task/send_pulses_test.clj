@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.channel.core :as channel]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
@@ -148,12 +149,12 @@
           ;; the Notification send paths
           (let [task-runs #(t2/select-pks-set :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
             (try
-              (t2/update! :model/Dashboard :id dash-id {:archived true})
+              (dashboards.write/update-dashboard-row! dash-id {:archived true} {})
               (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
               (is (= #{} @sent-channel-ids))
               (is (empty? (task-runs)))
               (testing "once the Dashboard is restored, the same fire sends and records a task run"
-                (t2/update! :model/Dashboard :id dash-id {:archived false})
+                (dashboards.write/update-dashboard-row! dash-id {:archived false} {})
                 (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
                 (is (= #{pc-id} @sent-channel-ids))
                 (is (= 1 (count (task-runs)))))

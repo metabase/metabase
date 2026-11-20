@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
@@ -85,20 +86,20 @@
         (records! "adding a tab"
                   #(reset! tab-id (t2/insert-returning-pk! :model/DashboardTab {:dashboard_id dashboard-id :name "First" :position 0})))
         (is (=? {:tabs [{:id @tab-id :name "First"}]} (last-object "Dashboard" dashboard-id)))
-        (records! "renaming a tab" #(t2/update! :model/DashboardTab :id @tab-id {:name "Renamed"}))
+        (records! "renaming a tab" #(dashboards.write/update-dashboard-tab! @tab-id {:name "Renamed"} {}))
         (is (=? {:tabs [{:name "Renamed"}]} (last-object "Dashboard" dashboard-id)))
         (records! "adding a dashcard"
                   #(reset! dashcard (t2/insert-returning-pk! :model/DashboardCard {:dashboard_id dashboard-id :card_id card-id
                                                                                    :row 0 :col 0 :size_x 4 :size_y 4})))
-        (records! "repositioning a dashcard" #(t2/update! :model/DashboardCard :id @dashcard {:size_x 3}))
+        (records! "repositioning a dashcard" #(dashboards.write/update-dashcard! @dashcard {:size_x 3} {}))
         (is (=? {:cards [{:size_x 3}]} (last-object "Dashboard" dashboard-id)))
         (records! "adding a series to a dashcard"
                   #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard :card_id series-id :position 0}))
         (is (=? {:cards [{:series [series-id]}]} (last-object "Dashboard" dashboard-id)))
         (records! "removing the series"
-                  #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard))
+                  #(dashboards.write/delete-dashcard-series! (t2/select-pks-vec :model/DashboardCardSeries :dashboardcard_id @dashcard) {}))
         (is (=? {:cards [{:series []}]} (last-object "Dashboard" dashboard-id)))
-        (records! "removing a dashcard" #(t2/delete! :model/DashboardCard :id @dashcard))
+        (records! "removing a dashcard" #(dashboards.write/delete-dashcards! [@dashcard] {}))
         (is (=? {:cards []} (last-object "Dashboard" dashboard-id)))
-        (records! "removing a tab" #(t2/delete! :model/DashboardTab :id @tab-id))
+        (records! "removing a tab" #(dashboards.write/delete-dashboard-tabs! [@tab-id] {}))
         (is (=? {:tabs []} (last-object "Dashboard" dashboard-id)))))))

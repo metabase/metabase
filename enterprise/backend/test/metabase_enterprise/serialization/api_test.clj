@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
    [metabase.serialization.entity :as serialization.entity]
@@ -330,7 +331,7 @@
         ;; Pop the export snowplow event
         (snowplow-test/pop-event-data-and-user-id!)
         ;; Modify entities in the database
-        (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
+        (dashboards.write/update-dashboard-row! (:id dash) {:name "urquan"} {})
         (t2/delete! :model/Card :id (:id card))
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]

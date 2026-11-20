@@ -8,6 +8,7 @@
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
+   [metabase.notification.write :as notification.write]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
@@ -74,7 +75,7 @@
   (when (and (-> notification-info :payload :send_once)
              (not skipped?))
     (log/info "Archiving due to send_once")
-    (notification.db/deactivate-notification! (:id notification-info)))
+    (notification.write/update-notification! (:id notification-info) {:active false} {}))
   (try
     (when-let [rows (-> notification-payload :payload :card_part :result :data :rows)]
       (notification.payload/cleanup! rows))

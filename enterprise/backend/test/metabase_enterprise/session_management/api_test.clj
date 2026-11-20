@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.tenants.write :as tenants.write]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.app-db.core :as mdb]
@@ -159,7 +160,7 @@
           (testing "the default population includes internal and external sessions"
             (is (= {:active (+ live-before 2), :ended ended-before}
                    (mt/user-http-request :crowberto :get 200 "ee/session-management/counts"))))
-          (t2/update! :model/Tenant :id tenant-id {:is_active false})
+          (tenants.write/update-tenant! tenant-id {:is_active false} {})
           (testing "an inactive tenant's sessions move to ended"
             (is (= {:active (inc live-before), :ended (inc ended-before)}
                    (mt/user-http-request :crowberto :get 200 "ee/session-management/counts")))))))))
@@ -519,7 +520,7 @@
            (testing "tenancy=external shows only them"
              (is (= #{ext-session} (listed :tenancy "external"))))
            (testing "a session belonging to a deactivated tenant is not live at all"
-             (t2/update! :model/Tenant :id tenant-id {:is_active false})
+             (tenants.write/update-tenant! tenant-id {:is_active false} {})
              (is (= #{int-session} (listed))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

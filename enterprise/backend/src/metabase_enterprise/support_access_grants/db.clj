@@ -100,12 +100,6 @@
   [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
   (t2/insert-returning-instance! :model/User user))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User :id user-id changes))
-
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."
   [user-id :- ::lib.schema.id/user]

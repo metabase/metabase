@@ -15,8 +15,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api :as api.dashboard]
+   [metabase.dashboards.dashcards :as dashcards]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
@@ -133,7 +135,7 @@
     (mt/with-temp [:model/Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
-        (t2/update! :model/Dashboard :id (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
+        (dashboards.write/update-dashboard-row! (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)} {}))
       (f))))
 
 (defmacro ^:private with-dashboards-in-readable-collection! [dashboards-or-ids & body]
@@ -1854,7 +1856,7 @@
                                 dashboard-or-id
                                 (t2/select-one :model/Dashboard :id dashboard-or-id))
                               :dashcards)]
-    (sort dashboard-card/dashcard-comparator (:dashcards dashboard))))
+    (sort dashcards/dashcard-comparator (:dashcards dashboard))))
 
 (deftest copy-dashboard-with-tab-test
   (testing "POST /api/dashboard/:id/copy"
@@ -2071,7 +2073,7 @@
                       :target       [:dimension [:field (mt/id :orders :created_at) {:temporal-unit :month}]]}]
                     (t2/select-one-fn :parameter_mappings :model/DashboardCard :id dashcard-id)))
             (finally
-              (t2/delete! :model/Dashboard :id copy-id))))))))
+              (dashboards.write/delete-dashboard-row! copy-id {}))))))))
 
 (deftest copy-dashboard-into-correct-collection-test
   (testing "POST /api/dashboard/:id/copy"
@@ -2088,7 +2090,7 @@
                                        (u/the-id response))
                      (u/the-id new-collection)))
               (finally
-                (t2/delete! :model/Dashboard :id (u/the-id response))))))))))
+                (dashboards.write/delete-dashboard-row! (u/the-id response) {})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PUT /api/dashboard/:id/cards                                          |
@@ -2417,7 +2419,7 @@
                               :dashboard_id dashboard-id
                               :name         "New Tab 2"
                               :position     1}]}
-                (update resp :dashcards #(sort dashboard-card/dashcard-comparator %))))))))
+                (update resp :dashcards #(sort dashcards/dashcard-comparator %))))))))
 
 (deftest update-cards-error-handling-test
   (testing "PUT /api/dashboard/:id"
@@ -3657,13 +3659,12 @@
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"
       (with-chain-filter-fixtures [{:keys [dashcard card dashboard]}]
-        (t2/update! :model/DashboardCard :id (:id dashcard)
-                    {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                           :card_id      (:id card)
-                                           :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                                          {:parameter_id "_PRICE_"
-                                           :card_id      (:id card)
-                                           :target       [:dimension [:template-tag "WOW"]]}]})
+        (dashboards.write/update-dashcard! (:id dashcard) {:parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                                                 :card_id      (:id card)
+                                                                                 :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                                                                {:parameter_id "_PRICE_"
+                                                                                 :card_id      (:id card)
+                                                                                 :target       [:dimension [:template-tag "WOW"]]}]} {})
         (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
           (mt/let-url [url (chain-filter-values-url dashboard "_CATEGORY_NAME_" "_PRICE_" 4)]
             (is (= {:values          [["African"] ["American"] ["Artisan"]]
@@ -5434,15 +5435,15 @@
                  :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                          :dashboard_id dashboard-id
                                                          :parameter_mappings []}]
-    (t2/update! :model/Dashboard :id dashboard-id {:parameters [{:name "TIME Gr"
-                                                                 :slug "tgr"
-                                                                 :id "30d7efb0"
-                                                                 :type :temporal-unit
-                                                                 :sectionId "temporal-unit"}]})
-    (t2/update! :model/DashboardCard :id dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
-                                                                            :card_id card-id
-                                                                            :target [:dimension
-                                                                                     (mt/$ids orders !day.$created_at)]}]})
+    (dashboards.write/update-dashboard-row! dashboard-id {:parameters [{:name "TIME Gr"
+                                                                        :slug "tgr"
+                                                                        :id "30d7efb0"
+                                                                        :type :temporal-unit
+                                                                        :sectionId "temporal-unit"}]} {})
+    (dashboards.write/update-dashcard! dashcard-id {:parameter_mappings [{:parameter_id "30d7efb0"
+                                                                          :card_id card-id
+                                                                          :target [:dimension
+                                                                                   (mt/$ids orders !day.$created_at)]}]} {})
     (testing "Baseline"
       (is (=? [["2016-04-01T00:00:00Z" 1]
                ["2016-05-01T00:00:00Z" 19]]
@@ -5520,7 +5521,7 @@
                                 {:collection_id nil}))
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id card-id))))
     (testing "If the dashboard is deleted, its dashboard internal cards are too"
-      (t2/delete! :model/Dashboard :id dash-id)
+      (dashboards.write/delete-dashboard-row! dash-id {})
       (is (not (t2/exists? :model/Card :dashboard_id dash-id))))))
 
 (deftest ^:parallel dashboard-internal-card-cannot-be-replaced-onto-another-dashboard-test

@@ -16,10 +16,11 @@
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.native-query-snippets.schema :as native-query-snippets.schema]
    [metabase.native-query-snippets.serialization :as native-query-snippets.serialization]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -32,9 +33,8 @@
 
 (doto :model/NativeQuerySnippet
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/timestamped-on-insert?)
+  (derive :hook/entity-id))
 
 ;; TODO (Cam 2026-07-08) Change Native Query Snippets to store template tags as a list like we do in MBQL as of 63.
 (t2/deftransforms :model/NativeQuerySnippet
@@ -70,60 +70,15 @@
    [:fn {:json-schema {:type "string"}} valid-name?]
    name-error))
 
-(defn- snippet-tag?
-  "Whether `tag` is a reference to a snippet."
-  [tag]
-  (= (:type tag) :snippet))
-
-(defn- referenced-snippet-ids
-  "The ids of the snippets the content of `snippet` refers to as `{{snippet: <name>}}`, by name."
-  [snippet]
-  (let [names (into #{}
-                    (comp (filter snippet-tag?)
-                          (map :snippet-name))
-                    (lib/recognize-template-tags (:content snippet)))]
-    (if (seq names)
-      (native-query-snippets.db/snippet-ids-by-names (vec names))
-      {})))
-
-(defn- snippet-template-tags
-  "The template tags of `snippet` for its content, with a reference to a snippet named in `name->id` given that
-  snippet's id, and otherwise the id of the same reference in the old tags, so that references survive the rename of
-  their target, or none when there was none."
-  [{old-tags :template_tags :as snippet} name->id]
-  (let [name->old-tag (into {} (comp (map val)
-                                     (filter snippet-tag?)
-                                     (map (juxt :snippet-name identity)))
-                            old-tags)
-        new-tags      (into {}
-                            (map (juxt :name identity))
-                            (lib/recognize-template-tags (:content snippet)))
-        set-snippet-id (fn [{:keys [snippet-name] :as tag}]
-                         (if-let [snippet-id (get name->id snippet-name)]
-                           (assoc tag :snippet-id snippet-id)
-                           (or (name->old-tag snippet-name) tag)))]
-    (update-vals new-tags (fn [tag]
-                            (cond-> tag
-                              (get-in old-tags [(:name tag) :id])
-                              (assoc :id (get-in old-tags [(:name tag) :id]))
-                              (snippet-tag? tag)
-                              (set-snippet-id))))))
-
 (t2/define-before-insert :model/NativeQuerySnippet
   [snippet]
   (collection/check-collection-for :model/NativeQuerySnippet snippet)
-  (assoc snippet :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))
+  (assoc snippet :template_tags (native-query-snippets.write/derived-template-tags snippet)))
 
-(t2/define-before-update :model/NativeQuerySnippet
+(t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
-  (let [changes (t2/changes snippet)]
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/NativeQuerySnippet snippet))
-    (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot change the creator of a snippet.") {:status-code 400})))
-    (cond-> snippet
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet))))
-      (:content snippet)            (assoc :template_tags (snippet-template-tags snippet (referenced-snippet-ids snippet))))))
+  (events/created! :model/NativeQuerySnippet snippet)
+  snippet)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

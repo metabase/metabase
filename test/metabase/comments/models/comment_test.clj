@@ -5,9 +5,13 @@
    [metabase.comments.api-test :as at]
    [metabase.comments.models.comment :as comment]
    [metabase.comments.schema :as comments.schema]
+   [metabase.comments.write :as comments.write]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -102,3 +106,41 @@
         (mt/with-test-user :lucky
           (is (false? (mi/can-read? (t2/hydrate comment :can_read))))
           (is (false? (mi/can-write? (t2/hydrate comment :can_write)))))))))
+
+(deftest update-comment-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::comment-events
+                                     (fn [{:keys [model]}] (when (= :model/Comment model) :comment))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Document {doc-id :id} {}
+                     :model/Comment  comment      {:target_id doc-id :creator_id (mt/user->id :lucky)}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (comments.write/update-comment! (:id comment) {:is_resolved true} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id comment)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:is_resolved false :updated_at (:updated_at comment)}
+                    :object          {:is_resolved true :updated_at (:updated_at comment)}}]
+                  @published)))
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (comments.write/soft-delete-comment! (:id comment) {}))
+        (testing "a soft delete is an update that sets the deletion time"
+          (is (=? [{:operation :update :id (:id comment) :object {:deleted_at some?}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::comment-events)))))
+
+(deftest update-comment-query-count-test
+  (testing "a warm update-comment! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/Document {doc-id :id} {}
+                   :model/Comment  {id :id}     {:target_id doc-id :creator_id (mt/user->id :lucky)}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (comments.write/update-comment! id {:is_resolved true} {})
+          (t2/with-call-count [call-count]
+            (comments.write/update-comment! id {:is_resolved false} {})
+            (is (<= (call-count) 2))))))))

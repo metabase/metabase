@@ -16,6 +16,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.write :as users.write]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2]))
 
@@ -157,7 +158,7 @@
         (testing "an existing user gets a token with provisioning off"
           (mt/with-temporary-setting-values [jwt-user-provisioning-enabled? false]
             (is (=? {:access_token string?} (token! email)))))
-        (t2/update! :model/User :id user-id {:is_active false})
+        (users.write/update-user! user-id {:is_active false})
         (testing "a deactivated user is refused with provisioning off, and reactivated with it on"
           (is (=? {:error "invalid_grant"} (refused)))
           (is (=? {:access_token string?} (token! email)))
@@ -377,6 +378,6 @@
                                                                                       (str "Bearer " access-token)}}})))))
       (testing "deactivating the user revokes the token"
         (is (some? (mcp-session access-token)))
-        (t2/update! :model/User :id (t2/select-one-pk :model/User :email email) {:is_active false})
+        (users.write/update-user! (t2/select-one-pk :model/User :email email) {:is_active false})
         (is (=? {:error {:message "Invalid bearer token"}}
                 (:body (mcp-request 401 access-token nil "initialize" {:capabilities {}}))))))))

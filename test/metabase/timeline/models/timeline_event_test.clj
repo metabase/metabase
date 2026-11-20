@@ -3,10 +3,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.timeline.write :as timeline.write]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -77,11 +81,11 @@
     (testing "a timezone the request check would refuse is stored, as an import of an old event carries it"
       (mt/with-temp [:model/TimelineEvent {odd-id :id} (event-row timeline-id {:timezone "Nowhere/Land"})]
         (is (= "Nowhere/Land" (t2/select-one-fn :timezone :model/TimelineEvent :id odd-id)))
-        (t2/update! :model/TimelineEvent :id event-id {:timezone "Nowhere/Land"})
+        (timeline.write/update-timeline-event! event-id {:timezone "Nowhere/Land"} {})
         (is (= "Nowhere/Land" (t2/select-one-fn :timezone :model/TimelineEvent :id event-id)))))
     (testing "the creator cannot change"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the creator of a Timeline event"
-                            (t2/update! :model/TimelineEvent :id event-id {:creator_id (mt/user->id :crowberto)}))))))
+                            (timeline.write/update-timeline-event! event-id {:creator_id (mt/user->id :crowberto)} {}))))))
 
 (deftest update-check-test
   (mt/with-temp [:model/Collection    {from-id :id}     {}
@@ -108,3 +112,35 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
                               (api/create-check :model/TimelineEvent {:timeline_id to-tl})))
         (is (some? (api/create-check :model/TimelineEvent {:timeline_id from-tl})))))))
+
+(deftest update-timeline-event-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::timeline-event-events
+                                     (fn [{:keys [model]}] (when (= :model/TimelineEvent model) :timeline-event))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Timeline      {timeline-id :id} {}
+                     :model/TimelineEvent event             {:timeline_id timeline-id :name "Event"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (timeline.write/update-timeline-event! (:id event) {:name "Renamed Event"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id event)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Event" :updated_at (:updated_at event)}
+                    :object          {:name "Renamed Event" :updated_at (:updated_at event)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::timeline-event-events)))))
+
+(deftest update-timeline-event-query-count-test
+  (testing "a warm update-timeline-event! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/Timeline      {timeline-id :id} {}
+                   :model/TimelineEvent {id :id}          {:timeline_id timeline-id :name "Event"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (timeline.write/update-timeline-event! id {:name "Warm Event"} {})
+          (t2/with-call-count [call-count]
+            (timeline.write/update-timeline-event! id {:name "Renamed Event"} {})
+            (is (<= (call-count) 2))))))))

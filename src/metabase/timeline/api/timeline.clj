@@ -10,6 +10,7 @@
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.timeline.write :as timeline.write]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -44,7 +45,7 @@
   (api/create-check :model/Timeline {:collection_id collection-id})
   (let [tl (cond-> (assoc body :creator_id api/*current-user-id*)
              (nil? (:icon body)) (dissoc :icon))]
-    (u/prog1 (timeline.db/insert-timeline! tl))))
+    (u/prog1 (timeline.write/create-timeline! tl))))
 
 (mu/defn list-timelines :- [:sequential (ms/InstanceOf :model/Timeline)]
   "List timelines visible to the current user with no hydration."
@@ -115,7 +116,7 @@
                                      :present #{:description :icon :collection_id :default :archived}
                                      :non-nil #{:name})]
     (api/update-check existing changes)
-    (timeline.db/update-timeline! id changes)
+    (timeline.write/update-timeline! existing changes {})
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
@@ -123,7 +124,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Timeline id)
-  (timeline.db/delete-timeline! id)
+  (timeline.write/delete-timeline! id {})
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

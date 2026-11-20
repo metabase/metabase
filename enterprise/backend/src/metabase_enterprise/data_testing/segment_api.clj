@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -70,7 +71,7 @@
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
   (api/create-check :model/SegmentTest body)
   (validate-test! segment_id inputs expectations)
-  (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.write/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
   "Update a segment test."
@@ -84,7 +85,7 @@
       (let [{:keys [segment_id inputs expectations]} (merge segment-test body)]
         (validate-test! segment_id inputs expectations)))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-test! id body)))
+      (data-testing.write/update-segment-test! segment-test body {})))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -92,7 +93,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/SegmentTest id)
-  (data-testing.models.segment-test/delete-segment-test! id)
+  (data-testing.write/delete-segment-test! id {})
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

@@ -489,13 +489,12 @@
 
 (defn- reset-magic-group-membership!
   [user-id tenant-id]
-  (perms/allow-changing-all-users-group-members
-    (perms/allow-changing-all-external-users-group-members
-     (perms/remove-user-from-all-groups! user-id)
-     (when tenant-id
-       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
-     (when (nil? tenant-id)
-       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+  (let [opts {:allow-all-users-group? true :allow-all-external-users-group? true}]
+    (perms/remove-user-from-all-groups! user-id opts)
+    (when tenant-id
+      (perms/add-user-to-group! user-id (perms/all-external-users-group) false opts))
+    (when (nil? tenant-id)
+      (perms/add-user-to-group! user-id (perms/all-users-group) false opts))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -545,7 +544,7 @@
                     "email" (tru "Email address already associated to another user.")))
       (t2/with-transaction [_conn]
         (when (seq changes)
-          (users-rest.db/update-user! id changes)
+          (users/update-user! id changes {})
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -566,15 +565,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (users-rest.db/update-user! (u/the-id existing-user)
-                              {:is_active     true
-                               :is_superuser  false
-                               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
-                               ;; (see metabase#3323)
-                               :sso_source   (case (:sso_source existing-user)
-                                               :google (when (sso/google-auth-enabled) :google)
-                                               :ldap   (when (sso/ldap-enabled) :ldap)
-                                               (:sso_source existing-user))})
+  (users/update-user! (u/the-id existing-user)
+                      {:is_active    true
+                       :is_superuser false
+                       ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                       ;; (see metabase#3323)
+                       :sso_source   (case (:sso_source existing-user)
+                                       :google (when (sso/google-auth-enabled) :google)
+                                       :ldap   (when (sso/ldap-enabled) :ldap)
+                                       (:sso_source existing-user))}
+                      {})
   ;; now return the existing user whether they were originally active or not
   (users/fetch-user :id (u/the-id existing-user)))
 
@@ -685,7 +685,7 @@
   ;; don't technically need to because the internal user is already 'deleted' (deactivated), but keeps the warnings consistent
   (check-not-internal-user id)
   (api/check-404 (users-rest.db/user-exists? id))
-  (users-rest.db/update-personal-user! id {:is_active false})
+  (some-> (users-rest.db/personal-user id) (users/update-user! {:is_active false} {}))
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -707,5 +707,5 @@
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/update-check (api/check-404 (users/fetch-user :id id)) {k false})
     (check-not-internal-user id)
-    (api/check-500 (pos? (users-rest.db/update-personal-user! id {k false}))))
+    (api/check-500 (some-> (users-rest.db/personal-user id) (users/update-user! {k false} {}) pos?)))
   {:success true})

@@ -20,6 +20,7 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
@@ -248,10 +249,10 @@
                (t/minus (t/local-date) (t/months 7)))]
     (case model
       "card"      (testing-api.db/set-card-last-used-at! id date)
-      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
+      "dashboard" ((:update! (mi/write-fns :model/Dashboard)) id {:last_viewed_at date} {})
       "document"  (testing-api.db/set-document-last-viewed-at! id date)
       "transform" (do
-                    (testing-api.db/set-transform-created-at! id date)
+                    ((:update! (mi/write-fns :model/Transform)) id {:created_at date} {})
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
                     (testing-api.db/set-transform-run-times! id date))
@@ -467,9 +468,9 @@
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
      (when tenant-id
-       (testing-api.db/set-user-tenant! user-id tenant-id))
+       ((:update! (mi/write-fns :model/User)) user-id {:tenant_id tenant-id} {}))
      (when second-tenant-id
-       (testing-api.db/set-user-tenant! second-user-id second-tenant-id))
+       ((:update! (mi/write-fns :model/User)) second-user-id {:tenant_id second-tenant-id} {}))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id

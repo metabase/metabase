@@ -14,6 +14,7 @@
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
+   [metabase.pulse.write :as pulse.write]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
@@ -66,7 +67,7 @@
                                              (nil? (:channel_id channel)))]
                                 (:id channel)))]
       (log/infof "Deleting %d PulseChannels with id: %s due to having no recipients" (count ids-to-delete) (str/join ", " ids-to-delete))
-      (pulse.db/delete-pulse-channels! ids-to-delete)
+      (pulse.write/delete-pulse-channels! (vec ids-to-delete) {})
       (set ids-to-delete))))
 
 (defn- send-pulse!*

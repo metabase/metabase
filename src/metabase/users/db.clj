@@ -105,20 +105,36 @@
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))
 
-(mu/defn set-user-last-login-now!
-  "Set `last_login` of the User with `user-id` to now."
+(mu/defn user-row
+  "The User with `user-id`, with every column, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User :id user-id {:last_login :%now}))
+  (t2/select-one [:model/User :*] :id [:auto/param user-id]))
+
+(mu/defn user-rows
+  "The Users with `user-ids`, with every column."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select [:model/User :*] :id [:in user-ids]))
+
+(mu/defn update-users!
+  "Apply `changes` to the Users with `user-ids`, returning the number updated."
+  [user-ids :- [:sequential ::lib.schema.id/user]
+   changes  :- ::users.schema/user.changes]
+  (t2/update! :model/User :id [:in user-ids] changes))
+
+(mu/defn delete-users!
+  "Delete the Users with `user-ids`, returning the number deleted."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/delete! :model/User :id [:in user-ids]))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :settings [:model/User :settings] :id user-id))
 
-(mu/defn delete-pulse-channel-recipients-for-user!
-  "Delete every PulseChannelRecipient of the User with `user-id`."
+(mu/defn pulse-channel-recipient-ids-for-user :- [:maybe [:sequential ms/PositiveInt]]
+  "The ids of the PulseChannelRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PulseChannelRecipient :user_id user-id))
+  (t2/select-pks-vec :model/PulseChannelRecipient :user_id [:auto/param user-id]))
 
 (mu/defn group-membership-exists?
   "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."

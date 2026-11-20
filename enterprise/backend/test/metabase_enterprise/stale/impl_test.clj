@@ -5,7 +5,7 @@
    [metabase-enterprise.stale.impl :as stale]
    [metabase-enterprise.test :as met]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.core :as moderation]
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card
@@ -365,23 +365,23 @@
                  :model/Card {id1 :id} (stale-card {:name "A" :collection_id col-id})
                  :model/Card {id2 :id} (stale-card {:name "B" :collection_id col-id})]
     ;; card 1 is verified, then unverified - it should be included
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
-    (moderation-review/create-review! {:moderated_item_id   id1
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
+    (moderation/create-review! {:moderated_item_id   id1
+                                :moderator_id        user-id
+                                :moderated_item_type "card"
+                                :status              "verified"})
+    (moderation/create-review! {:moderated_item_id   id1
+                                :moderator_id        user-id
+                                :moderated_item_type "card"
+                                :status              nil})
     ;; card 2 is unverified, then verified - it should NOT be included.
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              nil})
-    (moderation-review/create-review! {:moderated_item_id   id2
-                                       :moderator_id        user-id
-                                       :moderated_item_type "card"
-                                       :status              "verified"})
+    (moderation/create-review! {:moderated_item_id   id2
+                                :moderator_id        user-id
+                                :moderated_item_type "card"
+                                :status              nil})
+    (moderation/create-review! {:moderated_item_id   id2
+                                :moderator_id        user-id
+                                :moderated_item_type "card"
+                                :status              "verified"})
     (is (= {:rows  [{:id id1 :model :model/Card}]
             :total 1}
            (stale/find-candidates

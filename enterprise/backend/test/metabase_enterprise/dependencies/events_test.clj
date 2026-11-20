@@ -9,8 +9,10 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -200,7 +202,7 @@
         (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                        :to_entity_type   :snippet :to_entity_id outer-id})
         (computed! :card card-id)
-        (t2/delete! :model/NativeQuerySnippet :id inner-id)
+        (native-query-snippets.write/delete-snippet! inner-id {})
         (is (pending? :card card-id))))))
 
 (deftest card-marks-own-statuses-test
@@ -231,20 +233,20 @@
                                                                        {:dashboard_id dashboard-id :card_id card-id
                                                                         :row 0 :col 0 :size_x 4 :size_y 4})))))
             (testing "pointing a dashboard card at another card"
-              (is (changes? #(t2/update! :model/DashboardCard :id @dashcard {:card_id other-id}))))
+              (is (changes? #(dashboards.write/update-dashcard! @dashcard {:card_id other-id} {}))))
             (testing "adding a series"
               (is (changes? #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard :card_id card-id
                                                                      :position 0}))))
             (testing "removing a series"
-              (is (changes? #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard))))
+              (is (changes? #(dashboards.write/delete-dashcard-series! (t2/select-pks-vec :model/DashboardCardSeries :dashboardcard_id @dashcard) {}))))
             (testing "adding and removing a tab"
               (let [tab-id (atom nil)]
                 (is (changes? #(reset! tab-id (t2/insert-returning-pk! :model/DashboardTab
                                                                        {:dashboard_id dashboard-id :name "Tab"
                                                                         :position 0}))))
-                (is (changes? #(t2/delete! :model/DashboardTab :id @tab-id)))))
+                (is (changes? #(dashboards.write/delete-dashboard-tabs! [@tab-id] {})))))
             (testing "removing a dashboard card"
-              (is (changes? #(t2/delete! :model/DashboardCard :id @dashcard))))
+              (is (changes? #(dashboards.write/delete-dashcards! [@dashcard] {}))))
             (testing "nothing else"
               (computed! :dashboard dashboard-id)
               (is (not (pending? :dashboard dashboard-id))))))))))

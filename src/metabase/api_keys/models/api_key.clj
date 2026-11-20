@@ -3,13 +3,12 @@
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
    [clojure.core.memoize :as memoize]
-   [java-time.api :as t]
-   [malli.error :as me]
    [malli.util :as mut]
    [metabase.api-keys.audit :as api-keys.audit]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api-keys.write :as api-keys.write]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
@@ -21,7 +20,6 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
    [metabase.util.random :as u.random]
    [metabase.util.secret :as u.secret]
@@ -53,8 +51,7 @@
 
 (doto :model/ApiKey
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 (t2/deftransforms :model/ApiKey
   {:scope mi/transform-keyword
@@ -125,45 +122,17 @@
         (assoc :key (some-> unhashed-key (hash-bcrypt (:scope api-key)))))
       (dissoc ::api-keys/unhashed-key)))
 
-(defn- validate-with-schema [api-key schema]
-  (when-let [error (mr/explain schema api-key)]
-    (let [humanized (me/humanize error)]
-      (throw (ex-info (format "Invalid API Key: %s" (pr-str humanized))
-                      {:error    humanized
-                       :original error}))))
-  api-key)
-
 (t2/define-before-insert :model/ApiKey
   [api-key]
   (-> api-key
       add-prefix
       add-key
-      (validate-with-schema ::api-keys.schema/api-key.insert)))
+      (api-keys.write/validate-with-schema ::api-keys.schema/api-key.insert)))
 
-(t2/define-before-update :model/ApiKey
-  [{user-id :user_id, :as api-key}]
-  (t2/with-transaction [_conn]
-    ;; update the user name associated with this API key if it was created just for this API key.
-    (when-let [new-name (:name (t2/changes api-key))]
-      (api-keys.db/rename-api-key-user! user-id new-name))
-    ;; update user group as well.
-    (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
-      (assert (= (api-keys.db/user-type user-id) :api-key)
-              "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
-      (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
-    (-> api-key
-        add-prefix
-        add-key
-        ;; force a no-op update so the T2 code doesn't optimize this whole update out
-        (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
-                                                               (assoc :updated_at (t/offset-date-time))))
-        (validate-with-schema ::api-keys.schema/api-key.update))))
-
-(t2/define-before-delete :model/ApiKey
-  [{user-id :user_id, :as api-key}]
-  (u/prog1 api-key
-    ;; if we created a user along with the key (type = :api-key), mark it inactive.
-    (api-keys.db/deactivate-api-key-user! user-id)))
+(t2/define-after-insert :model/ApiKey
+  [api-key]
+  (events/created! :model/ApiKey api-key)
+  api-key)
 
 (defn- add-masked-key [api-key]
   (if-let [prefix (:key_prefix api-key)]
@@ -237,9 +206,11 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key (:scope api-key-before))
+      (api-keys.write/update-api-key! api-key-before
+                                      {:key           (hash-bcrypt new-key (:scope api-key-before))
                                        :key_prefix    new-prefix
-                                       :updated_by_id api/*current-user-id*}))
+                                       :updated_by_id api/*current-user-id*}
+                                      {}))
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))

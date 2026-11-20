@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -15,6 +16,7 @@
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -170,7 +172,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {:name "Before"}]
         (create-transform-revision! transform-id true :crowberto)
-        (t2/update! :model/Transform :id transform-id {:name "After"})
+        (transforms.write/change-transform! transform-id {:name "After"} {})
         (create-transform-revision! transform-id false :crowberto)
         (let [revision-id (t2/select-one-pk :model/Revision :model "Transform" :model_id transform-id
                                             {:order-by [[:id :asc]]})
@@ -193,10 +195,9 @@
                                :query (lib/native-query (lib-be/application-database-metadata-provider x-db-id)
                                                         "SELECT 2 --comment")}}]
         (create-transform-revision! transform-id true :crowberto)
-        (t2/update! :model/Transform :id transform-id
-                    {:source {:type  :query
-                              :query (lib/native-query (lib-be/application-database-metadata-provider y-db-id)
-                                                       "SELECT 1")}})
+        (transforms.write/change-transform! transform-id {:source {:type  :query
+                                                                   :query (lib/native-query (lib-be/application-database-metadata-provider y-db-id)
+                                                                                            "SELECT 1")}} {})
         (create-transform-revision! transform-id false :crowberto)
         (letfn [(contains-x? [revisions]
                   (letfn [(x-source? [m]
@@ -324,7 +325,7 @@
                      :model/Dashboard  dashboard {:collection_id (u/the-id collection) :name "Personal dashboard"}]
         (create-dashboard-revision! (:id dashboard) true :crowberto)
         ;; update so that the revision is accepted
-        (t2/update! :model/Dashboard :id (:id dashboard) {:name "Personal dashboard edited"})
+        (dashboards.write/update-dashboard-row! (:id dashboard) {:name "Personal dashboard edited"} {})
         (create-dashboard-revision! (:id dashboard) false :crowberto)
         (let [dashboard-id          (u/the-id dashboard)
               [_ {prev-rev-id :id}] (revision/revisions :model/Dashboard dashboard-id)
@@ -446,10 +447,10 @@
       ;; 0. create the dashboard
       (create-dashboard-revision! dashboard-id true :crowberto)
       ;; 1. rename
-      (t2/update! :model/Dashboard :id dashboard-id {:name "New name"})
+      (dashboards.write/update-dashboard-row! dashboard-id {:name "New name"} {})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 2. add description
-      (t2/update! :model/Dashboard :id dashboard-id {:description "A beautiful dashboard"})
+      (dashboards.write/update-dashboard-row! dashboard-id {:description "A beautiful dashboard"} {})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 3. add 2 cards
       (let [dashcard-ids (t2/insert-returning-pks! :model/DashboardCard [{:dashboard_id dashboard-id
@@ -466,14 +467,14 @@
                                                                           :row          1}])]
         (create-dashboard-revision! dashboard-id false :crowberto)
         ;; 4. remove 1 card
-        (t2/delete! :model/DashboardCard :id (first dashcard-ids))
+        (dashboards.write/delete-dashcards! [(first dashcard-ids)] {})
         (create-dashboard-revision! dashboard-id false :crowberto)
         ;; 5. arrange cards
-        (t2/update! :model/DashboardCard :id (second dashcard-ids) {:col 2
-                                                                    :row 2})
+        (dashboards.write/update-dashcard! (second dashcard-ids) {:col 2
+                                                                  :row 2} {})
         (create-dashboard-revision! dashboard-id false :crowberto))
       ;; 6. Move to a new collection
-      (t2/update! :model/Dashboard :id dashboard-id {:collection_id coll-id})
+      (dashboards.write/update-dashboard-row! dashboard-id {:collection_id coll-id} {})
       (create-dashboard-revision! dashboard-id false :crowberto)
       ;; 7. revert to an earlier revision
       (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
@@ -702,7 +703,7 @@
                      :is_creation  false
                      :is_reversion false})
         ;; Update the dashboard to a new version
-        (t2/update! :model/Dashboard {:name "A dashboard with a new name"})
+        (dashboards.write/update-dashboard-row! dashboard-id {:name "A dashboard with a new name"} {})
         ;; Revert to the saved revision and check that the revert succeeded despite the extra field
         (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})]
           (revision/revert! {:entity :model/Dashboard :id dashboard-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
@@ -1247,8 +1248,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
         (create-dashboard-revision! public-id true :crowberto)
         ;; the card stays on the dashboard, but as a visualizer dashcard its events are no longer shown
-        (t2/update! :model/DashboardCard :id dashcard-id
-                    {:visualization_settings {:visualization {:display "line" :columnValuesMapping {} :settings {}}}})
+        (dashboards.write/update-dashcard! dashcard-id {:visualization_settings {:visualization {:display "line" :columnValuesMapping {} :settings {}}}} {})
         (create-dashboard-revision! public-id false :crowberto)
         (let [[_ {revision-id :id}] (revision/revisions :model/Dashboard public-id)]
           (is (= "You don't have permissions to do that."
@@ -1275,7 +1275,7 @@
         (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
         (doseq [[dashboard-id dashcard-id] [[public-id public-dashcard-id] [private-id private-dashcard-id]]]
           (create-dashboard-revision! dashboard-id true :crowberto)
-          (t2/delete! :model/DashboardCard :id dashcard-id)
+          (dashboards.write/delete-dashcards! [dashcard-id] {})
           (create-dashboard-revision! dashboard-id false :crowberto))
         (let [revert-req (fn [dashboard-id]
                            (let [[_ {revision-id :id}] (revision/revisions :model/Dashboard dashboard-id)]

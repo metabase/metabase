@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -15,7 +16,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,8 +24,7 @@
 (doto :model/SegmentTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events)
+  (derive :hook/timestamped-on-insert?)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
@@ -43,8 +42,8 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(t2/define-before-delete :model/SegmentTest [segment-test]
-  (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+(t2/define-after-insert :model/SegmentTest [segment-test]
+  (events/created! :model/SegmentTest segment-test)
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -91,32 +90,11 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(mu/defn create-segment-test! :- ::data-testing.schema/segment-test
-  "Insert the SegmentTest `segment-test` returning the inserted test."
-  [segment-test :- [:merge
-                    ::data-testing.schema/segment-test.create
-                    [:map {:closed true}
-                     [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-segment-test! segment-test))
-
-(mu/defn update-segment-test! :- :nil
-  "Apply `changes` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/segment-test.update]
-  (data-testing.db/update-segment-test! id changes)
-  nil)
-
-(mu/defn delete-segment-test! :- :nil
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-segment-test! id)
-  nil)
-
 (defenterprise delete-segment-tests!
   "Deletes the tests of the segment `segment-id` whatever the token says, since the rows outlive the feature."
   :feature :none
   [segment-id]
-  (data-testing.db/delete-segment-tests! segment-id))
+  (data-testing.write/delete-tests-of-segment! segment-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -126,7 +104,7 @@
 (defn- revert-segment-test!
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
-  (update-segment-test! id (select-keys snapshot revision-columns)))
+  (data-testing.write/update-segment-test! id (select-keys snapshot revision-columns) {}))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

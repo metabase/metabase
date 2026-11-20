@@ -11,12 +11,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.dependencies :as measures.dependencies]
    [metabase.measures.replacement :as measures.replacement]
    [metabase.measures.schema :as measures.schema]
    [metabase.measures.serialization :as measures.serialization]
+   [metabase.measures.write :as measures.write]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -25,7 +25,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -45,24 +44,10 @@
 
 (doto :model/Measure
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
-
-(defn- definition-table-id
-  "The id of the Table `definition`, a full query, is built on."
-  [definition]
-  (lib/primary-source-table-id (lib-be/normalize-query definition)))
+  (derive :hook/timestamped-on-insert?)
+  (derive :hook/entity-id))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(defn- check-definition
-  "Throws unless `definition` is a full query that fits a Measure."
-  [definition]
-  (when-not (and (seq definition)
-                 (#{:mbql-version/mbql5 :mbql-version/legacy} (lib/normalized-mbql-version definition)))
-    (throw (ex-info (tru "Measure definition must be a full query with a source table.") {:status-code 400})))
-  (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
 
 (defn- check-referenced-measures-exist
   "Throws unless every Measure that `definition`, a new Measure's, refers to exists."
@@ -71,22 +56,14 @@
 
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
-  (check-definition definition)
+  (measures.write/check-definition definition)
   (check-referenced-measures-exist definition)
-  (assoc measure :table_id (definition-table-id definition)))
+  (assoc measure :table_id (measures.write/definition-table-id definition)))
 
-(t2/define-before-update :model/Measure
-  [{:keys [id definition] :as measure}]
-  (let [changes (t2/changes measure)]
-    (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
-    (when (and (contains? changes :table_id) (not (contains? changes :definition)))
-      (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
-    (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-measure-overwrite id (lib-be/normalize-query definition)))
-    (cond-> measure
-      (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
+(t2/define-after-insert :model/Measure
+  [measure]
+  (events/created! :model/Measure measure)
+  measure)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -104,7 +81,7 @@
 (defn- definition-writable?
   "Whether the current user can write Measures of the Table `definition` is built on."
   [definition]
-  (let [table (some-> definition not-empty definition-table-id measures.db/table)]
+  (let [table (some-> definition not-empty measures.write/definition-table-id measures.db/table)]
     (boolean (and table (seq (collection/writable-table-ids [table]))))))
 
 (defmethod mi/can-create? :model/Measure
@@ -146,7 +123,9 @@
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+    (measures.write/update-measure! measure-id
+                                    {:dimensions dimensions, :dimension_mappings dimension-mappings}
+                                    {})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

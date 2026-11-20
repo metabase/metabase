@@ -7,7 +7,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.test :as mt]
+   [metabase.transforms.write :as transforms.write]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -73,7 +75,7 @@
       (testing "dashboard archive invalidates"
         (mt/with-temp [:model/Dashboard {id :id} {}]
           (let [f (mk-finding! :dashboard id)]
-            (t2/update! :model/Dashboard :id id {:archived true})
+            (dashboards.write/update-dashboard-row! id {:archived true} {})
             (is (invalidated? f)))))
       (testing "document archive invalidates"
         (mt/with-temp [:model/Document {id :id} {}]
@@ -83,7 +85,7 @@
       (testing "transform hard delete invalidates"
         (mt/with-temp [:model/Transform {id :id} {}]
           (let [f (mk-finding! :transform id)]
-            (t2/delete! :model/Transform :id id)
+            (transforms.write/delete-transforms! [id] {})
             (is (invalidated? f))))))))
 
 (deftest collection-archive-invalidates-subtree-test
@@ -124,5 +126,5 @@
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (let [f (mk-finding! :dashboard id)]
-          (t2/update! :model/Dashboard :id id {:archived true})
+          (dashboards.write/update-dashboard-row! id {:archived true} {})
           (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))

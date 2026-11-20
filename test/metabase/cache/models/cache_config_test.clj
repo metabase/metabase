@@ -3,8 +3,13 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.cache.schema :as cache.schema]
+   [metabase.cache.write :as cache.write]
+   [metabase.dashboards.write :as dashboards.write]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -68,9 +73,9 @@
                  :model/Card        {other-id :id}   {}
                  :model/CacheConfig {config-id :id}  {:model "question" :model_id card-id}]
     (testing "model_id"
-      (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:model_id other-id})))))
+      (is (= 400 (status-code #(cache.write/update-cache-config! config-id {:model_id other-id} {})))))
     (testing "model"
-      (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:model "dashboard"})))))
+      (is (= 400 (status-code #(cache.write/update-cache-config! config-id {:model "dashboard"} {})))))
     (is (=? {:model "question" :model_id card-id} (t2/select-one :model/CacheConfig :id config-id)))))
 
 (deftest delete-card-deletes-its-cache-config-test
@@ -82,7 +87,7 @@
 (deftest delete-dashboard-deletes-its-cache-config-test
   (mt/with-temp [:model/Dashboard   {dashboard-id :id} {}
                  :model/CacheConfig {config-id :id}    {:model "dashboard" :model_id dashboard-id}]
-    (t2/delete! :model/Dashboard :id dashboard-id)
+    (dashboards.write/delete-dashboard-row! dashboard-id {})
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-database-deletes-cache-configs-of-database-and-its-cards-test
@@ -165,3 +170,37 @@
                (map :can_set_cache_policy (t2/hydrate [open-card closed-card] :can_set_cache_policy))))
         (is (= [false]
                (map :can_set_cache_policy (t2/hydrate [closed-dashboard] :can_set_cache_policy))))))))
+
+(deftest update-cache-config-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::cache-config-events
+                                     (fn [{:keys [model]}] (when (= :model/CacheConfig model) :cache-config))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Card        {card-id :id} {}
+                     :model/CacheConfig config        {:model "question" :model_id card-id :strategy :ttl
+                                                       :config {:multiplier 10 :min_duration_ms 100}}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (cache.write/update-cache-config! (:id config) {:config {:multiplier 20 :min_duration_ms 100}} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id config)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:config {:multiplier 10} :updated_at (:updated_at config)}
+                    :object          {:config {:multiplier 20} :updated_at (:updated_at config)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::cache-config-events)))))
+
+(deftest update-cache-config-query-count-test
+  (testing "a warm update-cache-config! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/Card        {card-id :id} {}
+                   :model/CacheConfig {id :id}      {:model "question" :model_id card-id :strategy :ttl
+                                                     :config {:multiplier 10 :min_duration_ms 100}}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (cache.write/update-cache-config! id {:config {:multiplier 15 :min_duration_ms 100}} {})
+          (t2/with-call-count [call-count]
+            (cache.write/update-cache-config! id {:config {:multiplier 20 :min_duration_ms 100}} {})
+            (is (<= (call-count) 2))))))))

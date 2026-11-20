@@ -9,6 +9,7 @@
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -177,12 +178,12 @@
           (is (not-empty notification-triggers)))
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
-          (t2/update! :model/Notification :id (:id notification) {:active false})
+          (notification.write/update-notification! (:id notification) {:active false} {})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
-          (t2/update! :model/Notification :id (:id notification) {:active true})
+          (notification.write/update-notification! (:id notification) {:active true} {})
           (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 

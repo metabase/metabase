@@ -15,6 +15,7 @@
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
@@ -341,7 +342,7 @@
                                                         :ticket_number "TICKET-FIRST"))))
             ;; Deactivate the support user (simulates admin action or cleanup)
             (let [support-user (t2/select-one [:model/User :id :is_active] :email email)]
-              (t2/update! :model/User :id (:id support-user) {:is_active false})
+              (users.write/update-user! (:id support-user) {:is_active false})
               (is (false? (:is_active (t2/select-one [:model/User :is_active]
                                                      :id (:id support-user))))
                   "User should be deactivated"))
@@ -511,7 +512,7 @@
                             "wrong grant secret"          (str grant-id "_" (random-uuid))
                             "wrong secret, grant + reset" (str both-id "_" (random-uuid))}
             cost           (fn [f] (reset! checks 0) (f) @checks)]
-        (t2/update! :model/User :id inactive-id {:is_active false})
+        (users.write/update-user! inactive-id {:is_active false})
         (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
           (testing "reset_password answering Invalid reset token"
             (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated grant user" inactive-token)]

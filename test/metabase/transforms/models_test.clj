@@ -9,9 +9,8 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
-   [metabase.transforms.models.transform :as transform.model]
-   [metabase.transforms.models.transform-job :as transform-job]
-   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
+   [metabase.transforms.write :as transforms.write]
    [toucan2.core :as t2]))
 
 ;; Use the default test fixture which sets up the test database
@@ -39,7 +38,7 @@
                    :model/TransformJob job {}
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       ;; Delete the tag
-      (t2/delete! :model/TransformTag :id (:id tag))
+      (transforms.write/delete-tags! [(:id tag)] {})
       ;; Verify cascade deletion
       (testing "Tag associations are deleted"
         (is (not (t2/exists? :model/TransformJobTransformTag :tag_id (:id tag)))
@@ -54,7 +53,7 @@
                    :model/TransformJob job {}
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       ;; Delete the job (not the tag)
-      (t2/delete! :model/TransformJob :id (:id job))
+      (transforms.write/delete-jobs! [(:id job)] {})
       ;; Verify cascade deletion
       (testing "Tag associations are deleted"
         (is (not (t2/exists? :model/TransformJobTransformTag :job_id (:id job)))
@@ -96,22 +95,22 @@
           (testing "Transform created without creator_id defaults to internal user"
             (is (= config/internal-mb-user-id (:creator_id transform))))
           (testing "Initial tag order is preserved"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
+            (transforms.write/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag1) (:id tag3)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering tags preserves new order"
-            (transform.model/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
+            (transforms.write/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered correctly")))
           (testing "Adding and removing tags preserves order"
-            (transform.model/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
+            (transforms.write/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag1) (:id tag4)] (:tag_ids hydrated))
                   "Should have only the specified tags in order")))
           (testing "Duplicate tags are deduplicated while preserving order"
-            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
+            (transforms.write/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids hydrated))
                   "Duplicates removed, order preserved"))))))))
@@ -125,12 +124,12 @@
                      :model/TransformTag tag3 {:name "tag3"}]
         (let [job-id (:id job)]
           (testing "Initial tag order is preserved"
-            (transform-job/update-job-tags! job-id [(:id tag2) (:id tag1)])
+            (transforms.write/update-job-tags! job-id [(:id tag2) (:id tag1)])
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag2) (:id tag1)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering and adding tags preserves order"
-            (transform-job/update-job-tags! job-id [(:id tag1) (:id tag3) (:id tag2)])
+            (transforms.write/update-job-tags! job-id [(:id tag1) (:id tag3) (:id tag2)])
             (let [hydrated (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids)]
               (is (= [(:id tag1) (:id tag3) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered with new tag added"))))))))
@@ -163,8 +162,8 @@
                                                          :schema nil
                                                          :name "test_table_null_schema"
                                                          :database db-id}}]
-      (t2/update! :model/Transform :id (:id transform1) {:target_table_id table-with-schema-id})
-      (t2/update! :model/Transform :id (:id transform2) {:target_table_id table-null-schema-id})
+      (transforms.write/change-transform! (:id transform1) {:target_table_id table-with-schema-id} {})
+      (transforms.write/change-transform! (:id transform2) {:target_table_id table-null-schema-id} {})
       (let [transform1 (t2/select-one :model/Transform :id (:id transform1))
             transform2 (t2/select-one :model/Transform :id (:id transform2))]
         (testing "Hydrates table with non-NULL schema"
@@ -257,7 +256,7 @@
                                                        :transform_entity_id entity-id
                                                        :status "succeeded"
                                                        :run_method "manual"}]
-        (t2/delete! :model/Transform :id transform-id)
+        (transforms.write/delete-transforms! [transform-id] {})
         (let [run (t2/select-one :model/TransformRun :id run-id)]
           (is (some? run))
           (is (nil? (:transform_id run)))
@@ -281,7 +280,7 @@
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}]
-        (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
+        (let [run (run-write/start-run! transform-id {:run_method "manual"})]
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
@@ -311,22 +310,19 @@
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
-          (t2/update! :model/Transform :id transform-id
-                      {:source {:type :query
-                                :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
-                                :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
+          (transforms.write/change-transform! transform-id {:source {:type :query
+                                                                     :query (incremental-native-query db-id "SELECT 1 FROM {{source_table}}")
+                                                                     :source-incremental-strategy {:type "checkpoint"
+                                                                                                   :checkpoint-filter-field-id (mt/id :venues :price)}}} {})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
-          (t2/update! :model/Transform :id transform-id
-                      {:last_checkpoint_value "99"})
-          (t2/update! :model/Transform :id transform-id
-                      {:source {:type :query
-                                :query (incremental-native-query db-id "SELECT 2 FROM {{source_table}}")
-                                :source-incremental-strategy {:type "checkpoint"
-                                                              :checkpoint-filter-field-id (mt/id :venues :price)}}})
+          (transforms.write/change-transform! transform-id {:last_checkpoint_value "99"} {})
+          (transforms.write/change-transform! transform-id {:source {:type :query
+                                                                     :query (incremental-native-query db-id "SELECT 2 FROM {{source_table}}")
+                                                                     :source-incremental-strategy {:type "checkpoint"
+                                                                                                   :checkpoint-filter-field-id (mt/id :venues :price)}}} {})
           (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
@@ -359,8 +355,8 @@
                                                               :start_time #t "2025-09-01T10:00:00Z"
                                                               :is_active  true}
                      :model/Transform {transform-id :id} {}]
-        (let [run (transform-run/start-run! transform-id {:run_method "cron"
-                                                          :job_run_id job-run-id})]
+        (let [run (run-write/start-run! transform-id {:run_method "cron"
+                                                      :job_run_id job-run-id})]
           (is (= job-run-id (:job_run_id run))))))))
 
 (deftest paged-job-runs-test
@@ -446,5 +442,9 @@
       (testing model
         (mt/with-temp [model {run-id :id} (assoc attributes :end_time nil)]
           (is (nil? (t2/select-one-fn :end_time model :id run-id)))
-          (t2/update! model :id run-id {:status :succeeded :is_active nil})
+          ((case model
+             :model/TransformRun    run-write/succeed-started-run!
+             :model/TransformJobRun #(run-write/finish-active-job-run! % {:status :succeeded :is_active nil})
+             :model/TransformDagRun #(run-write/finish-active-dag-run! % {:status :succeeded :is_active nil}))
+           run-id)
           (is (some? (t2/select-one-fn :end_time model :id run-id))))))))

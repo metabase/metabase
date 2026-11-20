@@ -4,6 +4,7 @@
    [metabase.indexes.models.table-index :as table-index]
    [metabase.test :as mt]
    [metabase.transforms.query-test-util :as query-test-util]
+   [metabase.transforms.write :as transforms.write]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -193,7 +194,7 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "c"}]}}]
-      (t2/update! :model/Transform :id transform-id {:target (assoc (:target transform) :name (mt/random-name))})
+      (transforms.write/change-transform! transform-id {:target (assoc (:target transform) :name (mt/random-name))} {})
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id))))))
@@ -205,5 +206,5 @@
                                      :index_name   "idx"
                                      :structured   {:kind :btree :name "idx" :columns [{:name "a"}]}})
       (is (t2/exists? :model/TableIndex :transform_id transform-id))
-      (t2/delete! :model/Transform :id transform-id)
+      (transforms.write/delete-transforms! [transform-id] {})
       (is (not (t2/exists? :model/TableIndex :transform_id transform-id))))))

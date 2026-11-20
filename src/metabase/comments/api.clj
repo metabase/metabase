@@ -12,6 +12,7 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
    [metabase.comments.schema :as comments.schema]
+   [metabase.comments.write :as comments.write]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
@@ -202,13 +203,13 @@
                                                       (= (:child_target_id <>) child_target_id))
                                                  "Parent comment doesn't belong to the same entity"))
                          (t2/hydrate :creator)))
-        comment    (-> (comments.db/insert-comment! {:target_type       target_type
-                                                     :target_id         target_id
-                                                     :child_target_id   child_target_id
-                                                     :context           context
-                                                     :parent_comment_id parent_comment_id
-                                                     :content           content
-                                                     :creator_id        api/*current-user-id*})
+        comment    (-> (comments.write/create-comment! {:target_type       target_type
+                                                        :target_id         target_id
+                                                        :child_target_id   child_target_id
+                                                        :context           context
+                                                        :parent_comment_id parent_comment_id
+                                                        :content           content
+                                                        :creator_id        api/*current-user-id*})
                        (t2/hydrate :creator)
                        ;; New comments always have empty reactions map
                        (assoc :reactions []))]
@@ -233,7 +234,7 @@
       (api/check-400 (not (:deleted_at comment))
                      "Cannot edit content of a deleted comment"))
     (when (seq changes)
-      (comments.db/update-comment! comment-id changes))
+      (comments.write/update-comment! comment changes {}))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
                               (t2/hydrate :creator :reactions))]
       updated-comment)))
@@ -248,7 +249,7 @@
     (api/check-400 (not (entity-archived? entity)) "Cannot delete comments on archived entities")
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
     ;; Soft delete the comment
-    (comments.db/soft-delete-comment! comment-id)
+    (comments.write/soft-delete-comment! comment {})
     ;; Return 204 No Content
     api/generic-204-no-content))
 

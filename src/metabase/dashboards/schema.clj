@@ -12,6 +12,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.schema :as queries.schema]
    [metabase.timeline.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -109,6 +110,25 @@
    [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
+(mr/def ::dashboard.changes
+  "What an UPDATE of a Dashboard writes: the columns of an update, with SQL expressions for the columns the write sets
+  by the database: `:updated_at` as `(mi/now)`, `:initially_published_at` and a shifted `:collection_position`."
+  [:merge
+   ::dashboard.update
+   [:map {:closed true}
+    [:updated_at             {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]
+    [:initially_published_at {:optional true} [:maybe [:or ms/TemporalInstant ::h2x/honeysql-expr]]]
+    [:collection_position    {:optional true} [:maybe [:or :int ::h2x/honeysql-expr]]]]])
+
+(mr/def ::write-opts
+  "The context of a write of Dashboards, DashboardCards, DashboardTabs and DashboardCardSeries: `:revision-message`, the
+  message of the revisions, `:archived-with`, the `[model id]` of the archive that carries the rows, and `:import?`,
+  whether a SerDes import writes them."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:archived-with    {:optional true} [:tuple :keyword [:or :int :string]]]
+   [:import?          {:optional true} :boolean]])
+
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
   ::parameters.schema/parameter-mapping)
@@ -152,6 +172,13 @@
    [:dashboard_tab_id       {:optional true} [:maybe ::lib.schema.id/dashboard-tab]]
    [:inline_parameters      {:optional true} [:maybe [:sequential :string]]]])
 
+(mr/def ::dashboard-card.changes
+  "What an UPDATE of a DashboardCard writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::dashboard-card.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
 (mr/def ::dashboard-card-series
   "A DashboardCardSeries as selected from the app DB: every column of `:dashboardcard_series`."
   [:merge
@@ -182,6 +209,13 @@
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::dashboard-tab.changes
+  "What an UPDATE of a DashboardTab writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::dashboard-tab.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::external-dashboard
   "A Dashboard as serialization writes it, with portable references in place of ids."

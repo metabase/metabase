@@ -8,6 +8,7 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.appearance.core :as appearance]
    [metabase.config.core :as config]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
@@ -92,7 +93,7 @@
     (mt/with-sample-h2-app-db!
       (is (= 1
              (appearance/example-dashboard-id)))
-      (t2/update! :model/Dashboard :id 1 {:archived true})
+      (dashboards.write/update-dashboard-row! 1 {:archived true} {})
       (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test

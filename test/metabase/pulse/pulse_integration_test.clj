@@ -11,14 +11,14 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]
-   [toucan2.core :as t2]))
+   [metabase.util.humanization :as u.humanization]))
 
 (use-fixtures :each (fn [thunk]
                       (notification.tu/with-send-notification-sync
@@ -898,7 +898,7 @@
                     (pulse.send/send-pulse! pulse)))
                 (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                   (is (false? (str/includes? html-body "An error occurred while displaying this card."))))))
-            (t2/delete! :model/Dashboard :id dash-id)))))))
+            (dashboards.write/delete-dashboard-row! dash-id {})))))))
 
 (deftest geographic-coordinates-formatting-test
   (testing "Longitude and latitude columns should format correctly on export (#38419)"

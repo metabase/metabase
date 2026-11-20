@@ -9,6 +9,7 @@
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -26,16 +27,16 @@
   [model  :- ::transforms.schema/coordinated-run-model
    run-id :- ms/PositiveInt]
   (case model
-    :model/TransformJobRun (transforms.db/touch-active-job-run! run-id)
-    :model/TransformDagRun (transforms.db/touch-active-dag-run! run-id)))
+    :model/TransformJobRun (run-write/touch-active-job-run! run-id)
+    :model/TransformDagRun (run-write/touch-active-dag-run! run-id)))
 
 (mu/defn- finish-active-run! :- :int
   [model   :- ::transforms.schema/coordinated-run-model
    run-id  :- ms/PositiveInt
    changes :- ::run-changes]
   (case model
-    :model/TransformJobRun (transforms.db/finish-active-job-run! run-id changes)
-    :model/TransformDagRun (transforms.db/finish-active-dag-run! run-id changes)))
+    :model/TransformJobRun (run-write/finish-active-job-run! run-id changes)
+    :model/TransformDagRun (run-write/finish-active-dag-run! run-id changes)))
 
 (mu/defn add-run-activity! :- :int
   "Note that a run has had activity (touches `updated_at`)."

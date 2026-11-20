@@ -8,7 +8,8 @@
    [metabase.serialization.core :as serialization]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.timeline.write]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -21,8 +22,7 @@
 
 (doto :model/TimelineEvent
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?)
+  (derive :hook/timestamped-on-insert?)
   (derive :hook/entity-id))
 
 (def default-icon
@@ -63,12 +63,10 @@
   (cond-> row
     (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
 
-(t2/define-before-update :model/TimelineEvent
+(t2/define-after-insert :model/TimelineEvent
   [event]
-  (let [changes (t2/changes event)]
-    (when (contains? changes :creator_id)
-      (throw (ex-info (tru "You cannot change the creator of a Timeline event.") {:status-code 400})))
-    event))
+  (events/created! :model/TimelineEvent event)
+  event)
 
 ;;; --------------------------------------------------- Permissions ----------------------------------------------------
 

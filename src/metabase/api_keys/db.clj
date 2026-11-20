@@ -3,11 +3,11 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -39,26 +39,10 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey :id [:auto/param id]))
 
-(def ^:private ApiKeyWithGroupId
-  "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
-  (mut/merge ::api-keys.schema/api-key
-             [:map
-              [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]]))
-
-(mu/defn save-api-key!
-  "Save the changes made to the ApiKey instance `api-key` and return it."
-  [api-key :- ApiKeyWithGroupId]
-  (t2/save! api-key))
-
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
   (t2/exists? :model/ApiKey :id id))
-
-(mu/defn delete-api-key!
-  "Delete the ApiKey with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey :id id))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
@@ -71,21 +55,10 @@
                       :api_key [:= :api_key.user_id :pgm.user_id]]
              :where  [:in :api_key.id api-key-ids]}))
 
-(mu/defn rename-api-key-user!
-  "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id    :- ::lib.schema.id/user
-   first-name :- :string]
-  (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
-
 (mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
-
-(mu/defn deactivate-api-key-user!
-  "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
@@ -108,10 +81,30 @@
   (t2/insert-returning-instance! :model/ApiKey row))
 
 (mu/defn update-api-key!
-  "Apply `changes` to the ApiKey with `id`."
+  "Apply `changes` to the ApiKey with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
-  (t2/update! :model/ApiKey :id id changes))
+   changes :- [:map {:closed true}
+               [:name          {:optional true} [:maybe :string]]
+               [:key           {:optional true} [:maybe :string]]
+               [:key_prefix    {:optional true} [:maybe :string]]
+               [:updated_by_id {:optional true} [:maybe ms/PositiveInt]]
+               [:updated_at    {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]]
+  (t2/update! :model/ApiKey :id [:auto/param id] changes))
+
+(mu/defn api-keys
+  "The ApiKeys with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/ApiKey :id [:in ids]))
+
+(mu/defn delete-api-keys!
+  "Delete the ApiKeys with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ApiKey :id [:in ids]))
+
+(mu/defn api-key-user
+  "The User of type `:api-key` with `user-id`, with every column, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :*] :id [:auto/param user-id] :type :api-key))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside

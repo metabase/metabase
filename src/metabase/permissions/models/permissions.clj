@@ -166,6 +166,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
+   [metabase.permissions.write :as perms.write]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -180,48 +181,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^Boolean *allow-root-entries*
-  "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
-   when creating the default entry for `Admin`."
-  false)
-
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic ^Boolean *allow-admin-permissions-changes*
-  "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
-   prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
-  false)
-
-;;; --------------------------------------------------- Assertions ---------------------------------------------------
-
-(defn- assert-not-admin-group
-  "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
-  [{:keys [group_id]}]
-  (when (and (= group_id (:id (perms-group/admin)))
-             (not *allow-admin-permissions-changes*))
-    (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
-                    {:status-code 400}))))
-
-(defn- assert-valid-object
-  "Check to make sure the value of `:object` for `permissions` entry is valid."
-  [{:keys [object]}]
-  (when (and object
-             (not (perms.u/valid-path? object))
-             (or (not= object "/")
-                 (not *allow-root-entries*)))
-    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
-                    {:status-code 400, :path object}))))
-
-(defn- assert-valid
-  "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
-   path and it's not for the admin group)."
-  [permissions]
-  (doseq [f [assert-not-admin-group
-             assert-valid-object]]
-    (f permissions)))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -284,53 +243,22 @@
   [permissions]
   (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
-    (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/deftransforms :model/Permissions
   {:perm_type mi/transform-keyword
    :perm_value mi/transform-keyword})
 
-(t2/define-before-update :model/Permissions
-  [_]
-  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
-
-(t2/define-before-delete :model/Permissions
-  [permissions]
-  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
-  (assert-not-admin-group permissions))
-
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
-
-(mu/defn delete-related-permissions!
-  "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
-  This includes *both* ancestor and descendant paths. For example:
-
-  Suppose we asked this functions to delete related permissions for `/db/1/schema/PUBLIC/`. Depending on the
-  permissions the group has, it could end up doing something like:
-
-    *  deleting `/db/1/` permissions (because the ancestor perms implicitly grant you full perms for `schema/PUBLIC`)
-    *  deleting perms for `/db/1/schema/PUBLIC/table/2/` (because Table 2 is a descendant of `schema/PUBLIC`)
-
-  In short, it will delete any permissions that contain `/db/1/schema/` as a prefix, or that themeselves are prefixes
-  for `/db/1/schema/`.
-
-  NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
-  `revoke-data-perms!` elsewhere instead of calling this directly."
-  [group-or-id :- permissions.path/GroupOrID path :- perms.u/PathSchema]
-  (let [group-id (u/the-id group-or-id)
-        paths    (conj (perms.u/->v2-path path) path)]
-    (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
-      (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths))))
 
 (defn grant-permissions!
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
-    (permissions.db/insert-permissions! (map (fn [path-object]
-                                               {:group_id (u/the-id group-or-id) :object path-object})
-                                             (distinct (conj (perms.u/->v2-path path) path))))
+    (perms.write/create-permissions! (map (fn [path-object]
+                                            {:group_id (u/the-id group-or-id) :object path-object})
+                                          (distinct (conj (perms.u/->v2-path path) path)))
+                                     {})
     nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -350,7 +278,7 @@
 (defn revoke-application-permissions!
   "Remove all permissions entries for a Group to access a Application permissions"
   [group-or-id perm-type]
-  (delete-related-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
+  (perms.write/delete-related-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permissions."
@@ -400,7 +328,7 @@
   "Revoke all access for `group-or-id` to a Collection."
   [group-or-id :- permissions.path/GroupOrID collection-or-id :- permissions.path/CollectionOrID]
   (check-is-modifiable-collection collection-or-id)
-  (delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
+  (perms.write/delete-related-permissions! group-or-id (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-readwrite-permissions!
   "Grant full access to a Collection, which means a user can view all Cards in the Collection and add/remove Cards."

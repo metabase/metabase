@@ -292,3 +292,41 @@
 (mr/def ::permission-mapping
   "Map of permission type to the permission value the user needs, or a more permissive one."
   [:map-of ::data-permission-type ::data-permission-value])
+
+(mr/def ::group-write-opts
+  "The context of a write of PermissionsGroups: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
+
+(mr/def ::membership-write-opts
+  "The context of a write of PermissionsGroupMemberships: `:allow-all-users-group?` and
+  `:allow-all-external-users-group?` let the writers of a User's magic memberships add or remove them,
+  `:skip-superuser-sync?` leaves the User's `is_superuser` to a caller that writes it itself, and `:import?` says a
+  SerDes import writes them."
+  [:map {:closed true}
+   [:allow-all-users-group?          {:optional true} :boolean]
+   [:allow-all-external-users-group? {:optional true} :boolean]
+   [:skip-superuser-sync?            {:optional true} :boolean]
+   [:import?                         {:optional true} :boolean]])
+
+(mr/def ::permissions-write-opts
+  "The context of a write of Permissions rows: `:allow-admin-group?` lets a writer grant or revoke rows of the Admin
+  group, `:allow-root?` lets it grant the root path `/`, and `:import?` says a SerDes import writes them."
+  [:map {:closed true}
+   [:allow-admin-group? {:optional true} :boolean]
+   [:allow-root?        {:optional true} :boolean]
+   [:import?            {:optional true} :boolean]])
+
+(mr/def ::collection-permission-graph-revision.changes
+  "What an update of a CollectionPermissionGraphRevision takes: its details, which are filled in once, and the columns
+  no update may change, so that the write function refuses them."
+  [:map {:closed true}
+   [:before  {:optional true} [:maybe [:or :string :map]]]
+   [:after   {:optional true} [:maybe [:or :string :map]]]
+   [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
+   [:remark  {:optional true} [:maybe :string]]])
+
+(mr/def ::revision-write-opts
+  "The context of a write of permission revisions: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])

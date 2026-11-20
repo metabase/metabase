@@ -584,8 +584,10 @@
 
 (defmulti write-fns
   "The write functions of `model` that generic writers (the SerDes loader, replacement, remote sync, revision revert)
-  call in place of a plain `t2/update!` or `t2/delete!`, as `{:update! (fn [id changes opts]) :delete! (fn [ids
-  opts])}`, or nil for a model that its Toucan hooks still write; `model` is resolved first, which loads its namespace."
+  call in place of a plain `t2/update!` or `t2/delete!`, as `{:update! (fn [id-or-row changes opts]) :delete! (fn [ids
+  opts])}`, `ids` possibly empty or nil, and, for a model whose rows a cascade updates alike, `:update-all! (fn [rows
+  changes opts])` taking the rows the caller loaded and writing them in one statement per distinct final change, or
+  nil for a model that its Toucan hooks still write; `model` is resolved first, which loads its namespace."
   {:arglists '([model])}
   t2/resolve-model)
 

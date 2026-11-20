@@ -21,6 +21,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -446,7 +447,7 @@
                                                                      :schema "PUBLIC"
                                                                      :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
-          (t2/update! :model/Transform :id transform-id {:target_table_id table-id})
+          (transforms.core/change-transform! transform-id {:target_table_id table-id} {})
           (events/publish-event! :event/transform-run-complete {:object {:transform-id transform-id :table-id table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (testing "GET /graph/dependents returns the inactive table as a child"
@@ -1246,7 +1247,7 @@
                                                                                 :name   "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
-          (t2/update! :model/Transform :id referenced-transform-id {:target_table_id referenced-table-id})
+          (transforms.core/change-transform! referenced-transform-id {:target_table_id referenced-table-id} {})
           (events/publish-event! :event/transform-run-complete {:object {:transform-id referenced-transform-id :table-id referenced-table-id}})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]

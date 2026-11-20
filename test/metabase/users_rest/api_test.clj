@@ -22,6 +22,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.models.user-test :as user-test]
    [metabase.users.settings :as users.settings]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [throttle.core :as throttle]
@@ -1790,8 +1791,8 @@
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled true]
         (mt/with-temp [:model/User user {:sso_source :google}]
-          (t2/update! :model/User :id (u/the-id user)
-                      {:is_active false})
+          (users.write/update-user! (u/the-id user)
+                                    {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}

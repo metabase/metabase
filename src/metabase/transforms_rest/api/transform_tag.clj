@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.transforms-rest.db :as transforms-rest.db]
+   [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [LocalizedString]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -33,8 +34,7 @@
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
   (api/create-check :model/TransformTag {:name name})
-  (let [tag (transforms-rest.db/insert-tag! name)]
-    tag))
+  (transforms.core/create-tag! name))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
   "Update a transform tag."
@@ -44,10 +44,10 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
-  (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
-  (transforms-rest.db/update-tag! tag-id name)
-  (let [tag (transforms-rest.db/tag tag-id)]
-    tag))
+  (let [tag (api/check-404 (transforms-rest.db/tag tag-id))]
+    (api/update-check tag {:name name})
+    (transforms.core/update-tag! tag {:name name} {}))
+  (transforms-rest.db/tag tag-id))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."
@@ -55,7 +55,7 @@
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
   (api/write-check (transforms-rest.db/tag tag-id))
-  (transforms-rest.db/delete-tag! tag-id)
+  (transforms.core/delete-tag! tag-id {})
   nil)
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformTagResponse]

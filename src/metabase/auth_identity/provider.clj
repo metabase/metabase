@@ -60,6 +60,7 @@
    [metabase.auth-identity.session :as auth-session]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
@@ -483,9 +484,10 @@
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
-      (auth-identity.db/update-user! user-id
-                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
-                                       reactivating? (assoc :is_superuser false))))
+      ((:update! (mi/write-fns :model/User)) user-id
+                                             (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                                               reactivating? (assoc :is_superuser false))
+                                             {}))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
       (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                                 (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))

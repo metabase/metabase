@@ -246,6 +246,12 @@
   "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
   1000)
 
+(defn- delete-transforms-for-database!
+  "Delete the Transforms reading from the Database with `database-id` through the write function of their model."
+  [database-id]
+  (when-let [ids (seq (warehouses.db/transform-ids-for-database database-id))]
+    ((:delete! (mi/write-fns :model/Transform)) (vec ids) {})))
+
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   ;; Reconcile workspace_database rows first: the FK is RESTRICT, so :unprovisioned
@@ -257,7 +263,7 @@
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
-  (warehouses.db/delete-transforms-for-database! id)
+  (delete-transforms-for-database! id)
   (cache/delete-target-configs! "database" [id])
   ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
   ;; their search documents are enumerated first.

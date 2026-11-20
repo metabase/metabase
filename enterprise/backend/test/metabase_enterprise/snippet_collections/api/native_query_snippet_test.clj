@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -109,7 +110,7 @@
               (doseq [dest-collection [dest root-collection]]
                 (letfn [(has-perms? []
                           ;; make sure the Snippet is back in the original Collection if it was changed
-                          (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:collection_id (:id source-collection)})
+                          (native-query-snippets.write/update-snippet! (:id snippet) {:collection_id (:id source-collection)} {})
                           (let [response (mt/user-http-request :rasta :put (format "native-query-snippet/%d" (:id snippet))
                                                                {:collection_id (:id dest-collection)})]
                             (cond

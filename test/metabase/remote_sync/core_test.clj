@@ -168,10 +168,10 @@
                                                    (t2/insert-returning-instance! :model/PythonLibrary
                                                                                   {:path "common" :source ""}))]
             (try
-              (t2/update! :model/PythonLibrary :id id {:source "def synced(): pass"})
+              ((:update! (mi/write-fns :model/PythonLibrary)) id {:source "def synced(): pass"} {})
               (is (synced? :model/PythonLibrary id))
               (finally
-                (t2/update! :model/PythonLibrary :id id {:source source})
-                (t2/update! :model/PythonLibrary :id id {:is_default is_default}))))
+                ((:update! (mi/write-fns :model/PythonLibrary)) id {:source source} {})
+                ((:update! (mi/write-fns :model/PythonLibrary)) id {:is_default is_default} {}))))
           (is (synced? :model/DataApp (:id app)))
           (is (synced? :model/TransformTest (:id test))))))))

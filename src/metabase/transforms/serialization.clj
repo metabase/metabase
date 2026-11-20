@@ -22,7 +22,7 @@
 
 (defn- drop-merge-key-field-ids
   "`target` without the `:field-id`s of its merge unique key. The merge reads only the column names, and
-  [[metabase.transforms.models.transform/resolve-merge-key-field-ids]] fills the ids from the target table once it
+  [[metabase.transforms.write/resolve-merge-key-field-ids]] fills the ids from the target table once it
   syncs, so a reference would only make the import stub out a table the transform has yet to create."
   [target]
   (m/update-existing-in target [:target-incremental-strategy :unique-key]

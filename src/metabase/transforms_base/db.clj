@@ -24,23 +24,6 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one :model/Transform :id [:auto/param transform-id]))
 
-(mu/defn update-transform!
-  "Apply `changes` to the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   changes      :- [:map {:closed true}
-                    [:last_checkpoint_value {:optional true} [:maybe :string]]
-                    [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
-  (t2/update! :model/Transform :id transform-id changes))
-
-(mu/defn update-transform-run!
-  "Apply `changes` to the TransformRun with `run-id`."
-  [run-id  :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
-               [:checkpoint_lo_value        {:optional true} [:maybe :string]]
-               [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TransformRun :id run-id changes))
-
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]

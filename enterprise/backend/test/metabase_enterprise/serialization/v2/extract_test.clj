@@ -9,6 +9,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.test-utils :refer [personal-collection]]
    [metabase.core.core :as mbc]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -388,7 +389,7 @@
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
       (t2/delete! :model/Card :id deleted-card-id)
-      (t2/delete! :model/Dashboard :id deleted-dash-id)
+      (dashboards.write/delete-dashboard-row! deleted-dash-id {})
       (testing "the references to deleted cards and dashboards are ignored"
         (is (= #{[:model/Dashboard clickdash-eid]
                  [:model/Collection coll-eid]

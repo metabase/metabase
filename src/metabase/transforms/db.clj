@@ -103,13 +103,13 @@
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
-   changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform :id transform-id changes))
+   changes      :- ::transforms.schema/transform.changes]
+  (t2/update! :model/Transform :id [:auto/param transform-id] changes))
 
-(mu/defn delete-transform!
-  "Delete the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform :id transform-id))
+(mu/defn delete-transforms!
+  "Delete the Transforms with `transform-ids`."
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  (t2/delete! :model/Transform :id [:in transform-ids]))
 
 (mu/defn transforms-in-collections
   "The Transforms in the Collections with `collection-ids`."
@@ -137,6 +137,27 @@
   "The subset of `tag-ids` that exist."
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
+
+(mu/defn tags
+  "The TransformTags with `tag-ids`."
+  [tag-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/TransformTag :id [:in tag-ids]))
+
+(mu/defn insert-tag!
+  "Insert a TransformTag with `tag` and return the new instance."
+  [tag :- ::transforms.schema/transform-tag.update]
+  (t2/insert-returning-instance! :model/TransformTag tag))
+
+(mu/defn update-tag!
+  "Apply `changes` to the TransformTag with `tag-id`."
+  [tag-id  :- ms/PositiveInt
+   changes :- ::transforms.schema/transform-tag.changes]
+  (t2/update! :model/TransformTag :id [:auto/param tag-id] changes))
+
+(mu/defn delete-tags!
+  "Delete the TransformTags with `tag-ids`."
+  [tag-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/TransformTag :id [:in tag-ids]))
 
 (mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
   "The id of the TransformTag named `tag-name`, or nil."
@@ -234,15 +255,26 @@
   [job-ids :- [:sequential ms/PositiveInt]]
   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
 
-(mu/defn activate-job!
-  "Mark the inactive TransformJob with `job-id` active, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
+(mu/defn insert-job!
+  "Insert a TransformJob with `job` and return the new instance."
+  [job :- ::transforms.schema/transform-job.update]
+  (t2/insert-returning-instance! :model/TransformJob job))
 
-(mu/defn deactivate-job!
-  "Mark the active TransformJob with `job-id` inactive, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
+(mu/defn jobs
+  "The TransformJobs with `job-ids`."
+  [job-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/TransformJob :id [:in job-ids]))
+
+(mu/defn update-job!
+  "Apply `changes` to the TransformJob with `job-id`."
+  [job-id  :- ms/PositiveInt
+   changes :- ::transforms.schema/transform-job.changes]
+  (t2/update! :model/TransformJob :id [:auto/param job-id] changes))
+
+(mu/defn delete-jobs!
+  "Delete the TransformJobs with `job-ids`."
+  [job-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/TransformJob :id [:in job-ids]))
 
 (mu/defn job-tag-ids
   "The IDs of the tags of the TransformJob with `job-id`."
@@ -521,11 +553,17 @@
   [run :- ::transforms.schema/transform-run.update]
   (t2/insert-returning-instance! :model/TransformRun run))
 
+(mu/defn update-run!
+  "Apply `changes` to the TransformRun with `run-id`, returning the number of rows updated."
+  [run-id  :- ms/PositiveInt
+   changes :- ::transforms.schema/transform-run.changes]
+  (t2/update! :model/TransformRun :id [:auto/param run-id] changes))
+
 (mu/defn finish-active-run!
   "Apply `changes` to the TransformRun with `run-id` if it is still active, returning the number of rows updated."
   [run-id  :- ms/PositiveInt
-   changes :- ::transforms.schema/transform-run.update]
-  (t2/update! :model/TransformRun :id run-id :is_active true changes))
+   changes :- ::transforms.schema/transform-run.changes]
+  (t2/update! :model/TransformRun :id [:auto/param run-id] :is_active true changes))
 
 (mu/defn cancel-active-runs!
   "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."
@@ -541,7 +579,7 @@
 (mu/defn mark-run-canceling!
   "Set the status of the TransformRun with `run-id` to canceling."
   [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformRun :id run-id {:status "canceling"}))
+  (t2/update! :model/TransformRun :id [:auto/param run-id] {:status "canceling"}))
 
 ;;; -------------------------------------------- Run cancelations --------------------------------------------
 
@@ -583,26 +621,26 @@
 (mu/defn touch-active-job-run!
   "Stamp `updated_at` on the active TransformJobRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJobRun :id run-id :is_active true {:updated_at :%now}))
+  (t2/update! :model/TransformJobRun :id [:auto/param run-id] :is_active true {:updated_at :%now}))
 
 (mu/defn touch-active-dag-run!
   "Stamp `updated_at` on the active TransformDagRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/update! :model/TransformDagRun :id run-id :is_active true {:updated_at :%now}))
+  (t2/update! :model/TransformDagRun :id [:auto/param run-id] :is_active true {:updated_at :%now}))
 
 (mu/defn finish-active-job-run!
   "Apply `changes` to the TransformJobRun with `run-id` if it is still active, returning the number of rows
   updated."
   [run-id  :- ms/PositiveInt
-   changes :- ::transforms.schema/transform-job-run.update]
-  (t2/update! :model/TransformJobRun :id run-id :is_active true changes))
+   changes :- ::transforms.schema/transform-job-run.changes]
+  (t2/update! :model/TransformJobRun :id [:auto/param run-id] :is_active true changes))
 
 (mu/defn finish-active-dag-run!
   "Apply `changes` to the TransformDagRun with `run-id` if it is still active, returning the number of rows
   updated."
   [run-id  :- ms/PositiveInt
-   changes :- ::transforms.schema/transform-dag-run.update]
-  (t2/update! :model/TransformDagRun :id run-id :is_active true changes))
+   changes :- ::transforms.schema/transform-dag-run.changes]
+  (t2/update! :model/TransformDagRun :id [:auto/param run-id] :is_active true changes))
 
 (defn- job-run-where
   [job-id

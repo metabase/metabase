@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.test-util :as remote-sync.tu]
    [metabase.lib.core :as lib]
@@ -112,7 +113,7 @@
              (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                                            {:branch "main" :message "Push"})]
                (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
-             (t2/update! :model/SegmentTest :id (:id t) {:description "changed"})
+             (data-testing.write/update-segment-test! (:id t) {:description "changed"} {})
              (testing "a changed segment test is listed with its segment, the segment's table, and the table's collection"
                (is (=? [{:id          (:id t)
                          :model       "segmenttest"

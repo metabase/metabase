@@ -2,8 +2,6 @@
   "Application database queries for the cache module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
-   [metabase.app-db.core :as app-db]
    [metabase.cache.schema :as cache.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
@@ -155,13 +153,21 @@
    model-id :- ms/IntGreaterThanOrEqualToZero]
   (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
 
-(mu/defn upsert-cache-config!
-  "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
-  [model    :- :string
-   model-id :- ms/IntGreaterThanOrEqualToZero
-   data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
-  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
-                            (constantly data)))
+(mu/defn insert-cache-config!
+  "Insert the CacheConfig `row`, returning its id."
+  [row :- ::cache.schema/cache-config.create]
+  (t2/insert-returning-pk! :model/CacheConfig row))
+
+(mu/defn update-cache-config!
+  "Apply `changes` to the CacheConfig with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::cache.schema/cache-config.changes]
+  (t2/update! :model/CacheConfig :id [:auto/param id] changes))
+
+(mu/defn cache-configs-by-ids
+  "The CacheConfigs with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/CacheConfig :id [:in ids]))
 
 (mu/defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."
@@ -170,10 +176,9 @@
   (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
 
 (mu/defn delete-cache-configs!
-  "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
-  [model     :- :string
-   model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
+  "Delete the CacheConfigs with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/CacheConfig :id [:in ids]))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."

@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.db :as cache.db]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase.cache.core :as cache]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
@@ -240,9 +241,9 @@
         schedule-caches-to-invalidate (select-ready-to-run :schedule)
         schedule-refresh-count
         (reduce
-         (fn [refreshed-count {:keys [id config refresh_automatically] :as cache-config}]
-           (cache.db/update-cache-config! id {:next_run_at    (calc-next-run (:schedule config) now)
-                                              :invalidated_at now})
+         (fn [refreshed-count {:keys [config refresh_automatically] :as cache-config}]
+           (cache/update-cache-config! cache-config {:next_run_at    (calc-next-run (:schedule config) now)
+                                                     :invalidated_at now} {})
            (if (and (premium-features/enable-preemptive-caching?) refresh_automatically)
              (do
                (refresh-schedule-cache! cache-config)

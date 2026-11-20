@@ -2,7 +2,7 @@
   "End-to-end tests for Python library functionality."
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.write :as transforms-python.write]
    [metabase.driver :as driver]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -20,12 +20,12 @@
         (mt/dataset transforms-dataset/transforms-test
           (mt.util/with-discard-model-updates! [:model/PythonLibrary]
             ;; Create or update the python library
-            (python-library/update-python-library-source! "common"
-                                                          (str "def multiply_by_two(x):\n"
-                                                               "    return x * 2\n"
-                                                               "\n"
-                                                               "def add_greeting(name):\n"
-                                                               "    return f'Hello, {name}!'\n"))
+            (transforms-python.write/update-python-library-source! "common"
+                                                                   (str "def multiply_by_two(x):\n"
+                                                                        "    return x * 2\n"
+                                                                        "\n"
+                                                                        "def add_greeting(name):\n"
+                                                                        "    return f'Hello, {name}!'\n"))
             (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               ;; Create and run a transform that uses the library
               (with-transform-cleanup! [{table-name :name :as target} {:type   "table"

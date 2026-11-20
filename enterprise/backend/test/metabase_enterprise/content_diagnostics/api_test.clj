@@ -9,6 +9,7 @@
    [java-time.api :as t]
    [metabase-enterprise.content-diagnostics.api :as cd.api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -259,7 +260,7 @@
                   (insert-counted-findings! :dashboard id [:stale :duplicate_name :slow :empty :sparse :crowded]))
                 (is (= (update-vals baseline inc)
                        (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
-                (t2/update! :model/Dashboard :id visible-dash {:collection_id hidden})
+                (dashboards.write/update-dashboard-row! visible-dash {:collection_id hidden} {})
                 (is (= baseline (mt/user-http-request :rasta :get 200 "ee/content-diagnostics/counts")))
                 (perms/grant-collection-read-permissions! (perms/all-users-group) hidden)
                 (is (= (update-vals baseline #(+ % 2))

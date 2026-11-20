@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -51,7 +52,7 @@
   (refusing #(data-testing.runner/validate-test :transform
                                                 (data-testing.db/transform transform_id)
                                                 (data-testing.runner/test-definition body)))
-  (data-testing.models/create-transform-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.write/create-transform-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/transform-test
   "Update a transform test."
@@ -67,7 +68,7 @@
                                                       (data-testing.db/transform transform_id)
                                                       (data-testing.runner/test-definition merged)))))
     (when (seq body)
-      (data-testing.models/update-transform-test! id body)))
+      (data-testing.write/update-transform-test! transform-test body {})))
   (data-testing.db/transform-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -75,7 +76,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TransformTest id)
-  (data-testing.models/delete-transform-test! id)
+  (data-testing.write/delete-transform-test! id {})
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

@@ -16,8 +16,8 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.jobs :as jobs]
-   [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [transform-run-timeout-seconds with-transform-cleanup!]]
@@ -605,8 +605,8 @@
                                         (on-exit)
                                         (if ex (throw ex) ret)))]
                         (let [plan (#'jobs/get-plan #{(:id transform)})
-                              run1 (transforms.job-run/start-run! (:id job) :manual)
-                              run2 (transforms.job-run/start-run! (:id job) :manual)
+                              run1 (run-write/start-job-run! (:id job) :manual)
+                              run2 (run-write/start-job-run! (:id job) :manual)
                               fut1 (future
                                      (try
                                        {:result (jobs/run-transforms! (:id run1) #{(:id transform)} plan

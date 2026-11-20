@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -10,7 +11,9 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- archive! [model id archived?]
-  (t2/update! model :id id {:archived archived?}))
+  (if-let [update! (:update! (mi/write-fns model))]
+    (update! id {:archived archived?} {})
+    (t2/update! model :id id {:archived archived?})))
 
 (defn- row [model id]
   (t2/select-one model :id id))

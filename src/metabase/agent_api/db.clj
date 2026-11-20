@@ -2,7 +2,6 @@
   "Application database queries for the agent API module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -67,18 +66,6 @@
   [dashcard-id  :- ::lib.schema.id/dashcard
    dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
-
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.update [:visualization_settings :row :col])]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
-
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived])]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."

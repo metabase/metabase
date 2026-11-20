@@ -1,6 +1,8 @@
 (ns metabase.permissions.models.permissions-group-membership-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -101,13 +103,13 @@
   (mt/with-temp [:model/User {user-id :id} {}]
     (testing "deleting a membership of All Users is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
-                            (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
+                            (perms/remove-user-from-group! user-id (all-users-group-id))))
       (is (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id))))
     (testing "inserting a membership of All Users is refused"
-      (perms/allow-changing-all-users-group-members
-        (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id)))
+      (perms/remove-user-from-group! user-id (all-users-group-id) {:allow-all-users-group? true})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All Users' group"
-                            (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id (all-users-group-id)})))
+                            (perms/create-memberships! [{:user_id user-id :group_id (all-users-group-id) :is_group_manager false}]
+                                                       {})))
       (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id (all-users-group-id)))))))
 
 (deftest insert-into-admin-group-sets-is-superuser-test
@@ -115,15 +117,19 @@
     (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id (admin-group-id)})
     (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))
     (testing "and deleting it unsets the flag"
-      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id (admin-group-id))
+      (perms/remove-user-from-group! user-id (admin-group-id))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
 
 (deftest deleting-every-admin-membership-at-once-is-refused-test
   (mt/with-temp [:model/User _ {:is_superuser true}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"last member of the 'Admin' group"
-                          (t2/with-transaction [_conn]
-                            (t2/delete! :model/PermissionsGroupMembership :group_id (admin-group-id)))))
+                          (perms/remove-all-users-from-group! (admin-group-id))))
     (is (t2/exists? :model/PermissionsGroupMembership :group_id (admin-group-id) :user_id (mt/user->id :crowberto)))))
+
+(defn- membership
+  "The PermissionsGroupMembership of the User with `user-id` in the group with `group-id`."
+  [user-id group-id]
+  (t2/select-one :model/PermissionsGroupMembership :user_id user-id :group_id group-id))
 
 (deftest admin-cannot-be-group-manager-test
   (mt/with-temp [:model/User             {admin-id :id} {:is_superuser true}
@@ -137,13 +143,12 @@
     (testing "making an admin's membership a group manager is refused"
       (t2/insert! :model/PermissionsGroupMembership {:user_id admin-id :group_id group-id})
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Admin cannot be a group manager"
-                            (t2/update! :model/PermissionsGroupMembership {:user_id admin-id :group_id group-id}
-                                        {:is_group_manager true})))
+                            (perms/update-membership! (membership admin-id group-id) {:is_group_manager true} {})))
       (is (false? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
                                     :user_id admin-id :group_id group-id))))
     (testing "a user who is not an admin can be made group manager"
       (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
-      (t2/update! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id} {:is_group_manager true})
+      (perms/update-membership! (membership user-id group-id) {:is_group_manager true} {})
       (is (true? (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership
                                    :user_id user-id :group_id group-id))))))
 
@@ -155,9 +160,9 @@
     (perms/add-user-to-group! user-id group-id)
     (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another user"
-                            (t2/update! :model/PermissionsGroupMembership :id membership-id {:user_id other-user-id})))
+                            (perms/update-membership! membership-id {:user_id other-user-id} {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"another group"
-                            (t2/update! :model/PermissionsGroupMembership :id membership-id {:group_id other-group-id})))
+                            (perms/update-membership! membership-id {:group_id other-group-id} {})))
       (is (=? {:user_id user-id :group_id group-id}
               (t2/select-one :model/PermissionsGroupMembership :id membership-id))))))
 
@@ -295,3 +300,38 @@
                                         [{:user_id user-id :group_id group-id :is_group_manager true}
                                          {:user_id admin-id :group_id group-id :is_group_manager true}])))
       (is (not (t2/exists? :model/PermissionsGroupMembership :group_id group-id))))))
+
+(deftest update-membership-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::membership-events
+                                     (fn [{:keys [model]}] (when (= :model/PermissionsGroupMembership model) :membership))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/User             {user-id :id}  {}
+                     :model/PermissionsGroup {group-id :id} {}]
+        (perms/add-user-to-group! user-id group-id)
+        (let [{membership-id :id} (membership user-id group-id)]
+          (reset! published [])
+          (mt/with-test-user :crowberto
+            (perms/update-membership! membership-id {:is_group_manager true} {}))
+          (testing "one update event with the row before and after the update"
+            (is (=? [{:operation       :update
+                      :id              membership-id
+                      :user-id         (mt/user->id :crowberto)
+                      :previous-object {:is_group_manager false}
+                      :object          {:is_group_manager true}}]
+                    @published)))))
+      (finally
+        (events.tu/unregister! ::membership-events)))))
+
+(deftest update-membership-query-count-test
+  (testing "making a member group manager through update-membership! issues no more queries than master's t2/update! with the hooks: 3"
+    (mt/with-temp [:model/User             {user-id :id}  {}
+                   :model/PermissionsGroup {group-id :id} {}]
+      (perms/add-user-to-group! user-id group-id)
+      (let [{membership-id :id} (membership user-id group-id)]
+        (perms/update-membership! membership-id {:is_group_manager true} {})
+        (perms/update-membership! membership-id {:is_group_manager false} {})
+        (t2/with-call-count [call-count]
+          (perms/update-membership! membership-id {:is_group_manager true} {})
+          (is (<= (call-count) 3)))))))

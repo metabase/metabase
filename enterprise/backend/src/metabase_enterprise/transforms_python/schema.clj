@@ -4,6 +4,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -30,6 +31,18 @@
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]
    [:is_default {:optional true} [:maybe :boolean]]])
+
+(mr/def ::python-library.changes
+  "What an UPDATE of a PythonLibrary writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::python-library.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::write-opts
+  "The context of a write of PythonLibraries: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
 
 (mr/def ::external-python-library
   "A PythonLibrary as serialization writes it, with portable references in place of ids."

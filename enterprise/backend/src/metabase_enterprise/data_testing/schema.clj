@@ -8,6 +8,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -304,6 +305,38 @@
 (mr/def ::segment-test.update
   "What a client sends to update a segment test. Omitted fields are left unchanged."
   (test-update :segment_id ::lib.schema.id/segment))
+
+(mr/def ::sql-instant
+  "A moment, or an SQL expression the app DB evaluates to one."
+  [:or ms/TemporalInstant ::h2x/honeysql-expr])
+
+(mr/def ::transform-test.changes
+  "What an UPDATE of a transform test writes: the columns of an update, plus its `:updated_at`."
+  [:merge
+   ::transform-test.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::card-test.changes
+  "What an UPDATE of a card test writes: the columns of an update, plus its `:updated_at`."
+  [:merge
+   ::card-test.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::segment-test.changes
+  "What an UPDATE of a segment test writes: the columns of an update, plus its `:updated_at`."
+  [:merge
+   ::segment-test.update
+   [:map {:closed true}
+    [:updated_at {:optional true} ::sql-instant]]])
+
+(mr/def ::write-opts
+  "The context of a write of saved tests: `:revision-message`, the message of the revisions, and `:import?`, whether a
+  SerDes import writes them."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:import?          {:optional true} :boolean]])
 
 (mr/def ::saved-test
   "A saved test of any subject type."

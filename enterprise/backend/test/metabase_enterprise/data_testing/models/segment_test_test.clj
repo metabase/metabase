@@ -6,13 +6,16 @@
    [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -73,7 +76,7 @@
                  :model/DataTestRun {other-run :id}  {:test_type :card, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :segment test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/SegmentTest :id test-id)
+      (data-testing.write/delete-segment-tests! [test-id] {})
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a card test with the same id keeps its test id"
@@ -192,3 +195,35 @@
                       (is (false? (boolean (mi/can-update? (t2/hydrate test-on-writable :can_write) {:segment_id other-id})))))
                     (testing "a test cannot move away from a segment whose tests the analyst may not save"
                       (is (false? (boolean (mi/can-update? (t2/hydrate test-on-other :can_write) {:segment_id writable-id})))))))))))))))
+
+(deftest update-segment-test-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::segment-test-events
+                                     (fn [{:keys [model]}] (when (= :model/SegmentTest model) :segment-test))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Segment {parent-id :id} {}
+                     :model/SegmentTest saved-test {:segment_id parent-id :name "Test"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (data-testing.write/update-segment-test! (:id saved-test) {:name "Renamed Test"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id saved-test)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Test" :updated_at (:updated_at saved-test)}
+                    :object          {:name "Renamed Test" :updated_at (:updated_at saved-test)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::segment-test-events)))))
+
+(deftest update-segment-test-query-count-test
+  (testing "a warm update-segment-test! issues 4 queries, as master's t2/update! with the hooks did"
+    (mt/with-temp [:model/Segment {parent-id :id} {}
+                   :model/SegmentTest {id :id} {:segment_id parent-id :name "Test"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (data-testing.write/update-segment-test! id {:name "Warm Test"} {})
+          (t2/with-call-count [call-count]
+            (data-testing.write/update-segment-test! id {:name "Renamed Test"} {})
+            (is (<= (call-count) 4))))))))

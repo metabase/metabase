@@ -7,11 +7,11 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
+   [metabase.cache.write :as cache.write]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -31,8 +31,7 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
 
@@ -50,12 +49,10 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(t2/define-before-update :model/CacheConfig
+(t2/define-after-insert :model/CacheConfig
   [cache-config]
-  (let [changes (t2/changes cache-config)]
-    (when (or (contains? changes :model) (contains? changes :model_id))
-      (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
-    cache-config))
+  (events/created! :model/CacheConfig cache-config)
+  cache-config)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -247,7 +244,7 @@
     (let [data    (config->row config)
           current (cache.db/lock-cache-config model model_id)]
       (events/with-event-context {:details (caching-change current data)}
-        (cache.db/upsert-cache-config! model model_id data)))))
+        (cache.write/store-cache-config! model model_id data)))))
 
 (defn delete!
   "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
@@ -255,13 +252,7 @@
   (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
     (doseq [item current]
       (events/with-event-context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}
-        (cache.db/delete-cache-configs! model [(:model_id item)])))))
-
-(defn delete-target-configs!
-  "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
-  [model model-ids]
-  (when (seq model-ids)
-    (cache.db/delete-cache-configs! model (vec model-ids))))
+        (cache.write/delete-cache-configs! [(:id item)] {})))))
 
 ;;; ------------------------------------------------- Invalidation -------------------------------------------------
 

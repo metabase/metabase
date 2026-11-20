@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -56,6 +57,24 @@
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.parameter]]]
    [:entity_id           {:optional true} [:maybe :string]]
    [:disable_links       {:optional true} [:maybe :boolean]]])
+
+(mr/def ::pulse.changes
+  "What an UPDATE of a Pulse writes: the columns of an update, its `:updated_at` and `:collection_position` also an SQL
+  expression."
+  [:merge
+   ::pulse.update
+   [:map {:closed true}
+    [:updated_at          {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]
+    [:collection_position {:optional true} [:maybe [:or :int ::h2x/honeysql-expr]]]]])
+
+(mr/def ::write-opts
+  "The context of a write of the models of the pulse module: `:archive-parent-pulse?` (default true), whether deleting
+  the last PulseChannel of a Pulse archives it, `:allow-moving-dashboard-subscriptions?`, whether a Pulse update may
+  change the Collection of a dashboard subscription, and `:import?`, whether a SerDes import writes."
+  [:map {:closed true}
+   [:archive-parent-pulse?                 {:optional true} :boolean]
+   [:allow-moving-dashboard-subscriptions? {:optional true} :boolean]
+   [:import?                               {:optional true} :boolean]])
 
 (mr/def ::pulse-card.position
   ms/IntGreaterThanOrEqualToZero)
@@ -176,6 +195,17 @@
    [:enabled        {:optional true} [:maybe :boolean]]
    [:entity_id      {:optional true} [:maybe :string]]
    [:channel_id     {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::pulse-channel.changes
+  "What an UPDATE of a PulseChannel writes: the columns of an update, its `:schedule_type` any keyword and its
+  `:schedule_hour` any integer, which the update checks with the rest of the schedule with a 400, and its `:updated_at`
+  also an SQL expression."
+  [:merge
+   ::pulse-channel.update
+   [:map {:closed true}
+    [:schedule_type {:optional true} [:maybe [:or :keyword :string]]]
+    [:schedule_hour {:optional true} [:maybe :int]]
+    [:updated_at    {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::pulse-channel-recipient
   "A PulseChannelRecipient as selected from the app DB: every column of `:pulse_channel_recipient`."

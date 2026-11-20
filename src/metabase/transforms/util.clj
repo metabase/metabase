@@ -26,7 +26,7 @@
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
@@ -177,10 +177,10 @@
                                       [:parent-run {:optional true} [:maybe [:tuple [:enum :job :dag] ms/PositiveInt]]]]]]
   (let [[parent-type parent-id] parent-run]
     (try
-      (transform-run/start-run! id (cond-> {:run_method run-method}
-                                     user-id                (assoc :user_id user-id)
-                                     (= parent-type :job)   (assoc :job_run_id parent-id)
-                                     (= parent-type :dag)   (assoc :dag_run_id parent-id)))
+      (run-write/start-run! id (cond-> {:run_method run-method}
+                                 user-id                (assoc :user_id user-id)
+                                 (= parent-type :job)   (assoc :job_run_id parent-id)
+                                 (= parent-type :dag)   (assoc :dag_run_id parent-id)))
       (catch Exception e
         (if (duplicate-key-violation? e)
           (throw (ex-info "Transform is already running"
@@ -266,7 +266,7 @@
             (transforms-base.u/save-watermark! (:id transform) source-range-params)
             (when-not full-create?
               (transforms-base.u/record-workspace-target-remapping! transform))
-            (transform-run/succeed-started-run! run-id)
+            (run-write/succeed-started-run! run-id)
             ;; Narrow try/catch so an emission throw doesn't trigger the outer catch's
             ;; fail-started-run! after succeed-started-run! has already fired.
             (when reliable-row-count?
@@ -283,8 +283,8 @@
             ret))
         (catch Throwable t
           (if (:timeout (ex-data t))
-            (transform-run/timeout-run! run-id {:message (ex-message-fn t)})
-            (transform-run/fail-started-run! run-id {:message (ex-message-fn t)}))
+            (run-write/timeout-run! run-id {:message (ex-message-fn t)})
+            (run-write/fail-started-run! run-id {:message (ex-message-fn t)}))
           (throw t))))))
 
 (mu/defn is-temp-transform-table? :- :boolean

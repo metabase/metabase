@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -28,6 +29,25 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::glossary.changes
+  "What an UPDATE of a Glossary writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::glossary.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::glossary.create
+  "What a new Glossary entry takes."
+  [:map {:closed true}
+   [:term       ::glossary.term]
+   [:definition ::glossary.definition]
+   [:creator_id ::lib.schema.id/user]])
+
+(mr/def ::write-opts
+  "The context of a write of Glossary entries: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
 
 (mr/def ::external-glossary
   "A Glossary as serialization writes it, with portable references in place of ids."

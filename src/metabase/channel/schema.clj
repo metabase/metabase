@@ -6,6 +6,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -120,6 +121,20 @@
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::channel.changes
+  "What an UPDATE of a Channel writes: the columns of an update, its `:type` any keyword, which the update checks against
+  its details with a 400, and its `:updated_at` also an SQL expression."
+  [:merge
+   ::channel.update
+   [:map {:closed true}
+    [:type       {:optional true} [:maybe [:or :keyword :string]]]
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::write-opts
+  "The context of a write of Channels and ChannelTemplates: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
+
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
   #{:email/handlebars-text
@@ -172,6 +187,13 @@
    [:details      {:optional true} [:maybe ::channel-template.details]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::channel-template.changes
+  "What an UPDATE of a ChannelTemplate writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::channel-template.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::external-channel
   "A Channel as serialization writes it, with portable references in place of ids."

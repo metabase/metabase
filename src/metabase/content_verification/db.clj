@@ -2,7 +2,6 @@
   "Application database queries for the content verification module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -46,21 +45,39 @@
              :most_recent true
              {:order-by [[:id :desc]]}))
 
-(mu/defn delete-moderation-reviews!
-  "Delete the ModerationReviews with `ids`."
-  [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/ModerationReview :id [:in ids]))
+(mu/defn moderation-review
+  "The ModerationReview with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/ModerationReview :id id))
 
-(mu/defn unmark-most-recent-moderation-reviews!
-  "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type` other than `review-id`."
+(mu/defn moderation-reviews
+  "The ModerationReviews with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/ModerationReview :id [:in ids]))
+
+(mu/defn other-most-recent-moderation-reviews
+  "The ModerationReviews of the item with `item-id` and `item-type` marked most recent other than `review-id`."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]
    review-id :- ms/PositiveInt]
-  (t2/update! :model/ModerationReview
-              {:moderated_item_id item-id, :moderated_item_type item-type, :most_recent true, :id [:not= review-id]}
-              {:most_recent false}))
+  (t2/select :model/ModerationReview
+             :moderated_item_id item-id
+             :moderated_item_type item-type
+             :most_recent true
+             :id [:not= review-id]))
+
+(mu/defn update-moderation-reviews!
+  "Apply `changes` to the ModerationReviews with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::content-verification.schema/moderation-review.changes]
+  (t2/update! :model/ModerationReview :id [:in ids] changes))
+
+(mu/defn delete-moderation-reviews!
+  "Delete the ModerationReviews with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ModerationReview :id [:in ids]))
 
 (mu/defn insert-moderation-review!
   "Insert the ModerationReview `row` and return the inserted instance."
-  [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
+  [row :- ::content-verification.schema/moderation-review.create]
   (t2/insert-returning-instance! :model/ModerationReview row))

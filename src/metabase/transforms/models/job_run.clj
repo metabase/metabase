@@ -18,12 +18,7 @@
 
 (doto :model/TransformJobRun
   (derive :metabase/model)
-  (derive :hook/timestamped?))
-
-(t2/define-before-update :model/TransformJobRun
-  [run]
-  (cond-> run
-    (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
+  (derive :hook/timestamped-on-insert?))
 
 (t2/deftransforms :model/TransformJobRun
   {:status mi/transform-keyword
@@ -41,16 +36,6 @@
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (transforms.db/latest-job-runs-reducible job-ids))))
-
-(mu/defn start-run! :- ::transforms.schema/transform-job-run
-  "Start a run, whose insert hook snapshots the job's name and entity_id so that the run stays displayable after the job
-  is deleted, since `transform_job_run.job_id` has no FK."
-  ([job-id     :- ms/PositiveInt
-    run-method :- [:enum :manual :cron]]
-   (transforms.db/insert-job-run! {:job_id     job-id
-                                   :run_method run-method
-                                   :status     :started
-                                   :is_active  true})))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator

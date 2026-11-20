@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -15,7 +16,6 @@
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,8 +24,7 @@
 (doto :model/CardTest
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events)
+  (derive :hook/timestamped-on-insert?)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/CardTest :card]
@@ -44,12 +43,8 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(t2/define-before-delete :model/CardTest [card-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
-  ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
-  ;; runs are never listed or shown as `last_run`.
-  (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
+(t2/define-after-insert :model/CardTest [card-test]
+  (events/created! :model/CardTest card-test)
   card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -95,33 +90,12 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(mu/defn create-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` returning the inserted test."
-  [card-test :- [:merge
-                 ::data-testing.schema/card-test.create
-                 [:map {:closed true}
-                  [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-card-test! card-test))
-
-(mu/defn update-card-test! :- :nil
-  "Apply `changes` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/card-test.update]
-  (data-testing.db/update-card-test! id changes)
-  nil)
-
-(mu/defn delete-card-test! :- :nil
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.db/delete-card-test! id)
-  nil)
-
 (defenterprise delete-card-tests!
   "Deletes the tests of the card `card-id` whatever the token says, since the
   rows outlive the feature."
   :feature :none
   [card-id]
-  (data-testing.db/delete-card-tests! card-id))
+  (data-testing.write/delete-tests-of-card! card-id))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
@@ -132,7 +106,7 @@
   [id _user-id snapshot]
   (data-testing.models/check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (update-card-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+  (data-testing.write/update-card-test! id (merge {:now nil} (select-keys snapshot revision-columns)) {}))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

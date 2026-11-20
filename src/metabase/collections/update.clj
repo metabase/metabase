@@ -48,7 +48,7 @@
   own hooks leave their alerts."
   [stopped]
   (when-let [notification-ids (seq (for [[_card notifications] stopped, notification notifications] (:id notification)))]
-    (collections.db/delete-notifications! (vec notification-ids))))
+    ((:delete! (mi/write-fns :model/Notification)) (vec notification-ids) {})))
 
 (defn- notify-stopped-alerts!
   "Tells the recipients of the alerts of `stopped`, which archiving a Collection deleted, as archiving their Card does."

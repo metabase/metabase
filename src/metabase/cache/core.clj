@@ -2,18 +2,22 @@
   (:require
    [metabase.cache.models.cache-config]
    [metabase.cache.settings]
+   [metabase.cache.write]
    [potemkin :as p]))
 
 (comment metabase.cache.models.cache-config/keep-me
-         metabase.cache.settings/keep-me)
+         metabase.cache.settings/keep-me
+         metabase.cache.write/keep-me)
 
 (p/import-def metabase.cache.models.cache-config/invalidate! invalidate-config!)
 
 (p/import-vars
  [metabase.cache.models.cache-config
   card-strategy
-  delete-target-configs!
   root-strategy]
+ [metabase.cache.write
+  delete-target-configs!
+  update-cache-config!]
  [metabase.cache.settings
   enable-query-caching
   query-caching-early-refresh-ratio

@@ -29,6 +29,7 @@
    [metabase.notification.api.notification :as notification-api]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.write :as notification.write]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -428,7 +429,7 @@
       (let [before (-> (notification.db/card-notifications ids)
                        models.notification/hydrate-notification
                        vec)]
-        (notification.db/update-card-notifications! ids update-map)
+        (notification.write/update-card-notifications! ids update-map {})
         before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response

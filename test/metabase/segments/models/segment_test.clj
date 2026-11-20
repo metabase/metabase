@@ -164,6 +164,17 @@
            #"[Cc]ycle"
            (segments.write/update-segment! segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)} {}))))))
 
+(deftest update-segment-takes-legacy-definition-and-refuses-fragment-test
+  (mt/with-temp [:model/Segment {id :id} {:name "Segment" :definition (price-definition)}]
+    (testing "legacy MBQL definition is accepted and stored as MBQL 5"
+      (is (= 1 (segments.write/update-segment! id {:definition (mt/mbql-query venues {:filter [:not-null $name]})} {})))
+      (is (= :mbql-version/mbql5
+             (lib/normalized-mbql-version (t2/select-one-fn :definition :model/Segment :id id)))))
+    (testing "fragment definition is refused with 400"
+      (is (=? {:status-code 400}
+              (try (segments.write/update-segment! id {:definition {:filter [:= [:field 1 nil] 2]}} {})
+                   (catch clojure.lang.ExceptionInfo e (ex-data e))))))))
+
 (deftest update-segment-publishes-update-event-test
   (let [published (atom [])]
     (events/register-owned-consumer! ::segment-events

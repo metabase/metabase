@@ -4,10 +4,12 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.channel.rest.api.channel-test :as api.channel-test]
+   [metabase.channel.write :as channel.write]
    [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -50,9 +52,9 @@
       (is (thrown-with-msg?
            java.lang.Exception
            #"Update payload_type is not allowed."
-           (t2/update! :model/Notification :id noti-id {:payload_type :notification/card
-                                                        :payload_id   1337
-                                                        :creator_id   (mt/user->id :crowberto)})))))
+           (notification.write/update-notification! noti-id {:payload_type :notification/card
+                                                             :payload_id   1337
+                                                             :creator_id   (mt/user->id :crowberto)} {})))))
   (testing "can't change payload id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
@@ -60,20 +62,20 @@
       (is (thrown-with-msg?
            java.lang.Exception
            #"Update payload_id is not allowed."
-           (t2/update! :model/Notification :id noti-id {:payload_id 1338})))))
+           (notification.write/update-notification! noti-id {:payload_id 1338} {})))))
   (testing "superusers can change creator_id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :rasta)}))
+        (notification.write/update-notification! noti-id {:creator_id (mt/user->id :rasta)} {}))
       (is (= (mt/user->id :rasta)
              (t2/select-one-fn :creator_id :model/Notification :id noti-id)))))
   (testing "a plain update with no current user can change creator_id"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (t2/update! :model/Notification :id noti-id {:creator_id (mt/user->id :lucky)})
+      (notification.write/update-notification! noti-id {:creator_id (mt/user->id :lucky)} {})
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/Notification :id noti-id))))))
 
@@ -105,7 +107,7 @@
         (testing "sanity check"
           (is (t2/exists? :model/NotificationCard :id notification-card-id)))
         (testing "delete notification will delete notification card"
-          (t2/delete! :model/Notification :id (:id notification))
+          (notification.write/delete-notifications! [(:id notification)] {})
           (is (not (t2/exists? :model/NotificationCard :id notification-card-id))))))))
 
 (deftest delete-card-cleans-up-notifications-test
@@ -253,7 +255,7 @@
                       :template_id  (:id tmpl-1)
                       :recipients   [{:type     :notification-recipient/user
                                       :user_id  (mt/user->id :rasta)}]}])]
-          (t2/delete! :model/ChannelTemplate :id (:id tmpl-1))
+          (channel.write/delete-channel-templates! [(:id tmpl-1)] {})
           (is (=? {:template_id nil} (t2/select-one :model/NotificationHandler :notification_id (:id noti)))))))))
 
 (deftest cross-check-channel-type-and-template-type-test
@@ -273,7 +275,7 @@
                                                           :notification_id (:id noti)
                                                           :template_id     (:id slack-tmpl)}]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (t2/update! :model/NotificationHandler :id (:id handler) {:template_id (:id email-tmpl)}))))))
+                            (notification.write/update-notification-handler! (:id handler) {:template_id (:id email-tmpl)} {}))))))
 
 (deftest notification-recipient-types-test
   (mt/with-temp [:model/Notification        {n-id :id}       {}
@@ -353,29 +355,29 @@
                    "0 * * * * ? *")]
                  (notification.tu/send-notification-triggers sub-id)))
           (testing "update trigger when cron schedule is changed"
-            (t2/update! :model/NotificationSubscription :id sub-id {:cron_schedule "1 * * * * ? *"})
+            (notification.write/update-notification-subscription! sub-id {:cron_schedule "1 * * * * ? *"} {})
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
                    (notification.tu/send-notification-triggers sub-id))))
           (testing "delete the trigger when type changes"
-            (t2/update! :model/NotificationSubscription :id sub-id {:type :notification-subscription/system-event
-                                                                    :cron_schedule nil
-                                                                    :event_name :event/card-create})
+            (notification.write/update-notification-subscription! sub-id {:type :notification-subscription/system-event
+                                                                          :cron_schedule nil
+                                                                          :event_name :event/card-create} {})
             (is (empty? (notification.tu/send-notification-triggers sub-id))))))
       (testing "delete the trigger when delete subscription"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/NotificationSubscription :id sub-id)
+          (notification.write/delete-notification-subscriptions! [sub-id] {})
           (is (empty? (notification.tu/send-notification-triggers sub-id)))))
       (testing "delete notification will delete all subscription triggers"
         (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
                                                                                :cron_schedule   "0 * * * * ? *"
                                                                                :notification_id noti-id})]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/Notification :id noti-id)
+          (notification.write/delete-notifications! [noti-id] {})
           (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
@@ -391,7 +393,8 @@
                      sub-id
                      "0 * * * * ? *"
                      "Asia/Ho_Chi_Minh")]
-                   (notification.tu/send-notification-triggers sub-id)))))))))
+                   (notification.tu/send-notification-triggers sub-id)))
+            (notification.write/delete-notification-subscriptions! [sub-id] {})))))))
 
 (deftest archive-notification-triggers-test
   (mt/with-temp-scheduler!
@@ -405,10 +408,10 @@
       (testing "sanity check that it has a trigger to begin with"
         (is (= 2 (count (notification.tu/notification-triggers id)))))
       (testing "disabled notification should remove triggers"
-        (t2/update! :model/Notification :id id {:active false})
+        (notification.write/update-notification! id {:active false} {})
         (is (empty? (notification.tu/notification-triggers id))))
       (testing "activate notification should restore triggers"
-        (t2/update! :model/Notification :id id {:active true})
+        (notification.write/update-notification! id {:active true} {})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
 (deftest v-alerts-schedule-type-test

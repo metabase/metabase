@@ -3,14 +3,20 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.permissions.core :as perms]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.timeline.write :as timeline.write]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest timelines-for-collection-test
   (mt/with-temp [:model/Collection collection {:name "Rasta's Collection"}]
@@ -66,7 +72,7 @@
       (is (not (mr/validate ::timeline.schema/timeline.update {:icon "nope"})))
       (is (mr/validate ::timeline.schema/timeline.update {:name "Icons" :icon "cake"})))
     (testing "an allowed icon is accepted on update"
-      (t2/update! :model/Timeline :id timeline-id {:icon "cake"})
+      (timeline.write/update-timeline! timeline-id {:icon "cake"} {})
       (is (= "cake" (t2/select-one-fn :icon :model/Timeline :id timeline-id))))))
 
 (deftest collection-namespace-test
@@ -78,7 +84,7 @@
                             (t2/insert! :model/Timeline {:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}))))
     (testing "a Timeline cannot move to a Collection of another namespace"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/update! :model/Timeline :id timeline-id {:collection_id snippets-id})))
+                            (timeline.write/update-timeline! timeline-id {:collection_id snippets-id} {})))
       (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
 
 (deftest update-check-test
@@ -98,3 +104,44 @@
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) to-id)
         (testing "a move to a Collection the user can write is allowed"
           (is (some? (api/update-check timeline {:collection_id to-id}))))))))
+
+(deftest update-timeline-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::timeline-events
+                                     (fn [{:keys [model]}] (when (#{:model/Timeline :model/TimelineEvent} model) :timeline))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Timeline      timeline {:name "Timeline"}
+                     :model/TimelineEvent event    {:timeline_id (:id timeline) :name "Event" :timestamp (java.time.Instant/parse "2027-01-01T00:00:00Z")}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (timeline.write/update-timeline! (:id timeline) {:name "Renamed Timeline"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :model           :model/Timeline
+                    :id              (:id timeline)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Timeline" :updated_at (:updated_at timeline)}
+                    :object          {:name "Renamed Timeline" :updated_at (:updated_at timeline)}}]
+                  @published)))
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (timeline.write/update-timeline! (:id timeline) {:archived true} {}))
+        (testing "archiving the Timeline on its own archives its events, whose events say what carried them"
+          (is (=? [{:model :model/Timeline :operation :update}
+                   {:model :model/TimelineEvent :operation :update :id (:id event)
+                    :context {:archived-with [:model/Timeline (:id timeline)]}
+                    :object {:archived true}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::timeline-events)))))
+
+(deftest update-timeline-query-count-test
+  (testing "a warm update-timeline! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/Timeline {id :id} {:name "Timeline"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (timeline.write/update-timeline! id {:name "Warm Timeline"} {})
+          (t2/with-call-count [call-count]
+            (timeline.write/update-timeline! id {:name "Renamed Timeline"} {})
+            (is (<= (call-count) 2))))))))

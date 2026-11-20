@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.revisions.events]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.search.test-util :as search.tu]
@@ -65,7 +66,9 @@
                                                  [:model/Document doc-id {:last_viewed_at (java.time.OffsetDateTime/now)} 2]]]
               (testing (str model " " (keys changes))
                 (t2/with-call-count [call-count]
-                  (t2/update! model :id id changes)
+                  (if-let [update! (:update! (mi/write-fns model))]
+                    (update! id changes {})
+                    (t2/update! model :id id changes))
                   (is (= expected (call-count))))))))))))
 
 (defn- ignored-columns-of

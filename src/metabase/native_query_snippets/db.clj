@@ -2,7 +2,6 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -43,11 +42,21 @@
   [row :- ::native-query-snippets.schema/native-query-snippet.update]
   (t2/insert-returning-instance! :model/NativeQuerySnippet row))
 
-(mu/defn update-snippet!
-  "Apply `changes` to the NativeQuerySnippet with `id`."
-  [id :- ::lib.schema.id/native-query-snippet
-   changes :- (mut/select-keys ::native-query-snippets.schema/native-query-snippet.update [:description :collection_id :archived :content :name])]
-  (t2/update! :model/NativeQuerySnippet :id id changes))
+(mu/defn snippets
+  "The NativeQuerySnippets with `ids`."
+  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
+  (t2/select :model/NativeQuerySnippet :id [:in ids]))
+
+(mu/defn update-snippets!
+  "Apply `changes` to the NativeQuerySnippets with `ids`."
+  [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
+   changes :- ::native-query-snippets.schema/native-query-snippet.changes]
+  (t2/update! :model/NativeQuerySnippet :id [:in ids] changes))
+
+(mu/defn delete-snippets!
+  "Delete the NativeQuerySnippets with `ids`."
+  [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
+  (t2/delete! :model/NativeQuerySnippet :id [:in ids]))
 
 (mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
   "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."

@@ -3,6 +3,7 @@
   (:require
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
+   [metabase.glossary.write :as glossary.write]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -22,22 +23,22 @@
   "Insert a glossary entry created by `user-id`, returning the new entry."
   [user-id                   :- ::lib.schema.id/user
    {:keys [term definition]} :- ::entry-fields]
-  (glossary.db/insert-glossary-entry! {:term       term
-                                       :definition definition
-                                       :creator_id user-id}))
+  (glossary.write/create-glossary! {:term       term
+                                    :definition definition
+                                    :creator_id user-id}))
 
 (mu/defn update-entry! :- [:maybe ::glossary.schema/glossary]
   "Set the term and definition of the glossary entry with `id`, returning the updated entry, or nil when no entry has
   `id`."
   [id                        :- ms/PositiveInt
    {:keys [term definition]} :- ::entry-fields]
-  (when (glossary.db/glossary-entry id)
-    (glossary.db/update-glossary-entry! id term definition)
+  (when-let [entry (glossary.db/glossary-entry id)]
+    (glossary.write/update-glossary! entry {:term term :definition definition} {})
     (glossary.db/glossary-entry id)))
 
 (mu/defn delete-entry! :- [:maybe ::glossary.schema/glossary]
   "Delete the glossary entry with `id`, returning the deleted entry, or nil when no entry has `id`."
   [id :- ms/PositiveInt]
   (when-let [entry (glossary.db/glossary-entry id)]
-    (glossary.db/delete-glossary-entry! id)
+    (glossary.write/delete-glossary! id {})
     entry))

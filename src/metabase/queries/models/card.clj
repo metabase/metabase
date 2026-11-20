@@ -547,7 +547,7 @@
       (when-not (= parameters new-parameters)
         (case po-type
           :card      (queries.db/update-card! po-id {:parameters new-parameters})
-          :dashboard (queries.db/update-dashboard! po-id {:parameters new-parameters}))))))
+          :dashboard ((:update! (mi/write-fns :model/Dashboard)) po-id {:parameters new-parameters} {}))))))
 
 (defn- update-parameters-using-card-as-values-source
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of `card`
@@ -1284,7 +1284,7 @@
   "Deletes the alerts of the Card with `card-id`, which are found before any is deleted."
   [card-id]
   (when-let [notification-ids (seq (queries.db/card-notification-ids card-id))]
-    (queries.db/delete-notifications! notification-ids)))
+    ((:delete! (mi/write-fns :model/Notification)) (vec notification-ids) {})))
 
 (defn- delete-alerts-if-archived-directly
   "Deletes the alerts of `card`, which `changes` archive on its own: the Card hooks leave the alerts of a Card that
@@ -1464,9 +1464,9 @@
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
-  (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
-  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (queries.db/delete-dashcard-series! (set dashcard-ids))))
+  ((:delete! (mi/write-fns :model/DashboardCard)) (queries.db/dashcard-ids-for-card-on-dashboard card-id dashboard-id) {})
+  (when-let [series-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
+    ((:delete! (mi/write-fns :model/DashboardCardSeries)) (vec (set series-ids)) {})))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -1519,9 +1519,11 @@
                delete-old-dashcards?)
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
-      (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
+      ((:delete! (mi/write-fns :model/DashboardCard))
+       (queries.db/dashcard-ids-for-card-off-dashboard card-id new-dashboard-id)
+       {})
       (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (queries.db/delete-dashcard-series! ids)))))
+        ((:delete! (mi/write-fns :model/DashboardCardSeries)) (vec ids) {})))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -1713,7 +1715,7 @@
         (when (seq updates)
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
-              (queries.db/update-dashcard! id update))))))))
+              ((:update! (mi/write-fns :model/DashboardCard)) id update {}))))))))
 
 (deftype SourceCardDependentsGraph []
   graph/Graph

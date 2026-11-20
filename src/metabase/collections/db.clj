@@ -14,15 +14,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private PermissionsRow
-  "The writable columns of a Permissions row (excluding `:id`)."
-  [:map {:closed true}
-   [:object      {:optional true} [:maybe :string]]
-   [:group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]
-   [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
-
 ;;; ---------------------------------------------- Single Collections ----------------------------------------------
 
 (mu/defn synced-collections-clause :- [:fn vector?]
@@ -394,19 +385,17 @@
     (t2/update! model :id [:in ids] {:archived false})
     0))
 
-(mu/defn archive-pulses-in-collections!
-  "Archive the unarchived Pulses in the Collections with `collection-ids` along with them, returning the number updated
-  and skipping dashboard subscriptions, which follow their Dashboard's `archived` flag."
+(mu/defn pulses-archived-with-collections
+  "The unarchived Pulses in the Collections with `collection-ids`, which archiving them archives along with them, but
+  for dashboard subscriptions, which follow their Dashboard's `archived` flag."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived false}
-              {:archived true}))
+  (t2/select :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived false))
 
-(mu/defn restore-pulses-in-collections!
-  "Restore the Pulses in the Collections with `collection-ids` that were archived along with them, returning the number
-  updated and skipping dashboard subscriptions as [[archive-pulses-in-collections!]] does."
+(mu/defn pulses-restored-with-collections
+  "The Pulses in the Collections with `collection-ids` that were archived along with them, which restoring them restores
+  along with them, but for dashboard subscriptions as [[pulses-archived-with-collections]]."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived true, :archived_directly false}
-              {:archived false}))
+  (t2/select :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived true, :archived_directly false))
 
 (mu/defn restore-actions-in-collections!
   "Restore the Actions in the Collections with `collection-ids` that were archived along with them and whose model,
@@ -435,30 +424,11 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/Card :collection_id [:in collection-ids]))
 
-(mu/defn delete-dashboards-in-collections!
-  "Delete the Dashboards in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Dashboard :collection_id [:in collection-ids]))
-
-(mu/defn delete-native-query-snippets-in-collections!
-  "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
-
-(mu/defn delete-pulses-in-collections!
-  "Delete the Pulses in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Pulse :collection_id [:in collection-ids]))
-
-(mu/defn delete-timelines-in-collections!
-  "Delete the Timelines in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Timeline :collection_id [:in collection-ids]))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+(mu/defn item-ids-in-collections :- [:maybe [:sequential ms/PositiveInt]]
+  "The ids of the `model` rows in the Collections with `collection-ids`."
+  [model          :- :keyword
+   collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pks-vec model :collection_id [:in collection-ids]))
 
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
@@ -565,16 +535,6 @@
   "The set of group IDs holding a Permissions row for `object`."
   [object :- :string]
   (t2/select-fn-set :group_id :model/Permissions :object object))
-
-(mu/defn insert-permissions!
-  "Insert the Permissions `rows`, returning the number inserted."
-  [rows :- [:sequential PermissionsRow]]
-  (t2/insert! :model/Permissions rows))
-
-(mu/defn delete-permissions-for-collection!
-  "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Permissions :collection_id collection-id))
 
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects`, returning the number deleted."

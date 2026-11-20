@@ -8,6 +8,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.slack :as slack]
+   [metabase.channel.write :as channel.write]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
@@ -209,7 +210,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
-          (t2/update! :model/Channel :id (:id chn) {:active false})
+          (channel.write/update-channel! (:id chn) {:active false} {})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"

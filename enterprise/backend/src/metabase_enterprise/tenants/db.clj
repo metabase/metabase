@@ -80,12 +80,21 @@
   [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
   (t2/insert-returning-instance! :model/Tenant tenant))
 
+(mu/defn tenants
+  "The Tenants with `tenant-ids`."
+  [tenant-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Tenant :id [:in tenant-ids]))
+
 (mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
   [tenant-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
-  (t2/update! :model/Tenant {:id tenant-id} changes))
+   changes   :- ::tenants.schema/tenant.changes]
+  (t2/update! :model/Tenant :id [:auto/param tenant-id] changes))
 
+(mu/defn delete-tenants!
+  "Delete the Tenants with `tenant-ids`, returning the number deleted."
+  [tenant-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Tenant :id [:in tenant-ids]))
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."
   [tenant-ids :- [:sequential ms/PositiveInt]]
@@ -97,17 +106,15 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn deactivate-tenant-users!
-  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
-  number updated."
+(mu/defn active-tenant-user-ids
+  "The ids of the active Users of the Tenant with `tenant-id`."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
+  (t2/select-pks-vec :model/User :is_active true :tenant_id [:auto/param tenant-id]))
 
-(mu/defn reactivate-tenant-users!
-  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
+(mu/defn deactivated-with-tenant-user-ids
+  "The ids of the Users of the Tenant with `tenant-id` that were deactivated with it."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-              {:is_active true :deactivated_with_tenant nil}))
+  (t2/select-pks-vec :model/User :is_active false :tenant_id [:auto/param tenant-id] :deactivated_with_tenant true))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."

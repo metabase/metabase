@@ -6,6 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
    [metabase.users.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -62,6 +63,36 @@
    [:entity_id          {:optional true} [:maybe :string]]
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
+
+(mr/def ::measure.input
+  "What a write function accepts for a Measure: the columns of an update, its `:definition` a query of any MBQL version,
+  which the write function checks and normalizes."
+  [:merge
+   ::measure.update
+   [:map {:closed true}
+    [:definition {:optional true} [:maybe :map]]]])
+
+(mr/def ::measure.changes
+  "What an UPDATE of a Measure writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::measure.input
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::measure.create
+  "What a new Measure takes; its table follows its definition."
+  [:map {:closed true}
+   [:creator_id  ::lib.schema.id/user]
+   [:name        ::measure.name]
+   [:description {:optional true} [:maybe :string]]
+   [:definition  ::definition]])
+
+(mr/def ::write-opts
+  "The context of a write of Measures: `:revision-message`, the message of the revisions, and `:import?`, whether a
+  SerDes import writes them."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:import?          {:optional true} :boolean]])
 
 (mr/def ::external-measure
   "A Measure as serialization writes it, with portable references in place of ids."

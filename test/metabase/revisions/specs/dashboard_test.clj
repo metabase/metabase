@@ -1,7 +1,7 @@
 (ns metabase.revisions.specs.dashboard-test
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.revisions.test-util :as revisions.tu]
@@ -271,7 +271,7 @@
                     changes {col (update-col col (get dashboard col))}]
                 (clean-revisions-for-dashboard (:id dashboard))
                 ;; do the update
-                (t2/update! :model/Dashboard :id (:id dashboard) changes)
+                (dashboards.write/update-dashboard-row! (:id dashboard) changes {})
                 (create-dashboard-revision! (:id dashboard) false)
                 (testing (format "we should track when %s changes" col)
                   (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))
@@ -318,7 +318,7 @@
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
             ;; do the update
-            (t2/update! :model/DashboardCard :id (:id dashcard) {col (update-col col (get dashcard col))})
+            (dashboards.write/update-dashcard! (:id dashcard) {col (update-col col (get dashcard col))} {})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
@@ -343,7 +343,7 @@
           (doseq [col columns]
             (clean-revisions-for-dashboard (:id dashboard))
             ;; do the update
-            (t2/update! :model/DashboardTab :id (:id dashtab) {col (update-col col (get dashtab col))})
+            (dashboards.write/update-dashboard-tab! (:id dashtab) {col (update-col col (get dashtab col))} {})
             (create-dashboard-revision! (:id dashboard) false)
             (testing (format "we should track when %s changes" col)
               (is (= 2 (t2/count :model/Revision :model "Dashboard" :model_id (:id dashboard)))))))))))
@@ -399,11 +399,10 @@
                 :width               "fixed"}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-cards! [(:id dashboard-card)])
-        (t2/update! :model/Dashboard :id dashboard-id
-                    {:name               "Revert Test"
-                     :auto_apply_filters false
-                     :description        "something"})
+        (dashboards.write/delete-dashboard-cards! [(:id dashboard-card)])
+        (dashboards.write/update-dashboard-row! dashboard-id {:name               "Revert Test"
+                                                              :auto_apply_filters false
+                                                              :description        "something"} {})
         (testing "capture updated Dashboard state"
           (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)]
             (is (= (assoc empty-dashboard :auto_apply_filters false)
@@ -508,7 +507,7 @@
                                                                                 :dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. update a tab name
-        (t2/update! :model/DashboardTab :id tab-1-id {:name "Tab 1 with new name"})
+        (dashboards.write/update-dashboard-tab! tab-1-id {:name "Tab 1 with new name"} {})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-1-id :name "Tab 1 with new name" :position 0}
@@ -534,8 +533,8 @@
                                                                                 :dashboard_id dashboard-id}])]
         (create-dashboard-revision! dashboard-id false)
         ;; 2. delete the 1st tab and re-position the second tab
-        (t2/delete! :model/DashboardTab :id tab-1-id)
-        (t2/update! :model/DashboardTab :id tab-2-id {:position 0})
+        (dashboards.write/delete-dashboard-tabs! [tab-1-id] {})
+        (dashboards.write/update-dashboard-tab! tab-2-id {:position 0} {})
         (create-dashboard-revision! dashboard-id false)
         ;; check to make sure we have everything setup before testing
         (is (=? [{:id tab-2-id :name "Tab 2" :position 0}]
@@ -596,10 +595,10 @@
                                          :col              0
                                          :size_x           4
                                          :size_y           4}])
-      (t2/delete! :model/DashboardCard :id card-2-tab-1)
-      (t2/update! :model/DashboardCard :id card-1-tab-1 {:row 10 :col 10})
+      (dashboards.write/delete-dashcards! [card-2-tab-1] {})
+      (dashboards.write/update-dashcard! card-1-tab-1 {:row 10 :col 10} {})
       ;; 2.b: delete tab 2
-      (t2/delete! :model/DashboardTab :id tab-2-id)
+      (dashboards.write/delete-dashboard-tabs! [tab-2-id] {})
       ;; 2.c: create a new tab with 1 card
       (let [[new-tab-id] (t2/insert-returning-pks! :model/DashboardTab {:name         "Tab 3"
                                                                         :position     1
@@ -666,7 +665,7 @@
                   :visualization_settings {:text "Metabase"}}])
     (create-dashboard-revision! dashboard-id false)
     ;; 2. delete all the dashcards
-    (t2/delete! :model/DashboardCard :dashboard_id dashboard-id)
+    (dashboards.write/delete-dashcards! (t2/select-pks-vec :model/DashboardCard :dashboard_id dashboard-id) {})
     (create-dashboard-revision! dashboard-id false)
     (t2/delete! :model/Card :id will-be-deleted-card)
     (t2/update! :model/Card :id will-be-archived-card {:archived true})
@@ -688,28 +687,27 @@
       ;; 0. create initial dashboard revision
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add two parameters - one with a card that will be deleted, one with a card that stays
-      (t2/update! :model/Dashboard :id dashboard-id
-                  {:parameters [{:id                    "deleted-source"
-                                 :name                  "Filter with deleted source"
-                                 :slug                  "deleted_source"
-                                 :type                  "category"
-                                 :values_source_type    "card"
-                                 :values_source_config  {:card_id     value-source-card
-                                                         :value_field [:field 1 nil]}}
-                                {:id                    "valid-source"
-                                 :name                  "Filter with valid source"
-                                 :slug                  "valid_source"
-                                 :type                  "category"
-                                 :values_source_type    "card"
-                                 :values_source_config  {:card_id     will-remain-card
-                                                         :value_field [:field 2 nil]}}
-                                {:id   "no-source"
-                                 :name "Filter without card source"
-                                 :slug "no_source"
-                                 :type "category"}]})
+      (dashboards.write/update-dashboard-row! dashboard-id {:parameters [{:id                    "deleted-source"
+                                                                          :name                  "Filter with deleted source"
+                                                                          :slug                  "deleted_source"
+                                                                          :type                  "category"
+                                                                          :values_source_type    "card"
+                                                                          :values_source_config  {:card_id     value-source-card
+                                                                                                  :value_field [:field 1 nil]}}
+                                                                         {:id                    "valid-source"
+                                                                          :name                  "Filter with valid source"
+                                                                          :slug                  "valid_source"
+                                                                          :type                  "category"
+                                                                          :values_source_type    "card"
+                                                                          :values_source_config  {:card_id     will-remain-card
+                                                                                                  :value_field [:field 2 nil]}}
+                                                                         {:id   "no-source"
+                                                                          :name "Filter without card source"
+                                                                          :slug "no_source"
+                                                                          :type "category"}]} {})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters (simulating user changing the filter settings)
-      (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
+      (dashboards.write/update-dashboard-row! dashboard-id {:parameters []} {})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. delete one card and archive another scenario - here we just delete
       (t2/delete! :model/Card :id value-source-card)
@@ -740,17 +738,16 @@
       ;; 0. create initial dashboard revision
       (create-dashboard-revision! dashboard-id true)
       ;; 1. add a parameter with a card source
-      (t2/update! :model/Dashboard :id dashboard-id
-                  {:parameters [{:id                    "archived-source"
-                                 :name                  "Filter with archived source"
-                                 :slug                  "archived_source"
-                                 :type                  "category"
-                                 :values_source_type    "card"
-                                 :values_source_config  {:card_id     will-be-archived-card
-                                                         :value_field [:field 1 nil]}}]})
+      (dashboards.write/update-dashboard-row! dashboard-id {:parameters [{:id                    "archived-source"
+                                                                          :name                  "Filter with archived source"
+                                                                          :slug                  "archived_source"
+                                                                          :type                  "category"
+                                                                          :values_source_type    "card"
+                                                                          :values_source_config  {:card_id     will-be-archived-card
+                                                                                                  :value_field [:field 1 nil]}}]} {})
       (create-dashboard-revision! dashboard-id false)
       ;; 2. remove the parameters
-      (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
+      (dashboards.write/update-dashboard-row! dashboard-id {:parameters []} {})
       (create-dashboard-revision! dashboard-id false)
       ;; 3. archive the card
       (t2/update! :model/Card :id will-be-archived-card {:archived true})

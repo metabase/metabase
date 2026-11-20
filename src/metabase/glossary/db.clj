@@ -22,7 +22,7 @@
 
 (mu/defn insert-glossary-entry!
   "Insert the Glossary `row` and return the inserted instance."
-  [row :- ::glossary.schema/glossary.update]
+  [row :- ::glossary.schema/glossary.create]
   (t2/insert-returning-instance! :model/Glossary row))
 
 (mu/defn glossary-entry
@@ -30,17 +30,21 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Glossary :id id))
 
-(mu/defn update-glossary-entry!
-  "Set the term and definition of the Glossary entry with `id`."
-  [id         :- ms/PositiveInt
-   term       :- :string
-   definition :- :string]
-  (t2/update! :model/Glossary :id id {:term term :definition definition}))
+(mu/defn glossary-entries-by-ids
+  "The Glossary entries with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/Glossary :id [:in ids]))
 
-(mu/defn delete-glossary-entry!
-  "Delete the Glossary entry with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Glossary :id id))
+(mu/defn update-glossary-entry!
+  "Apply `changes` to the Glossary entry with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::glossary.schema/glossary.changes]
+  (t2/update! :model/Glossary :id [:auto/param id] changes))
+
+(mu/defn delete-glossary-entries!
+  "Delete the Glossary entries with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Glossary :id [:in ids]))
 
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."

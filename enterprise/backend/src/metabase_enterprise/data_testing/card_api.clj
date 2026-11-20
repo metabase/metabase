@@ -6,6 +6,7 @@
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -67,7 +68,7 @@
    {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
   (validate-test! card_id (data-testing.runner/test-definition body))
-  (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
+  (data-testing.write/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
   "Update a card test.
@@ -85,7 +86,7 @@
       (let [{:keys [card_id] :as merged} (merge card-test body)]
         (validate-test! card_id (data-testing.runner/test-definition merged))))
     (when (seq body)
-      (data-testing.models.card-test/update-card-test! id body)))
+      (data-testing.write/update-card-test! card-test body {})))
   (data-testing.db/card-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -93,7 +94,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/CardTest id)
-  (data-testing.models.card-test/delete-card-test! id)
+  (data-testing.write/delete-card-test! id {})
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

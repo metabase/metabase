@@ -1,22 +1,17 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
-   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.channel.db :as channel.db]
    [metabase.channel.schema :as channel.schema]
+   [metabase.channel.write :as channel.write]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -31,13 +26,11 @@
 
 (doto :model/Channel
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 (doto :model/ChannelTemplate
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 ;;; ------------------------------------------------------- Setup --------------------------------------------------------
 
@@ -107,67 +100,20 @@
 
 ;;; ------------------------------------------------------- Hooks --------------------------------------------------------
 
-(defn- check-type-and-details
-  "Throws a 400 unless the `:type` and `:details` of `channel`, one of which an update changes alone against the stored
-  other, still fit together as [[channel.schema/channel-type->details-schema]] says."
-  [{:keys [type details]}]
-  (let [channel-type (some-> type keyword)
-        schema       (channel.schema/channel-type->details-schema channel-type)
-        details      (some-> details json/encode json/decode+kw stringify-auth-info-keys)]
-    (when-not (and schema (mr/validate (if (= channel-type :channel/email) [:maybe schema] schema) details))
-      (throw (ex-info (tru "The details of a channel must fit its type.") {:status-code 400})))))
-
-(t2/define-before-update :model/Channel
+(t2/define-after-insert :model/Channel
   [channel]
-  (let [changes       (t2/changes channel)
-        deactivation? (false? (:active changes))]
-    (when (not= (contains? changes :type) (contains? changes :details))
-      (check-type-and-details channel))
-    (when deactivation?
-      (channel.db/delete-pulse-channels-for-channel! (:id channel)))
-    (cond-> channel
-      deactivation?
-      ;; Channel.name has an unique constraint and it's a useful property for serialization
-      ;; We rename deactivated channels so that new channels can reuse the name
-      ;; Limit to 254 characters to avoid hitting character limit
-      (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id channel) (:name channel)) 254)))))
-
-(defn- check-valid-channel-template
-  "Throws unless `channel-template` matches [[::ChannelTemplate]]."
-  [channel-template]
-  (mu/validate-throw ::ChannelTemplate channel-template))
-
-(defn- log-template-change!
-  "Log template creation or update with relevant details for observability."
-  [action {:keys [channel_type details] :as _instance}]
-  (let [template-type (keyword (:type details))]
-    (log/infof "ChannelTemplate %s: channel_type=%s template_type=%s"
-               (name action) channel_type template-type)
-    (analytics/inc! (case action
-                      :create :metabase-notification/template-create
-                      :update :metabase-notification/template-update)
-                    {:channel-type channel_type})))
+  (events/created! :model/Channel channel)
+  channel)
 
 (t2/define-before-insert :model/ChannelTemplate
   [instance]
-  (check-valid-channel-template instance)
-  instance)
-
-(t2/define-before-update :model/ChannelTemplate
-  [instance]
-  (when (some-> (:channel_type (t2/changes instance)) keyword (not= (keyword (:channel_type (t2/original instance)))))
-    (throw (ex-info (tru "You cannot change the channel type of a channel template.") {:status-code 400})))
-  (check-valid-channel-template instance)
+  (channel.write/check-valid-channel-template instance)
   instance)
 
 (t2/define-after-insert :model/ChannelTemplate
   [instance]
-  (log-template-change! :create instance)
-  instance)
-
-(t2/define-after-update :model/ChannelTemplate
-  [instance]
-  (log-template-change! :update instance)
+  (events/created! :model/ChannelTemplate instance)
+  (channel.write/log-template-change! :create instance)
   instance)
 
 ;; Currently only email channel has templates, but this is extensible

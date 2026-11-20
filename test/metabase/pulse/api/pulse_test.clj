@@ -22,9 +22,9 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.pulse.api :as pulse.api]
    [metabase.pulse.models.pulse :as models.pulse]
-   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
+   [metabase.pulse.write :as pulse.write]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -406,7 +406,7 @@
           (mt/user-http-request :rasta :put 403 (str "pulse/" pulse-id) {:collection_id other-id})
           (is (= src-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))
         (testing "cannot un-archive a pulse in a collection it cannot write"
-          (t2/update! :model/Pulse :id pulse-id {:archived true})
+          (pulse.write/update-pulse! pulse-id {:archived true} {})
           (perms/revoke-collection-permissions! (perms-group/all-users) src-id)
           (mt/user-http-request :rasta :put 403 (str "pulse/" pulse-id) {:archived false})
           (is (true? (t2/select-one-fn :archived :model/Pulse :id pulse-id))))))))
@@ -672,7 +672,7 @@
                                                 :skip_if_empty true})
                 stored   #(mt/derecordize (t2/select-one [:model/Pulse :archived :skip_if_empty :collection_id]
                                                          :id id))]
-            (t2/update! :model/Pulse :id id {:archived true})
+            (pulse.write/update-pulse! id {:archived true} {})
             (let [before (stored)]
               (is (= {:archived true, :skip_if_empty true, :collection_id coll-a} before))
               (mt/user-http-request :crowberto :put 400 (str "pulse/" id) {:collection_id coll-s})
@@ -887,7 +887,7 @@
              (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse)))))
     (testing "...and unset (unpin) it as well?"
       (pulse-test/with-pulse-in-collection! [_ collection pulse]
-        (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
+        (pulse.write/update-pulse! (u/the-id pulse) {:collection_position 1} {})
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                               {:collection_position nil})
@@ -900,7 +900,7 @@
         (is (= nil
                (t2/select-one-fn :collection_position :model/Pulse :id (u/the-id pulse))))
         (testing "shouldn't be able to unset (unpin) a Pulse"
-          (t2/update! :model/Pulse :id (u/the-id pulse) {:collection_position 1})
+          (pulse.write/update-pulse! (u/the-id pulse) {:collection_position 1} {})
           (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse))
                                 {:collection_position nil})
           (is (= 1
@@ -919,7 +919,7 @@
   (testing "Can we unarchive a Pulse?"
     (pulse-test/with-pulse-in-collection! [_ collection pulse]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (t2/update! :model/Pulse :id (u/the-id pulse) {:archived true})
+      (pulse.write/update-pulse! (u/the-id pulse) {:archived true} {})
       (mt/user-http-request :rasta :put 200 (str "pulse/" (u/the-id pulse))
                             {:archived false})
       (is (= false
@@ -1443,10 +1443,10 @@
                       (first @requests))))))))))
 
 (deftest send-test-pulse-validate-emails-test
-  (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
+  (testing (str "POST /api/pulse/test should call " `pulse.write/validate-email-domains)
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-      (mt/with-dynamic-fn-redefs [pulse-channel/validate-email-domains (fn [& _]
-                                                                         (throw (ex-info "Nope!" {:status-code 403})))]
+      (mt/with-dynamic-fn-redefs [pulse.write/validate-email-domains (fn [& _]
+                                                                       (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
         (doseq [channel [{:details {:emails ["test@metabase.com"]}}

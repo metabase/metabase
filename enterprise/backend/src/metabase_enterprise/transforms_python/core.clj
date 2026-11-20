@@ -2,9 +2,9 @@
   "Core namespace for Python transforms functionality.
    Re-exports commonly used vars from internal namespaces."
   (:require
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.write :as write]
    [potemkin :as p]))
 
 (p/import-vars
- [python-library
+ [write
   builtin-entity-id])

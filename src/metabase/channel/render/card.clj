@@ -9,7 +9,7 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.dashcards :as dashcards]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -147,7 +147,7 @@
 
         (and (some? maybe-dashcard)
              (= false (render.util/is-visualizer-dashcard? maybe-dashcard))
-             (pos? (count (dashboard-card/dashcard->multi-cards maybe-dashcard))))
+             (pos? (count (dashcards/dashcard->multi-cards maybe-dashcard))))
         (chart-type :javascript_visualization "result has multiple card semantics, a multiple chart")
 
         ;; for scalar/smartscalar, the display-type might actually be :line, so we can't have line above

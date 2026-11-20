@@ -1,14 +1,19 @@
 (ns metabase.dashboards.models.dashboard-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.write :as dashboards.write]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
+   [metabase.pulse.write :as pulse.write]
    [metabase.queries.models.parameter-card :as parameter-card]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.serialization.core :as serialization]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -114,13 +119,13 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
-       (t2/update! :model/Dashboard :id dash-id {:archived true})
+       (dashboards.write/update-dashboard-row! dash-id {:archived true} {})
        (testing "archiving a Dashboard keeps its Pulse, PulseChannel, PulseCard and SendPulse trigger"
          (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
          (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
          (is (= 1 (t2/count :model/PulseCard :pulse_id pulse-id)))
          (is (= pc-ids-before (trigger-pc-ids pulse-id))))
-       (t2/update! :model/Dashboard :id dash-id {:archived false})
+       (dashboards.write/update-dashboard-row! dash-id {:archived false} {})
        (testing "restoring the Dashboard leaves the subscription as it was"
          (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
          (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
@@ -131,9 +136,9 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id]}]
      (testing "a subscription the user deleted before the Dashboard was trashed stays deleted after restore"
-       (t2/update! :model/Pulse :id pulse-id {:archived true})
-       (t2/update! :model/Dashboard :id dash-id {:archived true})
-       (t2/update! :model/Dashboard :id dash-id {:archived false})
+       (pulse.write/update-pulse! pulse-id {:archived true} {})
+       (dashboards.write/update-dashboard-row! dash-id {:archived true} {})
+       (dashboards.write/update-dashboard-row! dash-id {:archived false} {})
        (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
@@ -159,7 +164,7 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [coll-id pulse-id pc-id]}]
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
-       (t2/update! :model/Pulse :id pulse-id {:archived true})
+       (pulse.write/update-pulse! pulse-id {:archived true} {})
        (mt/with-current-user (mt/user->id :crowberto)
          (t2/update! :model/Collection :id coll-id {:archived true})
          (t2/update! :model/Collection :id coll-id {:archived false}))
@@ -173,8 +178,8 @@
       (do-with-dashboard-subscription!
        (fn [{:keys [dash-id pulse-id]}]
          (when archived?
-           (t2/update! :model/Dashboard :id dash-id {:archived true}))
-         (t2/delete! :model/Dashboard :id dash-id)
+           (dashboards.write/update-dashboard-row! dash-id {:archived true} {}))
+         (dashboards.write/delete-dashboard-row! dash-id {})
          (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
@@ -182,7 +187,7 @@
   (testing "hard deleting a Collection holding a directly trashed Dashboard deletes its Pulse and SendPulse triggers"
     (do-with-dashboard-subscription!
      (fn [{:keys [coll-id dash-id pulse-id]}]
-       (t2/update! :model/Dashboard :id dash-id {:archived true})
+       (dashboards.write/update-dashboard-row! dash-id {:archived true} {})
        (t2/delete! :model/Collection :id coll-id)
        (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
@@ -204,9 +209,9 @@
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
-      (t2/update! :model/Dashboard :id dashboard-id {:parameters [(merge default-parameter
-                                                                         {:values_source_type    "card"
-                                                                          :values_source_config {:card_id card-id}})]})
+      (dashboards.write/update-dashboard-row! dashboard-id {:parameters [(merge default-parameter
+                                                                                {:values_source_type    "card"
+                                                                                 :values_source_config {:card_id card-id}})]} {})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -220,7 +225,7 @@
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
       ;; same setup as earlier test, we know the ParameterCard exists right now
-      (t2/delete! :model/Dashboard :id dashboard-id)
+      (dashboards.write/delete-dashboard-row! dashboard-id {})
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
@@ -233,7 +238,7 @@
                                                                       :values_source_type    "card"
                                                                       :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (t2/update! :model/Dashboard :id dashboard-id {:name "new name"})))))
+        (dashboards.write/update-dashboard-row! dashboard-id {:name "new name"} {})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -279,7 +284,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
-                saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+                saved-dashboard (dashboards.write/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :dashcards count)))))))))
 
@@ -299,7 +304,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Dashboard :id card-id {:collection_id collection-id})))))))
+             (dashboards.write/update-dashboard-row! card-id {:collection_id collection-id} {})))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -316,7 +321,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (t2/update! :model/Dashboard :id id {:parameters [{:id 100}]})))))))
+             (dashboards.write/update-dashboard-row! id {:parameters [{:id 100}]} {})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
@@ -550,7 +555,7 @@
                             (t2/insert! :model/Dashboard {:name "Dash" :creator_id (mt/user->id :rasta)
                                                           :collection_id (u/the-id snippets)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id snippets)})))
+                            (dashboards.write/update-dashboard-row! (u/the-id dash) {:collection_id (u/the-id snippets)} {})))
       (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
 
 (deftest move-dashboard-moves-dashboard-questions-test
@@ -559,9 +564,9 @@
                    :model/Collection target {}
                    :model/Dashboard  dash   {:collection_id (u/the-id source)}
                    :model/Card       card   {:dashboard_id (u/the-id dash) :collection_id (u/the-id source)}]
-      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id target)})
+      (dashboards.write/update-dashboard-row! (u/the-id dash) {:collection_id (u/the-id target)} {})
       (is (= (u/the-id target) (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))))
-      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id nil})
+      (dashboards.write/update-dashboard-row! (u/the-id dash) {:collection_id nil} {})
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
 
 (deftest ^:parallel dashboard-columns-schema-test
@@ -618,7 +623,58 @@
       (notification.tu/with-card-notification
         [notification {:card {:dashboard_id dashboard-id}
                        :notification-card {:send_condition :has_result}}]
-        (t2/update! :model/Dashboard :id dashboard-id {:archived true})
+        (dashboards.write/update-dashboard-row! dashboard-id {:archived true} {})
         (is (t2/exists? :model/Notification :id (:id notification)))
-        (t2/update! :model/Dashboard :id dashboard-id {:archived false})
+        (dashboards.write/update-dashboard-row! dashboard-id {:archived false} {})
         (is (t2/exists? :model/Notification :id (:id notification)))))))
+
+(deftest update-dashboard-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::dashboard-events
+                                     (fn [{:keys [model]}] (when (= :model/Dashboard model) :dashboard))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Dashboard dashboard {:name "Dashboard"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (dashboards.write/update-dashboard-row! (:id dashboard) {:name "Renamed Dashboard"} {:revision-message "rename"}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id dashboard)
+                    :user-id         (mt/user->id :crowberto)
+                    :context         {:revision-message "rename"}
+                    :previous-object {:name "Dashboard" :updated_at (:updated_at dashboard)}
+                    :object          {:name "Renamed Dashboard" :updated_at (:updated_at dashboard)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::dashboard-events)))))
+
+(deftest update-dashboard-query-count-test
+  (testing "a warm update-dashboard-row! issues no more queries than master's t2/update! with the hooks, 6 for a name and 5 for a description, the events consumers included"
+    (mt/with-temp [:model/Dashboard {id :id} {:name "Dashboard"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (dashboards.write/update-dashboard-row! id {:name "Warm Dashboard"} {})
+          (t2/with-call-count [call-count]
+            (dashboards.write/update-dashboard-row! id {:name "Renamed Dashboard"} {})
+            (is (<= (call-count) 6)))
+          (t2/with-call-count [call-count]
+            (dashboards.write/update-dashboard-row! id {:description "Described"} {})
+            (is (<= (call-count) 5))))))))
+
+(deftest shift-dashboard-positions-test
+  (testing "shifting positions of 5 sibling Dashboards updates them in one statement"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard  {id-1 :id}    {:collection_id coll-id :collection_position 1}
+                   :model/Dashboard  {id-2 :id}    {:collection_id coll-id :collection_position 2}
+                   :model/Dashboard  {id-3 :id}    {:collection_id coll-id :collection_position 3}
+                   :model/Dashboard  {id-4 :id}    {:collection_id coll-id :collection_position 4}
+                   :model/Dashboard  {id-5 :id}    {:collection_id coll-id :collection_position 5}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (api/reconcile-position-for-collection! coll-id nil 100)
+          (t2/with-call-count [call-count]
+            (api/reconcile-position-for-collection! coll-id nil 1)
+            (is (<= (call-count) 5)))
+          (is (= [2 3 4 5 6]
+                 (mapv #(t2/select-one-fn :collection_position :model/Dashboard :id %) [id-1 id-2 id-3 id-4 id-5]))))))))

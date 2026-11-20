@@ -10,18 +10,34 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.slack :as slack]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
+   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn published-events!
+  "The lifecycle events of the rows of `models`, a set, that the writes of `thunk` publish."
+  [models thunk]
+  (let [published    (atom [])
+        consumer-key ::published-events]
+    (events/register-owned-consumer! consumer-key
+                                     (fn [{:keys [model]}] (when (contains? models model) model))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (thunk)
+      @published
+      (finally
+        (events.tu/unregister! consumer-key)))))
 
 (def test-channel-type
   "The channel type for the test channel."
@@ -132,7 +148,7 @@
     (try
       (thunk (models.notification/hydrate-notification notification))
       (finally
-        (t2/delete! :model/Notification :id (:id notification))))))
+        (notification.write/delete-notifications! [(:id notification)] {})))))
 
 (defmacro with-temp-notification
   "Macro that sets up a temporary notification for testing.

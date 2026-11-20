@@ -4,6 +4,7 @@
    [metabase-enterprise.tenants.db :as tenants.db]
    [metabase-enterprise.tenants.models :as tenant]
    [metabase-enterprise.tenants.schema :as tenants.schema]
+   [metabase-enterprise.tenants.write :as tenants.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -87,8 +88,10 @@
   [tenant-id :- ms/PositiveInt
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (t2/with-transaction [_conn]
-    (let [collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
-      (tenants.db/update-tenant! tenant-id tenant)
+    (let [existing      (tenants.db/tenant tenant-id)
+          collection-id (:tenant_collection_id existing)]
+      (when existing
+        (tenants.write/update-tenant! existing tenant {}))
       (when (and collection-id (some? is_active))
         (collection/with-allow-modifying-tenant-root-collections
           (tenants.db/set-collection-archived! collection-id (not is_active))))

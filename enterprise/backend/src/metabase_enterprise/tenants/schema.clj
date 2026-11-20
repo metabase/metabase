@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -42,3 +43,15 @@
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:attributes           {:optional true} [:maybe ::tenant.attributes]]
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mr/def ::tenant.changes
+  "What an UPDATE of a Tenant writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::tenant.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:maybe [:or ms/TemporalInstant ::h2x/honeysql-expr]]]]])
+
+(mr/def ::write-opts
+  "The context of a write of Tenants: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])

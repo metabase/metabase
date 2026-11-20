@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.api-test-util :as perm-test-util]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
@@ -9,6 +11,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -40,12 +43,12 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (t2/delete! :model/PermissionsGroup :id (u/the-id group)))))
+               (perms/delete-group! (u/the-id group) {}))))
         (testing "make sure we're not allowed to edit the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (t2/update! :model/PermissionsGroup :id (u/the-id group) {:name "Cool People"}))))))))
+               (perms/update-group! (u/the-id group) {:name "Cool People"} {}))))))))
 
 (deftest ^:parallel new-users-test
   (testing "newly created users should get added to the appropriate magic groups"
@@ -129,14 +132,14 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> true should add user to Admin"
       (mt/with-temp [:model/User {user-id :id}]
-        (t2/update! :model/User :id user-id {:is_superuser true})
+        (users.write/update-user! user-id {:is_superuser true})
         (is (true? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest add-remove-from-admin-group-test-4
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-        (t2/update! :model/User :id user-id {:is_superuser false})
+        (users.write/update-user! user-id {:is_superuser false})
         (is (false? (t2/exists? :model/PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))
 
 (deftest data-graph-for-group-check-all-groups-test
@@ -242,12 +245,40 @@
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
     (testing "changing whether a group is a tenant group is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"tenant group"
-                            (t2/update! :model/PermissionsGroup :id group-id {:is_tenant_group true})))
+                            (perms/update-group! group-id {:is_tenant_group true} {})))
       (is (false? (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))))
     (testing "changing the type of a group is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"type of a group"
-                            (t2/update! :model/PermissionsGroup :id group-id {:magic_group_type "data-analyst"})))
+                            (perms/update-group! group-id {:magic_group_type "data-analyst"} {})))
       (is (nil? (t2/select-one-fn :magic_group_type :model/PermissionsGroup :id group-id))))
     (testing "renaming a group that is not magic works"
-      (t2/update! :model/PermissionsGroup :id group-id {:name "Renamed Test Group"})
+      (perms/update-group! group-id {:name "Renamed Test Group"} {})
       (is (= "Renamed Test Group" (t2/select-one-fn :name :model/PermissionsGroup :id group-id))))))
+
+(deftest update-group-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::group-events
+                                     (fn [{:keys [model]}] (when (= :model/PermissionsGroup model) :group))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (perms/update-group! group-id {:name "Renamed Test Group"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              group-id
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Test Group"}
+                    :object          {:name "Renamed Test Group"}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::group-events)))))
+
+(deftest update-group-query-count-test
+  (testing "a rename through update-group! issues no more queries than master's t2/update! with the hooks: 3"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+      (perms/update-group! group-id {:name "Warm Test Group"} {})
+      (t2/with-call-count [call-count]
+        (perms/update-group! group-id {:name "Renamed Test Group"} {})
+        (is (<= (call-count) 3))))))

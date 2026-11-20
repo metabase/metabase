@@ -44,6 +44,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -911,7 +912,7 @@
                                   "the run was booked and then failed at the warehouse")
                               (is (= after-success (remap-rows))))
                             (testing "a failed run on a target an earlier run remapped keeps that row as it was"
-                              (t2/update! :model/Transform :id (:id ok-transform) {:source {:type :query :query failing-q}})
+                              (transforms.core/change-transform! (:id ok-transform) {:source {:type :query :query failing-q}} {})
                               (is (run-failed? (t2/select-one :model/Transform :id (:id ok-transform))))
                               (is (= after-success (remap-rows))))
                             (testing "the main table still reads the earlier run's output"

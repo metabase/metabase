@@ -5,7 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
-   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -20,7 +20,7 @@
 (mu/defn- timeout-transform-runs! :- :nil
   [_ctx :- (ms/InstanceOfClass JobExecutionContext)]
   (tracing/with-span :tasks "task.transform.timeout-check" {:transform.timeout/type "transform"}
-    (when-let [timed-out (not-empty (transform-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))]
+    (when-let [timed-out (not-empty (run-write/timeout-old-runs! (transforms.settings/transform-timeout) :minute))]
       (log/infof "Timed out %d transform run(s)." (count timed-out))))
   nil)
 

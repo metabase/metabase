@@ -260,7 +260,7 @@
 (defn- grant-library-collection-permissions!
   "Gives All Users read and Data Analysts read-write access to the Library `collection`."
   [collection]
-  (collections.db/delete-permissions-for-collection! (:id collection))
+  (perms/delete-collection-permissions! (:id collection))
   (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
   (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
 
@@ -1824,7 +1824,7 @@
         group-ids-with-write-perms (collections.db/group-ids-with-permission-object
                                     (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
-    (collections.db/insert-permissions!
+    (perms/create-permissions!
      (concat
       ;; insert all the new read-perms records
       (for [dest     dest-collections-or-ids
@@ -1835,7 +1835,8 @@
       (for [dest     dest-collections-or-ids
             :let     [readwrite-path (perms/collection-readwrite-path dest)]
             group-id group-ids-with-write-perms]
-        {:group_id group-id, :object readwrite-path})))
+        {:group_id group-id, :object readwrite-path}))
+     {})
     ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
     ;; of the new permissions/collections.
     (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
@@ -2045,6 +2046,32 @@
     :else
     row))
 
+(defn- update-items-alike!
+  "Apply `changes` to `rows` of `model`, a model with write functions, through its bulk write function."
+  [model rows changes]
+  ((:update-all! (mi/write-fns model)) rows changes {}))
+
+(defn- archive-items!
+  "Archive the `model` rows in the Collections with `ids` along with them, through the write functions of `model` when it
+  has them."
+  [model ids]
+  (if (mi/write-fns model)
+    (update-items-alike! model (collections.db/items-archived-with-collections model ids) {:archived true})
+    (collections.db/archive-items-in-collections! model ids)))
+
+(defn- restore-items!
+  "Restore the `model` rows in the Collections with `ids` that were archived along with them, through the write functions
+  of `model` when it has them."
+  [model ids]
+  (if (mi/write-fns model)
+    (update-items-alike! model (collections.db/items-restored-with-collections model ids) {:archived false})
+    (collections.db/restore-items-in-collections! model ids)))
+
+(defn- delete-items!
+  "Delete the `model` rows in the Collections with `ids` through the write functions of `model`."
+  [model ids]
+  ((:delete! (mi/write-fns model)) (collections.db/item-ids-in-collections model ids) {}))
+
 (defn- archive-subtree!
   "Archives the Collections under `row` and the items in them, along with `row`, and unpublishes the tables of its
   library Data collections."
@@ -2054,8 +2081,8 @@
         ids          (vec (cons (:id row) descendants))]
     (when (seq descendants)
       (collections.db/archive-collections! (vec descendants) operation-id))
-    (run! #(collections.db/archive-items-in-collections! % ids) archivable-item-models)
-    (collections.db/archive-pulses-in-collections! ids)
+    (run! #(archive-items! % ids) archivable-item-models)
+    (update-items-alike! :model/Pulse (collections.db/pulses-archived-with-collections ids) {:archived true})
     (collections.db/archive-items-in-collections! :model/Action ids)
     (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
       (when (seq library-data-ids)
@@ -2074,8 +2101,8 @@
         ids         (vec (cons (:id row) descendants))]
     (when (seq descendants)
       (collections.db/restore-collections! (vec descendants)))
-    (run! #(collections.db/restore-items-in-collections! % ids) restorable-item-models)
-    (collections.db/restore-pulses-in-collections! ids)
+    (run! #(restore-items! % ids) restorable-item-models)
+    (update-items-alike! :model/Pulse (collections.db/pulses-restored-with-collections ids) {:archived false})
     (collections.db/restore-actions-in-collections! ids)))
 
 (defmethod mi/after-archived-change :model/Collection
@@ -2177,10 +2204,8 @@
     (collections.db/unpublish-tables-in-collections! affected-collection-ids)
     (unpublish-downstream-fk-tables! published-table-ids)
     (collections.db/delete-cards-in-collections! affected-collection-ids)
-    (collections.db/delete-dashboards-in-collections! affected-collection-ids)
-    (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
-    (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids)
+    (run! #(delete-items! % affected-collection-ids)
+          [:model/Dashboard :model/NativeQuerySnippet :model/Pulse :model/Timeline])
     (collections.db/delete-actions-in-collections! affected-collection-ids))
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*

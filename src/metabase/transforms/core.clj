@@ -4,7 +4,6 @@
    [metabase.transforms-base.ordering]
    [metabase.transforms-base.util]
    [metabase.transforms.canceling]
-   [metabase.transforms.crud]
    [metabase.transforms.dag]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
@@ -17,10 +16,12 @@
    [metabase.transforms.models.transform-tag]
    [metabase.transforms.notification]
    [metabase.transforms.run-listing]
+   [metabase.transforms.run-write]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.usage]
    [metabase.transforms.util]
+   [metabase.transforms.write]
    [potemkin :as p]))
 
 (p/import-vars
@@ -39,15 +40,27 @@
  [metabase.transforms.util
   add-source-readable
   is-temp-transform-table?]
- [metabase.transforms.crud
-  requestable-indexes
+ [metabase.transforms.write
+  activate-job!
+  change-transform!
   check-feature-enabled!
-  get-transforms
-  get-transform
+  create-job!
+  create-tag!
   create-transform!
-  update-transform!
+  deactivate-job!
+  delete-job!
+  delete-tag!
   delete-transform!
-  delete-transforms-folder!]
+  delete-transforms!
+  delete-transforms-folder!
+  get-transform
+  get-transforms
+  requestable-indexes
+  update-job!
+  update-job-tags!
+  update-tag!
+  update-transform!
+  update-transform-tags!]
  [metabase.transforms.canceling
   cancel-run!]
  [metabase.transforms.execute
@@ -66,12 +79,12 @@
  [metabase.transforms.schedule
   delete-trigger!
   existing-trigger]
- [metabase.transforms.models.transform
-  update-transform-tags!]
  [metabase.transforms.models.transform-run
-  timeout-run!
   paged-runs
   running-run-for-transform-id]
+ [metabase.transforms.run-write
+  timeout-run!
+  update-run!]
  [metabase.transforms.models.job-run
   paged-job-runs
   transform-runs-for-job-run]
@@ -81,8 +94,4 @@
   paged-run-summaries
   present-run-summaries]
  [metabase.transforms.models.transform-run-cancelation
-  mark-cancel-started-run!]
- [metabase.transforms.models.transform-job
-  activate-job!
-  deactivate-job!
-  update-job-tags!])
+  mark-cancel-started-run!])

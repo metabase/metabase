@@ -126,14 +126,7 @@
                   :schedule        schedule
                   :ui_display_type ui_display_type}
         _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
-        job      (transforms-rest.db/insert-job! job-data)]
-    (when (seq tag_ids)
-      (transforms-rest.db/insert-job-tags!
-       (map-indexed (fn [idx tag-id]
-                      {:job_id (:id job)
-                       :tag_id tag-id
-                       :position idx})
-                    tag_ids)))
+        job      (transforms.core/create-job! job-data tag_ids)]
     ;; Return with hydrated tag_ids
     (t2/hydrate job :tag_ids)))
 
@@ -194,7 +187,7 @@
                                        :description description
                                        :schedule schedule
                                        :ui_display_type ui_display_type)]
-        (transforms-rest.db/update-job! job-id updates)))
+        (transforms.core/update-job! job-id updates {})))
     (when (some? active)
       (if active
         (transforms.core/activate-job! job-id)
@@ -208,7 +201,7 @@
   [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
-  (transforms-rest.db/delete-job! job-id)
+  (transforms.core/delete-job! job-id {})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map

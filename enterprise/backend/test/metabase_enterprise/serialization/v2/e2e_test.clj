@@ -6,8 +6,8 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase-enterprise.serialization.cmd :as cmd]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -1671,8 +1671,7 @@
             (is (zero? (t2/count :model/AuditLog :model "CardTest")))
             (testing "control: an edit through the write function writes both"
               (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-                (data-testing.models.card-test/update-card-test!
-                 (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"}))
+                (data-testing.write/update-card-test! (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"} {}))
               (is (= 1 (t2/count :model/Revision :model "CardTest")))
               (is (= 1 (t2/count :model/AuditLog :model "CardTest"))))))))))
 
@@ -1747,7 +1746,7 @@
           (ts/with-db dest-db
             (is (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
             (mt/with-current-user (t2/select-one-pk :model/User :email "creator@example.com")
-              (t2/update! :model/CardTest :name "Revenue ignores refunds" {:description "Edited"}))
+              (data-testing.write/update-card-test! (t2/select-one-pk :model/CardTest :name "Revenue ignores refunds") {:description "Edited"} {}))
             (let [audit-rows (t2/count :model/AuditLog :model "CardTest")
                   published  (atom [])
                   publish    events/publish-event!]

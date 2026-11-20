@@ -47,7 +47,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.write :as perms.write]
    [metabase.query-processor.core :as qp]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.impl :as data.impl]
@@ -296,8 +296,8 @@
 (defn- create-h2-db-script! [create-sample-content?]
   (schema-migrations-test.impl/with-temp-empty-app-db [conn :h2]
     ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-    (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-magic-group-type)
-                  perms-group/admin     (#'perms-group/magic-group perms-group/admin-magic-group-type)]
+    (with-redefs [perms.write/all-users (#'perms.write/magic-group perms.write/all-users-magic-group-type)
+                  perms.write/admin     (#'perms.write/magic-group perms.write/admin-magic-group-type)]
       (mdb/setup-db! :create-sample-content? create-sample-content?)
       ;; setup-db! writes through the encrypting transforms, so with MB_ENCRYPTION_SECRET_KEY set the dump would
       ;; carry rows only that key can read. A test that binds a key of its own then sees rows it cannot decrypt.

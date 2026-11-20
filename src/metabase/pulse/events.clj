@@ -7,8 +7,8 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
-   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
+   [metabase.pulse.write :as pulse.write]
    [metabase.util.events :as u.events]
    [toucan2.core :as t2]))
 
@@ -48,10 +48,12 @@
                                       :dashboard_card_id dashcard-id
                                       :position          position})]
           (t2/with-transaction [_conn]
-            (binding [models.pulse/*allow-moving-dashboard-subscriptions* true
-                      api/*current-user-id*                               nil]
-              (pulse.db/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
-                                                                   :collection_id (:collection_id dashboard)})
+            (binding [api/*current-user-id* nil]
+              (pulse.write/update-pulses! (pulse.db/pulses-for-dashboard dashboard-id)
+                                          {:name          (:name dashboard)
+                                           :collection_id (:collection_id dashboard)
+                                           :updated_at    :updated_at}
+                                          {:allow-moving-dashboard-subscriptions? true})
               (pulse-card/bulk-create! new-pulse-cards))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)

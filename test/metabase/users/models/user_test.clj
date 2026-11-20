@@ -8,10 +8,13 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.request.core :as request]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.tenants.core :as tenants]
@@ -22,6 +25,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
@@ -114,7 +118,7 @@
   to `f`, then let `mt/with-temp` clean them up."
   [f]
   (mt/with-temp [:model/User admin {:is_superuser true, :email "accepted-admin@example.com"}]
-    (t2/update! :model/User :id (:id admin) {:last_login :%now})
+    (users.write/update-user! (:id admin) {:last_login :%now})
     (f admin)))
 
 (deftest new-user-invite-email-test
@@ -177,8 +181,8 @@
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
         (mt/with-temp [:model/User admin-1 {:is_superuser true, :email "accepted-admin-1@example.com"}
                        :model/User admin-2 {:is_superuser true, :email "accepted-admin-2@example.com"}]
-          (t2/update! :model/User :id (:id admin-1) {:last_login :%now})
-          (t2/update! :model/User :id (:id admin-2) {:last_login :%now})
+          (users.write/update-user! (:id admin-1) {:last_login :%now})
+          (users.write/update-user! (:id admin-2) {:last_login :%now})
           (is (= {(:email admin-1) ["<New User> created a Metabase account"]
                   (:email admin-2) ["<New User> created a Metabase account"]}
                  (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
@@ -400,14 +404,14 @@
     (testing "updating a User"
       (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (t2/update! :model/User :id user-id {:locale "en_GB"})
+          (users.write/update-user! user-id {:locale "en_GB"})
           (is (= "en_GB"
                  (t2/select-one-fn :locale :model/User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
+               (users.write/update-user! user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -416,7 +420,7 @@
         (is (= "en_US"
                (t2/select-one-fn :locale :model/User :id user-id))))
       (testing "updating a User"
-        (t2/update! :model/User :id user-id {:locale "en-GB"})
+        (users.write/update-user! user-id {:locale "en-GB"})
         (is (= "en_GB"
                (t2/select-one-fn :locale :model/User :id user-id)))))))
 
@@ -431,10 +435,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active true :first_name "New name"})))
+          (is (pos? (users.write/update-user! user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
+          (is (pos? (users.write/update-user! user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -496,10 +500,10 @@
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
     (mt/with-temp [:model/User {user-id :id :as user} {}]
       (is (nil? (:deactivated_at user)))
-      (t2/update! :model/User :id user-id {:is_active false})
+      (users.write/update-user! user-id {:is_active false})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (instance? java.time.OffsetDateTime deactivated-at)))
-      (t2/update! :model/User :id user-id {:is_active true})
+      (users.write/update-user! user-id {:is_active true})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (nil? deactivated-at))))))
 
@@ -718,9 +722,9 @@
   (testing "internal user cannot be updated"
     (let [before (t2/select-one :model/User :id config/internal-mb-user-id)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
-                            (t2/update! :model/User :id config/internal-mb-user-id {:first_name "Changed"})))
+                            (users.write/update-user! config/internal-mb-user-id {:first_name "Changed"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
-                            (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
+                            (users.write/update-user! config/internal-mb-user-id {:is_active true})))
       (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
 
 (deftest schema-checks-type-test
@@ -779,3 +783,32 @@
                           (api/create-check :model/User {:email "user@example.com"}))))
   (mt/with-current-user (mt/user->id :crowberto)
     (is (api/create-check :model/User {:email "user@example.com"}))))
+
+(deftest update-user-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::user-events
+                                     (fn [{:keys [model]}] (when (= :model/User model) :user))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "user@example.com"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (users.write/update-user! user-id {:first_name "Renamed"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              user-id
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:first_name "Test" :last_name "User" :is_active true}
+                    :object          {:first_name "Renamed" :last_name "User" :is_active true}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::user-events)))))
+
+(deftest update-user-query-count-test
+  (testing "a rename through update-user! issues no more queries than master's t2/update! with the hooks, 3; it issues 2"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "user@example.com"}]
+      (binding [search.ingestion/*disable-updates* true]
+        (users.write/update-user! user-id {:first_name "Warm"} {})
+        (t2/with-call-count [call-count]
+          (users.write/update-user! user-id {:first_name "Renamed"} {})
+          (is (<= (call-count) 2)))))))

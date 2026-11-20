@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.session.core :as session]
    [metabase.test :as mt]
+   [metabase.users.write :as users.write]
    [toucan2.core :as t2]))
 
 (defn- insert-session!
@@ -26,7 +27,7 @@
       (let [victim-session    (insert-session! victim)
             bystander-session (insert-session! bystander)]
         (mt/with-current-user (mt/user->id :crowberto)
-          (t2/update! :model/User :id victim {:is_active false}))
+          (users.write/update-user! victim {:is_active false}))
         (is (= {:end_reason "user-deactivated", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
                (ending victim-session))
             "victim's session is ended, attributed to the deactivating admin, and its key destroyed")
@@ -40,9 +41,9 @@
       (let [session-id (insert-session! user-id)]
         (is (nil? (:ended_at (t2/select-one :model/Session :id session-id)))
             "session is live while the user is active")
-        (t2/update! :model/User :id user-id {:is_active false})
+        (users.write/update-user! user-id {:is_active false})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "deactivation outside a request ends the session with no actor")
-        (t2/update! :model/User :id user-id {:is_active true})
+        (users.write/update-user! user-id {:is_active true})
         (is (= {:end_reason "user-deactivated", :ended_by_user_id nil, :key_hashed nil} (ending session-id))
             "reactivation does not revive the pre-deactivation session")))))

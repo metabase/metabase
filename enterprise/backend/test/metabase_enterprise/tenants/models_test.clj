@@ -3,10 +3,13 @@
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.tenants.models :as tenants.model]
    [metabase-enterprise.tenants.schema :as tenants.schema]
+   [metabase-enterprise.tenants.write :as tenants.write]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.db :as permissions.db]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.users.write :as users.write]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -226,14 +229,14 @@
                  :model/Tenant _        {:name "Taken Tenant" :slug "taken-tenant"}]
     (testing "slug cannot change"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the slug of a tenant"
-                            (t2/update! :model/Tenant :id id {:slug "new-slug"}))))
+                            (tenants.write/update-tenant! id {:slug "new-slug"} {}))))
     (testing "tenant collection cannot change"
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot change the collection of a tenant"
-                              (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
+                              (tenants.write/update-tenant! id {:tenant_collection_id coll-id} {})))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                            (t2/update! :model/Tenant :id id {:name "Taken Tenant"}))))
+                            (tenants.write/update-tenant! id {:name "Taken Tenant"} {}))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))
@@ -244,16 +247,16 @@
                  :model/User   {user-id :id}         {:tenant_id tenant-id}
                  :model/User   {inactive-id :id}     {:tenant_id tenant-id}
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
-    (t2/update! :model/User :id inactive-id {:is_active false})
+    (users.write/update-user! inactive-id {:is_active false})
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
-      (t2/update! :model/Tenant :id tenant-id {:is_active false})
+      (tenants.write/update-tenant! tenant-id {:is_active false} {})
       (testing "active users of tenant are deactivated with it"
         (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
       (testing "users deactivated before tenant are not marked"
         (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
       (testing "users of other tenants stay active"
         (is (=? {:is_active true} (state other-id))))
-      (t2/update! :model/Tenant :id tenant-id {:is_active true})
+      (tenants.write/update-tenant! tenant-id {:is_active true} {})
       (testing "reactivating tenant reactivates only users deactivated with it"
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
@@ -263,12 +266,12 @@
                  :model/User   {user-id :id}   {:tenant_id tenant-id}]
     (let [active-ids (t2/select-pks-set :model/Tenant :is_active true)]
       (try
-        (permissions.db/deactivate-all-tenants!)
+        (mt/with-temporary-setting-values [use-tenants false])
         (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
         (finally
-          (t2/update! :model/Tenant :id [:in active-ids] {:is_active true}))))))
+          (run! #(tenants.write/update-tenant! % {:is_active true} {}) active-ids))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Tenant Permissions                                               |
@@ -311,5 +314,33 @@
       (is (not (t2/exists? :model/User :email "superuser-tenant-user@example.com"))))
     (testing "tenant user made superuser"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
-                            (t2/update! :model/User :id user-id {:is_superuser true})))
+                            (users.write/update-user! user-id {:is_superuser true})))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))
+
+(deftest update-tenant-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::tenant-events
+                                     (fn [{:keys [model]}] (when (= :model/Tenant model) :tenant))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test-tenant-events"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (tenants.write/update-tenant! tenant-id {:name "Renamed Tenant"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              tenant-id
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Test Tenant"}
+                    :object          {:name "Renamed Tenant"}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::tenant-events)))))
+
+(deftest update-tenant-query-count-test
+  (testing "a rename through update-tenant! issues no more queries than master's t2/update! with the hooks: 3"
+    (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Test Tenant" :slug "test-tenant-count"}]
+      (tenants.write/update-tenant! tenant-id {:name "Warm Tenant"} {})
+      (t2/with-call-count [call-count]
+        (tenants.write/update-tenant! tenant-id {:name "Renamed Tenant"} {})
+        (is (<= (call-count) 3))))))

@@ -16,7 +16,7 @@
    [metabase.api.test-util :as api.test-util]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.core :as events]
@@ -24,6 +24,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.custom-values :as custom-values]
@@ -3428,10 +3429,10 @@
         ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
-          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                             :moderated_item_type "card"
-                                             :moderator_id        (mt/user->id :rasta)
-                                             :status              nil})
+          (content-verification.write/create-review! {:moderated_item_id   (u/the-id card)
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (mt/user->id :rasta)
+                                                      :status              nil})
           (is (not (verified? card)))
           (is (= 2 (count (reviews card))))
           (update-card card {:description "a new description"})
@@ -5484,12 +5485,11 @@
                                       :type :native
                                       :native {:query "SELECT * FROM products"}}}]
       ;; Update snippet to reference card (creates snippet → card)
-      (t2/update! :model/NativeQuerySnippet :id (:id snippet)
-                  {:content (str "WHERE id IN ({{#" (:id card) "}})")
-                   :template_tags {(str "card-" (:id card)) {:type :card
-                                                             :card-id (:id card)
-                                                             :name (str "card-" (:id card))
-                                                             :display-name "Card Reference"}}})
+      (native-query-snippets.write/update-snippet! (:id snippet) {:content (str "WHERE id IN ({{#" (:id card) "}})")
+                                                                  :template_tags {(str "card-" (:id card)) {:type :card
+                                                                                                            :card-id (:id card)
+                                                                                                            :name (str "card-" (:id card))
+                                                                                                            :display-name "Card Reference"}}} {})
       ;; Try to update card to reference snippet (would create card → snippet → card cycle)
       (is (= "Cannot save card with cycles."
              (mt/user-http-request :crowberto :put 400 (str "card/" (:id card))
@@ -5532,12 +5532,11 @@
                                                                   :name (str "#" (:id card-1))
                                                                   :display-name "Card 1"}}}}}]
       ;; Update snippet-2 to reference card-2 (creates snippet-2 → card-2 → card-1 → snippet-1)
-      (t2/update! :model/NativeQuerySnippet :id (:id snippet-2)
-                  {:content (str "AND id IN ({{#" (:id card-2) "}})")
-                   :template_tags {(str "card-" (:id card-2)) {:type :card
-                                                               :card-id (:id card-2)
-                                                               :name (str "card-" (:id card-2))
-                                                               :display-name "Card 2"}}})
+      (native-query-snippets.write/update-snippet! (:id snippet-2) {:content (str "AND id IN ({{#" (:id card-2) "}})")
+                                                                    :template_tags {(str "card-" (:id card-2)) {:type :card
+                                                                                                                :card-id (:id card-2)
+                                                                                                                :name (str "card-" (:id card-2))
+                                                                                                                :display-name "Card 2"}}} {})
       ;; Try to update card-1 to also reference snippet-2
       ;; (would create card-1 → snippet-2 → card-2 → card-1 cycle)
       (is (= "Cannot save card with cycles."
@@ -5576,8 +5575,7 @@
                                                                           :snippet-name "snippet-1"
                                                                           :name         "snippet:snippet-1"
                                                                           :display-name "Snippet 1"}}}]
-      (t2/update! :model/NativeQuerySnippet :id (:id snippet-1)
-                  {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
+      (native-query-snippets.write/update-snippet! (:id snippet-1) {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"} {})
       ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
       ;; This should fail even though the card doesn't exist yet
       (is (= "Cannot save card with cycles."

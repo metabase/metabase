@@ -4,12 +4,15 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -69,7 +72,7 @@
                  :model/DataTestRun {other-run :id} {:test_type :transform, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :card test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/CardTest :id test-id)
+      (data-testing.write/delete-card-tests! [test-id] {})
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a transform test with the same id keeps its test id"
@@ -198,3 +201,35 @@
         (is (= {:run false :write false}
                {:run   (boolean (data-testing.models.card-test/can-run? card-test))
                 :write (boolean (mi/can-write? (t2/hydrate card-test :can_write)))}))))))
+
+(deftest update-card-test-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::card-test-events
+                                     (fn [{:keys [model]}] (when (= :model/CardTest model) :card-test))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Card {parent-id :id} {}
+                     :model/CardTest saved-test {:card_id parent-id :name "Test"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (data-testing.write/update-card-test! (:id saved-test) {:name "Renamed Test"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id saved-test)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Test" :updated_at (:updated_at saved-test)}
+                    :object          {:name "Renamed Test" :updated_at (:updated_at saved-test)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::card-test-events)))))
+
+(deftest update-card-test-query-count-test
+  (testing "a warm update-card-test! issues 4 queries, as master's t2/update! with the hooks did"
+    (mt/with-temp [:model/Card {parent-id :id} {}
+                   :model/CardTest {id :id} {:card_id parent-id :name "Test"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (data-testing.write/update-card-test! id {:name "Warm Test"} {})
+          (t2/with-call-count [call-count]
+            (data-testing.write/update-card-test! id {:name "Renamed Test"} {})
+            (is (<= (call-count) 4))))))))

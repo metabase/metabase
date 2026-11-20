@@ -8,11 +8,20 @@
    [java-time.api :as t]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
+   [metabase.channel.write :as channel.write]
+   [metabase.comments.write :as comments.write]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
+   [metabase.glossary.write :as glossary.write]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
+   [metabase.pulse.write :as pulse.write]
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
+   [metabase.transforms.write :as transforms.write]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -110,7 +119,7 @@
   (testing :dashboard-delete
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-        (t2/delete! :model/Dashboard :id (:id dashboard))
+        (dashboards.write/delete-dashboard-row! (:id dashboard) {})
         (is (partial=
              {:topic    :dashboard-delete
               :user_id  (mt/user->id :rasta)
@@ -150,7 +159,7 @@
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-test-user :rasta
-        (t2/delete! :model/DashboardCard :id (:id dashcard))
+        (dashboards.write/delete-dashcards! [(:id dashcard)] {})
         (is (partial=
              {:topic    :dashboard-remove-cards
               :user_id  (mt/user->id :rasta)
@@ -318,7 +327,7 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/User user {:last_name "Charms"}]
-        (t2/update! :model/User :id (:id user) {:last_name "Pigeon"})
+        (users.write/update-user! (:id user) {:last_name "Pigeon"})
         (is (partial=
              {:model_id (:id user)
               :user_id  (mt/user->id :rasta)
@@ -382,7 +391,7 @@
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
       (testing :event/channel-update
-        (t2/update! :model/Channel :id (:id channel) {:name "New Name"})
+        (channel.write/update-channel! (:id channel) {:name "New Name"} {})
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}
@@ -460,7 +469,7 @@
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
        (testing :event/comment-update
-         (t2/update! :model/Comment :id (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+         (comments.write/update-comment! (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}} {})
          (is (=? {:model_id (:id comment)
                   :user_id (mt/user->id :rasta)
                   :details {}
@@ -468,7 +477,7 @@
                   :model "Comment"}
                  (mt/latest-audit-log-entry :comment-update (:id comment)))))
        (testing :event/comment-delete
-         (t2/delete! :model/Comment :id (:id comment))
+         (comments.write/delete-comments! [(:id comment)] {})
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
                  :details {:target_type "document"
@@ -494,7 +503,7 @@
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
        (testing :event/transform-update
-         (t2/update! :model/Transform :id (:id transform) {:name "Updated Transform"})
+         (transforms.write/change-transform! (:id transform) {:name "Updated Transform"} {})
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -504,7 +513,7 @@
                :model "Transform"}
               (mt/latest-audit-log-entry :update-transform (:id transform)))))
        (testing :event/transform-delete
-         (t2/delete! :model/Transform :id (:id transform))
+         (transforms.write/delete-transforms! [(:id transform)] {})
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -525,7 +534,7 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
       (testing :event/glossary-update
-        (t2/update! :model/Glossary :id (:id glossary) {:term "Updated Term"})
+        (glossary.write/update-glossary! (:id glossary) {:term "Updated Term"} {})
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:previous {:term "Test Term"}
@@ -534,7 +543,7 @@
                 :model "Glossary"}
                (mt/latest-audit-log-entry :glossary-update (:id glossary)))))
       (testing :event/glossary-delete
-        (t2/delete! :model/Glossary :id (:id glossary))
+        (glossary.write/delete-glossary! (:id glossary) {})
         (is (= {:model_id (:id glossary)
                 :user_id (mt/user->id :rasta)
                 :details {:term "Updated Term"}
@@ -684,10 +693,10 @@
 (deftest user-activation-is-recorded-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
-      (t2/update! :model/User :id user-id {:is_active false})
+      (users.write/update-user! user-id {:is_active false})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
              (mt/latest-audit-log-entry :user-deactivated user-id)))
-      (t2/update! :model/User :id user-id {:is_active true})
+      (users.write/update-user! user-id {:is_active true})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 
@@ -703,15 +712,22 @@
                  :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
                 (mt/latest-audit-log-entry topic (:id table))))))))
 
+(defn- update-row!
+  "Apply `changes` to the `model` row with `id` through the write functions of its model when it has them."
+  [model id changes]
+  (if-let [update! (:update! (mi/write-fns model))]
+    (update! id changes {})
+    (t2/update! model :id id changes)))
+
 (deftest public-links-are-recorded-test
   (mt/with-temp [:model/Card      {card-id :id}      {}
                  :model/Dashboard {dashboard-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[model id prefix] [[:model/Card card-id "card"] [:model/Dashboard dashboard-id "dashboard"]]]
-        (t2/update! model :id id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
+        (update-row! model id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
         (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-created")) id))
             "created")
-        (t2/update! model :id id {:public_uuid nil :made_public_by_id nil})
+        (update-row! model id {:public_uuid nil :made_public_by_id nil})
         (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-deleted")) id))
             "deleted")))))
 
@@ -760,7 +776,7 @@
                          :topic :group-membership-create}
                         (mt/latest-audit-log-entry :group-membership-create membership-id))))
         (testing "deleting a membership records its id"
-          (t2/delete! :model/PermissionsGroupMembership :id membership-id)
+          (perms/delete-memberships! [membership-id] {})
           (is (partial= {:model "PermissionsGroupMembership"
                          :model_id membership-id
                          :user_id (mt/user->id :crowberto)
@@ -811,8 +827,8 @@
     (let [{key-id :id} (mt/user-http-request :crowberto :post 200 "api-key" {:group_id group-id :name "Bookkept key"})]
       (mt/with-current-user (mt/user->id :rasta)
         (let [before (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:audit_log]})) 0)]
-          (t2/update! :model/User :id user-id {:last_login (java.time.OffsetDateTime/now)})
-          (t2/update! :model/Pulse :id pulse-id {:collection_position 1})
+          (users.write/update-user! user-id {:last_login (java.time.OffsetDateTime/now)})
+          (pulse.write/update-pulse! pulse-id {:collection_position 1} {})
           (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
           (t2/update! :model/ApiKey :id key-id {:last_used_at (java.time.OffsetDateTime/now)})
           (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card" "ApiKey"]]))))))))

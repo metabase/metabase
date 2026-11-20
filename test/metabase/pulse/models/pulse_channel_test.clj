@@ -7,6 +7,7 @@
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
+   [metabase.pulse.write :as pulse.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -274,12 +275,12 @@
                (:recipients (t2/hydrate channel :recipients))))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
-  (testing `pulse-channel/validate-email-domains
+  (testing `pulse.write/validate-email-domains
     (testing "should check that User `:id` and `:email`s match for User `:recipients`"
       (let [input {:recipients [{:email "rasta@metabase.com"
                                  :id    (mt/user->id :rasta)}]}]
         (is (= input
-               (pulse-channel/validate-email-domains input))))
+               (pulse.write/validate-email-domains input))))
       (testing "Throw Exception if User does not exist"
         ;; should validate even if `:email` isn't specified
         (doseq [input [{:id Integer/MAX_VALUE}
@@ -289,12 +290,12 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"User [\d,]+ does not exist"
-                 (pulse-channel/validate-email-domains {:recipients [input]}))))))
+                 (pulse.write/validate-email-domains {:recipients [input]}))))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Wrong email address for User [\d,]+"
-           (pulse-channel/validate-email-domains {:recipients [{:email "rasta@example.com"
-                                                                :id    (mt/user->id :rasta)}]}))))))
+           (pulse.write/validate-email-domains {:recipients [{:email "rasta@example.com"
+                                                              :id    (mt/user->id :rasta)}]}))))))
 
 (defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
@@ -340,18 +341,18 @@
         (is (= #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id])}
                (send-pulse-triggers pulse-id))))
       (testing "updating the schedule of a trigger will remove it from the existing trigger and create a new one"
-        (t2/update! :model/PulseChannel :id pc-id daily-at-7pm)
+        (pulse.write/update-pulse-channel! pc-id daily-at-7pm {})
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
       (testing "disable PC will delete its trigger"
-        (t2/update! :model/PulseChannel :id pc-id {:enabled false})
+        (pulse.write/update-pulse-channel! pc-id {:enabled false} {})
         (is (empty? (send-pulse-triggers pulse-id))))
       (testing "reenable PC will add its trigger"
-        (t2/update! :model/PulseChannel :id pc-id {:enabled true})
+        (pulse.write/update-pulse-channel! pc-id {:enabled true} {})
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))
       (testing "remove the trigger if PC is deleted"
-        (t2/delete! :model/PulseChannel :id pc-id)
+        (pulse.write/delete-pulse-channels! [pc-id] {})
         (is (empty? (send-pulse-triggers pulse-id)))))))
 
 (deftest e2e-multiple-pcs-test
@@ -369,7 +370,7 @@
                                                                 daily-at-6pm)]
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
-          (t2/delete! :model/PulseChannel :id pc-id-2)
+          (pulse.write/delete-pulse-channels! [pc-id-2] {})
           (testing "deleting channel-2 should remove the id, but keep the existing trigger"
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])}
                     (send-pulse-triggers pulse-id))))))
@@ -380,12 +381,12 @@
           (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                   (send-pulse-triggers pulse-id)))
           (testing "change schedule of a trigger will remove it from the existing trigger and create a new one"
-            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-7pm)
+            (pulse.write/update-pulse-channel! pc-id-2 daily-at-7pm {})
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1])
                       (pulse->trigger-info pulse-id daily-at-7pm [pc-id-2])}
                     (send-pulse-triggers pulse-id))))
           (testing "change it back to the original schedule will remove the trigger and update channel-ids of the existing one"
-            (t2/update! :model/PulseChannel :id pc-id-2 daily-at-6pm)
+            (pulse.write/update-pulse-channel! pc-id-2 daily-at-6pm {})
             (is (=? #{(pulse->trigger-info pulse-id daily-at-6pm [pc-id-1 pc-id-2])}
                     (send-pulse-triggers pulse-id)))))))))
 
@@ -449,13 +450,13 @@
                                     "schedule type that needs day"      {:schedule_type :weekly}
                                     "monthly schedule without frame"    {:schedule_type :monthly}}]
       (testing testing-name
-        (is (= 400 (status-code #(t2/update! :model/PulseChannel :id channel-id changes))))
+        (is (= 400 (status-code #(pulse.write/update-pulse-channel! channel-id changes {}))))
         (is (=? {:channel_type :email, :schedule_type :daily, :schedule_hour 15}
                 (t2/select-one :model/PulseChannel :id channel-id)))))
     (testing "changes that leave a valid channel"
-      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_type :weekly, :schedule_day "mon"})))
-      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:schedule_hour 7})))
-      (is (= 1 (t2/update! :model/PulseChannel :id channel-id {:details {:emails ["a@example.com"]}})))
+      (is (= 1 (pulse.write/update-pulse-channel! channel-id {:schedule_type :weekly, :schedule_day "mon"} {})))
+      (is (= 1 (pulse.write/update-pulse-channel! channel-id {:schedule_hour 7} {})))
+      (is (= 1 (pulse.write/update-pulse-channel! channel-id {:details {:emails ["a@example.com"]}} {})))
       (is (=? {:schedule_type :weekly, :schedule_day "mon", :schedule_hour 7}
               (t2/select-one :model/PulseChannel :id channel-id))))))
 
@@ -467,7 +468,6 @@
                                                         :schedule_type :weekly, :schedule_hour 8, :schedule_day "mon"}]
       (let [triggers (send-pulse-triggers pulse-id)]
         (testing "an UPDATE that makes the weekly channel invalid"
-          (is (= 400 (status-code #(t2/update! :model/PulseChannel :id weekly-id
-                                               {:schedule_type :monthly, :schedule_frame :mid}))))
+          (is (= 400 (status-code #(pulse.write/update-pulse-channel! weekly-id {:schedule_type :monthly, :schedule_frame :mid} {}))))
           (testing "moves no trigger"
             (is (= triggers (send-pulse-triggers pulse-id)))))))))

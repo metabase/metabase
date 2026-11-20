@@ -2,7 +2,6 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -47,11 +46,21 @@
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
+(mu/defn measures
+  "The Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select :model/Measure :id [:in ids]))
+
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
-   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure :id id changes))
+   changes :- ::measures.schema/measure.changes]
+  (t2/update! :model/Measure :id [:auto/param id] changes))
+
+(mu/defn delete-measures!
+  "Delete the Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/delete! :model/Measure :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -62,13 +71,6 @@
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one [:model/Table :db_id :schema :id] :id table-id))
-
-(mu/defn set-measure-dimensions!
-  "Set the dimensions and dimension mappings of the Measure with `id`."
-  [id                 :- ::lib.schema.id/measure
-   dimensions         :- [:maybe sequential?]
-   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
-  (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
 
 (mu/defn synced-measure-items :- [:sequential ::measures.schema/measure]
   "The Measures with `ids`, with their Table and its Collection and ancestors, as remote sync lists them."

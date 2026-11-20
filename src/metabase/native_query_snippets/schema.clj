@@ -6,6 +6,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.models.schema :as models.schema]
    [metabase.users.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -34,6 +35,29 @@
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
    [:entity_id     {:optional true} [:maybe :string]]
    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
+
+(mr/def ::native-query-snippet.changes
+  "What an UPDATE of a NativeQuerySnippet writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::native-query-snippet.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::native-query-snippet.create
+  "What a new NativeQuerySnippet takes."
+  [:map {:closed true}
+   [:content       :string]
+   [:creator_id    ::lib.schema.id/user]
+   [:name          :string]
+   [:description   {:optional true} [:maybe :string]]
+   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mr/def ::write-opts
+  "The context of a write of NativeQuerySnippets: `:archived-with`, the `[model id]` of the archive that carries them,
+  and `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:import?       {:optional true} :boolean]])
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."

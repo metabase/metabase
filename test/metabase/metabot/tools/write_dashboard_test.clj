@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
@@ -415,7 +416,7 @@
    (fn [{:keys [dash-id]}]
      (mt/with-temp [:model/Collection {target-id :id :as target} {:name "Archive"}]
        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) target)
-       (t2/update! :model/Dashboard :id dash-id {:description "Old"})
+       (dashboards.write/update-dashboard-row! dash-id {:description "Old"} {})
        (mt/with-current-user (mt/user->id :rasta)
          (testing "renames, moves and clears the description in one save"
            (call {:dashboard_id  dash-id
@@ -499,7 +500,7 @@
        ;; A parallel call trashes the dashboard after this call's first read, before it takes the lock.
        (let [reread (mt/original-fn #'metabot.db/dashboard)]
          (mt/with-dynamic-fn-redefs [metabot.db/dashboard (fn [id]
-                                                            (t2/update! :model/Dashboard :id id {:archived true})
+                                                            (dashboards.write/update-dashboard-row! id {:archived true} {})
                                                             (reread id))]
            (testing "an edit refuses a dashboard trashed while it waited"
              (is (=? {:class :recoverable, :code ::save-entity/destination-archived}

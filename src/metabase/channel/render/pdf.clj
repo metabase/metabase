@@ -50,7 +50,7 @@
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.dashcards :as dashcards]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
    [metabase.premium-features.core :as premium-features]
@@ -507,7 +507,7 @@
   "Order a tab's (or the untabbed dashboard's) dashcards and build cells, normalizing row numbers so the first
   row of the section is 0. `parts-by-dashcard-id` supplies each card's already-executed part (see [[dashcard->cell]])."
   [dashcards parameters parts-by-dashcard-id]
-  (let [sorted  (sort dashboard-card/dashcard-comparator dashcards)
+  (let [sorted  (sort dashcards/dashcard-comparator dashcards)
         min-row (if (seq sorted)
                   (apply min (map :row sorted))
                   0)

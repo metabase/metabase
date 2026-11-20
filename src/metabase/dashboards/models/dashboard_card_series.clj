@@ -2,11 +2,11 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.write]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,17 +15,14 @@
 (methodical/defmethod t2/table-name :model/DashboardCardSeries [_model] :dashboardcard_series)
 
 (doto :model/DashboardCardSeries
-  (derive :metabase/model)
-  (derive :hook/events))
+  (derive :metabase/model))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(t2/define-before-update :model/DashboardCardSeries
+(t2/define-after-insert :model/DashboardCardSeries
   [series]
-  (let [changes (t2/changes series)]
-    (when (contains? changes :dashboardcard_id)
-      (throw (ex-info (tru "You cannot move a series to another dashboard card.") {:status-code 400})))
-    series))
+  (events/created! :model/DashboardCardSeries series)
+  series)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

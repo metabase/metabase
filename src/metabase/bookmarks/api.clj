@@ -10,6 +10,7 @@
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.bookmarks.schema :as bookmarks.schema]
+   [metabase.bookmarks.write :as bookmarks.write]
    [metabase.util.malli.schema :as ms]))
 
 (def Models
@@ -53,7 +54,7 @@
   (api/read-check (item-model model) id)
   (api/check (not (bookmarks.db/bookmark-exists? model id api/*current-user-id*))
              [400 "Bookmark already exists"])
-  (bookmarks.db/insert-bookmark! model id api/*current-user-id*))
+  (bookmarks.write/create-bookmark! model id api/*current-user-id*))
 
 (api.macros/defendpoint :delete "/:model/:id" :- ::api/generic-204-no-content
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
@@ -61,7 +62,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (bookmarks.db/delete-bookmark! model id api/*current-user-id*)
+  (bookmarks.write/delete-bookmark! model id api/*current-user-id*)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/ordering" :- ::api/generic-204-no-content
@@ -70,5 +71,5 @@
    _query-params
    {:keys [orderings]} :- [:map {:closed true}
                            [:orderings BookmarkOrderings]]]
-  (bookmark/save-ordering! api/*current-user-id* orderings)
+  (bookmarks.write/save-ordering! api/*current-user-id* orderings)
   api/generic-204-no-content)

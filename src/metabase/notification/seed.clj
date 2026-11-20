@@ -5,6 +5,7 @@
   (:require
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.write :as notification.write]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -190,9 +191,10 @@
 
 (defn- cleanup-notification!
   [internal-id existing-row]
-  (notification.db/delete-notification-by-internal-id! internal-id)
+  (when-let [id (:id (notification.db/notification-by-internal-id internal-id))]
+    (notification.write/delete-notifications! [id] {}))
   (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
-    (notification.db/delete-channel-templates! template-ids)))
+    (notification.write/delete-channel-templates! template-ids)))
 
 (defn- create-notification!
   [notification]

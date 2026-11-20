@@ -10,15 +10,17 @@
    [clojure.test :refer :all]
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.write :as measures.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
+   [metabase.pulse.write :as pulse.write]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.search.api :as search.api]
    [metabase.search.appdb.core :as search.engines.appdb]
@@ -646,10 +648,10 @@
       ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
       ;; test result return the most recent status and don't duplicate the result
       (doseq [status ["verified" nil "verified"]]
-        (moderation-review/create-review! {:moderated_item_id   card-id
-                                           :moderated_item_type "card"
-                                           :moderator_id        (mt/user->id :crowberto)
-                                           :status              status}))
+        (content-verification.write/create-review! {:moderated_item_id   card-id
+                                                    :moderated_item_type "card"
+                                                    :moderator_id        (mt/user->id :crowberto)
+                                                    :status              status}))
       (is (=? [{:id               card-id
                 :model            "card"
                 :moderated_status "verified"}]
@@ -1240,7 +1242,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
+              (pulse.write/update-pulse! (:id pulse) {:dashboard_id (:id dashboard)} {})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test
@@ -2325,13 +2327,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure :id measure-id {:archived true})
+          (measures.write/update-measure! measure-id {:archived true} {})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure :id measure-id {:archived false})
+          (measures.write/update-measure! measure-id {:archived false} {})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 

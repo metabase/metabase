@@ -9,7 +9,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
-   [metabase.util.i18n :as i18n]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -21,50 +21,25 @@
 
 (doto :model/TransformTag
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(mu/defn- translate-name :- [:map {:closed true} [:name [:maybe mu/localized-string-schema]]]
-  [tag :- [:or ::transforms.schema/transform-tag ::transforms.schema/transform-tag.update]]
-  (let [values {"hourly"  (i18n/deferred-trs "hourly")
-                "daily"   (i18n/deferred-trs "daily")
-                "weekly"  (i18n/deferred-trs "weekly")
-                "monthly" (i18n/deferred-trs "monthly")}
-        name (get values (:built_in_type tag))]
-    {:name name}))
 
 (t2/define-after-select :model/TransformTag [tag]
   (if (nil? (:built_in_type tag))
     tag
-    (merge tag (translate-name tag))))
-
-(defn- check-name-free
-  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
-  [{tag-name :name, :keys [id]}]
-  (when-let [tag-name (not-empty (str tag-name))]
-    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
-      (when (and taken-by (not= taken-by id))
-        (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
+    (merge tag (transforms.write/translated-tag-name tag))))
 
 (t2/define-before-insert :model/TransformTag
   [tag]
-  (check-name-free tag)
+  (transforms.write/check-tag-name-free tag)
   tag)
 
-(t2/define-before-update :model/TransformTag [tag]
-  (when (contains? (t2/changes tag) :name)
-    (check-name-free tag))
-  (if (or (nil? (:built_in_type tag))
-          (empty? (dissoc (t2/changes tag) :updated_at)))
-    tag
-    (-> (merge tag
-               (translate-name tag)
-               {:built_in_type nil}
-               (t2/changes tag))
-        (update :name str))))
+(t2/define-after-insert :model/TransformTag
+  [tag]
+  (events/created! :model/TransformTag tag)
+  tag)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

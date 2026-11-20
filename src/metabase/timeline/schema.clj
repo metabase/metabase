@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.schema :as models.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -60,6 +61,52 @@
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id    {:optional true} [:maybe :string]]])
+
+(mr/def ::timeline.changes
+  "What an UPDATE of a Timeline writes: the columns of an update, its `:updated_at` also an SQL expression, `(mi/now)`."
+  [:merge
+   ::timeline.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::timeline-event.changes
+  "What an UPDATE of a TimelineEvent writes: the columns of an update, its `:updated_at` also an SQL expression,
+  `(mi/now)`."
+  [:merge
+   ::timeline-event.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::timeline.create
+  "What a new Timeline takes."
+  [:map {:closed true}
+   [:name          ::name]
+   [:creator_id    ::lib.schema.id/user]
+   [:default       {:optional true} [:maybe :boolean]]
+   [:description   {:optional true} [:maybe :string]]
+   [:icon          {:optional true} ::icon]
+   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived      {:optional true} [:maybe :boolean]]])
+
+(mr/def ::timeline-event.create
+  "What a new TimelineEvent takes."
+  [:map {:closed true}
+   [:name         ::name]
+   [:timestamp    ms/TemporalInstant]
+   [:timeline_id  ms/PositiveInt]
+   [:creator_id   ::lib.schema.id/user]
+   [:timezone     {:optional true} [:maybe :string]]
+   [:description  {:optional true} [:maybe :string]]
+   [:time_matters {:optional true} ::time-matters]
+   [:icon         {:optional true} ::icon]
+   [:archived     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::write-opts
+  "The context of a write of Timelines and TimelineEvents: `:archived-with`, the `[model id]` of the archive that
+  carries them, and `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:import?       {:optional true} :boolean]])
 
 (mr/def ::external-timeline
   "A Timeline as serialization writes it, with portable references in place of ids."

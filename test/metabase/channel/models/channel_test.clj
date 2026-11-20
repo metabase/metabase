@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel] ;; ensure known-labels are loaded
    [metabase.channel.schema :as channel.schema]
+   [metabase.channel.write :as channel.write]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -54,11 +55,11 @@
                                          :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (is (pos? (t2/update! :model/Channel :id id {:name "New name"})))
-      (is (zero? (t2/update! :model/Channel :id id {:active true})))
+      (is (pos? (channel.write/update-channel! id {:name "New name"} {})))
+      (is (zero? (channel.write/update-channel! id {:active true} {})))
       (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (t2/update! :model/Channel :id id {:active false})
+      (channel.write/update-channel! id {:active false} {})
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
@@ -119,9 +120,9 @@
                                                       :details      {:type    :email/handlebars-text
                                                                      :subject "Hello"
                                                                      :body    "Original body"}}]
-        (t2/update! :model/ChannelTemplate :id id {:details {:type    :email/handlebars-text
-                                                             :subject "Hello"
-                                                             :body    "Updated body"}})
+        (channel.write/update-channel-template! id {:details {:type    :email/handlebars-text
+                                                              :subject "Hello"
+                                                              :body    "Updated body"}} {})
         (is (= 1.0 (mt/metric-value system :metabase-notification/template-update
                                     {:channel-type :channel/email})))))))
 
@@ -166,20 +167,20 @@
   (mt/with-temp [:model/Channel {id :id} http-channel]
     (testing "changing details to the wrong shape is a 400"
       (is (=? {:status-code 400}
-              (try (t2/update! :model/Channel :id id {:details {:channel "#general"}})
+              (try (channel.write/update-channel! id {:details {:channel "#general"}} {})
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))
     (testing "changing the type while keeping details of another shape is a 400"
       (is (=? {:status-code 400}
-              (try (t2/update! :model/Channel :id id {:type :channel/slack})
+              (try (channel.write/update-channel! id {:type :channel/slack} {})
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))
     (testing "changing the type to an unregistered one is a 400"
       (is (=? {:status-code 400}
-              (try (t2/update! :model/Channel :id id {:type :channel/nonexistent})
+              (try (channel.write/update-channel! id {:type :channel/nonexistent} {})
                    (catch clojure.lang.ExceptionInfo e (ex-data e))))))
     (testing "changing the type together with matching details is accepted"
-      (is (pos? (t2/update! :model/Channel :id id {:type :channel/slack :details {:channel "#general"}}))))
+      (is (pos? (channel.write/update-channel! id {:type :channel/slack :details {:channel "#general"}} {}))))
     (testing "changing only the name does not recheck the details"
-      (is (pos? (t2/update! :model/Channel :id id {:name "Renamed"}))))))
+      (is (pos? (channel.write/update-channel! id {:name "Renamed"} {}))))))
 
 (deftest channel-template-channel-type-is-frozen-test
   (mt/with-temp [:model/ChannelTemplate {id :id} {:channel_type :channel/email
@@ -188,9 +189,9 @@
                                                                  :subject "Hello"
                                                                  :body    "Body"}}]
     (is (=? {:status-code 400}
-            (try (t2/update! :model/ChannelTemplate :id id {:channel_type :channel/slack})
+            (try (channel.write/update-channel-template! id {:channel_type :channel/slack} {})
                  (catch clojure.lang.ExceptionInfo e (ex-data e)))))
-    (is (pos? (t2/update! :model/ChannelTemplate :id id {:name "Renamed"})))))
+    (is (pos? (channel.write/update-channel-template! id {:name "Renamed"} {})))))
 
 (deftest channel-permissions-test
   (mt/with-temp [:model/Channel channel http-channel

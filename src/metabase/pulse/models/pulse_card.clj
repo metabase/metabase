@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.pulse.write :as pulse.write]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -19,8 +20,12 @@
 
 (doto :model/PulseCard
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
+
+(t2/define-after-insert :model/PulseCard
+  [pulse-card]
+  (events/created! :model/PulseCard pulse-card)
+  pulse-card)
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
@@ -48,7 +53,7 @@
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (pulse.db/insert-pulse-cards!
+  (pulse.write/create-pulse-cards!
    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
      {:card_id           card_id
       :pulse_id          pulse_id

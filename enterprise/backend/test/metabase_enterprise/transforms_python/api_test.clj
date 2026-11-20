@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-python.models.python-library :as python-library]
+   [metabase-enterprise.transforms-python.write :as transforms-python.write]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.transforms.test-dataset :as transforms-dataset]
@@ -25,7 +25,7 @@
             (is (= "Not found." (mt/user-http-request :lucky :get 404 "ee/transforms-python/library/common"))))
           (testing "returns existing library"
             (t2/delete! :model/PythonLibrary)
-            (python-library/update-python-library-source! "common" "def my_function():\n    return 42")
+            (transforms-python.write/update-python-library-source! "common" "def my_function():\n    return 42")
             (is (=? {:source "def my_function():\n    return 42"
                      :path "common.py"
                      :created_at some?
@@ -72,7 +72,7 @@
                    (t2/select-one-fn :source :model/PythonLibrary))))
           (testing "updates existing library"
             (t2/delete! :model/PythonLibrary)
-            (python-library/update-python-library-source! "common" "def old_function():\n    return 1")
+            (transforms-python.write/update-python-library-source! "common" "def old_function():\n    return 1")
             (is (=? {:source "def updated_function():\n    return 2"
                      :path "common.py"
                      :id integer?

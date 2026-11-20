@@ -437,7 +437,7 @@
               :query    (actions.db/update-query-action! id type-row)
               :implicit (actions.db/update-implicit-action! id type-row)))))
       (when (and (:archived updates) (not (:archived existing-action)))
-        (actions.db/delete-dashcards-for-action! id))
+        ((:delete! (mi/write-fns :model/DashboardCard)) (actions.db/dashcard-ids-for-action id) {}))
       (actions.db/action id))))
 
 (mu/defn update!

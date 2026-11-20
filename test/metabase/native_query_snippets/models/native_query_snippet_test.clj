@@ -1,7 +1,11 @@
 (ns metabase.native-query-snippets.models.native-query-snippet-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -14,7 +18,7 @@
       (is (thrown-with-msg?
            Exception
            #"You cannot change the creator of a snippet\."
-           (t2/update! :model/NativeQuerySnippet :id snippet-id {:creator_id (mt/user->id :rasta)})))
+           (native-query-snippets.write/update-snippet! snippet-id {:creator_id (mt/user->id :rasta)} {})))
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
 
@@ -24,8 +28,8 @@
       (testing (pr-str odd-name)
         (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name odd-name :content "1 = 1"}]
           (is (= odd-name (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id)))
-          (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "valid name"})
-          (t2/update! :model/NativeQuerySnippet :id snippet-id {:name odd-name})
+          (native-query-snippets.write/update-snippet! snippet-id {:name "valid name"} {})
+          (native-query-snippets.write/update-snippet! snippet-id {:name odd-name} {})
           (is (= odd-name (t2/select-one-fn :name :model/NativeQuerySnippet :id snippet-id)))))))
   (testing "the request check refuses them"
     (doseq [odd-name [" starts with a space" "\tstarts with a tab" "contains a } character"]]
@@ -61,7 +65,7 @@
                      :model/Collection         {dest-collection-id :id}   {:namespace dest}
                      :model/NativeQuerySnippet {snippet-id :id} (when source
                                                                   {:collection_id source-collection-id})]
-        (t2/update! :model/NativeQuerySnippet :id snippet-id {:collection_id (when dest dest-collection-id)})
+        (native-query-snippets.write/update-snippet! snippet-id {:collection_id (when dest dest-collection-id)} {})
         (is (= (when dest dest-collection-id)
                (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id))))))
   (doseq [collection-namespace [nil "x"]]
@@ -83,7 +87,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (t2/update! :model/NativeQuerySnippet :id snippet-id {:collection_id dest-collection-id})))))))
+             (native-query-snippets.write/update-snippet! snippet-id {:collection_id dest-collection-id} {})))))))
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
@@ -97,7 +101,7 @@
   (testing "Can find params on update"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
       (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
-      (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "{{id}}"})
+      (native-query-snippets.write/update-snippet! snippet-id {:content "{{id}}"} {})
       (is (=? {"id" {:type :text,
                      :name "id",
                      :display-name "ID"}}
@@ -194,3 +198,33 @@
               "nil should remain nil")
           (is (contains? (first hydrated) :can_write)
               "non-nil snippet should be hydrated"))))))
+
+(deftest update-snippet-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::snippet-events
+                                     (fn [{:keys [model]}] (when (= :model/NativeQuerySnippet model) :snippet))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "my snippet" :content "id"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (native-query-snippets.write/update-snippet! (:id snippet) {:content "{{id}}"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id snippet)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:content "id" :template_tags {} :updated_at (:updated_at snippet)}
+                    :object          {:content "{{id}}" :template_tags {"id" {:name "id"}} :updated_at (:updated_at snippet)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::snippet-events)))))
+
+(deftest update-snippet-query-count-test
+  (testing "a warm update-snippet! issues no more queries than master's t2/update! with the hooks, 2"
+    (mt/with-temp [:model/NativeQuerySnippet {id :id} {:name "my snippet" :content "id"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (native-query-snippets.write/update-snippet! id {:name "warm snippet"} {})
+          (t2/with-call-count [call-count]
+            (native-query-snippets.write/update-snippet! id {:name "renamed snippet"} {})
+            (is (<= (call-count) 2))))))))

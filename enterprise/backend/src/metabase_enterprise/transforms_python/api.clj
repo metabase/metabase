@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms-python.write :as transforms-python.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -47,7 +48,7 @@
   ;; Check permission directly since this is an upsert endpoint - the library may not exist yet.
   (api/check-403 (perms/user-has-transforms-permission-anywhere? (perms/user-info api/*current-user-id*)))
   (api/check-403 (not (remote-sync/read-only?)))
-  (python-library/update-python-library-source! path (:source body)))
+  (transforms-python.write/update-python-library-source! path (:source body)))
 
 (api.macros/defendpoint :post "/test-run"
   :- [:map

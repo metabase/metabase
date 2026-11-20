@@ -13,6 +13,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -120,10 +121,10 @@
        (mt/with-premium-features #{}
          (is (data-analyst-group-listed?))
          (testing "deactivating the only member hides the group"
-           (t2/update! :model/User :id user-id {:is_active false})
+           (users.write/update-user! user-id {:is_active false})
            (is (not (data-analyst-group-listed?))))
          (testing "reactivating them brings it back, the membership having survived"
-           (t2/update! :model/User :id user-id {:is_active true})
+           (users.write/update-user! user-id {:is_active true})
            (is (data-analyst-group-listed?))
            (is (t2/exists? :model/PermissionsGroupMembership
                            :user_id user-id :group_id (data-analyst-group-id)))))))))

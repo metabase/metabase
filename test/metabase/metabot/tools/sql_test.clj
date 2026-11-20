@@ -24,14 +24,14 @@
    [metabase.metabot.tools.sql.replace :as sql.replace]
    [metabase.metabot.tools.sql.validation :as sql.validation]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.util.malli :as mu]))
 
 (defn- invoke-sql-tool-with-memory-atom
   "Like [[invoke-sql-tool]], with the agent's memory in `memory-atom`, so several calls can share one turn."
@@ -1350,7 +1350,7 @@
                 card-stored    (trace-shape (lib/native-query mp card-sql))
                 ;; A snippet can be renamed after a query that uses it is saved. Only the stored tag keeps its id.
                 snippet-stored (trace-shape (lib/native-query mp snippet-sql))]
-            (t2/update! :model/NativeQuerySnippet :id snippet-id {:name "cheapest_venues"})
+            (native-query-snippets.write/update-snippet! snippet-id {:name "cheapest_venues"} {})
             (is (= [snippet-id] (map :snippet-id (sql.common/stored-template-tags snippet-stored))))
             (doseq [[stored-reference stored sql old-string]
                     [["a readable card" card-stored card-sql "AS v"]

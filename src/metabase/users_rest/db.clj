@@ -14,13 +14,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(def ^:private PersonalUserChanges
-  "The keys callers pass to [[update-personal-user!]]."
-  [:map {:closed true}
-   [:is_active      {:optional true} :boolean]
-   [:is_qbnewb      {:optional true} :boolean]
-   [:is_datasetnewb {:optional true} :boolean]])
-
 (mu/defn rename-collection!
   "Set the name of the Collection with `collection-id`."
   [collection-id   :- ::lib.schema.id/collection
@@ -91,12 +84,6 @@
    user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
-
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -124,11 +111,10 @@
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id))
 
-(mu/defn update-personal-user!
-  "Apply `changes` to the personal User with `user-id`, returning the number of rows updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- PersonalUserChanges]
-  (t2/update! :model/User user-id {:type :personal} changes))
+(mu/defn personal-user
+  "The personal User with `user-id`, with every column, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :*] :id [:auto/param user-id] :type :personal))
 
 (mu/defn mfa-auth-identity-id-from-hashed-key
   "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"

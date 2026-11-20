@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -78,7 +79,7 @@
                  :name          name
                  :collection_id collection_id}]
     (api/create-check :model/NativeQuerySnippet snippet)
-    (api/check-500 (native-query-snippets.db/insert-snippet! snippet))))
+    (api/check-500 (native-query-snippets.write/create-snippet! snippet))))
 
 (defn- check-perms-and-update-snippet!
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
@@ -93,7 +94,7 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (native-query-snippets.db/update-snippet! id changes))
+      (native-query-snippets.write/update-snippet! snippet changes {}))
     (get-native-query-snippet id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

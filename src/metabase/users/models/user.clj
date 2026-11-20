@@ -19,9 +19,10 @@
    [metabase.users.audit :as users.audit]
    [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -40,9 +41,7 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?)
   (derive :hook/entity-id)
-  (derive :hook/events)
   (derive ::mi/create-policy.superuser))
 
 (defn- stringify-keys-and-values
@@ -111,100 +110,34 @@
    :is_superuser    false
    :is_data_analyst false})
 
-(defn- validate-user-email!
-  "Validate that the email is in a valid format."
-  [email]
-  (assert (u/email? email) (tru "Invalid email: {0}" (pr-str email))))
-
-(defn- validate-user-locale!
-  "Validate that the locale is available in the system."
-  [locale]
-  (when locale
-    (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
-
 (defn- validate-sso-setup!
   "Validate that SSO users can only be created after initial setup is complete."
   [sso-source]
   (when (and sso-source (not (setup/has-user-setup)))
     (throw (Exception. (trs "Metabase instance has not been initialized")))))
 
-(defn- check-superuser-has-no-tenant
-  "Throws a 400 when `user` is both a superuser and a tenant user."
-  [{superuser? :is_superuser tenant-id :tenant_id}]
-  (when (and superuser? tenant-id)
-    (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
-
 (defn- validate-user-insert!
   "Validate all constraints for user insertion."
   [{:keys [email locale sso_source] user-type :type :as user}]
-  (validate-user-email! email)
-  (check-superuser-has-no-tenant user)
-  (validate-user-locale! locale)
+  (users.write/validate-user-email! email)
+  (users.write/check-superuser-has-no-tenant user)
+  (users.write/validate-user-locale! locale)
   (validate-sso-setup! sso_source)
   (when (or (nil? user-type) (= user-type :personal))
     (premium-features/assert-airgap-allows-user-creation!)))
 
-(defn- without-credential-fields
-  "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
-  (via [[metabase.auth-identity.core/set-password!]]) and reset tokens in their `emailed-secret-password-reset`
-  AuthIdentity; the legacy `core_user.password` / `.password_salt` / `.reset_token` / `.reset_triggered` columns are no
-  longer read or written by this codebase, so we drop any incoming values rather than persisting them."
-  [user]
-  (dissoc user :password :password_salt :reset_token :reset_triggered))
-
-(defn- handle-superuser-toggle!
-  "Add or remove user from admin group based on superuser status change.
-  Does nothing if superuser status hasn't changed."
-  [user-id superuser? in-admin-group?]
-  (when (some? superuser?)
-    (cond
-      (and superuser? (not in-admin-group?))
-      (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms/add-user-to-group! user-id (u/the-id (perms/admin-group))))
-
-      (and (not superuser?) in-admin-group?)
-      (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms/remove-user-from-group! user-id (u/the-id (perms/admin-group)))))))
-
-(defn- validate-last-admin-not-archived!
-  "Prevent archiving the last admin user by throwing an exception."
-  [id in-admin-group? active?]
-  (when (and in-admin-group? (false? active?))
-    (perms/throw-if-last-admin! id)))
-
-(defn- handle-user-archival!
-  "Clean up user subscriptions when user is archived."
-  [user-id active?]
-  (when (false? active?)
-    (binding [api/*current-user-id* nil]
-      (users.db/delete-pulse-channel-recipients-for-user! user-id))))
-
-(defn- prepare-archival-timestamp
-  "Return a map with deactivated_at field based on is_active status.
-  Returns nil if active? is nil (no change to is_active)."
-  [active?]
-  (cond
-    active? {:deactivated_at nil}
-    (false? active?) {:deactivated_at :%now}
-    :else nil))
-
-(defn- normalize-user-fields
-  "Normalize email and locale for database storage."
-  [user]
-  (cond-> user
-    (:email user) (update :email u/lower-case-en)
-    (:locale user) (update :locale i18n/normalized-locale-string)))
-
 (t2/define-before-insert :model/User
   [user]
   (validate-user-insert! user)
-  (-> (merge insert-default-values user)
-      normalize-user-fields
-      without-credential-fields))
+  (cond-> (-> (merge insert-default-values user)
+              users.write/normalize-user-fields
+              users.write/without-credential-fields)
+    (not (:updated_at user)) (assoc :updated_at (mi/now))))
 
 (t2/define-after-insert :model/User
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
+    (events/created! :model/User user)
     (let [current-version (:tag config/mb-version-info)]
       (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
@@ -218,32 +151,9 @@
     (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
                                 (when (:tenant_id user) (perms/all-external-users-group))
                                 (when superuser? (perms/admin-group))])]
-      (perms/allow-changing-all-users-group-members
-        (perms/allow-changing-all-external-users-group-members
-         (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
-    <>))
-
-(t2/define-before-update :model/User
-  [{:keys [id] :as user}]
-  (when (and (= id config/internal-mb-user-id) (seq (t2/changes user)))
-    (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
-  (when (:is_superuser (t2/changes user))
-    (check-superuser-has-no-tenant user))
-  (let [changes (t2/changes user)
-        {:keys [email locale]
-         superuser? :is_superuser
-         active? :is_active} changes
-        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
-    (validate-last-admin-not-archived! id in-admin-group? active?)
-    (when email (validate-user-email! email))
-    (when locale (validate-user-locale! locale))
-    (handle-superuser-toggle! id superuser? in-admin-group?)
-    (handle-user-archival! id active?)
-    (-> user
-        (merge (normalize-user-fields (t2/changes user))
-               (prepare-archival-timestamp active?))
-        without-credential-fields)))
+      (perms/add-user-to-groups! user-id (map u/the-id groups) false {:allow-all-users-group?          true
+                                                                      :allow-all-external-users-group? true
+                                                                      :skip-superuser-sync?            true}))))
 
 (defn add-common-name
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.

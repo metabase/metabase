@@ -17,9 +17,10 @@
    [metabase.notification.db :as notification.db]
    [metabase.notification.schema :as notification.schema]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
+   [metabase.notification.write :as notification.write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features]
    [metabase.queries.schema :as queries.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -45,10 +46,9 @@
                :model/NotificationCard]]
   (doto model
     (derive :metabase/model)
-    (derive :hook/events)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
-              :hook/timestamped?))))
+              :hook/timestamped-on-insert?))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/Notification                                       ;;
@@ -108,40 +108,16 @@
       [:creator_id {:optional true} int?]]]
     [:notification/testing :any]]])
 
-(defn- validate-notification
-  [notification]
-  (mu/validate-throw ::Notification notification))
-
 ;;; ---------------------------------------------- Hooks ----------------------------------------------
 
 (t2/define-before-insert :model/Notification
   [instance]
-  (validate-notification instance)
+  (notification.write/check-notification instance)
   instance)
 
-(t2/define-before-update :model/Notification
+(t2/define-after-insert :model/Notification
   [instance]
-  (validate-notification instance)
-  (let [changes (t2/changes instance)]
-    (when-let [unallowed-key (some #{:payload_type :payload_id} (keys changes))]
-      (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
-                      {:status-code 400
-                       :changes     changes}))))
-  (when (contains? (t2/changes instance) :active)
-    (let [subscriptions (notification.db/cron-subscriptions-for-notification (:id instance))]
-      (doseq [subscription subscriptions]
-        (if (:active instance)
-          (notification.task.send-trigger/update-subscription-trigger! subscription)
-          (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription))))))
-  instance)
-
-(t2/define-before-delete :model/Notification
-  [instance]
-  (doseq [subscription-id (notification.db/cron-subscription-ids-for-notification (:id instance))]
-    (notification.task.send-trigger/delete-trigger-for-subscription! subscription-id))
-  (when-let [payload-id (:payload_id instance)]
-    (case (:payload_type instance)
-      :notification/card (notification.db/delete-notification-card! payload-id)))
+  (events/created! :model/Notification instance)
   instance)
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
@@ -330,30 +306,15 @@
   "Schema for :model/NotificationSubscription on a create request."
   (notification-subscription-schema {:with-id? false}))
 
-(defn- validate-subscription
-  "Validate a NotificationSubscription."
-  [subscription]
-  (mu/validate-throw ::NotificationSubscription subscription))
-
 (t2/define-before-insert :model/NotificationSubscription
   [instance]
-  (validate-subscription instance)
+  (notification.write/check-subscription instance)
   instance)
 
 (t2/define-after-insert :model/NotificationSubscription
   [instance]
+  (events/created! :model/NotificationSubscription instance)
   (notification.task.send-trigger/update-subscription-trigger! instance)
-  instance)
-
-(t2/define-before-update :model/NotificationSubscription
-  [instance]
-  (validate-subscription instance)
-  (notification.task.send-trigger/update-subscription-trigger! instance)
-  instance)
-
-(t2/define-before-delete :model/NotificationSubscription
-  [instance]
-  (notification.task.send-trigger/delete-trigger-for-subscription! (:id instance))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -362,17 +323,6 @@
 
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
-
-(defn- cross-check-channel-type-and-template-type
-  [notification-handler]
-  (when-let [template-id (:template_id notification-handler)]
-    (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (notification.db/channel-template-channel-type template-id)]
-      (when (not= channel-type template-type)
-        (throw (ex-info "Channel type and template type mismatch"
-                        {:status-code   400
-                         :channel-type  channel-type
-                         :template-type template-type}))))))
 
 (defn- notification-handler-schema
   [{:keys [with-id?]}]
@@ -394,21 +344,15 @@
   "Schema for :model/NotificationHandler on a create request."
   (notification-handler-schema {:with-id? false}))
 
-(defn- validate-notification-handler
-  [notification-handler]
-  (mu/validate-throw ::NotificationHandler notification-handler))
-
 (t2/define-before-insert :model/NotificationHandler
   [instance]
-  (cross-check-channel-type-and-template-type instance)
-  (validate-notification-handler instance)
+  (notification.write/cross-check-channel-type-and-template-type instance)
+  (notification.write/check-handler instance)
   instance)
 
-(t2/define-before-update :model/NotificationHandler
+(t2/define-after-insert :model/NotificationHandler
   [instance]
-  (validate-notification-handler instance)
-  (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
-    (cross-check-channel-type-and-template-type instance))
+  (events/created! :model/NotificationHandler instance)
   instance)
 
 ;;; ---------------------------------------------- Hydration ----------------------------------------------
@@ -524,35 +468,14 @@
   "Schema for :model/NotificationRecipient on a create request."
   (notification-recipient-schema {:with-id? false}))
 
-(defn- check-valid-recipient
-  [recipient]
-  (mu/validate-throw ::NotificationRecipient recipient))
-
-(defenterprise validate-email-domains!
-  "Check that whether `email-addresses` are allowed based on the value of the [[subscription-allowed-domains]] Setting,
-  if set. This function no-ops if `subscription-allowed-domains` is unset or if we do not have a premium token with the
-  `:email-allow-list` feature." metabase-enterprise.advanced-config.models.notification
-  [_email-addresses]
-  nil)
-
-(defn- validate-raw-value-email-domain!
-  "Enforce the `subscription-allowed-domains` allow-list on any write of a raw-value email recipient. Must run on both
-  insert and update so no write path (e.g. the unauthenticated unsubscribe-undo endpoint) can skip it."
-  [instance]
-  (when (and (= :notification-recipient/raw-value (:type instance))
-             (u/email? (get-in instance [:details :value])))
-    (validate-email-domains! [(get-in instance [:details :value])])))
-
 (t2/define-before-insert :model/NotificationRecipient
   [instance]
-  (check-valid-recipient instance)
-  (validate-raw-value-email-domain! instance)
+  (notification.write/check-recipient instance)
   instance)
 
-(t2/define-before-update :model/NotificationRecipient
+(t2/define-after-insert :model/NotificationRecipient
   [instance]
-  (check-valid-recipient instance)
-  (validate-raw-value-email-domain! instance)
+  (events/created! :model/NotificationRecipient instance)
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -610,6 +533,11 @@
           :send_once      false}
          instance))
 
+(t2/define-after-insert :model/NotificationCard
+  [instance]
+  (events/created! :model/NotificationCard instance)
+  instance)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                          Update Spec                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -666,7 +594,7 @@
            (mapcat :recipients)
            (filter #(= :notification-recipient/raw-value (:type %)))
            (map #(get-in % [:details :value]))
-           validate-email-domains!))
+           notification.write/validate-email-domains!))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;
@@ -908,14 +836,14 @@
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
-                            (notification.db/insert-notification-card! (:payload notification)))
+                            (notification.write/create-notification-card! (:payload notification)))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))
-          instance        (notification.db/insert-notification! notification)
+          instance        (notification.write/create-notification! notification)
           notification-id (:id instance)]
       (when (seq subscriptions)
-        (notification.db/insert-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
+        (notification.write/create-notification-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [{:keys [recipients template] :as handler} handlers+recipients]
         ;; assert can either template_id exists, then template but be nil, and vice versa
         (when (and template (not (map? template)))
@@ -927,8 +855,8 @@
                              (dissoc :recipients :template)
                              (assoc :notification_id notification-id
                                     :template_id template-id))
-              handler-id (notification.db/insert-handler! handler)]
-          (notification.db/insert-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
+              handler-id (notification.write/create-notification-handler! handler)]
+          (notification.write/create-notification-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
 (defn update-notification!
@@ -940,7 +868,7 @@
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
   [notification-id user-id]
-  (notification.db/delete-user-recipients-for-notification! notification-id user-id))
+  (notification.write/delete-user-recipients-for-notification! notification-id user-id))
 
 ;;; ------------------------------------------------ Specs ------------------------------------------------
 

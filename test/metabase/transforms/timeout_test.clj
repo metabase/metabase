@@ -7,7 +7,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
-   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -39,7 +39,7 @@
                                                                      :run_method     :manual
                                                                      :start_time     (minutes-ago 1)
                                                                      :last_heartbeat (minutes-ago 1)}]
-          (let [timed-out (transform-run/timeout-old-runs! 5 :minute)]
+          (let [timed-out (run-write/timeout-old-runs! 5 :minute)]
             (testing "only the stale run is timed out"
               (is (= 1 (count timed-out)))
               (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id old-run-id)))
@@ -74,7 +74,7 @@
                                                   :run_method     :manual
                                                   :start_time     (minutes-ago 1)
                                                   :last_heartbeat (minutes-ago 1)}]
-              (is (empty? (transform-run/timeout-old-runs! 5 :minute)))
+              (is (empty? (run-write/timeout-old-runs! 5 :minute)))
               (is (not-any? #{:metabase-transforms/timeouts-total} @inc-calls)
                   "sweeper did not increment :metabase-transforms/timeouts-total")
               (is (not-any? #{:metabase-transforms/timeout-detection-latency-ms} @observe-calls)
@@ -88,7 +88,7 @@
                                                                :run_method     :manual
                                                                :start_time     (minutes-ago 1)
                                                                :last_heartbeat (minutes-ago 1)}]
-          (transform-run/timeout-run! run-id)
+          (run-write/timeout-run! run-id)
           (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id run-id)))
           (is (== 1 (mt/metric-value system
                                      :metabase-transforms/timeouts-total

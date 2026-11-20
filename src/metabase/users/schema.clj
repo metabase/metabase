@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -181,3 +182,21 @@
    [:parameter_id {:optional true} [:maybe :string]]
    [:value        {:optional true} [:maybe ::user-parameter-value.value]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]])
+
+(mr/def ::user.changes
+  "What an UPDATE of a User writes: the columns of an update, its timestamps also SQL expressions such as `:%now`, and
+  `:settings` also the JSON the settings module stores."
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:updated_at     {:optional true} [:maybe [:or ms/TemporalInstant ::h2x/honeysql-expr :keyword]]]
+    [:last_login     {:optional true} [:maybe [:or ms/TemporalInstant ::h2x/honeysql-expr :keyword]]]
+    [:deactivated_at {:optional true} [:maybe [:or ms/TemporalInstant ::h2x/honeysql-expr :keyword]]]
+    [:settings       {:optional true} [:maybe [:or ::user.settings :string]]]]])
+
+(mr/def ::write-opts
+  "The context of a write of Users: `:skip-admin-group-sync?` leaves the Admin-group membership to a caller that writes
+  it itself, and `:import?` says a SerDes import writes them."
+  [:map {:closed true}
+   [:skip-admin-group-sync? {:optional true} :boolean]
+   [:import?                {:optional true} :boolean]])

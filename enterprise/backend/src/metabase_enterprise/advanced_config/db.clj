@@ -57,12 +57,6 @@
   [user :- ::users.schema/user.update]
   (t2/insert-returning-instance! :model/User user))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
-
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
   []

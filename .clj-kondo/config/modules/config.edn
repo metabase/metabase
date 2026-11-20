@@ -485,11 +485,12 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api metabase.bookmarks.db}
+   :api  #{metabase.bookmarks.api metabase.bookmarks.write}
    :uses #{api
            app-db
            collections
            lib.schema
+           models
            permissions
            queries
            util}
@@ -822,8 +823,8 @@
   {:team "UX West"
    :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.dashcards
            metabase.dashboards.init
-           metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.schema
            metabase.dashboards.settings
@@ -912,7 +913,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardTab
                     :model/Field
                     :model/Query}}
 
@@ -2001,7 +2001,8 @@
            metabase.notification.core
            metabase.notification.init
            metabase.notification.models
-           metabase.notification.payload.core}
+           metabase.notification.payload.core
+           metabase.notification.write}
    :uses #{analytics
            analytics.interface
            api
@@ -2125,7 +2126,6 @@
            models
            premium-features
            settings
-           users.schema
            util
            util.config
            warehouses
@@ -2912,7 +2912,6 @@
    :uses #{api
            app-db
            events
-           lib.schema
            models
            premium-features
            serialization
@@ -3162,6 +3161,7 @@
            mcp
            metabot
            metabot.llm
+           models
            permissions
            premium-features
            search
@@ -3322,6 +3322,7 @@
            lib.be
            lib.metadata
            lib.schema
+           models
            premium-features
            query-processor
            sync
@@ -3376,7 +3377,6 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            events
-           lib.schema
            models
            request
            transforms
@@ -3388,7 +3388,6 @@
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
-                    :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
 
@@ -3920,7 +3919,6 @@
                     :model/Field
                     :model/Notification
                     :model/NotificationRecipient
-                    :model/Permissions
                     :model/Pulse
                     :model/PulseChannelRecipient
                     :model/QueryExecution
@@ -4876,6 +4874,7 @@
            sso.auth-identity
            system
            task
+           users
            users.schema
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
@@ -4896,6 +4895,7 @@
            request
            settings
            sso.auth-identity
+           users
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}
@@ -4960,10 +4960,7 @@
            util
            util.config}
    :model-exports #{:model/PythonLibrary}
-   :model-imports #{:model/Database
-                    :model/Field
-                    :model/Table
-                    :model/TransformRun}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
 
   enterprise/upload
   {:team "UX West"

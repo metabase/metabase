@@ -9,6 +9,7 @@
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
+   [metabase.comments.write]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -19,8 +20,7 @@
 
 (doto :model/Comment
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped-on-insert?))
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON
@@ -32,6 +32,13 @@
              :out (comp (mi/catch-normalization-exceptions comments.schema/normalize-content)
                         mi/json-out-with-keywordization)}
    :context mi/transform-json})
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-after-insert :model/Comment
+  [comment]
+  (events/created! :model/Comment comment)
+  comment)
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :creator]
   "Hydrate the creator (user) of a comment based on the creator_id."

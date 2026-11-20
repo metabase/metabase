@@ -10,6 +10,7 @@
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.write :as users.write]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -265,7 +266,7 @@
 (defn- user-qbnewb-call-count!
   "The number of app DB queries that the user `user-id` runs to clear their own new-user flag."
   [user-id]
-  (t2/update! :model/User :id user-id {:is_qbnewb true})
+  (users.write/update-user! user-id {:is_qbnewb true})
   (t2/with-call-count [call-count]
     (mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))
     (call-count)))
@@ -286,7 +287,7 @@
         (testing "deactivating a user runs one query to hydrate their groups, and one to insert the row"
           (t2/with-call-count [call-count]
             (mt/user-http-request :crowberto :delete 200 (str "user/" user-id))
-            (is (= 13 (call-count)))))
+            (is (= 12 (call-count)))))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!

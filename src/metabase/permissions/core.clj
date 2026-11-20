@@ -19,6 +19,7 @@
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
+   [metabase.permissions.write]
    [potemkin :as p]))
 
 (comment
@@ -106,12 +107,19 @@
   group-display-name
   non-magic-groups
   all-users-magic-group-type]
- [metabase.permissions.models.permissions-group-membership
+ [metabase.permissions.write
   add-users-to-groups!
   add-user-to-groups!
   add-user-to-group!
-  allow-changing-all-users-group-members
-  allow-changing-all-external-users-group-members
+  create-group!
+  create-memberships!
+  create-permissions!
+  delete-collection-permissions!
+  delete-database-permissions!
+  delete-group!
+  delete-groups!
+  delete-memberships!
+  delete-permissions!
   fail-to-remove-last-admin-msg
   fail-to-add-data-analyst-msg
   remove-user-from-group!
@@ -119,7 +127,9 @@
   remove-all-users-from-group!
   remove-user-from-all-groups!
   throw-if-last-admin!
-  without-is-superuser-sync-on-add-to-admin-group]
+  update-collection-graph-revision!
+  update-group!
+  update-membership!]
  [metabase.permissions.path
   application-perms-path
   collection-read-path

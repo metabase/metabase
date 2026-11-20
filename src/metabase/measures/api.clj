@@ -3,10 +3,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.measures.db :as measures.db]
    [metabase.measures.schema :as measures.schema]
+   [metabase.measures.write :as measures.write]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -39,7 +39,10 @@
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
     (let [measure (api/check-500
-                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
+                   (measures.write/create-measure! {:creator_id  api/*current-user-id*
+                                                    :name        name
+                                                    :description description
+                                                    :definition  definition}))]
       (t2/hydrate measure :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
@@ -100,8 +103,7 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (events/with-event-context {:revision-message revision_message}
-        (measures.db/update-measure! id changes)))
+      (measures.write/update-measure! id changes {:revision-message revision_message}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

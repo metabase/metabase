@@ -2,7 +2,6 @@
   (:require
    [metabase.config.core :as config]
    [metabase.permissions.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.test.data :as data]
@@ -21,15 +20,13 @@
     (try
       (thunk)
       (finally
-        (binding [perms/*allow-root-entries* true
-                  perms/*allow-admin-permissions-changes* true]
-          (when config/ee-available?
-            (t2/delete! :model/Sandbox))
-          (t2/delete! :model/Permissions)
-          ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
-          (t2/insert! :model/Permissions original-perms)
-          (when config/ee-available?
-            (t2/insert! :model/Sandbox original-sandboxes)))))))
+        (when config/ee-available?
+          (t2/delete! :model/Sandbox))
+        (t2/delete! :model/Permissions)
+        ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
+        (t2/insert! :model/Permissions original-perms)
+        (when config/ee-available?
+          (t2/insert! :model/Sandbox original-sandboxes))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."

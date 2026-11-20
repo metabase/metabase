@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.bookmarks.db :as bookmarks.db]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.tu]
@@ -153,7 +154,7 @@
         (testing "moving each item into an unreadable collection (admin action; nothing archived) hides its bookmark"
           ;; stand in for the admin PUT /api/card|document ... {:collection_id hidden} in the attack
           (t2/update! :model/Card :id card-id {:collection_id hidden-id})
-          (t2/update! :model/Dashboard :id dash-id {:collection_id hidden-id})
+          (dashboards.write/update-dashboard-row! dash-id {:collection_id hidden-id} {})
           (t2/update! :model/Document :id doc-id {:collection_id hidden-id})
           (t2/update! :model/Exploration :id expl-id {:collection_id hidden-id})
           (is (= #{} (bookmarked-items :rasta))))))))

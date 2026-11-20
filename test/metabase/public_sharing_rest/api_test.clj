@@ -15,8 +15,10 @@
    [metabase.api.common :as api]
    [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.permissions.models.permissions :as perms]
@@ -153,6 +155,13 @@
                       :public_uuid_prefix (public-sharing/public-uuid-prefix value)}
              :where  [:= :id id]}))
 
+(defn- update-row!
+  "Apply `changes` to the `model` row with `id` through the write functions of its model when it has them."
+  [model id changes]
+  (if-let [update! (:update! (mi/write-fns model))]
+    (update! id changes {})
+    (t2/update! model :id id changes)))
+
 (defn- assert-public-uuid-lifecycle!
   "For an already-created UNSHARED `model` row `id` (no public_uuid), exercise share / unrelated-update-while-disabled /
   unshare and assert `public_uuid` stays encrypted at rest while `public_uuid_prefix` always tracks it. Runs inside a
@@ -163,7 +172,7 @@
     (is (nil? (raw-public-uuid-prefix model id))))
   (let [uuid (str (random-uuid))]
     (testing "sharing encrypts the uuid at rest and derives the prefix"
-      (t2/update! model :id id {:public_uuid uuid})
+      (update-row! model id {:public_uuid uuid})
       (let [raw (raw-public-uuid model id)]
         (is (encryption/decryptable-string? raw) "public_uuid is stored as ciphertext")
         (is (not= uuid raw) "public_uuid is not stored in plaintext")
@@ -173,13 +182,13 @@
       (is (= id (public-sharing/public-uuid->id model uuid)) "resolves by uuid via the prefix lookup"))
     (testing "an unrelated update while public sharing is disabled leaves uuid + prefix intact"
       (mt/with-temporary-setting-values [enable-public-sharing false]
-        (t2/update! model :id id {:name "renamed while unshared"}))
+        (update-row! model id {:name "renamed while unshared"}))
       (is (= uuid (encryption/maybe-decrypt (raw-public-uuid model id))) "public_uuid untouched")
       (is (= (subs uuid 0 public-sharing/public-uuid-prefix-length) (raw-public-uuid-prefix model id))
           "prefix untouched")
       (is (= id (public-sharing/public-uuid->id model uuid)) "still resolves"))
     (testing "unsharing clears uuid + prefix"
-      (t2/update! model :id id {:public_uuid nil})
+      (update-row! model id {:public_uuid nil})
       (is (nil? (raw-public-uuid model id)))
       (is (nil? (raw-public-uuid-prefix model id)))
       (is (nil? (public-sharing/public-uuid->id model uuid)) "no longer resolves"))))
@@ -242,7 +251,7 @@
 (defn- assert-forged-plaintext-does-not-resolve!
   [model id]
   (let [uuid (str (random-uuid))]
-    (t2/update! model :id id {:public_uuid uuid})
+    (update-row! model id {:public_uuid uuid})
     (is (= id (public-sharing/public-uuid->id model uuid)) "a genuine encrypted public_uuid resolves")
     (let [forged (str (random-uuid))]
       (set-raw-public-uuid! model id forged)
@@ -953,7 +962,7 @@
                  (fetch-public-dashboard dash)))))
       (testing "dashboard with tabs should return tabs"
         (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+          (dashboards.write/update-dashboard-row! dashboard-id (shared-obj) {})
           (is (= {:name true, :dashcards 2, :tabs 2}
                  (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
@@ -961,7 +970,7 @@
   (testing "GET /api/public/dashboard/:uuid round-trips the dashboard's auto_apply_filters value"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard [dash]
-        (t2/update! :model/Dashboard :id (:id dash) {:auto_apply_filters false})
+        (dashboards.write/update-dashboard-row! (:id dash) {:auto_apply_filters false} {})
         (is (false? (:auto_apply_filters (client/client :get 200 (str "public/dashboard/" (:public_uuid dash))))))))))
 
 (deftest public-dashboard-with-nested-card-and-parameter-test
@@ -1482,7 +1491,7 @@
         (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
           (let [uuid (str (random-uuid))]
             (is (= 1
-                   (t2/update! :model/Dashboard :id (u/the-id dashboard) {:public_uuid uuid})))
+                   (dashboards.write/update-dashboard-row! (u/the-id dashboard) {:public_uuid uuid} {})))
             (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
               (testing "parameter with source is a static list"
                 (is (= {:values          [["African"] ["American"] ["Asian"]]
@@ -1825,7 +1834,7 @@
               (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
                 (let [uuid (str (random-uuid))]
                   (is (= 1
-                         (t2/update! :model/Dashboard :id (u/the-id dashboard) {:public_uuid uuid})))
+                         (dashboards.write/update-dashboard-row! (u/the-id dashboard) {:public_uuid uuid} {})))
                   (testing "GET /api/public/dashboard/:uuid/params/:param-key/values"
                     (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"] [5 "BBQ"] [6 "Bakery"]]
                             :has_more_values false}

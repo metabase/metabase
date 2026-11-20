@@ -2,7 +2,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.write :as dashboards.write]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -116,5 +120,37 @@
                    :model/Dashboard other {}
                    :model/DashboardTab tab {:dashboard_id (u/the-id dash)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"cannot move"
-                            (t2/update! :model/DashboardTab :id (u/the-id tab) {:dashboard_id (u/the-id other)})))
+                            (dashboards.write/update-dashboard-tab! (u/the-id tab) {:dashboard_id (u/the-id other)} {})))
       (is (= (u/the-id dash) (t2/select-one-fn :dashboard_id :model/DashboardTab :id (u/the-id tab)))))))
+
+(deftest update-dashboard-tab-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::tab-events
+                                     (fn [{:keys [model]}] (when (= :model/DashboardTab model) :tab))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                     :model/DashboardTab tab                {:dashboard_id dashboard-id :name "Tab" :position 0}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (dashboards.write/update-dashboard-tab! (:id tab) {:name "Renamed Tab"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id tab)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Tab" :updated_at (:updated_at tab)}
+                    :object          {:name "Renamed Tab" :updated_at (:updated_at tab)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::tab-events)))))
+
+(deftest update-dashboard-tab-query-count-test
+  (testing "a warm update-dashboard-tab! issues no more queries than master's t2/update! with the hooks, 6, the events consumers included"
+    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                   :model/DashboardTab {id :id}           {:dashboard_id dashboard-id :name "Tab" :position 0}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (dashboards.write/update-dashboard-tab! id {:name "Warm Tab"} {})
+          (t2/with-call-count [call-count]
+            (dashboards.write/update-dashboard-tab! id {:name "Renamed Tab"} {})
+            (is (<= (call-count) 6))))))))

@@ -4,6 +4,7 @@
    [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.models.interface :as mi]
    [metabase.tenants.core :as tenants]
    [metabase.users.schema :as users.schema]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -31,7 +32,7 @@
    {:keys [login_attributes]} :- [:map {:closed true}
                                   [:login_attributes {:optional true} [:maybe UserAttributes]]]]
   (api/check-404 (sandbox.db/personal-user id))
-  (pos? (sandbox.db/set-user-login-attributes! id login_attributes)))
+  (pos? ((:update! (mi/write-fns :model/User)) id {:login_attributes login_attributes} {})))
 
 (def ^:private max-login-attributes 5000)
 

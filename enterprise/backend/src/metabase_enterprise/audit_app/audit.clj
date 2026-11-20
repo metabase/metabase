@@ -11,6 +11,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.core :as lib]
+   [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.core :as sync]
@@ -77,7 +78,7 @@
                                     :creator_id       nil
                                     :auto_run_queries true})
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
-    (audit-app.db/delete-permissions-for-database! id)))
+    (perms/delete-database-permissions! id)))
 
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]

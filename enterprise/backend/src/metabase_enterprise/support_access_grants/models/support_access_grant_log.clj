@@ -6,6 +6,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
+   [metabase.users.core :as users]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -29,7 +30,7 @@
   []
   (if-let [user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
     (do
-      (support-access-grants.db/update-user! (:id user) {:is_active true :is_superuser true})
+      (users/update-user! (:id user) {:is_active true :is_superuser true} {})
       (assoc user :is_active true :is_superuser true))
     (support-access-grants.db/insert-user! {:email (sag.settings/support-access-grant-email)
                                             :first_name (sag.settings/support-access-grant-first-name)
@@ -54,7 +55,7 @@
   [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
-      (support-access-grants.db/update-user! support-user-id {:is_superuser false})
+      (users/update-user! support-user-id {:is_superuser false} {})
       (catch Exception e
         ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
         ;; Sessions and auth identities are still cleaned up below, preventing further access.

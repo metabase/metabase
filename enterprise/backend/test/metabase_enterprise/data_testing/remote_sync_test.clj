@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-testing.write :as data-testing.write]
    [metabase-enterprise.remote-sync.content :as content]
    [metabase-enterprise.remote-sync.settings :as remote-sync.settings]
    [metabase-enterprise.remote-sync.stats :as remote-sync.stats]
@@ -278,7 +279,7 @@
           (when t-path
             (remote-sync.tu/commit! url "main" {t-path (str/replace (remote-sync.tu/read-file! url "main" t-path)
                                                                     "name: Row count" "name: Remote name")}))
-          (t2/update! :model/CardTest :id (:id t) {:name "Local name"})
+          (data-testing.write/update-card-test! (:id t) {:name "Local name"} {})
           (testing "a pull stops with a conflict that names the test when both sides change it"
             (is (=? {:status :conflict :conflicts ["Local name"]} (remote-sync.tu/pull! url v1)))
             (is (= "Local name" (t2/select-one-fn :name :model/CardTest :id (:id t))))))))))
@@ -376,7 +377,7 @@
           (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
                                                         {:branch "main" :message "Push"})]
             (is (=? {:status "successful"} (remote-sync.tu/wait-for-task! task_id))))
-          (t2/update! :model/CardTest :id (:id t) {:description "changed"})
+          (data-testing.write/update-card-test! (:id t) {:description "changed"} {})
           (t2/delete! :model/Card :id (:id gone))
           (t2/update! :model/Card :id (:id moved) {:collection_id (:id unsynced)})
           (let [by-name (into {}
@@ -428,9 +429,9 @@
                        :model/CardTest   t-2    {:card_id (:id card-2) :name "Second test"}
                        :model/CardTest   t-3    {:card_id (:id card-3) :name "Third test"}]
           (push-through-api!)
-          (t2/update! :model/CardTest :id (:id t-1) {:description "changed"})
+          (data-testing.write/update-card-test! (:id t-1) {:description "changed"} {})
           (let [one-changed (dirty-list-call-count)]
-            (t2/update! :model/CardTest :id [:in [(:id t-2) (:id t-3)]] {:description "changed"})
+            (run! #(data-testing.write/update-card-test! % {:description "changed"} {}) [(:id t-2) (:id t-3)])
             (testing "further changed card tests cost no further calls"
               (is (= one-changed (dirty-list-call-count))))))))))
 
@@ -442,7 +443,7 @@
                        :model/Transform     transform {:name "Synced transform" :collection_id (:id folder)}
                        :model/TransformTest t         {:transform_id (:id transform) :name "Transform test"}]
           (push-through-api!)
-          (t2/update! :model/TransformTest :id (:id t) {:description "changed"})
+          (data-testing.write/update-transform-test! (:id t) {:description "changed"} {})
           (let [item (some #(when (= [(:model %) (:id %)] ["transformtest" (:id t)]) %)
                            (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))]
             (testing "a changed transform test is listed with its transform and the transform's collection"

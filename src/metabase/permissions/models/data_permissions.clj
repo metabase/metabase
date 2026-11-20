@@ -7,6 +7,7 @@
    [metabase.permissions.app-db-copy :as permissions.app-db-copy]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.write]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -73,10 +74,6 @@
   (data-perms/assert-valid-permission permission)
   (data-perms/assert-no-destination-db-permissions! [permission])
   permission)
-
-(t2/define-before-update :model/DataPermissions
-  [_permission]
-  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -8,7 +8,7 @@
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.models.job-run :as job-run]
-   [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.run-write :as run-write]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -55,14 +55,14 @@
                                                           :run_method     :manual
                                                           :start_time     (minutes-ago 10)
                                                           :last_heartbeat (minutes-ago 10)}]
-      (transform-run/heartbeat-runs! [beat-id done-id])
+      (run-write/heartbeat-runs! [beat-id done-id])
       (testing "only the passed run that is still active gets a fresh heartbeat"
         (is (recently-beaten? beat-id))
         (is (not (recently-beaten? other-id)) "a run not in the id list is left to go stale"))
       (testing "an inactive run is not stamped even when passed (is_active guard)"
         (is (not (recently-beaten? done-id))))
       (testing "empty id list is a no-op"
-        (is (nil? (transform-run/heartbeat-runs! [])))))))
+        (is (nil? (run-write/heartbeat-runs! [])))))))
 
 (deftest heartbeat-and-reconcile-runs!-beats-connections-test
   (testing "the per-node tick beats exactly the runs registered in the cancel/heartbeat registry"
@@ -107,7 +107,7 @@
                                                             :start_time     (minutes-ago 10)
                                                             :last_heartbeat (minutes-ago 1)}]
         (testing "reaps only the run whose heartbeat is older than the threshold"
-          (let [reaped (transform-run/reap-orphaned-runs! 5)]
+          (let [reaped (run-write/reap-orphaned-runs! 5)]
             (is (= [stale-id] (mapv :id reaped)))
             (is (= :timeout (t2/select-one-fn :status :model/TransformRun :id stale-id)))
             (is (= :started (t2/select-one-fn :status :model/TransformRun :id fresh-id)))
@@ -115,13 +115,13 @@
               (is (= "Timed out: crashed"
                      (t2/select-one-fn :message :model/TransformRun :id stale-id))))))
         (testing "a second sweep finds nothing (row already inactive)"
-          (is (empty? (transform-run/reap-orphaned-runs! 5))))))))
+          (is (empty? (run-write/reap-orphaned-runs! 5))))))))
 
 (deftest start-run!-stamps-initial-heartbeat-test
   (testing "a freshly started run has an initial heartbeat"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (let [{run-id :id} (transform-run/start-run! transform-id {:run_method "manual"})]
+        (let [{run-id :id} (run-write/start-run! transform-id {:run_method "manual"})]
           (is (some? (heartbeat run-id)) "last_heartbeat is populated by the column default"))))))
 
 ;;; ------------------------------------------- Job-run heartbeat -------------------------------------------

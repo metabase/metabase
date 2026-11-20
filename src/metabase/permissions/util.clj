@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.permissions.db :as permissions.db]
-   [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -67,7 +66,7 @@
     (case model
       :model/CollectionPermissionGraphRevision
       (permissions.db/insert-collection-permission-graph-revision!
-       {:id      (inc (collection-permission-graph-revision/latest-id))
+       {:id      (inc (or (permissions.db/latest-collection-permission-graph-revision-id) 0))
         :before  {}
         :after   {}
         :user_id api/*current-user-id*

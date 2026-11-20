@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.dashcards :as dashcards]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.notification.db :as notification.db]
@@ -98,7 +98,7 @@
        (mapcat (fn [[model entities]]
                  (try
                    (let [ids (into [] (comp (map :id) (distinct)) entities)]
-                     (vec (for [entity (t2/hydrate (dashboard-card/link-card-entities model ids) :can_read)]
+                     (vec (for [entity (t2/hydrate (dashcards/link-card-entities model ids) :can_read)]
                             [[model (:id entity)] entity])))
                    (catch Throwable e
                      (log/warnf "Error loading %s link card entities; skipping them: %s" model (ex-message e))
@@ -221,7 +221,7 @@
      (try
        (when-let [card (notification.db/unarchived-card card_id)]
          (let [dashboard      (notification.db/dashboard dashboard_id)
-               multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
+               multi-cards    (dashcards/dashcard->multi-cards dashcard)
                result-fn      (fn [card-id]
                                 (let [card (if (= card-id (:id card))
                                              card
@@ -322,7 +322,7 @@
   push later (large) cards to spill to disk instead of collectively exhausting heap. The budget is created once per
   dashboard (spanning all tabs) by the caller, not here, so a multi-tab dashboard shares a single budget."
   [dashcards parameters opts]
-  (let [ordered-dashcards (sort dashboard-card/dashcard-comparator dashcards)
+  (let [ordered-dashcards (sort dashcards/dashcard-comparator dashcards)
         opts              (assoc opts :link-card-entities (link-card-entities ordered-dashcards))]
     (doall (keep #(dashcard->part % parameters opts) ordered-dashcards))))
 

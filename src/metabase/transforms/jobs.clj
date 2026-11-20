@@ -21,6 +21,7 @@
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-schedule :as transform-schedule]
+   [metabase.transforms.run-write :as run-write]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
@@ -690,7 +691,7 @@
               (some-> start-promise (deliver nil))
               nil)
           (let [plan         (get-plan transforms)
-                {run-id :id} (transforms.job-run/start-run! job-id run-method)
+                {run-id :id} (run-write/start-job-run! job-id run-method)
                 ;; failed cron runs are included in the failure digest
                 notify!      (fn [failures]
                                (when (= :cron run-method)

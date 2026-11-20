@@ -295,7 +295,7 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (scim.db/update-user! (u/the-id current-user) updates)
+            ((:update! (mi/write-fns :model/User)) (u/the-id current-user) updates {})
             (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
@@ -358,7 +358,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (scim.db/update-user! (u/the-id user) updates)
+        ((:update! (mi/write-fns :model/User)) (u/the-id user) updates {})
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -484,7 +484,7 @@
       (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (scim.db/insert-group! {:name group-name})]
+        (let [new-group (perms/create-group! {:name group-name})]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -507,7 +507,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (scim.db/update-group! (u/the-id group) {:name group-name})
+          (perms/update-group! (u/the-id group) {:name group-name} {})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -525,5 +525,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (scim.db/delete-group! (u/the-id group))
+      (perms/delete-group! (u/the-id group) {})
       (scim-response nil 204))))

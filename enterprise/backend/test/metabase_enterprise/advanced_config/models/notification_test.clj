@@ -5,6 +5,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.write :as pulse.write]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -37,7 +38,7 @@
 
                           :update
                           #(mt/with-temp [:model/PulseChannel {pulse-channel-id :id} {:pulse_id pulse-id}]
-                             (t2/update! :model/PulseChannel :id pulse-channel-id {:details {:emails emails}})))]
+                             (pulse.write/update-pulse-channel! pulse-channel-id {:details {:emails emails}} {})))]
               (if fail?
                 (testing "should fail"
                   (is (thrown-with-msg?

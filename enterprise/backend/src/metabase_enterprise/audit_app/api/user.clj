@@ -39,9 +39,9 @@
   (users/check-self-or-superuser id)
   ;; delete all `PulseChannelRecipient` rows for this User, which means they will no longer receive any
   ;; Alerts/DashboardSubscriptions
-  (audit-app.db/delete-pulse-channel-recipients-of-user! id)
-  (audit-app.db/delete-notification-recipients-of-user! id)
+  ((:delete! (mi/write-fns :model/PulseChannelRecipient)) (audit-app.db/pulse-channel-recipient-ids-of-user id) {})
+  ((:delete! (mi/write-fns :model/NotificationRecipient)) (audit-app.db/notification-recipient-ids-of-user id) {})
   ;; archive anything they created.
-  (audit-app.db/archive-pulses-of-creator! id)
-  (audit-app.db/deactivate-notifications-of-creator! id)
+  ((:update-all! (mi/write-fns :model/Pulse)) (audit-app.db/unarchived-pulses-of-creator id) {:archived true} {})
+  ((:update-all! (mi/write-fns :model/Notification)) (audit-app.db/active-notifications-of-creator id) {:active false} {})
   api/generic-204-no-content)

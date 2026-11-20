@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -37,12 +36,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
-(mu/defn update-run-message!
-  "Set the message of the TransformRun with `run-id`."
-  [run-id  :- ms/PositiveInt
-   message :- [:maybe :string]]
-  (t2/update! :model/TransformRun :id run-id {:message message}))
-
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
@@ -53,19 +46,26 @@
   [path :- :string]
   (t2/select-one :model/PythonLibrary :path path))
 
-(mu/defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
-  `insert-values`. Returns the ID of the row."
-  [path          :- :string
-   source        :- :string
-   insert-values :- [:map {:closed true}
-                     [:entity_id  {:optional true} :string]
-                     [:is_default {:optional true} :boolean]]]
-  (mdb/update-or-insert! :model/PythonLibrary
-                         {:path path}
-                         (fn [existing]
-                           (cond-> {:path path :source source}
-                             (nil? existing) (merge insert-values)))))
+(mu/defn python-libraries
+  "The PythonLibraries with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/PythonLibrary :id [:in ids]))
+
+(mu/defn insert-python-library!
+  "Insert `library` and return the new instance."
+  [library :- ::transforms-python.schema/python-library.update]
+  (t2/insert-returning-instance! :model/PythonLibrary library))
+
+(mu/defn update-python-library!
+  "Apply `changes` to the PythonLibrary with `library-id`."
+  [library-id :- ms/PositiveInt
+   changes    :- ::transforms-python.schema/python-library.changes]
+  (t2/update! :model/PythonLibrary :id [:auto/param library-id] changes))
+
+(mu/defn delete-python-libraries!
+  "Delete the PythonLibraries with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/PythonLibrary :id [:in ids]))
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

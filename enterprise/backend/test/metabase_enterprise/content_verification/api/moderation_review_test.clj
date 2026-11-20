@@ -1,7 +1,7 @@
 (ns metabase-enterprise.content-verification.api.moderation-review-test
   (:require
    [clojure.test :refer :all]
-   [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -62,18 +62,18 @@
                                         :moderated_item_id card-id
                                         :moderated_item_type "card"))))))
             (testing "Ensures we never have more than `modreview/max-moderation-reviews`"
-              (t2/insert! :model/ModerationReview (repeat (* 2 moderation-review/max-moderation-reviews)
-                                                          {:moderated_item_id   card-id
-                                                           :moderated_item_type "card"
-                                                           :moderator_id        (mt/user->id :crowberto)
-                                                           :most_recent         false
-                                                           :status              "verified"
-                                                           :text                "old review"}))
-              (is (<= (review-count) moderation-review/max-moderation-reviews))
+              (run! (fn [_]
+                      (content-verification.write/create-review! {:moderated_item_id   card-id
+                                                                  :moderated_item_type "card"
+                                                                  :moderator_id        (mt/user->id :crowberto)
+                                                                  :status              "verified"
+                                                                  :text                "old review"}))
+                    (range (* 2 content-verification.write/max-moderation-reviews)))
+              (is (<= (review-count) content-verification.write/max-moderation-reviews))
               (moderate! "verified" "lookin' good")
               ;; api ensures we never have more than our limit
 
-              (is (<= (review-count) moderation-review/max-moderation-reviews)))
+              (is (<= (review-count) content-verification.write/max-moderation-reviews)))
             (testing "Only allows for valid status"
               (doseq [status ["verified" nil]]
                 (is (= status (:status (moderate! status "good")))))

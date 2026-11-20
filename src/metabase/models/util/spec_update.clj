@@ -30,10 +30,10 @@
     (models.db/delete-entities-with-ids! model id-col ids)))
 
 (defn- delete-entity!
-  "Delete the `model` row with `id`, through the model's write functions when it has them."
+  "Delete the `model` row with `id`, if any, through the model's write functions when it has them."
   [model id]
   (if-let [delete! (:delete! (mi/write-fns model))]
-    (delete! [id] {})
+    (delete! (some-> id vector) {})
     (models.db/delete-entity! model id)))
 
 (defn- format-path

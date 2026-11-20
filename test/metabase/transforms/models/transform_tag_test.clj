@@ -3,9 +3,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
 
@@ -23,8 +27,7 @@
 (deftest initial-tags-translated-on-update
   (doseq [type ["hourly" "daily" "weekly" "monthly"]]
     (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-      (t2/update! :model/TransformTag :id (:id tag)
-                  {:name "default2"})
+      (transforms.write/update-tag! (:id tag) {:name "default2"} {})
       (is (= "default2"
              (:name (t2/select-one :model/TransformTag :id (:id tag)))))
       (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag)))))))
@@ -33,7 +36,7 @@
   (testing "An update that only touches the timestamp leaves a tag built in"
     (doseq [type ["hourly" "daily" "weekly" "monthly"]]
       (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-        (t2/update! :model/TransformTag :id (:id tag) {:updated_at (mi/now)})
+        (transforms.write/update-tag! (:id tag) {:updated_at (mi/now)} {})
         (is (= type (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag))))))))
 
 (deftest data-analyst-tag-access-follows-the-advanced-permissions-feature-test
@@ -62,7 +65,7 @@
   (mt/with-temp [:model/TransformTag tag {}]
     (is (thrown? Exception (t2/insert! :model/TransformTag {:name (:name tag)})))
     (mt/with-temp [:model/TransformTag other {}]
-      (is (thrown? Exception (t2/update! :model/TransformTag :id (:id other) {:name (:name tag)}))))))
+      (is (thrown? Exception (transforms.write/update-tag! (:id other) {:name (:name tag)} {}))))))
 
 (deftest tag-check-test
   (mt/with-temp [:model/TransformTag tag {}]
@@ -83,3 +86,33 @@
       (is (= {(:id tag) true} (transform-tag/tag-id->writable #{(:id tag)}))))
     (testing "no tags answer an empty map"
       (is (= {} (transform-tag/tag-id->writable #{}))))))
+
+(deftest update-tag-publishes-update-event-test
+  (let [published (atom [])]
+    (events/register-owned-consumer! ::tag-events
+                                     (fn [{:keys [model]}] (when (= :model/TransformTag model) :tag))
+                                     (fn [_owner events _all] (swap! published into events)))
+    (try
+      (mt/with-temp [:model/TransformTag tag {:name "Tag"}]
+        (reset! published [])
+        (mt/with-test-user :crowberto
+          (transforms.write/update-tag! (:id tag) {:name "Renamed Tag"} {}))
+        (testing "one update event with the row before and after the update"
+          (is (=? [{:operation       :update
+                    :id              (:id tag)
+                    :user-id         (mt/user->id :crowberto)
+                    :previous-object {:name "Tag" :updated_at (:updated_at tag)}
+                    :object          {:name "Renamed Tag" :updated_at (:updated_at tag)}}]
+                  @published))))
+      (finally
+        (events.tu/unregister! ::tag-events)))))
+
+(deftest update-tag-query-count-test
+  (testing "a warm update-tag! of a name issues 3 queries, as master's t2/update! with the hooks did"
+    (mt/with-temp [:model/TransformTag {id :id} {:name "Tag"}]
+      (mt/with-test-user :crowberto
+        (binding [search.ingestion/*disable-updates* true]
+          (transforms.write/update-tag! id {:name "Warm Tag"} {})
+          (t2/with-call-count [call-count]
+            (transforms.write/update-tag! id {:name "Renamed Tag"} {})
+            (is (<= (call-count) 3))))))))

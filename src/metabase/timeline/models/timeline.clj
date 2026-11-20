@@ -13,6 +13,7 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.timeline.write]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -22,8 +23,7 @@
 
 (doto :model/Timeline
   (derive :metabase/model)
-  (derive :hook/events)
-  (derive :hook/timestamped?)
+  (derive :hook/timestamped-on-insert?)
   (derive :hook/entity-id))
 
 (t2/define-after-select :model/Timeline
@@ -35,31 +35,15 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defmethod mi/after-archived-change :model/Timeline
-  [_model rows changes]
-  (let [archive? (boolean (:archived changes))
-        direct   (if archive?
-                   (timeline.db/directly-archived-timeline-ids (mapv :id rows))
-                   (into #{} (comp (filter :archived_directly) (map :id)) rows))]
-    (doseq [{:keys [id]} rows
-            :when        (contains? direct id)]
-      (events/with-event-context {:archived-with [:model/Timeline id]}
-        (timeline.db/set-timeline-events-archived! id archive?)))))
-
 (t2/define-before-insert :model/Timeline
   [row]
   (collection/check-collection-for :model/Timeline row)
   (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon)))
 
-(t2/define-before-update :model/Timeline
+(t2/define-after-insert :model/Timeline
   [row]
-  (let [changes (t2/changes row)]
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/Timeline row))
-    (cond-> row
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
-
-(mi/define-update-in-transaction :model/Timeline)
+  (events/created! :model/Timeline row)
+  row)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

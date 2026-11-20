@@ -24,6 +24,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
+   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -551,7 +552,7 @@
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
             (mt/with-temp [:model/User {:keys [id]} {}]
-              (t2/update! :model/User :id id {:last_login :%now})
+              (users.write/update-user! id {:last_login :%now})
               (let [token       (auth-identity/create-password-reset! id)
                     reset-token (auth-identity/reset-token-hash id)]
                 (mt/client :post 200 "session/reset_password" {:token    token
@@ -670,7 +671,7 @@
             cost           (fn [f] (reset! checks 0) (f) @checks)]
         (t2/update! :model/AuthIdentity :id (:id expired-ai)
                     {:credentials (assoc (:credentials expired-ai) :expires_at (t/minus (t/instant) (t/days 1)))})
-        (t2/update! :model/User :id inactive-id {:is_active false})
+        (users.write/update-user! inactive-id {:is_active false})
         (mt/with-dynamic-fn-redefs [u.password/bcrypt-verify (fn [token hash] (swap! checks inc) (bcrypt token hash))]
           (testing "reset_password answering Invalid reset token"
             (let [costs (into {} (for [[label token] (assoc invalid-token "deactivated user" inactive-token)]
@@ -689,7 +690,7 @@
     (mt/with-temp [:model/User user {}]
       (auth-identity/set-password! (:id user) "currentPassUP12!!")
       (let [token (auth-identity/create-password-reset! (:id user))]
-        (t2/update! :model/User :id (:id user) {:is_active false})
+        (users.write/update-user! (:id user) {:is_active false})
         (doseq [password ["currentPassUP12!!" "somethingElseUP12!!"]]
           (testing password
             (is (= {:errors {:password "Invalid reset token"}}
@@ -706,8 +707,8 @@
       (auth-identity/set-password! (:id user) "ownerPassUP12!!")
       (auth-identity/set-password! (:id other) "otherPassUP12!!")
       (let [token (auth-identity/create-password-reset! (:id user))]
-        (t2/update! :model/User :id (:id user) {:email "reset-owner-moved@metabase.com"})
-        (t2/update! :model/User :id (:id other) {:email "reset-owner@metabase.com"})
+        (users.write/update-user! (:id user) {:email "reset-owner-moved@metabase.com"})
+        (users.write/update-user! (:id other) {:email "reset-owner@metabase.com"})
         (is (= {:errors {:password "New password must be different from your current password."}}
                (mt/client :post 400 "session/reset_password" {:token token :password "ownerPassUP12!!"})))
         (is (=? {:success true}
@@ -1171,7 +1172,7 @@
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"
     (mt/with-temp [:model/User user]
-      (t2/update! :model/User :id (u/the-id user) {:password nil, :password_salt nil})
+      (users.write/update-user! (u/the-id user) {:password nil, :password_salt nil})
       (let [device-info {:device_id          "Cam's Computer"
                          :device_description "The computer where Cam wrote this test"
                          :embedded           false

@@ -2,6 +2,7 @@
   "Malli schemas for the notification module."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -23,6 +24,18 @@
    [:payload_id   {:optional true} [:maybe ms/PositiveInt]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]])
 
+(mr/def ::notification.changes
+  "What an UPDATE of a Notification writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::notification.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
+
+(mr/def ::write-opts
+  "The context of a write of the models of the notification module: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
+
 (mr/def ::notification-card
   "A NotificationCard as selected from the app DB: every column of `:notification_card`."
   [:merge
@@ -39,6 +52,13 @@
    [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at     {:optional true} [:maybe ms/TemporalInstant]]
    [:disable_links  {:optional true} [:maybe :boolean]]])
+
+(mr/def ::notification-card.changes
+  "What an UPDATE of a NotificationCard writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::notification-card.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::notification-handler
   "A NotificationHandler as selected from the app DB: every column of `:notification_handler`."
@@ -57,6 +77,13 @@
    [:active          {:optional true} [:maybe :boolean]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::notification-handler.changes
+  "What an UPDATE of a NotificationHandler writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::notification-handler.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::notification-recipient.details
   "The `:details` column of a NotificationRecipient, decoded."
@@ -86,6 +113,13 @@
    [:details                 {:optional true} [:maybe ::notification-recipient.details]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::notification-recipient.changes
+  "What an UPDATE of a NotificationRecipient writes: the columns of an update, its `:updated_at` also an SQL expression."
+  [:merge
+   ::notification-recipient.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]]])
 
 (mr/def ::notification-subscription
   "A NotificationSubscription as selected from the app DB: every column of `:notification_subscription`."

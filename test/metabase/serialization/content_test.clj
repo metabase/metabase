@@ -1,6 +1,7 @@
 (ns metabase.serialization.content-test
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -60,4 +61,4 @@
           (is (= (query-count #(extract (take 2 dashboards)))
                  (query-count #(extract dashboards))))
           (finally
-            (t2/delete! :model/Dashboard :id [:in (map :id dashboards)])))))))
+            (dashboards.write/delete-dashboard-rows! (mapv :id dashboards) {})))))))

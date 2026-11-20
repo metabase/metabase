@@ -157,3 +157,17 @@
              [:map
               [:group      {:optional true} [:map {:closed true} [:id [:maybe pos-int?]] [:name [:maybe :string]]]]
               [:updated_by {:optional true} ::users.schema/user]]))
+
+(mr/def ::api-key.changes
+  "What an update of an ApiKey takes: its name, its group, a key and prefix a regeneration hashed, and who updated it."
+  [:map {:closed true}
+   [:name                            {:optional true} [:maybe :string]]
+   [:key                             {:optional true} [:maybe :string]]
+   [:key_prefix                      {:optional true} [:maybe :string]]
+   [:updated_by_id                   {:optional true} [:maybe ms/PositiveInt]]
+   [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::write-opts
+  "The context of a write of ApiKeys: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])

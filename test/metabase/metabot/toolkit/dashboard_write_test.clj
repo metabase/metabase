@@ -4,6 +4,7 @@
    MCP's `dashboard_write` tests cover the same paths through that tool."
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.test :as mt]
@@ -57,7 +58,7 @@
             (is (=? {:name "Created by the toolkit", :dashcards [{:card_id (:id card)}]}
                     dash))
             (finally
-              (t2/delete! :model/Dashboard :id (:id dash))))))))
+              (dashboards.write/delete-dashboard-row! (:id dash) {})))))))
   (testing "an invalid op creates nothing"
     (mt/with-current-user (mt/user->id :crowberto)
       (let [dash-name "Never created by the toolkit"]

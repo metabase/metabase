@@ -3,7 +3,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.permissions.write]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -18,10 +18,6 @@
 (t2/deftransforms :model/ApplicationPermissionsRevision
   {:before mi/transform-json
    :after  mi/transform-json})
-
-(t2/define-before-update :model/ApplicationPermissionsRevision
-  [_]
-  (throw (ex-info (tru "You cannot update a PermissionsRevision!") {:status-code 400})))
 
 (defn latest-id
   "Return the ID of the newest `ApplicationPermissionsRevision`, or zero if none have been made yet.

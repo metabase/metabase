@@ -14,6 +14,7 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
@@ -1336,7 +1337,7 @@
                              "event"        "dashboard_created"}
                    :user-id (str (mt/user->id :rasta))}}
                 (snowplow-test/pop-event-data-and-user-id!)))
-      (t2/delete! :model/Dashboard :id (:id resp)))))
+      (dashboards.write/delete-dashboard-row! (:id resp) {}))))
 
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"
@@ -1351,7 +1352,7 @@
                :description     nil
                :dashcard_ids    []}
               resp))
-      (t2/delete! :model/Dashboard :id (:id resp))))
+      (dashboards.write/delete-dashboard-row! (:id resp) {})))
   (testing "Creates a dashboard with questions"
     (mt/with-temp [:model/Card {card1-id :id} {:name          "DashQ1"
                                                :dataset_query (orders-count-query)
@@ -1374,7 +1375,7 @@
           (is (every? #(and (nat-int? (:col %)) (nat-int? (:row %))
                             (pos? (:size_x %)) (pos? (:size_y %)))
                       dashcards)))
-        (t2/delete! :model/Dashboard :id (:id resp)))))
+        (dashboards.write/delete-dashboard-row! (:id resp) {}))))
   (testing "Creates a dashboard in a specific collection"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Agent Dashboard Collection"}]
       (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
@@ -1383,7 +1384,7 @@
         (is (=? {:collection_id   coll-id
                  :collection_path "Our analytics / Agent Dashboard Collection"}
                 resp))
-        (t2/delete! :model/Dashboard :id (:id resp)))))
+        (dashboards.write/delete-dashboard-row! (:id resp) {}))))
   (testing "Returns 404 when a question_id does not exist"
     (mt/user-http-request :rasta :post 404 "agent/v1/dashboard"
                           {:name         "Bad Dashboard"
@@ -1397,7 +1398,7 @@
       (is (=? {:collection_id   nil
                :collection_path "Our analytics"}
               resp))
-      (t2/delete! :model/Dashboard :id (:id resp)))))
+      (dashboards.write/delete-dashboard-row! (:id resp) {}))))
 
 (deftest create-entity-url-test
   (testing "create question/dashboard return a frontend URL"
@@ -1411,12 +1412,12 @@
           (is (= (str "https://mb.example.com/question/" (:id q)) (:url q)))
           (is (= (str "https://mb.example.com/dashboard/" (:id d)) (:url d)))
           (t2/delete! :model/Card :id (:id q))
-          (t2/delete! :model/Dashboard :id (:id d)))))
+          (dashboards.write/delete-dashboard-row! (:id d) {}))))
     (testing "relative when site-url is unset (no \"null\" prefix)"
       (mt/with-temporary-setting-values [site-url nil]
         (let [d (mt/user-http-request :rasta :post 200 "agent/v1/dashboard" {:name "Relative URL D"})]
           (is (= (str "/dashboard/" (:id d)) (:url d)))
-          (t2/delete! :model/Dashboard :id (:id d)))))))
+          (dashboards.write/delete-dashboard-row! (:id d) {}))))))
 
 (deftest create-collection-test
   (testing "Creates a root-level collection"

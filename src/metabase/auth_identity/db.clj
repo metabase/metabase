@@ -125,12 +125,6 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_active :model/User :id (long user-id)))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id [:auto/param user-id] changes))
-
 (mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."
   [row :- ::users.schema/user.update]

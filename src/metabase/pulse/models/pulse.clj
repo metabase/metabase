@@ -40,6 +40,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.pulse.write :as pulse.write]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -56,9 +57,8 @@
 
 (doto :model/Pulse
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/timestamped-on-insert?)
+  (derive :hook/entity-id))
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -70,17 +70,6 @@
   {:parameters transform-pulse-parameters})
 
 ;;; ------------------------------------------------------- Hooks ----------------------------------------------------------
-
-(defn- check-dashboard-subscription
-  "Throws a 400 when `pulse`, as an update leaves it beside its stored columns, is a dashboard subscription with a
-  column of an alert or a collection position."
-  [{:keys [dashboard_id collection_position alert_condition alert_first_only alert_above_goal]}]
-  (when (and dashboard_id (some some? [alert_condition alert_first_only alert_above_goal]))
-    (throw (ex-info (tru "A dashboard subscription cannot have the columns of an alert.")
-                    {:status-code 400})))
-  (when (and dashboard_id (some? collection_position))
-    (throw (ex-info (tru "A dashboard subscription cannot have a collection position.")
-                    {:status-code 400}))))
 
 (defn- new-pulse
   "`pulse`, a row an INSERT writes, without its nil columns, with the defaults of a Pulse, and filed in the Collection
@@ -97,33 +86,10 @@
   (u/prog1 (new-pulse pulse)
     (collection/check-collection-for :model/Pulse <>)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *allow-moving-dashboard-subscriptions*
-  "If true, allows the collection_id on a dashboard subscription to be modified. This should
-  only be done when the associated dashboard is being moved to a new collection."
-  false)
-
-(t2/define-before-update :model/Pulse
+(t2/define-after-insert :model/Pulse
   [pulse]
-  (let [changes (t2/changes pulse)
-        {original-dashboard-id :dashboard_id} (t2/original pulse)]
-    (when (and original-dashboard-id (contains? changes :dashboard_id))
-      (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") {:status-code 400})))
-    (when (and original-dashboard-id (contains? changes :collection_id) (not *allow-moving-dashboard-subscriptions*))
-      (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") {:status-code 400})))
-    (when (contains? changes :collection_id)
-      (collection/check-collection-for :model/Pulse pulse))
-    (when (some #(contains? changes %) [:dashboard_id :collection_position :alert_condition :alert_first_only :alert_above_goal])
-      (check-dashboard-subscription pulse))
-    (when (contains? changes :archived)
-      (pulse.db/set-pulse-channels-enabled! (u/the-id pulse) (not (:archived changes))))
-    (cond-> pulse
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly pulse #(collection/archived? (:collection_id pulse)))))))
-
-(t2/define-before-delete :model/Pulse
-  [pulse]
-  ;; to trigger deleting the scheduled jobs
-  (pulse.db/delete-pulse-channels-for-pulse! (u/the-id pulse)))
+  (events/created! :model/Pulse pulse)
+  pulse)
 
 ;;; ---------------------------------------------------- Permissions -----------------------------------------------------
 
@@ -644,7 +610,7 @@
   [notification-or-id :- NotificationOrId
    card-refs           :- [:maybe [:sequential CardRef]]]
   ;; first off, just delete any cards associated with this pulse (we add them again below)
-  (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
+  (pulse.write/delete-pulse-cards-of-pulse! (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
     (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
@@ -657,7 +623,7 @@
                                 :pivot_results     pivot_results
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
-      (pulse.db/insert-pulse-cards! cards))))
+      (pulse.write/create-pulse-cards! cards))))
 
 (mu/defn update-notification-channels!
   "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
@@ -695,10 +661,9 @@
     (doseq [channel to-update]
       (assert (:id channel) "Cannot update a PulseChannel without an :id")
       (pulse-channel/update-pulse-channel! channel))
-    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
-      (when (seq to-delete)
-        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
-        (pulse.db/delete-pulse-channels! (map :id to-delete))))))
+    (when (seq to-delete)
+      (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+      (pulse.write/delete-pulse-channels! (mapv :id to-delete) {:archive-parent-pulse? false}))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
@@ -707,7 +672,7 @@
    card-refs    :- [:maybe [:sequential CardRef]]
    channels     :- [:sequential PulseChannelInput]]
   (t2/with-transaction [_conn]
-    (let [notification (pulse.db/insert-pulse! notification)]
+    (let [notification (pulse.write/create-pulse! notification)]
       (update-notification-cards! notification card-refs)
       (update-notification-channels! notification channels)
       (u/the-id notification))))
@@ -760,10 +725,11 @@
 (mu/defn update-notification!
   "Update the supplied keys in a `notification`."
   [notification :- UpdateNotificationInput]
-  (pulse.db/update-pulse! (u/the-id notification)
-                          (u/select-keys-when notification
-                                              :present [:collection_id :collection_position :archived]
-                                              :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+  (pulse.write/update-pulse! (u/the-id notification)
+                             (u/select-keys-when notification
+                                                 :present [:collection_id :collection_position :archived]
+                                                 :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters])
+                             {})
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))

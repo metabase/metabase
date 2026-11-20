@@ -4,6 +4,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.literal :as lib.schema.literal]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -81,6 +82,31 @@
    [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:content_html      {:optional true} [:maybe :string]]
    [:context           {:optional true} [:maybe ::comment.context]]])
+
+(mr/def ::comment.changes
+  "What an UPDATE of a Comment writes: the columns of an update, its `:updated_at` and `:deleted_at` also SQL
+  expressions, `(mi/now)` and `[:now]`."
+  [:merge
+   ::comment.update
+   [:map {:closed true}
+    [:updated_at {:optional true} [:or ms/TemporalInstant ::h2x/honeysql-expr]]
+    [:deleted_at {:optional true} [:or [:maybe ms/TemporalInstant] ::h2x/honeysql-expr]]]])
+
+(mr/def ::comment.create
+  "What a new Comment takes."
+  [:map {:closed true}
+   [:target_type       [:or :keyword :string]]
+   [:target_id         ms/PositiveInt]
+   [:creator_id        ::lib.schema.id/user]
+   [:content           ::comment.content]
+   [:child_target_id   {:optional true} [:maybe :string]]
+   [:context           {:optional true} [:maybe ::comment.context]]
+   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::write-opts
+  "The context of a write of Comments: `:import?`, whether a SerDes import writes them."
+  [:map {:closed true}
+   [:import? {:optional true} :boolean]])
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."

@@ -8,9 +8,13 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.lib.core :as lib]
+   [metabase.measures.write :as measures.write]
+   [metabase.native-query-snippets.write :as native-query-snippets.write]
    [metabase.segments.write :as segments.write]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
 
 (comment
@@ -187,17 +191,17 @@
                 analysis"
           (is (= (marked {:dependency [:card-native :snippet-inner :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(t2/update! :model/NativeQuerySnippet :id (id-of world :snippet-inner)
-                                            {:content "ORDERS"})))))
+                 (marks! world #(native-query-snippets.write/update-snippet! (id-of world :snippet-inner) {:content "ORDERS"} {})))))
         (testing "a measure definition change marks its own dependency and every transitive dependent's result
                 metadata and analysis"
           (is (= (marked {:dependency      [:measure]
                           :analysis        [:card-d :card-e]
                           :result-metadata [:card-d :card-e]})
-                 (marks! world #(t2/update! :model/Measure :id (id-of world :measure)
-                                            {:definition (lib/aggregate (deps.test/table-query :orders)
-                                                                        (lib/count))
-                                             :name       "Renamed measure"})))))
+                 (marks! world #(measures.write/update-measure! (id-of world :measure)
+                                                                {:definition (lib/aggregate (deps.test/table-query :orders)
+                                                                                            (lib/count))
+                                                                 :name       "Renamed measure"}
+                                                                {})))))
         (testing "a segment definition change marks its own dependency and analysis and its direct dependents"
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
@@ -209,10 +213,10 @@
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(t2/delete! :model/NativeQuerySnippet :id (id-of world :snippet-inner))))))
+                 (marks! world #(native-query-snippets.write/delete-snippet! (id-of world :snippet-inner) {})))))
         (testing "deleting a measure marks every transitive dependent's result metadata and analysis"
           (is (= (marked {:analysis [:card-d :card-e] :result-metadata [:card-d :card-e]})
-                 (marks! world #(t2/delete! :model/Measure :id (id-of world :measure))))))))))
+                 (marks! world #(measures.write/delete-measure! (id-of world :measure) {})))))))))
 
 (deftest table-and-field-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -307,8 +311,7 @@
               dashcard-id  (atom nil)]
           (testing "a parameter change marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/update! :model/Dashboard :id dashboard-id
-                                              {:parameters [{:id "p" :name "P" :slug "p" :type :category}]})))))
+                   (marks! world #(dashboards.write/update-dashboard-row! dashboard-id {:parameters [{:id "p" :name "P" :slug "p" :type :category}]} {})))))
           (testing "a dashboard card marks the dashboard's dependency when it is created, changed or deleted"
             (is (= (marked {:dependency [:dashboard]})
                    (marks! world #(reset! dashcard-id (t2/insert-returning-pk! :model/DashboardCard
@@ -316,24 +319,24 @@
                                                                                 :card_id      (id-of world :card-f)
                                                                                 :row 0 :col 0 :size_x 4 :size_y 4})))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/update! :model/DashboardCard :id @dashcard-id {:card_id (id-of world :card-a)}))))
+                   (marks! world #(dashboards.write/update-dashcard! @dashcard-id {:card_id (id-of world :card-a)} {}))))
             (is (= (marked {:triggers? false})
-                   (marks! world #(t2/update! :model/DashboardCard :id @dashcard-id {:row 2}))))
+                   (marks! world #(dashboards.write/update-dashcard! @dashcard-id {:row 2} {}))))
             (is (= (marked {:dependency [:dashboard]})
                    (marks! world #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard-id
                                                                           :card_id          (id-of world :card-b)
                                                                           :position         0}))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard-id))))
+                   (marks! world #(dashboards.write/delete-dashcard-series! (t2/select-pks-vec :model/DashboardCardSeries :dashboardcard_id @dashcard-id) {}))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardCard :id @dashcard-id)))))
+                   (marks! world #(dashboards.write/delete-dashcards! [@dashcard-id] {})))))
           (testing "a tab marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardTab :id (t2/insert-returning-pk!
-                                                                       :model/DashboardTab
-                                                                       {:dashboard_id dashboard-id
-                                                                        :name         "Tab"
-                                                                        :position     0})))))))))))
+                   (marks! world #(dashboards.write/delete-dashboard-tabs! [(t2/insert-returning-pk!
+                                                                             :model/DashboardTab
+                                                                             {:dashboard_id dashboard-id
+                                                                              :name         "Tab"
+                                                                              :position     0})] {}))))))))))
 
 (deftest transform-and-action-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -341,12 +344,11 @@
       (fn [world]
         (testing "a transform source change marks its own dependency and analysis"
           (is (= (marked {:dependency [:transform] :analysis [:transform]})
-                 (marks! world #(t2/update! :model/Transform :id (id-of world :transform)
-                                            {:source {:type  :query
-                                                      :query (lib/native-query (mt/metadata-provider) "SELECT 2")}})))))
+                 (marks! world #(transforms.core/change-transform! (id-of world :transform) {:source {:type  :query
+                                                                                                      :query (lib/native-query (mt/metadata-provider) "SELECT 2")}} {})))))
         (testing "a transform rename marks nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(t2/update! :model/Transform :id (id-of world :transform) {:name "Renamed"})))))
+                 (marks! world #(transforms.core/change-transform! (id-of world :transform) {:name "Renamed"} {})))))
         (mt/with-temp [:model/Action      {action-id :id} {:type :query :name "Marks action"}
                        :model/QueryAction _               {:action_id     action-id
                                                            :database_id   (mt/id)

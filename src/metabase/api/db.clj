@@ -23,120 +23,26 @@
   [entity :- :keyword id :- [:maybe [:or ms/PositiveInt :string]] & conditions :- [:* [:maybe ::condition-value]]]
   (apply t2/select-one entity :id id conditions))
 
-(defn- shift-positions-after!
-  [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:> position]}
+(mr/def ::position-clause
+  "A HoneySQL condition on `collection_position`: `[:> n]`, `[:>= n]` or `[:between lower upper]`."
+  [:or
+   [:tuple [:enum :> :>=] ms/PositiveInt]
+   [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]])
+
+(mu/defn rows-at-positions
+  "The rows of `model` in the Collection with `collection-id` whose collection position matches `position-clause`."
+  [model           :- :keyword
+   collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- ::position-clause]
+  (t2/select model :collection_id collection-id :collection_position position-clause))
+
+(mu/defn shift-positions!
+  "Add or subtract (`plus-or-minus`) one from the collection position of the rows of `model` in the Collection with
+  `collection-id` whose collection position matches `position-clause`, returning the number updated."
+  [model           :- :keyword
+   collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- ::position-clause
+   plus-or-minus   :- [:enum :+ :-]]
+  (t2/update! model {:collection_id       collection-id
+                     :collection_position position-clause}
               {:collection_position [plus-or-minus :collection_position 1]}))
-
-(defn- shift-positions-from!
-  [entity collection-id position plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:>= position]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
-
-(defn- shift-positions-between!
-  [entity collection-id lower upper plus-or-minus]
-  (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:between lower upper]}
-              {:collection_position [plus-or-minus :collection_position 1]}))
-
-(mu/defn shift-card-positions-after!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Cards in the Collection with
-  `collection-id` positioned after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-after! 'Card collection-id position plus-or-minus))
-
-(mu/defn shift-dashboard-positions-after!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Dashboards in the Collection with
-  `collection-id` positioned after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-after! 'Dashboard collection-id position plus-or-minus))
-
-(mu/defn shift-pulse-positions-after!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Pulses in the Collection with
-  `collection-id` positioned after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-after! 'Pulse collection-id position plus-or-minus))
-
-(mu/defn shift-document-positions-after!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Documents in the Collection with
-  `collection-id` positioned after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-after! 'Document collection-id position plus-or-minus))
-
-(mu/defn shift-card-positions-from!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Cards in the Collection with
-  `collection-id` positioned at or after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-from! 'Card collection-id position plus-or-minus))
-
-(mu/defn shift-dashboard-positions-from!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Dashboards in the Collection with
-  `collection-id` positioned at or after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-from! 'Dashboard collection-id position plus-or-minus))
-
-(mu/defn shift-pulse-positions-from!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Pulses in the Collection with
-  `collection-id` positioned at or after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-from! 'Pulse collection-id position plus-or-minus))
-
-(mu/defn shift-document-positions-from!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Documents in the Collection with
-  `collection-id` positioned at or after `position`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   position :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-from! 'Document collection-id position plus-or-minus))
-
-(mu/defn shift-card-positions-between!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Cards in the Collection with
-  `collection-id` positioned between `lower` and `upper` inclusive."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   lower :- ms/PositiveInt
-   upper :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-between! 'Card collection-id lower upper plus-or-minus))
-
-(mu/defn shift-dashboard-positions-between!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Dashboards in the Collection with
-  `collection-id` positioned between `lower` and `upper` inclusive."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   lower :- ms/PositiveInt
-   upper :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-between! 'Dashboard collection-id lower upper plus-or-minus))
-
-(mu/defn shift-pulse-positions-between!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Pulses in the Collection with
-  `collection-id` positioned between `lower` and `upper` inclusive."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   lower :- ms/PositiveInt
-   upper :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-between! 'Pulse collection-id lower upper plus-or-minus))
-
-(mu/defn shift-document-positions-between!
-  "Add or subtract (`plus-or-minus`) one from the collection position of the Documents in the Collection with
-  `collection-id` positioned between `lower` and `upper` inclusive."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   lower :- ms/PositiveInt
-   upper :- ms/PositiveInt
-   plus-or-minus :- [:enum :+ :-]]
-  (shift-positions-between! 'Document collection-id lower upper plus-or-minus))

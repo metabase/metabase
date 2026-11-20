@@ -43,6 +43,17 @@
    user-id        :- ::lib.schema.id/user]
   (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
 
+(mu/defn collection-bookmark
+  "The CollectionBookmark with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/CollectionBookmark :id id))
+
+(mu/defn update-collection-bookmark!
+  "Apply `changes` to the CollectionBookmark with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::bookmarks.schema/collection-bookmark.update]
+  (t2/update! :model/CollectionBookmark :id [:auto/param id] changes))
+
 (mu/defn insert-card-bookmark!
   "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
   [card-id :- ::lib.schema.id/card

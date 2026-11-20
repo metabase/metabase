@@ -19,6 +19,7 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
+   [metabase.pulse.write :as pulse.write]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -406,7 +407,7 @@
                       (= "iframe" display)))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
-    (pulse-channel/validate-email-domains channel))
+    (pulse.write/validate-email-domains channel))
   (let [pulse (-> body
                   (assoc :creator_id api/*current-user-id*)
                   (assoc :disable_links
@@ -423,7 +424,7 @@
                 pc-id    (pulse.db/email-pulse-channel-id pulse-id)
                 pcr-id   (pulse.db/pulse-channel-recipient-id pc-id api/*current-user-id*)]
     (binding [api/*current-user-id* nil]
-      (pulse.db/delete-pulse-channel-recipient! pcr-id)))
+      (pulse.write/delete-pulse-channel-recipients! [pcr-id] {})))
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

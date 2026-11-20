@@ -10,6 +10,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.settings :as notification.settings]
+   [metabase.notification.write :as notification.write]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -226,7 +227,7 @@
                                 (:payload_id notification-info))]
           (when-not (notification.db/notification-card-exists? payload-id)
             (log/warnf "Payload for notification %d no longer exists, deleting" id)
-            (notification.db/delete-notification! id)
+            (notification.write/delete-notifications! [id] {})
             (throw (ex-info "Card no longer exists, notification deleted"
                             {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)

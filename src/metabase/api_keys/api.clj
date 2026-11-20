@@ -6,6 +6,7 @@
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.models.api-key :as api-key]
    [metabase.api-keys.schema :as api-keys.schema]
+   [metabase.api-keys.write :as api-keys.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
@@ -82,10 +83,8 @@
   (api/check-superuser)
   (api/let-404 [api-key-before (api-keys.db/api-key id)]
     (events/with-event-context {:details {:previous-group (:group (t2/hydrate api-key-before :group))}}
-      (-> api-key-before
-          (m/assoc-some ::api-keys/group-id group-id, :name key-name)
-          api-keys.db/save-api-key!
-          present-api-key))))
+      (api-keys.write/update-api-key! api-key-before (m/assoc-some {} ::api-keys/group-id group-id, :name key-name) {})
+      (present-api-key (api-keys.db/api-key id)))))
 
 (api.macros/defendpoint :put "/:id/regenerate" :- [:map
                                                    [:id           ::api-keys.schema/id]
@@ -121,7 +120,7 @@
   (api/check-superuser)
   (api/let-404 [api-key (api-keys.db/api-key id)]
     (events/with-event-context {:details {:previous-group (:group (t2/hydrate api-key :group))}}
-      (api-keys.db/delete-api-key! id)))
+      (api-keys.write/delete-api-key! id {})))
   api/generic-204-no-content)
 
 (comment

@@ -15,6 +15,7 @@
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
    [metabase.settings.app-db-copy :as settings.app-db-copy]
@@ -430,7 +431,7 @@
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
+    ((:update! (mi/write-fns :model/User)) api/*current-user-id* {:settings (json/encode @@*user-local-values*)} {})))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
