@@ -586,6 +586,9 @@
   (testing "ignores spaces around entries, and blank entries, as an env var or a stored string can have them"
     (is (= ["A" "B" "C"]
            (fetch-csv-setting-value! " A , B,, C ,"))))
+  (testing "reads only the first line"
+    (is (= ["A" "B"]
+           (fetch-csv-setting-value! "A,B\nC"))))
   (testing "reads an empty string as nil, and only blank entries as an empty list"
     (is (nil? (fetch-csv-setting-value! "")))
     (is (= [] (fetch-csv-setting-value! ",")))))
@@ -605,9 +608,6 @@
   (testing "stores entries without surrounding spaces, and drops blank ones"
     (is (= {:db-value "A,B,C,D", :parsed-value ["A" "B" "C" "D"]}
            (set-and-fetch-csv-setting-value! ["A" "B" "" "C" " D "]))))
-  (testing "drops spaces inside quotes too, as the stored form has no quotes to keep them"
-    (is (= {:db-value "A,E", :parsed-value ["A" "E"]}
-           (set-and-fetch-csv-setting-value! "A,\" E \""))))
   (testing "stores numbers and booleans in a list as text"
     (is (= {:db-value "1,true,A", :parsed-value ["1" "true" "A"]}
            (set-and-fetch-csv-setting-value! [1 true "A"]))))
@@ -623,12 +623,12 @@
            (test-csv-setting-with-default)))))
 
 (deftest csv-setting-string-value-test
-  (testing "should be a able to set a CSV setting when the string is already CSV-encoded"
-    (is (= {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
-           (set-and-fetch-csv-setting-value! "A,B,C"))))
   (testing "stores a CSV string in the same form as a list"
     (is (= {:db-value "A,B,\"C1,C2\"", :parsed-value ["A" "B" "C1,C2"]}
            (set-and-fetch-csv-setting-value! " A , B,,\"C1,C2\""))))
+  (testing "drops spaces inside quotes too, as the stored form has no quotes to keep them"
+    (is (= {:db-value "A,E", :parsed-value ["A" "E"]}
+           (set-and-fetch-csv-setting-value! "A,\" E \""))))
   (testing "accepts a string that ends in blank lines"
     (doseq [trailing ["A,B\n\n" "A,B\r\n \r\n"]]
       (testing (pr-str trailing)
@@ -1788,6 +1788,7 @@
             (mt/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
               (try
                 (setting/validate-settings-formatting!)
+                ;; A first line that fails validation throws after the warnings are logged, and only they matter here.
                 (catch Exception _))
               (into [] (comp (map :message) (filter #(str/includes? % env-var))) (messages))))
           (warnings [raw-value]

@@ -1024,8 +1024,7 @@
 
 (defn- serialize-csv
   "The stored form of `value`, a list of entries or a CSV string of one line.
-   Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]`,
-   an empty string or `,`.
+   Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]` or `,`.
    Any other value is stored as printed.
    Throws a 400 for a string that is not valid CSV or spans several lines."
   [value]
@@ -1840,9 +1839,12 @@
                :env-var? env-var?)))))
 
 (defn- warn-about-ignored-csv-lines!
-  "Logs a warning when the env var for `setting`, a `:csv` setting, has lines after the first, which are not read."
+  "Logs a warning when `setting` is a `:csv` setting whose env var has lines after the first, which are not read."
   [setting]
-  (when-let [[env-var value] (env-var-source setting)]
+  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
+  (when-let [[env-var value] (and (= :csv (:type setting))
+                                  (not (:custom-getter? setting))
+                                  (env-var-source setting))]
     ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
     ;; they parse, so a parse error after the first line counts as one.
     (let [rows               (csv-rows value)
@@ -1856,11 +1858,7 @@
 
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
-  (doseq [setting (vals @registered-settings)
-          ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
-          :when   (and (= :csv (:type setting))
-                       (not (:custom-getter? setting)))]
-    (warn-about-ignored-csv-lines! setting))
+  (run! warn-about-ignored-csv-lines! (vals @registered-settings))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
