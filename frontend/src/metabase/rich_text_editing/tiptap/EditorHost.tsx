@@ -21,8 +21,6 @@ import type {
 export interface UseCardDataResult {
   card?: Card;
   dataset?: Dataset;
-  /** When the latest fetch of `dataset` started, in ms since the epoch. */
-  datasetFetchStartedAt?: number;
   isLoading: boolean;
   series: RawSeries | null;
   question?: Question;

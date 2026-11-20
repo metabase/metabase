@@ -20,6 +20,7 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDownloadData } from "metabase/common/components/QuestionDownloadWidget/use-download-data";
 import { useQuestionFromCardBuilder } from "metabase/metadata-store";
+import { prefetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector } from "metabase/redux";
 import { CommentsButton } from "metabase/rich_text_editing/tiptap/components/CommentsButton";
 import { CardEmbedLoadingState } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedLoadingState";
@@ -76,7 +77,6 @@ import { useExternalCardData } from "./ExternalCardDataContext";
 import { ExternalDocumentCardMenu } from "./ExternalDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
 import { NativeQueryModal } from "./modals/NativeQueryModal";
-import { useCardEmbedGoalSourceResults } from "./use-card-embed-goal-source-results";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
 
@@ -325,15 +325,15 @@ export const CardEmbedComponent = memo(
       skip: !shouldLoadData,
     });
 
-    const { card, dataset, datasetFetchStartedAt, isLoading, series, error } =
-      isExternalDocument ? externalCardDataResult : regularCardData;
+    const { card, dataset, isLoading, series, error } = isExternalDocument
+      ? externalCardDataResult
+      : regularCardData;
 
-    useCardEmbedGoalSourceResults({
-      card,
-      datasetFetchStartedAt,
-      scope: goalSourcesScope,
-      skip: !shouldLoadData,
-    });
+    useEffect(() => {
+      if (shouldLoadData && card != null) {
+        prefetchGoalSourceResults(dispatch, goalSourcesScope, card);
+      }
+    }, [card, dispatch, goalSourcesScope, shouldLoadData]);
 
     const highlighted = host.useHighlighted(
       commentChildTargetId,

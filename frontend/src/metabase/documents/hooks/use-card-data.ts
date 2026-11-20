@@ -44,22 +44,40 @@ function buildSeries(card: Card, dataset: Dataset): RawSeries {
   ];
 }
 
-function selectActiveQueryValue<T>(
+function selectDataset(
   isDraft: boolean,
   isPivot: boolean,
-  regularValue: T,
-  draftValue: T,
-  draftPivotValue: T,
-): T {
+  regularDataset?: Dataset,
+  draftDataset?: Dataset,
+  draftPivotDataset?: Dataset,
+): Dataset | undefined {
   if (!isDraft) {
-    return regularValue;
+    return regularDataset;
   }
 
   if (isPivot) {
-    return draftPivotValue;
+    return draftPivotDataset;
   }
 
-  return draftValue;
+  return draftDataset;
+}
+
+function selectIsLoadingDataset(
+  isDraft: boolean,
+  isPivot: boolean,
+  isLoadingRegular: boolean,
+  isLoadingDraft: boolean,
+  isLoadingDraftPivot: boolean,
+): boolean {
+  if (!isDraft) {
+    return isLoadingRegular;
+  }
+
+  if (isPivot) {
+    return isLoadingDraftPivot;
+  }
+
+  return isLoadingDraft;
 }
 
 export function useCardData({
@@ -113,42 +131,33 @@ export function useCardData({
     }
   }, [shouldUseDraftQuery, isPivotTable, cardToUse, buildQuestion]);
 
-  const {
-    data: regularDataset,
-    startedTimeStamp: regularFetchStartedAt,
-    isLoading: isLoadingRegularDataset,
-  } = useGetCardQueryQuery(
-    {
-      cardId: queryCardId,
-      ...(storedResultId != null
-        ? { stored_result_id: storedResultId, sort: storedResultSort }
-        : {}),
-    },
-    { skip: shouldSkipRegularQuery },
-  );
+  const { data: regularDataset, isLoading: isLoadingRegularDataset } =
+    useGetCardQueryQuery(
+      {
+        cardId: queryCardId,
+        ...(storedResultId != null
+          ? { stored_result_id: storedResultId, sort: storedResultSort }
+          : {}),
+      },
+      { skip: shouldSkipRegularQuery },
+    );
 
-  const {
-    data: draftDataset,
-    startedTimeStamp: draftFetchStartedAt,
-    isLoading: isLoadingDraftDataset,
-  } = useGetAdhocQueryQuery(
-    shouldQueryDraftNonPivot ? buildAdhocQueryParams(cardToUse) : skipToken,
-  );
+  const { data: draftDataset, isLoading: isLoadingDraftDataset } =
+    useGetAdhocQueryQuery(
+      shouldQueryDraftNonPivot ? buildAdhocQueryParams(cardToUse) : skipToken,
+    );
 
-  const {
-    data: draftPivotDataset,
-    startedTimeStamp: draftPivotFetchStartedAt,
-    isLoading: isLoadingDraftPivotDataset,
-  } = useGetAdhocPivotQueryQuery(
-    shouldQueryDraftPivot
-      ? {
-          ...buildAdhocQueryParams(cardToUse),
-          ...(pivotOptions || {}),
-        }
-      : skipToken,
-  );
+  const { data: draftPivotDataset, isLoading: isLoadingDraftPivotDataset } =
+    useGetAdhocPivotQueryQuery(
+      shouldQueryDraftPivot
+        ? {
+            ...buildAdhocQueryParams(cardToUse),
+            ...(pivotOptions || {}),
+          }
+        : skipToken,
+    );
 
-  const dataset = selectActiveQueryValue(
+  const dataset = selectDataset(
     shouldUseDraftQuery,
     isPivotTable,
     regularDataset,
@@ -156,15 +165,7 @@ export function useCardData({
     draftPivotDataset,
   );
 
-  const datasetFetchStartedAt = selectActiveQueryValue(
-    shouldUseDraftQuery,
-    isPivotTable,
-    regularFetchStartedAt,
-    draftFetchStartedAt,
-    draftPivotFetchStartedAt,
-  );
-
-  const isLoadingDataset = selectActiveQueryValue(
+  const isLoadingDataset = selectIsLoadingDataset(
     shouldUseDraftQuery,
     isPivotTable,
     isLoadingRegularDataset,
@@ -200,7 +201,6 @@ export function useCardData({
   return {
     card: cardToUse,
     dataset,
-    datasetFetchStartedAt,
     isLoading,
     series,
     question,
