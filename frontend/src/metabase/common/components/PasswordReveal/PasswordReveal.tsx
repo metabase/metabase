@@ -28,6 +28,7 @@ export const PasswordReveal = ({ password }: PasswordRevealProps) => {
           id={inputId}
           value={password}
           readOnly
+          variant="read-only"
           size="lg"
           flex={1}
         />
