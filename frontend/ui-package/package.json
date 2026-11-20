@@ -17,7 +17,8 @@
   "type": "module",
   "sideEffects": [
     "**/*.css",
-    "./dist/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.js"
+    "./dist/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.js",
+    "./dist/src/metabase/dayjs/index.js"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -35,7 +35,7 @@ export const App = () => (
         </Ellipsified>
       </div>
 
-      <QuarterPicker quarterListFormat="[Q]Q [week] w" />
+      <QuarterPicker quarterListFormat="[Q]Q [week] w · L" />
 
       <Modal opened onClose={() => undefined} title="Modal title">
         <Text>Modal body</Text>

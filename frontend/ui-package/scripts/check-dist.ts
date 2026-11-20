@@ -10,6 +10,8 @@ const pkg = readPackageJson(join(packageDir, "package.json"));
 
 const POPOVER_REGISTRATION =
   "dist/src/metabase/ui/components/overlays/Popover/register-popover-dropdown.js";
+// Registers the Day.js plugins on import, like the app does.
+const DAYJS_SETUP = "dist/src/metabase/dayjs/index.js";
 const REQUIRED_FILES = [
   "dist/index.js",
   "dist/index.d.ts",
@@ -23,6 +25,7 @@ const REQUIRED_FILES = [
   "dist/fonts/Lato/lato-v16-latin-700.woff",
   "dist/fonts/Lato/lato-v16-latin-900.woff",
   POPOVER_REGISTRATION,
+  DAYJS_SETUP,
 ];
 // Types-only dependency: referenced by the public .d.ts but never imported at runtime.
 const TYPES_ONLY = new Set(["@tanstack/table-core"]);
@@ -62,10 +65,10 @@ for (const required of REQUIRED_FILES) {
     errors.push(`${required} is missing`);
   }
 }
-if (!pkg.sideEffects?.includes(`./${POPOVER_REGISTRATION}`)) {
-  errors.push(
-    `package.json sideEffects must contain "./${POPOVER_REGISTRATION}"`,
-  );
+for (const module of [POPOVER_REGISTRATION, DAYJS_SETUP]) {
+  if (!pkg.sideEffects?.includes(`./${module}`)) {
+    errors.push(`package.json sideEffects must contain "./${module}"`);
+  }
 }
 
 for (const rel of files) {
@@ -77,6 +80,10 @@ for (const rel of files) {
   }
   const isDts = rel.endsWith(".d.ts");
   const text = readFileSync(join(packageDir, rel), "utf-8");
+  // metabase/dayjs loads locales with a dynamic require, which must not reach an ESM package.
+  if (!isDts && /\brequire\(/.test(text)) {
+    errors.push(`${rel}: contains a require() call`);
+  }
   if (isDts && UNTYPED_DECLARATION.test(text)) {
     errors.push(`${rel}: untyped declaration (implicit any)`);
   }
