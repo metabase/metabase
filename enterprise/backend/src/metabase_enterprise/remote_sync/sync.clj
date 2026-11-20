@@ -156,17 +156,18 @@
              :version tip
              :outcome (if (pos? changed) {:kind "pulled" :count changed} {:kind "pull-skipped"})})))))
 
-(defn pull!
-  "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
-  and stops when the kept changes depend on content the pull removes; a pull that keeps them reads no documents when
-  the tip of the branch is `base-version`."
-  [repo branch base-version {:keys [force?] :as options}]
-  (let [tip (fetch-tip! repo branch)]
-    (if (and (= tip base-version) (not force?))
-      {:status  :success
-       :version tip
-       :outcome {:kind "pull-skipped"}}
-      (pull-tip! repo tip base-version options))))
+(defn import!
+  "Loads the content of the tree of `version` of `source`, a [[protocol/Source]], into the app DB, creating or updating
+  each entity it holds and deleting nothing: the tree says what its entities are, not what else exists. Returns how
+  many entities it loaded."
+  [source version]
+  (let [theirs (content/tree-documents source version)
+        ks     (vec (keys theirs))]
+    (serialization/with-import-transaction
+      (when (seq ks)
+        (serialization/load-all ks #(mapv (comp :entity theirs) %))))
+    {:status  :success
+     :outcome {:kind "imported" :count (count ks)}}))
 
 (defn local-changes
   "The `{:key :status :doc}` of each synced entity of the app DB that changed since the `base` documents of the tree it
