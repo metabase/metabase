@@ -1033,7 +1033,15 @@ describe("fetchCardDataAction with goal references", () => {
     const card = createMockCard({
       id: 1,
       display: "scalar",
-      visualization_settings: { "scalar.segments": REF_SEGMENTS },
+      visualization_settings: {
+        "scalar.segments": [
+          {
+            min: 0,
+            max: { type: "card", id: 9, column: "total" },
+            color: "red",
+          },
+        ],
+      },
     });
     const seriesCard = createMockCard({ id: 2, display: "scalar" });
     const dashcard = createMockDashboardCard({
