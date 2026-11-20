@@ -69,11 +69,16 @@
                        (analytics/track-event! :snowplow/simple_event
                                                {:event "replace_data_source_failed"})
                        (throw e))))
+        _        (replacement.execute/check-no-active-run)
         job-row  (replacement-run/create-run!
                   source_entity_type source_entity_id
                   target_entity_type target_entity_id api/*current-user-id*)
         progress (replacement-run/run-row->progress job-row)]
-    (replacement.execute/execute-async! work-fn progress)
+    (try
+      (replacement.execute/execute-async! work-fn progress)
+      (catch Throwable e
+        (replacement.db/delete-run! (:id job-row))
+        (throw e)))
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 
@@ -111,6 +116,7 @@
                    :collection_id target_collection_id
                    :tag_ids       transform_tag_ids}
         _         (api/create-check :model/Transform body)
+        _         (replacement.execute/check-no-active-run)
         transform (transforms/create-transform! body)
         job-row   (replacement-run/create-run!
                    :card card_id
@@ -132,7 +138,12 @@
                                                 {:event     "model_to_transforms_migration_failure"
                                                  :target_id card_id})
                         (throw e))))]
-    (replacement.execute/execute-async! work-fn progress)
+    (try
+      (replacement.execute/execute-async! work-fn progress)
+      (catch Throwable e
+        (replacement.db/delete-run! (:id job-row))
+        (transforms/delete-transform! transform)
+        (throw e)))
     (-> (response/response {:run_id (:id job-row)})
         (assoc :status 202))))
 

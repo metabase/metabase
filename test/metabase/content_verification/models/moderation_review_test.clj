@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.content-verification.schema :as content-verification.schema]
+   [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -57,3 +58,11 @@
                                 (t2/insert! :model/ModerationReview
                                             (review Integer/MAX_VALUE :moderated_item_type item-type)))))
         (is (zero? (t2/count :model/ModerationReview :moderated_item_id Integer/MAX_VALUE)))))))
+
+(deftest can-create-test
+  (mt/with-temp [:model/Card {card-id :id} {}]
+    (testing "only superusers can create reviews"
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-create? :model/ModerationReview (review card-id)))))
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-create? :model/ModerationReview (review card-id))))))))

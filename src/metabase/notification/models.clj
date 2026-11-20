@@ -24,6 +24,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -221,7 +222,10 @@
        (mi/superuser?))
    (mi/can-write? instance)
    (or (mi/superuser?)
-       (current-user-can-read-payload? (merge instance changes)))))
+       (current-user-can-read-payload? (cond-> (merge instance changes)
+                                         (map? (:payload changes)) (update :payload #(merge (:payload instance)
+                                                                                            %
+                                                                                            (select-keys (:payload instance) [:card_id]))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :can_write]
   "Whether the current user writes each of `notifications`: a superuser, or the creator with subscription permissions
@@ -610,6 +614,12 @@
           :send_once      false}
          instance))
 
+(t2/define-before-update :model/NotificationCard
+  [instance]
+  (when (contains? (t2/changes instance) :card_id)
+    (throw (ex-info (tru "The card of a notification cannot be changed.") {:status-code 400})))
+  instance)
+
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                          Update Spec                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -621,7 +631,7 @@
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs [[:payload       {:model        :model/NotificationCard
                                    :compare-cols [:send_condition :send_once]
-                                   :extra-cols   [:card_id]}]
+                                   :extra-cols   []}]
                   [:subscriptions {:model        :model/NotificationSubscription
                                    :fk-column    :notification_id
                                    :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]

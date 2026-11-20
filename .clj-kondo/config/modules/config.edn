@@ -4077,7 +4077,8 @@
    :uses #{api
            content-verification
            util
-           enterprise/api}}
+           enterprise/api}
+   :model-imports #{:model/ModerationReview}}
 
   enterprise/core
   {:team "Gadget"

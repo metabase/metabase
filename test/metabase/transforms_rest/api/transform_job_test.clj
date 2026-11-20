@@ -602,12 +602,6 @@
 
 (deftest built-in-jobs-and-tags-seeded-test
   (testing "the built-in Hourly/Daily/Weekly/Monthly jobs and tags are pre-seeded (migration data)"
-    ;; Looked up by :name (stable) rather than :entity_id/:built_in_type: editing a built-in job in
-    ;; any way (even flipping :active, see update-all-jobs-active-test) permanently clears
-    ;; :built_in_type per metabase.transforms.models.transform-job's before-update hook ("never
-    ;; translate again"), so :built_in_type is not a stable signal once other tests in this
-    ;; JVM/app-db have exercised the update path on these rows. Names, seeded once in
-    ;; 057_update_migrations.yaml, remain stable.
     (doseq [[job-name tag-name] [["Hourly job"  "hourly"]
                                  ["Daily job"   "daily"]
                                  ["Weekly job"  "weekly"]

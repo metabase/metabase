@@ -101,7 +101,7 @@
   (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse-id pulse-channel :remove-pc-ids #{(:id pulse-channel)}))
 
 (defn validate-email-domains
-  "For channels that are being sent to raw email addresses: check that the domains in the emails are allowed by
+  "For a channel of a request, with its `:recipients`: check that the domains in the emails are allowed by
   the [[metabase-enterprise.advanced-config.settings/subscription-allowed-domains]] Setting, if set. This will no-op
   if `subscription-allowed-domains` is unset or if we do not have a premium token with the `:advanced-config`
   feature."
@@ -136,6 +136,11 @@
               (throw (ex-info (tru "Wrong email address for User {0}." id)
                               {:status-code 403})))))))))
 
+(defn- check-details-email-domains
+  "Throws unless the domains of the raw email addresses in the `:details` of `pulse-channel` are allowed."
+  [pulse-channel]
+  (notification.models/validate-email-domains! (get-in pulse-channel [:details :emails])))
+
 (def ^:private schedule-columns
   "The columns that decide when a PulseChannel is sent."
   #{:schedule_type :schedule_hour :schedule_day :schedule_frame})
@@ -143,7 +148,8 @@
 (t2/define-before-insert :model/PulseChannel
   [pulse-channel]
   (pulse.schema/check-schedule (merge (zipmap schedule-columns (repeat nil)) pulse-channel))
-  (validate-email-domains pulse-channel))
+  (check-details-email-domains pulse-channel)
+  pulse-channel)
 
 (t2/define-after-insert :model/PulseChannel
   [{:keys [pulse_id id] :as pulse-channel}]
@@ -158,7 +164,7 @@
     (when (some #(contains? changes %) schedule-columns)
       (pulse.schema/check-schedule pulse-channel))
     (when (contains? changes :details)
-      (validate-email-domains pulse-channel))))
+      (check-details-email-domains pulse-channel))))
 
 (defn- update-send-pulse-triggers
   "Move the Quartz trigger of `pulse-channel`, a row an UPDATE writes, to its new schedule and enabled state."

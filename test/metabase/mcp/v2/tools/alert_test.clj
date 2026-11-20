@@ -536,9 +536,8 @@
       (notification.tu/with-card-notification
         [notification {:card              {}
                        :notification      {:creator_id (mt/user->id :crowberto)}
-                       :notification-card {:send_condition :goal_above}
+                       :notification-card {:send_condition :goal_above :card_id card-id}
                        :handlers          []}]
-        (t2/update! :model/NotificationCard :id (:payload_id notification) {:card_id card-id})
         (testing "the fixture really stored a goal condition — with anything else stored, the
                   assertions below pass even against code that re-checks the goal on every update,
                   and this test guards nothing"

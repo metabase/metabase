@@ -107,6 +107,19 @@
       (is (= "Grant is already revoked"
              (mt/user-http-request :crowberto :put 400 (format "ee/support-access-grant/%d/revoke" grant-id)))))))
 
+(deftest revoke-revoked-grant-as-non-admin-test
+  (mt/with-model-cleanup [:model/SupportAccessGrantLog]
+    (let [grant    (mt/user-http-request :crowberto :post 200 "ee/support-access-grant"
+                                         {:ticket_number "SUPPORT-22349"
+                                          :grant_duration_minutes 240})
+          grant-id (:id grant)
+          _        (mt/user-http-request :crowberto :put 200 (format "ee/support-access-grant/%d/revoke" grant-id))
+          stored   (t2/select-one :model/SupportAccessGrantLog :id grant-id)]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 (format "ee/support-access-grant/%d/revoke" grant-id))))
+      (is (= (select-keys stored [:revoked_at :revoked_by_user_id])
+             (t2/select-one [:model/SupportAccessGrantLog :revoked_at :revoked_by_user_id] :id grant-id))))))
+
 (deftest list-grants-returns-paginated-results-test
   (mt/with-model-cleanup [:model/SupportAccessGrantLog]
     (dotimes [i 3]

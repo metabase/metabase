@@ -534,6 +534,32 @@
         (is (=? {:values [1 2 3 4], :human_readable_values []}
                 (t2/select-one :model/FieldValues :id id)))))))
 
+(deftest insert-checks-human-readable-values-cover-values-test
+  (let [field-id (mt/id :venues :price)]
+    (testing "insert refuses human-readable values that do not cover values"
+      (is (thrown-with-msg? ExceptionInfo
+                            #"must be specified for all field values"
+                            (t2/insert! :model/FieldValues {:field_id              field-id
+                                                            :type                  :advanced
+                                                            :hash_key              "insert-check"
+                                                            :values                [1 2 3]
+                                                            :human_readable_values ["a" "b"]})))
+      (is (not (t2/exists? :model/FieldValues :field_id field-id :type :advanced :hash_key "insert-check"))))
+    (testing "insert accepts matching lists and values without human-readable values"
+      (mt/with-temp [:model/FieldValues {matching-id :id} {:field_id              field-id
+                                                           :type                  :advanced
+                                                           :hash_key              "insert-check-matching"
+                                                           :values                [1 2]
+                                                           :human_readable_values ["a" "b"]}
+                     :model/FieldValues {bare-id :id} {:field_id field-id
+                                                       :type     :advanced
+                                                       :hash_key "insert-check-bare"
+                                                       :values   [1 2 3]}]
+        (is (=? {:values [1 2], :human_readable_values ["a" "b"]}
+                (t2/select-one :model/FieldValues :id matching-id)))
+        (is (=? {:values [1 2 3], :human_readable_values []}
+                (t2/select-one :model/FieldValues :id bare-id)))))))
+
 (deftest field-values-permissions-follow-field-test
   (mt/with-temp [:model/FieldValues fv {:field_id (mt/id :venues :price), :values [1 2 3 4]}]
     (testing "admin reads and writes FieldValues"

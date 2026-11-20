@@ -448,3 +448,38 @@
           (is (nil? (t2/select-one-fn :end_time model :id run-id)))
           (t2/update! model :id run-id {:status :succeeded :is_active nil})
           (is (some? (t2/select-one-fn :end_time model :id run-id))))))))
+
+(deftest runs-get-status-and-activity-on-insert-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformJob {job-id :id} {}]
+    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
+      (testing model
+        (testing "status defaults to started and the run is active"
+          (mt/with-temp [model {run-id :id} (assoc attributes :status nil :is_active nil)]
+            (is (=? {:status :started, :is_active true}
+                    (t2/select-one model :id run-id)))))
+        (testing "ended run is not active"
+          (mt/with-temp [model {run-id :id} (assoc attributes :status :failed :is_active true)]
+            (is (=? {:status :failed, :is_active nil}
+                    (t2/select-one model :id run-id)))))))))
+
+(deftest runs-lose-activity-when-they-end-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformJob {job-id :id} {}]
+    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
+      (testing model
+        (mt/with-temp [model {run-id :id} attributes]
+          (t2/update! model :id run-id {:status :canceling})
+          (is (true? (t2/select-one-fn :is_active model :id run-id)))
+          (t2/update! model :id run-id {:status :canceled})
+          (is (=? {:status :canceled, :is_active nil}
+                  (t2/select-one model :id run-id))))))))
+
+(deftest ended-run-drops-cancelation-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformRun {run-id :id} (get (started-run-attributes transform-id nil) :model/TransformRun)]
+    (t2/insert! :model/TransformRunCancelation {:run_id run-id})
+    (t2/update! :model/TransformRun :id run-id {:status :canceling})
+    (is (t2/exists? :model/TransformRunCancelation :run_id run-id))
+    (t2/update! :model/TransformRun :id run-id {:status :canceled})
+    (is (not (t2/exists? :model/TransformRunCancelation :run_id run-id)))))

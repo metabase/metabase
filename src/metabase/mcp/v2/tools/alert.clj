@@ -363,7 +363,7 @@
     (let [updated (notification.api/update-notification!
                    id
                    (cond-> {:payload_type  :notification/card
-                            :payload       (select-keys payload [:card_id :send_condition :send_once])
+                            :payload       (select-keys payload [:send_condition :send_once])
                             :subscriptions (:subscriptions existing)
                             :handlers      (:handlers existing)}
                      (some? active) (assoc :active (boolean active))

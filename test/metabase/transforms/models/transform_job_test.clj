@@ -141,3 +141,15 @@
                               (api/update-check job {:name "renamed"})))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
                               (api/create-check :model/TransformJob {:tag_ids [(:id tag)]})))))))
+
+(deftest built-in-type-kept-unless-definition-changes-test
+  (mt/with-temp [:model/TransformJob job {:name "default"
+                                          :schedule "0 0 0 * * ?"
+                                          :built_in_type "daily"}]
+    (let [built-in-type #(t2/select-one-fn :built_in_type :model/TransformJob :id (:id job))]
+      (testing "flipping active keeps the job built-in"
+        (t2/update! :model/TransformJob :id (:id job) {:active false})
+        (is (= :daily (some-> (built-in-type) keyword))))
+      (testing "changing its schedule makes it no longer built-in"
+        (t2/update! :model/TransformJob :id (:id job) {:schedule "0 0 1 * * ?"})
+        (is (nil? (built-in-type)))))))

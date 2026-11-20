@@ -60,15 +60,12 @@
   "Create a channel"
   [_route-params
    _query-params
-   {channel-name :name, :as body} :- (channel-body-schema
-                                      [[:name        ms/NonBlankString]
-                                       [:description {:optional true} [:maybe ms/NonBlankString]]
-                                       [:type        ChannelType]
-                                       [:active      {:optional true} [:maybe {:default true} :boolean]]])]
+   body :- (channel-body-schema
+            [[:name        ms/NonBlankString]
+             [:description {:optional true} [:maybe ms/NonBlankString]]
+             [:type        ChannelType]
+             [:active      {:optional true} [:maybe {:default true} :boolean]]])]
   (api/create-check :model/Channel body)
-  (when (channel.db/channel-name-exists? channel-name)
-    (throw (ex-info "Channel with that name already exists" {:status-code 409
-                                                             :errors      {:name "Channel with that name already exists"}})))
   (channel.db/insert-channel! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -33,9 +33,10 @@
       (or 0)))
 
 (t2/define-before-insert :model/PulseCard
-  [{:keys [position pulse_id] :as pulse-card}]
+  [{:keys [position pulse_id format_rows] :as pulse-card}]
   (cond-> pulse-card
-    (nil? position) (assoc :position (next-position-for pulse_id))))
+    (nil? position)    (assoc :position (next-position-for pulse_id))
+    (nil? format_rows) (assoc :format_rows true)))
 
 (def ^:private NewPulseCard
   [:map {:closed true}
@@ -54,14 +55,14 @@
   [new-pulse-cards :- [:sequential NewPulseCard]]
   (pulse.db/insert-pulse-cards!
    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
-     {:card_id           card_id
-      :pulse_id          pulse_id
-      :dashboard_card_id dashboard_card_id
-      :position          position
-      :include_csv       (boolean include_csv)
-      :include_xls       (boolean include_xls)
-      :format_rows       (boolean format_rows)
-      :pivot_results     (boolean pivot_results)})))
+     (cond-> {:card_id           card_id
+              :pulse_id          pulse_id
+              :dashboard_card_id dashboard_card_id
+              :include_csv       (boolean include_csv)
+              :include_xls       (boolean include_xls)
+              :format_rows       format_rows
+              :pivot_results     (boolean pivot_results)}
+       (some? position) (assoc :position position)))))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

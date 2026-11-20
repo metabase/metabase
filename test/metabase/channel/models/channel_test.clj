@@ -10,6 +10,7 @@
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -233,3 +234,34 @@
       (mt/with-test-user :crowberto
         (is (true? (api/create-check :model/Channel {})))
         (is (= (:id channel) (:id (api/write-check channel))))))))
+
+(deftest channel-name-is-unique-test
+  (mt/with-temp [:model/Channel {first-id :id} (assoc notification.tu/default-can-connect-channel :name "Channel one")
+                 :model/Channel _              (assoc notification.tu/default-can-connect-channel :name "Channel two")]
+    (testing "Insert with a taken name is refused with a 409"
+      (is (= 409 (:status-code (ex-data (try (t2/insert! :model/Channel (assoc notification.tu/default-can-connect-channel :name "Channel two"))
+                                             (catch Exception e e)))))))
+    (testing "Rename to a taken name is refused with a 409"
+      (is (= 409 (:status-code (ex-data (try (t2/update! :model/Channel :id first-id {:name "Channel two"})
+                                             (catch Exception e e))))))
+      (is (= "Channel one" (t2/select-one-fn :name :model/Channel :id first-id))))
+    (testing "Keeping the own name is allowed"
+      (is (= 1 (t2/update! :model/Channel :id first-id {:name "Channel one" :description "Same name"}))))))
+
+(deftest deactivate-channel-is-atomic-test
+  (mt/with-empty-h2-app-db!
+    (let [{user-id :id} (t2/insert-returning-instance! :model/User {:email "user@example.com" :first_name "Test" :last_name "User" :password "password"})
+          {id :id}      (t2/insert-returning-instance! :model/Channel notification.tu/default-can-connect-channel)
+          {pulse-id :id} (t2/insert-returning-instance! :model/Pulse {:name "Test pulse" :creator_id user-id})
+          {pc-id :id}   (t2/insert-returning-instance! :model/PulseChannel {:pulse_id     pulse-id
+                                                                            :channel_id   id
+                                                                            :channel_type "http"
+                                                                            :schedule_type "daily"
+                                                                            :schedule_hour 8
+                                                                            :details       {}
+                                                                            :enabled      true})]
+      (mt/with-dynamic-fn-redefs [u/truncate (fn [& _] (throw (ex-info "Rename failed" {})))]
+        (is (thrown? Exception (t2/update! :model/Channel :id id {:active false}))))
+      (testing "Pulse channels and active flag are untouched after a failure"
+        (is (t2/exists? :model/PulseChannel :id pc-id))
+        (is (true? (t2/select-one-fn :active :model/Channel :id id)))))))

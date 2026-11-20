@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -22,6 +23,25 @@
   {:database_details (mi/transform-encrypted-json "workspace_database.database_details")
    :input_schemas    mi/transform-json
    :status           mi/transform-keyword})
+
+(def ^:private pinned-columns
+  "The columns of a WorkspaceDatabase that cannot change once it is past `:unprovisioned`."
+  #{:input_schemas :database_id :workspace_id})
+
+(t2/define-before-update :model/WorkspaceDatabase
+  [wsd]
+  (when (and (some pinned-columns (keys (t2/changes wsd)))
+             (not= :unprovisioned (keyword (:status (t2/original wsd)))))
+    (throw (ex-info (tru "Cannot modify a workspace_database that is not :unprovisioned")
+                    {:status-code 409
+                     :database_id (:database_id (t2/original wsd))})))
+  wsd)
+
+(t2/define-before-insert :model/WorkspaceDatabase
+  [wsd]
+  (merge {:database_details {}
+          :output_namespace ""}
+         wsd))
 
 ;;; --------------------------------------- Permission predicates ---------------------------------------
 ;;;

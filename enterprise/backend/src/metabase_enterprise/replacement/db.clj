@@ -38,6 +38,11 @@
   [run :- ::replacement.schema/replacement-run.update]
   (t2/insert-returning-instance! :model/ReplacementRun run))
 
+(mu/defn delete-run!
+  "Delete the ReplacementRun with `run-id`."
+  [run-id :- ms/PositiveInt]
+  (t2/delete! :model/ReplacementRun :id run-id))
+
 (mu/defn update-run!
   "Apply `changes` to the ReplacementRun with `run-id`, returning the number updated."
   [run-id  :- ms/PositiveInt
@@ -57,10 +62,9 @@
   (t2/update! :model/ReplacementRun
               :is_active true
               :start_time [:< (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- age) unit)]
-              {:status    :timeout
-               :is_active nil
-               :end_time  :%now
-               :message   "Timed out by metabase"}))
+              {:status   :timeout
+               :end_time :%now
+               :message  "Timed out by metabase"}))
 
 (mu/defn row
   "The row of `model` with `id`, or nil."

@@ -4,6 +4,7 @@
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,10 +18,25 @@
 (def ^:private terminal-statuses
   #{:succeeded :failed :canceled :timeout})
 
+(defn- active-flag
+  "The `is_active` of a run with `status`: true while it is started, nil otherwise, so the unique index allows one."
+  [status]
+  (when (= :started (keyword status))
+    true))
+
+(t2/define-before-insert :model/ReplacementRun
+  [run]
+  (assoc run :is_active (active-flag (:status run))))
+
 (t2/define-before-update :model/ReplacementRun
   [run]
   (let [changes (t2/changes run)]
+    (when (and (contains? changes :is_active) (not (contains? changes :status)))
+      (throw (ex-info (tru "A replacement run''s active flag is computed from its status.") {:status-code 400})))
     (cond-> run
+      (contains? changes :status)
+      (assoc :is_active (active-flag (:status changes)))
+
       (and (contains? terminal-statuses (keyword (:status changes))) (not (contains? changes :end_time)))
       (assoc :end_time (mi/now)))))
 
@@ -38,15 +54,13 @@
                                :target_entity_id   target-id
                                :user_id            user-id
                                :status             :pending
-                               :is_active          nil
                                :progress           0.0}))
 
 (defn start-run!
   "Mark the active run as started."
   [run-id]
   (replacement.db/update-run! run-id
-                              {:status    :started
-                               :is_active true}))
+                              {:status :started}))
 
 (defn update-progress!
   "Update progress on the active run."
@@ -57,25 +71,22 @@
   "Mark the active run as succeeded."
   [run-id]
   (replacement.db/update-active-run! run-id
-                                     {:status    :succeeded
-                                      :progress  1.0
-                                      :is_active nil}))
+                                     {:status   :succeeded
+                                      :progress 1.0}))
 
 (defn fail-run!
   "Mark the active run as failed."
   [run-id message]
   (replacement.db/update-active-run! run-id
-                                     {:status    :failed
-                                      :is_active nil
-                                      :message   message}))
+                                     {:status  :failed
+                                      :message message}))
 
 (defn cancel-run!
   "Mark the active run as canceled."
   [run-id]
   (replacement.db/update-active-run! run-id
-                                     {:status    :canceled
-                                      :is_active nil
-                                      :message   "Canceled by user"}))
+                                     {:status  :canceled
+                                      :message "Canceled by user"}))
 
 (defn timeout-old-runs!
   "Time out all active runs older than the specified age."

@@ -30,7 +30,9 @@
 
 (t2/define-before-insert :model/PythonLibrary
   [library]
-  (update library :path normalize-path))
+  (-> library
+      (update :path normalize-path)
+      (assoc :is_default (str/blank? (:source library)))))
 
 (t2/define-before-update :model/PythonLibrary
   [library]
@@ -56,8 +58,7 @@
 ;;; ---------------------------------------------------- Library -----------------------------------------------------
 
 (def builtin-entity-id
-  "The entity_id of the built-in common.py PythonLibrary created by migration.
-   Used to protect it from deletion during remote-sync import."
+  "The entity_id of the built-in common.py PythonLibrary created by migration, which a new common.py row reuses."
   "cWWH9qJPvHNB3rP2vLZrK")
 
 (defn get-python-library-by-path
@@ -70,7 +71,7 @@
   [path source]
   (let [normalized-path (normalize-path path)
         id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
+                         normalized-path source {:entity_id builtin-entity-id})
         library         (transforms-python.db/python-library id)]
     library))
 

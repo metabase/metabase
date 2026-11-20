@@ -9,17 +9,26 @@
 
 (set! *warn-on-reflection* true)
 
+(defn check-no-active-run
+  "Throws a 409 when another source replacement run is active."
+  []
+  (when (replacement-run/active-run)
+    (throw (ex-info "A source replacement is already running" {:status-code 409}))))
+
 (defn execute-async!
   "Start an async source replacement run. Inserts a run record, launches `work-fn` in a
    virtual thread, and returns the run record immediately.
 
    `work-fn` receives a single argument implementing `IRunnerProgress`.
 
-   Throws 409 if another run is already active."
+   Throws 409 if another run is already active, including one that started at the same time."
   [work-fn progress]
-  (when (replacement-run/active-run)
-    (throw (ex-info "A source replacement is already running" {:status-code 409})))
-  (replacement.protocols/start-run! progress)
+  (check-no-active-run)
+  (try
+    (replacement.protocols/start-run! progress)
+    (catch Throwable e
+      (check-no-active-run)
+      (throw e)))
   (u.jvm/in-virtual-thread*
    (try
      (work-fn progress)

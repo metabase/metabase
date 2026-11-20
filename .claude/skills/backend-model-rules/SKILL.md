@@ -21,12 +21,31 @@ the user-facing ones. Put a rule every writer must obey in a hook and a rule onl
 | Reads another entity's column that cannot change | hooks of the referring model |
 | Reads another entity's column that can change | freeze it, cascade from it, or check at use (below) |
 | Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change` for `archived`, else `before-update` / `before-delete` |
+| Reads a property of a Database, Table or Field the row refers to, on a model SerDes can import | the write function in `<module>/write.clj`; never a hook (the SerDes rule, below) |
+| Needs the warehouse, SQL parsing, the network, or is best-effort | the write function in `<module>/write.clj`; never a hook |
+| Sends mail | an explicit call from the entry point or the write function; never a hook or a lifecycle consumer |
 | Shapes a request (required key, friendly message, status order) | the write function or endpoint |
 
-A rule is an invariant only if every stored row satisfies it and no sanctioned writer needs an exception. If stored
-rows break it, a data migration fixes them first (rename duplicates, rewrite a legacy shape) or the rule is a request
-check on the write path. If a sanctioned writer must be exempt (remote-sync pull on a read-only instance, the audit
-loader), the rule is a permission check.
+A hook holds only a true invariant: a rule that holds for every writer with no exception, does not depend on who is
+acting, and needs nothing outside the app DB. It is enforced on new rows and on changed data: on insert, and on update
+only for the columns in `(t2/changes row)`, so stored rows that break it are left alone and need no migration. If a
+sanctioned writer must be exempt (remote-sync pull on a read-only instance, the audit loader), the rule is a permission
+check. If a sanctioned writer legitimately breaks it (a SerDes import of a row the endpoint would refuse, a remote-sync
+pull that deletes a built-in row), it is not an invariant: it is a check in the write function, and the other writers
+are accepted as they are.
+
+**The SerDes rule.** A model SerDes can import never checks, in a hook, a property of a Database, Table or Field it
+refers to: an import creates those as stubs and sync fills them in later. A stub does carry its real place in the
+schema (a Field's `table_id`, a Table's `db_id`), so a hook may check that a referenced row exists and which Table or
+Database it belongs to, as Dimension checks that its target Field is in the same Database. What a stub lacks is
+everything sync fills in: types, semantic type, visibility, activity, values. A model SerDes cannot import (data
+permissions) may read those too.
+
+**Simple and complex entities.** For most models the hooks are the whole story: a plain `t2/insert!`, `t2/update!` or
+`t2/delete!` is a complete write, and SerDes imports with plain t2. An entity whose write needs more than hooks can
+hold (checks that are not invariants, several tables, warehouse work, mail) gets a `<module>/write.clj` whose functions
+(`create-x!`, `update-x!`, `upsert-x!`) do the full write: the checks, the statements through `<module>/db.clj`, the
+follow-up work. Entry points call it; hooks still hold that entity's invariants for every other writer.
 
 ## Hooks
 
@@ -41,7 +60,16 @@ that needs the row as stored.
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.
 - Never read the current user (`api/*current-user-id*`, `mi/superuser?`, a permission call) or branch on which writer
-  is calling (SerDes import, sync, an endpoint).
+  is calling (SerDes import, sync, an endpoint). A hook may read an instance setting. A check that needs an override
+  a caller binds is a permission check, not an invariant.
+- Never call the warehouse, parse SQL, use the network or send mail. A driver method that only asks the driver about
+  itself (a feature flag) is fine.
+- `before-insert` fills column defaults (constants, or values derived from the row). A hook never normalizes input: a
+  `t2/deftransforms` column transform may, the entry points and the SerDes schema do. A default that depends on the
+  user (owner = creator) is the entry point's.
+- A hook computes derived columns and throws on an invalid combination of the caller's columns. It never silently
+  changes one caller column to fix another.
+- Toucan's `before-update` and `before-delete` each add a SELECT per call. That cost is normally fine.
 - Hold an invariant whatever the premium token says: a `defenterprise` function a hook calls is `:feature :none`.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not those of its own statement,
   so a writer whose rows depend on each other writes them in separate statements, dependency first. A check that
@@ -92,22 +120,26 @@ that needs the row as stored.
 
 **A plain `t2/insert!`, `t2/update!` or `t2/delete!` on `:model/X` does the right thing, whoever calls it.** People
 write `(t2/insert! :model/Card ...)` in a `<module>/db.clj` function and expect a correct Card. So nothing a row needs
-may live in a function that wraps the write: there is no `create-card!` that differs from the insert in `db.clj`.
-Existing wrappers that still do more are known gaps being removed over time; do not copy them.
+may live in a function that wraps the write of a simple entity: its invariants are in its hooks. A complex entity
+has one `<module>/write.clj` whose functions do the full write for the entry points (see "Simple and complex
+entities"); a plain write of it still obeys its invariants, and skips only what is not one. Other wrappers that still
+do more are known gaps being removed over time; do not copy them.
 
 What a writer used to do in such a function has one of these homes:
 
 | It | Home |
 |---|---|
-| fills a default (`parameters []`, `type :question`) | the entity schema in `<module>/schema.clj` that every entry point decodes with |
+| fills a default (`parameters []`, `type :question`) | `before-insert`, so every writer gets it; a default that depends on the user is the entry point's |
 | normalizes a value (a query, keywords, a legacy shape) | the same schema; the API, SerDes, MCP and the tools decode their input with it, and nothing normalizes after that |
 | checks what the row alone answers | the same schema |
 | checks against the database, derives a column, keeps other rows in step (a dashboard question gets its dashcard, positions in a collection are reconciled) | the model's hooks |
 | reacts to the write (revision, audit row, search index, dependencies) | a consumer of the model's events, through its spec |
 | asks whether this user may do it | `mi/can-create?` / `mi/can-update?`, called by the entry point with `api/create-check` / `api/update-check` |
+| checks what is not an invariant (a referenced Table's property on an importable model, a best-effort or warehouse check, a rule a sanctioned writer breaks), or sends mail | `<module>/write.clj`, called by every user-facing entry point |
 | serves only an entry point (the API computes result metadata for a new card and waits for it briefly; a request key that is no column; the shape of the response) | that entry point: `api.clj`, or a `<module>/<name>.clj` that `api.clj` calls when the block stands on its own |
 
-- A model file has no public write function. `<module>/db.clj` holds the statements, each a plain call through the
+- A model file has no public write function. `<module>/write.clj`, when the entity has one, holds no statements of
+  its own. `<module>/db.clj` holds the statements, each a plain call through the
   model, named for what it does; a state change of a row the product owns (a run starts, a task ends) is one of them.
 - An entry point parses and decodes the request with the schema, loads the row with `api/check-404`, calls
   `api/update-check` with the changes (or `api/create-check` with the whole new row), calls the `db.clj` function, and

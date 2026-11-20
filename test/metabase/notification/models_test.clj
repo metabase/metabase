@@ -98,6 +98,17 @@
     (is (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "0 * * * * ? *")))
     (is (not (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "not a cron"))))))
 
+(deftest notification-card-id-is-frozen-test
+  (notification.tu/with-card-notification [notification {}]
+    (mt/with-temp [:model/Card {other-card-id :id} {}]
+      (let [{payload-id :id card-id :card_id} (:payload notification)]
+        (testing "Changing card_id is refused"
+          (is (= 400 (:status-code (ex-data (try (t2/update! :model/NotificationCard :id payload-id {:card_id other-card-id})
+                                                 (catch Exception e e))))))
+          (is (= card-id (t2/select-one-fn :card_id :model/NotificationCard :id payload-id))))
+        (testing "Writing the same card_id and other columns is allowed"
+          (is (= 1 (t2/update! :model/NotificationCard :id payload-id {:card_id card-id :send_once true}))))))))
+
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
     (notification.tu/with-card-notification [notification {}]

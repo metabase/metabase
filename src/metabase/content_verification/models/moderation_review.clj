@@ -96,7 +96,7 @@
 
 (defmethod mi/can-create? :model/ModerationReview
   [_model _review]
-  (root-collection-permission-at-least? :read-and-write))
+  (boolean (mi/superuser?)))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

@@ -20,10 +20,10 @@
        [:moderated_item_id   ms/PositiveInt]
        [:moderated_item_type moderation/moderated-item-types]
        [:status              {:optional true} [:maybe moderation/Statuses]]]]
-  (api/check-superuser)
   (let [review-data {:text                text
                      :moderated_item_id   moderated_item_id
                      :moderated_item_type moderated_item_type
                      :moderator_id        api/*current-user-id*
                      :status              status}]
+    (api/create-check :model/ModerationReview review-data)
     (moderation/create-review! review-data)))
