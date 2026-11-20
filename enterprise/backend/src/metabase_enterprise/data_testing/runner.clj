@@ -336,12 +336,13 @@
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
   message renders them as.
 
-  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
-  rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
-  discarding it."
+  Throws the run's typed refusals — an archived or untestable subject, an untestable driver, SQL that will not parse,
+  a test the validator rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for
+  the plan and discarding it."
   [subject-type                         :- ::data-testing.subject/subject-type
    subject                              :- ::data-testing.subject/subject
    {:keys [inputs expectations now]}    :- ::definition]
+  (data-testing.subject/check-not-archived subject-type subject)
   (let [{:keys [database compiled output-tables output-token output-label]}
         (subject-plan subject-type subject inputs now)
         driver         (keyword (:engine database))

@@ -2,6 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
@@ -246,11 +248,43 @@
   []
   (premium-features/assert-has-feature :transforms-testing (tru "Transforms Testing")))
 
+(defn validates-edit?
+  "Whether an edit that sets the keys `edited-keys` of a saved test, whose subject `subject-key` names, is checked as
+  a new test would be: it sets the subject, or one of the [[data-testing.runner/definition-keys]]."
+  [subject-key edited-keys]
+  (boolean (some (set (cons subject-key data-testing.runner/definition-keys)) edited-keys)))
+
+(defn- comparable
+  "`v` as compared for a revert: a moment as its instant, since the app DB can read back another offset."
+  [v]
+  (cond-> v
+    (instance? java.time.OffsetDateTime v) t/instant))
+
+(defn reverted-keys
+  "The keys of `snapshot` whose values a revert of the saved test `current` to `snapshot` changes."
+  [current snapshot]
+  (into []
+        (remove #(= (comparable (get current %)) (comparable (get snapshot %))))
+        (keys snapshot)))
+
 (defn- revert-transform-test!
+  [id _user-id snapshot]
+  (update-transform-test! id (select-keys snapshot revision-columns)))
+
+(defn- check-revert
+  "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
+  refused."
   [id _user-id snapshot]
   (check-revert-available)
   ;; A revision written before tests had `now` has no `:now`; the test then read the real clock.
-  (update-transform-test! id (merge {:now nil} (select-keys snapshot revision-columns))))
+  (let [snapshot (merge {:now nil} snapshot)]
+    (when (validates-edit? :transform_id (reverted-keys (data-testing.db/transform-test id) snapshot))
+      (data-testing.errors/refusing
+       "transform-test"
+       #(data-testing.runner/validate-test :transform
+                                           (data-testing.db/transform (:transform_id snapshot))
+                                           (data-testing.runner/test-definition snapshot))))
+    snapshot))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -278,10 +312,11 @@
    :synced-filter-clause data-testing.db/synced-transform-tests-clause})
 
 (defmethod revisions/spec :model/TransformTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-transform-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-transform-test!})
 
 (defmethod audit/spec :model/TransformTest [_model]
   {:track          [:transform_id :name :description :now]

@@ -76,6 +76,12 @@
      :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
                              (lib/= 1 1))}))
 
+(defn empty-segment-definition!
+  "Stores an empty definition on the segment `segment-id`, which the model refuses to save but older segments still
+  have."
+  [segment-id]
+  (t2/query-one {:update :segment :set {:definition "{}"} :where [:= :id segment-id]}))
+
 (defmacro with-transforms-enabled
   "Body with `features` licensed and the transforms setting on."
   [features & body]

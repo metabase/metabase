@@ -2,9 +2,13 @@
   "`:model/SegmentTest`: a saved test of one segment."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.subject :as data-testing.subject]
+   [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -19,6 +23,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/SegmentTest [_model] :segment_test)
 
@@ -91,13 +97,6 @@
   (and (mi/can-write? instance)
        (can-save-test? (:segment_id changes (:segment_id instance)))))
 
-(defmethod data-testing.test-type/spec :segment [_test-type]
-  {:model      :model/SegmentTest
-   :run-topics {:start   :event/segment-test-run-start
-                :timeout :event/segment-test-run-timeout}
-   :subject    #(data-testing.db/segment (:segment_id %))
-   :can-run?   can-run?})
-
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-segment-test! :- ::data-testing.schema/segment-test
@@ -127,6 +126,44 @@
   [segment-id]
   (data-testing.db/delete-segment-tests! segment-id))
 
+;;; -------------------------------------------------- Validation --------------------------------------------------
+
+(mu/defn testable-segment :- [:maybe :map]
+  "The Segment with `segment-id`, or nil when there is none. Throws a typed refusal when there is no query to test (see
+  [[data-testing.subject.segment/check-testable]])."
+  [segment-id :- ::lib.schema.id/segment]
+  (doto (data-testing.db/segment segment-id)
+    (data-testing.subject.segment/check-testable)))
+
+(mu/defn validate-test :- :nil
+  "Throws the typed refusal of a test of the Segment `segment-id` with the inputs and expectations of `definition`
+  that could not run."
+  [segment-id :- ::lib.schema.id/segment
+   definition :- ::data-testing.runner/definition]
+  (data-testing.runner/validate-test :segment (testable-segment segment-id) definition))
+
+(mu/defn check-edit :- :nil
+  "Throws the typed refusal of an edit that sets the keys `edited-keys` of a segment test and leaves it as `edited`. An
+  edit that sets the segment or what a run reads is refused as a new test like `edited` would be. Any other edit is
+  refused when the segment is archived."
+  [edited      :- [:map [:segment_id ::lib.schema.id/segment]]
+   edited-keys :- [:sequential :keyword]]
+  (if (data-testing.models/validates-edit? :segment_id edited-keys)
+    (validate-test (:segment_id edited) (data-testing.runner/test-definition edited))
+    (let [segment (data-testing.db/segment (:segment_id edited))]
+      ;; A new test of an archived segment with no query is refused for having no query; so is this edit.
+      (when (:archived segment)
+        (data-testing.subject.segment/check-testable segment))
+      (data-testing.subject/check-not-archived :segment segment))))
+
+(defmethod data-testing.test-type/spec :segment [_test-type]
+  {:model      :model/SegmentTest
+   :run-topics {:start   :event/segment-test-run-start
+                :timeout :event/segment-test-run-timeout}
+   ;; A suite records a typed refusal of the subject as the member's refusal.
+   :subject    #(testable-segment (:segment_id %))
+   :can-run?   can-run?})
+
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
 (def ^:private revision-columns
@@ -134,8 +171,16 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (data-testing.models/check-revert-available)
   (update-segment-test! id (select-keys snapshot revision-columns)))
+
+(defn- check-revert
+  "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
+  [id _user-id snapshot]
+  (data-testing.models/check-revert-available)
+  (data-testing.errors/refusing
+   "segment-test"
+   #(check-edit snapshot (data-testing.models/reverted-keys (data-testing.db/segment-test id) snapshot)))
+  snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -162,10 +207,11 @@
    :synced-filter-clause data-testing.db/synced-segment-tests-clause})
 
 (defmethod revisions/spec :model/SegmentTest [_model]
-  {:track     revision-columns
-   :skip      [:creator_id :entity_id]
-   :authorize :snapshot
-   :revert!   revert-segment-test!})
+  {:track         revision-columns
+   :skip          [:creator_id :entity_id]
+   :authorize     :snapshot
+   :before-revert check-revert
+   :revert!       revert-segment-test!})
 
 (defmethod audit/spec :model/SegmentTest [_model]
   {:track          [:segment_id :name :description]
