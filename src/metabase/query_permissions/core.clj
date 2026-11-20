@@ -23,7 +23,6 @@
   perms-exception
   query->resolved-source-ids
   query->source-ids
-  query->source-table-ids
   required-perms-for-query
   resolved-source-ids-transform
   ResolvedSourceIds
