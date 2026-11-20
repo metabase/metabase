@@ -858,7 +858,7 @@
                                      (u/format-plural recipient-count "recipient"))
                                 " with no recipients")
                               ", which used " (str/join ", " (map filter-label parameters))))
-        {readable true
+        {readable   true
          unreadable false} (group-by (comp boolean :readable?) subscriptions)
         {broken true
          caused false}     (group-by (comp boolean :already-broken?) readable)

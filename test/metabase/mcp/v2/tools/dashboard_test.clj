@@ -484,21 +484,21 @@
 (deftest unreadable-archived-subscription-is-only-counted-test
   (testing "a subscription the caller can't read adds to the count and is left out of the list"
     (mt/with-fake-inbox
-      (mt/with-temp [:model/Dashboard    dash           {:name       "Sales"
-                                                         :parameters [{:id   "gone"
-                                                                       :name "Gone"
-                                                                       :slug "gone"
-                                                                       :type "category"}]}
-                     :model/Pulse        {own :id}      {:dashboard_id (:id dash)
-                                                         :creator_id   (mt/user->id :rasta)
-                                                         :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
-                     :model/Pulse        {other :id}    {:dashboard_id (:id dash)
-                                                         :creator_id   (mt/user->id :crowberto)
-                                                         :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}
-                     :model/PulseChannel _              {:channel_type :slack
-                                                         :pulse_id     other
-                                                         :details      {:channel "#private"}
-                                                         :enabled      true}]
+      (mt/with-temp [:model/Dashboard    dash        {:name       "Sales"
+                                                      :parameters [{:id   "gone"
+                                                                    :name "Gone"
+                                                                    :slug "gone"
+                                                                    :type "category"}]}
+                     :model/Pulse        {own :id}   {:dashboard_id (:id dash)
+                                                      :creator_id   (mt/user->id :rasta)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse        {other :id} {:dashboard_id (:id dash)
+                                                      :creator_id   (mt/user->id :crowberto)
+                                                      :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}
+                     :model/PulseChannel _           {:channel_type :slack
+                                                      :pulse_id     other
+                                                      :details      {:channel "#private"}
+                                                      :enabled      true}]
         (is (=? {:archived_subscriptions      [{:id own, :creator "Rasta Toucan"}]
                  :archived_subscription_count 2}
                 (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"

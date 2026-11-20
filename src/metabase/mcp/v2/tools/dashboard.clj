@@ -206,13 +206,13 @@
          {:keys [pushed-dashcard-ids dropped-connections archived-subscriptions]} :effects} written
         dropped    (visible-connections stored dash dropped-connections)
         ;; Unreadable subscriptions only add to the count.
-        archived   (into [] (comp (filter :readable?) (map archived-subscription-row)) archived-subscriptions)]
+        listed     (into [] (comp (filter :readable?) (map archived-subscription-row)) archived-subscriptions)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
-                          (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
-                          (seq dropped)             (assoc :dropped_connections dropped)
-                          (seq archived)               (assoc :archived_subscriptions archived)
+                          (seq pushed-dashcard-ids)    (assoc :pushed_dashcard_ids pushed-dashcard-ids)
+                          (seq dropped)                (assoc :dropped_connections dropped)
+                          (seq listed)                 (assoc :archived_subscriptions listed)
                           (seq archived-subscriptions) (assoc :archived_subscription_count
                                                               (count archived-subscriptions)))
                         ;; A token that can't read the dashboard back still learns that subscriptions were archived.
