@@ -1,28 +1,31 @@
 (ns metabase-enterprise.data-testing.runner
   "Orchestrates a test run over the module's separated concerns. Callers hand the runner the saved subject, and the
-  saved test to run or the inputs and expectations to validate; the runner owns the connection lifecycle, hands
+  saved test to run or the test definition to validate; the runner owns the connection lifecycle, hands
   ordinary arguments to each concern (no marshaled plan object), and owns the HTTP decisions.
 
     subject      — app-db: the subject's database and its query compiled to SQL, one method per subject type
     compile      — pure: referenced tables (once), then rewrites to temp tables
     validator    — pure: may this test run? every read faked, every rewritten query on temp tables
     executor     — the one place warehouse I/O lives: create/drop temp tables, run read-backs
-    expectations — check each expectation against the output temp table (via executor)
+    expectations — check each expectation against the output temp table, or the input temp tables after a write
+                   (via executor)
 
   Flow — compile the subject once, then thread that one result so the guard and the rewrite agree:
 
     subject-plan (app-db)     : the database, the subject's SQL, the names of its output
-      → referenced tables (pure): the tables the SQL reads
+      → referenced tables (pure): the tables the SQL reads or writes
       → name + rewrite (pure)   : a temp table per input, and the source reading them
       → validate (pure)         : reject a test that is incomplete, or whose queries would still
                                   read a real table
-      → run (executor)          : one connection — create the temp tables, check, drop on exit
+      → run (executor)          : one connection — create the temp tables, run the subject into its
+                                  output table or, when it modifies tables, run its write statement; check; drop on exit
 
   Only the app database is read before the connection, and no warehouse I/O happens; a bad test is rejected before any
   temp table exists."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [malli.core :as mc]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
@@ -72,23 +75,37 @@
    [:driver       :keyword]
    [:database     ::lib.schema.metadata/database]
    [:input->table [:map-of ::data-testing.schema/input :string]]
-   [:output-table :string]
+   [:output-table [:maybe :string]]
    [:labels       ::labels]
    [:replacements ::data-testing.compile/table-replacements]
    [:output-token [:maybe ::data-testing.compile/output-token]]
-   [:compiled     ::data-testing.compile/compiled-query]])
+   [:compiled     ::data-testing.compile/compiled-query]
+   [:writes?      :boolean]])
+
+(mr/def ::definition
+  "What a run reads of a test."
+  ::data-testing.subject/definition)
+
+(def definition-keys
+  "The keys of a [[::definition]]."
+  (mc/explicit-keys (mr/resolve-schema ::definition)))
+
+(defn test-definition
+  "The [[::definition]] of `test-fields`, a saved test or a request body that may hold other keys."
+  [test-fields]
+  (select-keys test-fields definition-keys))
 
 (mr/def ::built-expectation
   "An expectation built by [[expectations.protocol/build]]."
   [:fn #(satisfies? expectations.protocol/Expectation %)])
 
 (mr/def ::context
-  "What an expectation is given to build its queries and read their answers: the driver, the output temp table and
-  the columns it has, the input-table replacements, the token its SQL may write for the output, and the expectation's
-  own temp tables and their columns once they exist."
+  "What an expectation is given to build its queries and read their answers: the driver; the output temp table and
+  the columns it has, or a nil table and no columns when the subject modifies tables; the input-table replacements;
+  the token its SQL may write for the output; and the expectation's own temp tables and their columns once they exist."
   [:map {:closed true}
    [:driver             :keyword]
-   [:output-table       :string]
+   [:output-table       [:maybe :string]]
    [:replacements       ::data-testing.compile/table-replacements]
    [:output-token       {:optional true} [:maybe ::data-testing.compile/output-token]]
    [:output-columns     {:optional true} [:sequential ::data-testing.schema/result-column]]
@@ -123,11 +140,11 @@
 
 (mu/defn- table-labels :- ::labels
   "The map from each temp table of the run to the name the author wrote, for rewriting warehouse error messages that
-  can only speak in generated names."
-  [output-label :- :string
+  can only speak in generated names. `output-table` and `output-label` are nil when the subject has no output."
+  [output-label :- [:maybe :string]
    input->table :- [:map-of ::data-testing.schema/input :string]
-   output-table :- :string]
-  (into {output-table output-label}
+   output-table :- [:maybe :string]]
+  (into (if output-table {output-table output-label} {})
         (map (fn [[input table]] [table (data-testing.validator/table-label (:table input))]))
         input->table))
 
@@ -214,7 +231,7 @@
             (concat used-fields returned-fields)))))
 
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
-  "The tables the subject's `sql` reads, or a refusal naming what would not parse."
+  "The tables the subject's `sql` reads or writes, or a refusal naming what would not parse."
   [driver :- :keyword
    sql    :- :string]
   (try
@@ -260,6 +277,18 @@
               {:columns       (vec repeated)
                :response/keys #{:columns}})))))
 
+(mu/defn- run-subject! :- :any
+  "Call `thunk`, which runs the query under test, and return what `thunk` returns. Rethrows a failure of `thunk` as
+  `::data-testing.errors/query-failed`, quoting the warehouse with each temp table of `labels` named as the author
+  wrote it."
+  [labels :- ::labels
+   thunk  :- ifn?]
+  ;; The query names only the inputs' temp tables, which hold the test's fixture data.
+  (try
+    (thunk)
+    (catch Exception e
+      (rethrow-remapped e ::data-testing.errors/query-failed (tru "The query under test failed to run:") labels))))
+
 (mu/defn- create-output! :- :nil
   "Run the query under test on `conn`, materializing its output as the temp table `output-table`. Throws
   `::data-testing.errors/duplicate-output-columns` when two columns of the output share a name, as `driver` compares
@@ -269,61 +298,40 @@
    output-table :- :string
    compiled     :- ::data-testing.compile/compiled-query
    labels       :- ::labels]
-  (let [run-query! (fn [thunk]
-                     (try
-                       (thunk)
-                       (catch Exception e
-                         (rethrow-remapped e ::data-testing.errors/query-failed
-                                           (tru "The query under test failed to run:")
-                                           labels))))]
-    ;; The query reads only the inputs' temp tables, which hold the test's fixture data.
-    (check-output-columns!
-     driver
-     (:columns (run-query! #(data-testing.executor/run-query driver conn
-                                                             [(:query compiled) (vec (:params compiled))] 1))))
-    (run-query! #(data-testing.executor/create-temp-table! driver conn output-table compiled))
-    nil))
+  (check-output-columns!
+   driver
+   (:columns (run-subject! labels #(data-testing.executor/run-query driver conn
+                                                                    [(:query compiled) (vec (:params compiled))] 1))))
+  (run-subject! labels #(data-testing.executor/create-temp-table! driver conn output-table compiled))
+  nil)
 
 (mu/defn- check-expectations :- [:sequential ::data-testing.schema/expectation-result]
-  "The result of every expectation against the output temp table, passing ones included."
+  "The result of every expectation, passing ones included, against the output temp table, or against the input temp
+  tables when the subject modifies tables."
   [driver       :- :keyword
    conn         :- ::data-testing.schema/connection
    context      :- ::context
    expectations :- ::data-testing.schema/expectations
    labels       :- ::labels]
-  (let [context (assoc context
-                       :output-columns
-                       (data-testing.executor/table-columns driver conn (:output-table context)))]
+  (let [context (cond-> context
+                  (:output-table context)
+                  (assoc :output-columns
+                         (data-testing.executor/table-columns driver conn (:output-table context))))]
     (mapv (fn [expectation]
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
-(def definition-keys
-  "The keys of a test that a run reads: its inputs, its expectations, and the moment its subject reads as the current
-  time."
-  [:inputs :expectations :now])
-
-(mr/def ::definition
-  "What a run reads of a test."
-  [:select-keys ::data-testing.schema/test.definition definition-keys])
-
-(defn test-definition
-  "The [[::definition]] of `test-fields`, a saved test or a request body that may hold other keys."
-  [test-fields]
-  (select-keys test-fields definition-keys))
-
 (mu/defn- subject-plan :- ::data-testing.subject/subject-plan
-  "The [[data-testing.subject/subject-plan]] of `subject` for a test with `inputs`, compiled with `now` standing for the
-  current time when it is given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the subject's
-  SQL includes SQL written by hand."
-  [subject-type :- ::data-testing.subject/subject-type
-   subject      :- ::data-testing.subject/subject
-   inputs       :- ::data-testing.schema/inputs
-   now          :- [:maybe ::data-testing.schema/now]]
+  "The [[data-testing.subject/subject-plan]] of `subject` for a test with `definition`, compiled with its `now` standing
+  for the current time when it is given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the
+  subject's SQL includes SQL written by hand."
+  [subject-type                 :- ::data-testing.subject/subject-type
+   subject                      :- ::data-testing.subject/subject
+   {:keys [now] :as definition} :- ::definition]
   (if-not now
-    (data-testing.subject/subject-plan subject-type subject inputs)
+    (data-testing.subject/subject-plan subject-type subject definition)
     (let [plan (qp.timezone/with-pinned-now (t/instant now)
-                 (data-testing.subject/subject-plan subject-type subject inputs))]
+                 (data-testing.subject/subject-plan subject-type subject definition))]
       (when (:native? plan)
         (throw (data-testing.errors/ex
                 ::data-testing.errors/now-on-native-sql
@@ -333,24 +341,27 @@
 
 (mu/defn- validated-plan :- ::plan
   "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
-  against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
-  message renders them as.
+  against, a temp table per input and one for its output unless it modifies tables, the subject's query rewritten to
+  read them, and the labels a message renders them as.
 
-  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
-  rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
-  discarding it."
-  [subject-type                         :- ::data-testing.subject/subject-type
-   subject                              :- ::data-testing.subject/subject
-   {:keys [inputs expectations now]}    :- ::definition]
-  (let [{:keys [database compiled output-tables output-token output-label]}
-        (subject-plan subject-type subject inputs now)
+  Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a write that is not one
+  INSERT, UPDATE or DELETE, returns rows or cannot be checked, a test the validator rejects — so a caller that only
+  wants the answer to \"could this run?\" gets it by asking for the plan and discarding it."
+  [subject-type                                 :- ::data-testing.subject/subject-type
+   subject                                      :- ::data-testing.subject/subject
+   {:keys [inputs expectations] :as definition} :- ::definition]
+  (let [{:keys [database compiled writes? output-tables output-token output-label]}
+        (subject-plan subject-type subject definition)
+        writes?        (boolean writes?)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
-        output-table   (driver/temp-table-name driver)
+        output-table   (when-not writes? (driver/temp-table-name driver))
         default-schema (:default-schema database)
-        replacements   (data-testing.compile/table-replacements output-tables input->table output-table default-schema)
-        rewritten      (data-testing.compile/rewrite-query driver compiled replacements)]
+        replacements   (data-testing.compile/table-replacements (or output-tables []) input->table output-table
+                                                                default-schema)
+        rewritten      (cond-> (data-testing.compile/rewrite-query driver compiled replacements)
+                         writes? (update :query #(data-testing.validator/ensure-single-write driver %)))]
     (data-testing.validator/validate
      driver
      {:inputs              inputs
@@ -360,6 +371,7 @@
       :replacements        replacements
       :output-token        output-token
       :default-schema      default-schema
+      :writes?             writes?
       :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
                                          (:query compiled))
       :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
@@ -370,11 +382,12 @@
      :labels       (table-labels output-label input->table output-table)
      :replacements replacements
      :output-token output-token
-     :compiled     rewritten}))
+     :compiled     rewritten
+     :writes?      writes?}))
 
 (mu/defn validate-test :- :nil
-  "Refuse a test of `subject`, a `subject-type`, with the inputs, expectations and `now` of `definition` unless it could
-  run: the same checks a run makes, up to but not including the connection.
+  "Refuse a test of `subject`, a `subject-type`, with `definition` unless it could run: the same checks a run makes,
+  up to but not including the connection.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
@@ -392,8 +405,8 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
-  (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
+   {test-id :id :keys [expectations] :as saved-test}        :- ::data-testing.schema/saved-test]
+  (let [{:keys [driver database input->table output-table labels replacements output-token compiled writes?]}
         (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
@@ -404,7 +417,9 @@
              (fn [conn]
                (try
                  (create-inputs! driver conn input->table labels)
-                 (create-output! driver conn output-table compiled labels)
+                 (if writes?
+                   (run-subject! labels #(data-testing.executor/execute! driver conn compiled))
+                   (create-output! driver conn output-table compiled labels))
                  (let [results (check-expectations driver conn
                                                    {:driver driver
                                                     :output-table output-table
@@ -415,7 +430,7 @@
                     :expectations results
                     :tables       labels})
                  (finally
-                   (doseq [table (cons output-table (vals input->table))]
+                   (doseq [table (cond->> (vals input->table) output-table (cons output-table))]
                      (data-testing.executor/drop-temp-table! driver conn table))))))]
         (reset! final-status (:status result))
         result)

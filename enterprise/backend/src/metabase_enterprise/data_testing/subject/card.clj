@@ -28,9 +28,10 @@
          sort)))
 
 (mu/defmethod data-testing.subject/subject-plan :card :- ::data-testing.subject/subject-plan
-  [_subject-type
+  [subject-type
    {query :dataset_query card-name :name} :- ::data-testing.subject/card
-   _inputs]
+   definition                             :- ::data-testing.subject/definition]
+  (data-testing.subject/ensure-no-parameters subject-type definition)
   ;; The database first: a database that cannot run tests is refused before the query compiles.
   (let [database (data-testing.subject/testable-database (lib/database-id query))]
     (data-testing.subject/query-output-plan

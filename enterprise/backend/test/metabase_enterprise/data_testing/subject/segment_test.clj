@@ -42,7 +42,8 @@
 (defn- plan-of
   "The subject plan of the saved Segment `segment-id` for a test with `inputs`."
   [segment-id inputs]
-  (data-testing.subject/subject-plan :segment (t2/select-one :model/Segment :id segment-id) inputs))
+  (data-testing.subject/subject-plan :segment (t2/select-one :model/Segment :id segment-id)
+                                     {:inputs inputs :expectations []}))
 
 (deftest segment-plan-test
   (mt/test-driver :h2

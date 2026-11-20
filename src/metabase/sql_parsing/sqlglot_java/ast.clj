@@ -173,6 +173,12 @@
   ^Expr [^String name]
   (identifier name (not (Dialect/safeIdentifier name))))
 
+(defn normalize-identifier
+  "The identifier node `identifier` with its name as `dialect` resolves it, changed in place
+  (`Dialect.get_or_raise(dialect).normalize_identifier(identifier)`)."
+  ^Expr [^Expr identifier ^String dialect]
+  (.normalizeIdentifier (Dialect/getOrRaise dialect) identifier))
+
 (defn to-table
   "`table-name` as a Table node (`exp.to_table`): parsed in the default dialect, or, when that fails, split on dots
   into catalog, schema and table identifiers."

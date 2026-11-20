@@ -44,12 +44,10 @@
                            :name "no null ids"
                            :sql  (str "SELECT * FROM " schema ".people_summary WHERE id IS NULL")}
                   ;; The output row is (1, 'abc'), so this one differs in a single cell.
-                  [int-type text-type] (data-testing.test-util/cast-types)
                   failing {:type    "equals"
                            :name    "output"
                            :format  "rows"
-                           :columns [{:name "id" :cast_type int-type}
-                                     {:name "name" :cast_type text-type}]
+                           :columns (data-testing.test-util/id+name)
                            :rows    [{"id" 1 "name" "xyz"}]}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform-test"
                                                 {:transform_id transform-id

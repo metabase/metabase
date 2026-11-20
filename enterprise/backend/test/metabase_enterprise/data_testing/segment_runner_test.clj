@@ -15,12 +15,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- table-ref
-  "The `{:schema :name}` of a test-data table, as compiled SQL references it."
-  [table-key]
-  (let [{:keys [schema name]} (lib.metadata/table (mt/metadata-provider) (mt/id table-key))]
-    {:schema schema :name name}))
-
 (defn- field-name
   "The name the warehouse gives the field `people`.`field-key`."
   [field-key]
@@ -32,7 +26,7 @@
   (let [[int-type text-type] (data-testing.test-util/cast-types)
         id                   (field-name :id)
         source               (field-name :source)]
-    {:table   (table-ref :people)
+    {:table   (data-testing.test-util/table-ref :people)
      :format  :rows
      :columns [{:name id :cast_type int-type} {:name source :cast_type text-type}]
      :rows    (mapv (fn [[i s]] {id i source s}) rows)}))
@@ -92,7 +86,7 @@
       (testing "an input given as rows needs to declare only the columns the query reads"
         (is (nil? (run! (people-rows three-people)))))
       (testing "an input given as SQL declares no columns, so the output has every column of the table, and its SQL must give them all"
-        (let [{:keys [error-type message]} (run! {:table  (table-ref :people)
+        (let [{:keys [error-type message]} (run! {:table  (data-testing.test-util/table-ref :people)
                                                   :format :sql
                                                   :sql    (str "SELECT 1 AS " (field-name :id) ", 'Google' AS "
                                                                (field-name :source))})]
@@ -151,12 +145,12 @@
                                  (:name (lib.metadata/field mp (mt/id table-key field-key))))
           [order-id product-id product-pk category]
           [(column :orders :id) (column :orders :product_id) (column :products :id) (column :products :category)]
-          orders               {:table   (table-ref :orders)
+          orders               {:table   (data-testing.test-util/table-ref :orders)
                                 :format  :rows
                                 :columns [{:name order-id :cast_type int-type} {:name product-id :cast_type int-type}]
                                 :rows    [{order-id 1 product-id 1} {order-id 2 product-id 2}]}
           products             (fn [column-names]
-                                 {:table   (table-ref :products)
+                                 {:table   (data-testing.test-util/table-ref :products)
                                   :format  :rows
                                   :columns (mapv (fn [n] {:name n :cast_type (if (= n product-pk) int-type text-type)})
                                                  column-names)
@@ -180,7 +174,7 @@
     (let [[int-type text-type] (data-testing.test-util/cast-types)
           input                (fn [& names+types]
                                  (let [columns (mapv (fn [[n t]] {:name n :cast_type t}) (partition 2 names+types))]
-                                   {:table   (table-ref :people)
+                                   {:table   (data-testing.test-util/table-ref :people)
                                     :format  :rows
                                     :columns columns
                                     :rows    [(zipmap (map :name columns) [1 "Google"])]}))
@@ -211,9 +205,9 @@
                                                                            []
                                                                            [{:type :empty :name "e" :sql "SELECT * FROM {{output}}"}]))]
         (is (= ::data-testing.errors/missing-inputs error-type))
-        (is (re-find (re-pattern (str "(?i)" (:name (table-ref :people)))) message))))
+        (is (re-find (re-pattern (str "(?i)" (:name (data-testing.test-util/table-ref :people)))) message))))
     (testing "Guard B: an expectation reading a real table is refused"
-      (let [{schema :schema table :name} (table-ref :orders)]
+      (let [{schema :schema table :name} (data-testing.test-util/table-ref :orders)]
         (is (= ::data-testing.errors/unremapped-reference
                (:error-type (data-testing.test-util/refusal #(run-segment-test!
                                                               (data-testing.test-util/from-google-segment)
