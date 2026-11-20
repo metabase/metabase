@@ -548,7 +548,7 @@ describe("ConversationDetailPage", () => {
       expect(blob.type).toBe("application/json");
       const text = await readBlobText(blob);
       expect(text).toMatch(
-        /^\{"format":"metabase\.metabot-conversation","version":1,"exported_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","metabase_version":"v1\.58\.0","conversation":/,
+        /^\{"format":"metabase\.metabot-conversation","version":1,"description":"(?:[^"\\]|\\.)+","exported_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","metabase_version":"v1\.58\.0","conversation":/,
       );
       expect(text.endsWith(`"conversation":${responseText}}`)).toBe(true);
       expect(() => JSON.parse(text)).not.toThrow();
