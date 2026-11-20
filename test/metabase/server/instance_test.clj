@@ -8,7 +8,7 @@
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
-   (java.util.concurrent CountDownLatch TimeUnit)
+   (java.util.concurrent CountDownLatch TimeUnit TimeoutException)
    (org.eclipse.jetty.server Server)))
 
 (set! *warn-on-reflection* true)
@@ -128,3 +128,22 @@
         (finally
           (.countDown finish)
           (.stop server))))))
+
+(deftest stop-server-fails-only-for-failures-besides-the-timeout-test
+  (testing "a stop timeout alone is logged, and one carrying another failure to stop is rethrown"
+    (let [;; a started server whose stop does the real work, then throws `e` as Jetty does when stopping fails
+          stop-throwing (fn [^Throwable e]
+                          (doto (proxy [Server] []
+                                  (doStop []
+                                    (proxy-super doStop)
+                                    (throw e)))
+                            (.start)))
+          stop-result   (fn [e]
+                          (try
+                            (#'server.instance/stop-server! (stop-throwing e))
+                            :returned
+                            (catch TimeoutException _ :threw)))]
+      (is (= {:timeout-only :returned, :with-handler-failure :threw}
+             {:timeout-only         (stop-result (TimeoutException.))
+              :with-handler-failure (stop-result (doto (TimeoutException.)
+                                                   (.addSuppressed (RuntimeException. "handler failed to stop"))))})))))
