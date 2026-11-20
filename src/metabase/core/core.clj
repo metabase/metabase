@@ -111,20 +111,20 @@
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
   (cond->
-   {:metabase.server.instance/server           #{:metabase.app-db.core/app-db
-                                                 :metabase.driver.sql-jdbc.connection/pools
-                                                 :metabase.tracing.core/otel-sdk}
+   {:metabase.server.instance/server        #{:metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.tracing.core/otel-sdk}
     ;; scheduled jobs run queries, record traces and keep their state in the app DB
-    :metabase.task.impl/scheduler              #{:metabase.app-db.core/app-db
-                                                 :metabase.driver.sql-jdbc.connection/pools
-                                                 :metabase.tracing.core/otel-sdk}
+    :metabase.task.impl/scheduler           #{:metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.tracing.core/otel-sdk}
     ;; the field-value listener runs warehouse queries, and the search listener records traces and writes the index
-    :metabase.queue-listener.core/listeners    #{:metabase.app-db.core/app-db
-                                                 :metabase.driver.sql-jdbc.connection/pools
-                                                 :metabase.tracing.core/otel-sdk}
+    :metabase.queue-listener.core/listeners #{:metabase.app-db.core/app-db
+                                              :metabase.driver.sql-jdbc.connection/pools
+                                              :metabase.tracing.core/otel-sdk}
     ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs
-    :metabase.mq.init/mq                       #{:metabase.app-db.core/app-db
-                                                 :metabase.task.impl/scheduler}}
+    :metabase.mq.init/mq                    #{:metabase.app-db.core/app-db
+                                              :metabase.task.impl/scheduler}}
     ;; an OSS classpath has no API key flush component to depend on
     config/ee-available? (assoc :metabase-enterprise.api-keys.usage/flush #{:metabase.app-db.core/app-db})))
 
@@ -191,7 +191,7 @@
    ;; after notifications, whose sends record traces and metrics while they drain
    ["shut down tracing"            #(tracing/shutdown!)]
    ["shut down analytics"          #(analytics.core/shutdown!)]
-   ;; waits up to 20 seconds for a migration this process is running
+   ;; waits, for a bounded time, for a migration this process is running
    ["release migration locks"      #(mdb/stop-app-db!)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
    ;; after the migration locks are released, since a component this halts could be one that release needs
