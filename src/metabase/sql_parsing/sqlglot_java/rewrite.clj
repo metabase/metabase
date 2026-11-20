@@ -225,7 +225,8 @@
         ;; A CTE name shadows a real table of the same name, so an unqualified reference to one declared in an
         ;; enclosing query names the CTE and is left alone.
         (when-not (and (nil? db) (empty? schema)
-                       (contains? (references/shadowing-cte-names table) (ast/lower table-name)))
+                       (contains? (references/shadowing-cte-names table dialect)
+                                  (references/resolved-name table dialect)))
           ;; The schema is "" when the reference has none, as in sqlglot, so it only matches a key without one
           ;; through the bare-table shape.
           (when-let [replacement (usable (find-table-replacement table-map db schema table-name
