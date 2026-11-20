@@ -10,7 +10,7 @@ import type { Query } from "./query/types";
 export type AnalysisState = {
   kind: ProductAnalyticsKind;
   /** A query on the event table, with the analysis's filters. */
-  query: Query;
+  base_query: Query;
   /** The `columnUniqueKey` of the query's column that identifies a person. */
   "columns.person": string;
   /** The `columnUniqueKey` of the query's column with each event's time. */

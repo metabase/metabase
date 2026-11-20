@@ -17,7 +17,7 @@
         created-at-field (column/column-unique-key (columns "Created At"))
         user-id-field (column/column-unique-key (columns "User ID"))
         analysis {:kind "habit"
-                  :query query
+                  :base_query query
                   :columns.person user-id-field
                   :columns.timestamp created-at-field
                   :habit.values "count" ; or "percent"

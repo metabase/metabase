@@ -54,7 +54,7 @@ export function getAnalysisState<K extends ProductAnalyticsKind>({
   const personColumn = getRoleColumn(tableQuery, table, "person");
   return {
     kind,
-    query: tableQuery,
+    base_query: tableQuery,
     "columns.person": Lib.columnUniqueKey(personColumn),
     "columns.timestamp": Lib.columnUniqueKey(timestampColumn),
     // TODO: pass `settings.date_range` once the planner parses date filter
