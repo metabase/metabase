@@ -132,9 +132,14 @@
 (defn- failure [problem]
   (ex-info (message problem) problem))
 
+(defn- repeated-ids
+  "IDs that occur more than once in `ids`, sorted."
+  [ids]
+  (->> ids frequencies (keep (fn [[id n]] (when (< 1 n) id))) (sort-by str) vec))
+
 (defn- scenario-problems [scenarios]
   (let [ids      (map :id scenarios)
-        repeated (->> ids frequencies (keep (fn [[id n]] (when (< 1 n) id))) (sort-by str) vec)
+        repeated (repeated-ids ids)
         invalid  (vec (remove #(and (string? %) (not (str/blank? %))) ids))]
     (when (or (seq repeated) (seq invalid))
       [{:type :scenario-ids, :repeated repeated, :invalid invalid}])))
@@ -142,7 +147,7 @@
 (defn- theme-problems [scenarios themes]
   (let [placed   (mapcat :scenarios themes)
         known    (set (map :id scenarios))
-        repeated (->> placed frequencies (keep (fn [[id n]] (when (< 1 n) id))) (sort-by str) vec)
+        repeated (repeated-ids placed)
         unknown  (vec (sort-by str (remove known placed)))
         missing  (vec (sort-by str (remove (set placed) known)))]
     (when (or (seq repeated) (seq unknown) (seq missing))
@@ -226,16 +231,14 @@
 
 (defn- distances [{:keys [vectors cutoff]} row query vector-hits]
   (let [query-vector (embedded vectors (str "query: " query))
-        result       (into (sorted-map)
-                           (for [[label doc] (:docs row)]
-                             [(name label) (cosine-distance query-vector (embedded vectors (document-text doc)))]))
-        within       (set (for [[label distance] result :when (<= distance cutoff)] (keyword label)))]
+        by-label     (update-vals (:docs row) #(cosine-distance query-vector (embedded vectors (document-text %))))
+        within       (set (for [[label distance] by-label :when (<= distance cutoff)] label))]
     (when-not (= within (set vector-hits))
       (throw (failure {:type     :vector-hits
                        :input    query
                        :expected (set vector-hits)
                        :actual   within})))
-    result))
+    (into (sorted-map) (update-keys by-label name))))
 
 (defn- labels [hits]
   (mapv name (sort hits)))
@@ -248,7 +251,7 @@
 
 (defn- engine-data [context row corpus engine]
   (let [{:keys [best typed]} (get-in row [:scores engine])
-        query (if (= corpus :translations) (get-in row [:specs engine :query]) (:query row))]
+        query                (if (= corpus :translations) (get-in row [:specs engine :query]) (:query row))]
     (cond-> {:id (name engine), :hits (labels (get-in row [:results engine]))}
       (= corpus :translations)
       (assoc :query      query
@@ -280,10 +283,10 @@
              :agreementGroups (stats/result-group-sizes (:results row))}
       (not same-query?)
       (assoc :scenarioNote (prose (:scenario-note row))
-             :kind (name (:kind row))
-             :correct (labels (:correct row))
-             :conforming (mapv name (stats/conforming-engines (:correct row) (:results row)))
-             :meanF1 (mean-f1 row)))))
+             :kind         (name (:kind row))
+             :correct      (labels (:correct row))
+             :conforming   (mapv name (stats/conforming-engines (:correct row) (:results row)))
+             :meanF1       (mean-f1 row)))))
 
 (defn- pair-data [summary]
   (mapv (fn [[left right :as pair]]
@@ -296,7 +299,7 @@
 (defn- summary-data [summary]
   (cond-> {:count    (:count summary)
            :allEqual (:all-equal summary)
-           :meanHits (update-vals (:mean-hits summary) double)
+           :meanHits (double-values (:mean-hits summary))
            :pairs    (pair-data summary)}
     (:scores summary)
     (assoc :scores (double-scores (:scores summary))

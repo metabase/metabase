@@ -33,17 +33,17 @@
 
 (defn expected-hybrid-hits
   "Expected union of the semantic keyword and vector arms."
-  [case]
-  (set/union (set (get-in case [:expect :semantic :keyword]))
-             (set (get-in case [:expect :semantic :vector]))))
+  [scenario]
+  (set/union (set (get-in scenario [:expect :semantic :keyword]))
+             (set (get-in scenario [:expect :semantic :vector]))))
 
 (defn comparison-spec
   "An engine's query and expected hits for `comparison`.
   Engines without an alternative keep the scenario's query and hits.
   Both semantic engines share the `:semantic` alternative, whose `:hits` are the vector arm."
-  [case comparison engine]
+  [scenario comparison engine]
   (let [semantic (get-in comparison [:alternatives :semantic])
-        spec     (condp = engine
+        spec     (case engine
                    :semantic-only          semantic
                    :semantic-with-fallback (when semantic
                                              {:query (:query semantic)
@@ -51,4 +51,4 @@
                                                        (:hits semantic)
                                                        (:fallback semantic))})
                    (get-in comparison [:alternatives engine]))]
-    (update (or spec {:query (:query case), :hits (expected-hits case engine)}) :hits set)))
+    (update (or spec {:query (:query scenario), :hits (expected-hits scenario engine)}) :hits set)))
