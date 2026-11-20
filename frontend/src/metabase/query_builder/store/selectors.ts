@@ -54,11 +54,13 @@ import type {
   TimelineEventsVisibility,
 } from "metabase-types/api";
 
-import { keepPivotColumnSplitOfChangedQuery } from "../actions/core/pivot-table";
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
 import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
-import { getQuestionWithDefaultVisualizationSettings } from "../utils/viz-settings";
+import {
+  getQuestionWithDefaultVisualizationSettings,
+  keepPivotColumnSplitOfChangedQuery,
+} from "../utils/viz-settings";
 
 import {
   getCard,
