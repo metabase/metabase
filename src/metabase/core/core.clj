@@ -371,6 +371,8 @@
 (defn- start-normally []
   (log/info "Starting Metabase in STANDALONE mode")
   (try
+    ;; before the web server, so a halt stops the recording after it; the call in [[init!*]] then does nothing
+    (perf/maybe-enable-monitoring!)
     ;; launch embedded webserver
     (let [server-routes (server/make-routes {:api        #'api-routes/routes
                                              :auth       #'auth-wrapper/routes

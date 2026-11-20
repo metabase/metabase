@@ -70,3 +70,14 @@
               (finally
                 (global-system/stop! later-component)
                 (global-system/stop! handle)))))))))
+
+(deftest stop-monitoring-stops-a-recording-left-by-a-failed-start-test
+  (testing "a start that throws after creating the recording registers nothing, but stopping still stops it"
+    (let [stops (atom 0)]
+      (global-system.tu/with-root @#'perf/recording-component nil
+        (mt/with-dynamic-fn-redefs [config/config-str     (constantly "true")
+                                    perf/start-recording! (fn [_] (throw (ex-info "save rate rejected" {})))
+                                    perf/stop-recording!  #(swap! stops inc)]
+          (perf/maybe-enable-monitoring!)
+          (perf/stop-monitoring!)
+          (is (= 1 @stops)))))))
