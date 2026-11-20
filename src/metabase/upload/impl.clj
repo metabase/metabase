@@ -543,13 +543,15 @@
           ;; assigns permissions, and it reads the data source to decide that the uploader -- already checked to
           ;; have unrestricted access to this schema (see `can-create-upload-error`) -- gets a table that inherits
           ;; the schema's permissions rather than failing safe to `:blocked` the way a sync-discovered table would
-          ;; (UXW-3217). `mark-table-upload!` below re-asserts it along with the other upload columns.
+          ;; (UXW-3217). Sync records the other upload columns along with it.
           table                   (sync/create-table! (driver.u/lib-database (:id db))
-                                                      {:name         table-name
-                                                       :schema       (not-empty schema)
-                                                       :display_name display-name
-                                                       :data_source  :upload})
-          _set_is_upload          (upload.db/mark-table-upload! (:id table))
+                                                      {:name           table-name
+                                                       :schema         (not-empty schema)
+                                                       :display_name   display-name
+                                                       :data_source    :upload
+                                                       :data_authority :authoritative
+                                                       :is_upload      true
+                                                       :is_writable    true})
           _sync                   (scan-and-sync-table! table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
@@ -892,7 +894,7 @@
     (driver.conn/with-write-connection
       (driver/drop-table! driver (:id database) table-name))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
-    (upload.db/deactivate-table! (:id table))
+    (sync/deactivate-table! (:id table))
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
     ;; the time of writing this sync isn't wired up to do anything with explicitly inactive tables, and rather
     ;; relies on their absence from the tables being described during the database sync itself.

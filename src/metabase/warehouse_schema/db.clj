@@ -315,6 +315,11 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/TableUserSettings :table_id table-id))
 
+(mu/defn tables-in-collections
+  "The `id` and `is_published` of the Tables in the Collections with `collection-ids`."
+  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
+  (t2/select [:model/Table :id :is_published] :collection_id [:in collection-ids]))
+
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]

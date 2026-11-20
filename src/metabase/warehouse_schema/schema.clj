@@ -223,6 +223,7 @@
    [:data_authority          {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:is_published            {:optional true} [:maybe :boolean]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:description_set         {:optional true} :boolean]
    [:visibility_type_set     {:optional true} :boolean]
    [:caveats_set             {:optional true} :boolean]
@@ -336,7 +337,7 @@
                                          :caveats :points_of_interest :show_in_getting_started :data_authority
                                          :data_source :owner_email :is_published :description_set
                                          :visibility_type_set :data_layer_set :data_source_set :collection_id
-                                         :owner_user_id :data_layer :table_id]]
+                                         :owner_user_id :data_layer :table_id :transform_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
 

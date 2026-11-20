@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -89,10 +90,21 @@
     (-> (merge settings completed)
         (with-set-flags completed explicit))))
 
+(def ^:private false-by-default-columns
+  "The user-settable Table columns whose false is their default, which a TableUserSettings holds no value in."
+  #{:is_published :show_in_getting_started})
+
+(defn- empty-value?
+  "Whether `settings` holds no user value in `column`."
+  [settings column]
+  (let [value (get settings column)]
+    (or (nil? value)
+        (and (false? value) (false-by-default-columns column)))))
+
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) user-settings/user-settable-table-columns)
+  (when (and (every? #(empty-value? settings %) user-settings/user-settable-table-columns)
              (not-any? #(get settings %) (vals user-settings/table-set-flags)))
     (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
   settings)
@@ -179,6 +191,12 @@
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
+(defmethod collection/unpublish-in-collections! :model/Table
+  [_model collection-ids]
+  (let [tables (warehouse-schema.db/tables-in-collections collection-ids)]
+    (upsert-table-user-settings-for-tables! (into #{} (map :id) tables) {:collection_id nil, :is_published false})
+    (into #{} (comp (filter :is_published) (map :id)) tables)))
+
 (defmethod events/spec :model/TableUserSettings
   [_model]
   {:create :event/table-user-settings-create
@@ -201,6 +219,7 @@
                          :data_layer_set      false
                          :data_source_set     false}
    :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :transform_id  (serialization/fk-transform :model/Transform)
                          :owner_user_id serialization/user-transform
                          :table_id      serialization/table-transform}
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths

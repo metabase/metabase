@@ -641,7 +641,8 @@
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "database"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-type "dashboard")))))
     (testing "filter by entity-id"
-      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :entity-id (:id db1))))))
+      (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs"
+                                             :entity-type "database" :entity-id (:id db1))))))
     (testing "filter by status"
       (is (= 2 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "success"))))
       (is (= 1 (:total (mt/user-http-request :crowberto :get 200 "task/runs" :status "failed")))))

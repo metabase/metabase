@@ -465,22 +465,6 @@
   [collection-id]
   (t2/select :model/Card :collection_id collection-id))
 
-(mu/defn published-table-ids-in-collections
-  "The IDs of the published Tables in the Collections with `collection-ids`."
-  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
-
-(mu/defn unpublish-tables-in-collections!
-  "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
-  returning the number updated."
-  [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (let [table-ids (published-table-ids-in-collections collection-ids)]
-    (when (seq table-ids)
-      (t2/update! :model/TableUserSettings :table_id [:in table-ids]
-                  {:collection_id nil, :is_published false}))
-    (t2/update! :model/Table {:collection_id [:in collection-ids]}
-                {:collection_id nil, :is_published false})))
-
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
