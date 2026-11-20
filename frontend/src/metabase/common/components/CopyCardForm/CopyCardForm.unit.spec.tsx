@@ -1,14 +1,28 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDatabasesEndpoints,
   setupGetCollectionEndpoint,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { CardType } from "metabase-types/api";
+import {
+  act,
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import type { CardType, Collection } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockCollectionItem,
   createMockDashboard,
   createMockDashboardTab,
 } from "metabase-types/api/mocks";
@@ -25,21 +39,29 @@ const FOO_DASH = createMockDashboard({
   ],
 });
 
+const FOO_COLLECTION = createMockCollection({ id: 1, name: "Foo Collection" });
+
 type SetupOpts = {
   initialValues?: Partial<CopyCardProperties>;
   model?: CardType;
+  collections?: Collection[];
 };
 
-function setup({ initialValues = {}, model = "question" }: SetupOpts = {}) {
+function setup({
+  initialValues = {},
+  model = "question",
+  collections = [FOO_COLLECTION],
+}: SetupOpts = {}) {
   const onSubmit = jest.fn((question) => Promise.resolve(question));
   const onSaved = jest.fn();
   const onCancel = jest.fn();
 
-  const fooCollection = createMockCollection({ id: 1, name: "Foo Collection" });
-
   setupDashboardEndpoints(FOO_DASH);
-  setupCollectionsEndpoints({ collections: [fooCollection] });
-  setupGetCollectionEndpoint(fooCollection);
+  setupCollectionsEndpoints({
+    collections,
+    rootCollection: createMockCollection(ROOT_COLLECTION),
+  });
+  collections.forEach((collection) => setupGetCollectionEndpoint(collection));
 
   renderWithProviders(
     <CopyCardForm
@@ -110,5 +132,125 @@ describe("CopyQuestionForm", () => {
     expect(
       screen.queryByText(/Which tab should this go on/),
     ).not.toBeInTheDocument();
+  });
+
+  describe("picking where to save the copy", () => {
+    const FIRST_COLLECTION_ID = 11;
+    const FIRST_COLLECTION = createMockCollection({
+      id: FIRST_COLLECTION_ID,
+      name: "First collection",
+      location: "/",
+      can_write: true,
+    });
+    const ROOT_ITEMS = [
+      createMockCollectionItem({
+        id: FIRST_COLLECTION_ID,
+        model: "collection",
+        name: FIRST_COLLECTION.name,
+        here: ["card"],
+        below: ["card"],
+        collection_id: null,
+        can_write: true,
+      }),
+      createMockCollectionItem({
+        id: 12,
+        model: "dashboard",
+        name: "Orders in a dashboard",
+        collection_id: null,
+        can_write: true,
+      }),
+    ];
+
+    afterEach(() => {
+      delete process.env.OVERSCAN;
+      jest.restoreAllMocks();
+    });
+
+    function setupPicker({ model }: { model: CardType }) {
+      // Renders every row of the virtualized collection picker in jsdom.
+      process.env.OVERSCAN = "20";
+      mockGetBoundingClientRect();
+      setupRecentViewsAndSelectionsEndpoints([], ["views", "selections"]);
+      setupDatabasesEndpoints([]);
+      [FOO_COLLECTION, FIRST_COLLECTION].forEach((collection) =>
+        setupCollectionItemsEndpoint({ collection, collectionItems: [] }),
+      );
+      // Like the backend, lists only the item types the request asks for.
+      fetchMock.get("path:/api/collection/root/items", (call) => {
+        const models = new URL(call.url).searchParams.getAll("models");
+        const data = ROOT_ITEMS.filter((item) => models.includes(item.model));
+        return { data, total: data.length, models, limit: null, offset: null };
+      });
+      fetchMock.get("path:/api/search", { data: [] });
+      fetchMock.get("path:/api/user/recipients", { data: [] });
+
+      return setup({
+        model,
+        collections: [FOO_COLLECTION, FIRST_COLLECTION],
+        initialValues: { name: "Orders - Duplicate", collection_id: null },
+      });
+    }
+
+    async function waitForRootItems() {
+      await waitFor(() =>
+        expect(
+          fetchMock.callHistory.called("path:/api/collection/root/items"),
+        ).toBe(true),
+      );
+      await act(() => fetchMock.callHistory.flush(true));
+    }
+
+    async function openPicker() {
+      await userEvent.click(
+        screen.getByLabelText(/Where do you want to save this/),
+      );
+      await waitForLoaderToBeRemoved();
+      return screen.findByTestId("entity-picker-modal");
+    }
+
+    it("lets a model be copied only to a collection", async () => {
+      const { onSubmit } = setupPicker({ model: "model" });
+
+      const picker = await openPicker();
+      expect(
+        await within(picker).findByText("First collection"),
+      ).toBeInTheDocument();
+      await waitForRootItems();
+      expect(
+        within(picker).queryByText("Orders in a dashboard"),
+      ).not.toBeInTheDocument();
+      expect(within(picker).getByText(/Select a collection$/)).toBeVisible();
+
+      await userEvent.click(within(picker).getByText("First collection"));
+      await userEvent.click(
+        within(picker).getByRole("button", { name: "Select this collection" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("entity-picker-modal"),
+        ).not.toBeInTheDocument(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Orders - Duplicate",
+          collection_id: FIRST_COLLECTION.id,
+        }),
+      );
+    });
+
+    it("lets a question be copied to a collection or a dashboard", async () => {
+      setupPicker({ model: "question" });
+
+      const picker = await openPicker();
+      expect(
+        await within(picker).findByText("Orders in a dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        within(picker).getByText(/Select a collection or dashboard$/),
+      ).toBeVisible();
+    });
   });
 });
