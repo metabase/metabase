@@ -712,7 +712,7 @@ function assertAnswered(
   alias: string,
   { type = "card", id, column, value }: AnsweredReference,
 ) {
-  cy.get<Interception[]>(`${alias}.all`).then((interceptions) => {
+  cy.get<Interception[]>(`${alias}.all`).should((interceptions) => {
     const results = interceptions.flatMap(({ response }) => {
       const body: GoalSourceResults | undefined = response?.body;
       const result: GoalSourceResult | undefined = body?.[type]?.[id];
