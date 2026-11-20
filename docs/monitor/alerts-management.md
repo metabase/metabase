@@ -7,20 +7,51 @@ redirect_from:
 
 # Alerts management
 
-The Alerts management page lists every [alert](../questions/alerts.md) in your Metabase. Use this page to find and fix failing or ownerless alerts. Alerts management doesn't include [dashboard subscriptions](../dashboards/subscriptions.md).
+_Monitor > Alerts management_
 
-Alerts management is only available to admins.
+![Alert management](./images/alert-management.png)
 
-To open Alerts management:
+Admins can use Alerts management to:
 
-1. Open [Monitor](./start.md).
-2. In the left sidebar, click **Alerts management**.
+- View and search all [question alerts](../questions/alerts.md) in their Metabase
+- Identify failed or orphaned alerts
+- Edit alerts, including changing the alert's owner
+- Delete alerts in bulk
 
-The page has three tabs:
+Alerts management doesn't include [dashboard subscriptions](../dashboards/subscriptions.md).
 
-- **All alerts**: Every alert in your Metabase.
-- **Failing**: Alerts whose last check or send attempt failed or was abandoned.
-- **Ownerless**: Alerts whose owner's account was deactivated. Metabase marks deactivated owners with a ghost icon.
+## See all alerts
+
+_Monitor > Alerts management_
+
+To see all alerts active in your Metabase instance, go to **Monitor > Alerts management**.
+
+
+You can:
+
+- Filter alerts by channel ([email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or [webhook](../configuring-metabase/webhooks.md)) or recipient.
+
+- See alerts that **failed** the last time they were ran.
+
+  Failed alerts view include both alerts that were attempted but failed (for example, because of a query error) and alerts that were abandoned and never attempted (for example, because the instance was restarting at the moment when the alert was scheduled).
+
+  To see the entire history of alert runs (not just the last attempt), go to [Monitor > Background tasks](./background-tasks.md) instead.
+
+- See **ownerless** alerts - alerts whose owner has been deactivated
+
+  This is helpful when you want to [mass-delete](#delete-alerts) alerts that are no longer relevant, or [change the owner](#change-alert-owners) to an active user.
+
+- See individual alert's properties and history.
+
+- [Delete alerts in bulk](#delete-alerts).
+
+- [Change alert owners in bulk](#change-alert-owners).
+
+If you want to get some analytics about your alerts (rather than manage them) - for example, you want to see how many alerts have failed per week, or which questions have the most number of alerts - use [Usage Analytics](../usage-and-performance-tools/usage-analytics.md) instead.
+
+To find a specific alert, search by question or owner. Click **Filter** to filter alerts by channel, last send attempt status, owner status, or email recipient.
+
+## Alert details
 
 For each alert, Metabase shows the:
 
@@ -33,20 +64,6 @@ For each alert, Metabase shows the:
 
 If a check or send attempt failed, Metabase displays an error icon next to the timestamp.
 
-To find a specific alert, search by question or owner. Click **Filter** to filter alerts by channel, last send attempt status, owner status, or email recipient.
-
-## Delete alerts or change owner
-
-To delete alerts or reassign them to a new owner:
-
-1. Select the checkbox next to each alert. To select all alerts, select the checkbox in the header row.
-2. In the action bar, click **Delete** or **Change owner**.
-3. If you click **Change owner**, select the new owner from the list.
-
-To deselect the alerts, click **Clear**.
-
-## Alert details
-
 To view more information about an alert, click on the alert's row to open the sidebar, which displays:
 
 - Error messages for failing alerts.
@@ -57,6 +74,30 @@ To view more information about an alert, click on the alert's row to open the si
 Use the up and down arrows at the top of the sidebar to move between alerts in the list.
 
 To edit the alert, click the **pencil** icon at the top of the sidebar.
+
+## Change alert owners
+
+The owner of an alert has the power to edit or delete the alert. Usually, the person who created the alert is also the alert's owner.
+
+Admins can change owners of alerts. This is useful, for example, if the original alert owner left the company, and you need to give some else the power to manage the alert.
+
+To change the owner for one or more alerts:
+
+1. Go to **Monitor > Alerts management**.
+2. Select the alerts whose owners you'd like to change.
+3. Click **Change owner** at the bottom of the screen.
+4. Assign a new owner.
+
+## Delete alerts
+
+![Bulk delete](./images/alerts-bulk.png)
+
+You can delete multiple alerts at once.
+
+1. Go to **Monitor > Alerts management**.
+2. Select the alerts you'd like to delete.
+3. Click **Delete** at the bottom of the screen.
+
 
 ## Further reading
 
