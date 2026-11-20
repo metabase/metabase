@@ -72,20 +72,15 @@ describe("scenarios > data apps > sandbox", { tags: ["@external"] }, () => {
           "ok: 200",
         );
 
-        // XHR is hard-blocked entirely — data apps are fetch-only. It can't opt out
-        // of following a redirect back to the instance, so it's never allowlisted
-        // like fetch: both blocked and allowed hosts are refused.
+        // XHR is hard-blocked entirely — data apps are fetch-only. That the
+        // block ignores allowed_hosts is covered in `sandbox.unit.spec.ts`.
         cy.findByTestId("blocked-xhr-result").should("contain", "blocked");
-        cy.findByTestId("allowed-xhr-result", { timeout: 30000 }).should(
-          "contain",
-          "blocked",
-        );
       });
     });
   });
 
   describe("isolation", () => {
-    it("serves the embed document with locked-down headers, renders the app in a sandboxed iframe, and keeps the app's CSS and JS globals inside it", () => {
+    it("serves the embed document with locked-down headers and keeps the app's CSS and JS globals inside it", () => {
       cy.request({
         url: `/embed/apps/${APP_NAME}`,
         followRedirect: false,
@@ -106,13 +101,8 @@ describe("scenarios > data apps > sandbox", { tags: ["@external"] }, () => {
         );
       });
 
+      // The iframe's `sandbox` tokens are asserted in `DataAppView.unit.spec.tsx`.
       H.openDataApp(APP_NAME);
-
-      cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`)
-        .should("have.attr", "sandbox")
-        .and("contain", "allow-scripts")
-        .and("not.contain", "allow-top-navigation")
-        .and("not.contain", "allow-popups-to-escape-sandbox");
 
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Isolation probe" }).should(
