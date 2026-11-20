@@ -214,7 +214,7 @@
 (deftest dimension-of-unsynced-table-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+      (mt/with-temp [:model/Collection        _           {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Collection        unsynced    {:name "Unsynced" :location "/"}
                      :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
                      :model/Table             elsewhere   {:db_id         (mt/id)
@@ -223,9 +223,8 @@
                                                            :collection_id (:id unsynced)}
                      :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
                      :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
-                     :model/TableUserSettings _           {:table_id      (:id unpublished)
-                                                           :is_published  false
-                                                           :collection_id (:id synced)}
+                     :model/TableUserSettings _           {:table_id     (:id unpublished)
+                                                           :is_published false}
                      :model/TableUserSettings _           {:table_id      (:id elsewhere)
                                                            :is_published  true
                                                            :collection_id (:id unsynced)}
