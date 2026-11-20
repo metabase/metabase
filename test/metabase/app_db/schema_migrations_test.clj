@@ -5471,3 +5471,26 @@
           (testing (name table)
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest metabot-collection-fk-test
+  (testing "puf9va sets to NULL the collection ids of missing collections, and puf9vb makes collection_id a foreign key set to NULL on delete"
+    (impl/test-migrations ["puf9va" "puf9vb"] [migrate!]
+      (let [insert-collection! (fn []
+                                 (t2/insert-returning-pk! :collection {:name      "Collection"
+                                                                       :slug      "collection"
+                                                                       :entity_id (u/generate-nano-id)
+                                                                       :location  "/"}))
+            insert-metabot!    (fn [collection-id]
+                                 (t2/insert-returning-pk! :metabot {:name          (str (random-uuid))
+                                                                    :entity_id     (u/generate-nano-id)
+                                                                    :collection_id collection-id
+                                                                    :created_at    :%now
+                                                                    :updated_at    :%now}))
+            live-id            (insert-collection!)
+            deleted-id         (insert-collection!)
+            _                  (t2/query {:delete-from :collection :where [:= :id deleted-id]})
+            metabot-ids        [(insert-metabot! live-id) (insert-metabot! deleted-id) (insert-metabot! nil)]]
+        (migrate!)
+        (is (= [live-id nil nil] (mapv #(t2/select-one-fn :collection_id :metabot :id %) metabot-ids)))
+        (t2/query {:delete-from :collection :where [:= :id live-id]})
+        (is (nil? (t2/select-one-fn :collection_id :metabot :id (first metabot-ids))))))))

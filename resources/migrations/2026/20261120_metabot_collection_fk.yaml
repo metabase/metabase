@@ -1,0 +1,46 @@
+## Make metabot.collection_id a foreign key to collection, set to NULL on delete, after setting to NULL the ids of
+## collections that no longer exist. MySQL, MariaDB, and H2 index a foreign key's column themselves; Postgres doesn't,
+## so the index is Postgres-only.
+
+databaseChangeLog:
+  - changeSet:
+      id: puf9va
+      author: ranquild
+      comment: Set to NULL the metabot.collection_id values of collections that do not exist
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabot SET collection_id = NULL
+              WHERE collection_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM collection WHERE collection.id = metabot.collection_id)
+      rollback: []
+
+  - changeSet:
+      id: puf9vb
+      author: ranquild
+      comment: Add a foreign key from metabot.collection_id to collection.id, set to NULL on delete
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_metabot_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: puf9vc
+      author: ranquild
+      comment: Index metabot.collection_id (PostgreSQL)
+      dbms: postgresql
+      changes:
+        - createIndex:
+            tableName: metabot
+            indexName: idx_metabot_collection_id
+            columns:
+              - column:
+                  name: collection_id
+      rollback:
+        - dropIndex:
+            tableName: metabot
+            indexName: idx_metabot_collection_id
