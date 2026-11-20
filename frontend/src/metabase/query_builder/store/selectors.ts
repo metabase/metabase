@@ -54,6 +54,7 @@ import type {
   TimelineEventsVisibility,
 } from "metabase-types/api";
 
+import { keepPivotColumnSplitOfChangedQuery } from "../actions/core/pivot-table";
 import { cleanIndexFlags } from "../model-indexes/actions";
 import { getWritableColumnProperties } from "../utils";
 import { isLegacyTimelineEventsSource } from "../utils/timeline-events";
@@ -1085,9 +1086,10 @@ export const getSubmittableQuestion = (
   let submittableQuestion = question;
 
   if (series) {
-    submittableQuestion = getQuestionWithDefaultVisualizationSettings(
-      submittableQuestion,
-      series,
+    submittableQuestion = keepPivotColumnSplitOfChangedQuery(
+      question,
+      getQuestionWithDefaultVisualizationSettings(submittableQuestion, series),
+      rawSeries,
     );
   }
 

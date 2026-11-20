@@ -30,6 +30,25 @@ export function hasResultsOfQuestion(
   );
 }
 
+/**
+ * `questionWithDefaults` is `question` with the default settings that `rawSeries` gives. When
+ * `rawSeries` holds the results of an earlier query, those defaults take the columns that only
+ * the question's query has out of the pivot table's column split. This gives the column split
+ * of `question` back in that case.
+ */
+export function keepPivotColumnSplitOfChangedQuery(
+  question: Question,
+  questionWithDefaults: Question,
+  rawSeries: Series | null | undefined,
+) {
+  const key = "pivot_table.column_split";
+  const columnSplit = question.settings()[key];
+  if (!columnSplit || hasResultsOfQuestion(question, rawSeries)) {
+    return questionWithDefaults;
+  }
+  return questionWithDefaults.updateSettings({ [key]: columnSplit });
+}
+
 export function computeQuestionPivotTable(options: Options) {
   const { currentQuestion, rawSeries } = options;
 
