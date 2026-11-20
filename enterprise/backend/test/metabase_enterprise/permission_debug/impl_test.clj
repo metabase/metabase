@@ -754,3 +754,50 @@
       (testing "a value picked in the preview makes it load"
         (is (= {:decision "allow" :data {:card-count 1 :blocked-card-count 0}}
                (select-keys (query-check (:id dashboard) :dashboard/query {"tenant" "acme"}) [:decision :data])))))))
+
+(deftest debug-permissions-card-query-routing-without-access-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}
+                   :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "tenant"}]
+      (testing "a person with no access to the router database is told they have none, not to set its attribute"
+        (let [{:keys [decision data]} (query-check (:id card) :card/query)]
+          (is (= "denied" decision))
+          (is (= ["test-data (h2).PUBLIC.VENUES"] (keys (:blocked-tables data))))
+          (is (not (contains? data :missing-database-attributes)))))
+      (testing "a member of a group with access and no value for the attribute is still told to set it"
+        (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
+          (perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+          (is (= {:decision "denied"
+                  :data     {:missing-database-attributes [{:attribute "tenant" :database-id (mt/id) :kind "routing"}]}}
+                 (select-keys (query-check (:id card) :card/query) [:decision :data]))))))))
+
+(deftest debug-permissions-dashboard-query-routing-without-access-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard dashboard {:collection_id (:id collection)}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id card)}
+                   :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "tenant"}]
+      (testing "the card fails for lack of access, with no attribute advice on it or on the dashboard"
+        (let [{:keys [decision data]} (query-check (:id dashboard) :dashboard/query)]
+          (is (= "denied" decision))
+          (is (= [{:id (:id card) :name (:name card) :tables ["VENUES"]}] (:blocked-cards data)))
+          (is (not (contains? data :missing-database-attributes))))))))
+
+(deftest debug-permissions-card-query-impersonation-without-access-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}
+                   :model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}
+                   :model/ConnectionImpersonation    _ {:group_id group-id :db_id (mt/id) :attribute "role"}]
+      (testing "a person whose impersonation group has no Can view on the database is told they have no access, not to set its attribute"
+        (let [{:keys [decision data]} (query-check (:id card) :card/query)]
+          (is (= "denied" decision))
+          (is (= ["test-data (h2).PUBLIC.VENUES"] (keys (:blocked-tables data))))
+          (is (not (contains? data :missing-database-attributes))))))))

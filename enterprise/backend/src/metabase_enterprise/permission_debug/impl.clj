@@ -374,6 +374,14 @@
                        :when       (and attribute (nil? (get attributes attribute)))]
                    {:attribute attribute :database-id database-id :kind "routing"})))))
 
+(defn- queryable-database-ids
+  "The ids of the Databases whose impersonation and routing policies can fail a query on `card`: none when the person is
+  blocked from a table it reads (`blocked-by-group`), since they'd be refused first."
+  [card blocked-by-group]
+  (if (seq blocked-by-group)
+    #{}
+    #{(:database_id card)}))
+
 (defn- card-table-ids
   [card]
   (-> card :dataset_query qp.preprocess/preprocess lib/all-source-table-ids set))
@@ -392,8 +400,9 @@
          rules            (database-rules user-id sandboxes-by-table attributes)
          conflicting      (conflicting-table-ids sandboxes-by-table table-ids)
          missing          (missing-attributes sandboxes-by-table attributes table-ids)
-         conflicting-dbs  (conflicting-databases rules #{(:database_id card)})
-         missing-dbs      (missing-database-attributes rules #{(:database_id card)})
+         database-ids     (queryable-database-ids card blocked-by-group)
+         conflicting-dbs  (conflicting-databases rules database-ids)
+         missing-dbs      (missing-database-attributes rules database-ids)
          fails?           (or (seq blocked-by-group) (seq conflicting) (seq missing) (seq conflicting-dbs) (seq missing-dbs))]
      {:decision    (if fails? "denied" "allow")
       :segment     #{}
@@ -468,10 +477,11 @@
          missing-by-card    (for [card cards]
                               (missing-attributes sandboxes-by-table attributes (card-table-ids card)))
          rules              (database-rules user-id sandboxes-by-table attributes)
-         conflicting-dbs-by-card (for [card cards]
-                                   (conflicting-databases rules #{(:database_id card)}))
-         missing-dbs-by-card     (for [card cards]
-                                   (missing-database-attributes rules #{(:database_id card)}))
+         database-ids-by-card    (map queryable-database-ids cards blocked-by-card)
+         conflicting-dbs-by-card (for [database-ids database-ids-by-card]
+                                   (conflicting-databases rules database-ids))
+         missing-dbs-by-card     (for [database-ids database-ids-by-card]
+                                   (missing-database-attributes rules database-ids))
          failing-cards    (for [[card blocked conflicting missing conflicting-dbs missing-dbs]
                                 (map vector cards blocked-by-card conflicts-by-card missing-by-card
                                      conflicting-dbs-by-card missing-dbs-by-card)
