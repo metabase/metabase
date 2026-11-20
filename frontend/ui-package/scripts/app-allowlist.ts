@@ -1,6 +1,8 @@
-import { resolve } from "path";
+import { relative, resolve, sep } from "path";
 
-const src = resolve(import.meta.dirname, "../../src");
+const packageDir = resolve(import.meta.dirname, "..");
+export const repoRoot = resolve(packageDir, "../..");
+const src = resolve(repoRoot, "frontend/src");
 
 // The only app files /ui may import (exact specifier -> file). Anything else fails the build.
 export const APP_ALLOWLIST: Record<string, string> = {
@@ -22,3 +24,32 @@ export const APP_ALLOWLIST: Record<string, string> = {
   "metabase/css/core/layout.module.css": `${src}/metabase/css/core/layout.module.css`,
   "metabase/css/core/z-index.module.css": `${src}/metabase/css/core/z-index.module.css`,
 };
+
+// Imported relatively by an allowlisted file, so it has no specifier of its own.
+export const APP_RELATIVE_ONLY_FILES: readonly string[] = [
+  `${src}/metabase/dayjs/parse-zone-plugin.ts`,
+];
+
+const ALLOWED_DIRS = [`${src}/metabase/ui/`, `${packageDir}/src/`];
+const ALLOWED_FILES = new Set([
+  ...Object.values(APP_ALLOWLIST),
+  ...APP_RELATIVE_ONLY_FILES,
+]);
+
+export const isAllowedSourceFile = (file: string) =>
+  ALLOWED_FILES.has(file) || ALLOWED_DIRS.some((dir) => file.startsWith(dir));
+
+// App code lives under frontend/ or enterprise/; node_modules, virtual ids and the like do not.
+export function isAppCodeFile(file: string) {
+  const parts = relative(repoRoot, file).split(sep);
+  return (
+    (parts[0] === "frontend" || parts[0] === "enterprise") &&
+    !parts.includes("node_modules")
+  );
+}
+
+// Strips a query string (`?component`); undefined for virtual ids and non-absolute ids.
+export function toSourcePath(id: string) {
+  const path = id.split("?")[0];
+  return path.startsWith("/") ? path : undefined;
+}

@@ -14,7 +14,12 @@ import { basename, relative, resolve } from "path";
 import { type Plugin, defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 
-import { APP_ALLOWLIST } from "./scripts/app-allowlist";
+import {
+  APP_ALLOWLIST,
+  isAllowedSourceFile,
+  isAppCodeFile,
+  toSourcePath,
+} from "./scripts/app-allowlist";
 import { readPackageJson } from "./scripts/package-json";
 
 const require = createRequire(import.meta.url);
@@ -78,18 +83,31 @@ function rejectUndeclaredBareImports(): Plugin {
   return {
     name: "mbui-reject-undeclared-bare-imports",
     enforce: "pre",
-    resolveId(id, importer) {
+    async resolveId(id, importer, options) {
+      if (!importer) {
+        return;
+      }
+      const file = relative(repoRoot, importer);
       if (
-        importer &&
         !/^([./\\\0]|[A-Za-z]:)/.test(id) &&
         !id.startsWith("dayjs/plugin/") &&
         !externalPattern.test(id)
       ) {
-        const file = relative(repoRoot, importer);
         throw new Error(
           APP_SPECIFIER.test(id)
             ? `${file}: "${id}" is app code that the package may not import; only the files in scripts/app-allowlist.ts are allowed`
             : `${file}: "${id}" is not declared; add it to dependencies or peerDependencies in frontend/ui-package/package.json`,
+        );
+      }
+      // Relative imports and aliased allowlist entries are checked by the file they resolve to.
+      const resolved = await this.resolve(id, importer, {
+        ...options,
+        skipSelf: true,
+      });
+      const path = resolved && !resolved.external && toSourcePath(resolved.id);
+      if (path && isAppCodeFile(path) && !isAllowedSourceFile(path)) {
+        throw new Error(
+          `${file}: imports ${relative(repoRoot, path)}, which is app code outside the package allowlist (scripts/app-allowlist.ts)`,
         );
       }
     },

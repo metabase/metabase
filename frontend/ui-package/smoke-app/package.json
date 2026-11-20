@@ -5,7 +5,7 @@
   "description": "Consumer of the packed @metabase/ui tarball: proves it installs, type-checks and builds",
   "type": "module",
   "scripts": {
-    "type-check": "tsc --noEmit -p tsconfig.json",
+    "type-check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.nodenext.json",
     "build": "vite build"
   },
   "dependencies": {
