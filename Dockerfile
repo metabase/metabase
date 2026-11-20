@@ -56,6 +56,9 @@ RUN /tmp/prepare-static-viz.sh /tmp/metabase.jar /out
 
 FROM eclipse-temurin:25-jre-alpine AS runner
 
+# the isolate (~55 MB) gets its own early layer so it's only re-downloaded when it or the base image changes
+COPY --from=js-isolate / /app/js-isolate/
+
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
 # copy certs before the RUN so keytool can import them
@@ -80,7 +83,7 @@ RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
 # add Metabase script and uberjar
 COPY --from=builder /home/node/target/uberjar/metabase.jar /app/
 COPY bin/docker/run_metabase.sh /app/
-COPY --from=static-viz /out/ /app/
+COPY --from=static-viz /out/truffle-attach/ /app/truffle-attach/
 
 # expose our default runtime port
 EXPOSE 3000

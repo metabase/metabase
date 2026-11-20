@@ -12,6 +12,9 @@ RUN /tmp/prepare-static-viz.sh /tmp/metabase.jar /out
 
 FROM eclipse-temurin:25-jre-alpine
 
+# the isolate (~55 MB) gets its own early layer so it's only re-downloaded when it or the base image changes
+COPY --from=js-isolate / /app/js-isolate/
+
 ENV FC_LANG=en-US LC_CTYPE=en_US.UTF-8
 
 ARG GIT_COMMIT_SHA
@@ -38,7 +41,7 @@ RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
-COPY --from=static-viz /out/ /app/
+COPY --from=static-viz /out/truffle-attach/ /app/truffle-attach/
 
 # expose our default runtime port
 EXPOSE 3000
