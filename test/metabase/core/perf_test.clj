@@ -51,7 +51,7 @@
 (deftest recording-starts-through-the-global-system-test
   (testing "the recording starts through the global system, so a halt stops it after what started later"
     (let [handle     @#'perf/recording-component
-          halt-order #(filterv #{handle later-component} (#'global-system/halt-order (#'global-system/dependency-graph {})))
+          halt-order #(filterv #{handle later-component} (global-system.tu/halt-order))
           stops      (atom 0)]
       (global-system.tu/with-root handle nil
         (global-system.tu/with-root later-component nil
