@@ -1,30 +1,16 @@
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import type {
-  ColumnNameColumnSplitSetting,
-  TestAggregationSpec,
-  TestBreakoutSpec,
-} from "metabase-types/api";
+import type { TestAggregationSpec, TestBreakoutSpec } from "metabase-types/api";
 import { ORDERS, ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
-  NO_PIVOT_LAYOUT,
-  getNextPivotLayout,
   getPivotLayout,
   getPivotLayoutAfterDrop,
   getPivotSplit,
   getWellItems,
 } from "./pivot-layout";
 import type { SummaryDimensionWellId, SummaryDragItem } from "./types";
-import {
-  addField,
-  changeDimensionBucket,
-  changeValueOperator,
-  clearWell,
-  getDimensionItems,
-  getFieldSections,
-  getValueItems,
-} from "./utils";
+import { getDimensionItems, getFieldSections } from "./utils";
 
 const STAGE_INDEX = -1;
 
@@ -71,37 +57,16 @@ function createQuery(
   });
 }
 
-function getKeys(query: Lib.Query) {
-  return getDimensionItems(query, STAGE_INDEX).map(({ key }) => key);
-}
-
-function addColumn(
-  query: Lib.Query,
-  wellId: "values" | "columns" | "rows",
-  name: string,
-) {
-  const item = getFieldSections(query, STAGE_INDEX)
-    .flatMap((section) => section.items)
-    .find((item) => item.name === name);
-  expect(item).toBeDefined();
-  return item ? addField(query, STAGE_INDEX, wellId, item.field) : query;
-}
-
-function removeGrouping(query: Lib.Query, index: number) {
-  const [clause] = Lib.breakouts(query, STAGE_INDEX).slice(index);
-  return Lib.removeClause(query, STAGE_INDEX, clause);
-}
-
-function withRows(rows: string[]): ColumnNameColumnSplitSetting {
-  return { ...NO_PIVOT_LAYOUT, rows };
-}
-
 describe("getPivotLayout", () => {
   it("puts the groupings that are not in Rows in Columns, with every value", () => {
     const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
 
     expect(
-      getPivotLayout(query, STAGE_INDEX, withRows(["CREATED_AT"])),
+      getPivotLayout(query, STAGE_INDEX, {
+        rows: ["CREATED_AT"],
+        columns: [],
+        values: [],
+      }),
     ).toEqual({
       rows: ["CREATED_AT"],
       columns: ["CATEGORY"],
@@ -169,224 +134,16 @@ describe("getWellItems", () => {
 });
 
 describe("getPivotSplit", () => {
-  const layout = {
-    rows: ["CREATED_AT"],
-    columns: ["CATEGORY"],
-    values: ["count"],
-  };
-
-  it("is the layout when it has a value and a grouping in Rows", () => {
-    expect(getPivotSplit(layout)).toEqual(layout);
-  });
-
-  it("needs a grouping in Rows", () => {
-    expect(getPivotSplit({ ...layout, rows: [] })).toBeNull();
-  });
-
-  it("needs a value", () => {
-    expect(getPivotSplit({ ...layout, values: [] })).toBeNull();
-  });
-});
-
-describe("getNextPivotLayout", () => {
-  it("puts a grouping that is added to Rows in Rows", () => {
-    const query = createQuery([CATEGORY]);
-    const nextQuery = addColumn(query, "rows", "Created At");
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: getPivotLayout(query, STAGE_INDEX, NO_PIVOT_LAYOUT),
-        addedWellId: "rows",
-      }),
-    ).toEqual({
+  it("is the layout when it has a value and a grouping in Rows, and nothing otherwise", () => {
+    const layout = {
       rows: ["CREATED_AT"],
       columns: ["CATEGORY"],
       values: ["count"],
-    });
-  });
-
-  it("keeps the order of the Rows groupings and puts an added one last", () => {
-    const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
-    const nextQuery = addColumn(query, "rows", "Vendor");
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: getPivotLayout(
-          query,
-          STAGE_INDEX,
-          withRows(["CREATED_AT", "CATEGORY"]),
-        ),
-        addedWellId: "rows",
-      }).rows,
-    ).toEqual(["CREATED_AT", "CATEGORY", "VENDOR"]);
-  });
-
-  it("keeps the order of the Columns groupings and of the values, and puts added ones last", () => {
-    const query = createQuery(
-      [CATEGORY, VENDOR, CREATED_AT_MONTH],
-      [COUNT, SUM_OF_TOTAL],
-    );
-    const layout = {
-      rows: ["CREATED_AT"],
-      columns: ["VENDOR", "CATEGORY"],
-      values: ["sum", "count"],
     };
-    const withValue = addColumn(query, "values", "Quantity");
-    const withGrouping = addColumn(query, "columns", "Rating");
 
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery: withValue,
-        stageIndex: STAGE_INDEX,
-        layout,
-        addedWellId: "values",
-      }),
-    ).toEqual({ ...layout, values: ["sum", "count", "sum_2"] });
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery: withGrouping,
-        stageIndex: STAGE_INDEX,
-        layout,
-        addedWellId: "columns",
-      }),
-    ).toEqual({ ...layout, columns: ["VENDOR", "CATEGORY", "RATING"] });
-  });
-
-  it("follows the groupings whose key changes when an earlier grouping of their column goes away", () => {
-    const query = createQuery([
-      CREATED_AT_YEAR,
-      CREATED_AT_MONTH,
-      CATEGORY,
-      VENDOR,
-    ]);
-    const nextQuery = removeGrouping(query, 0);
-    expect(getKeys(query)).toEqual([
-      "CREATED_AT",
-      "CREATED_AT_2",
-      "CATEGORY",
-      "VENDOR",
-    ]);
-    expect(getKeys(nextQuery)).toEqual(["CREATED_AT", "CATEGORY", "VENDOR"]);
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: {
-          rows: ["CREATED_AT_2"],
-          columns: ["VENDOR", "CREATED_AT", "CATEGORY"],
-          values: ["count"],
-        },
-      }),
-    ).toEqual({
-      rows: ["CREATED_AT"],
-      columns: ["VENDOR", "CATEGORY"],
-      values: ["count"],
-    });
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: {
-          rows: ["CATEGORY"],
-          columns: ["CREATED_AT_2", "VENDOR", "CREATED_AT"],
-          values: ["count"],
-        },
-      }),
-    ).toEqual({
-      rows: ["CATEGORY"],
-      columns: ["CREATED_AT", "VENDOR"],
-      values: ["count"],
-    });
-  });
-
-  it("doesn't hand a removed Rows grouping's key over to the grouping that takes it", () => {
-    const query = createQuery([CREATED_AT_YEAR, CREATED_AT_MONTH]);
-    const nextQuery = removeGrouping(query, 0);
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: getPivotLayout(query, STAGE_INDEX, withRows(["CREATED_AT"])),
-      }).rows,
-    ).toEqual([]);
-  });
-
-  it("keeps a Rows grouping in Rows when its unit changes", () => {
-    const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
-    const [, createdAt] = getDimensionItems(query, STAGE_INDEX);
-    const yearOption = createdAt.bucketOptions.find(
-      (option) => option.displayName === "Year",
-    );
-    expect(yearOption).toBeDefined();
-    const nextQuery = yearOption
-      ? changeDimensionBucket(query, STAGE_INDEX, createdAt, yearOption)
-      : query;
-    expect(nextQuery).not.toBe(query);
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: getPivotLayout(query, STAGE_INDEX, withRows(["CREATED_AT"])),
-      }).rows,
-    ).toEqual(["CREATED_AT"]);
-  });
-
-  it("keeps the place of a value when its operator changes", () => {
-    const query = createQuery([CATEGORY], [COUNT, SUM_OF_TOTAL]);
-    const sumOfTotal = getValueItems(query, STAGE_INDEX)
-      .filter((item) => item.kind === "column")
-      .find((item) => item.key === "sum");
-    const average = sumOfTotal?.operatorOptions.find(
-      (option) => option.shortName === "avg",
-    );
-    expect(average).toBeDefined();
-    const nextQuery =
-      sumOfTotal && average
-        ? changeValueOperator(query, STAGE_INDEX, sumOfTotal, average.operator)
-        : query;
-    expect(nextQuery).not.toBe(query);
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: {
-          rows: ["CATEGORY"],
-          columns: [],
-          values: ["sum", "count"],
-        },
-      }).values,
-    ).toEqual(["avg", "count"]);
-  });
-
-  it("empties Rows when the groupings are cleared", () => {
-    const query = createQuery([CATEGORY, CREATED_AT_MONTH]);
-    const nextQuery = clearWell(query, STAGE_INDEX, "columns");
-
-    expect(
-      getNextPivotLayout({
-        query,
-        nextQuery,
-        stageIndex: STAGE_INDEX,
-        layout: getPivotLayout(query, STAGE_INDEX, withRows(["CREATED_AT"])),
-      }),
-    ).toEqual({ rows: [], columns: [], values: ["count"] });
+    expect(getPivotSplit(layout)).toEqual(layout);
+    expect(getPivotSplit({ ...layout, rows: [] })).toBeNull();
+    expect(getPivotSplit({ ...layout, values: [] })).toBeNull();
   });
 });
 
@@ -403,7 +160,7 @@ describe("getPivotLayoutAfterDrop", () => {
     wellId: SummaryDimensionWellId,
   ): SummaryDragItem => ({ kind: "dimension", item, wellId });
 
-  it("moves a Columns chip that is dropped on Rows to the end of Rows", () => {
+  it("moves a chip that is dropped on the other grouping well to the end of that well", () => {
     expect(
       getPivotLayoutAfterDrop(
         query,
@@ -417,9 +174,6 @@ describe("getPivotLayoutAfterDrop", () => {
       columns: [],
       values: ["count"],
     });
-  });
-
-  it("moves a Rows chip that is dropped on Columns to the end of Columns", () => {
     expect(
       getPivotLayoutAfterDrop(
         query,

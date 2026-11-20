@@ -21,9 +21,9 @@ function getColumns(query: Lib.Query) {
 }
 
 /**
- * `updateQuestion` renames the entries of the column split from the columns of the question's
- * query to the columns of the new query. So that this gives `columnSplit`, each of its names is
- * replaced with the name that the column has in the question's query.
+ * Gives `columnSplit` with the names that its columns have in `query`, the query before the
+ * change. `updateQuestion` renames the entries of a column split from the old query to the new
+ * one when it syncs the settings, so the split must go in with the old names to come out right.
  */
 function getColumnSplitToSync(
   query: Lib.Query,
@@ -49,9 +49,9 @@ function getColumnSplitToSync(
 }
 
 /**
- * Whether the question can show a pivot table of the summary in the stage. The column split is
- * about the columns of the last stage, so no stage can come after the summary. The database must
- * support pivot tables. When it is not loaded, the check passes, as for the pivot table itself.
+ * Whether the question can show a pivot table of the summary in the stage. No stage can come
+ * after the summary, because the column split is about the columns of the last stage. The
+ * database must support pivot tables, and the check passes while the database is not loaded.
  */
 export function canPivotSummary(question: Question, stageIndex: number) {
   const isLastStage =
@@ -61,8 +61,8 @@ export function canPivotSummary(question: Question, stageIndex: number) {
 
 /**
  * The name of the column that the field reference is for, or `undefined` when the query has no
- * such column. Lib throws for a reference that it can't convert, such as the reference to an
- * aggregation that was removed from the query.
+ * such column. Lib throws for a reference that it can't convert, such as one to an aggregation
+ * that was removed from the query.
  */
 function getColumnName(
   query: Lib.Query,
@@ -110,10 +110,12 @@ function getColumnNameSplit(
 }
 
 /**
- * The column split of the pivot table that the question shows, by column name, or `undefined`
- * when it shows none. It is read as the pivot table reads it: a split by field reference is
- * resolved to column names, and a grouping that the split doesn't have goes in its rows. The
- * question keeps the split it has.
+ * The column split of the pivot table that the question shows, by column name. A split by field
+ * reference is resolved to column names, and a grouping that the split doesn't have goes in its
+ * rows, as in the pivot table. The question keeps the split it has.
+ *
+ * Gives `undefined` when the question shows no pivot table or has no stored split, because the
+ * default split needs the results.
  */
 export function getPivotColumnSplit(
   question: Question,

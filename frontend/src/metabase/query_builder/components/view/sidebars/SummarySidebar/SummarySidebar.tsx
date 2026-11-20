@@ -1,15 +1,7 @@
-import {
-  DndContext,
-  type DragEndEvent,
-  type DragStartEvent,
-  pointerWithin,
-} from "@dnd-kit/core";
-import { useDisclosure } from "@mantine/hooks";
+import { DndContext } from "@dnd-kit/core";
 import { useId, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useDndSensors } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import { useDispatch, useSelector } from "metabase/redux";
@@ -26,17 +18,7 @@ import { SummaryFieldList } from "./SummaryFieldList";
 import { useSummaryFormulaBar } from "./SummaryFormulaBar";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
-import {
-  NO_PIVOT_LAYOUT,
-  getNextPivotLayout,
-  getPivotChange,
-  getPivotLayout,
-  getPivotLayoutAfterDrop,
-  getPivotSplit,
-  getWellItems,
-} from "./pivot-layout";
 import type {
-  SummaryDragItem,
   SummaryField,
   SummaryFieldSection,
   SummaryPivotChange,
@@ -44,17 +26,15 @@ import type {
   SummaryWellId,
 } from "./types";
 import { updateSummaryFormula } from "./update-summary-formula";
+import { useSummaryDragAndDrop } from "./use-summary-drag-and-drop";
+import { useSummaryPivotLayout } from "./use-summary-pivot-layout";
 import {
   addField,
   areQueriesEqual,
   clearWell,
-  dropOnWell,
-  getDragItem,
   getFieldSections,
   replaceWellWithField,
 } from "./utils";
-
-const DRAG_ACTIVATION_DISTANCE_PX = 5;
 
 function translateSections(
   sections: SummaryFieldSection[],
@@ -69,17 +49,6 @@ function translateSections(
 
 function getFieldWellId(field: SummaryField): SummaryWellId {
   return field.kind === "column" ? "columns" : "values";
-}
-
-function getDropWellId(data: unknown): SummaryWellId | null {
-  if (typeof data !== "object" || data == null || !("wellId" in data)) {
-    return null;
-  }
-  return data.wellId === "values" ||
-    data.wellId === "columns" ||
-    data.wellId === "rows"
-    ? data.wellId
-    : null;
 }
 
 type SummarySidebarProps = Omit<UpdateQueryHookProps, "onQueryChange"> & {
@@ -100,33 +69,22 @@ export function SummarySidebar({
 }: SummarySidebarProps) {
   const dispatch = useDispatch();
   const generatedExpressions = useSelector(getSummaryGeneratedExpressions);
-  const [
-    isPivotToggled,
-    { open: turnPivotToggleOn, close: turnPivotToggleOff },
-  ] = useDisclosure(false);
-  const [storedLayout, setStoredLayout] = useState(NO_PIVOT_LAYOUT);
-  const layout = useMemo(
-    () =>
-      getPivotLayout(
-        query,
-        stageIndex,
-        canPivot ? (pivotColumnSplit ?? storedLayout) : NO_PIVOT_LAYOUT,
-      ),
-    [query, stageIndex, canPivot, pivotColumnSplit, storedLayout],
-  );
-  const { valueItems, columnItems, rowItems } = useMemo(
-    () => getWellItems(query, stageIndex, layout),
-    [query, stageIndex, layout],
-  );
-  const isPivotMode = canPivot && (isPivotToggled || rowItems.length > 0);
-  const pivotSplit = getPivotSplit(layout);
-  const storeLayout = (
-    nextLayout: ColumnNameColumnSplitSetting,
-    pivotChange: SummaryPivotChange | undefined,
-  ) =>
-    setStoredLayout(
-      pivotChange?.type === "show" ? NO_PIVOT_LAYOUT : nextLayout,
-    );
+  const {
+    layout,
+    valueItems,
+    columnItems,
+    rowItems,
+    isPivotMode,
+    syncLayoutWithQuery,
+    changeLayout,
+    togglePivotMode,
+  } = useSummaryPivotLayout({
+    query,
+    stageIndex,
+    canPivot,
+    pivotColumnSplit,
+    onPivotChange: (pivotChange) => onQueryChange(query, pivotChange),
+  });
 
   const handleQueryChange = (
     nextQuery: Lib.Query,
@@ -145,25 +103,7 @@ export function SummarySidebar({
         summaryGeneratedExpressions: result.generatedExpressions,
       }),
     );
-    const nextLayout = getNextPivotLayout({
-      query,
-      nextQuery: result.query,
-      stageIndex,
-      layout,
-      addedWellId,
-    });
-    const pivotChange = getPivotChange(pivotSplit, getPivotSplit(nextLayout));
-    storeLayout(nextLayout, pivotChange);
-    onQueryChange(result.query, pivotChange);
-  };
-
-  const handleLayoutChange = (nextLayout: ColumnNameColumnSplitSetting) => {
-    const nextPivotSplit = getPivotSplit(nextLayout);
-    const pivotChange = getPivotChange(pivotSplit, nextPivotSplit);
-    storeLayout(nextLayout, pivotChange);
-    if (!_.isEqual(pivotSplit, nextPivotSplit)) {
-      onQueryChange(query, pivotChange);
-    }
+    onQueryChange(result.query, syncLayoutWithQuery(result.query, addedWellId));
   };
   const tc = useTranslateContent();
   const sections = useMemo(
@@ -215,49 +155,18 @@ export function SummarySidebar({
     );
   };
 
-  const handlePivotToggle = () => {
-    if (isPivotMode) {
-      turnPivotToggleOff();
-    } else {
-      turnPivotToggleOn();
-    }
-    handleLayoutChange(NO_PIVOT_LAYOUT);
-  };
-
   const handleClearAll = () =>
     handleQueryChange(
       clearWell(clearWell(query, stageIndex, "columns"), stageIndex, "values"),
     );
 
-  const sensors = useDndSensors({ distance: DRAG_ACTIVATION_DISTANCE_PX });
-  const [draggedItem, setDraggedItem] = useState<SummaryDragItem | null>(null);
-
-  const handleDragStart = ({ active }: DragStartEvent) =>
-    setDraggedItem(getDragItem(active.data.current));
-
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    setDraggedItem(null);
-    const drag = getDragItem(active.data.current);
-    const wellId = getDropWellId(over?.data.current);
-    if (drag == null || wellId == null) {
-      return;
-    }
-    const nextLayout = getPivotLayoutAfterDrop(
-      query,
-      stageIndex,
-      drag,
-      wellId,
-      layout,
-    );
-    if (nextLayout !== layout) {
-      handleLayoutChange(nextLayout);
-      return;
-    }
-    const nextQuery = dropOnWell(query, stageIndex, drag, wellId);
-    if (nextQuery !== query) {
-      handleWellAdd(nextQuery, wellId);
-    }
-  };
+  const { draggedItem, dndContextProps } = useSummaryDragAndDrop({
+    query,
+    stageIndex,
+    layout,
+    onLayoutChange: changeLayout,
+    onWellAdd: handleWellAdd,
+  });
 
   const [isFieldListOpen, setIsFieldListOpen] = useState(true);
   const fieldListDrawerId = useId();
@@ -266,13 +175,7 @@ export function SummarySidebar({
     : t`Show fields`;
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => setDraggedItem(null)}
-    >
+    <DndContext {...dndContextProps}>
       <Box className={S.sidebar} data-testid="summary-sidebar">
         {bar}
         <Box className={S.wellsColumn}>
@@ -289,7 +192,7 @@ export function SummarySidebar({
             valueItems={valueItems}
             columnItems={columnItems}
             rowItems={rowItems}
-            onPivotToggle={handlePivotToggle}
+            onPivotToggle={togglePivotMode}
             onPick={handleAdd}
             onChange={handleQueryChange}
           />
