@@ -50,9 +50,9 @@
     (let [property (str "polyglot.engine.resourcePath.engine.js-isolate-linux-" arch)]
       (when (and (nil? (System/getProperty property))
                  (not (use-bundled-truffle-resource! property "/app/js-isolate" "libpolyglotisolate.so")))
-        ;; the jar's glibc isolate can segfault on musl; a missing library fails with a catchable error instead
-        (.println System/err "No usable musl JS isolate in /app/js-isolate; static-viz rendering will fail")
-        (System/setProperty property "/nonexistent/js-isolate"))))
+        ;; we can't reliably tell a musl JVM from a glibc one with musl installed, so warn rather than disable static-viz
+        (.println System/err (str "No usable musl JS isolate in /app/js-isolate; static-viz will use the jar's glibc"
+                                  " isolate, which may crash the JVM on musl")))))
   ;; otherwise unpacked into $HOME/.cache, which may not be writable
   (use-bundled-truffle-resource! "polyglot.engine.resourcePath.engine.libtruffleattach"
                                  "/app/truffle-attach" "bin/libtruffleattach.so"))
