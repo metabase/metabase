@@ -30,7 +30,7 @@
 
 (defn- use-bundled-truffle-resource!
   "Set Truffle resource root `property` to `dir` if it holds `file` built for this jar's Truffle version. An explicit
-  -D wins. Must run before the first polyglot Engine is built."
+  -D wins. Must run before the first polyglot Engine is built. Returns true if it set the property."
   [property dir file]
   (when (and (nil? (System/getProperty property))
              (.exists (io/file dir file)))
@@ -38,7 +38,7 @@
           dir-version  (when (.exists version-file) (str/trim (slurp version-file)))
           jar-version  (some-> (io/resource "META-INF/graalvm/org.graalvm.truffle/version") slurp str/trim)]
       (if (and jar-version (= jar-version dir-version))
-        (System/setProperty property dir)
+        (do (System/setProperty property dir) true)
         ;; logging isn't set up yet
         (.println System/err (format "Not using %s: it was built for Truffle %s, but metabase.jar has %s"
                                      dir dir-version jar-version))))))
@@ -47,8 +47,12 @@
 (let [arch (System/getProperty "os.arch")]
   ;; only a musl JVM can load it
   (when (.exists (io/file (str "/lib/ld-musl-" (get {"amd64" "x86_64"} arch arch) ".so.1")))
-    (use-bundled-truffle-resource! (str "polyglot.engine.resourcePath.engine.js-isolate-linux-" arch)
-                                   "/app/js-isolate" "libpolyglotisolate.so"))
+    (let [property (str "polyglot.engine.resourcePath.engine.js-isolate-linux-" arch)]
+      (when (and (nil? (System/getProperty property))
+                 (not (use-bundled-truffle-resource! property "/app/js-isolate" "libpolyglotisolate.so")))
+        ;; the jar's glibc isolate can segfault on musl; a missing library fails with a catchable error instead
+        (.println System/err "No usable musl JS isolate in /app/js-isolate; static-viz rendering will fail")
+        (System/setProperty property "/nonexistent/js-isolate"))))
   ;; otherwise unpacked into $HOME/.cache, which may not be writable
   (use-bundled-truffle-resource! "polyglot.engine.resourcePath.engine.libtruffleattach"
                                  "/app/truffle-attach" "bin/libtruffleattach.so"))
