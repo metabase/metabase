@@ -110,21 +110,23 @@
 ;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
-  {:metabase.server.instance/server           #{:metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; scheduled jobs run queries, record traces and keep their state in the app DB
-   :metabase.task.impl/scheduler              #{:metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; the field-value listener runs warehouse queries, and the search listener records traces and writes the index
-   :metabase.queue-listener.core/listeners    #{:metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs
-   :metabase.mq.init/mq                       #{:metabase.app-db.core/app-db
-                                                :metabase.task.impl/scheduler}
-   :metabase-enterprise.api-keys.usage/flush  #{:metabase.app-db.core/app-db}})
+  (cond->
+   {:metabase.server.instance/server           #{:metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; scheduled jobs run queries, record traces and keep their state in the app DB
+    :metabase.task.impl/scheduler              #{:metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; the field-value listener runs warehouse queries, and the search listener records traces and writes the index
+    :metabase.queue-listener.core/listeners    #{:metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs
+    :metabase.mq.init/mq                       #{:metabase.app-db.core/app-db
+                                                 :metabase.task.impl/scheduler}}
+    ;; an OSS classpath has no API key flush component to depend on
+    config/ee-available? (assoc :metabase-enterprise.api-keys.usage/flush #{:metabase.app-db.core/app-db})))
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs: requests queue search updates, MQ messages, API key usage and notifications; queue listeners and notification
