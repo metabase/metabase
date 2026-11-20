@@ -790,6 +790,7 @@
    :uses #{api
            api-routes
            app-db
+           driver
            mcp
            metabot
            metabot.llm
@@ -4742,6 +4743,8 @@
            api
            app-db
            channel
+           core.initialization-status
+           database-routing
            driver
            events
            lib.schema
@@ -4750,13 +4753,17 @@
            permissions
            premium-features
            security-center
+           session
            settings
            system
            task
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/ConnectionImpersonation
+                    :model/DataPermissions
+                    :model/Database
+                    :model/User}}
 
   enterprise/serialization
   {:team       "Data Apps"

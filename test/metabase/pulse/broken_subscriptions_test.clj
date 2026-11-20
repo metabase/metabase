@@ -1,9 +1,11 @@
 (ns metabase.pulse.broken-subscriptions-test
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.util :as perms-util]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.pulse.write :as pulse.write]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest broken-subscription-data-logic-test
   (testing "Ensure underlying logic of fixing broken pulses works (#30100)"
@@ -122,3 +124,126 @@
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
               (is (true? (:archived (pulse.write/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+
+(deftest handle-broken-subscriptions-returns-what-it-archived-test
+  (testing "returns what it archived, counting active destinations of enabled channels, and less of unreadable ones"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/User                  {former-id :id}     {:is_active false}
+                     :model/Channel               {webhook-id :id}    {:type    :channel/http
+                                                                       :details {:url         "https://example.com/hook"
+                                                                                 :auth-method "none"}}
+                     :model/Dashboard             {dash-id :id}       {:name       "Sales"
+                                                                       :parameters [{:id   "kept"
+                                                                                     :name "Kept"
+                                                                                     :slug "kept"
+                                                                                     :type "category"}]}
+                     :model/Pulse                 {removed-id :id}    {:name         "Removed filter"
+                                                                       :dashboard_id dash-id
+                                                                       :creator_id   (mt/user->id :rasta)
+                                                                       ;; Saved before the filter was renamed "Gone".
+                                                                       :parameters   [{:id    "gone"
+                                                                                       :name  "Old name"
+                                                                                       :value ["secret"]}]}
+                     :model/PulseChannel          {channel-id :id}    {:channel_type :email
+                                                                       :pulse_id     removed-id
+                                                                       :details      {:emails ["outside@example.com"]}
+                                                                       :enabled      true}
+                     :model/PulseChannelRecipient _                   {:pulse_channel_id channel-id
+                                                                       :user_id          (mt/user->id :crowberto)}
+                     ;; A deactivated user gets no email, so isn't counted.
+                     :model/PulseChannelRecipient _                   {:pulse_channel_id channel-id
+                                                                       :user_id          former-id}
+                     :model/Pulse                 {stale-id :id}      {:name         "Stale filter"
+                                                                       :dashboard_id dash-id
+                                                                       :creator_id   (mt/user->id :rasta)
+                                                                       :parameters   [{:id    "stale"
+                                                                                       :name  "Stale"
+                                                                                       :value ["x"]}]}
+                     :model/PulseChannel          _                   {:channel_type :http
+                                                                       :pulse_id     stale-id
+                                                                       :channel_id   webhook-id
+                                                                       :enabled      true}
+                     ;; Neither of these delivers: one is disabled, and the webhook has no channel.
+                     :model/PulseChannel          _                   {:channel_type :slack
+                                                                       :pulse_id     stale-id
+                                                                       :details      {:channel "#sales"}
+                                                                       :enabled      false}
+                     :model/PulseChannel          _                   {:channel_type :http
+                                                                       :pulse_id     removed-id
+                                                                       :enabled      true}
+                     ;; Missing one filter from before the update and one the update removed.
+                     :model/Pulse                 {mixed-id :id}      {:name         "Mixed"
+                                                                       :dashboard_id dash-id
+                                                                       :creator_id   (mt/user->id :rasta)
+                                                                       :parameters   [{:id    "stale"
+                                                                                       :name  "Stale"
+                                                                                       :value ["x"]}
+                                                                                      {:id    "gone"
+                                                                                       :name  "Gone"
+                                                                                       :value ["y"]}]}
+                     :model/PulseChannel          _                   {:channel_type :slack
+                                                                       :pulse_id     mixed-id
+                                                                       :details      {:channel "#sales"}
+                                                                       :enabled      true}
+                     ;; Rasta neither created this one nor receives it, so can't read it.
+                     :model/Pulse                 {unreadable-id :id} {:name         "Someone else's"
+                                                                       :dashboard_id dash-id
+                                                                       :creator_id   (mt/user->id :crowberto)
+                                                                       :parameters   [{:id    "gone"
+                                                                                       :name  "Gone"
+                                                                                       :value ["z"]}]}
+                     :model/PulseChannel          _                   {:channel_type :slack
+                                                                       :pulse_id     unreadable-id
+                                                                       :details      {:channel "#private"}
+                                                                       :enabled      true}]
+        (is (= [{:id              removed-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "gone", :name "Gone"}]
+                 :channels        [:email]
+                 :recipient-count 2
+                 :already-broken? false
+                 :readable?       true}
+                {:id              stale-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "stale", :name "Stale"}]
+                 :channels        [:http]
+                 :recipient-count 1
+                 :already-broken? true
+                 :readable?       true}
+                {:id              mixed-id
+                 :creator-name    "Rasta Toucan"
+                 :parameters      [{:id "gone", :name "Gone"}]
+                 :channels        [:slack]
+                 :recipient-count 1
+                 :already-broken? false
+                 :readable?       true}
+                {:id              unreadable-id
+                 :parameters      [{:id "gone"}]
+                 :already-broken? false
+                 :readable?       false}]
+               (mt/with-current-user (mt/user->id :rasta)
+                 (pulse.broken-subscriptions/handle-broken-subscriptions!
+                  dash-id
+                  {"kept" {:id "kept", :name "Kept"}, "gone" {:id "gone", :name "Gone"}}))))
+        (is (= #{removed-id stale-id mixed-id unreadable-id}
+               (t2/select-pks-set :model/Pulse :dashboard_id dash-id :archived true)))))))
+
+(deftest sandboxed-user-recipient-count-test
+  (testing "a sandboxed user's count leaves out the other users the read path hides from them"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard             {dash-id :id}    {:name "Sales"}
+                     :model/Pulse                 {pulse-id :id}   {:dashboard_id dash-id
+                                                                    :creator_id   (mt/user->id :rasta)
+                                                                    :parameters   [{:id "gone", :name "Gone"}]}
+                     :model/PulseChannel          {channel-id :id} {:channel_type :email
+                                                                    :pulse_id     pulse-id
+                                                                    :details      {:emails ["outside@example.com"]}
+                                                                    :enabled      true}
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :rasta)}
+                     :model/PulseChannelRecipient _                {:pulse_channel_id channel-id
+                                                                    :user_id          (mt/user->id :crowberto)}]
+        (is (=? [{:id pulse-id, :readable? true, :recipient-count 2}]
+                (mt/with-current-user (mt/user->id :rasta)
+                  (mt/with-dynamic-fn-redefs [perms-util/sandboxed-or-impersonated-user? (constantly true)]
+                    (pulse.broken-subscriptions/handle-broken-subscriptions! dash-id {"gone" {:id "gone"}})))))))))

@@ -16,6 +16,7 @@ priority: 50
 **Creating a dashboard**
 - Omit `dashboard_id` and pass `name`: the user's name for it, or a short one that says what it shows. It goes to the user's personal collection unless the user names a collection; then pass its `collection_id`, or `"root"` for the top level.
 - For a dashboard about a topic, build the charts that answer the main questions about it, then create the dashboard with all of them in one call. Don't ask the user which charts to include.
+- If you can't build queries, search for existing questions about the topic instead, and add them with `card_id`.
 - Build all of the charts in a single response, one tool call per chart, not a few at a time. Each response is a step, and a turn has a limited number of steps. Each `construct_notebook_query` or `create_sql_query` call returns the `chart_id` you add, whether or not the user is shown the chart. Pass `visualization` to choose the chart type.
 - Each chart becomes a question saved on the dashboard. Pass its `chart_id` and a `name` on `add_card`.
 
@@ -40,7 +41,7 @@ The grid is 24 columns wide. Full width is `size_x: 24`. A card is placed at `po
 **Editing cards**
 - New cards and tabs take negative ids you choose (-1, -2, …), which later ops in the same call can use. The result gives the real ids.
 - `move` changes a card's `position` or `tab`, `resize` its `size`, and `remove` deletes it from the dashboard.
-- A card you give a `position` stays there, and a card you resize keeps its place; either pushes down the cards it would cover. The result says which cards moved. Two cards you give a `position` in the same call must not cover each other.
+- A card you give a `position` stays there. A card you resize keeps its place, unless a card with a `position`, or a resized card above it or to its left, covers it. Either pushes down the cards it would cover, and other cards stay put, even where they already overlap. The result says which cards moved. Two cards you give a `position` in the same call must not cover each other.
 - `replace_card` shows another question or chart in the same slot. It resets that card's filter connections, so connect the filters again in the same call.
 
 **Tabs**

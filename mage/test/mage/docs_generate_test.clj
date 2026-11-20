@@ -7,7 +7,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private backend-command ["clojure" "-M:ee:doc" "all-documentation"])
+(def ^:private backend-command ["clojure" "-M:ee:drivers:doc" "all-documentation"])
 
 (defn- fake-sh
   "A [[mage.shell/sh*]] stand-in.

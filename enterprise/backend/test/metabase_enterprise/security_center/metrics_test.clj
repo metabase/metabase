@@ -2,7 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.metrics :as metrics]
+   [metabase.analytics.core :as analytics.core]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -98,3 +103,101 @@
       (doseq [severity ["critical" "high" "medium" "low"]
               ack      ["true" "false"]]
         (is (contains? labels {:severity severity :acknowledged ack}))))))
+
+(deftest health-checks-known-labels-test
+  (testing "every registered check has a label set per status, so the gauges start at 0"
+    (let [labels (analytics.core/known-labels :metabase-security-center/health-checks)]
+      (is (= (* 3 (count (health-checks/all-checks))) (count labels)))
+      (is (contains? (set labels) {:check_id "https-redirect", :severity "medium", :status "pass"})))))
+
+(def ^:private two-checks
+  "A registry of two entries, enough for the gauge labels."
+  {:https-redirect {:id :https-redirect, :severity :medium}
+   :sso-login      {:id :sso-login, :severity :medium}})
+
+(deftest set-health-check-gauges!-test
+  (testing "the gauge is 1 for the status of each check and 0 for the other two"
+    (with-redefs [health-checks/checks two-checks]
+      (mt/with-prometheus-system! [_ system]
+        (metrics/set-health-check-gauges! [{:id :https-redirect, :severity :medium, :status :fail}
+                                           {:id :sso-login, :severity :medium, :status :pass}])
+        (are [check-id status value] (= value (mt/metric-value system :metabase-security-center/health-checks
+                                                               {:check_id check-id, :severity "medium", :status status}))
+          "https-redirect" "fail"    1.0
+          "https-redirect" "pass"    0.0
+          "https-redirect" "unknown" 0.0
+          "sso-login"      "pass"    1.0
+          "sso-login"      "fail"    0.0)))))
+
+(deftest set-health-check-gauges!-clears-a-check-that-did-not-run-test
+  (testing "a registered check that is not in the run reads 0 on every status"
+    (with-redefs [health-checks/checks two-checks]
+      (mt/with-prometheus-system! [_ system]
+        (metrics/set-health-check-gauges! [{:id :https-redirect, :severity :medium, :status :fail}
+                                           {:id :sso-login, :severity :medium, :status :fail}])
+        (metrics/set-health-check-gauges! [{:id :https-redirect, :severity :medium, :status :fail}])
+        (are [check-id status value] (= value (mt/metric-value system :metabase-security-center/health-checks
+                                                               {:check_id check-id, :severity "medium", :status status}))
+          "https-redirect" "fail"    1.0
+          "sso-login"      "pass"    0.0
+          "sso-login"      "fail"    0.0
+          "sso-login"      "unknown" 0.0)))))
+
+(def ^:private two-background-checks
+  "A registry of two background checks, enough for the last-run gauge."
+  {:read-only-connections {:id :read-only-connections, :severity :high, :refresh (constantly {})}
+   :https-redirect        {:id :https-redirect, :severity :medium, :refresh (constantly {})}})
+
+(deftest set-health-checks-last-run!-test
+  (mt/with-premium-features #{:admin-security-center}
+    (with-redefs [health-checks/checks two-background-checks]
+      (testing "sets nothing while no refresh has stored a result"
+        (mt/with-temporary-setting-values [security-center-health-check-results nil]
+          (mt/with-prometheus-system! [_ system]
+            (metrics/set-health-checks-last-run!)
+            (is (= 0.0 (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds))))))
+      (testing "sets the time of the newest stored refresh"
+        (mt/with-temporary-setting-values [security-center-health-check-results
+                                           {:read-only-connections {:result {}, :checked_at "2026-11-06T10:00:00Z"}
+                                            :https-redirect        {:result {}, :checked_at "2026-11-06T12:00:00Z"}}]
+          (mt/with-prometheus-system! [_ system]
+            (metrics/set-health-checks-last-run!)
+            (is (= 1793966400.0
+                   (mt/metric-value system :metabase-security-center/health-checks-last-run-timestamp-seconds)))))))))
+
+(def ^:private stored-results
+  {:read-only-connections {:result {:databases []}, :checked_at "2026-11-06T10:00:00Z"}})
+
+(defn- run-health-check-collector!
+  [& {:keys [complete? enabled?]}]
+  (mt/with-dynamic-fn-redefs [init-status/complete?                     (constantly complete?)
+                              premium-features/security-center-enabled? (constantly enabled?)]
+    ((:f (analytics.core/pull-collector ::metrics/health-check-gauges)))))
+
+(deftest health-check-gauges-pull-collector-test
+  (testing "runs at most once every 5 minutes"
+    (is (= 300 (:min-interval-s (analytics.core/pull-collector ::metrics/health-check-gauges)))))
+  (mt/with-premium-features #{:admin-security-center}
+    (mt/with-temporary-setting-values [security-center-health-check-results stored-results]
+      (let [status-gauge   #(mt/metric-value % :metabase-security-center/health-checks
+                                             {:check_id "read-only-connections", :severity "high", :status "pass"})
+            last-run-gauge #(mt/metric-value % :metabase-security-center/health-checks-last-run-timestamp-seconds)]
+        (testing "sets the status gauge and the last-run gauge from the stored result, and refreshes nothing"
+          (let [refreshes (atom 0)]
+            ;; the refresh of read-only-connections starts with this query
+            (mt/with-dynamic-fn-redefs [security-center.db/databases-with-details #(do (swap! refreshes inc) [])]
+              (mt/with-prometheus-system! [_ system]
+                (run-health-check-collector! :complete? true, :enabled? true)
+                (is (= 1.0 (status-gauge system)))
+                (is (= 1793959200.0 (last-run-gauge system)))
+                (is (zero? @refreshes))))))
+        (testing "sets nothing before the initialization is complete"
+          (mt/with-prometheus-system! [_ system]
+            (run-health-check-collector! :complete? false, :enabled? true)
+            (is (= 0.0 (status-gauge system)))
+            (is (= 0.0 (last-run-gauge system)))))
+        (testing "sets nothing when Security Center is off"
+          (mt/with-prometheus-system! [_ system]
+            (run-health-check-collector! :complete? true, :enabled? false)
+            (is (= 0.0 (status-gauge system)))
+            (is (= 0.0 (last-run-gauge system)))))))))
