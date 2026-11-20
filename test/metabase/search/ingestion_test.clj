@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.queue-listener.core :as queue-listener]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -383,7 +384,7 @@
             (is (= [update later-update] @indexed)))
           (finally
             (deliver release-batch true)
-            (queue/stop-listening! listener-name)))))))
+            (queue-listener/stop-listening! listener-name)))))))
 
 (deftest await-pending-updates-after-ingestion-error-test
   (let [listener-name (str (random-uuid))
@@ -402,7 +403,7 @@
           (is (true? (search.ingestion/await-pending-updates! 2000)))
           (is (true? (deref attempted 2000 ::timeout)))
           (finally
-            (queue/stop-listening! listener-name)))))))
+            (queue-listener/stop-listening! listener-name)))))))
 
 (deftest after-commit-runs-steps-on-the-committing-thread-test
   (testing "after-commit! steps run on the thread that commits, before the transaction returns, and start no thread"

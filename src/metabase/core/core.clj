@@ -27,6 +27,7 @@
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.queue-listener.core :as queue-listener]
    [metabase.sample-data.core :as sample-data]
    [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.server.core :as server]
@@ -39,7 +40,6 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.queue :as queue]
    [metabase.util.system-info :as u.system-info]
    [metabase.warehouses.models.database :as database])
   (:import
@@ -114,7 +114,10 @@
                                       :metabase.tracing.core/otel-sdk}
    ;; scheduled jobs run queries and record traces
    :metabase.task.impl/scheduler    #{:metabase.driver.sql-jdbc.connection/pools
-                                      :metabase.tracing.core/otel-sdk}})
+                                      :metabase.tracing.core/otel-sdk}
+   ;; the field-value listener runs warehouse queries, and the search listener records traces
+   :metabase.queue-listener.core/listeners #{:metabase.driver.sql-jdbc.connection/pools
+                                             :metabase.tracing.core/otel-sdk}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs: requests queue search updates, MQ messages, API key usage and notifications; queue listeners and notification
@@ -171,7 +174,7 @@
    ;; before the steps that flush what requests produce, such as queued messages and API key usage, so nothing
    ;; arrives after its flush; the requests in flight get up to MB_JETTY_STOP_TIMEOUT to finish
    ["stop the web server"          #(server/stop-web-server!)]
-   ["stop queue listeners"         #(queue/stop-listeners!)]
+   ["stop queue listeners"         #(queue-listener/stop-listeners!)]
    ["stop the token refresher"     #(premium-features/stop-refresher!)]
    ["run shutdown logic"           #(startup/run-shutdown-logic!)]
    ["stop the scheduler"           #(task/stop-scheduler!)]
@@ -341,7 +344,7 @@
   (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
-  (queue/start-listeners!)
+  (queue-listener/start-listeners!)
   (init-status/set-complete!)
   (log/info "Metabase Initialization COMPLETE"))
 

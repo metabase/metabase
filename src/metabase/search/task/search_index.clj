@@ -4,13 +4,13 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.queue-listener.core :as queue-listener]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as ingestion]
    [metabase.startup.core :as startup]
    [metabase.task.core :as task]
-   [metabase.tracing.core :as tracing]
-   [metabase.util.queue :as queue])
+   [metabase.tracing.core :as tracing])
   (:import
    (java.time Instant)
    (java.util Date)))
@@ -108,7 +108,7 @@
                        (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
 
-(defmethod queue/init-listener! ::SearchIndexUpdate [_]
+(defmethod queue-listener/init-listener! ::SearchIndexUpdate [_]
   (ingestion/start-listener!))
 
 (comment
