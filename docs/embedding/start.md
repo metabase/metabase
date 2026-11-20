@@ -63,6 +63,10 @@ Every `<metabase-browser>` attribute and the `CollectionBrowser` props.
 
 Embed an AI chat with web components or the React SDK, so people can ask questions of their data in natural language.
 
+### [Embed a data app](./data-app.md)
+
+Embed a data app with web components or the React SDK, and give people access with groups.
+
 ### [Embedding parameters](./parameters.md)
 
 Set, control, hide, and lock dashboard filters and SQL variables in embedded dashboards and charts, with web components or the React SDK.
