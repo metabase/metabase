@@ -84,7 +84,8 @@
                 database           (if (map? database-or-id)
                                      database-or-id
                                      (driver.u/lib-database (u/the-id database-or-id)))
-                default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
+                driver             (driver.u/database->driver database)
+                default-role       (driver.sql/default-database-role driver database)]
             (cond
               (nil? role)
               (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
@@ -104,7 +105,13 @@
                                :conn-impersonations conn-impersonations}))
 
               :else
-              role)))))))
+              (driver.sql/format-impersonation-role
+               driver
+               database
+               role
+               {:user-id         api/*current-user-id*
+                :user-email      (some-> api/*current-user* deref :email)
+                :user-attributes user-attributes}))))))))
 
 (defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database.
@@ -141,7 +148,7 @@
   feature is unavailable. This is a no-op for databases that do not support connection impersonation, or for non-EE
   instances."
   :feature :none
-  [driver ^Connection conn database]
+  [driver conn database]
   (when (driver.u/supports? driver :connection-impersonation database)
     (try
       (let [policy-database    (if-let [router-id (:router-database-id database)]
@@ -158,7 +165,10 @@
           (throw (ex-info (tru "Connection impersonation is enabled for this database, but no default role is found")
                           {:user-id api/*current-user-id*
                            :database-id (u/id database)})))
-        (when-let [role (or impersonation-role default-role)]
+        (when-let [role (or impersonation-role
+                            (when (or (instance? Connection conn)
+                                      (premium-features/enable-advanced-permissions?))
+                              default-role))]
           ;; If impersonation is not enabled for any groups but we have a default role, we should still set it, just
           ;; in case impersonation used to be enabled and the connection still uses an impersonated role.
           (driver/set-role! driver conn role)))

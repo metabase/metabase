@@ -74,6 +74,21 @@ driver:
       type: string
       visible-if:
         advanced-options: true
+    - name: enable-secure-context
+      display-name: Enable BigQuery SECURE_CONTEXT for impersonation (Preview)
+      helper-text: Pass verified Metabase user email and attributes to BigQuery SECURE_CONTEXT() when Connection Impersonation is enabled.
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
+    - name: secure-context-attributes
+      display-name: Additional SECURE_CONTEXT user attributes
+      helper-text: Optional comma-separated Metabase user attribute keys to pass to SECURE_CONTEXT() (up to 27 keys). Unset attributes default to an empty string.
+      placeholder: region, tenant_id
+      required: false
+      type: string
+      visible-if:
+        enable-secure-context: true
     - default-advanced-options
 extra:
   db-routing-info:

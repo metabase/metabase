@@ -140,6 +140,17 @@
   [_ _database]
   nil)
 
+(defmulti format-impersonation-role
+  "Format the resolved connection-impersonation `role` string for caching and [[metabase.driver/set-role!]].
+  `user-info` contains `:user-id`, `:user-email`, and `:user-attributes`. Defaults to returning `role` unchanged."
+  {:added "0.66.0", :arglists '(^String [driver database role user-info])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod format-impersonation-role :default
+  [_driver _database role _user-info]
+  role)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Table identifier qualification                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+

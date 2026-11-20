@@ -19,7 +19,6 @@
    [metabase.global-system.system :as system]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
@@ -273,11 +272,9 @@
   (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-client
                                 :tunnel-entrance-port :tunnel-entrance-host]))
 
-(defenterprise set-role-if-supported!
-  "Sets the connection impersonation role of the current user, or the default role, on the connection `conn` to
-  `database`; OSS has no connection impersonation, so the connection keeps its own user."
-  metabase-enterprise.impersonation.driver
-  [_driver _conn _database])
+(p/import-vars
+ [driver.conn
+  set-role-if-supported!])
 
 (declare destroy-pool!)
 
@@ -432,7 +429,7 @@
       ;; reads the root without starting the state, so a checkout on a pool left over from a halt does not restart it
       (let [[driver database] (or (get-in @pools-component [:databases identity-token])
                                   (throw (ex-info (tru "This connection pool is closed.") {})))]
-        (set-role-if-supported! driver connection (checkout-database database)))
+        (driver.conn/set-role-if-supported! driver connection (checkout-database database)))
       (catch Throwable e
         (.set checkout-error e)
         (.close ^Connection connection))))
