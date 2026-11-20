@@ -67,7 +67,8 @@
     :single-stmt-of-type      (-> value (update :sql sql-tokens) (update :error some?))
     :transpile-sql            (if (= "success" (:status value))
                                 (update value :transpiled_sql sql-tokens)
-                                (select-keys value [:status :reason]))))
+                                (select-keys value [:status :reason]))
+    :parse-expression         value))
 
 (defn classify
   "Compare the `primary` and `shadow` [[outcome]]s of `method`. Returns `:match`, `:mismatch` (different
@@ -269,4 +270,6 @@
         (run ctx :single-stmt-of-type dialect sql [stmt-type] #(protocol/single-stmt-of-type % dialect sql stmt-type)))
       (transpile-sql [_ sql from-dialect to-dialect]
         (run ctx :transpile-sql from-dialect sql [to-dialect]
-             #(protocol/transpile-sql % sql from-dialect to-dialect))))))
+             #(protocol/transpile-sql % sql from-dialect to-dialect)))
+      (parse-expression [_ dialect sql]
+        (run ctx :parse-expression dialect sql [] #(protocol/parse-expression % dialect sql))))))

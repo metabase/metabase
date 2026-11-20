@@ -29,6 +29,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel entity-id-test
   (is (mr/validate ms/NanoIdString (ids/entity-id "x")))
   (testing "deterministic"

@@ -15,6 +15,8 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 ;; compiling a query runs the whole preprocessing pipeline, parts of which read the app DB
 (use-fixtures :once (fixtures/initialize :db))
 
