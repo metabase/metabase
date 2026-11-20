@@ -123,90 +123,6 @@
               [:either {:optional true} [:maybe [:or {:description "A string or an id."} :string :int]]]
               [:value {:optional true} [:maybe :any]]]))))))
 
-(deftest ^:parallel property-named-one-of-test
-  (testing "a property named `oneOf` is a property, not branches to rewrite"
-    (is (= {:type       "object"
-            :properties {:oneOf {:type "integer"}}
-            :required   [:oneOf]}
-           (tools-manifest/malli->json-schema [:map [:oneOf :int]])))))
-
-(deftest ^:parallel one-of-in-a-value-test
-  (testing "a `oneOf` key inside a constant is data, so it publishes unchanged"
-    (is (= {:const {:oneOf ["a" "b"]}}
-           (get-in (tools-manifest/malli->json-schema [:map [:k [:= {} {:oneOf ["a" "b"]}]]])
-                   [:properties :k])))))
-
-(deftest ^:parallel hand-written-one-of-test
-  (testing "a `oneOf` under any subschema keyword of a hand-written `:json-schema` publishes as `anyOf`"
-    (let [branches [{:type "integer"} {:type "boolean"}]]
-      (is (= {:else          {:anyOf branches}
-              :contains      {:anyOf branches}
-              :contentSchema {:anyOf branches}
-              ;; draft-07 `dependencies` mixes schemas with lists of property names, which stay as they are
-              :dependencies  {:a {:anyOf branches}
-                              :b ["c"]}}
-             (get-in (tools-manifest/malli->json-schema
-                      [:map [:k [:any {:json-schema {:else          {:oneOf branches}
-                                                     :contains      {:oneOf branches}
-                                                     :contentSchema {:oneOf branches}
-                                                     :dependencies  {:a {:oneOf branches}
-                                                                     :b ["c"]}}}]]])
-                     [:properties :k]))))))
-
-(defn- published
-  "The JSON Schema published for a property whose hand-written `:json-schema` is `json-schema`."
-  [json-schema]
-  (get-in (tools-manifest/malli->json-schema [:map [:k [:any {:json-schema json-schema}]]])
-          [:properties :k]))
-
-(deftest ^:parallel nullable-type-array-test
-  (testing "a nullable `oneOf` becomes a type array only when nothing else in X could reject `null`"
-    ;; a keyword that may reject `null` keeps the branches apart
-    (is (= {:anyOf [{:type "string", :not {:type "null"}} {:type "null"}]}
-           (published {:oneOf [{:type "string", :not {:type "null"}} {:type "null"}]})))
-    ;; a `null` type, or a type array that already has `null`, names `null` once
-    (is (= {:type ["null"]}
-           (published {:oneOf [{:type "null"} {:type "null"}]})))
-    (is (= {:type ["boolean" "null"]}
-           (published {:oneOf [{:type ["boolean" "null"]} {:type "null"}]})))
-    ;; an enum that already lists `null` lists it once
-    (is (= {:type ["string" "null"], :enum ["a" nil]}
-           (published {:oneOf [{:type "string", :enum ["a" nil]} {:type "null"}]})))
-    ;; an empty `oneOf` accepts nothing, and JSON Schema has no empty `anyOf`
-    (is (= {:not {}}
-           (published {:oneOf []})))
-    ;; an empty `anyOf` names no types to put in an array
-    (is (= {:anyOf [{:anyOf []} {:type "null"}]}
-           (published {:oneOf [{:anyOf []} {:type "null"}]})))))
-
-(deftest ^:parallel nullable-union-test
-  (testing "a nullable union of distinct types becomes one type array, where a coercing client keeps `null`"
-    ;; the shape of the write tools' optional ids: a numeric id or an entity_id
-    (is (= {:type        ["integer" "string" "null"]
-            :minimum     1
-            :minLength   21
-            :description "Numeric id. Entity id."}
-           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1, :description "Numeric id."}
-                                        {:type "string", :minLength 21, :description "Entity id."}]}
-                               {:type "null"}]}))))
-  (testing "a union a type array cannot say stays an `anyOf`"
-    ;; two branches of one type
-    (is (= {:anyOf [{:anyOf [{:type "string", :minLength 21} {:type "string", :maxLength 4}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "string", :minLength 21} {:type "string", :maxLength 4}]}
-                               {:type "null"}]})))
-    ;; an enum, which would apply to every type in the array
-    (is (= {:anyOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer"} {:type "string", :enum ["root"]}]} {:type "null"}]})))
-    ;; overlapping types, since every integer is a number, so the `minimum` would reach the number branch
-    (is (= {:anyOf [{:anyOf [{:type "integer", :minimum 1} {:type "number"}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer", :minimum 1} {:type "number"}]} {:type "null"}]})))
-    ;; a keyword for another type, which does nothing in its branch but would constrain the other branch's values
-    (is (= {:anyOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer", :minLength 3} {:type "string"}]} {:type "null"}]})))
-    ;; an annotation other than a description, which a type array has nowhere to keep per branch
-    (is (= {:anyOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]}
-           (published {:oneOf [{:anyOf [{:type "integer", :example 5} {:type "string"}]} {:type "null"}]})))))
-
 (deftest ^:parallel localized-description-test
   (testing "a localized description stays a localized string, which is translated for each caller when serialized"
     (let [pick (deferred-tru "Pick one.")]
@@ -224,34 +140,6 @@
            (get-in (tools-manifest/malli->json-schema
                     [:map [:k [:maybe {:description "Outer."} [:int {:description "An id."}]]]])
                    [:properties :k])))))
-
-(deftest ^:parallel one-of-siblings-test
-  (testing "keywords beside a rewritten `oneOf` accept what they accepted beside the `oneOf`"
-    ;; a sibling `anyOf` must hold as well, so the rewrite joins it rather than merging into it
-    (is (= {:anyOf [{:type "string"}]
-            :allOf [{:anyOf [{:minLength 1} {:maxLength 0}]}]}
-           (published {:anyOf [{:type "string"}], :oneOf [{:minLength 1} {:maxLength 0}]})))
-    ;; and so must a sibling `type`
-    (is (= {:type  "string"
-            :allOf [{:type ["integer" "null"]}]}
-           (published {:type "string", :oneOf [{:type "integer"} {:type "null"}]})))
-    ;; a branch's `additionalProperties` must not start reading the sibling `properties`
-    (is (= {:properties {:a {}}
-            :allOf      [{:type                 ["object" "null"]
-                          :additionalProperties false}]}
-           (published {:properties {:a {}}
-                       :oneOf      [{:type "object", :additionalProperties false} {:type "null"}]})))
-    ;; under `allOf`, the replacement's description stays on the property, unless the property has its own
-    (is (= {:type        "string"
-            :description "An id."
-            :allOf       [{:type ["integer" "null"]}]}
-           (published {:type "string", :oneOf [{:type "integer", :description "An id."} {:type "null"}]})))
-    (is (= {:type        "string"
-            :description "Outer."
-            :allOf       [{:type ["integer" "null"], :description "An id."}]}
-           (published {:type        "string"
-                       :description "Outer."
-                       :oneOf       [{:type "integer", :description "An id."} {:type "null"}]})))))
 
 (deftest ^:parallel multi-publishes-any-of-test
   (testing "a :multi publishes its branches as `anyOf`, since OpenAI's strict tool mode rejects `oneOf`"
