@@ -3,6 +3,7 @@
   (:require
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [trun]]
@@ -200,3 +201,8 @@
                           (and (cancelled? task) (some? (:ended_at task))) :cancelled
                           (timed-out? task) :timed-out
                           :else :running))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/RemoteSyncTask [_model]
+  {:skip? true})

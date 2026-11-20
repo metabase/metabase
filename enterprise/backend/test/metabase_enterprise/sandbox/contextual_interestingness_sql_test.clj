@@ -28,8 +28,8 @@
                       :attributes {"acme" secret-attribute-value}}
       (let [mp  (mt/metadata-provider)
             sql (ci.sql/dataset-query->sql
-                 (lib/->legacy-MBQL (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                        (lib/aggregate (lib/count)))))]
+                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                     (lib/aggregate (lib/count))))]
         (testing "sanity: we still produce SQL, and it still carries the query's structure"
           (is (string? sql))
           (is (str/includes? (u/lower-case-en sql) "count")))

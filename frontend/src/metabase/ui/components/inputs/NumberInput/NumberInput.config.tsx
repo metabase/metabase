@@ -1,6 +1,8 @@
-import { NumberInput } from "@mantine/core";
+import { NumberInput, rem } from "@mantine/core";
 
 import Styles from "./NumberInput.module.css";
+
+const CHEVRON_SIZE = 12;
 
 export const numberInputOverrides = {
   NumberInput: NumberInput.extend({
@@ -13,8 +15,15 @@ export const numberInputOverrides = {
       hideControls: true,
     },
     classNames: {
-      input: Styles.input,
-      error: Styles.error,
+      root: Styles.root,
+      wrapper: Styles.wrapper,
+      controls: Styles.controls,
+      control: Styles.control,
     },
+    vars: () => ({
+      controls: {
+        "--ni-chevron-size": rem(CHEVRON_SIZE),
+      },
+    }),
   }),
 };

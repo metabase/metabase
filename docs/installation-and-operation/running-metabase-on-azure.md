@@ -7,8 +7,6 @@ redirect_from:
 
 # Running Metabase on Microsoft Azure
 
-This guide covers the basics for running your Metabase instance in Microsoft Azure using Docker.
-
 ## Step 1: Create the resource group (resource grouping)
 
 On the Azure management console, click on the **Resource Groups** icon at the top of the page (or just search for Resource Groups). If you already have a resource group, you can go straight to [Step 2](#step-2-create-the-vnet-virtual-network).

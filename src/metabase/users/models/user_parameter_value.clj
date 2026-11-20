@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.batch-processing.core :as grouper]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
@@ -95,3 +96,8 @@
      :id
      {:default {}})
     dashboards))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/UserParameterValue [_model]
+  {:skip? false})

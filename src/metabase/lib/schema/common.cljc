@@ -124,7 +124,7 @@
 
 (mr/def ::clause-tag-candidate
   "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
-  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
+  [:maybe :metabase.util.malli/object])
 
 (mu/defn mbql-clause-tag :- [:maybe :keyword]
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
@@ -160,19 +160,49 @@
 
 (mr/def ::clause-options
   "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
-  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
+  [:map {:closed false, :description "options map of any MBQL clause"}])
+
+(mr/def ::open-json.object
+  "A JSON object kept as it arrived, whatever its keys."
+  [:map {:closed false, :description "a JSON object kept as it arrived"}])
+
+(mr/def ::open-json
+  "A JSON value kept as it arrived: a scalar, a sequence of such values, or a map of any keys."
+  [:or
+   :string
+   :boolean
+   :keyword
+   number?
+   [:sequential [:maybe [:ref ::open-json]]]
+   ::open-json.object])
+
+(mr/def ::java-collection
+  "A Java collection or map that is not a Clojure one, such as the documents a driver builds for its native query."
+  [:fn
+   {:error/message "a Java collection", :json-schema {}}
+   #?(:clj  #(and (not (coll? %))
+                  (or (instance? java.util.Collection %) (instance? java.util.Map %)))
+      :cljs (constantly false))])
+
+(mr/def ::driver-native-form
+  "A native query as a driver takes it: JSON-like data, in which a driver may also keep Java collections."
+  [:or
+   :string :boolean :keyword number?
+   ::java-collection
+   [:sequential [:maybe [:ref ::driver-native-form]]]
+   ::open-json.object])
 
 (mr/def ::database-details
-  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+  "Connection details for a Database; the `.cljc` equivalent of `:metabase.warehouses.schema/database.connection-details`."
+  [:map {:closed false, :description "database connection details"}])
 
 (mr/def ::database-settings
-  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+  "A Database's `:settings`; the `.cljc` equivalent of `:metabase.warehouses.schema/database.local-settings`."
+  [:map {:closed false, :description "database settings"}])
 
 (mr/def ::exception-data
   "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
-  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+  [:map {:closed false, :description "exception data"}])
 
 (mr/def ::field-value
   "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."

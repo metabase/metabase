@@ -13,18 +13,21 @@
 
 (mu/defmethod data-testing.subject/subject-plan :transform :- ::data-testing.subject/subject-plan
   [_subject-type
-   transform :- ::transforms.schema/transform]
+   transform :- ::transforms.schema/transform
+   _inputs]
   (when-not (transforms-base.u/query-transform? transform)
     (throw (data-testing.errors/ex
             ::data-testing.errors/unsupported-transform
             (tru "Only query transforms can be tested.")
             {})))
-  (let [database               (data-testing.subject/testable-database
-                                (transforms-base.u/transform-source-database transform))
-        target                 (select-keys (:target transform) [:schema :name])
-        {:keys [query params]} (transforms-base.u/compile-source transform nil)]
+  (let [database                  (data-testing.subject/testable-database
+                                   (transforms-base.u/transform-source-database transform))
+        target                    (select-keys (:target transform) [:schema :name])
+        {:keys [compiled native?]} (data-testing.subject/compile-preprocessed
+                                    (transforms-base.u/preprocess-source transform nil))]
     {:database      database
-     :compiled      {:query query :params params}
+     :compiled      compiled
+     :native?       native?
      :output-tables [target]
      :output-token  nil
      :output-label  (data-testing.validator/table-label target)}))

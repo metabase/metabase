@@ -8,8 +8,6 @@ redirect_from:
 
 # Alerts
 
-Set up an alert to send the results of questions to people via email or Slack, or to a webhook.
-
 Alerts are for questions only. If you instead want to get the results of a dashboard sent to you, check out [dashboard subscriptions](../dashboards/subscriptions.md).
 
 ## Prerequisite for alerts

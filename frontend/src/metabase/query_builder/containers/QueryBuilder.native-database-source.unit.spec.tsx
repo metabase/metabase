@@ -54,6 +54,12 @@ const ADDITIONAL_DB = createMockDatabase({
   name: "New Database",
   engine: "postgres",
 });
+const AUDIT_DB = createMockDatabase({
+  id: 13371337,
+  name: "Internal Metabase Database",
+  engine: "postgres",
+  is_audit: true,
+});
 
 const LAST_USED_DATABASE_SETTING_URL =
   "/api/setting/last-used-native-database-id";
@@ -245,6 +251,42 @@ describe("QueryBuilder > native database source", () => {
       expect(within(popover).getByText(ADDITIONAL_DB.name)).toBeInTheDocument();
       expect(
         within(popover).queryByText(SAMPLE_DB.name),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("instance analytics database (metabase#44856)", () => {
+    it("selects the only other database instead of the instance analytics database", async () => {
+      await setup({
+        editorType: "question",
+        databases: [AUDIT_DB, SAMPLE_DB],
+        lastUsedDatabaseId: null,
+      });
+
+      expect(await screen.findByTestId("selected-database")).toHaveTextContent(
+        SAMPLE_DB.name,
+      );
+      await waitFor(async () => {
+        expect(await findLastUsedDatabaseRequests()).toHaveLength(1);
+      });
+      const [request] = await findLastUsedDatabaseRequests();
+      expect(request.body).toEqual({ value: SAMPLE_DB.id });
+    });
+
+    it("does not list the instance analytics database", async () => {
+      await setup({
+        editorType: "question",
+        databases: [AUDIT_DB, SAMPLE_DB, POSTGRES_DB],
+        lastUsedDatabaseId: POSTGRES_DB.id,
+      });
+
+      await userEvent.click(await screen.findByTestId("selected-database"));
+
+      const popover = await screen.findByRole("dialog");
+      expect(within(popover).getByText(SAMPLE_DB.name)).toBeInTheDocument();
+      expect(within(popover).getByText(POSTGRES_DB.name)).toBeInTheDocument();
+      expect(
+        within(popover).queryByText(AUDIT_DB.name),
       ).not.toBeInTheDocument();
     });
   });

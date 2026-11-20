@@ -77,6 +77,7 @@
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
+  :metabase/change-log-raw-write                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
   ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
@@ -220,7 +221,7 @@
      metabase.channel.render.pdf/draw-no-results!
      metabase.channel.render.pdf/render-card-cell!
      metabase.channel.render.pdf.font/load-fonts!
-     metabase.warehouses.models.database/assert-not-h2!
+     metabase.warehouses.serialization/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      ;; only inspects a details map and throws; the `!` is for the throw, not for a mutation
      metabase.driver/validate-db-details!

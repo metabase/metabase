@@ -22,6 +22,7 @@
   temp table exists."
   (:require
    [clojure.string :as str]
+   [java-time.api :as t]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.executor :as data-testing.executor]
@@ -32,14 +33,19 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card]
+   [metabase-enterprise.data-testing.subject.segment]
    [metabase-enterprise.data-testing.subject.transform]
+   [metabase-enterprise.data-testing.util :as data-testing.u]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.sql-parsing.core :as sql-parsing]
-   [metabase.util :as u]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -53,6 +59,7 @@
   metabase-enterprise.data-testing.expectations.empty/keep-me
   metabase-enterprise.data-testing.expectations.equals/keep-me
   metabase-enterprise.data-testing.subject.card/keep-me
+  metabase-enterprise.data-testing.subject.segment/keep-me
   metabase-enterprise.data-testing.subject.transform/keep-me)
 
 (mr/def ::labels
@@ -187,6 +194,25 @@
         (doseq [table (vals @temp-tables)]
           (data-testing.executor/drop-temp-table! driver conn table))))))
 
+(mu/defn- columns-read :- [:maybe [:set ::data-testing.validator/column-read]]
+  "The columns of tables that `sql` reads, as `metadata-provider` spells them, or nil when the parser reports an error
+  in `sql`. A column is left out when `metadata-provider` does not list it, when only a wildcard reads it, or when its
+  reference could also read something else: a column of another table, a column whose name differs only in case, a
+  computed value, or a column of a source whose columns are unknown."
+  [driver            :- :keyword
+   metadata-provider :- ::lib.schema.metadata/metadata-provider
+   sql               :- :string]
+  (let [{:keys [used-fields returned-fields errors]} (sql-tools/field-references driver sql)]
+    (when (empty? errors)
+      (into #{}
+            (comp (filter #(= :single-column (:type %)))
+                  (keep (fn [field]
+                          (let [[column & more] (sql-tools/field-candidates driver metadata-provider field)]
+                            (when (and (:table-id column) (not more))
+                              (let [{:keys [schema name]} (lib.metadata/table metadata-provider (:table-id column))]
+                                {:schema schema :name name :column (:name column)}))))))
+            (concat used-fields returned-fields)))))
+
 (mu/defn- source-tables :- [:set ::data-testing.schema/table]
   "The tables the subject's `sql` reads, or a refusal naming what would not parse."
   [driver :- :keyword
@@ -218,26 +244,12 @@
                                (data-testing.validator/table-label (:table input)))
                           labels)))))
 
-(defmulti column-names-ignore-case?
-  "Whether `driver` treats two column names that differ only in case as one name, so that a table cannot hold both.
-  False unless a driver says otherwise."
-  {:arglists '([driver])}
-  identity
-  :hierarchy #'driver/hierarchy)
-
-(defmethod column-names-ignore-case? :default [_driver] false)
-
-;; MySQL and MariaDB, SQL Server with its default collation, and DuckDB compare column names without regard to case.
-;; Redshift folds quoted names to lower case too, unless `enable_case_sensitive_identifier` is on.
-(doseq [driver [:mysql :sqlserver :motherduck :redshift]]
-  (defmethod column-names-ignore-case? driver [_driver] true))
-
 (mu/defn- check-output-columns! :- :nil
   "Refuse the output `columns` of the query under test unless their names are distinct, as `driver` compares column
   names."
   [driver  :- :keyword
    columns :- [:sequential ::data-testing.schema/result-column]]
-  (let [same-name (if (column-names-ignore-case? driver) u/lower-case-en identity)]
+  (let [same-name (partial data-testing.u/column-key (data-testing.u/column-names-ignore-case? driver))]
     (when-let [repeated (seq (for [[_name [column-name & more]] (group-by same-name (map :name columns))
                                    :when (seq more)]
                                column-name))]
@@ -286,6 +298,39 @@
             (check-expectation driver conn context (expectations.protocol/build expectation) labels))
           expectations)))
 
+(def definition-keys
+  "The keys of a test that a run reads: its inputs, its expectations, and the moment its subject reads as the current
+  time."
+  [:inputs :expectations :now])
+
+(mr/def ::definition
+  "What a run reads of a test."
+  [:select-keys ::data-testing.schema/test.definition definition-keys])
+
+(defn test-definition
+  "The [[::definition]] of `test-fields`, a saved test or a request body that may hold other keys."
+  [test-fields]
+  (select-keys test-fields definition-keys))
+
+(mu/defn- subject-plan :- ::data-testing.subject/subject-plan
+  "The [[data-testing.subject/subject-plan]] of `subject` for a test with `inputs`, compiled with `now` standing for the
+  current time when it is given. Throws `::data-testing.errors/now-on-native-sql` when `now` is given and the subject's
+  SQL includes SQL written by hand."
+  [subject-type :- ::data-testing.subject/subject-type
+   subject      :- ::data-testing.subject/subject
+   inputs       :- ::data-testing.schema/inputs
+   now          :- [:maybe ::data-testing.schema/now]]
+  (if-not now
+    (data-testing.subject/subject-plan subject-type subject inputs)
+    (let [plan (qp.timezone/with-pinned-now (t/instant now)
+                 (data-testing.subject/subject-plan subject-type subject inputs))]
+      (when (:native? plan)
+        (throw (data-testing.errors/ex
+                ::data-testing.errors/now-on-native-sql
+                (tru "This test cannot set `now`: its query is written in SQL, or built on a question written in SQL, and `now` does not change the current time inside SQL. Remove `now`, or test a query built without SQL.")
+                {})))
+      plan)))
+
 (mu/defn- validated-plan :- ::plan
   "Everything a run needs, resolved and checked but not yet executed: the database and driver the subject runs
   against, a temp table per input and one for its output, the subject's query rewritten to read them, and the labels a
@@ -294,12 +339,11 @@
   Throws the run's typed refusals — an untestable subject or driver, SQL that will not parse, a test the validator
   rejects — so a caller that only wants the answer to \"could this run?\" gets it by asking for the plan and
   discarding it."
-  [subject-type :- ::data-testing.subject/subject-type
-   subject      :- ::data-testing.subject/subject
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
+  [subject-type                         :- ::data-testing.subject/subject-type
+   subject                              :- ::data-testing.subject/subject
+   {:keys [inputs expectations now]}    :- ::definition]
   (let [{:keys [database compiled output-tables output-token output-label]}
-        (data-testing.subject/subject-plan subject-type subject)
+        (subject-plan subject-type subject inputs now)
         driver         (keyword (:engine database))
         source-tables  (source-tables driver (:query compiled))
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
@@ -315,7 +359,10 @@
       :rewritten-query (:query rewritten)
       :replacements        replacements
       :output-token        output-token
-      :default-schema      default-schema})
+      :default-schema      default-schema
+      :columns-read        (columns-read driver (lib-be/application-database-metadata-provider (:id database))
+                                         (:query compiled))
+      :ignore-case?        (data-testing.u/column-names-ignore-case? driver)})
     {:driver       driver
      :database     database
      :input->table input->table
@@ -326,16 +373,15 @@
      :compiled     rewritten}))
 
 (mu/defn validate-test :- :nil
-  "Refuse a test of `subject`, a `subject-type`, with these `inputs` and `expectations` unless it could run: the same
-  checks a run makes, up to but not including the connection.
+  "Refuse a test of `subject`, a `subject-type`, with the inputs, expectations and `now` of `definition` unless it could
+  run: the same checks a run makes, up to but not including the connection.
 
   Returns nil when there is nothing to refuse, and otherwise throws the refusal the run would have thrown, so a test
   is turned away as it is authored rather than only when somebody runs it."
   [subject-type :- ::data-testing.subject/subject-type
    subject      :- ::data-testing.subject/subject
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
-  (validated-plan subject-type subject inputs expectations)
+   definition   :- ::definition]
+  (validated-plan subject-type subject definition)
   nil)
 
 (mu/defn run-test! :- ::data-testing.schema/run-result
@@ -346,9 +392,9 @@
   failing expectation is not a refusal: it rides back as that expectation's own result."
   [subject-type                                             :- ::data-testing.subject/subject-type
    subject                                                  :- ::data-testing.subject/subject
-   {test-id :id :keys [inputs expectations] :as _saved-test} :- ::data-testing.schema/saved-test]
+   {test-id :id :keys [expectations] :as saved-test}         :- ::data-testing.schema/saved-test]
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
-        (validated-plan subject-type subject inputs expectations)
+        (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
         final-status (atom :error)]
     (try

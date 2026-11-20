@@ -118,7 +118,9 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
-> This is an example file and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+> You can use this example file to run Metabase locally, like when you want to try out Metabase or set up a development instance. It's not meant for production. To run Metabase in production, check out our guide on [how to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+
+This example file runs the Open Source version of Metabase. To run a Pro or Enterprise version instead, change the Metabase image to `metabase/metabase-enterprise:latest`, and give Metabase your [license token](./activating-the-enterprise-edition.md), for example with the [`MB_PREMIUM_EMBEDDING_TOKEN` environment variable](../configuring-metabase/environment-variables.md#mb_premium_embedding_token).
 
 ```yml
 services:

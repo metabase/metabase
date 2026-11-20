@@ -5,8 +5,6 @@ summary: The metadata, content, and settings that change what Metabot can find a
 
 # Configure Metabot context
 
-Metabot answers questions using the metadata and content in your Metabase. This page lists what you can change to improve its answers, and what each change does.
-
 ## What Metabot searches depends on where people use it
 
 Metabot can only see what the person asking has [permission](../permissions/data.md) to see.

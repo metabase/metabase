@@ -3,8 +3,6 @@
    [metabase-enterprise.tenants.api :as tenants.api]
    [metabase-enterprise.tenants.auth-provider]
    [metabase-enterprise.tenants.db :as tenants.db]
-   [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]))
 
@@ -49,12 +47,3 @@
   [user]
   (when-let [tenant-id (:tenant_id user)]
     (tenants.db/tenant tenant-id)))
-
-(defenterprise validate-new-tenant-collection!
-  "Throws API exceptions if the passed collection is an invalid tenant collection."
-  :feature :tenants
-  [collection]
-  (when (collection/shared-tenant-collection? collection)
-    ;; make sure tenants is enabled
-    (api/check-400 (perms/use-tenants)))
-  collection)

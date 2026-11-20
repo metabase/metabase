@@ -7,7 +7,8 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.serialization.protocol :as protocol]
-   [metabase.serialization.protocol.app-db :as protocol.app-db]))
+   [metabase.serialization.protocol.app-db :as protocol.app-db]
+   [metabase.serialization.spec :as serialization.spec]))
 
 (set! *warn-on-reflection* true)
 
@@ -18,13 +19,12 @@
     (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
         (assoc :serdes/meta [{:model model}]))))
 
-(defmulti resource-paths
-  "Paths of the `:serdes/resources` stored next to an entity's YAML file, relative to its directory."
-  {:arglists '([entity])}
-  (fn [entity] (some->> entity :serdes/meta last :model (keyword "model"))))
-
-(defmethod resource-paths :default [_]
-  nil)
+(defn resource-paths
+  "Paths of the `:serdes/resources` stored next to an entity's YAML file, relative to its directory, by the
+  `:resource-paths` of the spec of its model, none by default."
+  [entity]
+  (when-let [f (some->> entity :serdes/meta last :model (keyword "model") serialization.spec/spec :resource-paths)]
+    (f entity)))
 
 (defn collection-namespace-folder
   "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
@@ -49,18 +49,17 @@
          cat [(get collections (:collection_id entity))
               [{:label (:name entity) :key (:entity_id entity)}]])))
 
-(defmulti storage-paths
+(defn storage-paths
   "The storage path of each of `entities`, entities of `model`, with `ctx` the context of their batch (see
   [[batch-storage-paths]]): a vector of maps with `:label` and optional `:key`, `:style` and `:suffix` for each path
   segment. `:label` is the human-readable name; `:key` is a deduplication identity (entity_id, name, or nil); `:style`
   is `:name` (the default) for a label that is slugified into a file name, or `:slug` for a label that is already a
   slug safe to use as a file name as is; `:suffix` is appended to the file name after the label is slugified and
-  truncated."
-  {:arglists '([model entities ctx])}
-  (fn [model _entities _ctx] model))
-
-(defmethod storage-paths :default [_ entities ctx]
-  (mapv #(storage-default-collection-path % ctx) entities))
+  truncated. The `:storage-paths` of the spec of `model` gives them, [[storage-default-collection-path]] by default."
+  [model entities ctx]
+  (if-let [f (:storage-paths (serialization.spec/spec model))]
+    (f entities ctx)
+    (mapv #(storage-default-collection-path % ctx) entities)))
 
 (defn- by-entity-ids
   "The `columns` of the `model` rows of the app DB with the entity ids `eids`."

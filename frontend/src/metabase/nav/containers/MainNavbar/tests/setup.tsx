@@ -76,6 +76,8 @@ export type SetupOpts = {
   activeUsersCount?: number;
   trashCollection?: Collection;
   extraCollections?: Collection[];
+  /** Top-level collections of the tree, with their descendants in `children` */
+  collections?: Collection[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -96,6 +98,13 @@ export const TEST_COLLECTION = createMockCollection({
   name: "Test collection",
   children: [NESTED_COLLECTION],
 });
+
+function flattenCollections(collections: Collection[]): Collection[] {
+  return collections.flatMap((collection) => [
+    collection,
+    ...flattenCollections(collection.children ?? []),
+  ]);
+}
 
 export async function setup({
   pathname = "/",
@@ -119,6 +128,7 @@ export async function setup({
   applicationName = "Metabase",
   trashCollection,
   extraCollections = [],
+  collections: topLevelCollections = [TEST_COLLECTION],
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -151,7 +161,7 @@ export async function setup({
     can_write: user?.is_superuser || canCurateRootCollection,
   });
 
-  const collections = [TEST_COLLECTION];
+  const collections = [...topLevelCollections];
 
   const personalCollection = user
     ? createMockCollection({
@@ -174,8 +184,7 @@ export async function setup({
   setupCollectionByIdEndpoint({
     collections: [
       PERSONAL_COLLECTION_BASE,
-      TEST_COLLECTION,
-      NESTED_COLLECTION,
+      ...flattenCollections(topLevelCollections),
       ...extraCollections,
     ],
   });
@@ -242,7 +251,7 @@ export async function setup({
     });
   }
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path={route}
       element={<RoutedMainNavbar isOpen dashboard={storeDashboard} />}
@@ -257,6 +266,8 @@ export async function setup({
 
   await waitForLoaderToBeRemoved();
   await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
+
+  return { router };
 }
 
 export async function setupCollectionPage({

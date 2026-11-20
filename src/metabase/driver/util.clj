@@ -486,7 +486,7 @@
   instance that is incorrect. I don't have the time to fix every single incorrect usage, so we'll just log an error
   and move on for now."
   [driver   :- :keyword
-   feature  :- :keyword
+   feature  :- ::driver/feature
    database :- [:maybe ::warehouses.schema/database-or-metadata]]
   (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]

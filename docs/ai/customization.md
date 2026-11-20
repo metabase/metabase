@@ -9,8 +9,6 @@ summary: "Change how Metabot appears in Metabase for a branded look."
 
 _Admin > AI > Customization_
 
-Admins can change how Metabot displays itself in Metabase.
-
 To navigate to the AI customization settings:
 
 1. Click the **grid** icon in the upper right.

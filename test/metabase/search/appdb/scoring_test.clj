@@ -6,6 +6,9 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.core :as search.appdb.core]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.appdb.scoring :as scoring]
@@ -363,7 +366,7 @@
       (mt/with-temp [:model/Collection lib       {:name "lib top"        :type "library"        :location "/"}
                      :model/Collection lib-data  {:name "lib data"       :type "library-data"   :location "/"}
                      :model/Collection lib-met   {:name "lib metrics"    :type "library-metrics" :location "/"}
-                     :model/Collection sub       {:name "sub of lib"     :location (format "/%d/" (:id lib))}
+                     :model/Collection sub       {:name "sub of lib"     :type "library-data" :location (format "/%d/" (:id lib))}
                      :model/Collection sub-sub   {:name "sub of sub"     :location (format "/%d/%d/" (:id lib) (:id sub))}
                      :model/Collection other     {:name "non-library"    :location "/"}]
         (with-index-contents
@@ -382,6 +385,20 @@
               (is (= [false false true true true true true]
                      (map in-library? (with-weights {:library -1} (search-results* "card"))))))))))))
 
+(defn- table-measure-definition
+  "A full query on `table-id` with a count aggregation."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/aggregate (lib/count)))))
+
+(defn- table-definition
+  "A full query on `table-id` with an always-true filter."
+  [table-id]
+  (let [mp (lib-be/application-database-metadata-provider (mt/id))]
+    (-> (lib/query mp (lib.metadata/table mp table-id))
+        (lib/filter (lib/= 1 1)))))
+
 (deftest measure-segment-library-test
   ;; Index table first, before `with-temp` opens its transaction; see [[library-test]].
   (search.tu/with-temp-index-table
@@ -389,10 +406,10 @@
       (collections.tu/with-library [{data :data}]
         (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
                        :model/Table   plain-tbl {:name "plain_tbl"}
-                       :model/Measure _ {:name "foo measure lib"   :table_id (:id lib-tbl)}
-                       :model/Measure _ {:name "foo measure plain" :table_id (:id plain-tbl)}
-                       :model/Segment _ {:name "foo segment lib"   :table_id (:id lib-tbl)}
-                       :model/Segment _ {:name "foo segment plain" :table_id (:id plain-tbl)}]
+                       :model/Measure _ {:name "foo measure lib"   :definition (table-measure-definition (:id lib-tbl))}
+                       :model/Measure _ {:name "foo measure plain" :definition (table-measure-definition (:id plain-tbl))}
+                       :model/Segment _ {:name "foo segment lib"   :definition (table-definition (:id lib-tbl))}
+                       :model/Segment _ {:name "foo segment plain" :definition (table-definition (:id plain-tbl))}]
           (let [results (search-results** "foo" {:context :metabot :models #{"measure" "segment"}})]
             (is (=? [{:name #".* lib",   :curated true}
                      {:name #".* lib",   :curated true}
@@ -412,8 +429,8 @@
     (testing "measures and segments follow a table published and unpublished through its user settings"
       (collections.tu/with-library [{data :data}]
         (mt/with-temp [:model/Table   {table-id :id :as table} {:name "tbl"}
-                       :model/Measure _ {:name "foo measure" :table_id table-id}
-                       :model/Segment _ {:name "foo segment" :table_id table-id}]
+                       :model/Measure _ {:name "foo measure" :definition (table-measure-definition table-id)}
+                       :model/Segment _ {:name "foo segment" :definition (table-definition table-id)}]
           (let [curated #(mapv :curated (search-results** "foo" {:context :metabot :models #{"measure" "segment"}}))]
             (is (= [[false false] [true true] [false false]]
                    [(curated)

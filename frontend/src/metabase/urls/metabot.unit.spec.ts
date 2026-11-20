@@ -31,8 +31,8 @@ describe("conversationChartUrl", () => {
     expect(conversationChartUrl({ queries: [] })).toBeUndefined();
   });
 
-  it("returns undefined for a backend pMBQL query that legacy /question# urls cannot represent", () => {
-    // OpaqueDatasetQuery is branded, so the raw pMBQL wire shape needs a cast
+  it("returns undefined for a backend MBQL 5 query that legacy /question# urls cannot represent", () => {
+    // OpaqueDatasetQuery is branded, so the raw MBQL 5 wire shape needs a cast
     const pmbqlQuery = {
       "lib/type": "mbql/query",
       stages: [{ "lib/type": "mbql.stage/mbql", "source-table": 1 }],
