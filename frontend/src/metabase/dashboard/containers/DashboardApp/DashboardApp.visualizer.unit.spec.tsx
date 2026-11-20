@@ -31,6 +31,10 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import {
+  resetMockExplicitSize,
+  setMockExplicitSize,
+} from "metabase/common/components/ExplicitSize/tests/mock-size";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
@@ -544,7 +548,7 @@ const FUNNEL_DASHCARD = createMockVisualizerDashboardCard({
 });
 
 const SERIES_B_COLOR = "#F9D45C";
-const ADDED_SERIES_COLOR = "#88BF4D";
+const HOVERED_SERIES_COLOR = "#88BF4D";
 // the sum of the Products by Category counts
 const PIE_TOTAL = "26";
 
@@ -1263,6 +1267,30 @@ function getYAxisLabels(chart: HTMLElement) {
   ).map((text) => text.textContent?.trim() ?? "");
 }
 
+/**
+ * Shows the ECharts tooltip of a data point of the series drawn in a color.
+ * jsdom has no layout for a real hover, so this dispatches the action that a
+ * hover triggers, and the chart renders the tooltip with its own formatter.
+ */
+async function showChartTooltip(
+  chart: HTMLElement,
+  { seriesColor, dataIndex }: { seriesColor: string; dataIndex: number },
+) {
+  const instance = checkNotNull(getInstanceByDom(chart));
+  const { series } = instance.getOption();
+  const seriesIndex = Array.isArray(series)
+    ? series.findIndex(
+        (option) =>
+          isObject(option.lineStyle) && option.lineStyle.color === seriesColor,
+      )
+    : -1;
+  expect(seriesIndex).toBeGreaterThanOrEqual(0);
+  act(() => {
+    instance.dispatchAction({ type: "showTip", seriesIndex, dataIndex });
+  });
+  return screen.findByTestId("echarts-tooltip");
+}
+
 function getTrendLines(container: HTMLElement) {
   return container.querySelectorAll(
     `path[stroke-width='${TREND_LINE_WIDTH}'][stroke-linejoin='bevel']`,
@@ -1391,6 +1419,7 @@ async function findClickActions() {
 describe("DashboardApp > visualizer", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    resetMockExplicitSize();
   });
 
   describe("editing a dashcard", () => {
@@ -3033,6 +3062,7 @@ describe("DashboardApp > visualizer", () => {
         firstDimension: "Created At: Month",
         secondDimension: "Created At: Month",
         display: "line",
+        chartSize: undefined,
         xAxisLabels: ["January 2024", "March 2024"],
         yAxisLabels: ["600", "10"],
         // both data sources share the dimension
@@ -3046,8 +3076,9 @@ describe("DashboardApp > visualizer", () => {
         secondDimension: "Category",
         display: "bar",
         xAxisLabels: ["Doohickey", "Widget"],
-        // jsdom charts are wide enough for full numbers instead of "6.0k"
-        yAxisLabels: ["6,000", "3,000"],
+        // a chart below the fullscreen size uses compact tick labels
+        chartSize: { width: 800, height: 400 },
+        yAxisLabels: ["6.0k", "3.0k"],
         dimensionWellItems: ["Product → Category", "Category"],
       },
     ])(
@@ -3058,10 +3089,14 @@ describe("DashboardApp > visualizer", () => {
         firstDimension,
         secondDimension,
         display,
+        chartSize,
         xAxisLabels,
         yAxisLabels,
         dimensionWellItems,
       }) => {
+        if (chartSize) {
+          setMockExplicitSize(chartSize);
+        }
         await setup({
           dashcards: [],
           cards: CARTESIAN_CARDS,
@@ -3240,7 +3275,7 @@ describe("DashboardApp > visualizer", () => {
       const getChart = () => within(modal).getByTestId("chart-container");
       await waitFor(() =>
         expect(
-          getPathsWithStroke(getChart(), ADDED_SERIES_COLOR),
+          getPathsWithStroke(getChart(), HOVERED_SERIES_COLOR),
         ).not.toHaveLength(0),
       );
       await waitFor(() => expect(getYAxisLabels(getChart())).toContain("6%"));
@@ -3248,6 +3283,18 @@ describe("DashboardApp > visualizer", () => {
       for (const label of getYAxisLabels(getChart())) {
         expect(label).toMatch(/^\d+(\.\d+)?%$/);
       }
+
+      // hover the 6th point, as the e2e test did; the tooltip lists both series
+      const tooltip = await showChartTooltip(getChart(), {
+        seriesColor: HOVERED_SERIES_COLOR,
+        dataIndex: 5,
+      });
+      const addedSeriesRow = checkNotNull(
+        within(tooltip)
+          .getAllByRole("row")
+          .find((row) => within(row).queryByText(TAX_OVER_TOTAL.name) != null),
+      );
+      expect(within(addedSeriesRow).getByText("5.2%")).toBeInTheDocument();
     });
   });
 });

@@ -159,10 +159,6 @@ export function switchToColumnsList() {
   cy.button("Done").click();
 }
 
-export function ensureDisplayIsSelected(display: VisualizationDisplay) {
-  cy.findByDisplayValue(display).should("be.checked");
-}
-
 export function selectColumnFromColumnsList(
   datasetName: string,
   columnName: string,
@@ -315,10 +311,6 @@ export function closeDashcardVisualizerModal() {
 
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
-}
-
-export function clickUndoButton() {
-  cy.findByLabelText("Undo").click();
 }
 
 export function clickRedoButton() {
