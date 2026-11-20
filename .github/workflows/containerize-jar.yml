@@ -73,6 +73,9 @@ on:
 
 jobs:
   containerize:
+    # only push once the image rendered a chart (verify-static-viz is skipped for ECR)
+    needs: verify-static-viz
+    if: ${{ !cancelled() && contains(fromJSON('["success", "skipped"]'), needs.verify-static-viz.result) }}
     name: containerize (${{ inputs.edition }})
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
@@ -174,8 +177,8 @@ jobs:
           docker pull ${{ steps.image.outputs.full_image }}
           ```
 
+  # builds each platform locally and renders a chart in it before containerize pushes anything
   verify-static-viz:
-    needs: containerize
     if: inputs.registry != 'ecr'
     name: verify-static-viz (${{ inputs.edition }}, ${{ matrix.platform }})
     strategy:
@@ -193,35 +196,45 @@ jobs:
       if: contains(inputs.platforms, matrix.platform)
       with:
         fetch-depth: 1
-        sparse-checkout: .github/scripts
+    - name: Check out bin/docker from the commit we're building
+      if: contains(inputs.platforms, matrix.platform)
+      run: |
+        git fetch --depth=1 origin ${{ inputs.commit }}
+        git checkout ${{ inputs.commit }} -- bin/docker
+    - name: Retrieve uberjar artifact
+      if: contains(inputs.platforms, matrix.platform)
+      uses: ./.github/actions/fetch-artifact
+      with:
+        commit: ${{ inputs.commit }}
+        edition: ${{ inputs.edition }}
+        release: ${{ inputs.release }}
+        extract-path: bin/docker
     - name: Login to Docker Hub
       if: contains(inputs.platforms, matrix.platform)
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         username: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_USERNAME || secrets.DOCKERHUB_USERNAME }}
         password: ${{ inputs.release && secrets.DOCKERHUB_RELEASE_TOKEN || secrets.DOCKERHUB_TOKEN }}
-    - name: Pull the container image
+    - name: Set up Docker Buildx
       if: contains(inputs.platforms, matrix.platform)
-      run: docker pull --platform ${{ matrix.platform }} ${{ needs.containerize.outputs.full_image }}
-    # older releases are built with this workflow from master but with their own bin/docker, which may predate the isolate
-    - name: Check whether the image should ship the JS isolate
-      id: isolate
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+    - name: Build the image locally
       if: contains(inputs.platforms, matrix.platform)
-      env:
-        COMMIT: ${{ inputs.commit }}
-      run: |
-        git fetch --depth=1 origin "$COMMIT"
-        dockerfile=$(git show FETCH_HEAD:bin/docker/Dockerfile)
-        if grep -q JS_ISOLATE_IMAGE <<< "$dockerfile"; then
-          echo "expected=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "expected=false" >> "$GITHUB_OUTPUT"
-        fi
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      with:
+        context: bin/docker/.
+        platforms: ${{ matrix.platform }}
+        network: host
+        tags: metabase-under-test:local
+        no-cache: true
+        load: true
+        build-args: ${{ inputs.build-args }}
     - name: Render a chart inside the image
       if: contains(inputs.platforms, matrix.platform)
-      env:
-        EXPECT_ISOLATE: ${{ steps.isolate.outputs.expected }}
-      run: .github/scripts/verify-docker-static-viz.sh ${{ needs.containerize.outputs.full_image }}
+      run: |
+        # older releases are built with this workflow from master but with their own bin/docker, which may predate the isolate
+        if grep -q JS_ISOLATE_IMAGE bin/docker/Dockerfile; then export EXPECT_ISOLATE=true; else export EXPECT_ISOLATE=false; fi
+        .github/scripts/verify-docker-static-viz.sh metabase-under-test:local
 
   verify-docker-pull-amd64:
     needs: containerize
