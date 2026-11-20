@@ -126,73 +126,77 @@
         (keep u.http/->hostname)
         (credential-urls details)))
 
-(defn- maybe-scope-creds [{:keys [auth-mode credential-config-json] :as details}]
+(defn- maybe-scope-creds
+  ^GoogleCredentials [^GoogleCredentials base-creds {:keys [auth-mode credential-config-json]}]
   ;; A service account key needs scopes. Credentials the environment hands out, like the GCE/GKE metadata
   ;; server's, can come with scopes of their own, and then the library asks us not to add any.
   ;; If the WIF config sets scopes of its own, trust the admin's choice; skip .createScoped.
-  (let [^GoogleCredentials base-creds (bigquery.common/database-details->credentials details)
-        config-scopes (if (= "credential-config" auth-mode)
+  (let [config-scopes (if (= "credential-config" auth-mode)
                         (:scope (json/decode credential-config-json))
                         [])]
-    (when-not (and (seq config-scopes)
-                   (= bigquery-scopes (filter (set bigquery-scopes) config-scopes)))
+    (when (and (seq config-scopes)
+               (not= bigquery-scopes (filter (set bigquery-scopes) config-scopes)))
       (log/warn "BigQuery credential config does not contain needed scopes"
                 {:scopes config-scopes}))
     (if (or (perf/empty? config-scopes) (.createScopedRequired base-creds))
       (.createScoped base-creds bigquery-scopes)
       base-creds)))
 
+(defn- apply-universe-domain
+  ^GoogleCredentials [^GoogleCredentials creds ^String universe-domain]
+  (if (str/blank? universe-domain)
+    creds
+    (-> (.toBuilder creds)
+        (.setUniverseDomain universe-domain)
+        (.build))))
+
+(defmethod driver/validate-db-details! :bigquery-cloud-sdk
+  [_driver {:keys [auth-mode]}]
+  (when (= "application-default" auth-mode)
+    (bigquery.common/check-adc-allowed!)))
+
 (mu/defn- database-details->client
   ^BigQuery [details :- :metabase.lib.schema.common/database-details]
+  (driver/validate-db-details! :bigquery-cloud-sdk details)
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
-  (let [base-creds   (bigquery.common/database-details->credentials details)
+  (let [universe-domain (or (u/not-blank (:universe-domain details))
+                            (u/not-blank (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN"))
+                            (u/not-blank (System/getProperty "google.cloud.universe_domain")))
+        ^GoogleCredentials base-creds (-> (bigquery.common/database-details->credentials details)
+                                          (apply-universe-domain universe-domain))
         ;; Check if we should impersonate a different service account
         ;; ImpersonatedCredentials automatically refreshes tokens before expiration,
         ;; so the 1-hour lifetime is just the initial token validity period.
         ;; Each query creates a fresh client, and the credentials handle refresh internally.
-        impersonating? (some? (:impersonate-service-account details))
+        impersonating? (some? (u/not-blank (:impersonate-service-account details)))
         final-creds  (if impersonating?
                        (let [target-sa (:impersonate-service-account details)]
                          (log/debugf "Creating impersonated credentials for service account: %s" target-sa)
-                         (ImpersonatedCredentials/create
-                          (.createScoped base-creds bigquery-scopes)
-                          target-sa
-                          nil  ;; delegates (not needed)
-                          (java.util.ArrayList. bigquery-scopes)
-                          3600))  ;; 1 hour token lifetime
-                       (maybe-scope-creds details))
+                         (-> (ImpersonatedCredentials/create
+                              (.createScoped base-creds bigquery-scopes)
+                              target-sa
+                              nil  ;; delegates (not needed)
+                              (java.util.ArrayList. bigquery-scopes)
+                              3600)  ;; 1 hour token lifetime
+                             (apply-universe-domain universe-domain)))
+                       (maybe-scope-creds base-creds details))
         mb-version   (:tag driver-api/mb-version-info)
         run-mode     (name driver-api/run-mode)
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
-        universe-domain (or (:universe-domain details)
-                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
-                            (System/getProperty "google.cloud.universe_domain"))
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout driver.settings/*query-timeout-ms*)
                               (.build))
         bq-bldr      (doto (BigQueryOptions/newBuilder)
                        (.setCredentials final-creds)
+                       (.setProjectId (bigquery.common/get-billing-project-id details base-creds))
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
     (when universe-domain
       (.setUniverseDomain bq-bldr universe-domain))
-    ;; `ImpersonatedCredentials` doesn't carry a project id (it derives identity
-    ;; from the impersonation target SA, not from a key file), so the Google SDK
-    ;; would throw "A project ID is required for this service but could not be
-    ;; determined from the builder or the environment" when building the client.
-    ;; Fall back to the base SA's project id, which is what every non-impersonated
-    ;; call site is implicitly relying on through `getOptions.getProjectId`.
-    (when impersonating?
-      (when-let [pid (or (:project-id details)
-                         (.getProjectId base-creds))]
-        (.setProjectId bq-bldr ^String pid)))
-    (when-let [host (perf/not-empty (:host details))]
+    (when-let [host (u/not-blank (:host details))]
       (.setHost bq-bldr host))
-    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
-      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
-      (.setProjectId bq-bldr billing-project-id))
     (-> bq-bldr .build .getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -280,10 +284,13 @@
           dataset-id)))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
-  [_ details]
+  [driver details]
+  (driver/validate-db-details! driver details)
   ;; check whether we can connect by seeing whether listing datasets succeeds
   (let [[success? datasets] (try [true (list-datasets details)]
                                  (catch Exception e
+                                   (when (::driver/can-connect-message? (ex-data e))
+                                     (throw e))
                                    (log/errorf "Exception caught in :bigquery-cloud-sdk can-connect?: %s" (ex-message e))
                                    [false nil]))]
     (cond

@@ -12,6 +12,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :refer [some not-empty]])
   (:import
@@ -28,8 +29,7 @@
    (com.google.cloud.iam.admin.v1 IAMClient IAMSettings)
    (com.google.cloud.resourcemanager.v3 ProjectsClient ProjectsSettings)
    (com.google.iam.admin.v1 CreateServiceAccountRequest DeleteServiceAccountRequest ServiceAccount)
-   (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)
-   (java.io ByteArrayInputStream)))
+   (com.google.iam.v1 Binding Policy SetIamPolicyRequest GetIamPolicyRequest)))
 
 (set! *warn-on-reflection* true)
 
@@ -122,9 +122,12 @@
 
 (defn- ws-service-account-credentials
   "Parse ServiceAccountCredentials from database details."
-  ^ServiceAccountCredentials [{:keys [service-account-json]}]
-  (ServiceAccountCredentials/fromStream
-   (ByteArrayInputStream. (.getBytes ^String service-account-json))))
+  ^ServiceAccountCredentials [{:keys [auth-mode service-account-json]}]
+  (when (or (and auth-mode (not= "service-account" auth-mode))
+            (str/blank? service-account-json))
+    (throw (ex-info (tru "BigQuery workspace isolation requires Service Account JSON authentication.")
+                    {:auth-mode auth-mode})))
+  (bigquery.common/service-account-json->service-account-credential service-account-json))
 
 (defn- ws-service-account-exists?
   "Check if a service account exists."

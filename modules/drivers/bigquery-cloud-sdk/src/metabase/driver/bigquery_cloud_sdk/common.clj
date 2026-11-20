@@ -2,6 +2,8 @@
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
    [malli.core :as mc]
+   [metabase.driver :as-alias driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
@@ -72,8 +74,18 @@
                         {:type :invalid-credential-config}
                         e))))))
 
+(defn check-adc-allowed!
+  "Throws a user-facing connection error when Application Default Credentials are requested on Metabase Cloud."
+  []
+  (when (driver-api/is-hosted?)
+    (throw (ex-info (tru (str "Application Default Credentials are not available on Metabase Cloud. "
+                              "Use a service account JSON key."))
+                    {:auth-mode                    "application-default"
+                     ::driver/can-connect-message? true}))))
+
 (defn- application-default-credentials
   ^GoogleCredentials []
+  (check-adc-allowed!)
   (try
     (GoogleCredentials/getApplicationDefault)
     (catch IOException e
@@ -100,6 +112,10 @@
 ;;; |                                                   Project IDs                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- default-project-id
+  ^String []
+  (ServiceOptions/getDefaultProjectId))
+
 (mu/defn database-details->credential-project-id :- [:maybe :string]
   "The Google Cloud project the credentials in `details` belong to, or nil when they don't name one.
 
@@ -110,7 +126,7 @@
   (if (or (= "service-account" (:auth-mode details))
           (nil? (:auth-mode details)))
     (.getProjectId (database-details->service-account-credential details))
-    (ServiceOptions/getDefaultProjectId)))
+    (default-project-id)))
 
 (defn get-project-id
   "Data project for `details`, the one its datasets live in: `:project-id`, then `:billing-project-id`, then the
@@ -126,12 +142,25 @@
 
 (defn get-billing-project-id
   "Project query jobs run in and are billed to, which is also the project unqualified `dataset.table` names in a
-  query resolve against: `:billing-project-id`, then the credentials' project
+  query resolve against: `:billing-project-id`, then (when impersonating a service account, whose
+  `ImpersonatedCredentials` carries no project ID) `:project-id`, then the credentials' project
   ([[database-details->credential-project-id]]), then the data project. Throws when none of them is set."
-  [{:keys [billing-project-id project-id] :as details}]
-  (or (perf/not-empty billing-project-id)
-      (database-details->credential-project-id details)
-      (perf/not-empty project-id)))
+  (^String [details]
+   (get-billing-project-id details nil))
+  (^String [{:keys [billing-project-id impersonate-service-account project-id] :as details}
+            ^GoogleCredentials base-creds]
+   (or (u/not-blank billing-project-id)
+       (when (u/not-blank impersonate-service-account)
+         (u/not-blank project-id))
+       (when base-creds
+         (u/not-blank (.getProjectId base-creds)))
+       (u/not-blank (database-details->credential-project-id details))
+       (u/not-blank project-id)
+       (throw (ex-info (tru (str "Could not determine a Google Cloud project ID. Set a Billing project ID or Data "
+                                 "project ID in the connection settings, or configure GOOGLE_CLOUD_PROJECT on the "
+                                 "server."))
+                       {:type                         :missing-project-id
+                        ::driver/can-connect-message? true})))))
 
 (defmulti base-type->bigquery-type
   "Return the BigQuery SQL type name for a Metabase `:type/*` base-type as a plain string. Throws

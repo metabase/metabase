@@ -6,6 +6,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -15,6 +16,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
@@ -37,7 +39,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.auth.oauth2 AccessToken #_ExternalAccountCredentials GoogleCredentials)
+   (com.google.auth.oauth2 AccessToken #_ExternalAccountCredentials GoogleCredentials ImpersonatedCredentials)
    (com.google.cloud.bigquery BigQuery BigQueryException Field FieldValue FieldValue$Attribute FieldValueList JobId LegacySQLTypeName Schema TableResult)
    (com.google.cloud.http HttpTransportOptions)))
 
@@ -214,7 +216,67 @@
           (let [client (#'bigquery/database-details->client {:project-id "data"
                                                              :auth-mode  "application-default"})]
             (is (identical? adc (.getCredentials (.getOptions ^BigQuery client))))
-            (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))))
+            (is (= "env-project" (.getProjectId (.getOptions ^BigQuery client))))))))
+    (testing "universe-domain propagates to BigQueryOptions, ADC credentials, and impersonated credentials"
+      (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
+        (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)]
+          (let [client  (#'bigquery/database-details->client {:project-id      "s3ns:analytics-prod"
+                                                              :billing-project-id "s3ns:billing-prod"
+                                                              :auth-mode       "application-default"
+                                                              :universe-domain "s3nsapis.fr"})
+                options (.getOptions ^BigQuery client)
+                creds   ^GoogleCredentials (.getCredentials options)]
+            (is (= "s3ns:billing-prod" (.getProjectId options)))
+            (is (= "s3nsapis.fr" (.getUniverseDomain options)))
+            (is (= "s3nsapis.fr" (.getUniverseDomain creds))))
+          (let [imp-client  (#'bigquery/database-details->client
+                             {:auth-mode                   "application-default"
+                              :impersonate-service-account "target@proj.iam.gserviceaccount.com"
+                              :universe-domain             "s3nsapis.fr"})
+                imp-options (.getOptions ^BigQuery imp-client)
+                imp-creds   ^ImpersonatedCredentials (.getCredentials imp-options)]
+            (is (instance? ImpersonatedCredentials imp-creds))
+            (is (= "env-project" (.getProjectId imp-options)))
+            (is (= "s3nsapis.fr" (.getUniverseDomain imp-options)))
+            (is (= "s3nsapis.fr" (.getUniverseDomain imp-creds)))
+            (is (= "s3nsapis.fr" (.getUniverseDomain (.getSourceCredentials imp-creds)))))))))
+  (testing "when the server has no default project, ADC falls back to :project-id and errors clearly if unset"
+    (let [adc (GoogleCredentials/create (AccessToken. "token" nil))]
+      (mt/with-dynamic-fn-redefs [bigquery.common/application-default-credentials (constantly adc)
+                                  bigquery.common/default-project-id              (constantly nil)]
+        (let [client (#'bigquery/database-details->client {:project-id "s3ns:my-warehouse"
+                                                           :auth-mode  "application-default"})]
+          (is (= "s3ns:my-warehouse" (.getProjectId (.getOptions ^BigQuery client)))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Could not determine a Google Cloud project ID"
+             (#'bigquery/database-details->client {:auth-mode "application-default"})))))))
+
+(deftest auth-mode-options-hidden-when-hosted-test
+  (mt/initialize-if-needed! :plugins)
+  (let [auth-mode-values
+        (fn [] (->> (:details-fields (:bigquery-cloud-sdk (driver.u/available-drivers-info)))
+                    (m/find-first #(= "auth-mode" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, application-default is stripped from the auth-mode select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["service-account"]
+               (auth-mode-values)))))
+    (testing "Off Metabase Cloud, application-default is offered."
+      (mt/with-premium-features #{}
+        (is (= ["service-account" "application-default"]
+               (auth-mode-values)))))))
+
+(deftest adc-rejected-when-hosted-test
+  (testing "auth-mode 'application-default' is rejected across all entrypoints on Metabase Cloud"
+    (mt/with-premium-features #{:hosting}
+      (let [details {:auth-mode "application-default", :project-id "my-project"}]
+        (doseq [call [#(driver/validate-db-details! :bigquery-cloud-sdk details)
+                      #(bigquery.common/database-details->credentials details)
+                      #(#'bigquery/database-details->client details)
+                      #(driver/can-connect? :bigquery-cloud-sdk details)]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not available on Metabase Cloud" (call))))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
