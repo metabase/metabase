@@ -4,8 +4,7 @@ import { useGetChannelInfoQuery } from "metabase/api";
 import { Anchor } from "metabase/ui";
 
 import { WarningBanner } from "../WarningBanner/WarningBanner";
-
-import S from "./NotificationConfigBanner.module.css";
+import S from "../WarningBanner/WarningBanner.module.css";
 
 function useShouldShow(): boolean {
   const { data: channelInfo, isLoading: isChannelInfoLoading } =

@@ -13,3 +13,9 @@
 .text {
   flex: 1;
 }
+
+.link {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: left;
+}

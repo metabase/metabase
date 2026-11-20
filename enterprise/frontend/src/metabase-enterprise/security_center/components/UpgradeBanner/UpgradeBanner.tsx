@@ -6,8 +6,7 @@ import { useEolDate } from "metabase/settings";
 import { Anchor } from "metabase/ui";
 
 import { WarningBanner } from "../WarningBanner/WarningBanner";
-
-import S from "./UpgradeBanner.module.css";
+import S from "../WarningBanner/WarningBanner.module.css";
 
 const UPGRADE_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This component only renders inside the admin-only Security Center page.
