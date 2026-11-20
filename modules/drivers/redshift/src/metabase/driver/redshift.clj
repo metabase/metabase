@@ -91,9 +91,7 @@
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
-                              ;; Redshift fails with an internal assert (`numeric_scale(preset_size) ==
-                              ;; (numeric_scale(size))` in `step_project.cpp`) when it projects a numeric aggregate such
-                              ;; as `SUM(CASE WHEN ... THEN 1 ELSE 0.0 END)` again from a CTE.
+                              ;; Redshift fails when it selects a numeric aggregate again from a CTE.
                               :stage-ctes/single-row-aggregation false
                               :test/jvm-timezone-setting        false
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
