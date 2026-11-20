@@ -217,9 +217,11 @@
   (testing "error on one advisory doesn't block others"
     (mt/with-model-cleanup [:model/SecurityAdvisory]
       (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
-                                  (constantly [(make-advisory "SC-FETCH-BAD" :severity "not-a-valid-severity!!!")
+                                  (constantly [(make-advisory "SC-FETCH-BAD" :title nil)
                                                (make-advisory "SC-FETCH-GOOD")])]
         (is (thrown-with-msg? Exception #"Failed to upsert 1/2 advisories"
                               (fetch/sync-advisories!)))
+        (testing "bad advisory was not inserted"
+          (is (nil? (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-BAD"))))
         (testing "good advisory was still inserted"
           (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-GOOD"))))))))
