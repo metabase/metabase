@@ -117,7 +117,9 @@
                                       :metabase.tracing.core/otel-sdk}
    ;; the field-value listener runs warehouse queries, and the search listener records traces
    :metabase.queue-listener.core/listeners #{:metabase.driver.sql-jdbc.connection/pools
-                                             :metabase.tracing.core/otel-sdk}})
+                                             :metabase.tracing.core/otel-sdk}
+   ;; the default queue backend stores messages and runs deliveries as scheduler jobs
+   :metabase.mq.init/mq                    #{:metabase.task.impl/scheduler}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs: requests queue search updates, MQ messages, API key usage and notifications; queue listeners and notification
