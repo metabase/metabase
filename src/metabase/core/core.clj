@@ -110,21 +110,27 @@
 ;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
-  {:metabase.server.instance/server #{:metabase.analytics.prometheus/system
-                                      :metabase.driver.sql-jdbc.connection/pools
-                                      :metabase.tracing.core/otel-sdk}
-   ;; scheduled jobs run queries and record traces and metrics
-   :metabase.task.impl/scheduler    #{:metabase.analytics.prometheus/system
-                                      :metabase.driver.sql-jdbc.connection/pools
-                                      :metabase.tracing.core/otel-sdk}
-   ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics
-   :metabase.queue-listener.core/listeners #{:metabase.analytics.prometheus/system
-                                             :metabase.driver.sql-jdbc.connection/pools
-                                             :metabase.tracing.core/otel-sdk}
-   ;; the default queue backend stores messages and runs deliveries as scheduler jobs, and publishes and deliveries
-   ;; record metrics
-   :metabase.mq.init/mq                    #{:metabase.analytics.prometheus/system
-                                             :metabase.task.impl/scheduler}})
+  {:metabase.server.instance/server           #{:metabase.analytics.prometheus/system
+                                                :metabase.app-db.core/app-db
+                                                :metabase.driver.sql-jdbc.connection/pools
+                                                :metabase.tracing.core/otel-sdk}
+   ;; scheduled jobs run queries, record traces and metrics, and keep their state in the app DB
+   :metabase.task.impl/scheduler              #{:metabase.analytics.prometheus/system
+                                                :metabase.app-db.core/app-db
+                                                :metabase.driver.sql-jdbc.connection/pools
+                                                :metabase.tracing.core/otel-sdk}
+   ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics and writes
+   ;; the index
+   :metabase.queue-listener.core/listeners    #{:metabase.analytics.prometheus/system
+                                                :metabase.app-db.core/app-db
+                                                :metabase.driver.sql-jdbc.connection/pools
+                                                :metabase.tracing.core/otel-sdk}
+   ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs, and publishes and
+   ;; deliveries record metrics
+   :metabase.mq.init/mq                       #{:metabase.analytics.prometheus/system
+                                                :metabase.app-db.core/app-db
+                                                :metabase.task.impl/scheduler}
+   :metabase-enterprise.api-keys.usage/flush  #{:metabase.app-db.core/app-db}})
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs. Requests queue search updates, MQ messages, API key usage and notifications, and schedule jobs.
@@ -191,8 +197,8 @@
    ;; after notifications, whose sends record traces and metrics while they drain
    ["shut down tracing"            #(tracing/shutdown!)]
    ["shut down analytics"          #(analytics.core/shutdown!)]
-   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
-   ["release migration locks"      #(mdb/release-migration-locks! 20)]
+   ;; waits up to 20 seconds for a migration this process is running
+   ["release migration locks"      #(mdb/stop-app-db!)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;
    ;; after the migration locks are released, since a component this halts could be one that release needs
    ["halt the global system"       #(halt-global-system!)]
@@ -303,6 +309,8 @@
   ;; we have to skip creating sample content if we're running tests, because it causes some tests to timeout
   ;; and the test suite can take 2x longer. this is really unfortunate because it could lead to some false
   ;; negatives, but for now there's not much we can do
+  ;; registered before migrations run, so a halt during them releases their locks
+  (mdb/start-app-db!)
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (mdb/encrypt-plaintext-columns!)
   ;; fetch the premium token status now, so that everything below sees this instance's features

@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
-   [metabase.app-db.core :as mdb]))
+   [metabase.app-db.core :as mdb]
+   [metabase.global-system.system :as global-system]
+   [metabase.global-system.test-util :as global-system.tu]
+   [metabase.test :as mt]))
 
 (deftest memoize-for-application-db-test
   (let [calls (atom 0)
@@ -33,3 +36,21 @@
                                       (not= before (mdb/unique-identifier))))]
                {:bound-id-changed? bound-changed?
                 :root-id-changed?  (not= root-id (mdb/unique-identifier))}))))))
+
+(deftest app-db-starts-through-the-global-system-test
+  (testing "the app DB registers with the global system, so a halt releases the migration locks, and only once"
+    (let [handle   @#'mdb/app-db-component
+          releases (atom [])
+          halts?   #(boolean (some #{handle} (#'global-system/halt-order (#'global-system/dependency-graph {}))))]
+      (global-system.tu/with-root handle nil
+        (mt/with-dynamic-fn-redefs [mdb/release-migration-locks! #(swap! releases conj %)]
+          (try
+            (mdb/start-app-db!)
+            (let [after-start {:halts? (halts?), :releases @releases}]
+              (mdb/stop-app-db!)
+              (is (= {:after-start {:halts? true, :releases []}
+                      :after-stop  {:halts? false, :releases [20]}}
+                     {:after-start after-start
+                      :after-stop  {:halts? (halts?), :releases @releases}})))
+            (finally
+              (global-system/stop! handle))))))))
