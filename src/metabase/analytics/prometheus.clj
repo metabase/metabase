@@ -1065,7 +1065,17 @@
 
 (declare install-real-reporter!)
 
-(declare stop-system!)
+(defn- stop-system!
+  "Stop `sys`: the JVM meters, its web server and its registry, and clear the `system` var."
+  [^PrometheusSystem sys]
+  (when @jvm-hiccup-thread (@jvm-hiccup-thread))
+  (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
+  (try (stop-web-server sys)
+       (prometheus/clear (.-registry sys))
+       (alter-var-root #'system (constantly nil))
+       (log/info "Prometheus web-server shut down")
+       (catch Exception e
+         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))))
 
 ;; The running system, as a global-system component, so halting the system stops it too.
 ;; Readers still use the `system` var, which the component's start and stop set, so tests can redefine it.
@@ -1100,18 +1110,6 @@
       (log/warn "Observe initial values called without initializing registry")
       (doseq [{:keys [metric labels value]} (initial-labelled-metric-values)]
         (prometheus/inc registry metric (qualified-vals labels) value)))))
-
-(defn- stop-system!
-  "Stop `sys`: the JVM meters, its web server and its registry, and clear the `system` var."
-  [^PrometheusSystem sys]
-  (when @jvm-hiccup-thread (@jvm-hiccup-thread))
-  (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
-  (try (stop-web-server sys)
-       (prometheus/clear (.-registry sys))
-       (alter-var-root #'system (constantly nil))
-       (log/info "Prometheus web-server shut down")
-       (catch Exception e
-         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))))
 
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running. Halting the global system stops it too."
