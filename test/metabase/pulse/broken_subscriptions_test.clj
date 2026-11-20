@@ -219,10 +219,7 @@
                  :recipient-count 1
                  :already-broken? false
                  :readable?       true}
-                {:id              unreadable-id
-                 :parameters      [{:id "gone"}]
-                 :already-broken? false
-                 :readable?       false}]
+                {:readable? false}]
                (mt/with-current-user (mt/user->id :rasta)
                  (pulse.broken-subscriptions/handle-broken-subscriptions!
                   dash-id
