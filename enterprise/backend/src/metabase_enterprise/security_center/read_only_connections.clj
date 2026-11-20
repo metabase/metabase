@@ -75,7 +75,7 @@
   ;; ends a read that the database never answers, so the thread and the connection are free again
   (let [rows (binding [driver.settings/*network-timeout-ms* timeout-ms]
                ;; not a pooled connection: the check must also work for a database whose pool refuses connections
-               (sql-jdbc/do-with-new-connection
+               (sql-jdbc/do-with-unpooled-default-connection
                 database
                 (fn [conn]
                   ;; realized here: the rows may be lazy, and the connection closes when this function returns

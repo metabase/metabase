@@ -23,7 +23,7 @@
   "Runs the refresh with the privilege rows of each database taken from `user->privileges`, keyed by the `:user` of
   its connection details. A function as the value is called. Returns the results of the databases named in `names`."
   [user->privileges names]
-  (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection
+  (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-unpooled-default-connection
                               (fn [{{:keys [user]} :details} _f]
                                 (let [rows (get user->privileges user)]
                                   (if (fn? rows) (rows) rows)))]
@@ -96,7 +96,7 @@
 
 (deftest database-timeout-test
   (mt/with-temporary-setting-values [db-connection-timeout-ms 200]
-    (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection
+    (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-unpooled-default-connection
                                 (fn [{{:keys [user]} :details} _f]
                                   (if (= user "hung")
                                     (do (Thread/sleep 60000) [])
@@ -116,7 +116,8 @@
 (deftest database-check-interrupted-test
   (testing "a check that the refresh interrupts at its deadline is a timeout, not an error with a warning"
     (mt/with-temporary-setting-values [db-connection-timeout-ms 60000]
-      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f] (Thread/sleep 60000) [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-unpooled-default-connection
+                                  (fn [_database _f] (Thread/sleep 60000) [])]
         (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :warn]]
           (let [result  (promise)
                 started (promise)
@@ -235,7 +236,7 @@
           (deliver stuck "read-only")))))
   (testing "a database that lists no table privileges gets a line with its id and engine"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :warn]]
-      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f] [])]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-unpooled-default-connection (fn [_database _f] [])]
         (is (= "no-privileges" (#'read-only-connections/check-database {:id 7, :engine :postgres})))
         (is (=? [{:level :warn, :message #".*could not read the table privileges of database 7 \(postgres\)"}]
                 (messages))))))
@@ -251,8 +252,8 @@
               (messages)))))
   (testing "a refresh writes one line with the number of databases, the duration and the results"
     (mt/with-log-messages-for-level [messages [metabase-enterprise.security-center.read-only-connections :info]]
-      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-new-connection (fn [_database _f]
-                                                                    (privileges))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc/do-with-unpooled-default-connection
+                                  (fn [_database _f] (privileges))]
         (let [database-count (count (:databases (read-only-connections/refresh)))]
           (is (=? [{:message (re-pattern (str ".*checked " database-count " databases in \\d+ ms: \\{.+\\}"))}]
                   (filter #(re-find #"checked \d+ databases" (:message %)) (messages)))))))))
