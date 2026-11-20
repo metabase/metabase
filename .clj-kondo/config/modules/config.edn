@@ -4200,6 +4200,7 @@
            run-tracking
            segments.schema
            serialization
+           settings
            sql-tools
            sql-tools.parsing
            task

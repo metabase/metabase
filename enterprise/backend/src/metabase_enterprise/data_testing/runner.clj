@@ -384,9 +384,18 @@
   (validated-plan subject-type subject definition)
   nil)
 
+(mu/defn- run-refusal :- [:maybe ::data-testing.schema/run-refusal]
+  "What the run endpoint of `subject-type` tells its caller about `e` when it is a typed refusal: its message and its
+  error code. Nil for any other exception."
+  [subject-type :- ::data-testing.subject/subject-type
+   e            :- (ms/InstanceOfClass Throwable)]
+  (when-let [error-type (:error-type (ex-data e))]
+    {:message    (ex-message e)
+     :error-code (data-testing.errors/code (str (name subject-type) "-test") error-type)}))
+
 (mu/defn run-test! :- ::data-testing.schema/run-result
   "Run `saved-test` against `subject`, a `subject-type`, on temp tables and report what each expectation found,
-  recording the run under the test.
+  recording the run under the test with what it reported: the result, or the typed refusal that ended it.
 
   Throws a typed refusal from [[metabase-enterprise.data-testing.errors]] when the run cannot happen. A
   failing expectation is not a refusal: it rides back as that expectation's own result."
@@ -396,7 +405,8 @@
   (let [{:keys [driver database input->table output-table labels replacements output-token compiled]}
         (validated-plan subject-type subject (test-definition saved-test))
         {run-id :id} (data-testing.run-tracking/start-run! subject-type test-id api/*current-user-id*)
-        final-status (atom :error)]
+        final-status (atom :error)
+        stored       (atom nil)]
     (try
       (let [result
             (driver/do-with-test-connection
@@ -418,6 +428,10 @@
                    (doseq [table (cons output-table (vals input->table))]
                      (data-testing.executor/drop-temp-table! driver conn table))))))]
         (reset! final-status (:status result))
+        (reset! stored result)
         result)
+      (catch Throwable e
+        (reset! stored (run-refusal subject-type e))
+        (throw e))
       (finally
-        (data-testing.run-tracking/finish-run! run-id @final-status)))))
+        (data-testing.run-tracking/finish-run! run-id @final-status @stored)))))

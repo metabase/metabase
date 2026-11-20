@@ -7,5 +7,7 @@
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-api]
+   [metabase-enterprise.data-testing.run-retention]
    [metabase-enterprise.data-testing.run-tracking]
-   [metabase-enterprise.data-testing.segment-api]))
+   [metabase-enterprise.data-testing.segment-api]
+   [metabase-enterprise.data-testing.settings]))
