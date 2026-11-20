@@ -23,6 +23,7 @@ import {
   useReportDashCardTimelineEventsEnabled,
 } from "metabase/dashboard/timeline-events";
 import {
+  getDashcardGoalSourcesScope,
   getVirtualCardType,
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
@@ -36,6 +37,7 @@ import { Flex, Group, type IconProps, Menu, Title } from "metabase/ui";
 import { parseSearchQuery } from "metabase/utils/browser";
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { measureTextWidth } from "metabase/utils/measure-text";
+import { GoalSourcesScopeProvider } from "metabase/visualizations/components/GoalSourcesScope";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { DashCardLoadingView } from "metabase/visualizations/components/Visualization/LoadingView/DashCardLoadingView";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
@@ -428,6 +430,10 @@ export function DashCardVisualization({
 
   const token = useMemo(() => getDashcardTokenId(dashcard), [dashcard]);
   const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
+  const goalSourcesScope = useMemo(
+    () => getDashcardGoalSourcesScope(dashcard),
+    [dashcard],
+  );
 
   const findCardById = useCallback(
     (cardId?: CardId | null): Card | undefined => {
@@ -674,64 +680,66 @@ export function DashCardVisualization({
       ref={containerRef}
     >
       <EmbeddingEntityContextProvider uuid={uuid ?? null} token={token ?? null}>
-        <Visualization
-          className={cx(S.Visualization, CS.flexFull, {
-            [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
-          })}
-          dashboard={dashboard ?? undefined}
-          dashcard={dashcard}
-          rawSeries={series}
-          visualizerRawSeries={
-            isVisualizerDashboardCard(dashcard) &&
-            isDashCardDataSeries(rawSeries)
-              ? rawSeries
-              : undefined
-          }
-          mode={clickActionMode ?? dashboardClickActionMode}
-          getHref={getHref}
-          getCardHref={getNextCardHref}
-          gridSize={gridSize}
-          totalNumGridCols={totalNumGridCols}
-          headerIcon={headerIcon}
-          expectedDuration={expectedDuration}
-          error={error?.message}
-          errorIcon={error?.icon}
-          showTitle={cardTitled}
-          canToggleSeriesVisibility={!isEditing}
-          isAction={isAction}
-          isDashboard
-          isSlow={isSlow}
-          isFullscreen={isFullscreen}
-          isEditing={isEditing}
-          isPreviewing={isPreviewing}
-          isEditingParameter={isEditingParameter}
-          isMobile={isMobile}
-          actionButtons={actionButtons}
-          cardLevelFilters={cardLevelFilters}
-          replacementContent={visualizationOverlay}
-          getExtraDataForClick={getExtraDataForClick}
-          transformClickObject={transformClickObject}
-          onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
-          onTogglePreviewing={onTogglePreviewing}
-          onChangeCardAndRun={
-            onChangeCardAndRun ? handleChangeCardAndRun : null
-          }
-          onChangeLocation={onChangeLocation}
-          renderLoadingView={renderLoadingView}
-          titleMenuItems={titleMenuItems}
-          errorMessageOverride={visualizerErrMsg}
-          timelineEvents={timelineEvents}
-          timelineEventsVisibility={timelineEventsVisibility}
-          selectedTimelineEventIds={selectedTimelineEventIds}
-          onOpenTimelines={onOpenTimelines}
-          onSelectTimelineEvents={onSelectTimelineEvents}
-          onDeselectTimelineEvents={onDeselectTimelineEvents}
-          onTimelineEventsShown={onTimelineEventsShown}
-          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
-          enableEntityNavigation={enableEntityNavigation}
-          onSameOriginNavigation={onSameOriginNavigation}
-        />
+        <GoalSourcesScopeProvider scope={goalSourcesScope}>
+          <Visualization
+            className={cx(S.Visualization, CS.flexFull, {
+              [CS.overflowAuto]: visualizationOverlay,
+              [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
+            })}
+            dashboard={dashboard ?? undefined}
+            dashcard={dashcard}
+            rawSeries={series}
+            visualizerRawSeries={
+              isVisualizerDashboardCard(dashcard) &&
+              isDashCardDataSeries(rawSeries)
+                ? rawSeries
+                : undefined
+            }
+            mode={clickActionMode ?? dashboardClickActionMode}
+            getHref={getHref}
+            getCardHref={getNextCardHref}
+            gridSize={gridSize}
+            totalNumGridCols={totalNumGridCols}
+            headerIcon={headerIcon}
+            expectedDuration={expectedDuration}
+            error={error?.message}
+            errorIcon={error?.icon}
+            showTitle={cardTitled}
+            canToggleSeriesVisibility={!isEditing}
+            isAction={isAction}
+            isDashboard
+            isSlow={isSlow}
+            isFullscreen={isFullscreen}
+            isEditing={isEditing}
+            isPreviewing={isPreviewing}
+            isEditingParameter={isEditingParameter}
+            isMobile={isMobile}
+            actionButtons={actionButtons}
+            cardLevelFilters={cardLevelFilters}
+            replacementContent={visualizationOverlay}
+            getExtraDataForClick={getExtraDataForClick}
+            transformClickObject={transformClickObject}
+            onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
+            onTogglePreviewing={onTogglePreviewing}
+            onChangeCardAndRun={
+              onChangeCardAndRun ? handleChangeCardAndRun : null
+            }
+            onChangeLocation={onChangeLocation}
+            renderLoadingView={renderLoadingView}
+            titleMenuItems={titleMenuItems}
+            errorMessageOverride={visualizerErrMsg}
+            timelineEvents={timelineEvents}
+            timelineEventsVisibility={timelineEventsVisibility}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            onOpenTimelines={onOpenTimelines}
+            onSelectTimelineEvents={onSelectTimelineEvents}
+            onDeselectTimelineEvents={onDeselectTimelineEvents}
+            onTimelineEventsShown={onTimelineEventsShown}
+            onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
+            enableEntityNavigation={enableEntityNavigation}
+            onSameOriginNavigation={onSameOriginNavigation}
+          />
+        </GoalSourcesScopeProvider>
       </EmbeddingEntityContextProvider>
     </div>
   );
