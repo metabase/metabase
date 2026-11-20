@@ -1037,6 +1037,17 @@
           (is (= {:drained? false, :sent nil}
                  {:drained? drained?, :sent (deref sent 1000 nil)})))))))
 
+(deftest notification-dispatcher-counts-work-left-at-the-deadline-test
+  (testing "workers that stop at a deadline with notifications still queued do not count as a drain"
+    (let [queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _] (Thread/sleep 10) nil)
+                       (queue-size [_] 1))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; a deadline already passed, as a later dispatcher gets one in shutdown!, so the workers stop at once
+      ((:close-fn dispatcher) (System/nanoTime))
+      (is (false? ((:shutdown-fn dispatcher) 2000))))))
+
 (deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
   (testing "a dispatcher that cannot be created does not keep the other from closing"
     (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
