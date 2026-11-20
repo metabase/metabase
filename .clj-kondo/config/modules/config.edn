@@ -1550,6 +1550,7 @@
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/Notification
+                    :model/NotificationCard
                     :model/Pulse
                     :model/Segment
                     :model/Table
@@ -4062,6 +4063,7 @@
                     :model/Document
                     :model/TaskHistory
                     :model/Transform
+                    :model/TransformRun
                     :model/User}}
   enterprise/content-translation
   {:team "UX West"

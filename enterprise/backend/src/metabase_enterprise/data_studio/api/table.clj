@@ -196,8 +196,8 @@
       (let [tables         (data-studio.db/tables table-ids-to-update)
             collection-ids (into #{} (keep :collection_id) tables)
             by-id          (u/index-by :id (t2/hydrate (data-studio.db/collections collection-ids) :can_write))
-            table-ids      (into [] (comp (filter #(or (nil? (:collection_id %)) (by-id (:collection_id %))))
-                                          (map :id))
+            table-ids      (into #{} (comp (filter #(or (nil? (:collection_id %)) (by-id (:collection_id %))))
+                                           (map :id))
                                  tables)]
         (run! api/write-check (vals by-id))
         (when (seq table-ids)
