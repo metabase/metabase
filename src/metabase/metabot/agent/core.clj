@@ -431,11 +431,27 @@
    memory
    parts))
 
+(defn- step-parts
+  "The `parts` of an iteration, with each run of text parts merged into one part and no text that is only whitespace.
+
+  Examples:
+  `[{:type :text :text \"Let me \"} {:type :text :text \"check.\"} {:type :tool-input ...}]` becomes
+  `[{:type :text :text \"Let me check.\"} {:type :tool-input ...}]`, and
+  `[{:type :text :text \"\\n\\n\"} {:type :tool-input ...}]` becomes `[{:type :tool-input ...}]`."
+  [parts]
+  (into []
+        ;; Memory must keep the parts in the form that [[metabase.metabot.persistence/history]] replays in the next
+        ;; turn. Text streams as one part per delta. When memory keeps the deltas or the blank text, the next turn's
+        ;; history does not start with the bytes that this turn sent, and the provider's prompt cache misses.
+        (comp (streaming/combine-text-parts-xf)
+              (remove #(and (= :text (:type %)) (str/blank? (:text %)))))
+        parts))
+
 (defn- update-memory
   "Update memory with parts from an iteration."
   [memory parts]
   (-> memory
-      (memory/add-step parts)
+      (memory/add-step (step-parts parts))
       (extract-queries parts)
       (extract-charts parts)))
 
