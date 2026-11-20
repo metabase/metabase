@@ -33,18 +33,14 @@
 
 (t2/define-before-update :model/TransformRun
   [run]
+  (when (transforms.models.u/ended? (:status (t2/changes run)))
+    (transforms.db/delete-cancelation-for-run! (:id run)))
   (cond-> (transforms.models.u/derive-is-active-on-update run)
     (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
 (t2/deftransforms :model/TransformRun
   {:status     mi/transform-keyword
    :run_method mi/transform-keyword})
-
-(t2/define-after-update :model/TransformRun
-  [{:keys [id status] :as run}]
-  (when (transforms.models.u/ended? status)
-    (cancel/delete-cancelation! id))
-  run)
 
 (t2/define-before-insert :model/TransformRun
   [{:keys [transform_id] :as run}]

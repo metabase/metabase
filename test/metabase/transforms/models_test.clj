@@ -483,3 +483,10 @@
     (is (t2/exists? :model/TransformRunCancelation :run_id run-id))
     (t2/update! :model/TransformRun :id run-id {:status :canceled})
     (is (not (t2/exists? :model/TransformRunCancelation :run_id run-id)))))
+
+(deftest run-message-update-statement-count-test
+  (mt/with-temp [:model/Transform    {transform-id :id} {}
+                 :model/TransformRun {run-id :id} (get (started-run-attributes transform-id nil) :model/TransformRun)]
+    (t2/with-call-count [call-count]
+      (t2/update! :model/TransformRun :id run-id {:message "progress"})
+      (is (= 2 (call-count))))))
