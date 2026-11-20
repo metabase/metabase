@@ -70,6 +70,8 @@ const elements = [
   // basic
   createElement({ type: "basic", name: "router" }),
   createElement({ type: "basic", name: "ui" }),
+  // PROTOTYPE: font playground (Leva panel), mounted in app.tsx
+  createElement({ type: "basic", name: "font-prototype" }),
   createElement({
     type: "basic",
     name: "value-formatting",
