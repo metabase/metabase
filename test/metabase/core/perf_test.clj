@@ -1,5 +1,6 @@
 (ns metabase.core.perf-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase.config.core :as config]
    [metabase.core.perf :as perf]
@@ -7,7 +8,9 @@
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.test :as mt])
   (:import
-   (java.nio.file Path)))
+   (java.io File IOException)
+   (java.nio.file Path)
+   (jdk.jfr FlightRecorder Recording RecordingState)))
 
 (set! *warn-on-reflection* true)
 
@@ -81,3 +84,20 @@
           (perf/maybe-enable-monitoring!)
           (perf/stop-monitoring!)
           (is (= 1 @stops)))))))
+
+(defn- running-recordings []
+  (into #{}
+        (filter #(= RecordingState/RUNNING (.getState ^Recording %)))
+        (.getRecordings (FlightRecorder/getFlightRecorder))))
+
+(deftest start-recording-stops-what-a-failed-start-began-test
+  (testing "a destination JFR cannot write to fails the start, and leaves no recording running"
+    (let [output (doto (File/createTempFile "perf-test" ".jfr")
+                   (.deleteOnExit)
+                   (.setWritable false))
+          before (running-recordings)]
+      (mt/with-dynamic-fn-redefs [perf/start-periodic-dump! (constantly nil)]
+        (is (thrown? IOException (#'perf/start-recording! (str output)))))
+      (is (= {:left-running #{}, :recording nil}
+             {:left-running (set/difference (running-recordings) before)
+              :recording    @@#'perf/recording-atom})))))
