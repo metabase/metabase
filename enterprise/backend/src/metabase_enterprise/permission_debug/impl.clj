@@ -42,6 +42,18 @@
                                   [:attribute :string]
                                   [:table-id  pos-int?]
                                   [:group-id  ::group-id]]
+             ;; a Database where the person's row and column security and connection impersonation both apply
+             ::conflicting-database [:map {:closed true}
+                                     [:database-id             pos-int?]
+                                     [:sandbox-group-ids       [:sequential ::group-id]]
+                                     [:impersonation-group-ids [:sequential ::group-id]]]
+             ;; an attribute the person lacks that a connection impersonation policy (of `:group-id`) or the Database's
+             ;; router reads
+             ::missing-database-attribute [:map {:closed true}
+                                           [:attribute   :string]
+                                           [:database-id pos-int?]
+                                           [:kind        [:enum "impersonation" "routing"]]
+                                           [:group-id    {:optional true} ::group-id]]
              ::perm-debug-info [:map {:closed true}
                                 [:model-type  [:enum "card" "dashboard" "collection" "invalid"]]
                                 [:model-id    :string]
@@ -61,6 +73,12 @@
                                                ;; the attributes the previewed person lacks that a row and column security
                                                ;; rule on a table the queries reach reads
                                                [:missing-attributes       {:optional true} [:sequential ::missing-attribute]]
+                                               ;; the databases the queries reach that fail every query on them: row and
+                                               ;; column security with connection impersonation, or an attribute
+                                               ;; impersonation or routing reads that the person lacks
+                                               [:conflicting-databases    {:optional true} [:sequential ::conflicting-database]]
+                                               [:missing-database-attributes {:optional true}
+                                                [:sequential ::missing-database-attribute]]
                                                ;; each card that can't load, with the names of its blocked tables
                                                [:blocked-cards            {:optional true}
                                                 [:sequential [:map {:closed true}
@@ -70,7 +88,11 @@
                                                               [:conflicting-tables {:optional true}
                                                                [:sequential pos-int?]]
                                                               [:missing-attributes {:optional true}
-                                                               [:sequential ::missing-attribute]]]]]]]
+                                                               [:sequential ::missing-attribute]]
+                                                              [:conflicting-databases {:optional true}
+                                                               [:sequential ::conflicting-database]]
+                                                              [:missing-database-attributes {:optional true}
+                                                               [:sequential ::missing-database-attribute]]]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
@@ -290,6 +312,68 @@
                       :when                                   (not (get attributes attribute))]
                   {:attribute attribute :table-id table-id :group-id group_id}))))
 
+(defn- database-rules
+  "What decides, per Database, whether the User with `user-id` can query it through connection impersonation or routing:
+  their groups, the impersonation policies of those groups by Database, the router attribute of each router Database,
+  and the sandboxes and `attributes` they have."
+  [user-id sandboxes-by-table attributes]
+  (let [group-ids (permission-debug.db/user-group-ids user-id)]
+    {:group-ids                  group-ids
+     :attributes                 attributes
+     :sandboxes-by-table         sandboxes-by-table
+     :impersonations-by-database (group-by :db_id (permission-debug.db/impersonations-of-groups group-ids))
+     :router-attributes          (into {} (map (juxt :database_id :user_attribute)) (permission-debug.db/database-routers))}))
+
+(defn- sandbox-group-ids-on-database
+  [sandboxes-by-table database-id]
+  (into (sorted-set)
+        (comp cat
+              (filter #(= database-id (get-in % [:table :db_id])))
+              (map :group_id))
+        (vals sandboxes-by-table)))
+
+(defn- conflicting-databases
+  "One `{:database-id :sandbox-group-ids :impersonation-group-ids}` per Database of `database-ids` where the person has
+  an enforced sandbox and a group of theirs has an impersonation policy, which fails every query on it
+  (`metabase-enterprise.impersonation.driver/enforced-impersonations-for-db`)."
+  [{:keys [sandboxes-by-table impersonations-by-database]} database-ids]
+  (vec (for [database-id (sort database-ids)
+             :let [sandbox-group-ids       (sandbox-group-ids-on-database sandboxes-by-table database-id)
+                   impersonation-group-ids (into (sorted-set) (map :group_id) (impersonations-by-database database-id))]
+             :when (and (seq sandbox-group-ids) (seq impersonation-group-ids))]
+         {:database-id             database-id
+          :sandbox-group-ids       (vec sandbox-group-ids)
+          :impersonation-group-ids (vec impersonation-group-ids)})))
+
+(defn- impersonation-enforced?
+  "Whether `impersonations`, those of the person's groups on a Database, apply: not when another of their groups grants
+  Can view on the whole Database (`metabase-enterprise.impersonation.driver/enforce-impersonations?`)."
+  [group-ids impersonations database-id]
+  (let [other-group-ids (set/difference group-ids (set (map :group_id impersonations)))]
+    (not-any? #{:unrestricted}
+              (vals (permission-debug.db/database-permission-values-for-groups other-group-ids :perms/view-data database-id)))))
+
+(defn- missing-database-attributes
+  "One `{:attribute :database-id :kind :group-id}` per attribute the person lacks that an enforced impersonation policy
+  on a Database of `database-ids` reads (`:kind` \"impersonation\", from the policy's group), and one per Database
+  whose router reads one (`:kind` \"routing\"), which fails every query on it
+  (`metabase-enterprise.impersonation.driver/connection-impersonation-role`,
+  `metabase-enterprise.database-routing.common/router-db->destination-db-id*`)."
+  [{:keys [group-ids attributes impersonations-by-database router-attributes]} database-ids]
+  (vec (sort-by (juxt :database-id :kind :attribute)
+                (concat
+                 (for [database-id                       database-ids
+                       :let                              [impersonations (impersonations-by-database database-id)]
+                       :when                             (and (seq impersonations)
+                                                              (impersonation-enforced? group-ids impersonations database-id))
+                       {:keys [group_id attribute]}      impersonations
+                       :when                             (nil? (get attributes attribute))]
+                   {:attribute attribute :database-id database-id :kind "impersonation" :group-id group_id})
+                 (for [database-id database-ids
+                       :let        [attribute (router-attributes database-id)]
+                       :when       (and attribute (nil? (get attributes attribute)))]
+                   {:attribute attribute :database-id database-id :kind "routing"})))))
+
 (defn- card-table-ids
   [card]
   (-> card :dataset_query qp.preprocess/preprocess lib/all-source-table-ids set))
@@ -304,9 +388,13 @@
                                                    {:perms/view-data :legacy-no-self-service})
          sandboxes-by-table (enforced-sandboxes-by-table user-id)
          table-ids        (card-table-ids card)
+         attributes       (user-attributes user-id attribute-overrides)
+         rules            (database-rules user-id sandboxes-by-table attributes)
          conflicting      (conflicting-table-ids sandboxes-by-table table-ids)
-         missing          (missing-attributes sandboxes-by-table (user-attributes user-id attribute-overrides) table-ids)
-         fails?           (or (seq blocked-by-group) (seq conflicting) (seq missing))]
+         missing          (missing-attributes sandboxes-by-table attributes table-ids)
+         conflicting-dbs  (conflicting-databases rules #{(:database_id card)})
+         missing-dbs      (missing-database-attributes rules #{(:database_id card)})
+         fails?           (or (seq blocked-by-group) (seq conflicting) (seq missing) (seq conflicting-dbs) (seq missing-dbs))]
      {:decision    (if fails? "denied" "allow")
       :segment     #{}
       :model-type  "card"
@@ -317,7 +405,9 @@
       :data        (cond-> {}
                      (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
                      (seq conflicting)            (assoc :conflicting-tables conflicting)
-                     (seq missing)                (assoc :missing-attributes missing))
+                     (seq missing)                (assoc :missing-attributes missing)
+                     (seq conflicting-dbs)        (assoc :conflicting-databases conflicting-dbs)
+                     (seq missing-dbs)            (assoc :missing-database-attributes missing-dbs))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
@@ -377,17 +467,28 @@
          attributes         (user-attributes user-id attribute-overrides)
          missing-by-card    (for [card cards]
                               (missing-attributes sandboxes-by-table attributes (card-table-ids card)))
-         failing-cards    (for [[card blocked conflicting missing] (map vector cards blocked-by-card conflicts-by-card missing-by-card)
-                                :when (or (seq blocked) (seq conflicting) (seq missing))]
+         rules              (database-rules user-id sandboxes-by-table attributes)
+         conflicting-dbs-by-card (for [card cards]
+                                   (conflicting-databases rules #{(:database_id card)}))
+         missing-dbs-by-card     (for [card cards]
+                                   (missing-database-attributes rules #{(:database_id card)}))
+         failing-cards    (for [[card blocked conflicting missing conflicting-dbs missing-dbs]
+                                (map vector cards blocked-by-card conflicts-by-card missing-by-card
+                                     conflicting-dbs-by-card missing-dbs-by-card)
+                                :when (or (seq blocked) (seq conflicting) (seq missing) (seq conflicting-dbs) (seq missing-dbs))]
                             (cond-> {:id     (:id card)
                                      :name   (:name card)
                                      ;; keyed by [db-name schema table-name]
                                      :tables (vec (sort (distinct (map last (keys blocked)))))}
-                              (seq conflicting) (assoc :conflicting-tables conflicting)
-                              (seq missing)     (assoc :missing-attributes missing)))
+                              (seq conflicting)     (assoc :conflicting-tables conflicting)
+                              (seq missing)         (assoc :missing-attributes missing)
+                              (seq conflicting-dbs) (assoc :conflicting-databases conflicting-dbs)
+                              (seq missing-dbs)     (assoc :missing-database-attributes missing-dbs)))
          failing-count    (count failing-cards)
          conflicting      (vec (sort (distinct (apply concat conflicts-by-card))))
-         missing          (vec (sort-by (juxt :table-id :attribute :group-id) (distinct (apply concat missing-by-card))))]
+         missing          (vec (sort-by (juxt :table-id :attribute :group-id) (distinct (apply concat missing-by-card))))
+         conflicting-dbs  (vec (sort-by :database-id (distinct (apply concat conflicting-dbs-by-card))))
+         missing-dbs      (vec (sort-by (juxt :database-id :kind :attribute) (distinct (apply concat missing-dbs-by-card))))]
      {:decision    (cond
                      (zero? failing-count)               "allow"
                      (= failing-count (count card-ids)) "denied"
@@ -403,7 +504,9 @@
                      (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group))
                      (seq failing-cards)          (assoc :blocked-cards (vec failing-cards))
                      (seq conflicting)            (assoc :conflicting-tables conflicting)
-                     (seq missing)                (assoc :missing-attributes missing))
+                     (seq missing)                (assoc :missing-attributes missing)
+                     (seq conflicting-dbs)        (assoc :conflicting-databases conflicting-dbs)
+                     (seq missing-dbs)            (assoc :missing-database-attributes missing-dbs))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :collection/read :- DebuggerSchema

@@ -629,3 +629,128 @@
         (testing "a value picked in the preview makes both load"
           (is (= {:decision "allow" :data {:card-count 2 :blocked-card-count 0}}
                  (select-keys (query-check (:id dashboard) :dashboard/query {"cat" "50"}) [:decision :data]))))))))
+
+(defn- do-with-impersonation!
+  "Calls `f` with the id of a new group of rasta that has Can view on the test database and a connection impersonation
+  policy reading the `attribute` user attribute. Run it inside `met/with-gtaps!` to give rasta a sandbox too, which
+  already removes Can view from All Users."
+  [attribute f]
+  (mt/with-temp [:model/PermissionsGroup           {group-id :id} {}
+                 :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}
+                 :model/ConnectionImpersonation    _ {:group_id group-id :db_id (mt/id) :attribute attribute}]
+    (perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+    (f group-id)))
+
+(deftest debug-permissions-card-query-sandbox-and-impersonation-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings (venues-category-remapping)}}
+                    :attributes {"cat" 50 "role" "reader"}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (testing "row and column security alone still loads"
+        (is (= {:decision "allow" :data {}}
+               (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+      (do-with-impersonation!
+       "role"
+       (fn [impersonation-group-id]
+         (testing "row and column security and impersonation on one database fail the card, naming both groups"
+           (is (= {:decision "denied"
+                   :data     {:conflicting-databases [{:database-id             (mt/id)
+                                                       :sandbox-group-ids       [(:id &group)]
+                                                       :impersonation-group-ids [impersonation-group-id]}]}}
+                  (select-keys (query-check (:id card) :card/query) [:decision :data])))))))))
+
+(deftest debug-permissions-dashboard-query-sandbox-and-impersonation-test
+  (met/with-gtaps! {:gtaps      {:venues {:remappings (venues-category-remapping)}}
+                    :attributes {"cat" 50 "role" "reader"}}
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Dashboard dashboard {:collection_id (:id collection)}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query users)}
+                   :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (do-with-impersonation!
+       "role"
+       (fn [impersonation-group-id]
+         (let [conflicting [{:database-id             (mt/id)
+                             :sandbox-group-ids       [(:id &group)]
+                             :impersonation-group-ids [impersonation-group-id]}]]
+           (testing "a card on the database fails even when it reads no table with a rule"
+             (is (= {:decision "denied"
+                     :data     {:card-count            1
+                                :blocked-card-count    1
+                                :conflicting-databases conflicting
+                                :blocked-cards         [{:id                    (:id card)
+                                                         :name                  (:name card)
+                                                         :tables                []
+                                                         :conflicting-databases conflicting}]}}
+                    (select-keys (query-check (:id dashboard) :dashboard/query) [:decision :data]))))))))))
+
+(deftest debug-permissions-card-query-impersonation-attribute-missing-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card card {:collection_id (:id collection)
+                                     :dataset_query (mt/mbql-query venues)}]
+      (do-with-impersonation!
+       "role"
+       (fn [impersonation-group-id]
+         (testing "a person with the attribute impersonation reads loads as before"
+           (met/with-user-attributes! :rasta {"role" "reader"}
+             (is (= {:decision "allow" :data {}}
+                    (select-keys (query-check (:id card) :card/query) [:decision :data])))))
+         (testing "a person without it can't load the card, and the policy's group is named"
+           (is (= {:decision "denied"
+                   :data     {:missing-database-attributes [{:attribute   "role"
+                                                             :database-id (mt/id)
+                                                             :kind        "impersonation"
+                                                             :group-id    impersonation-group-id}]}}
+                  (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+         (testing "a value picked in the preview makes it load"
+           (is (= {:decision "allow" :data {}}
+                  (select-keys (query-check (:id card) :card/query {"role" "reader"}) [:decision :data]))))
+         (testing "another group's Can view on the database lifts the impersonation, so it needs no attribute"
+           (mt/with-temp [:model/PermissionsGroup           {lifting-group-id :id} {}
+                          :model/PermissionsGroupMembership _ {:group_id lifting-group-id :user_id (mt/user->id :rasta)}]
+             (perms/set-database-permission! lifting-group-id (mt/id) :perms/view-data :unrestricted)
+             (is (= {:decision "allow" :data {}}
+                    (select-keys (query-check (:id card) :card/query) [:decision :data]))))))))))
+
+(deftest debug-permissions-card-query-routing-attribute-missing-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Card card {:collection_id (:id collection)
+                                   :dataset_query (mt/mbql-query venues)}
+                 :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "tenant"}]
+    (testing "a person without the attribute the database routes on can't load the card"
+      (is (= {:decision "denied"
+              :data     {:missing-database-attributes [{:attribute "tenant" :database-id (mt/id) :kind "routing"}]}}
+             (select-keys (query-check (:id card) :card/query) [:decision :data]))))
+    (testing "a value picked in the preview makes it load"
+      (is (= {:decision "allow" :data {}}
+             (select-keys (query-check (:id card) :card/query {"tenant" "acme"}) [:decision :data]))))
+    (testing "an admin with no value queries the router database, so isn't reported"
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= {:decision "allow" :data {}}
+               (select-keys (permission-debug.impl/debug-permissions
+                             {:user-id (mt/user->id :crowberto) :model-id (:id card) :action-type :card/query})
+                            [:decision :data])))))))
+
+(deftest debug-permissions-dashboard-query-routing-attribute-missing-test
+  (mt/with-temp [:model/Collection collection {}
+                 :model/Dashboard dashboard {:collection_id (:id collection)}
+                 :model/Card card {:collection_id (:id collection)
+                                   :dataset_query (mt/mbql-query venues)}
+                 :model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id card)}
+                 :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "tenant"}]
+    (let [missing [{:attribute "tenant" :database-id (mt/id) :kind "routing"}]]
+      (testing "the card on the router database can't load"
+        (is (= {:decision "denied"
+                :data     {:card-count                  1
+                           :blocked-card-count          1
+                           :missing-database-attributes missing
+                           :blocked-cards               [{:id                          (:id card)
+                                                          :name                        (:name card)
+                                                          :tables                      []
+                                                          :missing-database-attributes missing}]}}
+               (select-keys (query-check (:id dashboard) :dashboard/query) [:decision :data]))))
+      (testing "a value picked in the preview makes it load"
+        (is (= {:decision "allow" :data {:card-count 1 :blocked-card-count 0}}
+               (select-keys (query-check (:id dashboard) :dashboard/query {"tenant" "acme"}) [:decision :data])))))))
