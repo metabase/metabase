@@ -83,8 +83,7 @@
   Replaces the template with the value of an environment variable. The template consisting of two parts: the word
   `env` and then the name of an environment variable. It uses [[environ.core/env]] under the hood, after normalizing
   the symbol the same way environ normalizes names. This means it is case-insensitive and `lisp-case`/`snake_case`
-  insensitive, and Java system properties are supported as well, provided you replace dots in their names with slashes
-  or underscores. In other words, this works as well:
+  insensitive, and Java system properties are supported as well. In other words, this works as well:
 
   ```yaml
   # Java system property user.dir

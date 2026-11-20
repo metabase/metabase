@@ -66,7 +66,7 @@
                                 :clojure.core/update-keys                         1
                                 :clojure.java.jdbc/get-connection                 2
                                 :clojure.pprint/pprint                            2
-                                :clojure.string/lower-case                        1
+                                :clojure.string/lower-case                        2
                                 :clojure.string/upper-case                        1
                                 :compojure.core/context                           2
                                 :compojure.core/defroutes                         4
