@@ -965,6 +965,12 @@
                                                {:op "update_parameter", :parameter_id "p"
                                                 :values_source_config (:values_source_config (source plain-id))}]}))))
             (is (empty? (t2/select-one-fn :parameters :model/Dashboard :id dash-id))))
+          (testing "a source question id that isn't one is reported by the ops compiler"
+            (is (=? {:code ::write-dashboard/dashboard-op-rejected}
+                    (failure {:dashboard_id dash-id
+                              :ops          [(merge {:op "add_parameter", :parameter_id "p", :name "Name"
+                                                     :type "category"}
+                                                    (source 0))]}))))
           (testing "a filter source a parallel call saved is judged with this call's ops"
             (t2/update! :model/Dashboard :id dash-id
                         {:parameters [{:id "p", :name "Name", :slug "name", :type "category"}]})
@@ -1013,6 +1019,19 @@
                                                                  :dataset_query           (venues-query)
                                                                  :metabot_conversation_id convo-id
                                                                  :metabot_chart_id        "B"}
+                    :model/Card                {archived-q :id} {:name                    "Archived over curated"
+                                                                 :archived                true
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "C"}
+                    :model/Document            {doc-id :id}     {:name       "Notes"
+                                                                 :document   "{\"type\":\"doc\"}"
+                                                                 :creator_id (mt/user->id :crowberto)}
+                    :model/Card                {doc-q :id}      {:name                    "Document over curated"
+                                                                 :document_id             doc-id
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "D"}
                     ;; A dashboard question must be on its dashboard, or the save trashes it.
                     :model/DashboardCard       _                {:dashboard_id dash-id, :card_id curated-q
                                                                  :row 6, :col 0, :size_x 12, :size_y 6}
@@ -1032,7 +1051,14 @@
                       :text (re-pattern (str "(?s)\\QQuestion " plain-q " \\E.*"))}
                      (failure {:dashboard_id dash-id
                                :ops          [{:op "add_card", :id -1, :card_id curated-id}
-                                              {:op "set_series", :dashcard_id -1, :card_ids [plain-q]}]}))))))))))
+                                              {:op "set_series", :dashcard_id -1, :card_ids [plain-q]}]}))))
+           (testing "but an archived or document question of this conversation is still refused"
+             (doseq [card-id [archived-q doc-q]]
+               (is (=? {:code ::write-dashboard/cards-not-curated
+                        :text (re-pattern (str "(?s)\\QQuestion " card-id " \\E.*"))}
+                       (failure {:dashboard_id dash-id
+                                 :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                                {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))))))))
 
 (deftest curated-only-conversation-chart-test
   (curated-dashboard!

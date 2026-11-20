@@ -540,19 +540,26 @@
     (into []
           (comp (keep (fn [[id param]]
                         (let [card (dashboard-ops/source-card-id param)]
-                          (when (not= card (some-> (get stored id) dashboard-ops/source-card-id))
+                          ;; The curation lookups take only ids. The ops compiler rejects any other value.
+                          (when (and (pos-int? card)
+                                     (not= card (some-> (get stored id) dashboard-ops/source-card-id)))
                             card))))
                 (distinct))
           (final-parameters dashboard ops))))
 
 (defn- saved-by-this-conversation?
-  "Whether `card` was saved from a chart of this conversation, and its query reads only curated content.
+  "Whether `card`, live and outside any document, was saved from a chart of this conversation, and its query reads
+  only curated content.
   The conversation is no proof of curation, as the card may have been saved while curation was off, so its query is
   judged again, as [[save-entity/savable-chart]] judges a chart's."
   [card]
   (let [conversation-id (shared/current-conversation-id)]
     (and conversation-id
          (= conversation-id (:metabot_conversation_id card))
+         ;; Curation never counts an archived or document card, and the writer refuses a document card only as a
+         ;; dashcard's own card, not as a series.
+         (not (:archived card))
+         (nil? (:document_id card))
          (curation/curated-query? (:dataset_query card)))))
 
 (defn- check-cards-curated!
