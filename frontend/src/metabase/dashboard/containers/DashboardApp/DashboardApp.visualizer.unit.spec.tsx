@@ -645,7 +645,7 @@ const ratioDataset = (metric: string, ratios: number[]) =>
   createMockDataset({
     data: createMockDatasetData({
       cols: [
-        breakoutColumn(createdAtColumn),
+        breakoutColumn(createdAtColumn(ORDERS.CREATED_AT)),
         createMockNumericColumn({
           id: undefined,
           name: metric,
@@ -691,7 +691,7 @@ const pivotDataset = createMockDataset({
   data: createMockDatasetData({
     cols: [
       yearColumn,
-      breakoutColumn(categoryColumn),
+      breakoutColumn(ordersCategoryColumn),
       pivotGroupingColumn,
       countColumn,
       averageColumn,
@@ -737,7 +737,11 @@ const CARTESIAN_CARDS = [
 
 const ordersByCreatedAtAndCategoryDataset = createMockDataset({
   data: createMockDatasetData({
-    cols: [createdAtColumn, categoryColumn, countColumn],
+    cols: [
+      createdAtColumn(ORDERS.CREATED_AT),
+      ordersCategoryColumn,
+      countColumn,
+    ],
     rows: ["2024-01-01T00:00:00Z", "2024-02-01T00:00:00Z"].flatMap(
       (month, monthIndex) =>
         PIVOT_CATEGORIES.map((category, categoryIndex) => [
@@ -752,8 +756,14 @@ const ordersByCreatedAtAndCategoryDataset = createMockDataset({
 const CARTESIAN_DATASETS: Record<CardId, Dataset> = {
   ...DATASETS,
   [ORDERS_BY_CREATED_AT.id]: timeseriesDataset([400, 500, 600]),
-  [PRODUCTS_BY_CREATED_AT.id]: timeseriesDataset([8, 9, 10]),
-  [ORDERS_BY_CATEGORY.id]: categoryDataset([4000, 5100, 4800, 5000]),
+  [PRODUCTS_BY_CREATED_AT.id]: timeseriesDataset(
+    [8, 9, 10],
+    PRODUCTS.CREATED_AT,
+  ),
+  [ORDERS_BY_CATEGORY.id]: categoryDataset(
+    [4000, 5100, 4800, 5000],
+    ordersCategoryColumn,
+  ),
   [PRODUCTS_BY_CATEGORY.id]: createMockDataset({
     data: createMockDatasetData({
       cols: [productsCategoryColumn, countColumn],
