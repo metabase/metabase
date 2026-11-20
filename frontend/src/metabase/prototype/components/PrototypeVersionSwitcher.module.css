@@ -6,6 +6,7 @@
   bottom: var(--mantine-spacing-md);
   left: 50%;
   display: flex;
+  width: max-content;
   flex-direction: column;
   align-items: center;
   gap: var(--mantine-spacing-xs);

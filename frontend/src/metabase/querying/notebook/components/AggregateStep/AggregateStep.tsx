@@ -178,6 +178,9 @@ export function AggregateStep({
           <ExpressionPill
             hasStepSelectedColor
             name={renderAggregationName(aggregation)}
+            hasDefaultName={
+              !Lib.displayInfo(query, stageIndex, aggregation).isNamed
+            }
             color={color}
             isActive={inline.editedIndex === index}
             readOnly={readOnly}

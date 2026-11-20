@@ -3,6 +3,10 @@ import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
+import {
+  EXPRESSION_PILL_VERSION_SETTING,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { Icon, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 
@@ -18,6 +22,8 @@ type ExpressionPillProps = {
   /** Off for a draft, which has no clause to carry a name yet. */
   canRename?: boolean;
   hasUnsavedChanges?: boolean;
+  /** True when the name is a default one, like "New column". */
+  hasDefaultName?: boolean;
   hasRemoveButton?: boolean;
   /**
    * True when the selected pill is a darker shade of the step color, not the
@@ -36,6 +42,7 @@ export function ExpressionPill({
   readOnly,
   canRename = true,
   hasUnsavedChanges = false,
+  hasDefaultName = false,
   hasRemoveButton = !readOnly,
   hasStepSelectedColor = false,
   onOpen,
@@ -45,6 +52,12 @@ export function ExpressionPill({
   const [isRenaming, setIsRenaming] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pillVersion] = usePrototypeSetting(EXPRESSION_PILL_VERSION_SETTING);
+  const renameHint = RENAME_HINTS.includes(pillVersion)
+    ? pillVersion
+    : "current";
+  const isRenameable = isActive && canRename && !readOnly;
+  const hint = isRenameable ? renameHint : "current";
 
   useEffect(() => {
     if (isRenaming) {
@@ -95,7 +108,7 @@ export function ExpressionPill({
       selected={isActive}
       className={cx(S.pill, {
         [S.stepSelected]: hasStepSelectedColor,
-        [S.renameable]: isActive && canRename && !readOnly,
+        [S.renameable]: isRenameable,
       })}
       onClick={isRenaming ? undefined : handleClick}
       data-testid={isActive ? "selected-expression-pill" : "expression-pill"}
@@ -113,7 +126,14 @@ export function ExpressionPill({
       )}
       <span
         className={cx(S.name, {
-          [S.renameable]: isActive && canRename && !readOnly,
+          [S.renameable]: isRenameable,
+          [S.hintBox]: hint !== "current",
+          [S.hintHover]:
+            hint === "hover" || (hint === "default" && !hasDefaultName),
+          [S.hintField]:
+            hint === "field" || (hint === "default" && hasDefaultName),
+          [S.hintUnderline]: hint === "underline",
+          [S.hintEditing]: isRenaming && hint !== "current",
         })}
       >
         {isRenaming ? draftName || "\u00a0" : name}
@@ -131,6 +151,15 @@ export function ExpressionPill({
           />
         )}
       </span>
+      {hint === "pencil" && (
+        <Icon
+          className={cx(S.pencilIcon, {
+            [S.hiddenWhileRenaming]: isRenaming,
+          })}
+          name="pencil"
+          size={12}
+        />
+      )}
       {hasRemoveButton && (
         <Icon
           className={cx(S.closeIcon, { [S.hiddenWhileRenaming]: isRenaming })}
@@ -144,3 +173,6 @@ export function ExpressionPill({
     </NotebookCellItem>
   );
 }
+
+// Prototype: the pill versions that add a rename hint to pill A.
+const RENAME_HINTS = ["hover", "field", "default", "pencil", "underline"];

@@ -377,6 +377,9 @@ export const ExpressionStep = ({
               ) : (
                 <ExpressionPill
                   name={getExpressionName(expression)}
+                  hasDefaultName={isDefaultOrAutoName(
+                    getExpressionName(expression),
+                  )}
                   color={color}
                   isActive={editedIndex === index}
                   readOnly={readOnly}
