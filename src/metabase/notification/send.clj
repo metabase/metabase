@@ -500,9 +500,11 @@
                                                              (pos? (queue-size queue))))
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
-                                                   (log/with-restored-context-from-meta notification
-                                                     (task-history/with-restored-run-id notification
-                                                       (send-notification-sync! notification))))
+                                                   ;; a take that returns after the deadline must not start a send
+                                                   (when-not (.get abandon-flag)
+                                                     (log/with-restored-context-from-meta notification
+                                                       (task-history/with-restored-run-id notification
+                                                         (send-notification-sync! notification)))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -538,9 +540,9 @@
                                          false))]
                         (if drained?
                           (log/info "Notification worker shut down successfully")
-                          (do (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
+                          (do (.set abandon-flag true)
+                              (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
                                          (queue-size queue))
-                              (.set abandon-flag true)
                               (.shutdownNow ^ThreadPoolExecutor executor)))
                         drained?))]
     (log/infof "Starting notification thread pool with %d threads" pool-size)
