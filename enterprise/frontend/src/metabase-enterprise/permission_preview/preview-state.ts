@@ -62,7 +62,12 @@ export function readPreviewState(): PreviewState | null {
     return state;
   }
 
-  return parseStoredState(window.sessionStorage.getItem(STORAGE_KEY));
+  const stored = window.sessionStorage.getItem(STORAGE_KEY);
+  const storedState = parseStoredState(stored);
+  if (stored != null && storedState == null) {
+    clearPreviewState();
+  }
+  return storedState;
 }
 
 /**
@@ -120,7 +125,15 @@ export function getFramePath(location: Location): string | null {
 
 function parseUrlState(params: URLSearchParams): PreviewState | null {
   const userIdParam = params.get(URL_PARAMS.userId);
-  if (userIdParam == null || !/^\d+$/.test(userIdParam)) {
+  const principalTypeParam = params.get(URL_PARAMS.principalType);
+  if (
+    userIdParam == null ||
+    !/^\d+$/.test(userIdParam) ||
+    // a type this version doesn't know (a tenant) would start as a user with the same id
+    (principalTypeParam != null &&
+      principalTypeParam !== "user" &&
+      principalTypeParam !== "group")
+  ) {
     return null;
   }
   return {

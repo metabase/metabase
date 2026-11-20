@@ -66,13 +66,40 @@ describe("permission preview state", () => {
     expect(readPreviewState()).toEqual(userState);
   });
 
-  it("reads no preview from a tenant preview stored by a tab opened before the Tenant tab was removed", () => {
+  it("reads no preview from a tenant preview stored by a tab opened before the Tenant tab was removed, and clears it", () => {
     window.sessionStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ ...STATE, principalType: "tenant", principalId: 1 }),
     );
 
     expect(readPreviewState()).toBeNull();
+    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("reads no preview, and stores none, from a tenant preview link opened before the Tenant tab was removed", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?preview_as_user=9&preview_as_user_name=Acme%20preview&preview_as_principal_type=tenant&preview_as_principal_id=1&preview_as_principal=Acme&preview_as_attributes=%7B%7D&preview_return=%2F",
+    );
+
+    expect(readPreviewState()).toBeNull();
+    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it("reads the user and group preview links as they were linked", () => {
+    const userState: PreviewState = {
+      ...STATE,
+      principalType: "user",
+      principalId: 7,
+    };
+
+    [STATE, userState].forEach((state) => {
+      const url = new URL(getPreviewUrl("/", state));
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+
+      expect(readPreviewState()).toEqual(state);
+    });
   });
 
   it("exits to the site's home page when the return path points at another site", () => {
