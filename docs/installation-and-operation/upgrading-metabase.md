@@ -176,6 +176,8 @@ docker run
 
 Note the quotes around `"migrate down"`. You can also just open a shell into the container and run the migrate command inside it.
 
+For details on each `MB_DB_*` variable, see [Environment variables](../configuring-metabase/environment-variables.md#mb_db_automigrate).
+
 Once the migration process completes, start up Metabase using the JAR or container image for the version you want to run.
 
 ## Upgrading Metabase running in a cluster

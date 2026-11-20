@@ -282,6 +282,8 @@ To create tenant attributes from JWT SSO, include a claim `@tenant.attributes`:
 }
 ```
 
+On self-hosted Metabases, you can change the `@tenant.attributes` key with the [`MB_JWT_ATTRIBUTE_TENANT_ATTRIBUTES`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_tenant_attributes) environment variable.
+
 If a tenant attribute with this name doesn't exist, Metabase will create the attribute and assign the value from the JWT claim. However, if the tenant attribute already exists, Metabase will **not** update the value.
 
 ### Troubleshooting JWT authentication with tenants
