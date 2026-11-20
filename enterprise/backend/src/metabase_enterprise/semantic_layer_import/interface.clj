@@ -9,7 +9,7 @@
 (mr/def ::raw
   "A semantic layer as its source writes it, before it is parsed: for dbt, the path of the `manifest.json` `dbt parse`
   writes. Its shape is the source's own, which the source's [[raw->ir]] method checks."
-  [:schema {::mr/deliberately-open true, :description "a semantic layer as its source writes it"} :any])
+  [:or {:description "a semantic layer as its source writes it"} :string :map])
 
 (mr/def ::options
   "A source's own options, next to the import's config: for dbt, `:entity-models` (see

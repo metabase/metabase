@@ -10,8 +10,8 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu :refer [fld]]
    [metabase-enterprise.semantic-layer-import.emit :as emit]
-   [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
+   [metabase.serialization.core :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u])
   (:import
@@ -26,8 +26,8 @@
                                        (io/reader "enterprise/backend/src/metabase_enterprise/semantic_layer_import/emit.clj"))]
                      (ns.parse/deps-from-ns-decl (ns.parse/read-ns-decl reader)))]
       (is (set/subset? #{'metabase.queries.core 'metabase.collections.core} required)))
-    (is (some? (serdes/make-spec "Card" nil)))
-    (is (some? (serdes/make-spec "Collection" nil)))))
+    (is (some? (serdes/spec-of :model/Card)))
+    (is (some? (serdes/spec-of :model/Collection)))))
 
 (deftest ^:parallel dataset-query-test
   (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
@@ -343,7 +343,7 @@
     (let [resolved  (tu/resolve-manifest-map (tu/build-manifest {}))
           metric    (tu/resolved-metric-named resolved "m")
           card      (tu/card-entity tu/default-config resolved "m")
-          spec      (serdes/make-spec "Card" nil)
+          spec      (serdes/spec-of :model/Card)
           exported  (into (set (:copy spec)) (map (fn [[k transform]] (:as transform k))) (:transform spec))]
       (testing "every key written is one the spec exports"
         (is (empty? (set/difference (disj (set (keys card)) :serdes/meta) exported))))
@@ -355,20 +355,21 @@
         (is (= (-> resolved :collection :entity-id) (:collection_id card))))
       (testing "the references the import derives again are not written"
         (is (not-any? #(contains? card %) [:database_id :result_metadata :table_id :source_card_id])))
-      (is (= [{:model "Card", :id (:entity-id metric), :label "m"}] (:serdes/meta card))))))
+      (is (= [{:model "Card"}] (:serdes/meta card)))
+      (is (= (:entity-id metric) (:entity_id card))))))
 
 (deftest ^:parallel collection-envelope-test
   (testing "the collection is what the Collection spec exports of a top-level row"
     (let [resolved   (tu/resolve-manifest-map (tu/build-manifest {}))
           collection (-> (emit/files tu/default-config resolved) first :entity)
-          exported   (let [spec (serdes/make-spec "Collection" nil)]
+          exported   (let [spec (serdes/spec-of :model/Collection)]
                        (into (set (:copy spec)) (map (fn [[k transform]] (:as transform k))) (:transform spec)))]
       (is (empty? (set/difference (disj (set (keys collection)) :serdes/meta) exported)))
       (is (= {:name        "dbt metrics"
               :entity_id   (-> resolved :collection :entity-id)
               :slug        "dbt_metrics"
               :description "Metrics imported from dbt."
-              :serdes/meta [{:model "Collection", :id (-> resolved :collection :entity-id), :label "dbt_metrics"}]}
+              :serdes/meta [{:model "Collection"}]}
              (dissoc collection :archived_directly)))
       (testing "no parent and no personal owner"
         (is (not-any? #(contains? collection %) [:parent_id :personal_owner_id]))))))

@@ -20,7 +20,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metrics.core :as metrics]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.resolve :as serdes.resolve]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
@@ -527,30 +527,33 @@
                                    (get (swap! ids #(assoc % portable-ref (inc (count %)))) portable-ref)))]
         (is (= (count (:dimensions entity)) (count (:dimensions card)) (count (:dimension_mappings card)))
             "every dimension and mapping is written")
-        (binding [serdes/*import-table-fk* id-for
-                  serdes/*import-field-fk* id-for]
-          (let [dimensions  (metrics/import-dimensions (:dimensions card))
-                mappings    (metrics/import-dimension-mappings (:dimension_mappings card))
-                mapping-for (m/index-by :dimension-id mappings)
-                named       (fn [dimension-name] (m/find-first #(= dimension-name (:name %)) dimensions))]
-            (testing "valid against the persisted schemas"
-              (is (mr/validate ::lib-metric.schema/persisted-dimensions dimensions))
-              (doseq [mapping mappings]
-                (is (mr/validate ::lib-metric.schema/dimension-mapping mapping))))
-            (testing "ids survive"
-              (is (= (map :id (:dimensions entity)) (map :id dimensions)))
-              (is (= (set (map :id dimensions)) (set (keys mapping-for)))))
-            (testing "keyword values come back as keywords and the default survives"
-              (is (= {:name "date_day", :default true, :default-temporal-unit :day, :effective-type :type/Date}
-                     (select-keys (named "date_day") [:name :default :default-temporal-unit :effective-type])))
-              (is (= [{:type :field, :field-id (id-for (tu/portable-field "fact_sales" "date_day"))}]
-                     (:sources (named "date_day")))))
-            (testing "a joined mapping's table and foreign key are bound to the instance's ids"
-              (let [{:keys [table-id target]} (mapping-for (:id (named "product_category_dim")))]
-                (is (= (id-for (tu/portable-table "dim_product")) table-id))
-                (is (= (id-for (tu/portable-field "dim_product" "product_category")) (nth target 2)))
-                (is (= (id-for (tu/portable-field "fact_sales" "product_key"))
-                       (get-in target [1 :source-field])))))))))))
+        (let [[[dimensions mappings]]
+              (serdes.resolve/walk-in-bulk [card]
+                                           (fn [visit card]
+                                             [(metrics/walk-import-dimensions visit (:dimensions card))
+                                              (metrics/walk-import-dimension-mappings visit (:dimension_mappings card))])
+                                           (fn [_model portable-refs]
+                                             (into {} (map (juxt identity id-for)) portable-refs)))
+              mapping-for (m/index-by :dimension-id mappings)
+              named       (fn [dimension-name] (m/find-first #(= dimension-name (:name %)) dimensions))]
+          (testing "valid against the persisted schemas"
+            (is (mr/validate ::lib-metric.schema/persisted-dimensions dimensions))
+            (doseq [mapping mappings]
+              (is (mr/validate ::lib-metric.schema/dimension-mapping mapping))))
+          (testing "ids survive"
+            (is (= (map :id (:dimensions entity)) (map :id dimensions)))
+            (is (= (set (map :id dimensions)) (set (keys mapping-for)))))
+          (testing "keyword values come back as keywords and the default survives"
+            (is (= {:name "date_day", :default true, :default-temporal-unit :day, :effective-type :type/Date}
+                   (select-keys (named "date_day") [:name :default :default-temporal-unit :effective-type])))
+            (is (= [{:type :field, :field-id (id-for (tu/portable-field "fact_sales" "date_day"))}]
+                   (:sources (named "date_day")))))
+          (testing "a joined mapping's table and foreign key are bound to the instance's ids"
+            (let [{:keys [table-id target]} (mapping-for (:id (named "product_category_dim")))]
+              (is (= (id-for (tu/portable-table "dim_product")) table-id))
+              (is (= (id-for (tu/portable-field "dim_product" "product_category")) (nth target 2)))
+              (is (= (id-for (tu/portable-field "fact_sales" "product_key"))
+                     (get-in target [1 :source-field]))))))))))
 
 (deftest ^:parallel status-test
   (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))

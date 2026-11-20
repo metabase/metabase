@@ -60,8 +60,7 @@
   [:map {:closed true}
    [:class :string]
    [:sql   :string]
-   [:args  [:map-of {::mr/deliberately-open true, :description "sqlglot's named children, of any shape"}
-            :keyword :any]]
+   [:args  [:map-of :keyword [:maybe [:or [:ref ::node] [:sequential [:ref ::node]] :string :boolean number?]]]]
    [:func  {:optional true} :string]])
 
 (mr/def ::context
