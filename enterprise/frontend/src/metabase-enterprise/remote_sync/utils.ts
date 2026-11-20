@@ -45,6 +45,7 @@ const MODEL_ICONS: Record<RemoteSyncItemModel, IconName> = {
   nativequerysnippet: "snippet",
   pythonlibrary: "code_block",
   segment: "segment",
+  segmenttest: "list",
   tableusersettings: "table",
   timeline: "calendar",
   transform: "insight",
@@ -87,6 +88,8 @@ export function getItemCollections(
     case "segment":
     case "measure":
       return getCollectionPath(item.data?.table?.collection);
+    case "segmenttest":
+      return getCollectionPath(item.data?.segment?.table?.collection);
     case "fieldusersettings":
     case "dimension":
       return getCollectionPath(item.data?.field?.table?.collection);
@@ -117,6 +120,8 @@ export function getItemTable(
     case "segment":
     case "measure":
       return item.data?.table ?? null;
+    case "segmenttest":
+      return item.data?.segment?.table ?? null;
     case "fieldusersettings":
     case "dimension":
       return item.data?.field?.table ?? null;
@@ -136,7 +141,7 @@ export function isItemTable(
   item: RemoteSyncItemOrDirtyItem,
   table: RemoteSyncItemTable,
 ): boolean {
-  return item.model === "tableusersettings" && item.id === table.id;
+  return item.model === "tableusersettings" && item.data?.table_id === table.id;
 }
 
 const DATA_SECTION = { key: "data", icon: "database" } as const;
@@ -150,6 +155,7 @@ export function getItemSection(
     case "fieldusersettings":
     case "dimension":
     case "segment":
+    case "segmenttest":
     case "measure":
       return { ...DATA_SECTION, name: t`Data` };
     case "transform":
@@ -183,6 +189,7 @@ function getItemModelAreas(
     case "fieldusersettings":
     case "dimension":
     case "segment":
+    case "segmenttest":
     case "measure":
       return ["library"];
     case "transform":
@@ -258,10 +265,13 @@ export function getItemName(item: RemoteSyncItem): string {
 export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
   switch (item.model) {
     case "tableusersettings":
-      return Urls.dataStudioTable(item.id);
+      return item.data ? Urls.dataStudioTable(item.data.table_id) : null;
     case "fieldusersettings":
       return item.data?.field
-        ? Urls.dataStudioTableFields(item.data.field.table_id, item.id)
+        ? Urls.dataStudioTableFields(
+            item.data.field.table_id,
+            item.data.field_id,
+          )
         : null;
     case "dimension":
       return item.data?.field
@@ -283,6 +293,7 @@ export function getItemUrl(item: RemoteSyncItemOrDirtyItem): string | null {
         ? Urls.transformTest(item.data.transform_id, item.id)
         : null;
     case "cardtest":
+    case "segmenttest":
       return null;
     case "action":
       return item.data?.model_id != null

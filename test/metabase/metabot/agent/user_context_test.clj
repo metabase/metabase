@@ -523,7 +523,7 @@
                                                  :active     true
                                                  :created_at :%now
                                                  :updated_at :%now})]
-          (with-redefs [mi/can-read? (constantly true)]
+          (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "table" :id table-id}]})]
               (is (not (str/includes? result "destination-table"))))))))))
@@ -540,7 +540,7 @@
                                                            :database_id destination-id}
                      :model/Card     {metric-id :id}      {:name "Destination Metric" :type :metric
                                                            :database_id destination-id}]
-        (with-redefs [mi/can-read? (constantly true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
           (testing "model"
             (let [result (user-context/format-viewing-context
                           {:user_is_viewing [{:type "model" :id model-id}]})]
@@ -584,7 +584,7 @@
           (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
                                        :perms/manage-table-metadata :yes)
           (mt/with-test-user :rasta
-            (is (not (mi/can-query? :model/Database (mt/id))))
+            (is (not (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_query))))
             (is (some? (shared.content-store/query-for-export query false))))))
       (testing "and not exportable when the card is not readable"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -611,14 +611,15 @@
         (let [out (user-context/format-viewing-context viewing)]
           (is (str/includes? out "notebook editor"))
           (is (str/includes? out "source-table"))
-          (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text")))))
+          (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text"))
+          (is (not (str/includes? out "Source ")) "a query on a table names no source card"))))
     (testing "omits the query when the user can read the database but not query it"
       (mt/with-no-data-perms-for-all-users!
         (perms/set-table-permission! (perms-group/all-users) (mt/id :venues)
                                      :perms/manage-table-metadata :yes)
         (mt/with-test-user :rasta
-          (is (mi/can-read? :model/Database (mt/id)))
-          (is (not (mi/can-query? :model/Database (mt/id))))
+          (is (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+          (is (not (mi/can-query? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_query))))
           (let [out (user-context/format-viewing-context viewing)]
             (is (str/includes? out "notebook editor"))
             (is (not (str/includes? out "source-table")))
@@ -677,8 +678,7 @@
     (let [mp         (mt/metadata-provider)
           definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                          (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                      :definition definition}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition definition}]
         ;; The gate never looks at segments, so the query clears it and the segment ref is
         ;; resolved by whichever store the caller handed the export - the choice under test.
         ;; A source-card query would be refused by the gate first, whichever store was passed.
@@ -750,6 +750,218 @@
                                           "breakout"    [["field" {} column-name]]}]}))
                           (get-in [:structured-output :query])
                           lib/breakouts-metadata))))))))))
+
+(defn- adhoc-card-viewing-context
+  "The viewing context of an ad-hoc query on the card with `card-id`."
+  [card-id]
+  (user-context/format-viewing-context
+   {:user_is_viewing [{:type  "adhoc"
+                       :query (let [mp (mt/metadata-provider)]
+                                (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))}]}))
+
+(deftest adhoc-viewing-context-source-card-uri-test
+  (doseq [[card-type uri-type] [[:model "model"] [:question "question"]]]
+    (testing (str "an ad-hoc query on a " (name card-type) " names its source card by a numeric-id URI")
+      (mt/with-temp [:model/Card {card-id :id} {:name          "Venues source"
+                                                :type          card-type
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (legacy-table-query (mt/id :venues))}]
+        (mt/with-test-user :crowberto
+          (let [out (adhoc-card-viewing-context card-id)]
+            (is (str/includes? out (str "Source " uri-type " \"Venues source\": metabase://" uri-type "/" card-id)))
+            (is (str/includes? out (str "metabase://" uri-type "/" card-id "/fields"))))))))
+  (testing "a user who can read the card's collection gets the URI"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Readable model"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+      (mt/with-test-user :rasta
+        (is (str/includes? (adhoc-card-viewing-context card-id)
+                           (str "Source model \"Readable model\": metabase://model/" card-id))))))
+  (testing "a source card that the user cannot read gives no URI"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card       {card-id :id} {:name          "Hidden model"
+                                                      :type          :model
+                                                      :collection_id coll-id
+                                                      :database_id   (mt/id)
+                                                      :table_id      (mt/id :venues)
+                                                      :dataset_query (legacy-table-query (mt/id :venues))}]
+        (let [query (mt/with-test-user :crowberto
+                      (let [mp (mt/metadata-provider)]
+                        (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))))]
+          (mt/with-test-user :rasta
+            (let [out (user-context/format-viewing-context
+                       {:user_is_viewing [{:type "adhoc" :query query}]})]
+              (is (not (str/includes? out "metabase://model/")))
+              (is (not (str/includes? out "Hidden model"))))))))))
+
+(deftest adhoc-viewing-context-source-card-metric-test
+  (testing "an ad-hoc query on a metric names the metric by its URI and points at its dimensions"
+    (mt/with-temp [:model/Card {metric-id :id} {:name          "Venues count"
+                                                :type          :metric
+                                                :database_id   (mt/id)
+                                                :table_id      (mt/id :venues)
+                                                :dataset_query (let [mp (mt/metadata-provider)]
+                                                                 (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count))))}]
+      (mt/with-test-user :crowberto
+        ;; `lib/query` on a metric card does not make the metric the source card, so build the stage by hand.
+        (let [query {:database (mt/id) :type :query :query {:source-table (str "card__" metric-id)}}]
+          (is (:mp (shared.content-store/query-for-export query true))
+              "the permission check clears the query")
+          (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+            (is (str/includes? out (str "Source metric \"Venues count\": metabase://metric/" metric-id)))
+            (is (str/includes? out (str "metabase://metric/" metric-id "/dimensions")))))))))
+
+(deftest adhoc-viewing-context-builds-each-lib-query-once-test
+  (testing "the source-card line and the column list share one lib query of the cleared query"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Venues source"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+      (mt/with-test-user :crowberto
+        (let [query     (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))
+              cleared   (-> (shared.content-store/query-for-export query true) :query (dissoc :lib/metadata))
+              built     (atom 0)
+              lib-query (mt/original-fn #'lib/query)
+              out       (mt/with-dynamic-fn-redefs [lib/query (fn [& args]
+                                                                (when (= cleared (dissoc (last args) :lib/metadata))
+                                                                  (swap! built inc))
+                                                                (apply lib-query args))]
+                          (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))]
+          (is (str/includes? out (str "metabase://model/" card-id)) "precondition: the source-card line renders")
+          (is (str/includes? out "Columns the query can use") "precondition: the column list renders")
+          (is (= 1 @built) "the cleared query is built once"))))))
+
+(defn- metric-line
+  "The line that names the metric with `metric-id` and `metric-name` in an ad-hoc viewing context."
+  [metric-id metric-name]
+  (str "Metric \"" metric-name "\": metabase://metric/" metric-id
+       " (read its columns at metabase://metric/" metric-id "/dimensions)"))
+
+(deftest adhoc-viewing-context-metric-aggregation-test
+  (testing "an ad-hoc query that aggregates a metric, as the frontend builds it, names the metric by its URI"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {model-id :id}  {:name          "Venues model"
+                                                  :type          :model
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (legacy-table-query (mt/id :venues))}
+                     :model/Card {metric-id :id} {:name          "Venues count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))}
+                     :model/Card {model-metric-id :id}
+                     {:name          "Model count"
+                      :type          :metric
+                      :database_id   (mt/id)
+                      :table_id      (mt/id :venues)
+                      :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
+                                         (lib/aggregate (lib/count)))}]
+        (mt/with-test-user :crowberto
+          (testing "on a table"
+            (let [query (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id))))]
+              (is (:mp (shared.content-store/query-for-export query true)) "the permission check clears the query")
+              (let [out (adhoc-card-viewing-context metric-id)]
+                (is (str/includes? out (metric-line metric-id "Venues count")))
+                (is (not (str/includes? out "Source "))))))
+          (testing "on a model, the model stays the source"
+            (let [out (adhoc-card-viewing-context model-metric-id)]
+              (is (str/includes? out (str "Source model \"Venues model\": metabase://model/" model-id)))
+              (is (str/includes? out (metric-line model-metric-id "Model count"))))))))))
+
+(deftest adhoc-viewing-context-metric-aggregation-gates-test
+  (testing "a metric that Metabot may not read as a resource gives no metric line, and the query still renders"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card {metric-id :id} {:name          "Venues count"
+                                                  :type          :metric
+                                                  :database_id   (mt/id)
+                                                  :table_id      (mt/id :venues)
+                                                  :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                     (lib/aggregate (lib/count)))}]
+        (let [query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))
+              out   (fn [] (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))]
+          (testing "a database that is not addressable as a resource"
+            (mt/with-test-user :crowberto
+              (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database
+                                          (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
+                (let [out (out)]
+                  (is (str/includes? out "The user is currently in the notebook editor"))
+                  (is (not (str/includes? out "metabase://metric/")))))))
+          (testing "a database that the user cannot read: no failed read check"
+            (let [checks (atom [])]
+              (mt/with-no-data-perms-for-all-users!
+                (mt/with-test-user :rasta
+                  (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+                      "precondition: the database is not readable")
+                  (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database #(swap! checks conj %)]
+                    (is (not (str/includes? (out) "metabase://metric/")))
+                    (is (= [] @checks) "the database read check does not run")))))))))
+    (testing "a metric that the user cannot read withholds the whole query"
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Card       {metric-id :id} {:name          "Hidden metric"
+                                                          :type          :metric
+                                                          :collection_id coll-id
+                                                          :database_id   (mt/id)
+                                                          :table_id      (mt/id :venues)
+                                                          :dataset_query (let [mp (mt/metadata-provider)]
+                                                                           (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                               (lib/aggregate (lib/count))))}]
+          (let [query (mt/with-test-user :crowberto
+                        (let [mp (mt/metadata-provider)]
+                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))))]
+            (mt/with-test-user :rasta
+              (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+                (is (not (str/includes? out "metabase://metric/")))
+                (is (not (str/includes? out "Hidden metric")))))))))))
+
+(deftest adhoc-viewing-context-source-card-destination-database-test
+  (testing "a source card whose database is not addressable as a resource gives no URI, and the query still renders"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Routed model"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+      (mt/with-test-user :crowberto
+        (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database
+                                    (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
+          (let [out (adhoc-card-viewing-context card-id)]
+            (is (str/includes? out "The user is currently in the notebook editor"))
+            (is (str/includes? out "source-card") "the query text renders")
+            (is (not (str/includes? out "Source model")))
+            (is (not (str/includes? out "metabase://model/")))))))))
+
+(deftest adhoc-viewing-context-source-card-unreadable-database-test
+  (testing "a readable source card on a database that the user cannot read gives no URI, and no failed read check"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Model on a hidden database"
+                                              :type          :model
+                                              :database_id   (mt/id)
+                                              :table_id      (mt/id :venues)
+                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+      (let [query  (mt/with-test-user :crowberto
+                     (let [mp (mt/metadata-provider)]
+                       (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))))
+            checks (atom [])]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-test-user :rasta
+            (is (not (mi/can-read? (t2/hydrate (t2/select-one :model/Database :id (mt/id)) :can_read)))
+                "precondition: the database is not readable")
+            (is (:mp (shared.content-store/query-for-export query true)) "precondition: the card clears the query")
+            ;; `api/read-check` logs an error and publishes an audit event for each failed read.
+            (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database #(swap! checks conj %)]
+              (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
+                (is (str/includes? out "source-card") "the query text renders")
+                (is (not (str/includes? out "Source model")))
+                (is (= [] @checks) "the database read check does not run")))))))))
 
 (deftest adhoc-viewing-context-table-column-ref-builds-test
   (testing "a column of a source table is listed with a portable FK that builds in stage 0 of a new query"

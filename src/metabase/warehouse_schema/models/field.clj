@@ -2,14 +2,17 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
+   [metabase.change-log.core :as change-log]
+   [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -123,11 +126,20 @@
 (doto :model/Field
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies)
+  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
+
+(defmethod events/spec :model/Field
+  [_model]
+  {:create :event/field-create
+   :update :event/field-update
+   :delete :event/field-delete})
+
+(methodical/defmethod change-log/ignored-columns :model/Field [_model]
+  #{:database_indexed :dimension_interestingness :fingerprint :fingerprint_version :last_analyzed})
 
 (t2/define-after-select :model/Field
   [field]
@@ -159,18 +171,68 @@
           (assoc field :effective_type base-raw))
       field)))
 
+(defn- coercion-strategy
+  "The `:coercion_strategy` of `field` as a keyword, or nil when it has none or one the column does not take."
+  [field]
+  (let [coercion (some-> (:coercion_strategy field) keyword)]
+    (when (isa? coercion :Coercion/*)
+      coercion)))
+
+(defn- coercion-changes
+  "The `:coercion_strategy` and `:effective_type` to write for `field` given the columns `changes` writes: the effective
+  type of a newly set strategy that comes without one, and neither once the `:base_type` moves away from the strategy."
+  [{:keys [base_type] :as field} changes]
+  (when-let [coercion (coercion-strategy field)]
+    (cond
+      (and (contains? changes :coercion_strategy) (not (contains? changes :effective_type)))
+      {:effective_type (types/effective-type-for-coercion coercion)}
+
+      (and (contains? changes :base_type)
+           (not (contains? changes :coercion_strategy))
+           (not (types/is-coercible-from? coercion (keyword base_type))))
+      {:coercion_strategy nil, :effective_type base_type})))
+
+(defn- check-fk-target
+  "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."
+  [{:keys [table_id fk_target_field_id]}]
+  (let [target-database-id (get (warehouse-schema.db/field-database-ids #{fk_target_field_id}) fk_target_field_id)]
+    (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
+    (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
+                :fk_target_field_id (tru "Target field must belong to the same database"))))
+
+(defn nested-fields-pattern
+  "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
+  [field-name]
+  (str "[\"" field-name "\",%]"))
+
 (t2/define-before-insert :model/Field
   [field]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (-> (merge defaults field)
-        enforce-effective-type-invariant)))
+  (let [field (merge field
+                     {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
+                     (coercion-changes field field))]
+    (when (:fk_target_field_id field)
+      (check-fk-target field))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-update :model/Field
-  [field]
-  (when (false? (:active (t2/changes field)))
-    (warehouse-schema.db/clear-user-settings-fk-targets-to-field! (:id field))
-    (warehouse-schema.db/clear-fk-targets-to-field! (:id field)))
-  (enforce-effective-type-invariant field))
+  [{:keys [id table_id] :as field}]
+  (let [changes (t2/changes field)
+        field   (merge field (coercion-changes field changes))]
+    (when (contains? changes :table_id)
+      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
+      (check-fk-target field))
+    (when (false? (:active changes))
+      (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
+      (warehouse-schema.db/clear-fk-targets-to-field! id)
+      (warehouse-schema.db/delete-dimensions-reading-field! id))
+    (when (:display_name changes)
+      (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
+    (when (contains? changes :json_unfolding)
+      (warehouse-schema.db/set-nested-fields-active! table_id
+                                                     (nested-fields-pattern (:name field))
+                                                     (boolean (:json_unfolding field))))
+    (enforce-effective-type-invariant field)))
 
 (t2/define-before-delete :model/Field
   [field]
@@ -179,25 +241,38 @@
   ;; foreign key constraints in generated columns. #44866
   (warehouse-schema.db/delete-child-fields! (:id field)))
 
-(defn- field->table
-  "Get the Table for a Field, either from hydration or by fetching."
-  [instance]
-  (or (:table instance)
-      (warehouse-schema.db/table (:table_id instance))))
+(defn- check-permission-keys
+  "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
+  [field]
+  (api/check-500 (or (some? (:table field)) (some? (:table_id field))) "No :table_id is set for a Field."))
 
-(defmethod mi/can-read? :model/Field
-  ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
-  ([instance]
-   (mi/can-read? (field->table instance)))
-  ([_model pk]
-   (mi/can-read? (warehouse-schema.db/field pk))))
+(defn- hydrate-table-permission
+  "Sets on each of `fields` the answer of its Table for `k`, `:can_read` or `:can_query`, the Tables answered
+  together."
+  [k fields]
+  (let [rows   (into [] (remove nil?) fields)
+        _      (run! check-permission-keys rows)
+        tables (into {} (keep (fn [{:keys [table]}] (when table [(:id table) table]))) rows)
+        ids    (into [] (comp (map :table_id) (remove nil?) (remove tables) (distinct)) rows)
+        tables (cond-> tables
+                 (seq ids) (into (map (juxt :id identity)) (warehouse-schema.db/tables-by-ids ids)))
+        flags  (into {} (map (juxt :id (if (= k :can_read) mi/can-read? mi/can-query?))) (t2/hydrate (vals tables) k))]
+    (for [field fields]
+      (when field
+        (let [answer (boolean (get flags (or (:id (:table field)) (:table_id field))))]
+          (if (= k :can_read)
+            (vary-meta field assoc k answer)
+            (assoc field k answer)))))))
 
-(defmethod mi/can-query? :model/Field
-  ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
-  ([instance]
-   (mi/can-query? (field->table instance)))
-  ([_model pk]
-   (mi/can-query? (warehouse-schema.db/field pk))))
+(methodical/defmethod t2/batched-hydrate [:model/Field :can_read]
+  "Whether the current user can read each of `fields`, which they can when they read its Table."
+  [_model k fields]
+  (hydrate-table-permission k fields))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :can_query]
+  "Whether the current user can query each of `fields`, which they can when they query its Table."
+  [_model k fields]
+  (hydrate-table-permission k fields))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation: whether the current user, a superuser, can write the field `instance`, which nobody can when a
@@ -206,23 +281,16 @@
   [instance]
   (let [table (or (:table instance)
                   (warehouse-schema.db/table (:table_id instance)))]
-    (and (remote-sync/can-write? :model/TableUserSettings (:id table))
+    (and (collection/remote-sync-writable-table? table)
          (mi/superuser?))))
 
-(defmethod mi/can-write? :model/Field
-  ([instance]
-   (current-user-can-write-field? instance))
-  ([_model pk]
-   (mi/can-write? (warehouse-schema.db/field pk))))
-
 (methodical/defmethod t2/batched-hydrate [:model/Field :can_write]
-  "Batched hydration for :can_write on fields, hydrating their tables first."
+  "Whether the current user can change the metadata of each of `fields`, their Tables hydrated first."
   [_model k fields]
-  (mi/instances-with-hydrated-data
-   fields k
-   #(u/index-by :id mi/can-write? (t2/hydrate (remove nil? fields) :table))
-   :id
-   {:default false}))
+  (let [writable (u/index-by :id (comp boolean current-user-can-write-field?) (t2/hydrate (remove nil? fields) :table))]
+    (for [field fields]
+      (when field
+        (assoc field k (boolean (get writable (:id field))))))))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -330,19 +398,11 @@
   true)
 
 (defn readable-fields-only
-  "Efficiently checks if each field is readable and returns only readable fields.
-
-  Reading a Field delegates to its Table, so the tables are loaded up front -- otherwise this costs a query per
-  distinct table, and another per distinct database, which is what makes it expensive for callers whose fields fan
-  out across tables, such as hydrating `:target` over a dashboard's FK columns."
+  "The readable `fields`, checked against their hydrated Tables."
   [fields]
-  (let [fields (t2/hydrate fields :table)
-        tables (into #{} (keep :table) fields)]
-    (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
-                                    :table-ids (into #{} (keep :id) tables)})
-    (for [field fields
-          :when (mi/can-read? field)]
-      (dissoc field :table))))
+  (for [field (t2/hydrate fields :table :can_read)
+        :when (mi/can-read? field)]
+    (dissoc field :table)))
 
 (mi/define-batched-hydration-method with-targets
   :target

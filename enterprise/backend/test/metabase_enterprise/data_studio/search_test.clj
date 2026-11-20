@@ -5,7 +5,7 @@
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
    [metabase.test :as mt]

@@ -96,6 +96,15 @@
         (tools.error/throw-recoverable! recovery-code {} {:cause e})
         (throw e)))))
 
+(defn- non-terminal-on-new-warnings
+  "`result` marked `:non-terminal?` when `validation-result` has reference warnings that are new in this turn.
+
+  A profile that ends its turn on this tool then gives the model one more step to act on them, when the turn has one
+  left. Warnings that this turn has already shown do not, so sending the SQL again accepts it instead of looping."
+  [result {:keys [warnings repeated-warnings?]}]
+  (cond-> result
+    (and (seq warnings) (not repeated-warnings?)) (assoc :non-terminal? true)))
+
 (defn- query-viz-part
   "The chart part that shows `action-result` in the conversation, under its chart's id when it has one. Without a
   `display` the frontend picks one from the results."
@@ -155,9 +164,10 @@
                                ::missing-editor
                                {:user-message
                                 (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
-          action-result (sql.common/validated-sql-action!
-                         (do-with-notebook-fallback
-                          ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
+          {:keys [validation-result] :as operation-result}
+          (do-with-notebook-fallback
+           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
+          action-result (sql.common/validated-sql-action! operation-result)
           query-id      (:query-id action-result)
           ;; Outside the editor the query gets a chart, shown or not, so its `chart_id` can go on a dashboard.
           chart         (when-not code-edit?
@@ -175,13 +185,17 @@
                           :hidden (instructions/query-hidden-instructions-for query-id)
                           :link   (instructions/query-created-instructions-for
                                    query-id readable? (:chart-id chart) (shared/tool-offered? "edit_chart")))
-          instr         (cond-> instr
-                          (and chart (shared/tool-offered? "write_dashboard"))
-                          (str "\n" (instructions/add-to-dashboard-instruction (:chart-id chart))))]
-      (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
-                     :structured-output structured}
-                    :data-parts (delivery-parts delivery buffer-id structured title
-                                                :display (when visualization (:chart-type chart)))))))
+          instr         (instructions/with-sql-reference-warnings
+                          (cond-> instr
+                            (and chart (shared/tool-offered? "write_dashboard"))
+                            (str "\n" (instructions/add-to-dashboard-instruction (:chart-id chart))))
+                          validation-result)]
+      (non-terminal-on-new-warnings
+       (m/assoc-some {:output            (format-query-output structured instr {:preamble? true})
+                      :structured-output structured}
+                     :data-parts (delivery-parts delivery buffer-id structured title
+                                                 :display (when visualization (:chart-type chart))))
+       validation-result))))
 
 (def create-sql-query-tool
   "The Chat tool that creates a SQL query and shows its visualization."
@@ -208,7 +222,7 @@
 
 (defn- sql-edit-result!
   "The result of an edit or replace, delivered to the user as [[query-delivery]] decides."
-  [operation-result title show-chart instruction-fn ctx & {:keys [edit?]}]
+  [{:keys [validation-result] :as operation-result} title show-chart instruction-fn ctx & {:keys [edit?]}]
   (let [action-result (sql.common/validated-sql-action! operation-result {:edit? edit?})
         query-id      (:query-id action-result)
         structured    (assoc action-result :result-type :query)
@@ -220,14 +234,18 @@
         ;; Readability reads the app DB, so it is checked only when hiding was asked.
         readable?     (and hide-asked? (tools.run-query/sql-results-readable?))
         delivery      (query-delivery buffer-id (and readable? (not client-query?)))
-        instr         (cond-> (instruction-fn query-id delivery)
-                        (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
-                        (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))]
+        instr         (instructions/with-sql-reference-warnings
+                        (cond-> (instruction-fn query-id delivery)
+                          (and hide-asked? client-query?) (str "\n\n" instructions/client-query-shown-instruction)
+                          (and readable? client-query?)   (str " " instructions/client-query-variant-instruction))
+                        validation-result)]
     ;; The calls after this one in the same model response read this query before the agent loop stores the results
     (some-> (:memory-atom ctx) (swap! memory/set-query query-id (:query action-result)))
-    (m/assoc-some {:output            (format-query-output structured instr)
-                   :structured-output structured}
-                  :data-parts (delivery-parts delivery buffer-id action-result title))))
+    (non-terminal-on-new-warnings
+     (m/assoc-some {:output            (format-query-output structured instr)
+                    :structured-output structured}
+                   :data-parts (delivery-parts delivery buffer-id action-result title))
+     validation-result)))
 
 (defrecord EditSqlQueryTool []
   tools/Tool

@@ -18,7 +18,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
   (:import
    (java.net URI)))
@@ -180,7 +179,7 @@
    [:start_time_millis           {:optional true} [:maybe :int]]
    ;; the entry shape is enforced where it is built ([[metabase.lib.schema/sandboxing.details.entry]]) and on the way
    ;; into the app DB ([[metabase.queries.schema/query-execution.update]]); this row schema only passes it through
-   [:sandbox_details             {:optional true} [:maybe [:sequential [:map {::mr/deliberately-open true}]]]]])
+   [:sandbox_details             {:optional true} [:maybe [:sequential :map]]]])
 
 (mu/defn include-sdk-info :- :map
   "Embeds the sdk information into the map for usage analytics."

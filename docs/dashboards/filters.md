@@ -32,15 +32,15 @@ There are two basic types of widgets you can add: filters or parameters. The typ
 
 - [Time grouping](#time-grouping-parameter)
 
-## Dashboard, header, and card widgets
+## Add widgets to the whole dashboard, a heading, or a single card
 
-You can add widgets to the whole dashboard, to headers, or to individual dashboard cards.
+You can add widgets to the whole dashboard, to [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards), or to individual question cards.
 
 ![Filter location](./images/filter-location.png)
 
 - **Dashboard-level widgets** can connect to cards on the entire dashboard, across all tabs.
-- **Header-level widgets** can only be connected to cards on the same tab.
-- **Card-level widgets** can only be connected to their individual cards.
+- **Header-level widgets** sit on a heading card and can only be connected to cards on the same tab.
+- **Card-level widgets** sit on a question card and can only be connected to that card. Use card-level widgets when you want a filter that only affects a single chart.
 
 By default, prefer dashboard-level widgets.
 
@@ -60,11 +60,9 @@ These are just rules of thumb to keep the user experience predictable. Do whatev
 1. While viewing a dashboard, click the **pencil icon** to enter dashboard editing mode.
 2. You can add a filter or parameter widget to:
 
-   - **The whole dashboard**. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
-   - **Heading cards**. Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Can only be connected to cards on the current tab.
-   - **Question cards**. Can only be connected to cards on the current tab.
-
-   Go to where you want to add a filter and click the **filter icon**.
+   - **The whole dashboard** (dashboard-level widgets). Click the **filter icon** in the dashboard header. You'll need to connect these dashboard-level filters to individual cards. Metabase will only display dashboard-level widgets if they're connected to a card on the current tab.
+   - **A heading card** (header-level widgets). Not text cards, only [heading cards](./introduction.md#adding-headings-or-descriptions-with-text-cards). Hover over the heading card and click the **filter icon**. Header-level widgets can only be connected to cards on the same tab as the heading.
+   - **A question card** (card-level widgets). Hover over the card and click the **filter icon**. Card-level widgets can only be connected to the card they're on.
 
 3. Select a [filter type](#filter-and-parameter-widgets).
 4. [Connect your filter or parameter widget to one or more dashboard cards](#connecting-a-filter-or-parameter-widget-to-dashboard-cards). Only dashboard-level widgets can be connected to cards on multiple tabs.
@@ -315,7 +313,17 @@ A multi-select filter with the widget type [Dropdown list](#dropdown-list) or [S
 
    - **From connected fields:** Use the values from the field the filter is connected to.
    - **From another model or question:** Pick a model or question (built with either the query builder or SQL), then set the **Column to supply the values** that the filter should pass along. You can also set a **Column to supply the labels** to show friendly labels in the dropdown while still filtering on the underlying values. For example, you could filter on product ID while showing the product's title so people can search for products by name or ID.
-   - **Custom list:** Enter each value on its own line.
+   - **Custom list:** Enter each value on its own line. To show a display label in the dropdown in place of the value, add a comma after the value, then the label. If a value or label contains a comma, wrap it in double quotes. For example:
+
+     ```
+     Active
+     CA,California
+     "Smith, Jane"
+     42,"Gadgets, Widgets, and Gizmos"
+     "Doe, John","John Doe (Sales)"
+     ```
+
+     In this example, the filter passes along `CA` when people pick "California".
 
 ![Selectable values](./images/selectable-values.png)
 
@@ -345,7 +353,7 @@ To require a value for a dashboard filter:
 
 ### Move a filter or parameter
 
-Widgets can be displayed and applied on dashboard, header, or card level, see [Dashboard, header, and card widgets](#dashboard-header-and-card-widgets). If you want to change the level of the filter - for example, move a dashboard filter into a card filter, or a header filter into a dashboard filter - you'll need to move it in the filter settings (you can't drag filters to a different level).
+Widgets can be displayed and applied on dashboard, header, or card level, see [Add widgets to the whole dashboard, a heading, or a single card](#add-widgets-to-the-whole-dashboard-a-heading-or-a-single-card). If you want to change the level of the filter - for example, move a dashboard filter into a card filter, or a header filter into a dashboard filter - you'll need to move it in the filter settings (you can't drag filters to a different level).
 
 To move a filter:
 

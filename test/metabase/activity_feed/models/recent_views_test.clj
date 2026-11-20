@@ -7,7 +7,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -203,8 +202,8 @@
                                                   :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
-      (with-redefs [mi/can-read? (constantly read?)
-                    mi/can-write? (constantly write?)]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly read?)
+                                  mi/can-write? (constantly write?)]
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
@@ -302,9 +301,9 @@
                    :dataset_query {}
                    :visualization_settings {}}]
                  (mt/with-test-user :rasta
-                   (with-redefs [mi/can-read? (constantly true)
-                                 mi/can-write? (fn ([id] (not= id table-id))
-                                                 ([_ _] true))]
+                   (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)
+                                               mi/can-write? (fn ([id] (not= id table-id))
+                                                               ([_ _] true))]
                      (->> (recent-views (mt/user->id :rasta))
                           (mapv (fn [rv] (cond-> rv
                                            true                                       (assoc :id "ID")
@@ -506,7 +505,7 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-full-data-perms-for-all-users!
                                         (recent-views (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
@@ -516,7 +515,7 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                (mt/with-full-data-perms-for-all-users!
                                   (recent-views (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
@@ -552,10 +551,9 @@
                                    [:model/Table      [table-id table-id-2 table-id-3]]]]
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (with-redefs [mi/can-read?                              (constantly true)
-                      data-perms/user-has-permission-for-table? (constantly true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
           (let [freqs (frequencies (map :model
-                                        (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (mt/with-full-data-perms-for-all-users!
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
             (is (= 3 (:card freqs)))
             (is (= 3 (:dataset freqs)))
@@ -605,6 +603,18 @@
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
         (is (= false
                (:can_write (first (mt/with-test-user :rasta (recent-views (mt/user->id :rasta)))))))))))
+
+(deftest selected-dashboard-can-write-reflects-real-permission-graph-test
+  (testing "a dashboard in recent selections reports `can_write` false to a user who can only read it"
+    (mt/with-model-cleanup [:model/RecentViews]
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {coll-id :id} {}
+                       :model/Dashboard  {dash-id :id} {:collection_id coll-id}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :selection)
+          (is (= [{:id dash-id :can_write false}]
+                 (->> (mt/with-test-user :rasta (recent-views (mt/user->id :rasta) [:selections]))
+                      (map #(select-keys % [:id :can_write]))))))))))
 
 (deftest special-collections-are-treated-specially
   (mt/with-temp
