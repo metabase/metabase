@@ -9,6 +9,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -178,12 +179,15 @@
 
 (deftest write-to-a-table-named-like-a-cte-runs-on-its-input-test
   (mt/test-drivers (drivers-that-write)
-    (let [people (:name (data-testing.test-util/table-ref :people))]
-      (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
-        (is (=? {:status       :passed
-                 :expectations [{:name "only person 1 is refunded" :status :passed}]}
-                (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
-                            ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))))
+    ;; MariaDB 10.6 takes a WITH clause only before a SELECT; MariaDB 13.0 also takes one before an UPDATE.
+    (when-not (and (mysql/mariadb? (mt/db))
+                   (some-> (mt/db) :dbms_version :semantic-version first (< 13)))
+      (let [people (:name (data-testing.test-util/table-ref :people))]
+        (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
+          (is (=? {:status       :passed
+                   :expectations [{:name "only person 1 is refunded" :status :passed}]}
+                  (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
+                              ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))))
 
 (deftest write-must-be-one-insert-update-or-delete-test
   (mt/test-drivers (drivers-that-write)
