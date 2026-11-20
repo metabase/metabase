@@ -2634,6 +2634,11 @@
    :api #{metabase.pivot.core metabase.pivot.postprocess}
    :uses #{lib util}}
 
+  queue-listener
+  {:team "Metabot"
+   :api  #{metabase.queue-listener.core}
+   :uses #{global-system util}}
+
   remote-sync
   {:team       "Data Apps"
    :codeowners true
@@ -2775,6 +2780,7 @@
            premium-features
            queries
            query-processor
+           queue-listener
            request
            revisions
            settings
@@ -3919,6 +3925,7 @@
            lib.schema
            models
            query-processor
+           queue-listener
            sync
            util}
    :model-imports #{:model/Database
