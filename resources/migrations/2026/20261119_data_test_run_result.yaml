@@ -1,0 +1,16 @@
+## Adds result to data_test_run: what the run reported to its caller, so that the run history can show why a past run
+## failed. Null for a run that is still started, timed out, or finished before this column existed.
+
+databaseChangeLog:
+  - changeSet:
+      id: bb1lt5
+      author: undrfined
+      comment: Add data_test_run.result
+      changes:
+        - addColumn:
+            tableName: data_test_run
+            columns:
+              - column:
+                  name: result
+                  type: ${text.type}
+                  remarks: JSON of what the run reported, the result of its expectations or the refusal that ended it, or null when none was stored
