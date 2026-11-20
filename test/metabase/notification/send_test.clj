@@ -1032,6 +1032,30 @@
       ((:close-fn dispatcher) (System/nanoTime))
       (is (false? ((:shutdown-fn dispatcher) 2000))))))
 
+(deftest notification-dispatcher-counts-a-notification-dropped-at-the-deadline-test
+  (testing "a notification taken after the deadline and dropped means no drain, even once the queue is empty"
+    (let [taking     (java.util.concurrent.CountDownLatch. 1)
+          release    (promise)
+          sent       (promise)
+          queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _]
+                         (.countDown taking)
+                         @release
+                         {:id 1, :payload_type :notification/testing})
+                       (queue-size [_] 0))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.send/send-notification-sync! (fn [{:keys [id]}] (deliver sent id))]
+        (is (.await taking 5 java.util.concurrent.TimeUnit/SECONDS))
+        ;; the deadline passes 100 ms in, the take returns at 300 ms, and the wait allows 5 seconds
+        ((:close-fn dispatcher) (+ (System/nanoTime) (* 100 1000000)))
+        (future (Thread/sleep 300) (deliver release true))
+        (is (= {:drained? false, :sent nil}
+               {:drained? ((:shutdown-fn dispatcher) 5000)
+                :sent     (deref sent 100 nil)}))))))
+
 (deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
   (testing "a dispatcher that cannot be created does not keep the other from closing"
     (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
