@@ -1,5 +1,11 @@
-import { provideRemoteSyncContentTags } from "metabase/api/tags";
+import {
+  invalidateRemoteSyncContentTags,
+  provideRemoteSyncContentTags,
+} from "metabase/api/tags";
 import type {
+  CreateBranchRequest,
+  CreateBranchResponse,
+  CreateWorktreeRequest,
   ExportChangesRequest,
   ExportChangesResponse,
   ExportPreflightRequest,
@@ -11,6 +17,8 @@ import type {
   RemoteSyncChangesResponse,
   RemoteSyncIsDirtyResponse,
   RemoteSyncTask,
+  RemoteSyncWorktree,
+  RemoteSyncWorktreeId,
   StashChangesRequest,
   StashChangesResponse,
   TestRemoteSyncConnectionRequest,
@@ -20,7 +28,7 @@ import type {
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag, tag } from "./tags";
+import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export const remoteSyncApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -143,6 +151,56 @@ export const remoteSyncApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("remote-sync-current-task")]),
     }),
+    listWorktrees: builder.query<RemoteSyncWorktree[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/remote-sync/worktree",
+      }),
+      providesTags: () => [listTag("remote-sync-worktree")],
+    }),
+    getWorktree: builder.query<RemoteSyncWorktree, RemoteSyncWorktreeId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/remote-sync/worktree/${id}`,
+      }),
+      providesTags: (_worktree, _error, id) => [
+        idTag("remote-sync-worktree", id),
+      ],
+    }),
+    createWorktree: builder.mutation<RemoteSyncWorktree, CreateWorktreeRequest>(
+      {
+        query: (body) => ({
+          method: "POST",
+          url: "/api/ee/remote-sync/worktree",
+          body,
+        }),
+        invalidatesTags: (_worktree, error) =>
+          invalidateTags(error, [listTag("remote-sync-worktree")]),
+      },
+    ),
+    deleteWorktree: builder.mutation<void, RemoteSyncWorktreeId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/ee/remote-sync/worktree/${id}`,
+      }),
+      invalidatesTags: (_result, error, id) =>
+        invalidateTags(error, [
+          listTag("remote-sync-worktree"),
+          idTag("remote-sync-worktree", id),
+          tag("current-user"),
+          tag("session-properties"),
+          ...invalidateRemoteSyncContentTags(),
+        ]),
+    }),
+    createBranch: builder.mutation<CreateBranchResponse, CreateBranchRequest>({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/ee/remote-sync/create-branch",
+        body,
+      }),
+      invalidatesTags: (_response, error) =>
+        invalidateTags(error, [tag("remote-sync-branches")]),
+    }),
     testRemoteSyncConnection: builder.mutation<
       TestRemoteSyncConnectionResponse,
       TestRemoteSyncConnectionRequest
@@ -170,4 +228,9 @@ export const {
   useUpdateRemoteSyncSettingsMutation,
   useCancelRemoteSyncCurrentTaskMutation,
   useTestRemoteSyncConnectionMutation,
+  useListWorktreesQuery,
+  useGetWorktreeQuery,
+  useCreateWorktreeMutation,
+  useDeleteWorktreeMutation,
+  useCreateBranchMutation,
 } = remoteSyncApi;

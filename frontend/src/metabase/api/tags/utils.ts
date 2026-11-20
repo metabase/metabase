@@ -564,6 +564,10 @@ export function provideRemoteSyncContentTags(): TagDescription<TagType>[] {
   return REMOTE_SYNC_CONTENT_TAG_TYPES.map(listTag);
 }
 
+export function invalidateRemoteSyncContentTags(): TagDescription<TagType>[] {
+  return REMOTE_SYNC_CONTENT_TAG_TYPES.map(tag);
+}
+
 export function provideRevisionListTags(
   revisions: Revision[],
 ): TagDescription<TagType>[] {
