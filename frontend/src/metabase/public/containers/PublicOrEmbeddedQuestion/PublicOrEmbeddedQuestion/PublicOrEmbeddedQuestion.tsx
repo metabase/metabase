@@ -18,7 +18,7 @@ import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { usePublicEndpoints } from "metabase/public/hooks/use-public-endpoints";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
-import { prefetchGoalSourceResults } from "metabase/querying/goal-source-results";
+import { fetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { useLocation, useParams } from "metabase/router";
@@ -138,7 +138,7 @@ export const PublicOrEmbeddedQuestion = () => {
     try {
       setResult(null);
 
-      prefetchGoalSourceResults(dispatch, goalSourcesScope, card);
+      fetchGoalSourceResults(dispatch, goalSourcesScope, card);
 
       const runQuery = makePivotAwareQueryRunner(dispatch);
 

@@ -261,7 +261,7 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       expect(getGoalSourceCalls()).toHaveLength(0);
     });
 
-    it("does not fetch the goal source results again when the query runs again", async () => {
+    it("fetches the goal source results again when the query runs again", async () => {
       setupGoalSourceResultsEndpoint({});
       const question = createMockAdHocQuestion({
         display: "gauge",
@@ -273,9 +273,13 @@ describe("metabase/querying/run-query > runQuestionQuery", () => {
       await runQuestionQuery(question, { dispatch });
       await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(1));
       await runQuestionQuery(question, { dispatch });
+      await waitFor(() => expect(getGoalSourceCalls()).toHaveLength(2));
 
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(2);
-      expect(getGoalSourceCalls()).toHaveLength(1);
+      expect(await getGoalSourceBodies()).toEqual([
+        { sources: [{ type: "card", id: 7 }] },
+        { sources: [{ type: "card", id: 7 }] },
+      ]);
     });
 
     it("fetches the goal source results again when the query ignores the cache", async () => {

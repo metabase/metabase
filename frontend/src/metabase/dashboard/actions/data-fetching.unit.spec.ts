@@ -901,7 +901,7 @@ describe("fetchCardDataAction with goal references", () => {
     ]);
   });
 
-  it("does not fetch the goal source results again when the query runs again", async () => {
+  it("fetches the goal source results again when the query runs again", async () => {
     const { store, card, dashcard } = setupGaugeDashcard({
       cardSettings: { "gauge.segments": REF_SEGMENTS },
     });
@@ -911,8 +911,25 @@ describe("fetchCardDataAction with goal references", () => {
     await store.dispatch(
       fetchCardDataAction({ card, dashcard, options: { reload: true } }),
     );
+    await waitForGoalSourceCalls(2);
 
     expect(fetchMock.callHistory.calls(QUERY_URL)).toHaveLength(2);
+    expect(await getGoalSourceBodies()).toEqual([
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+      { sources: [{ type: "card", id: 9 }], dashboard_id: DASHBOARD_ID },
+    ]);
+  });
+
+  it("does not fetch the goal source results again when the dashcard reuses its last result", async () => {
+    const { store, card, dashcard } = setupGaugeDashcard({
+      cardSettings: { "gauge.segments": REF_SEGMENTS },
+    });
+
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+    await waitForGoalSourceCalls(1);
+    await store.dispatch(fetchCardDataAction({ card, dashcard, options: {} }));
+
+    expect(fetchMock.callHistory.calls(QUERY_URL)).toHaveLength(1);
     expect(getGoalSourceCalls()).toHaveLength(1);
   });
 

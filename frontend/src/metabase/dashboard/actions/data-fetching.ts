@@ -42,7 +42,7 @@ import {
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
 import { makePivotAwareQueryRunner } from "metabase/querying/api/query-endpoints";
-import { prefetchGoalSourceResults } from "metabase/querying/goal-source-results";
+import { fetchGoalSourceResults } from "metabase/querying/goal-source-results";
 import { runAdhocDatasetQuery } from "metabase/querying/run-query";
 import type {
   DashboardLinkTargets,
@@ -318,7 +318,7 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const goalCard = getDashcardGoalCard(card, dashcard);
     if (goalCard != null) {
-      prefetchGoalSourceResults(
+      fetchGoalSourceResults(
         dispatch,
         getDashcardGoalSourcesScope(dashcard),
         goalCard,

@@ -18,7 +18,7 @@ import {
   makePivotAwareQueryRunner,
   shouldUsePivotEndpoint,
 } from "./api/query-endpoints";
-import { prefetchGoalSourceResults } from "./goal-source-results";
+import { fetchGoalSourceResults } from "./goal-source-results";
 
 type RunQuestionQueryOptions = {
   dispatch: Dispatch;
@@ -178,7 +178,7 @@ export async function runQuestionQuery(
     queryParamsOverride = {},
   }: RunQuestionQueryOptions,
 ): Promise<[Dataset]> {
-  prefetchGoalSourceResults(
+  fetchGoalSourceResults(
     dispatch,
     token ? { type: "embed-card", token } : { type: "signed-in" },
     question.card(),
