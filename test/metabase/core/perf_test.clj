@@ -26,10 +26,10 @@
       (is (= "my-profile.jfr" (str (.getFileName path)))))))
 
 (deftest save-rate-minutes-test
-  (testing "a whole number of minutes is used, and anything else, including the blank default, falls back"
-    (is (= {"10" 10, " 7 " 7, nil 5, "" 5, "soon" 5}
+  (testing "a positive whole number of minutes is used, and anything else, including the blank default, falls back"
+    (is (= {"10" 10, " 7 " 7, nil 5, "" 5, "soon" 5, "0" 5, "-3" 5}
            (into {}
-                 (for [value ["10" " 7 " nil "" "soon"]]
+                 (for [value ["10" " 7 " nil "" "soon" "0" "-3"]]
                    [value (mt/with-dynamic-fn-redefs [config/config-str (constantly value)]
                             (#'perf/save-rate-minutes 5))]))))))
 
