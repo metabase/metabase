@@ -1154,7 +1154,7 @@
     ;;
     ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
     ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
-    ;; Only applies to queries compiled with `:stage-ctes`.
+    ;; Only applies to queries compiled with `:stage-ctes`. By default, this has the same value as `:stage-ctes`.
     :stage-ctes/single-row-aggregation
     ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
@@ -1238,6 +1238,11 @@
 
 ;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
 (defmethod database-supports? [::driver :stage-ctes/nested]
+  [driver _feature database]
+  (database-supports? driver :stage-ctes database))
+
+;; by default a driver supports `:stage-ctes/single-row-aggregation` if it supports `:stage-ctes`
+(defmethod database-supports? [::driver :stage-ctes/single-row-aggregation]
   [driver _feature database]
   (database-supports? driver :stage-ctes database))
 
