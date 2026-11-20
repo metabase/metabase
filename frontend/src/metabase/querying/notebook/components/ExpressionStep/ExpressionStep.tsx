@@ -27,6 +27,7 @@ import { useCustomColumnRequest } from "../NotebookStepList/CustomColumnRequest"
 
 import { ExpressionPill } from "./ExpressionPill";
 import { ExpressionAddButtonB, ExpressionPillB } from "./ExpressionPillB";
+import { ExpressionAddButtonC, ExpressionPillC } from "./ExpressionPillC";
 
 type EditorTarget =
   | { kind: "clause"; index: number }
@@ -350,7 +351,7 @@ export const ExpressionStep = ({
 
   // Prototype: the style of the pills, from the switcher.
   const [pillVersion] = usePrototypeSetting(EXPRESSION_PILL_VERSION_SETTING);
-  const isPillB = pillVersion === "b";
+  const pillStyle = PILL_STYLES[pillVersion];
 
   return (
     <>
@@ -358,8 +359,8 @@ export const ExpressionStep = ({
         <ClauseStepDndContext items={expressions} onReorder={handleReorder}>
           {expressions.map((expression, index) => (
             <ClauseStepDndItem key={index} index={index} readOnly={!!readOnly}>
-              {isPillB ? (
-                <ExpressionPillB
+              {pillStyle != null ? (
+                <pillStyle.Pill
                   name={getExpressionName(expression)}
                   isActive={editedIndex === index}
                   readOnly={readOnly}
@@ -392,9 +393,9 @@ export const ExpressionStep = ({
         </ClauseStepDndContext>
 
         {draftIds.map((id) =>
-          isPillB ? (
+          pillStyle != null ? (
             // A new column starts as "Untitled", in the box of a default name.
-            <ExpressionPillB
+            <pillStyle.Pill
               key={id}
               name={t`Untitled`}
               isActive={openTarget?.kind === "draft" && openTarget.id === id}
@@ -422,8 +423,8 @@ export const ExpressionStep = ({
         )}
 
         {!readOnly &&
-          (isPillB ? (
-            <ExpressionAddButtonB onClick={addDraft} />
+          (pillStyle != null ? (
+            <pillStyle.AddButton onClick={addDraft} />
           ) : (
             <NotebookCellAdd color={color} onClick={addDraft} />
           ))}
@@ -454,6 +455,21 @@ export const ExpressionStep = ({
 };
 
 const noop = () => {};
+
+// Prototype: the pill styles after A, from the switcher. B and C behave the
+// same and differ only in colors.
+const PILL_STYLES: Partial<
+  Record<
+    string,
+    {
+      Pill: typeof ExpressionPillB;
+      AddButton: typeof ExpressionAddButtonB;
+    }
+  >
+> = {
+  b: { Pill: ExpressionPillB, AddButton: ExpressionAddButtonB },
+  c: { Pill: ExpressionPillC, AddButton: ExpressionAddButtonC },
+};
 
 // "New column", or "New column (2)" after the unique-name suffix.
 const isDefaultName = (name: string) => {
