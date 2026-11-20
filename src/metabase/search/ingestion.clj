@@ -570,8 +570,8 @@
   []
   (when (seq (search.engine/active-engines))
     (queue-listener/listen! listener-name queue ingest-batch!
-                            {:success-handler     (fn [_result _duration _]
-                                                    (track-queue-size!))
+                            {:success-handler    (fn [_result _duration _]
+                                                   (track-queue-size!))
                              :err-handler        (fn [err _]
                                                    (log/errorf "Error indexing search entries: %s" (ex-message err))
                                                    (analytics/inc! :metabase-search/index-error)
@@ -582,4 +582,4 @@
                              ;; Messages can also correspond to zero documents,
                              ;; such as when updating a table that is marked as not visible.
                              :max-batch-messages 50
-                             :max-next-ms       100})))
+                             :max-next-ms        100})))

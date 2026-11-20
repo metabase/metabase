@@ -117,7 +117,8 @@
   (if (listener-exists? listener-name)
     (log/errorf "Listener %s already exists" listener-name)
     (let [executor (cp/threadpool pool-size {:name (str "queue-" listener-name)})]
-      (log/infof "Starting listener %s with %d threads %s" (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
+      (log/infof "Starting listener %s with %d threads %s"
+                 (u/format-color 'green listener-name) pool-size (u/emoji "\uD83C\uDFA7"))
       (dotimes [_ pool-size]
         (cp/future executor (listener-thread-with-restart listener-name queue handler
                                                           {:success-handler    success-handler
