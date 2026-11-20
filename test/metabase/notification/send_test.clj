@@ -996,6 +996,27 @@
                 :sent-later   (deref sent-later 1000 nil)
                 :refused      (dispatch-fn {:id 3 :payload_type :notification/testing})}))))))
 
+(deftest notification-dispatcher-sends-nothing-taken-after-the-deadline-test
+  (testing "a notification a worker takes after the drain deadline is not sent"
+    (let [release    (promise)
+          sent       (promise)
+          ;; a take that ignores interrupts and returns only once released, after the deadline
+          queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _]
+                         (while (not (realized? release))
+                           (Thread/onSpinWait))
+                         {:id 1, :payload_type :notification/testing})
+                       (queue-size [_] 0))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.send/send-notification-sync! (fn [{:keys [id]}] (deliver sent id))]
+        (let [drained? ((:shutdown-fn dispatcher) 100)]
+          (deliver release true)
+          (is (= {:drained? false, :sent nil}
+                 {:drained? drained?, :sent (deref sent 1000 nil)})))))))
+
 (deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
   (testing "a dispatcher that cannot be created does not keep the other from closing"
     (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
