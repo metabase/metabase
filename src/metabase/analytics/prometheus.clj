@@ -1165,7 +1165,8 @@
   [metric]
   ;; never sets a registry up, which after shutdown would restart what it stopped
   (when-let [registry (:registry system)]
-    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry registry) metric nil)))))
+    (let [registered (.-collectors ^iapetos.registry.IapetosRegistry registry)]
+      (.clear ^SimpleCollector (:raw (collectors/lookup registered metric nil))))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"
