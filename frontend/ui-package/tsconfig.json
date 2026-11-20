@@ -22,6 +22,8 @@
       "metabase/env": ["../src/metabase/env.ts"],
       "metabase/dayjs": ["../src/metabase/dayjs/index.ts"],
       "metabase/utils/deep-merge": ["../src/metabase/utils/deep-merge.ts"],
+      "metabase/utils/focus-visible": ["../src/metabase/utils/focus-visible.ts"],
+      "metabase/utils/key-labels": ["../src/metabase/utils/key-labels.ts"],
       "metabase-types/utils/types": ["../src/metabase-types/utils/types.ts"]
     }
   },
