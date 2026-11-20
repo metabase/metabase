@@ -197,10 +197,6 @@
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
         parent     (when parent_comment_id
                      (-> (api/check-404 (comments.db/comment-by-id parent_comment_id))
-                         (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
-                                                      (= (:target_id <>) target_id)
-                                                      (= (:child_target_id <>) child_target_id))
-                                                 "Parent comment doesn't belong to the same entity"))
                          (t2/hydrate :creator)))
         comment    (-> (comments.db/insert-comment! {:target_type       target_type
                                                      :target_id         target_id

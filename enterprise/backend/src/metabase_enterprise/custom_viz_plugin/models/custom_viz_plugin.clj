@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
@@ -9,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -40,13 +42,24 @@
   (cond-> row
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
 
+(defn- check-identifier-free
+  "Throw a 400 when another CustomVizPlugin already has `identifier`."
+  [identifier]
+  (when (and identifier (custom-viz-plugin.db/plugin-identifier-exists? identifier))
+    (throw (ex-info (tru "A custom visualization with identifier \"{0}\" already exists." identifier)
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/CustomVizPlugin
   [plugin]
+  (check-identifier-free (:identifier plugin))
   (with-bundle-hash plugin))
 
 (t2/define-before-update :model/CustomVizPlugin
   [plugin]
-  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
+  (let [changes (t2/changes plugin)]
+    (when (contains? changes :identifier)
+      (check-identifier-free (:identifier changes)))
+    (merge plugin (some-> changes with-bundle-hash))))
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)

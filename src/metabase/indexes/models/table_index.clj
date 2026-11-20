@@ -10,10 +10,12 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.indexes.db :as indexes.db]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -64,12 +66,17 @@
 
 (t2/define-before-insert :model/TableIndex
   [req]
-  (merge defaults req))
+  (merge defaults req {:index_name (reconcile/index-name (:structured req))}))
 
 (t2/define-before-update :model/TableIndex
   [idx]
   (let [changes (t2/changes idx)
         status  (pending-status-for-changes changes)]
+    (when (or (contains? changes :index_name)
+              (and (contains? changes :structured)
+                   (not= (reconcile/index-name (:structured changes)) (:index_name idx))))
+      (throw (ex-info (tru "The index name cannot be changed. Delete and recreate the index instead.")
+                      {:status-code 400})))
     (cond-> idx
       status (assoc :status status
                     :error_message nil))))

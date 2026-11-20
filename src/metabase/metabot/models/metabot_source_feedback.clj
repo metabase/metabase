@@ -10,7 +10,8 @@
 (methodical/defmethod t2/table-name :model/MetabotSourceFeedback [_model] :metabot_source_feedback)
 
 (doto :model/MetabotSourceFeedback
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (def ^:private valid-source-types
   #{"table" "card" "model"})

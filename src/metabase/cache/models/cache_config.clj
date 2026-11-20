@@ -7,6 +7,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
+   [metabase.cache.schema :as cache.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -50,12 +51,21 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
+(def ^:private strategy-columns
+  "The columns of a CacheConfig that together hold its cache strategy."
+  #{:strategy :config :refresh_automatically})
+
+(t2/define-before-insert :model/CacheConfig
+  [cache-config]
+  (-> cache-config cache.schema/check-target cache.schema/check-strategy))
+
 (t2/define-before-update :model/CacheConfig
   [cache-config]
   (let [changes (t2/changes cache-config)]
     (when (or (contains? changes :model) (contains? changes :model_id))
       (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
-    cache-config))
+    (cond-> cache-config
+      (some strategy-columns (keys changes)) cache.schema/check-strategy)))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

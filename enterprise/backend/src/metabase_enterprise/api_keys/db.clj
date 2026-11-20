@@ -12,4 +12,4 @@
 (defn delete-usage-logs-occurred-before!
   "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
   [cutoff]
-  (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at cutoff]}))
+  (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))

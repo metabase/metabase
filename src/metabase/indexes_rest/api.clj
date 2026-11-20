@@ -109,7 +109,6 @@
     (try
       (indexes-rest.db/insert-table-index!
        {:transform_id transform_id
-        :index_name   idx-name
         :structured   structured
         :created_by   api/*current-user-id*})
       (catch Exception e

@@ -38,8 +38,7 @@
 (defn insert-composite-rollups!
   "Insert daily composite segment (whole-:and basket) rollup rows."
   [rows]
-  (when (seq rows)
-    (usage-metadata.db/insert-segment-composite-rollups! rows))
+  (chunked-insert! usage-metadata.db/insert-segment-composite-rollups! rows)
   nil)
 
 (defn insert-metric-rollups!

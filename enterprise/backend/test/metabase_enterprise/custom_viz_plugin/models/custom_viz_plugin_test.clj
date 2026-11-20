@@ -214,3 +214,18 @@
   (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "colon:insert"})))
   (is (not (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier " "})))
   (is (mr/validate ::custom-viz-plugin.schema/custom-viz-plugin.update {:identifier "plain-identifier"})))
+
+(deftest duplicate-identifier-refused-on-plain-write-test
+  (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier "taken-viz" :display_name "taken-viz" :status :active}
+                 :model/CustomVizPlugin {other-id :id} {:identifier "other-viz" :display_name "other-viz" :status :active}]
+    (testing "insert of taken identifier"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A custom visualization with identifier \"taken-viz\" already exists."
+                            (t2/insert! :model/CustomVizPlugin {:identifier "taken-viz" :display_name "copy" :status :active})))
+      (is (= 400 (try (t2/insert! :model/CustomVizPlugin {:identifier "taken-viz" :display_name "copy" :status :active})
+                      (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))))
+    (testing "update to taken identifier"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A custom visualization with identifier \"taken-viz\" already exists."
+                            (t2/update! :model/CustomVizPlugin :id other-id {:identifier "taken-viz"}))))
+    (testing "update that keeps own identifier"
+      (is (= 1 (t2/update! :model/CustomVizPlugin :id id {:identifier "taken-viz" :display_name "renamed"}))))
+    (is (= 1 (t2/count :model/CustomVizPlugin :identifier "taken-viz")))))
