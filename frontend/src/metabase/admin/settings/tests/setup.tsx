@@ -178,6 +178,8 @@ export const setup = async ({
   });
   fetchMock.get("path:/api/ee/security-center", {
     last_checked_at: null,
+    last_sync_attempted_at: null,
+    last_sync_error: null,
     advisories: [],
   });
   fetchMock.get("path:/api/cloud-migration", { status: 204 });

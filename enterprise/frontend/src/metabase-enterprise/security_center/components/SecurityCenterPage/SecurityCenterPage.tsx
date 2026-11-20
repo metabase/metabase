@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
+import { DateTime } from "metabase/common/components/DateTime";
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useToast } from "metabase/common/hooks";
+import type { ToastArgs } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
+import { useDispatch } from "metabase/redux";
+import { addUndo } from "metabase/redux/undo";
 import { useSearchParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import {
@@ -40,6 +43,7 @@ const DEFAULT_FILTER: AdvisoryFilter = {
 };
 
 const MAX_POLL_COUNT = 30;
+const SYNC_TOAST_ID = "security-center-sync";
 
 export function SecurityCenterPage() {
   const [searchParams] = useSearchParams();
@@ -47,6 +51,8 @@ export function SecurityCenterPage() {
   const {
     data: advisories,
     lastCheckedAt,
+    lastSyncAttemptedAt,
+    lastSyncError,
     isError,
     acknowledgeAdvisory,
     acknowledgeAdvisories,
@@ -59,14 +65,18 @@ export function SecurityCenterPage() {
   );
   const notificationConfig = useNotificationConfigState();
   const version = useSetting("version");
-  const [sendToast] = useToast();
+  const dispatch = useDispatch();
+  const sendToast = useCallback(
+    (toast: ToastArgs) => dispatch(addUndo({ ...toast, id: SYNC_TOAST_ID })),
+    [dispatch],
+  );
   const isSmallScreen = useIsSmallScreen();
 
-  const lastCheckedAtBeforeSync = useRef<string | null>(null);
+  const lastSyncAttemptedAtBeforeSync = useRef<string | null>(null);
   const pollCountRef = useRef(0);
 
   const handleSync = useCallback(async () => {
-    lastCheckedAtBeforeSync.current = lastCheckedAt;
+    lastSyncAttemptedAtBeforeSync.current = lastSyncAttemptedAt;
     pollCountRef.current = 0;
 
     try {
@@ -74,6 +84,7 @@ export function SecurityCenterPage() {
       sendToast({
         icon: "sync",
         message: t`Checking for security advisories…`,
+        timeout: 0,
       });
       setIsPolling(true);
     } catch {
@@ -82,7 +93,7 @@ export function SecurityCenterPage() {
         message: t`Failed to check for security advisories`,
       });
     }
-  }, [lastCheckedAt, syncAdvisories, sendToast]);
+  }, [lastSyncAttemptedAt, syncAdvisories, sendToast]);
 
   useEffect(() => {
     if (!isPolling) {
@@ -92,10 +103,16 @@ export function SecurityCenterPage() {
     pollCountRef.current += 1;
 
     const syncCompleted =
-      lastCheckedAt !== null &&
-      lastCheckedAt !== lastCheckedAtBeforeSync.current;
+      lastSyncAttemptedAt !== null &&
+      lastSyncAttemptedAt !== lastSyncAttemptedAtBeforeSync.current;
 
-    if (syncCompleted) {
+    if (syncCompleted && lastSyncError !== null) {
+      setIsPolling(false);
+      sendToast({
+        variant: "negative",
+        message: t`Couldn't check for security advisories. Advisories may be out of date.`,
+      });
+    } else if (syncCompleted) {
       setIsPolling(false);
       sendToast({
         icon: "check_filled",
@@ -108,7 +125,7 @@ export function SecurityCenterPage() {
         message: t`Security advisory check is taking longer than expected. Results will appear when ready.`,
       });
     }
-  }, [isPolling, lastCheckedAt, sendToast]);
+  }, [isPolling, lastSyncAttemptedAt, lastSyncError, sendToast]);
 
   const isSyncInProgress = isSyncing || isPolling;
 
@@ -174,6 +191,21 @@ export function SecurityCenterPage() {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
+            <Stack gap="xs">
+              <Text c="text-secondary" data-testid="last-checked-at">
+                {t`Last successful check`}:{" "}
+                {lastCheckedAt ? (
+                  <DateTime value={lastCheckedAt} unit="minute" />
+                ) : (
+                  t`Never`
+                )}
+              </Text>
+              {lastSyncError !== null && (
+                <Text c="feedback-negative" data-testid="last-sync-error">
+                  {t`The last check for security advisories failed. Advisories may be out of date.`}
+                </Text>
+              )}
+            </Stack>
             <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xxl" className={S.content}>

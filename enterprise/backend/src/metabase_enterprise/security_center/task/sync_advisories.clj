@@ -54,23 +54,29 @@
 ;;; ----------------------------------------- Sync + evaluate + notify -----------------------------------------------
 
 (defn sync-and-evaluate!
-  "Fetch advisories, re-evaluate all, and send repeat notifications."
+  "Fetch advisories, re-evaluate all, and send repeat notifications.
+   `security-center-last-synced-at` is bumped only when the fetch succeeds;
+   `security-center-last-sync-attempted-at` is bumped once the whole run finishes."
   []
   (when (premium-features/security-center-enabled?)
     (log/info "Syncing security advisories")
-    (try
-      (fetch/sync-advisories!)
-      (settings/security-center-last-synced-at! (t/offset-date-time))
-      (catch Exception e
-        (log/warnf "Error fetching advisories from HM: %s" (ex-message e))))
-    (try
-      (matching/evaluate-all-advisories!)
-      (catch Exception e
-        (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
-    (try
-      (send-repeat-notifications!)
-      (catch Exception e
-        (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
+    (let [attempted-at (t/offset-date-time)]
+      (try
+        (fetch/sync-advisories!)
+        (settings/security-center-last-synced-at! attempted-at)
+        (settings/security-center-last-sync-error! nil)
+        (catch Exception e
+          (log/error e "Error syncing advisories from HM")
+          (settings/security-center-last-sync-error! (or (ex-message e) (str e)))))
+      (try
+        (matching/evaluate-all-advisories!)
+        (catch Exception e
+          (log/warnf "Error re-evaluating advisories: %s" (ex-message e))))
+      (try
+        (send-repeat-notifications!)
+        (catch Exception e
+          (log/warnf "Error sending repeat notifications: %s" (ex-message e))))
+      (settings/security-center-last-sync-attempted-at! attempted-at))
     (metrics/refresh-metrics!)))
 
 (task/defjob SyncAdvisories

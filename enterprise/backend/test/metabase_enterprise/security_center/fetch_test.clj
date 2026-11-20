@@ -180,8 +180,8 @@
             (with-redefs [http/get                                                    (constantly (fake-store-response [advisory]))
                           premium-features/premium-embedding-token                    (constantly "fake-token")
                           premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
-              ;; sync should not throw — error is caught per-advisory
-              (fetch/sync-advisories!)
+              (is (thrown-with-msg? Exception #"[Mm]atching query"
+                                    (fetch/sync-advisories!)))
               (testing "advisory was NOT inserted"
                 (is (nil? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-BAD-" label))))))))))))
 
@@ -200,9 +200,18 @@
             (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id (str "SC-OK-" label))))))))))
 
 (deftest sync-advisories-handles-fetch-error-test
-  (testing "network error doesn't throw"
+  (testing "network error is rethrown so the sync is reported as failed"
     (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store (fn [] (throw (Exception. "connection refused")))]
-      (is (nil? (fetch/sync-advisories!))))))
+      (is (thrown-with-msg? Exception #"connection refused"
+                            (fetch/sync-advisories!))))))
+
+(deftest sync-advisories-throws-on-non-2xx-test
+  (testing "non-2xx response from the store throws instead of looking like an empty fetch"
+    (with-redefs [http/get                                                    (constantly {:status 502 :body "Bad Gateway"})
+                  premium-features/premium-embedding-token                    (constantly "fake-token")
+                  premium-features/site-uuid-for-premium-features-token-checks (constantly "fake-uuid")]
+      (is (thrown-with-msg? Exception #"Advisory fetch failed with status 502"
+                            (fetch/sync-advisories!))))))
 
 (deftest sync-advisories-handles-upsert-error-test
   (testing "error on one advisory doesn't block others"
@@ -210,6 +219,7 @@
       (mt/with-dynamic-fn-redefs [fetch/fetch-advisories-from-store
                                   (constantly [(make-advisory "SC-FETCH-BAD" :severity "not-a-valid-severity!!!")
                                                (make-advisory "SC-FETCH-GOOD")])]
-        (fetch/sync-advisories!)
+        (is (thrown-with-msg? Exception #"Failed to upsert 1/2 advisories"
+                              (fetch/sync-advisories!)))
         (testing "good advisory was still inserted"
           (is (some? (t2/select-one :model/SecurityAdvisory :advisory_id "SC-FETCH-GOOD"))))))))
