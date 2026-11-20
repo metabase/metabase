@@ -205,3 +205,39 @@
             settings (mongo.connection/db-details->mongo-client-settings db-details)]
         (is (= "$ : / ? # [ ] @"
                (.getApplicationName settings)))))))
+
+(deftest disallowed-connection-parameters-checked-before-connecting-test
+  (mt/initialize-if-needed! :db)
+  (doseq [details [{:use-conn-uri true :conn-uri "mongodb://db.example.com/db?proxyHost=10.0.0.5&proxyPort=1080"}
+                   {:use-conn-uri true :conn-uri "mongodb://db.example.com/db?authMechanism=MONGODB-OIDC"}
+                   {:host "db.example.com" :dbname "db" :additional-options "proxyHost=10.0.0.5&proxyPort=1080"}
+                   {:host "db.example.com" :dbname "db" :additional-options "authMechanism=MONGODB-OIDC"}]]
+    (testing (pr-str details)
+      (let [client-created? (atom false)]
+        (mt/with-dynamic-fn-redefs [mongo.util/mongo-client (fn [_settings]
+                                                              (reset! client-created? true)
+                                                              (throw (ex-info "client created" {})))]
+          (testing "when a connection is tested"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"dangerous"
+                 (driver.u/can-connect-with-details? :mongo details :throw-exceptions))))
+          (testing "when a connection is opened for a stored Database"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo #"dangerous"
+                 (mongo.connection/with-mongo-client [_client {:lib/type :metadata/database
+                                                               :id       Integer/MAX_VALUE
+                                                               :engine   :mongo
+                                                               :details  details}]
+                   ::reached))))
+          (is (false? @client-created?)))))))
+
+(deftest details-without-disallowed-connection-parameters-reach-the-client-test
+  (doseq [details [{:use-conn-uri true :conn-uri "mongodb://user:pw@db.example.com/db?authSource=admin"}
+                   {:host "db.example.com" :dbname "db" :additional-options "replicaSet=rs0"}]]
+    (testing (pr-str details)
+      (mt/with-dynamic-fn-redefs [mongo.util/mongo-client (fn [_settings]
+                                                            (throw (ex-info "client created" {})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"client created"
+             (mongo.connection/with-mongo-client [_client details]
+               ::reached)))))))

@@ -85,6 +85,8 @@
    Afterwards, `MongoClientSettings` are built using `.build`."
   ^MongoClientSettings
   [{:keys [authdb user pass use-conn-uri ssl additional-options tunnel-enabled] :as db-details}]
+  ;; covers details never saved, or saved before a parameter was disallowed
+  (driver.u/validate-connection-parameters! :mongo db-details)
   (let [connection-string (-> db-details
                               db-details->connection-string
                               ConnectionString.)
