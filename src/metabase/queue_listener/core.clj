@@ -62,8 +62,7 @@
         (throw e))
       (catch Exception e
         (err-handler e listener-name)
-        (log/errorf "Error in %s while processing batch: %s" listener-name (ex-message e)))))
-  (log/infof "Listener %s stopped" listener-name))
+        (log/errorf "Error in %s while processing batch: %s" listener-name (ex-message e))))))
 
 (def ^:private ^:const max-restart-backoff-ms 30000)
 (def ^:private ^:const initial-restart-backoff-ms 500)
