@@ -45,13 +45,18 @@
                                   {:sources [{:type "card" :id Integer/MAX_VALUE :max_rows 3}]}))))
   (testing "`sources` is required"
     (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {}))
-  (testing "a request caps how many sources it can fan out to"
+  (testing "a request runs at most 20 distinct sources, like a saved chart"
     (let [sources (fn [n] (mapv (fn [id] {:type "card" :id id}) (range 1 (inc n))))]
       (mt/with-dynamic-fn-redefs [dynamic-goals/run-source (constantly {:status "completed"})]
-        (testing "20 is allowed"
-          (is (= 20 (count (:card (goal-values :crowberto (sources 20))))))))
-      (testing "21 is refused"
-        (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources (sources 21)})))))
+        (testing "past 20, each extra source fails on its own"
+          (let [results (:card (goal-values :crowberto (sources 21)))]
+            (is (= 20 (count (filter #(= "completed" (:status %)) (vals results)))))
+            (is (=? {:status "failed" :error_type "too-many-sources"} (get results 21)))))
+        (testing "duplicates count once"
+          (is (= #{"completed"}
+                 (set (map :status (vals (:card (goal-values :crowberto (take 25 (cycle (sources 3))))))))))))
+      (testing "an absurdly long list is a 400"
+        (mt/user-http-request :crowberto :post 400 "dynamic-goal/values" {:sources (sources 1001)})))))
 
 (deftest response-shape-test
   (testing "the body is keyed by source type, then id, with one result per source"

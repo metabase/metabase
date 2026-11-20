@@ -43,6 +43,10 @@
   "How many sources one call runs at most. A chart needs a handful; past this is a client bug or a fan-out attempt."
   20)
 
+(def ^:private max-requested-sources
+  "A sanity cap on the sources one request lists; past [[max-sources]] distinct ones, a source fails on its own."
+  1000)
+
 (def ^:private max-rows
   "A goal is a single value, so its source must produce one row."
   1)
@@ -54,7 +58,7 @@
 
 (def sources-schema
   "Schema for the sources a client asks [[goal-values]] for."
-  [:sequential {:max max-sources}
+  [:sequential {:max max-requested-sources}
    [:map {:closed true}
     [:type (into [:enum] (sort (keys source-models)))]
     [:id pos-int?]
