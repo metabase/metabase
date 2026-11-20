@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.app-db.core :as mdb]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -309,6 +310,12 @@
    :analyze           :fingerprint
    :refingerprint     :fingerprint})
 
+(defmacro in-main-app
+  "Runs `body` with the app DB connections it checks out in the main app, since sync records the warehouse in the stored
+  Tables and Fields, which a remote sync worktree only reads."
+  [& body]
+  `(mdb/with-worktree-scope {:type :main} ~@body))
+
 (mu/defn- do-sync-operation*
   "Shared core of [[do-sync-operation]] and [[do-explicit-sync-operation]]. Runs the sync work `f`
   wrapped in the surrounding machinery (task-history, events, logging, duplicate-op prevention).
@@ -320,24 +327,25 @@
   (if-let [busy (external-busy)]
     (log/warnf "Skipping %s for database %d: %s"
                (name operation) (u/the-id database) (:reason busy))
-    (let [run-type (operation->run-type operation)]
-      (task-history/with-task-run (when run-type
-                                    {:run_type    run-type
-                                     :entity_type :database
-                                     :entity_id   (u/the-id database)})
-        (let [sync-fn (with-duplicate-ops-prevented
-                       operation database
-                       (with-sync-events
+    (in-main-app
+     (let [run-type (operation->run-type operation)]
+       (task-history/with-task-run (when run-type
+                                     {:run_type    run-type
+                                      :entity_type :database
+                                      :entity_id   (u/the-id database)})
+         (let [sync-fn (with-duplicate-ops-prevented
                         operation database
-                        (with-start-and-finish-logging
-                         message
-                         (with-db-logging-disabled
-                          (sync-in-context database
-                                           (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (database-routing/with-anonymous-router-access (sync-fn))]
-          (when (instance? Throwable result)
-            (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
-          result)))))
+                        (with-sync-events
+                         operation database
+                         (with-start-and-finish-logging
+                          message
+                          (with-db-logging-disabled
+                           (sync-in-context database
+                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
+               result (database-routing/with-anonymous-router-access (sync-fn))]
+           (when (instance? Throwable result)
+             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
+           result))))))
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly. Runs
