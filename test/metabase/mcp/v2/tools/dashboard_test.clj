@@ -479,30 +479,45 @@
                    tool-result
                    :archived_subscriptions)))))))
 
-(deftest unreadable-archived-subscription-row-test
-  (testing "a subscription the caller can't read is reported by its id and missing filters' ids only"
+(deftest unreadable-archived-subscription-is-only-counted-test
+  (testing "a subscription the caller can't read adds to the count and is left out of the list"
     (mt/with-fake-inbox
       (mt/with-temp [:model/Dashboard    dash           {:name       "Sales"
                                                          :parameters [{:id   "gone"
                                                                        :name "Gone"
                                                                        :slug "gone"
                                                                        :type "category"}]}
-                     :model/Pulse        {pulse-id :id} {:dashboard_id (:id dash)
-                                                         :creator_id   (mt/user->id :crowberto)
+                     :model/Pulse        {own :id}      {:dashboard_id (:id dash)
+                                                         :creator_id   (mt/user->id :rasta)
                                                          :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
+                     :model/Pulse        {other :id}    {:dashboard_id (:id dash)
+                                                         :creator_id   (mt/user->id :crowberto)
+                                                         :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}
                      :model/PulseChannel _              {:channel_type :slack
-                                                         :pulse_id     pulse-id
+                                                         :pulse_id     other
                                                          :details      {:channel "#private"}
                                                          :enabled      true}]
-        (is (= [{:id             pulse-id
-                 :filters        [{:id "gone"}]
-                 :already_broken false}]
-               (-> (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
-                               (wire {:method "update"
-                                      :id     (:id dash)
-                                      :ops    [{:op "remove_parameter", :parameter_id "gone"}]}))
-                   tool-result
-                   :archived_subscriptions)))))))
+        (is (=? {:archived_subscriptions      [{:id own, :creator "Rasta Toucan"}]
+                 :archived_subscription_count 2}
+                (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                         (wire {:method "update"
+                                                :id     (:id dash)
+                                                :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))))))))
+
+(deftest only-unreadable-archived-subscriptions-test
+  (testing "when the caller can read none of the archived subscriptions, the result has only their count"
+    (mt/with-fake-inbox
+      (mt/with-temp [:model/Dashboard dash {:name       "Sales"
+                                            :parameters [{:id "gone", :name "Gone", :slug "gone", :type "category"}]}
+                     :model/Pulse     _    {:dashboard_id (:id dash)
+                                            :creator_id   (mt/user->id :crowberto)
+                                            :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}]
+        (let [result (tool-result (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                              (wire {:method "update"
+                                                     :id     (:id dash)
+                                                     :ops    [{:op "remove_parameter", :parameter_id "gone"}]})))]
+          (is (=? {:archived_subscription_count 1} result))
+          (is (not (contains? result :archived_subscriptions))))))))
 
 (deftest write-only-token-gets-archived-subscription-count-test
   (testing "a token that can't read the dashboard back learns how many subscriptions the save archived"

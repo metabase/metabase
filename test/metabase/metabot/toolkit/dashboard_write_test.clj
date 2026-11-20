@@ -269,11 +269,11 @@
                      :model/Pulse     {own :id}   {:dashboard_id (:id dash)
                                                    :creator_id   (mt/user->id :rasta)
                                                    :parameters   [{:id "gone", :name "Gone", :value ["a"]}]}
-                     :model/Pulse     {other :id} {:dashboard_id (:id dash)
+                     :model/Pulse     _           {:dashboard_id (:id dash)
                                                    :creator_id   (mt/user->id :crowberto)
                                                    :parameters   [{:id "gone", :name "Gone", :value ["b"]}]}]
         (mt/with-current-user (mt/user->id :rasta)
           (is (=? {:effects {:archived-subscriptions [{:id own, :readable? true, :already-broken? false}
-                                                      {:id other, :readable? false}]}}
+                                                      {:readable? false}]}}
                   (dashboard-write/write! {:dashboard (hydrated (:id dash))
                                            :ops       [{:op "remove_parameter", :parameter_id "gone"}]}))))))))

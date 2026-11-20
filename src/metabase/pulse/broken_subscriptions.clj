@@ -118,34 +118,35 @@
    The `:parameters` are the missing filters the update removed, or every missing filter when it removed none.
    A removed filter is named as the dashboard named it before the update, or by its id when that name is blank.
    An already-missing filter keeps the name the subscription stored.
-   An unreadable subscription's filters carry only their ids.
    The `:channels` and `:recipient-count` are what [[delivery]] describes.
    The `:already-broken?` flag is true when the update removed none of the missing filters.
    The `:readable?` flag says whether the current user can read the subscription, from `readable-ids`.
-   An unreadable one leaves out `:creator-name`, `:channels` and `:recipient-count`.
+   An unreadable one is only `{:readable? false}`, so a caller can count it and nothing more.
    It always leaves out the recipients' names and emails and the filter values."
   [original-dashboard-params readable-ids {:keys [pulse-id bad-parameters pulse-creator]}]
-  (let [readable?        (contains? readable-ids pulse-id)
-        ;; A filter can be missing from before this update, for example after a revision revert, which doesn't run
-        ;; this handler. Listing it with the ones the update removed would blame the update for it.
-        removed          (filterv #(contains? original-dashboard-params (:id %)) bad-parameters)
-        already-broken?  (empty? removed)
-        missing          (if already-broken? bad-parameters removed)
-        ;; The subscription's stored names are a snapshot from when it was saved, so a filter renamed since then would
-        ;; show by its old name. The dashboard's name from before the update is the one the user just removed.
-        dashboard-filter (fn [{:keys [id]}]
-                           (let [filter-name (get-in original-dashboard-params [id :name])]
-                             {:id id, :name (if (str/blank? filter-name) id filter-name)}))]
-    (cond-> {:id              pulse-id
-             ;; Without the values, which a caller could show to someone the subscription doesn't belong to, and
-             ;; without the names when the user can't read the subscription.
-             :parameters      (cond
-                                (not readable?) (mapv #(select-keys % [:id]) missing)
-                                already-broken? (mapv #(select-keys % [:id :name]) missing)
-                                :else           (mapv dashboard-filter missing))
-             :already-broken? already-broken?
-             :readable?       readable?}
-      readable? (merge {:creator-name (:common_name pulse-creator)} (delivery pulse-id)))))
+  (if-not (contains? readable-ids pulse-id)
+    ;; The user can't see or restore it, and its creator is emailed. Its id and stored filters are another user's
+    ;; data, and the stored filter ids are free text that could carry instructions to a model.
+    {:readable? false}
+    (let [;; A filter can be missing from before this update, for example after a revision revert, which doesn't run
+          ;; this handler. Listing it with the ones the update removed would blame the update for it.
+          removed          (filterv #(contains? original-dashboard-params (:id %)) bad-parameters)
+          already-broken?  (empty? removed)
+          missing          (if already-broken? bad-parameters removed)
+          ;; The subscription's stored names are a snapshot from when it was saved, so a filter renamed since then
+          ;; would show by its old name. The dashboard's name from before the update is the one the user just removed.
+          dashboard-filter (fn [{:keys [id]}]
+                             (let [filter-name (get-in original-dashboard-params [id :name])]
+                               {:id id, :name (if (str/blank? filter-name) id filter-name)}))]
+      (merge {:id              pulse-id
+              :creator-name    (:common_name pulse-creator)
+              ;; Without the values, which a caller could show to someone the subscription doesn't belong to.
+              :parameters      (if already-broken?
+                                 (mapv #(select-keys % [:id :name]) missing)
+                                 (mapv dashboard-filter missing))
+              :already-broken? already-broken?
+              :readable?       true}
+             (delivery pulse-id)))))
 
 (defn- readable-pulse-ids
   "The ids among `pulse-ids` of the Pulses the current user can read."
