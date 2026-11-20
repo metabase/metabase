@@ -262,7 +262,7 @@
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id model-id)))
           (is (seq (t2/select-one-fn :result_metadata :model/Card :id question-id))))))))
 
-(defn- request-call-count
+(defn- request-call-count!
   "The number of app DB queries that `request!` runs, counting the write of the session's `last_active_at`."
   [request!]
   ;; The first request of a session in each minute writes its `last_active_at`, and later ones skip it.
@@ -276,7 +276,7 @@
   "The number of app DB queries that the user `user-id` runs to clear their own new-user flag."
   [user-id]
   (t2/update! :model/User :id user-id {:is_qbnewb true})
-  (request-call-count #(mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))))
+  (request-call-count! #(mt/user-http-request :rasta :put 200 (str "user/" user-id "/modal/qbnewb"))))
 
 (deftest skipped-column-update-of-user-runs-no-details-query-test
   (let [user-id   (mt/user->id :rasta)
@@ -292,7 +292,7 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [before (max-id)]
         (testing "deactivating a user runs one query to hydrate their groups, and one to insert the row"
-          (is (= 14 (request-call-count #(mt/user-http-request :crowberto :delete 200 (str "user/" user-id))))))
+          (is (= 14 (request-call-count! #(mt/user-http-request :crowberto :delete 200 (str "user/" user-id))))))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!
