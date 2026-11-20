@@ -72,28 +72,31 @@
 
 ;; CACHE SYNCHRONIZATION
 ;;
-;; When running multiple Metabase instances (horizontal scaling), it is of course possible for one instance to update
-;; a Setting, and, since Settings are cached (to avoid tons of DB calls), for the other instances to then have an
-;; out-of-date cache. Thus we need a way for instances to know when their caches are out of date, so they can update
-;; them accordingly. Here is our solution:
+;; Several Metabase instances can share one application DB, and each caches every Setting. Every write of a Setting
+;; also stores a new value of the Setting `settings-last-updated`, the marker: the app DB's current timestamp as text.
+;; The marker is cached with the other Settings, and an instance whose cached marker differs from the stored one
+;; reloads its cache.
 ;;
-;; We will record the last time *any* Setting was updated in a special Setting called `settings-last-updated`.
-;;
-;; Since `settings-last-updated` itself is a Setting, it will get fetched as part of each instance's local cache; we
-;; can then periodically compare the locally cached value of `settings-last-updated` with the value in the DB. If our
-;; locally cached value is older than the one in the DB, we will flush our cache. When the cache is fetched again, it
-;; will have the up-to-date value.
-;;
-;; Because different machines can have out-of-sync clocks, we'll rely entirely on the application DB for calculating
-;; and comparing values of `settings-last-updated`. Because the Setting table itself only stores text values, we'll
-;; need to cast it between TEXT and TIMESTAMP SQL types as needed.
+;; Markers are compared for equality, never ordered. Their text depends on the session time zone of the connection
+;; that wrote them, and on Postgres and H2 a transaction's `now()` is the time it began, so a later write can store a
+;; marker that sorts lower. A cache takes its marker only from the read that loads its values, so that it never holds
+;; the marker of a write whose value it lacks.
 
 (def ^String settings-last-updated-key
   "Internal key used to store the last updated timestamp for Settings."
   "settings-last-updated")
 
+(defn restore-cache!
+  "Populate cache with the latest hotness from the db"
+  ([] (restore-cache! (current-state)))
+  ([state]
+   (log/debug "Refreshing Settings cache...")
+   (reset! (cache* state) (settings.db/setting-values-by-key))))
+
 (defn update-settings-last-updated!
-  "Update the value of `settings-last-updated` in the DB; if the row does not exist, insert one."
+  "Store a new `settings-last-updated` marker, inserting its row if there is none. Then reload the cache for the
+  application DB this thread sees, on this thread's connection: the cache holds the new marker and every write that
+  connection sees, including the uncommitted writes of its transaction."
   []
   (log/debug "Updating value of settings-last-updated in DB...")
   ;; Written raw, not through `:model/Setting`, so that `value` gets the plaintext timestamp a version predating
@@ -113,48 +116,35 @@
             ;; race condition issue
             (log/errorf "Error updating Settings last updated value: %s"
                         (str/join "; " (keep ex-message (take-while some? (iterate #(.getNextException ^java.sql.SQLException %) e)))))))))
-  ;; Now that we updated the value in the DB, go ahead and update our cached value as well, because we know about the
-  ;; changes. A cache not loaded yet stays nil, as in [[update-cache!]].
-  (let [last-updated (settings.db/setting-value settings-last-updated-key)]
-    (swap! (cache*) #(some-> % (assoc settings-last-updated-key last-updated)))))
+  ;; The whole cache, not just the marker: the write above replaced the marker of any instance that committed since
+  ;; this cache was loaded, so this cache would otherwise miss that instance's values until the marker next changes.
+  (restore-cache!))
 
 (defn cache-last-updated-at
-  "Fetch the value of `settings-last-updated`, indicating the timestamp of the settings cache. Possibly null.
-  Reads the cache in `state`, by default the one for the application DB this thread sees."
+  "The `settings-last-updated` marker that the cache in `state` (by default, the state for the application DB this
+  thread sees) was loaded with. Nil when the cache is not loaded or holds no marker."
   ([] (cache-last-updated-at (current-state)))
   ([state]
    (core/get (cache state) settings-last-updated-key)))
 
 (defn- cache-out-of-date?
-  "Check whether our Settings cache is out of date. We know the cache is out of date if either of the following
-  conditions is true:
-
-   *  The cache is empty (the `(cache*` atom is `nil`), which of course means it needs to be updated
-   *  There is a value of `settings-last-updated` in the cache, and it is older than the value of in the DB. (There
-      will be no value until the first time a normal Setting is updated; thus if it is not yet set, we do not yet need
-      to invalidate our cache.)
-
-  Reads the cache in `state`, by default the one for the application DB this thread sees."
+  "Whether the cache in `state` (by default, the state for the application DB this thread sees) needs a reload: it is
+  not loaded, or the stored `settings-last-updated` marker differs from the cached one. An absent marker differs
+  from a present one."
   ([] (cache-out-of-date? (current-state)))
   ([state]
    (log/debug "Checking whether settings cache is out of date (requires DB call)...")
    (let [current-cache (cache state)]
      (boolean
       (or
-       ;; is the cache empty?
        (not current-cache)
-       ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-       (when-let [last-known-update (cache-last-updated-at state)]
-         ;; compare it to the value in the DB. This is done be seeing whether a row exists
-         ;; WHERE value > <local-value>
-         ;; compared here rather than in SQL: what is stored is ciphertext, so only the decrypted timestamps can be ordered
-         (u/prog1 (when-let [db-value (settings.db/setting-value settings-last-updated-key)]
-                    (when (pos? (compare db-value last-known-update))
-                      db-value))
-           (log/trace "last known Settings update: " (pr-str last-known-update))
-           (log/trace "actual last Settings update:" (pr-str <>))
+       (let [cached-marker (core/get current-cache settings-last-updated-key)
+             stored-marker (settings.db/setting-value settings-last-updated-key)]
+         (log/trace "cached Settings marker:" (pr-str cached-marker))
+         (log/trace "stored Settings marker:" (pr-str stored-marker))
+         (u/prog1 (not= stored-marker cached-marker)
            (when <>
-             (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here."))))))))))
+             (log/info (u/format-color :red "Settings have changed since this cache was loaded and will be reloaded."))))))))))
 
 (def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
@@ -165,13 +155,6 @@
   [^AtomicLong last-update-check]
   (> (quot (- (System/nanoTime) (.get last-update-check)) 1000000)
      cache-update-check-interval-ms))
-
-(defn restore-cache!
-  "Populate cache with the latest hotness from the db"
-  ([] (restore-cache! (current-state)))
-  ([state]
-   (log/debug "Refreshing Settings cache...")
-   (reset! (cache* state) (settings.db/setting-values-by-key))))
 
 (defn restore-cache-if-needed!
   "Check whether the settings cache is out of date by reading the DB value of `settings-last-updated`, and reload the
