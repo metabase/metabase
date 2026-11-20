@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -335,3 +336,8 @@
      :limit  limit
      :offset offset
      :total  (transforms.db/paged-run-count filters)}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TransformRun [_model]
+  {:skip? false})

@@ -360,10 +360,12 @@
 
               ;; Export again but with nested entity query results reversed,
               ;; simulating non-deterministic DB row ordering (as seen on Aurora Postgres)
-              dashboard-cards (mt/original-fn #'serialization.db/dashboard-cards-by-dashboard-ids)
+              rows-by-column-values (mt/original-fn #'serialization.db/rows-by-column-values)
               yaml-reversed
-              (mt/with-dynamic-fn-redefs [serialization.db/dashboard-cards-by-dashboard-ids
-                                          (comp reverse dashboard-cards)]
+              (mt/with-dynamic-fn-redefs [serialization.db/rows-by-column-values
+                                          (fn [model & args]
+                                            (cond-> (apply rows-by-column-values model args)
+                                              (= :model/DashboardCard model) reverse))]
                 (clean-and-export!))]
           (testing "Dashcard ordering should be stable regardless of DB return order"
             (is (= yaml-before yaml-reversed)

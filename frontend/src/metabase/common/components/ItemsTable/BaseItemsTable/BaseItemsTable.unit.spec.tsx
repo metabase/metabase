@@ -232,6 +232,31 @@ describe("BaseItemsTable", () => {
       expect(tooltip).toBeInTheDocument();
       expect(tooltip).toHaveTextContent("important text");
     });
+
+    it("shows a multi-line markdown model description with headings on hover (metabase#34574)", async () => {
+      const otherItem = getCollectionItem({
+        id: 1,
+        name: "Other model",
+        description: "Other description",
+      });
+      const markdownItem = getCollectionItem({
+        id: 2,
+        name: "34574",
+        model: "dataset",
+        description: "# Hello\n## World\nThis is an **important** description!",
+      });
+      setup({ items: [otherItem, markdownItem] });
+
+      const row = screen.getByRole("row", { name: /34574/ });
+      await userEvent.hover(within(row).getByLabelText("info icon"));
+
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent("Hello");
+      expect(tooltip).toHaveTextContent("World");
+      expect(tooltip).toHaveTextContent("This is an important description!");
+      expect(tooltip).not.toHaveTextContent("#");
+      expect(tooltip).not.toHaveTextContent("Other description");
+    });
   });
 
   describe("last edited by", () => {

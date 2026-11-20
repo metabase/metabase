@@ -22,7 +22,12 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
+   [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -30,6 +35,8 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.pulse.audit :as pulse.audit]
+   [metabase.pulse.collection-items :as pulse.collection-items]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
@@ -52,12 +59,6 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/Pulse
-  [_model]
-  {:create :event/pulse-create
-   :update :event/pulse-update
-   :delete :event/pulse-delete})
 
 (def ^:private transform-pulse-parameters
   "Toucan 2 transform for a Pulse's `:parameters`, normalized like a Dashboard's but with each `:type` optional."
@@ -796,3 +797,37 @@
   (events/with-batched-events
     (update-notification! (alert->notification alert)))
   (retrieve-alert (u/the-id alert)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Pulse
+  [_model]
+  {:create :event/pulse-create
+   :update :event/pulse-update
+   :delete :event/pulse-delete})
+
+(defmethod app-db-copy/spec :model/Pulse [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/Pulse [_model]
+  {:track [:creator_id :name :skip_if_empty :alert_condition :alert_first_only :alert_above_goal :collection_id
+           :collection_position :archived :dashboard_id :parameters :entity_id :disable_links :archived_directly]
+   :skip  []})
+
+(defmethod audit/spec :model/Pulse [_model]
+  {:track          []
+   :track-redacted [:alert_above_goal :alert_condition :alert_first_only :archived :archived_directly :collection_id
+                    :creator_id :dashboard_id :disable_links :name :parameters :skip_if_empty]
+   :skip           [:collection_position :entity_id]
+   :details        pulse.audit/details
+   :state          pulse.audit/state
+   :topics         {:create pulse.audit/create-topic
+                    :update :subscription-update}})
+
+(defmethod collection-items/spec :model/Pulse [_model]
+  {"pulse" {:rank    2
+            :items   pulse.db/collection-pulse-items
+            :hydrate pulse.collection-items/hydrate}})
+
+(defmethod eid-translation/spec :model/Pulse [_model]
+  {:names [:pulse]})

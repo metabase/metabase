@@ -7,6 +7,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.classloader.core :as classloader]
@@ -14,7 +15,6 @@
    [metabase.models.init]
    [metabase.models.resolution :as models.resolution]
    [metabase.util :as u]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -215,59 +215,40 @@
   disable this check for tests."
   false)
 
-(defn- model-select-fragment
-  [model]
-  (case model
-    :model/Field {:order-by [[:id :asc]]}
-    ;; dumps made by an OSS build before this table was copied still hold the rows the target's own migrations seeded,
-    ;; which can point at group ids the source never had
-    :metabot_permissions {:where [:in :group_id {:select [:id] :from [:permissions_group]}]}
-    nil))
+(defn- metabot-permissions-select
+  "The HoneySQL fragment reading the `metabot_permissions` rows of existing groups only, since a dump made by an OSS
+  build before the table was copied still holds the rows its own migrations seeded, which can point at group ids the
+  source never had."
+  []
+  {:where [:in :group_id {:select [:id] :from [:permissions_group]}]})
+
+(def ^:private table-specs
+  "The copy specs of the [[entities]] named by table, which have no model on some edition."
+  {:metabot_permissions {:skip?  false
+                         :select metabot-permissions-select}})
+
+(defn- entity-spec
+  "The copy spec of an entry of [[entities]]."
+  [entity]
+  (if (= "model" (namespace entity))
+    (app-db-copy/spec entity)
+    (or (table-specs entity)
+        (throw (ex-info (format "%s has no app-db copy spec" entity) {:entity entity})))))
 
 (defn- sql-for-selecting-instances-from-source-db [model]
-  (first
-   (sql/format
-    (merge {:select [[:*]]
-            :from   [[(t2/table-name model)]]}
-           (model-select-fragment model))
-    {:quoted false})))
+  (let [{select-fragment :select} (entity-spec model)]
+    (first
+     (sql/format
+      (merge {:select [[:*]]
+              :from   [[(t2/table-name model)]]}
+             (when select-fragment
+               (select-fragment)))
+      {:quoted false}))))
 
 (defn- model-results-xform [model]
-  (case model
-    :model/Database
-    ;; For security purposes, do NOT copy connection details for H2 Databases by default; replace them with an empty map.
-    ;; Why? Because this is a potential pathway to injecting sneaky H2 connection parameters that cause RCEs. For the
-    ;; Sample Database, the correct details are reset automatically on every
-    ;; launch (see [[metabase.sample-data.impl/update-sample-database-if-needed!]]), and we don't support connecting other H2
-    ;; Databases in prod anyway, so this ultimately shouldn't cause anyone any problems.
-    (map (fn [database]
-           (cond-> database
-             (or (:is_attached_dwh database)
-                 (and (not *copy-h2-database-details*)
-                      (= (:engine database) "h2"))) (assoc :details (encryption/maybe-encrypt "{}")))))
-
-    :model/Setting
-    ;; Never create dumps with read-only-mode turned on.
-    ;; It will be confusing to restore from and prevent key rotation.
-    (remove (fn [{k :key}] (= k "read-only-mode")))
-
-    :model/Table
-    ;; unique_table_helper is a computed/generated column
-    (map #(dissoc % :unique_table_helper))
-
-    :model/Field
-    ;; unique_field_helper is a computed/generated column
-    (map #(dissoc % :unique_field_helper))
-
-    :model/DataPermissions
-    ;; unique_perms_helper is a computed/generated column
-    (map #(dissoc % :unique_perms_helper))
-
-    :model/LoginHistory
-    ;; Sessions are no longer copied, and a session deleted while dumping could leave a dangling reference (UXW-5258).
-    (map #(dissoc % :session_id))
-
-    ;; else
+  (if-let [transform (:transform (entity-spec model))]
+    (let [opts {:copy-h2-database-details? *copy-h2-database-details*}]
+      (keep #(transform % opts)))
     identity))
 
 (defn- copy-data! [^javax.sql.DataSource source-data-source target-db-type target-db-conn-spec]
@@ -413,28 +394,18 @@
         (finally
           (.setAutoCommit conn true))))))
 
-(def ^:private entities-without-autoinc-ids
-  "Entities that do NOT use an auto incrementing ID column."
-  #{:model/Setting
-    :model/ImplicitAction
-    :model/QueryAction
-    :model/MetabotConversation
-    :model/ModelIndexValue
-    ;; `transform_run_cancelation` uses its `run_id` FK as its primary key
-    :model/TransformRunCancelation})
+(defn- autoinc-id?
+  "Whether the table of an entry of [[entities]] has an auto-incrementing `id`."
+  [entity]
+  (not (false? (:sequence (entity-spec entity)))))
 
-(defmulti ^:private postgres-id-sequence-name
-  {:arglists '([model])}
-  keyword)
-
-(defmethod postgres-id-sequence-name :default
-  [model]
-  (str (name (t2/table-name model)) "_id_seq"))
-
-;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/Sandbox
-  [_model]
-  "group_table_access_policy_id_seq")
+(defn- postgres-id-sequence-name
+  "The name of the Postgres sequence of the `id` of the table of an entry of [[entities]]."
+  [entity]
+  (let [{:keys [sequence]} (entity-spec entity)]
+    (if (string? sequence)
+      sequence
+      (str (name (t2/table-name entity)) "_id_seq"))))
 
 (defmulti ^:private update-sequence-values!
   {:arglists '([db-type data-source])}
@@ -449,7 +420,7 @@
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting Postgres sequence ids to proper values...")
       (doseq [model entities
-              :when (not (contains? entities-without-autoinc-ids model))
+              :when (autoinc-id? model)
               :let  [table-name (name (t2/table-name model))
                      seq-name   (postgres-id-sequence-name model)
                      sql        (format "SELECT setval('%s', COALESCE((SELECT MAX(id) FROM %s), 1), true) as val"
@@ -466,7 +437,7 @@
   (jdbc/with-db-transaction [target-db-conn {:datasource data-source}]
     (step (trs "Setting H2 sequence ids to proper values...")
       (doseq [e     entities
-              :when (not (contains? entities-without-autoinc-ids e))
+              :when (autoinc-id? e)
               :let  [table-name (name (t2/table-name e))
                      sql        (format "ALTER TABLE %s ALTER COLUMN ID RESTART WITH COALESCE((SELECT MAX(ID) + 1 FROM %s), 1)"
                                         table-name table-name)]]

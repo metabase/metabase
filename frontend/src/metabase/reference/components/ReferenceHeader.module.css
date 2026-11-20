@@ -14,6 +14,8 @@
 .headerTextInput {
   composes: p1 from "style";
   font-size: 18px;
+  /* the surrounding .headerBody is bold; the field itself shouldn't inherit that */
+  font-weight: normal;
   color: var(--title-color);
   max-width: 550px;
 }

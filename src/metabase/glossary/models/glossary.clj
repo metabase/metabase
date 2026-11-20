@@ -1,6 +1,8 @@
 (ns metabase.glossary.models.glossary
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema :as glossary.schema]
@@ -18,12 +20,6 @@
   (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
-
-(defmethod events/spec :model/Glossary
-  [_model]
-  {:create :event/glossary-create
-   :update :event/glossary-update
-   :delete :event/glossary-delete})
 
 (def GlossaryEntry
   "Schema for a glossary entry."
@@ -77,19 +73,36 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serialization/spec :model/Glossary [_]
-  {:schema    ::glossary.schema/external-glossary
-   :copy      [:entity_id :term :definition]
-   :transform {:creator_id serialization/user-transform}})
-
-(defmethod serialization/storage-paths :model/Glossary [_ entities _]
+(defn- storage-paths
+  "The storage path of each of the Glossary `entities`, under `glossary/` by term."
+  [entities _ctx]
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
 
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Glossary
+  [_model]
+  {:create :event/glossary-create
+   :update :event/glossary-update
+   :delete :event/glossary-delete})
+
+(defmethod app-db-copy/spec :model/Glossary [_model]
+  {:skip? false})
+
+(defmethod serialization/spec :model/Glossary [_]
+  {:schema        ::glossary.schema/external-glossary
+   :copy          [:entity_id :term :definition]
+   :transform     {:creator_id serialization/user-transform}
+   :storage-paths storage-paths})
 
 (defmethod remote-sync/spec :model/Glossary
   [_model]
   {:name         :term
    :synced-items glossary.db/synced-glossary-items})
+
+(defmethod audit/spec :model/Glossary [_model]
+  {:track          [:term]
+   :track-redacted [:creator_id :definition]
+   :skip           [:entity_id]})

@@ -18,6 +18,7 @@
    The data also holds the values that explain the error, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
+   [clojure.set :as set]
    [malli.error :as me]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -1003,6 +1004,130 @@
   (cond-> dc
     (seq (:series dc)) (update :series (partial mapv #(select-keys % [:id])))))
 
+(defn- slot
+  "Where `card-id` shows on `dashcard`: `:card` for the dashcard's own card, the card's id for a series card, and nil
+   when the dashcard doesn't show it."
+  [{:keys [card_id series]} card-id]
+  (cond
+    (= card-id card_id)                :card
+    (some #(= card-id (:id %)) series) card-id))
+
+(defn- connections
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id card-id]`."
+  [dashcards]
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings]} dashcards
+              {:keys [parameter_id card_id]}                parameter_mappings]
+          [parameter_id dashcard-id card_id])))
+
+(defn- slot-connections
+  "The filter connections of `dashcards`, as a set of `[parameter-id dashcard-id slot]`, with the slot from [[slot]],
+   or the card id for a card the dashcard doesn't show.
+   The dashcard's own slot stays the same when `replace_card` changes its card."
+  [dashcards]
+  (into #{}
+        (for [{dashcard-id :id :keys [parameter_mappings] :as dashcard} dashcards
+              {:keys [parameter_id card_id]}                            parameter_mappings]
+          [parameter_id dashcard-id (or (slot dashcard card_id) card_id)])))
+
+(defn- asked-drops
+  "The connections among `stored`, as [[slot-connections]] gives them, that `op` asks to drop.
+   Those are a filter's for `remove_parameter` and `unwire_parameter`, on its one dashcard when the unwire names one,
+   and a dashcard's for a `patch_dashcard` that sets its `parameter_mappings`."
+  [stored {op-name :op, :keys [parameter_id dashcard_id patch], :as op}]
+  ;; Judged by what the op names rather than what it removed, so asking to drop a connection an earlier op already
+  ;; cleared still counts.
+  (case op-name
+    "remove_parameter" (filter (fn [[p]] (= parameter_id p)) stored)
+    "unwire_parameter" (filter (fn [[p dc]]
+                                 (and (= parameter_id p)
+                                      (or (not (contains? op :dashcard_id)) (= dashcard_id dc))))
+                               stored)
+    "patch_dashcard"   (when (contains? patch :parameter_mappings)
+                         (filter (fn [[_ dc]] (= dashcard_id dc)) stored))
+    nil))
+
+(defn- stored-slots
+  "The stored slots the slot `s` stands for in `dashcard-origins`, one dashcard's origins from [[track-promotions]].
+   A slot missing from them stands for itself."
+  [dashcard-origins s]
+  (get dashcard-origins s #{s}))
+
+(defn- track-promotions
+  "The origins after `op`, given the `origins` and `state` before it: for each dashcard id, a map from each current
+   slot to the stored slots it stands for.
+   Only a `replace_card` that promotes a series card changes them.
+   A slot missing from them stands for itself."
+  [origins state {:keys [op dashcard_id card_id]}]
+  (let [promoted (when (= "replace_card" op)
+                   (slot (find-row state :dashcards dashcard_id) card_id))]
+    ;; A promoted series card's connection now shares the dashcard's own slot with the stored card's, but a drop
+    ;; asked for before the promotion meant only one of them.
+    (cond-> origins
+      (int? promoted) (update dashcard_id
+                              (fn [m]
+                                (assoc m :card (set/union (stored-slots m :card) (stored-slots m promoted))))))))
+
+(defn- stored-connections
+  "The [[slot-connections]] of `dashcards`, with each slot replaced by the stored slots it stands for in `origins`."
+  [origins dashcards]
+  (into #{}
+        (for [[parameter-id dashcard-id s] (slot-connections dashcards)
+              stored-slot                  (stored-slots (get origins dashcard-id) s)]
+          [parameter-id dashcard-id stored-slot])))
+
+(defn- apply-op-tracking-drops
+  "Runs [[apply-op-at]] on `op`, the op at `idx`, and updates two keys of `state`.
+   It keeps the origins [[track-promotions]] gives under `::slot-origins`.
+   It keeps under `::asked-drops` the stored connections an op asked to drop, as [[asked-drops]] finds them, less those
+   a later op restored.
+   It reads the stored connections from `::stored-connections`."
+  [state idx op]
+  (let [origins (track-promotions (::slot-origins state) state op)
+        state'  (assoc (apply-op-at state idx op) ::slot-origins origins)
+        asked   (into (::asked-drops state) (asked-drops (::stored-connections state) op))]
+    (assoc state' ::asked-drops (set/difference asked (stored-connections origins (:dashcards state'))))))
+
+(defn- current-slot
+  "Where the stored slot `stored-slot` of `dashcard` is after the ops, given the dashcard's `origins` from
+   [[track-promotions]]: the dashcard's own slot for its stored card or a promoted series card, the series card's id
+   while it is still one, and nil once it is gone."
+  [dashcard origins stored-slot]
+  (cond
+    (contains? (stored-slots origins :card) stored-slot) :card
+    (= stored-slot (slot dashcard stored-slot))          stored-slot))
+
+(defn- dropped-connections
+  "The filter connections of `current` that `payload` lost, as `{:parameter_id :dashcard_id :card_id :series}` maps.
+   The `:card_id` is the card that is no longer filtered, and `:series` is true when that is a series card.
+   A connection counts only when its filter and its dashcard survive, its card is still on the dashcard or was
+   replaced, and the ops didn't drop it on purpose.
+   The `state` is the folded compiler state, read for `::slot-origins` and `::asked-drops`, both keyed by stored slot."
+  [current payload {::keys [slot-origins asked-drops]}]
+  (let [surviving-parameter? (into #{} (map :id) (:parameters payload))
+        stored-dashcards     (u/index-by :id (:dashcards current))
+        saved-dashcards      (u/index-by :id (:dashcards payload))
+        kept                 (stored-connections slot-origins (:dashcards payload))]
+    (->> (for [[parameter-id dashcard-id card-id] (connections (:dashcards current))
+               :when (surviving-parameter? parameter-id)
+               :let  [dashcard    (saved-dashcards dashcard-id)
+                      ;; A stored mapping onto a card the dashcard doesn't show filtered nothing, so it has no slot.
+                      stored-slot (slot (stored-dashcards dashcard-id) card-id)
+                      connection  [parameter-id dashcard-id stored-slot]
+                      new-slot    (when (and dashcard stored-slot)
+                                    (current-slot dashcard (get slot-origins dashcard-id) stored-slot))]
+               :when (and new-slot
+                          (not (contains? kept connection))
+                          (not (contains? asked-drops connection)))]
+           ;; A stored card and the series card promoted over it share a slot, so they can report the same row.
+           {:parameter_id parameter-id
+            :dashcard_id  dashcard-id
+            :card_id      (if (= :card new-slot) (:card_id dashcard) new-slot)
+            :series       (not= :card new-slot)})
+         set
+         (sort-by (juxt :parameter_id :dashcard_id :card_id))
+         vec)))
+
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
@@ -1016,23 +1141,29 @@
    A card that an op gives a position stays where the op put it, and a resized card keeps its place unless such a
    card covers it.
    Either pushes down the cards it covers.
-   [[pushed-dashcard-ids]] reads which stored cards moved from the payload's metadata.
+   The ops' other effects ride in the payload's metadata, read by [[effects]].
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
-  (let [state (-> (reduce-kv apply-op-at
-                             (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
-                             (prepare-ops ops))
-                  check-tab-coverage!
-                  settle-layout)]
-    (-> state
-        (select-keys [:dashcards :tabs :parameters])
-        (update :dashcards (partial mapv series-ids))
-        (with-meta {::pushed-dashcard-ids (::pushed state)}))))
+  (let [ops     (prepare-ops ops)
+        state   (-> (reduce-kv apply-op-tracking-drops
+                               (assoc (init-state current cards)
+                                      ::stored-card-ids    (dashboard-card-ids current)
+                                      ::stored-connections (slot-connections (:dashcards current))
+                                      ::asked-drops        #{})
+                               ops)
+                    check-tab-coverage!
+                    settle-layout)
+        payload (-> state
+                    (select-keys [:dashcards :tabs :parameters])
+                    (update :dashcards (partial mapv series-ids)))]
+    (with-meta payload
+               {::effects {:pushed-dashcard-ids (::pushed state)
+                           :dropped-connections (dropped-connections current payload state)}})))
 
-(defn pushed-dashcard-ids
-  "The ids of the stored dashcards [[compile-ops]] pushed down to make room for cards the ops placed, in save order.
-   `x` is the payload [[compile-ops]] returns, or a dashboard
-   [[metabase.metabot.toolkit.dashboard-write/write!]] returns, which carries them over.
-   Empty or nil when none moved."
-  [x]
-  (::pushed-dashcard-ids (meta x)))
+(defn effects
+  "What the ops did beyond the payload [[compile-ops]] returns, read from its metadata.
+   Its `:pushed-dashcard-ids` are the ids of the stored dashcards pushed down for cards the ops placed, in save order.
+   Its `:dropped-connections` are the filter connections the ops dropped without asking, as
+   `{:parameter_id :dashcard_id :card_id :series}` maps, with `:series` true for a series card's connection."
+  [payload]
+  (::effects (meta payload)))

@@ -550,8 +550,9 @@
       (catch Exception e
         (qp.catch-exceptions/exception-response e)))))
 
-(mu/defn compile-source :- ::qp.compile/compiled
-  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+(mu/defn preprocess-source :- :metabase.lib.schema/query
+  "The source query of `transform`, filtered to `source-range-params` when they are given, with remaps and the
+  default row limit turned off, preprocessed."
   [{:keys [source] :as transform} :- ::transforms-base.schema/transform
    source-range-params            :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [{:keys [query]} source]
@@ -559,7 +560,13 @@
     (-> query
         (preprocess-incremental-query source-range-params)
         massage-sql-query
-        qp.compile/compile)))
+        qp.preprocess/preprocess)))
+
+(mu/defn compile-source :- ::qp.compile/compiled
+  "Compile the source query of a transform to SQL, applying incremental filtering if required."
+  [transform           :- ::transforms-base.schema/transform
+   source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
+  (qp.compile/compile-preprocessed (preprocess-source transform source-range-params)))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 

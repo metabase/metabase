@@ -382,10 +382,12 @@
     context))
 
 (defn- filter-recents-to-curated
-  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
-  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
-  from the canonical rule and doesn't depend on the search index."
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative)."
   [recents]
+  ;; Delegates to `curation/curated-ids`, the source-of-truth check, so recent-view filtering can't drift from the
+  ;; canonical rule and doesn't depend on the search index. A metric needs its own curation signal here, as in search
+  ;; results, though `read_resource` listings also show metrics whose definition passes
+  ;; `curation/usable-metric-ids`: these recents are suggested unasked on every request.
   (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 

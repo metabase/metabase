@@ -12,7 +12,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.channel.render.core :as channel.render]
-   [metabase.collections.children :as collections.children]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
@@ -670,9 +670,9 @@
   (let [dashboard  (api/read-check :model/Dashboard id)
         cards      (dashboards-rest.db/dashboard-item-cards id (request/paged?) (request/limit) (request/offset))]
     {:total  (count cards)
-     :data   (collections.children/post-process-rows {}
-                                                     (dashboards-rest.db/collection (:collection_id dashboard))
-                                                     cards)
+     :data   (collection-items/post-process-rows {}
+                                                 (dashboards-rest.db/collection (:collection_id dashboard))
+                                                 cards)
      :limit  (request/limit)
      :offset (request/offset)
      :models (if (seq cards) ["card"] [])}))

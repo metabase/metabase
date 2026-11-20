@@ -232,7 +232,10 @@ export const isAllowedIframeUrl = (url: string, allowedIframesSetting = "") => {
           return hostname.endsWith("." + baseDomain);
         }
 
-        return hostname.endsWith(allowedDomain.hostname);
+        return (
+          hostname === allowedDomain.hostname ||
+          hostname.endsWith("." + allowedDomain.hostname)
+        );
       } catch (e) {
         console.warn(
           `Error while checking against allowed iframe domain ${rawAllowedDomain}`,

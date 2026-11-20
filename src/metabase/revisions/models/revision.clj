@@ -3,6 +3,7 @@
    [clojure.data :as data]
    [clojure.walk :as walk]
    [malli.core :as mc]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
    [metabase.config.core :as config]
@@ -11,9 +12,9 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.measures.schema]
    [metabase.models.interface :as mi]
-   [metabase.queries.core :as queries]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :as revision.diff :refer [diff-strings*]]
+   [metabase.revisions.spec :as revisions.spec]
    [metabase.segments.schema]
    [metabase.transforms.schema]
    [metabase.util :as u]
@@ -34,6 +35,12 @@
   (walk/postwalk #(cond-> % (map? %) (dissoc :lib/transformation-added-base-type))
                  (lib.schema.util/remove-lib-uuids definition)))
 
+(defn same-definition?
+  "Whether the `:definition` of the row `before` is that of the row `after`, apart from what the writers and the readers
+  of a definition set differently."
+  [before after]
+  (= (comparable-definition (:definition before)) (comparable-definition (:definition after))))
+
 (defn toucan-model?
   "Check if `model` is a toucan model."
   [model]
@@ -44,50 +51,113 @@
   will be deleted."
   15)
 
-(defmulti serialize-instance
-  "Prepare an instance for serialization in a Revision."
-  {:arglists '([model id instance])}
-  mi/dispatch-on-model)
+(declare snapshots)
 
-;;; no default implementation for [[serialize-instance]]; models need to implement this themselves.
+(defn- child-rows
+  [row hydration-key]
+  (or (get row hydration-key)
+      (get (t2/hydrate row hydration-key) hydration-key)))
 
-(defmulti revert-to-revision!
-  "Return an object to the state recorded by `serialized-instance`."
-  {:arglists '([model id user-id serialized-instance])}
-  mi/dispatch-on-model)
+(defn- nest-children
+  [model rows snapshots*]
+  (reduce-kv (fn [acc k {child-model :model, hydration-key :as}]
+               (mapv (fn [row snapshot]
+                       (assoc snapshot k (snapshots child-model (child-rows row hydration-key))))
+                     rows
+                     acc))
+             snapshots*
+             (revisions.spec/children model)))
 
-(defmethod revert-to-revision! :default
-  [model id _user-id serialized-instance]
-  (let [valid-columns   (keys (revisions.db/raw-row model id))
-        ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
-        ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
-        ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
-        revert-instance (select-keys serialized-instance valid-columns)]
-    (revisions.db/update-entity! id {:model model :row revert-instance})))
+(defn- snapshots
+  "The snapshots of the `rows` of `model`, in order: the tracked columns, with the snapshots of the child rows nested
+  under the keys of the `:children`, and the `:id` of a row that belongs to the Revision of a parent."
+  [model rows]
+  (let [{:keys [track parent snapshot]} (revisions.spec/spec model)
+        rows      (vec rows)
+        columns   (cond-> (vec track) parent (conj :id))
+        snapshots* (nest-children model rows (mapv #(select-keys % columns) rows))]
+    (if snapshot
+      (snapshot rows snapshots*)
+      snapshots*)))
 
-(defmulti diff-map
-  "Return a map describing the difference between `object-1` and `object-2`."
-  {:arglists '([model object-1 object-2])}
-  mi/dispatch-on-model)
+(defn snapshot
+  "The snapshot of the `instance` of `model` that a Revision stores."
+  [model instance]
+  (first (snapshots model [instance])))
 
-(defmethod diff-map :default
-  [_model o1 o2]
-  (when o1
-    (let [[before after] (data/diff o1 o2)]
-      {:before before
-       :after  after})))
+(defn changed?
+  "Whether `after` differs from `before`, rows or snapshots of `model`, in what a Revision records."
+  [model before after]
+  (boolean (some #(not (revisions.spec/same? model % before after))
+                 (revisions.spec/snapshot-keys model))))
 
-(defmulti diff-strings
-  "Return a seq of string describing the difference between `object-1` and `object-2`, naming the Collections and
-  Dashboards they moved between from `names` (see [[readable-names]]).
+(defn- recorded
+  "What the `snapshot` of `model` holds of what a Revision records now, without the keys that older snapshots carry."
+  [model snapshot]
+  (reduce-kv (fn [m k {child :model}]
+               (cond-> m
+                 (sequential? (get m k))
+                 (update k (fn [rows]
+                             (mapv #(apply dissoc % :created_at :updated_at (:skip (revisions.spec/spec child)))
+                                   rows)))))
+             (select-keys snapshot (revisions.spec/snapshot-keys model))
+             (revisions.spec/children model)))
 
-  Each string in the seq should be i18n-ed."
-  {:arglists '([model object-1 object-2 names])}
-  mi/dispatch-on-model)
+(defn revert-columns!
+  "Write the tracked columns of `snapshot` that the table of `model` still has to the row with `id`."
+  [model id snapshot]
+  (let [valid-columns (set (keys (revisions.db/raw-row model id)))]
+    (revisions.db/update-entity! id {:model model
+                                     :row   (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))})))
 
-(defmethod diff-strings :default
-  [model o1 o2 names]
-  (diff-strings* (name model) o1 o2 names))
+(defn revert-to-revision!
+  "Return the row of `model` with `id` to the state that the `snapshot` of a Revision recorded."
+  [model id user-id snapshot]
+  (let [{:keys [before-revert revert!]} (revisions.spec/spec model)
+        snapshot (if before-revert (before-revert id user-id snapshot) snapshot)]
+    (if revert!
+      (revert! id user-id snapshot)
+      (revert-columns! model id snapshot))))
+
+(defn- without-skipped
+  "The `snapshot` of `model` without the columns that its spec skips, which an older snapshot may still hold."
+  [model snapshot]
+  (apply dissoc snapshot (:skip (revisions.spec/spec model))))
+
+(defn diff
+  "A map describing the difference between the snapshots `before` and `after` of `model`, nil when there is no `before`."
+  [model before after]
+  (let [{:keys [diff-columns]} (revisions.spec/spec model)]
+    (cond
+      (nil? before)
+      (when diff-columns
+        (into {} (map (fn [[k v]] [k {:after v}])) (select-keys after diff-columns)))
+
+      diff-columns
+      (into {}
+            (keep (fn [column]
+                    (when-not (revisions.spec/same? model column before after)
+                      [column {:before (get before column) :after (get after column)}])))
+            diff-columns)
+
+      :else
+      (let [[before after] (data/diff (without-skipped model before) (without-skipped model after))]
+        {:before before
+         :after  after}))))
+
+(defn describe-columns
+  "The strings that describe how the columns of the snapshot `before` of `model` changed into those of `after`,
+  naming the Collections and Dashboards they moved between from `names` (see [[readable-names]]), each i18n-ed."
+  [model before after names]
+  (diff-strings* (name model) before after names))
+
+(defn describe
+  "The strings that describe how the snapshot `before` of `model` changed into `after`, by the `:describe` of its spec
+  or else [[describe-columns]]."
+  [model before after names]
+  (if-let [f (:describe (revisions.spec/spec model))]
+    (f before after names)
+    (describe-columns model before after names)))
 
 (mr/def ::names
   "The names of the Collections, Dashboards and data-test subjects the current user can read, by id, for revision
@@ -112,37 +182,15 @@
                                        [model (names (revisions.db/entities-by-ids model subject-ids))])))
                              revision.diff/data-test-subject-models)}))
 
-(defmulti revision-readable?
-  "Whether the current user may see the revision whose serialized snapshot is `object`. Defaults to true: a caller
-  who can read an object's current row can read its whole revision history. Models whose snapshots carry
-  data-permission-sensitive definitions override this to authorize each snapshot on its own terms."
-  {:arglists '([model object])}
-  mi/dispatch-on-model)
-
-(defmethod revision-readable? :default
-  [_model _object]
-  true)
-
-(defmulti revisions-readable?
-  "Whether the current user may see each of the revisions whose serialized snapshots are `objects`, as a vector of
-  booleans in the order of `objects`. Defaults to [[revision-readable?]] of each; models whose check reads the app DB
-  override this to answer the whole list at once."
-  {:arglists '([model objects])}
-  mi/dispatch-on-model)
-
-(defmethod revisions-readable? :default
+(defn revisions-readable?
+  "Whether the current user may see each of the revisions whose snapshots are `objects`, as a vector of booleans in
+  the order of `objects`. A model whose spec says `:authorize :snapshot` has each snapshot checked on its own terms,
+  for its snapshots carry data-permission-sensitive definitions; for any other, whoever can read the current row can
+  read its whole history."
   [model objects]
-  (mapv #(boolean (revision-readable? model %)) objects))
-
-(defmulti check-revert-available
-  "Throw a 402 unless the token has the premium feature that a revert of `model` to a revision needs. The default
-  throws nothing."
-  {:arglists '([model])}
-  mi/dispatch-on-model)
-
-(defmethod check-revert-available :default
-  [_model]
-  nil)
+  (if (= :snapshot (:authorize (revisions.spec/spec model)))
+    (mapv boolean (map mi/can-read? (t2/hydrate (mapv #(t2/instance model %) objects) :can_read)))
+    (mapv (constantly true) objects)))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -196,13 +244,11 @@
   [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
+  (let [model    (u/ignore-exceptions (t2.model/resolve-model (symbol model)))
+        defaults (:defaults (revisions.spec/spec model))]
     (cond-> revision
-      ;; For Card revisions, ensure :card_schema is present before calling after-select.
-      ;; Old revisions from before v0.55 won't have this field!
-      ;; We add the legacy default value to handle these cases.
-      (and (= model :model/Card) (map? (:object revision)) (not (:card_schema (:object revision))))
-      (update :object assoc :card_schema queries/starting-card-schema-version)
+      (and (seq defaults) (map? (:object revision)))
+      (update :object #(reduce-kv (fn [object k v] (cond-> object (nil? (get object k)) (assoc k v))) % defaults))
 
       model (update :object (partial mi/do-after-select model)))))
 
@@ -216,7 +262,10 @@
     ;; We only keep [[revision/max-revisions]] number of revision per entity.
     ;; prev-revision can be nil when we generate description for oldest revision
     (nil? prev-revision)     [(deferred-tru "modified this")]
-    :else                    (diff-strings model (:object prev-revision) (:object revision) names)))
+    :else                    (describe model
+                                       (without-skipped model (:object prev-revision))
+                                       (without-skipped model (:object revision))
+                                       names)))
 
 (defn- revision-description-info
   [model prev-revision revision names]
@@ -239,7 +288,7 @@
                          (readable-names (into [] (keep :object) [revision prev-revision]))))
   ([model revision prev-revision names]
    (-> revision
-       (assoc :diff (diff-map model (:object prev-revision) (:object revision)))
+       (assoc :diff (diff model (:object prev-revision) (:object revision)))
        (merge (revision-description-info model prev-revision revision names))
        ;; add revision user details
        (t2/hydrate :user)
@@ -290,13 +339,6 @@
                              [:is-creation? {:optional true} [:maybe :boolean]]
                              [:message      {:optional true} [:maybe :string]]]])))
 
-(defn- for-comparison
-  "The serialized object `m` of `entity` without what alone is no change to record: a Card's `:card_schema`, a
-  technical marker that `revert-to-revision! :model/Card` reads back from the stored object."
-  [entity m]
-  (cond-> m
-    (= entity :model/Card) (dissoc :card_schema)))
-
 (defn- row
   [{:keys [id entity user-id is-creation? message]} serialized-object]
   {:model        (name entity)
@@ -307,21 +349,10 @@
    :is_reversion false
    :message      message})
 
-(defn row-changed?
-  "Whether the update of the row of `entity` with `id` from `before` to `after` changes what its Revision records,
-  comparing the row alone, without the parts of an aggregate such as a Dashboard's dashcards."
-  [entity id before after]
-  (let [serialize #(for-comparison entity (serialize-instance entity id (assoc % :dashcards [] :tabs [])))]
-    (not= (serialize before) (serialize after))))
-
 (mu/defn revision-row :- [:map [:model :string]]
   "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[revisions.db/insert-revisions!]]."
-  [{:keys [id entity object] :as info} :- PushRevisionInput]
-  (row info (serialize-instance entity id (dissoc object :message))))
-
-(def models-recording-own-revert
-  "The models whose reversion also writes a Revision of its own update, which the reversion Revision follows."
-  #{:model/CardTest :model/SegmentTest :model/TransformTest})
+  [{:keys [entity object] :as info} :- PushRevisionInput]
+  (row info (snapshot entity object)))
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."
@@ -334,9 +365,9 @@
         model-name (name entity)
         serialized-instance (revisions.db/revision-object model-name id revision-id)]
     (t2/with-transaction [_conn]
-      (let [already-in-target-state? (= serialized-instance
-                                        (revisions.db/latest-revision-object model-name id))
-            own-update?              (contains? models-recording-own-revert entity)
+      (let [already-in-target-state? (not (changed? entity
+                                                    (recorded entity (revisions.db/latest-revision-object model-name id))
+                                                    (recorded entity serialized-instance)))
             record-reversion!        #(when-not already-in-target-state?
                                         (revisions.db/insert-revision-returning! {:model        model-name
                                                                                   :model_id     id
@@ -347,10 +378,14 @@
             in-batch                 (events/with-event-context {:reverting? true}
                                        (events/with-batched-events
                                          (revert-to-revision! entity id user-id serialized-instance)
-                                         (when-not own-update?
-                                           [(revisions.db/latest-revision model-name id) (record-reversion!)])))
+                                         [(revisions.db/latest-revision model-name id) (record-reversion!)]))
             [last-revision new-revision] (or in-batch
                                              [(revisions.db/latest-revision model-name id) (record-reversion!)])]
         (if new-revision
           (add-revision-details entity new-revision last-revision)
           last-revision)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Revision [_model]
+  {:skip? false})

@@ -22,13 +22,20 @@
   While the feature is on, each write of a tracked model adds one query to its batch of events, and a delete reads
   what it cascades to. While it is off, the consumer runs no query.
 
-  To track a model, add it to `metabase.change-log.log/tracked-models` and derive `:hook/events` next to its other
-  hooks:
+  To track a model, give it a spec and derive `:hook/events` next to its other hooks:
 
       (doto :model/PermissionsGroup
         (derive :metabase/model)
         (derive :hook/entity-id)
         (derive :hook/events))
+
+      (defmethod change-log/spec :model/PermissionsGroup [_model]
+        {:track [:name :entity_id :magic_group_type :is_tenant_group]
+         :skip  []})
+
+  The [[spec]] lists every column of the table but `:id`, `:created_at` and `:updated_at`: under `:track` the columns
+  whose change is logged, and under `:skip` the ones whose change alone logs nothing. A new column fails
+  `spec-columns-test` until it is in one of them.
 
   `metabase.change-log.events` consumes the lifecycle events of the model: it logs each insert, update and delete, once
   per row at the end of the batch of the write. A model whose delete cascades to a tracked table (`ON DELETE CASCADE`,
@@ -40,7 +47,7 @@
   Metabase logs a warning instead of an entry.
 
   Each model is tracked or not on purpose. A new model fails `tracked-models-test` until it is in `tracked-models` or
-  `untracked-models`, the two lists in `metabase.change-log.events-test`.
+  `untracked-models`, the two lists in `metabase.change-log.events-test`, the first being the models with a spec.
 
   A direct table write skips the model: raw SQL, `t2/query`, `t2/update!` on the table name. It logs its rows with
   [[log-rows!]]. The `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
@@ -49,7 +56,7 @@
   Not captured:
 
   - a model that is not tracked
-  - an update that sets only a model's [[ignored-columns]]: usage stats that reads update (view
+  - an update that sets only columns that the model's [[spec]] skips: usage stats that reads update (view
     counts, last viewed and last used times), and what sync works out for Metabase's own use, such as a field's
     fingerprint
   - an update that changes no row
@@ -76,11 +83,13 @@
   (:require
    [metabase.change-log.events]
    [metabase.change-log.log]
+   [metabase.change-log.spec]
    [potemkin :as p]))
 
 (comment metabase.change-log.events/keep-me)
 
 (p/import-vars
  [metabase.change-log.log
-  ignored-columns
-  log-rows!])
+  log-rows!]
+ [metabase.change-log.spec
+  spec])

@@ -11,8 +11,6 @@ layout: new-docs
 
 # Accounts and billing
 
-Managing billing and accounts in the Metabase Store.
-
 ## Upgrade to Pro (or downgrade to Starter)
 
 To switch your plan:

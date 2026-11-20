@@ -81,7 +81,8 @@
                    :model/Card {metric-id :id}   {:type :metric :dataset_query (lib/aggregate venues (lib/count))}
                    :model/Card {question-id :id} {:type :question :dataset_query venues}]
       (let [queries {"q-1"      venues
-                     "q-legacy" (lib/->legacy-MBQL venues)
+                     ;; existing usage -- do not use going forward
+                     "q-legacy" #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL venues)
                      "q-model"  (lib/query (mt/metadata-provider)
                                            (lib.metadata/card
                                             (mt/metadata-provider) model-id))
@@ -129,9 +130,11 @@
                       "Query \"q-9\" was not found. Available query IDs: \"q-1\", \"q-legacy\"."
                       "Use an available query ID from this conversation.")
              (invoke {:query_id "q-9"} {"q-1"          (venues-query)
-                                        "q-legacy"     (lib/->legacy-MBQL (venues-query))
+                                        ;; existing usage -- do not use going forward
+                                        "q-legacy"     #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))
                                         "q-sql"        sql
-                                        "q-sql-legacy" (lib/->legacy-MBQL sql)
+                                        ;; existing usage -- do not use going forward
+                                        "q-sql-legacy" #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL sql)
                                         "q-sql-staged" (lib/append-stage sql)
                                         "q-draft"      {:database (mt/id)}})))))
   (testing "a long list of IDs is cut to complete IDs, so the recovery step still reaches the model"
@@ -218,7 +221,8 @@
       (let [mp    (mt/metadata-provider)
             query (-> (venues-query)
                       (lib/join (lib.metadata/card mp card-id)))]
-        (doseq [query [query (lib/->legacy-MBQL query)]]
+        ;; existing usage -- do not use going forward
+        (doseq [query [query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query)]]
           (let [queries {"q-join" query}
                 path    (mt/with-current-user (mt/user->id :crowberto)
                           (->> (invoke {:query_id "q-join"} queries)
@@ -278,7 +282,8 @@
 
 (deftest native-query-test
   (testing "an unsaved SQL query gets a recoverable refusal instead of a broken X-ray link"
-    (doseq [query ((juxt identity lib/->legacy-MBQL)
+    ;; existing usage -- do not use going forward
+    (doseq [query ((juxt identity #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL)
                    (lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES"))]
       (testing (pr-str (dissoc query :lib/metadata))
         (is (= (failure ::autogen-dashboard/unsupported-native-query

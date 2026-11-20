@@ -1,14 +1,13 @@
 (ns metabase.test.util.generators.jvm
   (:require
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.test-util.generators :as lib.tu.gen]
    [metabase.test :as mt]
    [metabase.test.util.random :as tu.rng]))
 
 (defn random-card-query
-  "Generate single random legacy query. For use in [[with-random-cards]]."
+  "Generate single random query. For use in [[with-random-cards]]."
   [mp]
-  (lib.convert/->legacy-MBQL (lib.tu.gen/random-query mp)))
+  (lib.tu.gen/random-query mp))
 
 (defmacro with-random-cards
   "Generate random cards (questions or models) and make those availble to caller through `&cards` anaphor.

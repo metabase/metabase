@@ -26,8 +26,8 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
-   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -43,12 +43,38 @@
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
 (defn- dashboard-row
-  "The projection row for `dash`, a dashboard from [[dashboard-write/write!]], saved or not.
+  "The projection row for `dash`, the dashboard [[dashboard-write/write!]] returns, saved or not.
    It goes through the same hydration and redaction `get_content` uses, so both tools return the same shape."
   [dash]
   (-> dash
       redaction/redact-dashboard
       projections/dashboard-row))
+
+(defn- visible-connections
+  "The `dropped-connections` that redaction showed on `stored`, the dashboard before the ops, nil on a create.
+   The user must be able to read the stored dashcard's card, unless it has none, and a series entry's card.
+   An entry whose card the user can't read in `dash`, the saved or dry-run dashboard, keeps its filter and dashcard
+   with a nil `:card_id`, unless that card was a series card on the stored dashcard."
+  [stored dash dropped-connections]
+  ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
+  ;; card, so a lost connection it hid isn't reported either. A `replace_card` that promotes a hidden series card
+  ;; reports that card's lost connection as the dashcard's own, so the stored series are checked too. A text or
+  ;; heading card has no card, and redaction keeps its mappings.
+  (when (seq dropped-connections)
+    (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
+          shown?          #(or (nil? %) (contains? readable %))
+          stored-card-ids (u/index-by :id :card_id (:dashcards stored))
+          stored-series   (u/index-by :id #(into #{} (keep :id) (:series %)) (:dashcards stored))]
+      (into []
+            (keep (fn [{:keys [dashcard_id card_id series] :as entry}]
+                    (let [card-shown? (shown? card_id)]
+                      (when (and (shown? (stored-card-ids dashcard_id))
+                                 (or card-shown?
+                                     (and (not series)
+                                          (not (contains? (stored-series dashcard_id) card_id)))))
+                        (cond-> entry
+                          (not card-shown?) (assoc :card_id nil))))))
+            dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
@@ -128,7 +154,9 @@
   per-display default sizes, and layout conventions. validate_only: true returns the layout the ops would
   produce without writing — but per-field parameter-mapping permission checks run only on the real save, so a
   clean dry run can still be rejected. A card that move, resize or an explicit position puts over others pushes
-  them down, and pushed_dashcard_ids lists them. Returns the resulting dashboard, so no follow-up read is needed.
+  them down, and pushed_dashcard_ids lists them. Filter connections lost without unwire_parameter or
+  patch_dashcard are listed in dropped_connections; reconnect them or tell the user. Returns the resulting dashboard,
+  so no follow-up read is needed.
   Requires write permission on the dashboard and read permission on each card an op wires. A card an op adds or
   makes a filter's value source needs read permission too, unless the dashboard already uses it."
   {:name           "dashboard_write"
@@ -141,7 +169,7 @@
    :args           dashboard-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [dispatched (v2.write/dispatch-write dashboard-write-entry args)
-        dash       (dashboard-errors/do-with-teaching-errors
+        written    (dashboard-errors/do-with-teaching-errors
                     #(case (first dispatched)
                        :create
                        (let [[_ body] dispatched
@@ -155,14 +183,18 @@
                                                   :validate-only? (boolean (:validate_only body))}))
 
                        :update
-                       (let [[_ id body] dispatched]
-                         (dashboard-write/write! {:dashboard      (fetch-dashboard id)
-                                                  :attrs          (dashboard-attrs body)
-                                                  :ops            (:ops body)
-                                                  :validate-only? (boolean (:validate_only body))}))))
-        pushed     (dashboard-ops/pushed-dashcard-ids dash)]
+                       (let [[_ id body] dispatched
+                             stored      (fetch-dashboard id)]
+                         (assoc (dashboard-write/write! {:dashboard      stored
+                                                         :attrs          (dashboard-attrs body)
+                                                         :ops            (:ops body)
+                                                         :validate-only? (boolean (:validate_only body))})
+                                :stored stored))))
+        {dash :dashboard, :keys [stored], {:keys [pushed-dashcard-ids dropped-connections]} :effects} written
+        dropped    (visible-connections stored dash dropped-connections)]
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         (cond-> (projections/project :dashboard :concise (dashboard-row dash))
-                          (seq pushed) (assoc :pushed_dashcard_ids pushed))
-                        nil))))
+                          (seq pushed-dashcard-ids) (assoc :pushed_dashcard_ids pushed-dashcard-ids)
+                          (seq dropped)             (assoc :dropped_connections dropped))
+                        []))))

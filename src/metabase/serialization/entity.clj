@@ -208,20 +208,19 @@
                  (identity-of (pop path)))
       entity)))
 
-(defmulti entity-ref
-  "The ref of `entity`, an entity of `model`: the exported value of its one identity column, or the vector of the
-  values of several, with keywords as their names."
-  {:arglists '([model entity])}
-  (fn [model _entity] model))
-
-(defmethod entity-ref :default [model entity]
-  (let [spec   (serialization.spec/spec-of model)
-        values (for [k (serialization.spec/identity-columns model)]
-                 (let [v (get entity (get-in spec [:transform k :as] k))]
-                   (cond-> v
-                     (string? v)  str/trim
-                     (keyword? v) u/qualified-name)))]
-    (if (next values) (vec values) (first values))))
+(defn entity-ref
+  "The ref of `entity`, an entity of `model`, by the `:entity-ref` of the spec of `model`, by default the exported value
+  of its one identity column, or the vector of the values of several, with keywords as their names."
+  [model entity]
+  (let [spec (serialization.spec/spec-of model)]
+    (if-let [f (:entity-ref spec)]
+      (f entity)
+      (let [values (for [k (or (:identity spec) [:entity_id])]
+                     (let [v (get entity (get-in spec [:transform k :as] k))]
+                       (cond-> v
+                         (string? v)  str/trim
+                         (keyword? v) u/qualified-name)))]
+        (if (next values) (vec values) (first values))))))
 
 (defn key-of
   "The `[model ref]` key of `entity`, which the dependencies of other entities name."

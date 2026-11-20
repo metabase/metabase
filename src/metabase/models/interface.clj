@@ -868,13 +868,12 @@
         (when item
           (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
 
-(defmulti exclude-internal-content-hsql
-  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
-   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
-   or keyword) is provided any columns will have a table alias in the returned expression."
-  {:arglists '([model & {:keys [table-alias]}])}
+(defmulti non-internal-filter-clause
+  "The HoneySQL clause over the table of `model` aliased `alias` selecting the rows that are no internal content, such
+  as Metabase Analytics, the sample database or the internal user; every row by default."
+  {:arglists '([model alias])}
   dispatch-on-model)
 
-(defmethod exclude-internal-content-hsql :default
-  [_model & _]
+(defmethod non-internal-filter-clause :default
+  [_model _alias]
   [:= [:inline 1] [:inline 1]])

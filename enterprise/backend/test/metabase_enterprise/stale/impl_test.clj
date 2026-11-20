@@ -552,7 +552,7 @@
                (rows (assoc base :models #{:model/Dashboard})))))
       (testing "a model with no registered staleness method fails loud (no silent drop)"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"No staleness method registered for"
+                              #"No staleness spec registered for"
                               (rows (assoc base :models #{:model/Card :model/Collection}))))))))
 
 (deftest things-that-are-already-archived-do-not-appear

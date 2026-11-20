@@ -5,6 +5,7 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
@@ -75,3 +76,8 @@
   [entity-type :- ::deps.dependency-types/dependency-types
    entity-id   :- ms/PositiveInt]
   (dependencies.db/finding-errors-for-entity entity-type entity-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/AnalysisFindingError [_model]
+  {:skip? true})
