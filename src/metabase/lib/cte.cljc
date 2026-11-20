@@ -124,7 +124,7 @@
         cache-key  [::transitive-cte-deps (:lib/uuid cte)]
         cached     (when cacheable?
                      (lib.metadata.protocols/cached-value mp cache-key ::miss))]
-    (if (and cacheable? (not (identical? cached ::miss)))
+    (if (and cacheable? (not= cached ::miss))
       cached
       (let [deps (compute-transitive-cte-deps outer-query cte)]
         (when cacheable?
