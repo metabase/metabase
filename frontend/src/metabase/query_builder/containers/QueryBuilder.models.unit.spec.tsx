@@ -734,6 +734,8 @@ describe("QueryBuilder > structured models", () => {
           expect(within(listbox).getByText(name)).toBeInTheDocument();
         },
       );
+      // The edited model is loaded, but its ID is not a target (metabase#31663)
+      expect(within(listbox).queryByText(/Model → ID/)).not.toBeInTheDocument();
     });
 
     it("loads the model once and picks a line chart for questions based on it (metabase#31905, metabase#32963)", async () => {
