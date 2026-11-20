@@ -157,11 +157,6 @@
                                                             :from   [:permissions_group_membership]
                                                             :where  [:= :group_id group-id]}]]}))
 
-(mu/defn tenant-user-count
-  "How many active users the tenant with `tenant-id` has."
-  [tenant-id :- ms/PositiveInt]
-  (t2/count :model/User :tenant_id tenant-id :is_active true))
-
 (mu/defn tenant-names
   "A map of tenant ID to name, for every tenant."
   []
@@ -185,11 +180,6 @@
   "The `:id`, `:name`, `:magic_group_type` and `:is_tenant_group` of every group, by name."
   []
   (t2/select [:model/PermissionsGroup :id :name :magic_group_type :is_tenant_group] {:order-by [[:name :asc]]}))
-
-(mu/defn previewable-tenants
-  "The `:id`, `:name` and `:attributes` of every active tenant, by name."
-  []
-  (t2/select [:model/Tenant :id :name :attributes] :is_active true {:order-by [[:name :asc]]}))
 
 (mu/defn previewable-databases
   "The `:id` and `:name` of every Database an admin grants permissions on: not the audit database, not a routing

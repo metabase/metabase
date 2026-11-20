@@ -174,19 +174,42 @@
             (is (= {} (:attributes (start {:attributes {"cat" ""}})))))
           (finally
             (t2/delete! :model/User :type "permission-preview")))))
-    (testing "a tenant's picked values replace its own in this admin's preview only"
+    (testing "a tenant user's picked values replace theirs in this admin's preview only"
       (mt/with-additional-premium-features #{:tenants}
         (mt/with-temporary-setting-values [use-tenants true]
-          (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Picked tenant" :slug "picked" :attributes {"cat" "1"}}]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Picked tenant" :slug "picked" :attributes {"cat" "1"}}
+                         :model/User {user-id :id} {:tenant_id tenant-id}]
+            (let [started (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                                {:principal_type "user"
+                                                 :principal_id   user-id
+                                                 :attributes     {"cat" "7"}})]
+              (is (= user-id (:user_id started)))
+              (is (= {:cat "7"} (:attributes started)))
+              (is (= {"cat" "7"} (preview/attribute-overrides-of (mt/user->id :crowberto) user-id (:preview_id started))))
+              (is (nil? (preview/attribute-overrides-of (mt/user->id :rasta) user-id (:preview_id started))))
+              (is (= {"cat" "1"} (t2/select-one-fn :attributes :model/Tenant :id tenant-id))))))))
+    (testing "a tenant can't be previewed as a principal, and no stand-in user is made for one"
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Refused tenant" :slug "refused"}]
+            (is (some? (mt/user-http-request :crowberto :post 400 "ee/permission_debug/preview/start"
+                                             {:principal_type "tenant" :principal_id tenant-id})))
+            (is (not (t2/exists? :model/User :type "permission-preview")))))))
+    (testing "a tenant group's stand-in belongs to its members' most common tenant"
+      (mt/with-additional-premium-features #{:tenants}
+        (mt/with-temporary-setting-values [use-tenants true]
+          (mt/with-temp [:model/Tenant {common-tenant-id :id} {:name "Common tenant" :slug "common"}
+                         :model/Tenant {other-tenant-id :id} {:name "Other tenant" :slug "other"}
+                         :model/PermissionsGroup {group-id :id} {:name "Tenant preview group" :is_tenant_group true}
+                         :model/User {first-member-id :id} {:tenant_id common-tenant-id}
+                         :model/User {second-member-id :id} {:tenant_id common-tenant-id}
+                         :model/User {third-member-id :id} {:tenant_id other-tenant-id}]
+            (doseq [member-id [first-member-id second-member-id third-member-id]]
+              (perms/add-user-to-group! member-id group-id))
             (try
-              (let [{user-id :user_id :as started} (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
-                                                                         {:principal_type "tenant"
-                                                                          :principal_id   tenant-id
-                                                                          :attributes     {"cat" "7"}})]
-                (is (= {:cat "7"} (:attributes started)))
-                (is (= {"cat" "7"} (preview/attribute-overrides-of (mt/user->id :crowberto) user-id)))
-                (is (nil? (preview/attribute-overrides-of (mt/user->id :rasta) user-id)))
-                (is (= {"cat" "1"} (t2/select-one-fn :attributes :model/Tenant :id tenant-id))))
+              (let [{:keys [user_id]} (mt/user-http-request :crowberto :post 200 "ee/permission_debug/preview/start"
+                                                            {:principal_type "group" :principal_id group-id})]
+                (is (= common-tenant-id (t2/select-one-fn :tenant_id :model/User :id user_id))))
               (finally
                 (t2/delete! :model/User :type "permission-preview")))))))
     (testing "an admin can't be previewed"

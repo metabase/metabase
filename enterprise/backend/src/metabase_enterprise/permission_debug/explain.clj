@@ -2,12 +2,11 @@
   "Preview a principal's effective access, and why, without running any query: data permissions per database and
   table, collections in each namespace, and application permissions.
 
-  A principal is a user, a group or a tenant, reduced to a set of group ids and a map of user attributes:
+  A principal is a user or a group, reduced to a set of group ids and a map of user attributes:
 
   - a user: their groups and attributes (tenant attributes included), as their own requests would see them;
   - a group: any member of it, so the group plus the magic group every member is in (All Users, or All tenant users
-    for a tenant group), with no attributes, since attribute values differ per member;
-  - a tenant: any of its users, so the All tenant users group, with the tenant's attributes.
+    for a tenant group), with no attributes, since attribute values differ per member.
 
   Every value comes with each group's own value and the group that applies. Across groups the most permissive value
   wins, and a sandbox or connection impersonation applies unless another of the groups, without one of its own, grants
@@ -20,7 +19,6 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
-   [metabase.tenants.core :as tenants]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trun tru]]
    [metabase.util.malli :as mu]))
@@ -30,7 +28,7 @@
 ;;; --------------------------------------------------- Schemas ---------------------------------------------------
 
 (def ^:private PrincipalType
-  [:enum "user" "group" "tenant"])
+  [:enum "user" "group"])
 
 (def ^:private Principal
   [:map {:closed true}
@@ -38,7 +36,7 @@
    [:id          pos-int?]
    [:name        :string]
    [:detail      [:maybe :string]]
-   ;; a group's members or a tenant's users; the frontend pluralizes it
+   ;; a group's members; the frontend pluralizes it
    [:member_count [:maybe nat-int?]]
    [:superuser   :boolean]
    [:tenant_side :boolean]
@@ -155,8 +153,7 @@
                       extra-keys))]
     [:map {:closed true}
      [:users   [:sequential (entry [:email [:maybe :string]] [:group_ids [:sequential pos-int?]])]]
-     [:groups  [:sequential (entry [:built_in :boolean])]]
-     [:tenants [:sequential (entry)]]]))
+     [:groups  [:sequential (entry [:built_in :boolean])]]]))
 
 ;;; ------------------------------------------------- Principals --------------------------------------------------
 
@@ -202,27 +199,12 @@
      :group-ids   (hash-set group-id (:id (if tenant? (perms/all-external-users-group) (perms/all-users-group))))
      :attributes  nil}))
 
-(defn- tenant-principal
-  [tenant-id]
-  (let [tenant (api/check-404 (permission-debug.db/tenant tenant-id))]
-    {:type        "tenant"
-     :id          tenant-id
-     :name        (:name tenant)
-     :detail      nil
-     :member_count (permission-debug.db/tenant-user-count tenant-id)
-     :superuser   false
-     :tenant_side true
-     :tenant-id   tenant-id
-     :group-ids   #{(:id (perms/all-external-users-group))}
-     :attributes  (tenants/login-attributes {:tenant_id tenant-id})}))
-
 (defn- principal
   "The principal, with `:group-rows`, its groups by name, for the per-group values."
   [principal-type principal-id]
   (let [p (case principal-type
-            "user"   (user-principal principal-id)
-            "group"  (group-principal principal-id)
-            "tenant" (tenant-principal principal-id))]
+            "user"  (user-principal principal-id)
+            "group" (group-principal principal-id))]
     (assoc p :group-rows (let [using-tenants? (perms/use-tenants)]
                            ;; the names the Permissions group list shows ("All internal users" once tenants are on)
                            (mapv #(assoc % :name (perms/group-display-name % using-tenants?))
@@ -234,14 +216,15 @@
       (assoc :groups (mapv #(select-keys % [:id :name]) (:group-rows p)))))
 
 (mu/defn previewable-principals :- PrincipalsResponse
-  "Every user, group and tenant an admin can preview, for the picker."
+  "Every user and group an admin can preview, for the picker."
   []
   ;; the same people as the Permissions tabs' preview list: no admins and no Administrators group (an admin sees
-  ;; everything), groups named and marked built-in as there
+  ;; everything), and no All tenant users group (tenants are previewed through their users), groups named and marked
+  ;; built-in as there
   (let [tenant-names    (permission-debug.db/tenant-names)
         using-tenants?  (perms/use-tenants)
-        admin-group-id  (:id (perms/admin-group))
-        built-in-ids    #{(:id (perms/all-users-group)) (:id (perms/all-external-users-group))}
+        unlisted-ids    #{(:id (perms/admin-group)) (:id (perms/all-external-users-group))}
+        built-in-ids    #{(:id (perms/all-users-group))}
         group-ids-of    (permission-debug.db/group-ids-by-user)]
     {:users   (for [user  (permission-debug.db/previewable-users)
                     :when (not (:is_superuser user))]
@@ -254,19 +237,13 @@
                  :member_count nil
                  :tenant_side (some? (:tenant_id user))})
      :groups  (for [group (permission-debug.db/previewable-groups)
-                    :when (not= (:id group) admin-group-id)]
+                    :when (not (unlisted-ids (:id group)))]
                 {:id          (:id group)
                  :name        (perms/group-display-name group using-tenants?)
                  :detail      nil
                  :member_count (permission-debug.db/group-member-count (:id group))
                  :built_in    (contains? built-in-ids (:id group))
-                 :tenant_side (boolean (:is_tenant_group group))})
-     :tenants (for [tenant (permission-debug.db/previewable-tenants)]
-                {:id          (:id tenant)
-                 :name        (:name tenant)
-                 :detail      nil
-                 :member_count (permission-debug.db/tenant-user-count (:id tenant))
-                 :tenant_side true})}))
+                 :tenant_side (boolean (:is_tenant_group group))})}))
 
 ;;; ---------------------------------------------------- Cells ----------------------------------------------------
 

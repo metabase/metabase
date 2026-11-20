@@ -106,9 +106,8 @@
                                              :card-id card-id}))
 
 (api.macros/defendpoint :post "/preview/start" :- :map
-  "Start previewing the app as a user, group or tenant. Returns the user the preview binds to (a group or tenant
-  resolves to its hidden preview user) and the attribute values it carries, and records the start of the preview in
-  the audit log. `attributes` sets a group's attribute values; any it leaves out take the most common member value,
+  "Start previewing the app as a user or group. Returns the user the preview binds to (a group resolves to its hidden
+  preview user) and the attribute values it carries, and records the start of the preview in the audit log. `attributes` sets a group's attribute values; any it leaves out take the most common member value,
   and an empty string means no value. The browser tab then sends `X-Metabase-Preview-As: <user_id>` on every API
   call. `preview_id` links this start to its `POST /preview/end`. With `unsaved_edits_id` (from `POST
   /preview/unsaved-edits`), the preview reads those unsaved permission edits as if they were saved."
@@ -194,7 +193,7 @@
                                                   [:preview_origin :string]
                                                   [:user_id ms/PositiveInt]
                                                   [:user_name :string]]
-  "Start previewing a user, group or tenant on the preview host (`MB_PERMISSION_PREVIEW_HOST`), with a session of
+  "Start previewing a user or group on the preview host (`MB_PERMISSION_PREVIEW_HOST`), with a session of
   their own that lives in that host's cookie. Takes the same body as `POST /preview/start`, records the start in the
   audit log, and returns what it does plus a one-time `code`, valid until `code_expires_at` (epoch seconds, a minute
   from now), and `preview_origin`. The frame opens `<preview_origin>/preview-session?code=<code>&to=<path>`, which sets
@@ -229,7 +228,7 @@
                                                      [:expires_at :int]
                                                      [:user_id ms/PositiveInt]
                                                      [:user_name :string]]
-  "Start previewing a user, group or tenant with a session of their own, for a frame that renders the item with the
+  "Start previewing a user or group with a session of their own, for a frame that renders the item with the
   SDK. Takes the same body as `POST /preview/start`, records the start in the audit log, and returns what it does plus
   `session_token`, valid until `expires_at` (epoch seconds, renewed while it's used) and only while this browser
   session is. A request sending `X-Metabase-Session: <session_token>` runs as `user_id`, read-only, with the caller
@@ -259,7 +258,7 @@
                                                    [:user_name :string]
                                                    [:principal_name :string]
                                                    [:attributes [:map-of :string :string]]]
-  "Start previewing a user, group or tenant in the isolated preview frame. Takes the same body as `POST
+  "Start previewing a user or group in the isolated preview frame. Takes the same body as `POST
   /preview/start`, records the start in the audit log, and returns a grant valid for this browser session only, for
   `expires_at` (epoch seconds). The host page's broker sends it as `X-Metabase-Preview-Grant` on each request it makes
   for the frame; the request then runs as `user_id`, read-only.
@@ -290,29 +289,28 @@
   With `group-id`: the ones the group's access depends on, each with its members' values, the other values to pick
   from, and the default.
 
-  With one of `user_id`, `group_id` or `tenant_id`: the ones the rules on that person's groups read, plus every
-  database router's, each with its rules (`uses`), the person's value (a group's or tenant's default), and `applies`,
+  With one of `user_id` or `group_id`: the ones the rules on that person's groups read, plus every database
+  router's, each with its rules (`uses`), the person's value (a group's default), and `applies`,
   false when `card_id` or `dashboard_id` is given and none of the attribute's rules touch the tables or databases it
   queries."
   [_route-params
-   {:keys [group-id user_id group_id tenant_id card_id dashboard_id]}
+   {:keys [group-id user_id group_id card_id dashboard_id]}
    :- [:and
        [:map {:closed true}
         [:group-id {:optional true} ms/PositiveInt]
         [:user_id {:optional true} ms/PositiveInt]
         [:group_id {:optional true} ms/PositiveInt]
-        [:tenant_id {:optional true} ms/PositiveInt]
         [:card_id {:optional true} ms/PositiveInt]
         [:dashboard_id {:optional true} ms/PositiveInt]]
-       [:fn {:error/message "exactly one of group-id, user_id, group_id or tenant_id, and at most one of card_id or dashboard_id"}
+       [:fn {:error/message "exactly one of group-id, user_id or group_id, and at most one of card_id or dashboard_id"}
         (fn [params]
-          (and (= 1 (count (keep params [:group-id :user_id :group_id :tenant_id])))
+          (and (= 1 (count (keep params [:group-id :user_id :group_id])))
                (> 2 (count (keep params [:card_id :dashboard_id])))))]]]
   (if group-id
     (permission-debug.impl/preview-attributes group-id)
     (permission-debug.impl/affecting-attributes
-     {:principal-type (cond user_id "user" group_id "group" tenant_id "tenant")
-      :principal-id   (or user_id group_id tenant_id)
+     {:principal-type (if user_id "user" "group")
+      :principal-id   (or user_id group_id)
       :card-id        card_id
       :dashboard-id   dashboard_id})))
 
@@ -336,7 +334,7 @@
   (permission-debug.impl/item-dependencies card_id dashboard_id))
 
 (api.macros/defendpoint :get "/preview/principals" :- permission-debug.explain/PrincipalsResponse
-  "Every user, group and tenant an admin can preview permissions as."
+  "Every user and group an admin can preview permissions as."
   []
   (permission-debug.explain/previewable-principals))
 
@@ -346,7 +344,7 @@
    [:principal-id ms/PositiveInt]])
 
 (api.macros/defendpoint :get "/preview/data" :- permission-debug.explain/DataAccessResponse
-  "What a user, group or tenant gets on every database and table: view data (with row and column security), create
+  "What a user or group gets on every database and table: view data (with row and column security), create
   queries, download results, manage table metadata, manage database and transforms. Each value comes with every group's
   own value and the group that applies. Runs no query and returns no rows. With `unsaved-edits-id`, as if those
   unsaved edits were saved. With `preview-id` (a user's only), with the attribute values that preview runs with."
@@ -376,7 +374,7 @@
                                  #(permission-debug.explain/explain-table-access-by-user table-id)))
 
 (api.macros/defendpoint :get "/preview/collections" :- permission-debug.explain/CollectionsResponse
-  "What a user, group or tenant gets on the collections of one Permissions tab: `default` (Collections), `shared`
+  "What a user or group gets on the collections of one Permissions tab: `default` (Collections), `shared`
   (Shared collections) or `tenant` (Tenant collections)."
   [_route-params
    {:keys [principal-type principal-id namespace]} :- [:map {:closed true}
@@ -388,7 +386,7 @@
                                                        :collection-namespace namespace}))
 
 (api.macros/defendpoint :get "/preview/application" :- permission-debug.explain/ApplicationResponse
-  "Which application permissions a user, group or tenant gets, and from which group."
+  "Which application permissions a user or group gets, and from which group."
   [_route-params
    {:keys [principal-type principal-id]} :- PrincipalParams]
   (permission-debug.explain/explain-application-access {:principal-type principal-type

@@ -525,8 +525,8 @@
 ;;; ------------------------------------------------ Preview as user ------------------------------------------------
 
 (def PrincipalType
-  "Who an admin can preview or explain: a user, a permissions group, or a tenant."
-  [:enum "user" "group" "tenant"])
+  "Who an admin can preview or explain: a user or a permissions group."
+  [:enum "user" "group"])
 
 (defn- user-display
   [{:keys [id first_name last_name email]}]
@@ -627,16 +627,14 @@
 
 (defn- principal-group-ids
   "The groups whose rules apply to a principal: a user's own groups; a group with All Users (All tenant users for a
-  tenant group), as its preview user has; a tenant's All tenant users."
+  tenant group), as its preview user has."
   [principal-type principal-id]
   (case principal-type
-    "user"   (permission-debug.db/user-group-ids principal-id)
-    "group"  (do (api/check-404 (permission-debug.db/group-name principal-id))
-                 #{principal-id (:id (if (permission-debug.db/tenant-group? principal-id)
-                                       (perms/all-external-users-group)
-                                       (perms/all-users-group)))})
-    "tenant" (do (api/check-404 (permission-debug.db/tenant principal-id))
-                 #{(:id (perms/all-external-users-group))})))
+    "user"  (permission-debug.db/user-group-ids principal-id)
+    "group" (do (api/check-404 (permission-debug.db/group-name principal-id))
+                #{principal-id (:id (if (permission-debug.db/tenant-group? principal-id)
+                                      (perms/all-external-users-group)
+                                      (perms/all-users-group)))})))
 
 (defn- rule-uses
   "One use per place a rule on `group-ids` reads an attribute, plus every database router."
@@ -706,19 +704,18 @@
 
 (defn- principal-values
   "The value of each attribute for the principal: a user's own (tenant, JSON Web Token then login attributes, as
-  [[metabase.users.models.user/add-attributes]] merges them), a tenant's own, or for a group the preview default."
+  [[metabase.users.models.user/add-attributes]] merges them), or for a group the preview default."
   [principal-type principal-id]
   (case principal-type
-    "user"   (let [{:keys [tenant_id jwt_attributes login_attributes]}
-                   (api/check-404 (permission-debug.db/user-attribute-sources principal-id))]
-               (merge {}
-                      (some-> tenant_id permission-debug.db/tenant :attributes)
-                      jwt_attributes
-                      login_attributes))
-    "tenant" (or (:attributes (permission-debug.db/tenant principal-id)) {})
-    "group"  (into {}
-                   (keep (fn [{:keys [attribute default]}] (when default [attribute default])))
-                   (preview-attributes principal-id))))
+    "user"  (let [{:keys [tenant_id jwt_attributes login_attributes]}
+                  (api/check-404 (permission-debug.db/user-attribute-sources principal-id))]
+              (merge {}
+                     (some-> tenant_id permission-debug.db/tenant :attributes)
+                     jwt_attributes
+                     login_attributes))
+    "group" (into {}
+                  (keep (fn [{:keys [attribute default]}] (when default [attribute default])))
+                  (preview-attributes principal-id))))
 
 (defn- user-value-sources
   "Where each of a user's attribute values comes from: the tenant, then JSON Web Token, then the admin-set login
@@ -791,23 +788,21 @@
            key))
 
 (defn- ensure-preview-user!
-  "The ID of the hidden preview user of a group or tenant, created on first use: inactive, of type
-  `:permission-preview`, in that group only (plus All Users or All tenant users, which every new user joins). A tenant
-  group's preview user belongs to its members' most common tenant."
-  [principal-type principal-id principal-name]
-  (let [email (preview-user-email principal-type principal-id)]
+  "The ID of the hidden preview user of a group, created on first use: inactive, of type `:permission-preview`, in
+  that group only (plus All Users or All tenant users, which every new user joins). A tenant group's preview user
+  belongs to its members' most common tenant."
+  [group-id group-name]
+  (let [email (preview-user-email "group" group-id)]
     (or (permission-debug.db/preview-user-id email)
-        (let [tenant-group? (and (= "group" principal-type) (permission-debug.db/tenant-group? principal-id))
-              tenant-id     (cond
-                              (= "tenant" principal-type) principal-id
-                              tenant-group?               (api/check (most-common-tenant-id principal-id)
-                                                                     [400 (tru "This tenant group can''t be previewed until it has at least one user.")]))
-              user-id       (permission-debug.db/insert-preview-user! {:email      email
-                                                                       :first_name (tru "{0} preview" principal-name)
-                                                                       :tenant_id  tenant-id})
-              magic-groups  #{(:id (perms/all-users-group)) (:id (perms/all-external-users-group))}]
-          (when (and (= "group" principal-type) (not (magic-groups principal-id)))
-            (permission-debug.db/add-user-to-groups! user-id [principal-id]))
+        (let [tenant-id    (when (permission-debug.db/tenant-group? group-id)
+                             (api/check (most-common-tenant-id group-id)
+                                        [400 (tru "This tenant group can''t be previewed until it has at least one user.")]))
+              user-id      (permission-debug.db/insert-preview-user! {:email      email
+                                                                      :first_name (tru "{0} preview" group-name)
+                                                                      :tenant_id  tenant-id})
+              magic-groups #{(:id (perms/all-users-group)) (:id (perms/all-external-users-group))}]
+          (when-not (magic-groups group-id)
+            (permission-debug.db/add-user-to-groups! user-id [group-id]))
           user-id))))
 
 (mu/defn start-preview! :- [:map
@@ -817,11 +812,11 @@
                             [:attributes Attributes]
                             [:preview_id :string]]
   "Resolve the principal an admin wants to preview to the user the request binds to, and record the start of the
-  preview in the audit log. A user previews as themselves. A group or tenant previews as its hidden preview user,
-  because permission checks look the user's groups up again by id, so the binding needs a user row; a real member
-  would bring their other groups and their own attributes. A group's preview user carries `attributes`, defaulting to
-  the most common value among members for each attribute the group's access depends on; a tenant's carries the
-  tenant's own. A user's or tenant's `attributes` override those values in this admin's previews of them only. With
+  preview in the audit log. A user previews as themselves. A group previews as its hidden preview user, because
+  permission checks look the user's groups up again by id, so the binding needs a user row; a real member would bring
+  their other groups and their own attributes. A group's preview user carries `attributes`, defaulting to the most
+  common value among members for each attribute the group's access depends on. A user's `attributes` override their
+  own values in this admin's previews of them only. With
   `unsaved-edits-id` (from [[preview/create-unsaved-edits!]]), every request of the preview reads the admin's unsaved
   permission edits as if they were saved."
   [{:keys [principal-type principal-id attributes unsaved-edits-id]}
@@ -831,18 +826,17 @@
        [:attributes {:optional true} [:maybe Attributes]]
        [:unsaved-edits-id {:optional true} [:maybe :string]]]]
   (let [principal-name (case principal-type
-                         "user"   (:user_name (some-> (permission-debug.db/user-summary principal-id) user-display))
-                         "group"  (-> (api/check-404 (first (permission-debug.db/groups #{principal-id})))
-                                      (perms/group-display-name (perms/use-tenants)))
-                         "tenant" (:name (api/check-404 (permission-debug.db/tenant principal-id))))
+                         "user"  (:user_name (some-> (permission-debug.db/user-summary principal-id) user-display))
+                         "group" (-> (api/check-404 (first (permission-debug.db/groups #{principal-id})))
+                                     (perms/group-display-name (perms/use-tenants))))
         _              (api/check (not (and (= "group" principal-type)
                                             (= principal-id (:id (perms/admin-group)))))
                                   [400 (tru "Admins can''t be previewed, because they can see everything.")])
         user-id        (if (= "user" principal-type)
                          principal-id
-                         (ensure-preview-user! principal-type principal-id principal-name))
-        ;; a user's or tenant's own values stay on their rows; these replace them in this admin's preview only
-        overrides      (when (#{"user" "tenant"} principal-type) (or attributes {}))
+                         (ensure-preview-user! principal-id principal-name))
+        ;; a user's own values stay on their row; these replace them in this admin's preview only
+        overrides      (when (= "user" principal-type) (or attributes {}))
         attributes     (if (= "group" principal-type)
                          (into {}
                                (keep (fn [{:keys [attribute default]}]
@@ -882,7 +876,7 @@
     {:user_id        user-id
      :user_name      principal-name
      :principal_name principal-name
-     ;; the preview binds a group's values, and a user's or tenant's overrides
+     ;; the preview binds a group's values, and a user's overrides
      :attributes     (if (= "group" principal-type) attributes overrides)
      :preview_id     preview-id}))
 

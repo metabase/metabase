@@ -225,22 +225,47 @@
       (mt/with-temp [:model/Tenant {own-tenant-id :id own-collection-id :tenant_collection_id} {:name "Own tenant" :slug "own"}
                      :model/Tenant {other-collection-id :tenant_collection_id} {:name "Other tenant" :slug "other"}
                      :model/User {tenant-user-id :id} {:tenant_id own-tenant-id}]
-        (doseq [[principal-type principal-id] [["tenant" own-tenant-id] ["user" tenant-user-id]]]
-          (testing (str "a " principal-type " on the tenant side")
-            (testing "gets Curate on its own tenant's collection from membership, and No access on another's"
-              (let [by-id (into {} (map (juxt :id identity))
-                                (:collections (preview "collections" principal-type principal-id :namespace "tenant")))]
-                (is (=? {:source "tenant" :access {:value "write" :groups []}} (by-id own-collection-id)))
-                (is (=? {:source "other-tenant" :access {:value "none"}} (by-id other-collection-id)))))
-            (testing "doesn't get the main collections or application permissions, with the reason"
-              (is (=? {:applies false :reason string? :collections (if (= principal-type "user")
-                                                                     [{:id     (t2/select-one-pk :model/Collection :personal_owner_id principal-id)
-                                                                       :source "personal"
-                                                                       :access {:value "write" :groups []}}]
-                                                                     [])}
-                      (preview "collections" principal-type principal-id :namespace "default")))
-              (is (=? {:applies false :reason string? :permissions []}
-                      (preview "application" principal-type principal-id))))))))))
+        (testing "a user on the tenant side"
+          (testing "gets Curate on its own tenant's collection from membership, and No access on another's"
+            (let [by-id (into {} (map (juxt :id identity))
+                              (:collections (preview "collections" "user" tenant-user-id :namespace "tenant")))]
+              (is (=? {:source "tenant" :access {:value "write" :groups []}} (by-id own-collection-id)))
+              (is (=? {:source "other-tenant" :access {:value "none"}} (by-id other-collection-id)))))
+          (testing "doesn't get the main collections or application permissions, with the reason"
+            (is (=? {:applies false :reason string? :collections [{:id     (t2/select-one-pk :model/Collection :personal_owner_id tenant-user-id)
+                                                                   :source "personal"
+                                                                   :access {:value "write" :groups []}}]}
+                    (preview "collections" "user" tenant-user-id :namespace "default")))
+            (is (=? {:applies false :reason string? :permissions []}
+                    (preview "application" "user" tenant-user-id)))))))))
+
+(deftest tenant-is-not-a-principal-test
+  (mt/with-premium-features #{:advanced-permissions :tenants}
+    (mt/with-temporary-setting-values [use-tenants true]
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:name "Not a principal" :slug "not-a-principal"}
+                     :model/User {tenant-user-id :id} {:tenant_id tenant-id}]
+        (testing "the picker lists users and groups only, and the tenant's user with the tenant's name"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug/preview/principals")]
+            (is (= #{:users :groups} (set (keys response))))
+            (is (=? {:detail "Not a principal"}
+                    (some #(when (= tenant-user-id (:id %)) %) (:users response))))))
+        (testing "the picker leaves out the All tenant users group, and keeps the other tenant groups"
+          (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:name "Tenant picker group" :is_tenant_group true}]
+            (let [group-ids (set (map :id (:groups (mt/user-http-request :crowberto :get 200 "ee/permission_debug/preview/principals"))))]
+              (is (not (contains? group-ids (:id (perms/all-external-users-group)))))
+              (is (contains? group-ids tenant-group-id))
+              (is (contains? group-ids (:id (perms/all-users-group)))))))
+        (testing "every preview endpoint refuses a tenant principal"
+          (doseq [path ["data" "application"]]
+            (is (some? (mt/user-http-request :crowberto :get 400 (str "ee/permission_debug/preview/" path)
+                                             :principal-type "tenant"
+                                             :principal-id tenant-id))))
+          (is (some? (mt/user-http-request :crowberto :get 400 "ee/permission_debug/preview/collections"
+                                           :principal-type "tenant"
+                                           :principal-id tenant-id
+                                           :namespace "default")))
+          (is (some? (mt/user-http-request :crowberto :get 400 "ee/permission_debug/preview/attributes"
+                                           :tenant_id tenant-id))))))))
 
 (deftest application-test
   (mt/with-premium-features #{:advanced-permissions}
