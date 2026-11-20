@@ -36,10 +36,10 @@
   (derive-is-active (cond-> run (nil? (:status run)) (assoc :status :started))))
 
 (defn derive-is-active-on-update
-  "Derive `is_active` of the updated `run` from its status when the status is among the changes."
+  "Clear `is_active` of the updated `run` when its status changes to a terminal one; an ended run never becomes active again."
   [run]
   (cond-> run
-    (contains? (t2/changes run) :status) derive-is-active))
+    (contains? terminal-statuses (keyword (:status (t2/changes run)))) (assoc :is_active nil)))
 
 (mu/defn timestamp-range :- [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]
   "Parse `date-string` (in the same format as the query-processor date parameter, e.g. \"2025-01\",
