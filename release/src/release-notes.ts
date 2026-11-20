@@ -12,13 +12,14 @@ import {
   isValidVersionString,
 } from "./version-helpers";
 
-// The fixed tag of the release: the version support page advises against mutable `.x` tags.
 export const getDockerTag = (version: string) => {
+  const dotXVersion = getDotXVersion(version);
+
   const imagePath = `${process.env.DOCKERHUB_OWNER}/${
     process.env.DOCKERHUB_REPO
   }${isEnterpriseVersion(version) ? "-enterprise" : ""}`;
 
-  return `[\`${imagePath}:${version}\`](https://hub.docker.com/r/${imagePath}/tags)`;
+  return `[\`${imagePath}:${dotXVersion}\`](https://hub.docker.com/r/${imagePath}/tags)`;
 };
 
 export const getDownloadUrl = (version: string) => {

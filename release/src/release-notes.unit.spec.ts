@@ -26,8 +26,8 @@ describe("Release Notes", () => {
 
       expect(notes).toContain("https://www.metabase.com/changelog/");
 
-      expect(notes).toContain("`metabase/metabase-enterprise:v1.2.3`");
-      expect(notes).toContain("`metabase/metabase:v0.2.3`");
+      expect(notes).toContain("metabase/metabase-enterprise:v1.2.3.x");
+      expect(notes).toContain("metabase/metabase:v0.2.3.x");
       expect(notes).toContain(
         "https://downloads.metabase.com/enterprise/v1.2.3.x/metabase.jar",
       );
