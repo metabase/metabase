@@ -181,7 +181,8 @@
     {:target_collection target-collection}))
 
 (api.macros/defendpoint :post "/unpublish-tables" :- :nil
-  "Unset collection for each of selected tables and all downstream dependents recursively."
+  "Unset collection for each of selected tables and all downstream dependents recursively, skipping the tables
+  published into a collection that does not exist."
   [_route-params
    _query-params
    body :- ::table-selectors]
@@ -192,10 +193,15 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (let [collection-ids (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update))
-            by-id          (u/index-by :id (t2/hydrate (data-studio.db/collections collection-ids) :can_write))]
-        (run! (comp api/write-check by-id) collection-ids))
-      (data-studio.db/unpublish-tables! table-ids-to-update))
+      (let [tables         (data-studio.db/tables table-ids-to-update)
+            collection-ids (into #{} (keep :collection_id) tables)
+            by-id          (u/index-by :id (t2/hydrate (data-studio.db/collections collection-ids) :can_write))
+            table-ids      (into [] (comp (filter #(or (nil? (:collection_id %)) (by-id (:collection_id %))))
+                                          (map :id))
+                                 tables)]
+        (run! api/write-check (vals by-id))
+        (when (seq table-ids)
+          (data-studio.db/unpublish-tables! table-ids))))
     nil))
 
 (def ^{:arglists '([request respond raise])} routes

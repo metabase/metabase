@@ -124,9 +124,11 @@
   (t2/count :model/MetabotPrompt (h2x/assert-map-or-nil! (prompts-for-metabot-query metabot-id card-type card-id))))
 
 (mu/defn prompt-count-for-metabot
-  "The number of MetabotPrompts of the Metabot with `metabot-id`."
+  "The number of MetabotPrompts of the Metabot with `metabot-id` whose Cards exist."
   [metabot-id :- ms/PositiveInt]
-  (t2/count :model/MetabotPrompt :metabot_id metabot-id))
+  (t2/count :model/MetabotPrompt {:from      [[(t2/table-name :model/MetabotPrompt) :prompt]]
+                                  :left-join [[(t2/table-name :model/Card) :card] [:= :card.id :prompt.card_id]]
+                                  :where     [:and [:= :prompt.metabot_id metabot-id] [:not= :card.id nil]]}))
 
 (mu/defn insert-prompts!
   "Insert the MetabotPrompt `rows`."
@@ -782,7 +784,10 @@
         ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id
                             (let [metabot-collection (collection metabot-collection-id)
-                                  collection-ids (conj (collection.model/descendant-ids metabot-collection) metabot-collection-id)]
+                                  collection-ids     (if metabot-collection
+                                                       (conj (collection.model/descendant-ids metabot-collection)
+                                                             metabot-collection-id)
+                                                       #{metabot-collection-id})]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
         base-query ^:allow-subquery {:select [:report_card.*]

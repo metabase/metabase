@@ -318,9 +318,13 @@
                                   :order-by  [[:transform_run.start_time :asc]]}))
 
 (mu/defn runs-for-dag-run
-  "The TransformRuns of the TransformDagRun with `dag-run-id`, oldest first."
+  "The TransformRuns of the TransformDagRun with `dag-run-id` whose Transforms exist, oldest first."
   [dag-run-id :- ms/PositiveInt]
-  (t2/select :model/TransformRun {:where [:= :dag_run_id dag-run-id], :order-by [[:start_time :asc]]}))
+  (t2/select :model/TransformRun {:select    [:transform_run.*]
+                                  :from      [[(t2/table-name :model/TransformRun) :transform_run]]
+                                  :left-join (transform-join)
+                                  :where     [:and [:= :transform_run.dag_run_id dag-run-id] existing-transform-clause]
+                                  :order-by  [[:transform_run.start_time :asc]]}))
 
 (defn- paged-runs-where
   "Builds a `:where` clause for the paged run listing from plain filter data. `started-at-start`/`started-at-end`

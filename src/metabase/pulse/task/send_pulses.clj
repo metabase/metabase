@@ -70,16 +70,18 @@
       (set ids-to-delete))))
 
 (defn- send-pulse!*
-  "Do several things:
+  "Do several things, when the pulse and its Dashboard exist:
   - Clear PulseChannels that have no recipients and no channel set for a pulse
   - Send a pulse to a list of channels"
   [pulse-id channel-ids]
-  (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
-        to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
-        to-send-enabled-channel-ids (pulse.db/enabled-pulse-channel-ids to-send-channel-ids)]
-    (if (seq to-send-enabled-channel-ids)
-      (send-pulse! pulse-id to-send-enabled-channel-ids)
-      (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
+  (if-not (pulse.db/pulse pulse-id)
+    (log/tracef "Pulse %d or its Dashboard not found, Skipping." pulse-id)
+    (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
+          to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
+          to-send-enabled-channel-ids (pulse.db/enabled-pulse-channel-ids to-send-channel-ids)]
+      (if (seq to-send-enabled-channel-ids)
+        (send-pulse! pulse-id to-send-enabled-channel-ids)
+        (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id)))))
 
 (task/defjob SendPulse
   "Triggers that send a pulse to a list of channels at a specific time"

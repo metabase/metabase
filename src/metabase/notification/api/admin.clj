@@ -428,7 +428,8 @@
       (let [before (-> (notification.db/card-notifications ids)
                        models.notification/hydrate-notification
                        vec)]
-        (notification.db/update-card-notifications! ids update-map)
+        (when (seq before)
+          (notification.db/update-card-notifications! (mapv :id before) update-map))
         before))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response

@@ -99,10 +99,12 @@
         flags          (into {}
                              (map (fn [{:keys [model model_id] :as config}]
                                     [(target-key config)
-                                     (can-write-config? config
-                                                        (get-in collection-ids [model model_id])
-                                                        collection-permissions
-                                                        (when (= "database" model) (get databases model_id)))]))
+                                     (and (or (not (contains? collection-ids model))
+                                              (contains? (get collection-ids model) model_id))
+                                          (can-write-config? config
+                                                             (get-in collection-ids [model model_id])
+                                                             collection-permissions
+                                                             (when (= "database" model) (get databases model_id))))]))
                              configs)]
     (for [config cache-configs]
       (when config

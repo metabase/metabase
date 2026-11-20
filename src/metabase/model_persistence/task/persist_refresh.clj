@@ -144,9 +144,10 @@
                                    ;; Since this could be long running, double check state just before deleting
                                    (let [current-state (model-persistence.db/persisted-info-state (:id persisted-info))
                                          card-info     (model-persistence.db/card-archived-and-type (:card_id persisted-info))]
-                                     (if (or (contains? (persisted-info/prunable-states) current-state)
-                                             (:archived card-info)
-                                             (not= (:type card-info) :model))
+                                     (if (and (or (nil? (:card_id persisted-info)) (some? card-info))
+                                              (or (contains? (persisted-info/prunable-states) current-state)
+                                                  (:archived card-info)
+                                                  (not= (:type card-info) :model)))
                                        (let [database (-> persisted-info :database_id db-id->db)]
                                          (log/infof "Unpersisting model with card-id %s" (:card_id persisted-info))
                                          (tracing/with-span :tasks "task.persist.unpersist-model" {:db/id           (:database_id persisted-info)

@@ -82,10 +82,27 @@
 
 ;;; --------------------------------------------- Notification ---------------------------------------------
 
+(defn- card-payload-join
+  "The left join of the NotificationCard of each card Notification as `payload_card`, and of its Card as
+  `payload_card_card`."
+  []
+  [[(t2/table-name :model/NotificationCard) :payload_card]
+   [:and
+    [:= :payload_card.id :notification.payload_id]
+    [:= :notification.payload_type "notification/card"]]
+   [(t2/table-name :model/Card) :payload_card_card] [:= :payload_card_card.id :payload_card.card_id]])
+
+(def ^:private existing-card-clause
+  "Matches the Notifications that are not card Notifications, or whose Card exists, with [[card-payload-join]]."
+  [:or [:not= :notification.payload_type "notification/card"] [:not= :payload_card_card.id nil]])
+
 (mu/defn notification
-  "The Notification with `notification-id`, or nil."
+  "The Notification with `notification-id`, a card one only when its Card exists, or nil."
   [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification :id [:auto/param notification-id]))
+  (t2/select-one :model/Notification {:select    [:notification.*]
+                                      :from      [[(t2/table-name :model/Notification) :notification]]
+                                      :left-join (card-payload-join)
+                                      :where     [:and [:= :notification.id notification-id] existing-card-clause]}))
 
 (mu/defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -101,7 +118,7 @@
                                             :where  [:= :id handler-id]}]))
 
 (mu/defn notifications-matching
-  "Reducible Notifications, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
+  "Reducible Notifications, card ones only when their Card exists, optionally narrowed to `creator-id`, `creator-or-recipient-id` (a User who is either the
   creator or a recipient), `recipient-id`, `card-id`, and `payload-type`; active Notifications only unless
   `include-inactive?` or `legacy-active` (a boolean, overriding both) is given. `legacy-user-id` narrows to a User
   who is either the creator or a recipient."
@@ -118,7 +135,10 @@
        [:legacy-user-id           {:optional true} [:maybe ::lib.schema.id/user]]]]
   (t2/reducible-select
    :model/Notification
-   (cond-> {:select-distinct [:notification.*]}
+   (cond-> {:select-distinct [:notification.*]
+            :from            [[(t2/table-name :model/Notification) :notification]]
+            :left-join       (card-payload-join)
+            :where           existing-card-clause}
      creator-id
      (sql.helpers/where [:= :notification.creator_id creator-id])
 
@@ -138,12 +158,7 @@
                              [:= :notification.creator_id creator-or-recipient-id]]))
 
      card-id
-     (-> (sql.helpers/left-join
-          :notification_card
-          [:and
-           [:= :notification_card.id :notification.payload_id]
-           [:= :notification.payload_type "notification/card"]])
-         (sql.helpers/where [:= :notification_card.card_id card-id]))
+     (sql.helpers/where [:= :payload_card.card_id card-id])
 
      (and (nil? legacy-active) (not (true? include-inactive?)))
      (sql.helpers/where [:= :notification.active true])
@@ -169,9 +184,15 @@
   (t2/select :model/Notification :id [:in notification-ids]))
 
 (mu/defn card-notifications
-  "The card Notifications among `notification-ids`."
+  "The card Notifications among `notification-ids` whose Cards exist."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
+  (t2/select :model/Notification {:select    [:notification.*]
+                                  :from      [[(t2/table-name :model/Notification) :notification]]
+                                  :left-join (card-payload-join)
+                                  :where     [:and
+                                              [:in :notification.id notification-ids]
+                                              [:= :notification.payload_type "notification/card"]
+                                              [:not= :payload_card_card.id nil]]}))
 
 (mu/defn active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
@@ -614,15 +635,16 @@
                                [:ls.id                                            :ls_id]
                                [:ls.started_at                                    :ls_started_at]
                                [:ls.has_failure                                   :ls_has_failure]]))
-              :from   [:notification]
+              :from   [[(t2/table-name :model/Notification) :notification]]
               :where  [:and
                        [:= :notification.payload_type "notification/card"]
-                       [:is-not :notification.payload_id nil]]}
+                       [:is-not :notification.payload_id nil]
+                       [:not= :c.id nil]]}
 
        true
-       (-> (sql.helpers/left-join [:notification_card :nc] [:= :nc.id :notification.payload_id])
-           (sql.helpers/left-join [:report_card :c]        [:= :c.id :nc.card_id])
-           (sql.helpers/left-join [:core_user :cu]         [:= :cu.id :notification.creator_id]))
+       (-> (sql.helpers/left-join [(t2/table-name :model/NotificationCard) :nc] [:= :nc.id :notification.payload_id])
+           (sql.helpers/left-join [(t2/table-name :model/Card) :c] [:= :c.id :nc.card_id])
+           (sql.helpers/left-join [(t2/table-name :model/User) :cu] [:= :cu.id :notification.creator_id]))
 
        (not skip-run-joins?)
        (-> (sql.helpers/left-join [(latest-run-per-notification lookback)       :lc] [:= :lc.notification_id :notification.id])

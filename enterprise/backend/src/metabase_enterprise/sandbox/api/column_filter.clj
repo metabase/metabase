@@ -55,9 +55,10 @@
     [:id   {:optional true} ms/PositiveInt]
     [:name {:optional true} :string]]])
 
-(mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt :map]
-  "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user.
-  Tables with no sandbox, or with attribute-only sandboxes (no `card_id`), are absent. Reads `perms/sandboxes-for-user`,
+(mu/defn find-sandbox-source-cards :- [:map-of ms/PositiveInt [:maybe :map]]
+  "Return `{table-id => sandbox-source-card}` for the `table-ids` that have a Card-backed sandbox for the current user,
+  nil for a sandbox whose Card does not exist. Tables with no sandbox, or with attribute-only sandboxes (no
+  `card_id`), are absent. Reads `perms/sandboxes-for-user`,
   the per-request cache, so returns `{}` outside a request (background tasks, REPL) even when sandboxes are configured."
   [table-ids :- [:set ms/PositiveInt]]
   (let [sandboxes (filter (comp table-ids :table_id) (perms/sandboxes-for-user))
@@ -66,8 +67,8 @@
       (let [cards-by-id (sandbox.db/cards-by-id card-ids)]
         (into {}
               (keep (fn [{:keys [table_id card_id]}]
-                      (when-let [card (get cards-by-id card_id)]
-                        [table_id card])))
+                      (when card_id
+                        [table_id (get cards-by-id card_id)])))
               sandboxes))
       {})))
 
@@ -95,24 +96,28 @@
         (filter #(contains? allowed (:id %)) fields)))))
 
 (mu/defn filter-fields-for-table
-  "Return the `fields` for `table-id` that are visible to the current user under their sandbox configuration.
-  Non-sandboxed tables and superusers receive `fields` unchanged."
+  "Return the `fields` for `table-id` that are visible to the current user under their sandbox configuration, none
+  when its sandbox Card does not exist. Non-sandboxed tables and superusers receive `fields` unchanged."
   [table-id :- ms/PositiveInt
    fields   :- [:sequential Field]]
-  (if-let [card (get (find-sandbox-source-cards #{table-id}) table-id)]
-    (filter-fields-by-card card fields)
-    fields))
+  (let [card-by-table (find-sandbox-source-cards #{table-id})]
+    (cond
+      (not (contains? card-by-table table-id)) fields
+      (get card-by-table table-id)             (filter-fields-by-card (get card-by-table table-id) fields)
+      :else                                    [])))
 
 (mu/defn batch-filter-fields-by-table
-  "Return the `{table-id => fields}` map with each table's fields filtered to those visible to the current user.
-  Filters per the user's sandbox configuration, using a single DB query for all sandbox source cards."
+  "Return the `{table-id => fields}` map with each table's fields filtered to those visible to the current user, none
+  for a table whose sandbox Card does not exist. Filters per the user's sandbox configuration, using a single DB query for all sandbox source cards."
   [fields-by-table :- [:map-of ms/PositiveInt [:sequential Field]]]
   (let [card-by-table (find-sandbox-source-cards (set (keys fields-by-table)))]
     (into {}
           (map (fn [[table-id fields]]
-                 [table-id (if-let [card (get card-by-table table-id)]
-                             (filter-fields-by-card card fields)
-                             fields)]))
+                 [table-id (cond
+                             (not (contains? card-by-table table-id)) fields
+                             (get card-by-table table-id)             (filter-fields-by-card (get card-by-table table-id)
+                                                                                             fields)
+                             :else                                    [])]))
           fields-by-table)))
 
 ;;; ----------------------------- defenterprise wrappers -----------------------------

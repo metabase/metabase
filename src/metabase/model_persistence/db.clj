@@ -51,22 +51,25 @@
 
 (mu/defn deletable-prunable-persisted-infos
   "The PersistedInfos in one of `states` for over an hour, or attached to an archived question, or whose
-  Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist."
+  Card has been deleted — the records [[metabase.model-persistence.task.persist-refresh]] may unpersist — leaving out
+  those whose Card is set but does not exist, which deleting a Card never leaves."
   [states :- [:set :string]]
   (let [hsql {:select    [:p.*]
-              :from      [[:persisted_info :p]]
-              :left-join [[:report_card :c] [:= :c.id :p.card_id]]
-              :where     [:or
-                          [:and
-                           [:in :state states]
-                           ;; Buffer deletions for an hour if the prune job happens soon after setting
-                           ;; state: 1. so people have a chance to change their mind, 2. so a query
-                           ;; running against the cache doesn't get ripped out.
-                           [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
-                          [:= :c.type "question"]
-                          [:= :c.archived true]
-                          ;; card_id is set to null when the corresponding card is deleted
-                          [:= :p.card_id nil]]}]
+              :from      [[(t2/table-name :model/PersistedInfo) :p]]
+              :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
+              :where     [:and
+                          [:or [:= :p.card_id nil] [:not= :c.id nil]]
+                          [:or
+                           [:and
+                            [:in :state states]
+                            ;; Buffer deletions for an hour if the prune job happens soon after setting
+                            ;; state: 1. so people have a chance to change their mind, 2. so a query
+                            ;; running against the cache doesn't get ripped out.
+                            [:< :state_change_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]
+                           [:= :c.type "question"]
+                           [:= :c.archived true]
+                           ;; card_id is set to null when the corresponding card is deleted
+                           [:= :p.card_id nil]]]}]
     (tracing/with-span :tasks "task.persist.find-deletable" {:db/statement (tracing/best-effort-sanitize-sql hsql)}
       (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! hsql)))))
 
@@ -93,9 +96,12 @@
   (t2/select :model/PersistedInfo :id [:in ids]))
 
 (mu/defn persisted-info
-  "The PersistedInfo with `id`, or nil."
+  "The PersistedInfo with `id` whose Card exists, or that has none, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PersistedInfo :id id))
+  (t2/select-one :model/PersistedInfo {:select    [:p.*]
+                                       :from      [[(t2/table-name :model/PersistedInfo) :p]]
+                                       :left-join [[(t2/table-name :model/Card) :c] [:= :c.id :p.card_id]]
+                                       :where     [:and [:= :p.id id] [:or [:= :p.card_id nil] [:not= :c.id nil]]]}))
 
 (mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."

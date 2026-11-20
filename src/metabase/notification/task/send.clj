@@ -40,6 +40,9 @@
                 (log/errorf "Failed to submit to the notification queue: %s" (ex-message e))
                 (throw e)))))
 
+        (and subscription (nil? notification))
+        (log/tracef "Skipping subscription %d because the Card of its notification does not exist." subscription-id)
+
         (nil? notification)
         (do
           (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)

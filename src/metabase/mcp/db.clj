@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -242,9 +243,20 @@
   (t2/hydrate card [:moderation_reviews :moderator_details]))
 
 (defn notification-by-payload-type
-  "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
+  "The Notification with `id` whose `payload_type` is `payload-type`, a card one only when its Card exists, or nil."
   [id payload-type]
-  (t2/select-one :model/Notification :id id :payload_type payload-type))
+  (t2/select-one :model/Notification
+                 {:select    [:notification.*]
+                  :from      [[(t2/table-name :model/Notification) :notification]]
+                  :left-join [[(t2/table-name :model/NotificationCard) :payload_card]
+                              [:and
+                               [:= :payload_card.id :notification.payload_id]
+                               [:= :notification.payload_type "notification/card"]]
+                              [(t2/table-name :model/Card) :card] [:= :card.id :payload_card.card_id]]
+                  :where     [:and
+                              [:= :notification.id id]
+                              [:= :notification.payload_type (u/qualified-name payload-type)]
+                              [:or [:not= :notification.payload_type "notification/card"] [:not= :card.id nil]]]}))
 
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."

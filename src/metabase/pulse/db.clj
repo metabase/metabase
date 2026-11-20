@@ -230,15 +230,27 @@
                        [:in :pc.card_id card-ids]
                        [:= :p.archived archived?]]}))
 
-(mu/defn legacy-pulse-count
-  "The number of unarchived Pulses that are neither dashboard subscriptions nor alerts."
+(defn- legacy-pulses-query
+  "The query of the unarchived Pulses that are neither dashboard subscriptions nor alerts whose Collections exist."
   []
-  (t2/count :model/Pulse :dashboard_id nil :alert_condition nil :archived false))
+  {:select    [:p.*]
+   :from      [[(t2/table-name :model/Pulse) :p]]
+   :left-join (parents-join)
+   :where     [:and
+               [:= :p.dashboard_id nil]
+               [:= :p.alert_condition nil]
+               [:= :p.archived false]
+               existing-parents-clause]})
+
+(mu/defn legacy-pulse-count
+  "The number of unarchived Pulses that are neither dashboard subscriptions nor alerts whose Collections exist."
+  []
+  (t2/count :model/Pulse (dissoc (legacy-pulses-query) :select)))
 
 (mu/defn legacy-pulses
-  "The unarchived Pulses that are neither dashboard subscriptions nor alerts."
+  "The unarchived Pulses that are neither dashboard subscriptions nor alerts whose Collections exist."
   []
-  (t2/select :model/Pulse :dashboard_id nil :alert_condition nil :archived false))
+  (t2/select :model/Pulse (h2x/assert-map-or-nil! (legacy-pulses-query))))
 
 (mu/defn insert-pulse!
   "Insert the Pulse `pulse` and return the inserted instance."

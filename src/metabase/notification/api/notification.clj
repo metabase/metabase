@@ -194,10 +194,17 @@
       (send-you-were-added-card-notification-email! notification))
     notification))
 
+(defn- check-payload-card-exists!
+  "Throws a 404 when `notification`, given as a request body, is a card notification whose Card does not exist."
+  [notification]
+  (when (= "notification/card" (u/qualified-name (:payload_type notification)))
+    (api/check-404 (notification.db/card (get-in notification [:payload :card_id])))))
+
 (api.macros/defendpoint :post "/" :- ::models.notification/FullyHydratedNotification
   "Create a new notification, return the created notification."
   [_route _query body :- ::CreateNotificationParams request]
   (check-handler-templates! (:handlers body))
+  (check-payload-card-exists! body)
   (create-notification!
    (-> body
        (update :payload_type keyword)
@@ -312,6 +319,7 @@
   [_route _query body :- ::CreateNotificationParams request]
   (check-no-resource-templates! (:handlers body))
   (check-inline-channels! (:handlers body))
+  (check-payload-card-exists! body)
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (let [notification (-> body

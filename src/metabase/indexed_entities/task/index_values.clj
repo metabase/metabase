@@ -22,24 +22,28 @@
 
 (defn- should-deindex?
   "Whether to unindex the the model indexing job.
-  Will deindex if the model or model_index do not exist, if the model is no longer a model, or if archived."
+  Will deindex if the model_index does not exist, if the model is no longer a model, or if archived."
   [model model-index]
-  (or (nil? model) (nil? model-index)
+  (or (nil? model-index)
       (not= (:type model) :model)
       (:archived model)))
 
 (defn- refresh-index!
   "Refresh the index on a model. Note, if the index should be removed (no longer a model, archived,
-  etc, (see [[should-deindex?]])) will delete the indexing job."
+  etc, (see [[should-deindex?]])) will delete the indexing job. Skips a model index whose model does not exist, since
+  deleting a model deletes its indexes, so its model is one the job does not see."
   [model-index-id]
   (let [model-index (indexed-entities.db/model-index model-index-id)
         model       (when model-index
                       (indexed-entities.db/card (:model_id model-index)))]
-    (if (should-deindex? model model-index)
+    (cond
+      (should-deindex? model model-index)
       (u/ignore-exceptions
         (let [trigger-key (model-index/trigger-key model-index-id)]
           (task/delete-trigger! trigger-key)
           (indexed-entities.db/delete-model-index! model-index-id)))
+
+      (some? model)
       (model-index/add-values! model-index))))
 
 (task/defjob ModelIndexRefresh
