@@ -1702,20 +1702,9 @@
                            {:role "user" :content [{:type "tool_result"}]}]
                           (drop (count messages-1) messages-2))))))))))))
 
-(defn- base-turn-input-parts
-  "The parts that `turn-input-parts` returned before it stopped building the history again on later calls.
-
-  These are the parts the previous call sent, then the tail of a full rebuild of the history from
-  `(count sent-parts)`, with links inverted. Do not compare with a full rebuild of the whole history: when a call
-  registers a link that an earlier message holds, the rebuild rewrites that link in the prefix, which no version
-  sends."
-  [sent-parts context memory tools link-registry]
-  (into sent-parts
-        (#'agent/invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
-                              link-registry)))
-
 (deftest later-calls-do-not-render-the-context-again-test
-  (testing "only the first call of a turn renders the context, and each call sends what the full rebuild sent"
+  (testing "only the first call of a turn renders the context, and each later call sends what the previous call sent,
+           then the new steps"
     (doseq [[case-name context preload?]
             [["without a SQL dialect"
               {:current_user_time "2026-10-05T12:00:00Z"}
@@ -1731,20 +1720,10 @@
         (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                            llm-metabot-provider test-provider]
           (let [inputs      (atom [])
-                base-inputs (atom [])
                 renders     (atom 0)
-                orig-render (mt/original-fn #'user-context/enrich-context-for-template)
-                orig-parts  (mt/original-fn #'agent/turn-input-parts)]
+                orig-render (mt/original-fn #'user-context/enrich-context-for-template)]
             (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
                                         (fn [ctx] (swap! renders inc) (orig-render ctx))
-                                        agent/turn-input-parts
-                                        (fn [sent-parts sent-steps context memory tools link-registry]
-                                          ;; The base rebuild renders the context too: do not count it.
-                                          (let [renders-before @renders]
-                                            (swap! base-inputs conj
-                                                   (base-turn-input-parts sent-parts context memory tools link-registry))
-                                            (reset! renders renders-before))
-                                          (orig-parts sent-parts sent-steps context memory tools link-registry))
                                         openrouter/openrouter
                                         (fn [{:keys [input]}]
                                           (mut/mock-llm-response
@@ -1771,16 +1750,23 @@
                 (is (= 3 (count @inputs)))
                 (is (= 1 @renders))
                 (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
-                (is (= @base-inputs @inputs))
+                (is (= input-1 (take (count input-1) input-2)))
+                (is (= input-2 (take (count input-2) input-3)))
                 (is (=? [{:type :text :text "See "}
                          {:type :text :text "[Orders](metabase://model/1)."}
-                         {:type :tool-input :id "call-1"}
-                         {:type :tool-output :id "call-1"}]
+                         {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
+                         {:type     :tool-output
+                          :id       "call-1"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
                         (drop (count input-1) input-2)))
                 (is (=? [{:type :text :text "See "}
                          {:type :text :text "[Ops](metabase://dashboard/2)."}
-                         {:type :tool-input :id "call-2"}
-                         {:type :tool-output :id "call-2"}]
+                         {:type :tool-input :id "call-2" :function "search" :arguments {:keyword_queries ["people"]}}
+                         {:type     :tool-output
+                          :id       "call-2"
+                          :function "search"
+                          :result   {:structured-output {:result-type :search}}}]
                         (drop (count input-2) input-3)))))))))))
 
 (deftest eval-tracing-nesting-test
