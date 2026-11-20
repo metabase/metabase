@@ -152,10 +152,9 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- stop-all-listening!
-  [_]
-  (doseq [[name _] @listeners]
-    (stop-listening! name)))
+(defn- stop-all-listening! []
+  (doseq [listener-name (keys @listeners)]
+    (stop-listening! listener-name)))
 
 ;; Every listener as one global-system component, so halting the system stops them too.
 (def ^:private listeners-component
@@ -175,11 +174,11 @@
                         (fn []
                           (init-listeners!)
                           listeners)
-                        stop-all-listening!)
+                        (fn [_] (stop-all-listening!)))
   nil)
 
 (defn stop-listeners!
   "Stop every running listener, including those started outside [[start-listeners!]]."
   []
   (when-not (global-system/stop! listeners-component)
-    (stop-all-listening! nil)))
+    (stop-all-listening!)))

@@ -1,7 +1,6 @@
 (ns metabase.queue-listener.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.global-system.system :as system]
    [metabase.global-system.test-util :as global-system.tu]
    [metabase.queue-listener.core :as queue-listener]
    [metabase.test :as mt]
@@ -195,7 +194,7 @@
   (testing "the listeners start through the global system, so a halt stops them, and stopping them unregisters them"
     (let [listener-name "global-system-test-listener"
           handle        @#'queue-listener/listeners-component
-          halts?        #(boolean (some #{handle} (#'system/halt-order (#'system/dependency-graph {}))))]
+          halts?        #(global-system.tu/halts? handle)]
       (global-system.tu/with-root handle nil
         (mt/with-dynamic-fn-redefs [queue-listener/init-listeners!
                                     #(queue-listener/listen! listener-name (LinkedBlockingQueue.) identity {})]
