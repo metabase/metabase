@@ -51,24 +51,26 @@
       projections/dashboard-row))
 
 (defn- visible-connections
-  "The `dropped-connections` that redaction would show on both `stored`, the dashboard before the ops, nil on a create,
-   and `dash`, the saved or dry-run dashboard after them.
-   The user must be able to read the dashcard's card on each, unless it has none, and the card the entry names."
+  "The `dropped-connections` that redaction showed on `stored`, the dashboard before the ops, nil on a create.
+   The user must be able to read the stored dashcard's card, unless it has none, and a series entry's card.
+   An entry whose card the user can't read in `dash`, the saved or dry-run dashboard, keeps its filter and dashcard
+   with a nil `:card_id`."
   [stored dash dropped-connections]
   ;; Redaction empties every mapping of a dashcard whose card is hidden, and drops the mappings to a hidden series
-  ;; card, so a lost connection it would hide isn't reported either. The stored dashboard is checked too, as a
-  ;; `replace_card` can put a readable card where a hidden one's mapping was lost. A text or heading card has no card,
+  ;; card, so a lost connection it hid isn't reported either. A connection the user saw is reported even when
+  ;; `replace_card` puts a hidden card in its place, but without that card's id. A text or heading card has no card,
   ;; and redaction keeps its mappings.
   (when (seq dropped-connections)
     (let [readable        (into (redaction/readable-card-ids stored) (redaction/readable-card-ids dash))
           shown?          #(or (nil? %) (contains? readable %))
-          stored-card-ids (u/index-by :id :card_id (:dashcards stored))
-          card-ids        (u/index-by :id :card_id (:dashcards dash))]
-      (filterv (fn [{:keys [dashcard_id card_id]}]
-                 (and (shown? (stored-card-ids dashcard_id))
-                      (shown? (card-ids dashcard_id))
-                      (shown? card_id)))
-               dropped-connections))))
+          stored-card-ids (u/index-by :id :card_id (:dashcards stored))]
+      (into []
+            (keep (fn [{:keys [dashcard_id card_id series] :as entry}]
+                    (when (and (shown? (stored-card-ids dashcard_id))
+                               (or (not series) (shown? card_id)))
+                      (cond-> entry
+                        (not (shown? card_id)) (assoc :card_id nil)))))
+            dropped-connections))))
 
 ;;; ------------------------------------------------- Schema -------------------------------------------------------
 
