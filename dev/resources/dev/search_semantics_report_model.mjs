@@ -7,7 +7,8 @@
 /** @typedef {{typedScore: number, bestScore: number}} QueryScores */
 /** @typedef {{typedScore: number | null, bestScore: number | null, gain: number | null}} EngineScores */
 
-const epsilon = 1e-9;
+/** Tolerance for comparing floating-point scores. */
+export const epsilon = 1e-9;
 
 /** @param {number} value */
 export const clampWeight = (value) =>
