@@ -1130,6 +1130,8 @@ async function addDataset(name: string) {
     await userEvent.click(addMoreDataButton);
   }
   const search = within(modal).getByPlaceholderText("Search for something");
+  // the picker stays mounted while hidden, so check that users can see it
+  expect(search).toBeVisible();
   await userEvent.clear(search);
   await userEvent.type(search, name);
   const datasetsList = within(modal).getByTestId("datasets-list");
@@ -1138,6 +1140,7 @@ async function addDataset(name: string) {
     within(datasetsList).getAllByTestId("swap-dataset-button"),
     name,
   );
+  expect(item).toBeVisible();
   expect(item).toHaveAttribute("aria-pressed", "false");
   await userEvent.click(item);
   await waitFor(() => expect(item).toHaveAttribute("aria-pressed", "true"));
@@ -3375,6 +3378,7 @@ describe("DashboardApp > visualizer", () => {
       await waitFor(() =>
         expect(getProductsItem()).toHaveAttribute("aria-pressed", "true"),
       );
+      expect(getProductsItem()).toBeVisible();
       await userEvent.click(getProductsItem());
       await waitFor(() =>
         expect(getProductsItem()).toHaveAttribute("aria-pressed", "false"),
