@@ -17,8 +17,6 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
-import { useToast } from "metabase/common/hooks/use-toast";
-import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { getUserIsAdmin } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import {
@@ -34,14 +32,16 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
+import { AnonymousReachList } from "../AnonymousReachList";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
+import { useDatabaseRoutingPanel } from "./useDatabaseRoutingPanel";
 import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
 
 export const DatabaseRoutingSection = ({
@@ -49,12 +49,9 @@ export const DatabaseRoutingSection = ({
 }: {
   database: Database;
 }) => {
-  const [sendToast] = useToast();
-
   const { data: engines = {} } = useListEnginesQuery();
 
   const isAdmin = useSelector(getUserIsAdmin);
-  const userAttribute = database.router_user_attribute ?? undefined;
   const dbSupportsRouting = database.features?.includes("database-routing");
   const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
   const engine = engineKey ? engines[engineKey] : undefined;
@@ -65,8 +62,27 @@ export const DatabaseRoutingSection = ({
   const shouldHideSection =
     database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 
-  const [tempEnabled, setTempEnabled] = useState(false);
-  const enabled = tempEnabled || hasDbRoutingEnabled(database);
+  const {
+    enabled,
+    anonymousReach,
+    panelReachFraming,
+    userAttribute,
+    isRoutingStored,
+    error,
+    anonymousAccessGranted,
+    canChangeAnonymousAccess,
+    isRevokeHeldForReachability,
+    hasStoppedServingAnonymousVisitors,
+    openQuestion,
+    cancelUndoesEnable,
+    toggleRouting,
+    chooseUserAttribute,
+    changeAnonymousAccess,
+    chooseGrant,
+    cancelGrantChoice,
+    confirmRevoke,
+    dismissRevoke,
+  } = useDatabaseRoutingPanel(database, { skip: !!shouldHideSection });
 
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(
@@ -78,9 +94,6 @@ export const DatabaseRoutingSection = ({
     [enabled],
   );
 
-  const anonymousAccessGranted = !!database.router_anonymous_access_granted;
-
-  const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
   const userAttrsReq = useListUserAttributesQuery(
     shouldHideSection ? skipToken : undefined,
   );
@@ -103,51 +116,29 @@ export const DatabaseRoutingSection = ({
       !userAttrsReq.isLoading && userAttributeOptions.length === 0,
   });
 
-  const handleUserAttributeChange = async (attribute: string) => {
-    await updateRouterDatabase({ id: database.id, user_attribute: attribute });
-
-    if (!hasDbRoutingEnabled(database)) {
-      sendToast({ message: t`Database routing enabled` });
-    } else {
-      sendToast({ message: t`Database routing updated` });
-    }
+  const handleToggle = async (nextEnabled: boolean) => {
+    setIsExpanded(nextEnabled);
+    await toggleRouting(nextEnabled);
   };
 
-  const handleAnonymousAccessChange = async (granted: boolean) => {
-    if (!userAttribute) {
-      return;
+  const handleGrantChoiceCancel = () => {
+    if (cancelUndoesEnable) {
+      setIsExpanded(false);
     }
-    const result = await updateRouterDatabase({
-      id: database.id,
-      user_attribute: userAttribute,
-      anonymous_access_granted: granted,
-    });
-    // the trigger resolves rather than rejects on failure; the error is rendered inline
-    if ("error" in result) {
-      return;
-    }
-    sendToast({
-      message: granted
-        ? t`Anonymous access allowed`
-        : t`Anonymous access disallowed`,
-    });
-  };
-
-  const handleToggle = async (enabled: boolean) => {
-    setIsExpanded(enabled);
-    setTempEnabled(enabled);
-    if (!enabled) {
-      await updateRouterDatabase({ id: database.id, user_attribute: null });
-
-      if (hasDbRoutingEnabled(database)) {
-        sendToast({ message: t`Database routing disabled` });
-      }
-    }
+    cancelGrantChoice();
   };
 
   if (shouldHideSection) {
     return null;
   }
+
+  const reachList = panelReachFraming ? (
+    <AnonymousReachList
+      reach={anonymousReach}
+      framing={panelReachFraming}
+      variant="panel"
+    />
+  ) : null;
 
   return (
     <DatabaseInfoSection
@@ -155,6 +146,14 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
+      <AnonymousAccessChoiceModal
+        question={openQuestion}
+        reach={anonymousReach}
+        onChooseGrant={chooseGrant}
+        onCancelGrantChoice={handleGrantChoiceCancel}
+        onConfirmRevoke={confirmRevoke}
+        onDismissRevoke={dismissRevoke}
+      />
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">
@@ -203,14 +202,19 @@ export const DatabaseRoutingSection = ({
         <>
           <DatabaseInfoSectionDivider />
 
-          {hasDbRoutingEnabled(database) && (
+          {hasStoppedServingAnonymousVisitors && (
             <Alert
               size="compact"
               variant="light"
-              icon={<Icon name="info" />}
+              color="warning"
+              icon={<Icon name="warning" />}
+              title={t`This database has stopped serving anonymous visitors`}
               mb="lg"
             >
-              {t`In guest embeds, database queries will always be routed to the router database.`}
+              <Stack gap="md">
+                <Text>{t`To start serving them again, allow anonymous access below.`}</Text>
+                {reachList}
+              </Stack>
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
@@ -242,7 +246,7 @@ export const DatabaseRoutingSection = ({
                   data={userAttributeOptions}
                   disabled={!isAdmin || !!disabledFeatMsg}
                   value={userAttribute}
-                  onChange={handleUserAttributeChange}
+                  onChange={chooseUserAttribute}
                   renderOption={renderUserAttributesForSelect}
                 />
               </Tooltip>
@@ -266,7 +270,7 @@ export const DatabaseRoutingSection = ({
               </Box>
               <Tooltip
                 label={t`Please choose a user attribute first`}
-                disabled={hasDbRoutingEnabled(database)}
+                disabled={canChangeAnonymousAccess}
                 withArrow
               >
                 <Box>
@@ -276,22 +280,24 @@ export const DatabaseRoutingSection = ({
                     disabled={
                       !isAdmin ||
                       !!disabledFeatMsg ||
-                      !hasDbRoutingEnabled(database)
+                      !canChangeAnonymousAccess ||
+                      isRevokeHeldForReachability
                     }
                     onChange={(e) =>
-                      handleAnonymousAccessChange(e.currentTarget.checked)
+                      changeAnonymousAccess(e.currentTarget.checked)
                     }
                   />
                 </Box>
               </Tooltip>
             </Flex>
+            {!hasStoppedServingAnonymousVisitors && reachList}
           </Stack>
 
           <Flex justify="space-between" align="center" mih="2.5rem">
             <Text fw="bold">{t`Destination databases`}</Text>
             {isAdmin && (
               <>
-                {hasDbRoutingEnabled(database) ? (
+                {isRoutingStored ? (
                   <Button
                     component={Link}
                     to={Urls.createDestinationDatabase(database.id)}
