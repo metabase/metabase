@@ -23,6 +23,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.audit :as transforms.audit]
    [metabase.transforms.db :as transforms.db]
@@ -466,11 +467,22 @@
   [_model]
   {:synced-items transforms.db/synced-transform-items})
 
+(defn- check-revert-cycle
+  "The `snapshot` a revert of the Transform with `id` writes, after a 400 when it would close a cycle of transforms."
+  [id _user-id snapshot]
+  (let [transform (merge (transforms.db/transform id) snapshot)]
+    (when (transforms-base.u/query-transform? transform)
+      (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle transform)]
+        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                        {:status-code 400})))))
+  snapshot)
+
 (defmethod revisions/spec :model/Transform [_model]
-  {:track     [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
-               :target :target_db_id]
-   :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
-   :authorize :snapshot})
+  {:track         [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
+                   :target :target_db_id]
+   :skip          [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
+   :authorize     :snapshot
+   :before-revert check-revert-cycle})
 
 (defmethod audit/spec :model/Transform [_model]
   {:track          [:name :description :target]

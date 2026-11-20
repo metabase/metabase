@@ -554,3 +554,26 @@
        (let [stored (t2/select-one :model/Transform :id reader)]
          (is (zero? (with-cycle-scan-count
                       (t2/update! :model/Transform :id reader (select-keys stored [:name :source :target]))))))))))
+
+(deftest revert-closing-cycle-is-refused-test
+  (mt/with-temp [:model/Table {table-x :id} {:schema "PUBLIC", :name "revert_x"}
+                 :model/Field _ {:table_id table-x, :name "foo"}
+                 :model/Table {table-a :id} {:schema "PUBLIC", :name "revert_a"}
+                 :model/Field _ {:table_id table-a, :name "foo"}
+                 :model/Table {table-b :id} {:schema "PUBLIC", :name "revert_b"}
+                 :model/Field _ {:table_id table-b, :name "foo"}]
+    (mt/with-model-cleanup [:model/Transform]
+      (as-transform-admin
+       (let [{writer :id} (t2/insert-returning-instance! :model/Transform
+                                                         (-> (cycle-transform (cycle-table-query table-b) "revert_a")
+                                                             (assoc :target_table_id table-a)))]
+         (transforms.core/update-transform! writer {:name "first version"})
+         (transforms.core/update-transform! writer {:source {:type :query :query (cycle-table-query table-x)}})
+         (t2/insert! :model/Transform (-> (cycle-transform (cycle-table-query table-a) "revert_b")
+                                          (assoc :target_table_id table-b)))
+         (let [stored   (t2/select-one-fn :source :model/Transform :id writer)
+               revision (last (mt/user-http-request :crowberto :get 200 "revision" :entity "transform" :id writer))]
+           (is (re-find #"Cyclic transform definitions detected"
+                        (mt/user-http-request :crowberto :post 400 "revision/revert"
+                                              {:entity "transform" :id writer :revision_id (:id revision)})))
+           (is (= stored (t2/select-one-fn :source :model/Transform :id writer)))))))))

@@ -481,7 +481,7 @@
     (t2/insert! :model/TransformRunCancelation {:run_id run-id})
     (t2/update! :model/TransformRun :id run-id {:status :canceling})
     (is (t2/exists? :model/TransformRunCancelation :run_id run-id))
-    (t2/update! :model/TransformRun :id run-id {:status :canceled})
+    (transform-run/cancel-run! run-id)
     (is (not (t2/exists? :model/TransformRunCancelation :run_id run-id)))))
 
 (deftest run-message-update-statement-count-test

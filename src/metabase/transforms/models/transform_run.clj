@@ -33,8 +33,6 @@
 
 (t2/define-before-update :model/TransformRun
   [run]
-  (when (transforms.models.u/ended? (:status (t2/changes run)))
-    (transforms.db/delete-cancelation-for-run! (:id run)))
   (cond-> (transforms.models.u/derive-is-active-on-update run)
     (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
@@ -121,13 +119,15 @@
    (succeed-started-run! run-id {}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (transforms.db/finish-active-run! run-id (merge properties {:status :succeeded}))))
+   (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :succeeded}))
+     (cancel/delete-cancelation! run-id))))
 
 (mu/defn fail-started-run! :- :int
   "Mark the started active run as failed and inactive."
   [run-id     :- ms/PositiveInt
    properties :- ::transforms.schema/transform-run.update]
-  (transforms.db/finish-active-run! run-id (merge properties {:status :failed})))
+  (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :failed}))
+    (cancel/delete-cancelation! run-id)))
 
 (mu/defn cancel-run! :- :int
   "Cancel a started run."
@@ -135,7 +135,8 @@
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (transforms.db/finish-active-run! run-id (merge properties {:status :canceled}))))
+   (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :canceled}))
+     (cancel/delete-cancelation! run-id))))
 
 (mu/defn- publish-timeout-event! :- :nil
   "Publish `:event/transform-run-timeout` for `run`. Wrapped so that audit-log handler
@@ -159,6 +160,7 @@
                                               (merge properties
                                                      {:message "Timed out"
                                                       :status  :timeout}))
+     (cancel/delete-cancelation! run-id)
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
        (when-let [run (transforms.db/run run-id)]

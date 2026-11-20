@@ -572,11 +572,6 @@
   [run-id :- ms/PositiveInt]
   (t2/delete! :model/TransformRunCancelation {:where [:and [:= :run_id run-id] no-active-run-clause]}))
 
-(mu/defn delete-cancelation-for-run!
-  "Delete the TransformRunCancelation of the TransformRun with `run-id`."
-  [run-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformRunCancelation :run_id [:auto/param run-id]))
-
 (mu/defn delete-cancelations-for-inactive-runs!
   "Delete every TransformRunCancelation whose run is no longer active."
   []
