@@ -381,12 +381,17 @@
     ;; before the web server, so a halt stops the recording after it; the call in [[init!*]] then does nothing
     (perf/maybe-enable-monitoring!)
     ;; launch embedded webserver
-    (let [server-routes (server/make-routes {:api        #'api-routes/routes
-                                             :auth       #'auth-wrapper/routes
-                                             :oauth      #'oauth-server.api/oauth-routes
-                                             :well-known #'oauth-server.api/well-known-routes})
-          handler       (server/make-handler server-routes #'mcp.http-handler/options)]
-      (server/start-web-server! handler))
+    (try
+      (let [server-routes (server/make-routes {:api        #'api-routes/routes
+                                               :auth       #'auth-wrapper/routes
+                                               :oauth      #'oauth-server.api/oauth-routes
+                                               :well-known #'oauth-server.api/well-known-routes})
+            handler       (server/make-handler server-routes #'mcp.http-handler/options)]
+        (server/start-web-server! handler))
+      ;; the exit below comes before [[init!*]] registers the shutdown hook, so nothing else would stop the recording
+      (catch Throwable e
+        (perf/stop-monitoring!)
+        (throw e)))
     ;; run our initialization process
     (init!)
     ;; Ok, now block forever while Jetty does its thing
