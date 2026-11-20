@@ -13,8 +13,13 @@ import {
   within,
 } from "__support__/ui";
 import { mockGetBoundingClientRect } from "__support__/utils";
+import { setPendingMetabotCard } from "metabase/redux/query-builder";
+import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
-import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 
 import {
   TEST_DB,
@@ -23,6 +28,7 @@ import {
   TEST_MODEL_DATASET,
   TEST_NATIVE_CARD,
   TEST_STRUCTURED_CARD,
+  TEST_UNSAVED_NATIVE_CARD,
   revertNotebookQueryChange,
   setup,
   triggerMetadataChange,
@@ -335,6 +341,74 @@ describe("QueryBuilder - unsaved changes warning", () => {
       ).not.toBeInTheDocument();
     });
 
+    describe("leaving via the browser back button (metabase#32037)", () => {
+      // A 1x1 result would switch the model to a scalar and make it dirty
+      afterEach(() => {
+        window.history.replaceState(null, "", "/");
+      });
+
+      const MODEL_DATASET = createMockDataset({
+        ...TEST_MODEL_DATASET,
+        data: { ...TEST_MODEL_DATASET.data, rows: [["1"], ["2"]] },
+        row_count: 2,
+      });
+
+      it("discards unsaved query changes and returns to the model", async () => {
+        const { router } = await setup({
+          card: TEST_MODEL_CARD,
+          dataset: MODEL_DATASET,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}`,
+          syncWindowLocation: true,
+        });
+        const modelPathname = router.location.pathname;
+
+        await openQuestionActionsItem("Edit query definition");
+        await waitForSaveChangesToBeDisabled();
+
+        await userEvent.click(
+          within(await screen.findByTestId("action-buttons")).getByLabelText(
+            "filter icon",
+          ),
+        );
+        const popover = await screen.findByRole("dialog");
+        await userEvent.click(within(popover).getByText("ID"));
+        await userEvent.type(
+          within(popover).getByPlaceholderText("Enter an ID"),
+          "1",
+        );
+        await userEvent.click(
+          within(popover).getByRole("button", { name: "Add filter" }),
+        );
+        await waitForSaveChangesToBeEnabled();
+
+        act(() => router.back());
+
+        await assertDiscardingChanges(router, modelPathname);
+      });
+
+      it("discards unsaved metadata changes and returns to the model", async () => {
+        const { router } = await setup({
+          card: TEST_MODEL_CARD,
+          dataset: MODEL_DATASET,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}`,
+          syncWindowLocation: true,
+        });
+        const modelPathname = router.location.pathname;
+
+        await openQuestionActionsItem("Edit metadata");
+        await waitForSaveChangesToBeDisabled();
+
+        const description = await screen.findByLabelText("Description");
+        await userEvent.type(description, "123");
+        await userEvent.tab();
+        await waitForSaveChangesToBeEnabled();
+
+        act(() => router.back());
+
+        await assertDiscardingChanges(router, modelPathname);
+      });
+    });
+
     it("does not show custom warning modal when editing & visualizing the model back and forth (metabase#35000)", async () => {
       await setup({
         card: TEST_MODEL_CARD,
@@ -479,6 +553,49 @@ describe("QueryBuilder - unsaved changes warning", () => {
       expect(
         screen.queryByTestId("leave-confirmation"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("native questions Metabot opened", () => {
+    const openMetabotCard = async () => {
+      const { router, store } = await setup({ card: null, initialRoute: "/" });
+      const url = Urls.generatedEntity({
+        type: "card",
+        query: { query: TEST_UNSAVED_NATIVE_CARD.dataset_query },
+      });
+
+      act(() => {
+        store.dispatch(setPendingMetabotCard({ url }));
+        router.navigate(url);
+      });
+      await waitForLoaderToBeRemoved();
+      await waitForNativeQueryEditorReady();
+
+      return { router };
+    };
+
+    it("does not show custom warning modal when leaving Metabot's query via SPA navigation", async () => {
+      const { router } = await openMetabotCard();
+
+      act(() => {
+        router.navigate("/redirect");
+      });
+
+      expect(
+        screen.queryByTestId("leave-confirmation"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows custom warning modal when leaving Metabot's query after editing it", async () => {
+      const { router } = await openMetabotCard();
+
+      await triggerNativeQueryChange();
+      await waitForSaveToBeEnabled();
+      act(() => {
+        router.navigate("/redirect");
+      });
+
+      expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
   });
 
@@ -791,3 +908,27 @@ describe("QueryBuilder - unsaved changes warning", () => {
     });
   });
 });
+
+async function openQuestionActionsItem(itemName: string) {
+  await userEvent.click(screen.getByLabelText("Move, trash, and more…"));
+  await userEvent.click(await screen.findByText(itemName));
+}
+
+async function assertDiscardingChanges(
+  router: { location: { pathname: string } },
+  modelPathname: string,
+) {
+  const modal = await screen.findByTestId("leave-confirmation");
+  expect(within(modal).getByText("Discard your changes?")).toBeInTheDocument();
+  await userEvent.click(
+    within(modal).getByRole("button", { name: "Discard changes" }),
+  );
+
+  await waitFor(() => {
+    expect(router.location.pathname).toBe(modelPathname);
+  });
+  expect(
+    screen.queryByRole("button", { name: "Save changes" }),
+  ).not.toBeInTheDocument();
+  expect(await screen.findByTestId("table-root")).toBeInTheDocument();
+}

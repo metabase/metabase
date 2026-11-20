@@ -6,6 +6,7 @@
    each decision a user makes via `POST /oauth/authorize/decision`, stamped with the deciding user's
    `user_id`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.oauth-server.db :as oauth-server.db]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -41,3 +42,8 @@
                                            :user_id         user-id
                                            :event_type      (if approved? "approved" "denied")})
     (log/warnf "Cannot record OAuth decision event: no client found for client_id %s" client-id)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/OAuthClientEvent [_model]
+  {:skip? false})

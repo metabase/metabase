@@ -72,11 +72,13 @@
                     :parameterized_object_type parameterized-object-type
                     :parameterized_object_id   parameterized-object-id))
 
-(mu/defn dashboard-ids-of-dashcards
-  "The ids of the Dashboards of the DashboardCards with `dashcard-ids`, by DashboardCard id."
-  [dashcard-ids :- [:set ms/PositiveInt]]
-  (if (seq dashcard-ids)
-    (into {} (t2/select-fn-vec (juxt :id :dashboard_id) [:model/DashboardCard :id :dashboard_id] :id [:in dashcard-ids]))
+(mu/defn parent-ids
+  "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."
+  [model      :- :keyword
+   parent-key :- :keyword
+   ids        :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (into {} (t2/select-fn-vec (juxt :id parent-key) [model :id parent-key] :id [:in ids]))
     {}))
 
 (mu/defn dashboard-card-ids
@@ -125,38 +127,6 @@
   (if (seq dashboard-ids)
     (t2/select :model/Dashboard :id [:in dashboard-ids])
     []))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
-(mu/defn dashcards
-  "The DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn dashboard-tabs
-  "The DashboardTabs of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id))
-
-(mu/defn active-card-ids-for-dashboard
-  "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
-  [card-ids     :- [:sequential ::lib.schema.id/card]
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card
-                     {:where [:and
-                              [:in :id card-ids]
-                              [:= :archived false]
-                              [:or
-                               [:= :dashboard_id dashboard-id]
-                               [:= :dashboard_id nil]]]}))
-
-(mu/defn active-card-ids
-  "The ids among `card-ids` of unarchived Cards."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
 
 (def ^:private Entity
   "A revisioned row, as its `[model-name model-id]`."
@@ -244,7 +214,7 @@
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
 (def ^:private revision-object-extra-keys
-  "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
+  "Extra keys the `:children` of the Dashboard revision spec add to some models' revision
   `:object` beyond their own row schema."
   {:model/Dashboard [[:cards {:optional true} [:sequential [:merge :metabase.dashboards.schema/dashboard-card.update
                                                             [:map {:closed true}

@@ -4,7 +4,11 @@ import {
   createMockMetadata,
   createMockMetadataFromState,
 } from "__support__/metadata";
-import { createMockLocation, createMockState } from "__support__/state";
+import {
+  createMockLocation,
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
@@ -12,6 +16,7 @@ import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
+import type { PendingMetabotCard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
@@ -54,6 +59,7 @@ type BaseSetupOpts = {
   location: Location;
   params: Record<string, unknown>;
   hasDataPermissions?: boolean;
+  pendingMetabotCard?: PendingMetabotCard | null;
 };
 
 const SEGMENT = createMockSegment();
@@ -63,9 +69,11 @@ async function baseSetup({
   location,
   params,
   hasDataPermissions = true,
+  pendingMetabotCard = null,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
   const state = createMockState({
+    qb: createMockQueryBuilderState({ pendingMetabotCard }),
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
@@ -573,6 +581,86 @@ describe("QB Actions > initializeQB", () => {
       const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
       await setup({ card });
       expect(runQuestionQuerySpy).not.toHaveBeenCalled();
+    });
+
+    describe("opened by Metabot", () => {
+      const location = getLocationForCard(card);
+      const url = `${location.pathname}${location.hash}`;
+      const addedBaselines = (dispatch: jest.Mock) =>
+        dispatch.mock.calls
+          .map(([action]) => action)
+          .filter(
+            (action) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+          );
+
+      it("records the question it loaded as Metabot's", async () => {
+        const { dispatch, result } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
+        });
+
+        expect(addedBaselines(dispatch)).toEqual([
+          sharedQB.addMetabotCardBaseline({
+            dataset_query: result.card.dataset_query,
+            display: result.card.display,
+            visualization_settings: result.card.visualization_settings,
+            parameters: [],
+          }),
+        ]);
+      });
+
+      it("clears the pending card before anything else", async () => {
+        const { dispatch } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url },
+        });
+
+        const types = dispatch.mock.calls.map(([action]) => action?.type);
+        expect(types[0]).toBe(sharedQB.SET_PENDING_METABOT_CARD);
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot was opening another question", async () => {
+        const { dispatch } = await setup({
+          card,
+          location,
+          pendingMetabotCard: { url: "/question#another-card" },
+        });
+
+        expect(addedBaselines(dispatch)).toEqual([]);
+        expect(dispatch).toHaveBeenCalledWith(
+          sharedQB.setPendingMetabotCard(null),
+        );
+      });
+
+      it("records nothing when Metabot did not open it", async () => {
+        const { dispatch } = await setup({ card, location });
+
+        expect(addedBaselines(dispatch)).toEqual([]);
+      });
+    });
+  });
+
+  describe("unsaved structured questions opened by Metabot", () => {
+    const { card } = TEST_CASE.UNSAVED_STRUCTURED_QUESTION;
+
+    it("records nothing", async () => {
+      const location = getLocationForCard(card);
+      const { dispatch } = await setup({
+        card,
+        location,
+        pendingMetabotCard: { url: `${location.pathname}${location.hash}` },
+      });
+
+      expect(
+        dispatch.mock.calls.filter(
+          ([action]) => action?.type === sharedQB.ADD_METABOT_CARD_BASELINE,
+        ),
+      ).toEqual([]);
     });
   });
 

@@ -27,6 +27,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.database-routing.core :as database-routing]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -45,6 +46,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -105,12 +107,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events))
-
-(defmethod events/spec :model/FieldValues
-  [_model]
-  {:create :event/field-values-create
-   :update :event/field-values-update
-   :delete :event/field-values-delete})
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
@@ -710,30 +706,24 @@
           (warehouse-schema.db/touch-field-values! (:id existing))
           existing)))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(def ^:private field-values-slug "___fieldvalues")
+(defmethod events/spec :model/FieldValues
+  [_model]
+  {:create :event/field-values-create
+   :update :event/field-values-update
+   :delete :event/field-values-delete})
+
+(defmethod app-db-copy/spec :model/FieldValues [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/FieldValues [_]
-  {:schema    ::warehouse-schema.schema/external-field-values
-   :identity  [:field_id :type]
-   :copy      [:type :values :human_readable_values :has_more_values :hash_key]
-   :skip      [:last_used_at]
-   :transform {:field_id serialization/field-transform}
-   :defaults  {:has_more_values false}})
-
-(defmethod serialization/storage-paths :model/FieldValues [_ entities _]
-  (mapv (fn [fv]
-          ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
-          ;; don't have their own directories.
-          (let [field-path (serialization/storage-path-prefixes (:field_id fv))]
-            (update field-path (dec (count field-path))
-                    (fn [segment] (assoc segment :suffix field-values-slug)))))
-        entities))
-
-(defmethod serialization/before-load :model/FieldValues [_ items]
-  (mapv (fn [{:keys [local] :as item}]
-          (cond-> item
-            (and local (= (get-in item [:row :type]) (:type local)))         (update :row dissoc :type)
-            (and local (= (get-in item [:row :hash_key]) (:hash_key local))) (update :row dissoc :hash_key)))
-        items))
+  {:schema        ::warehouse-schema.schema/external-field-values
+   :identity      [:field_id :type]
+   :copy          [:type :values :human_readable_values :has_more_values :hash_key]
+   :skip          [:last_used_at]
+   :transform     {:field_id serialization/field-transform}
+   :defaults      {:has_more_values false}
+   :storage-paths warehouse-schema.serialization/field-values-storage-paths
+   :before-load   warehouse-schema.serialization/field-values-before-load
+   :rows-by-refs  serialization/field-values-rows-by-refs})

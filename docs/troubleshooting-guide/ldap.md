@@ -58,6 +58,8 @@ networks:
     driver: bridge
 ```
 
+For details on each `MB_LDAP_*` variable, see [Environment variables](../configuring-metabase/environment-variables.md#mb_ldap_attribute_email).
+
 If you don't pass environment variables to Metabase and you want to configure the environment manually, you can go to the Admin Panel, select "Settings", select "Authentication", and then select "LDAP Configuration" and enter the following values:
 
 - `USERNAME OR DN`: `cn=admin,dc=example,dc=org`
@@ -71,10 +73,6 @@ For the `USER FILTER`, you can leave the default value, which will look for the 
 ## Related software for troubleshooting
 
 If you run into an issue, check that you can login to your LDAP directory and issue queries using software like [Apache Directory Studio][apache-directory-studio]. It will let you see the whole LDAP tree and view the logs of your LDAP application to see queries run.
-
-<h2 id="current-limitations">Current limitations</h2>
-
-- When using Metabase Enterprise with a MySQL database and LDAP enabled, make sure that you disable synchronization of binary fields from your LDAP directory by using the `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST` environment variable. If you do not, you may hit the 60K field size limitation of the text field in MySQL, which will prevent you from creating users or those users from logging in.
 
 [apache-directory-studio]: https://directory.apache.org/studio/
 

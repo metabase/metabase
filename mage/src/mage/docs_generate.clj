@@ -18,7 +18,8 @@
 (def ^:private suites
   "Each suite and its command, in the order the bare `docs-generate` command runs them."
   [;; One JVM runs every Clojure generator, so Metabase's namespaces load once rather than once per document.
-   ["backend"         ["clojure" "-M:ee:doc" "all-documentation"]]
+   ;; `:drivers` puts the driver modules on the classpath for the database feature support page.
+   ["backend"         ["clojure" "-M:ee:drivers:doc" "all-documentation"]]
    ["usage-analytics" [bb "bin/generate-usage-analytics-docs.bb"]]
    ["embedding-sdk"   ["bun" "run" "embedding-sdk:docs:generate"]]
    ["embedding-eajs"  ["bun" "run" "embedding-eajs:docs:generate"]]

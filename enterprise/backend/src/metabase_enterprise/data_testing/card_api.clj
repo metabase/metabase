@@ -22,11 +22,10 @@
   (data-testing.errors/refusing "card-test" thunk))
 
 (mu/defn- validate-test! :- :nil
-  "Refuse a test of the Card `card-id` with `inputs` and `expectations` unless it could run."
-  [card-id      :- ms/PositiveInt
-   inputs       :- ::data-testing.schema/inputs
-   expectations :- ::data-testing.schema/expectations]
-  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) inputs expectations)))
+  "Refuse a test of the Card `card-id` with the inputs, expectations and `now` of `definition` unless it could run."
+  [card-id    :- ms/PositiveInt
+   definition :- ::data-testing.runner/definition]
+  (refusing #(data-testing.runner/validate-test :card (data-testing.db/card card-id) definition)))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::data-testing.schema/card-test.response]
   "List the card tests the caller can read, with their newest runs, optionally only those of one card. Needs Data Studio
@@ -65,9 +64,9 @@
   declared name that differs from the table's only in case does not match it."
   [_route-params
    _query-params
-   {:keys [card_id inputs expectations] :as body} :- ::data-testing.schema/card-test.create]
+   {:keys [card_id] :as body} :- ::data-testing.schema/card-test.create]
   (api/create-check :model/CardTest body)
-  (validate-test! card_id inputs expectations)
+  (validate-test! card_id (data-testing.runner/test-definition body))
   (data-testing.models.card-test/create-card-test! (assoc body :creator_id api/*current-user-id*)))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/card-test
@@ -82,9 +81,9 @@
    body :- ::data-testing.schema/card-test.update]
   (let [card-test (api/read-check :model/CardTest id)]
     (api/update-check card-test body)
-    (when (some #(contains? body %) [:card_id :inputs :expectations])
-      (let [{:keys [card_id inputs expectations]} (merge card-test body)]
-        (validate-test! card_id inputs expectations)))
+    (when (some #(contains? body %) (cons :card_id data-testing.runner/definition-keys))
+      (let [{:keys [card_id] :as merged} (merge card-test body)]
+        (validate-test! card_id (data-testing.runner/test-definition merged))))
     (when (seq body)
       (data-testing.models.card-test/update-card-test! id body)))
   (data-testing.db/card-test id))

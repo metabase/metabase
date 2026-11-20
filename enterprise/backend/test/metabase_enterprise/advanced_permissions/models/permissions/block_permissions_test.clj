@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -754,7 +753,7 @@
                       (lib/with-fields $ [(m/find-first (comp  #{(mt/id :orders :id)} :id)
                                                         (lib/fieldable-columns $))]))]
           (mt/with-temp
-            [:model/Card card {:dataset_query (lib.convert/->legacy-MBQL query)}]
+            [:model/Card card {:dataset_query query}]
             (let [results-metadata (-> (qp/process-query query) :data :results_metadata :columns)
                   results-metadata-mismatched (update results-metadata 0
                                                       assoc
@@ -770,7 +769,7 @@
                 (is (=? {:data {:results_metadata {:columns [{:id (mt/id :orders :id)
                                                               :table_id (mt/id :orders)}]}}}
                         (mt/user-http-request :rasta :post "/dataset"
-                                              (lib.convert/->legacy-MBQL card-based-query)))))
+                                              card-based-query))))
               (testing "PUT /card/:id: returns 403 for mismatched result_metadata"
                 (is (=? {:message (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")
                          :required-permissions {(mt/id) {:perms/view-data {(mt/id :products) "unrestricted"}}}}
@@ -783,7 +782,7 @@
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
                         (mt/user-http-request :rasta :post "/dataset"
-                                              (lib.convert/->legacy-MBQL card-based-query)))))
+                                              card-based-query))))
               (testing "POST /card/query: card with mismatched result_metadtata can not be executed"
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}

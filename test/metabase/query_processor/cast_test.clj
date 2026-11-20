@@ -6,9 +6,7 @@
                         ;; clj-kondo/ignores to all of them... so this will take care of it. We do still want to remove
                         ;; them soon.
                         :deprecated-var        {:exclude {metabase.types.core/field-is-type? {:namespaces [metabase.query-processor.cast-test]}
-                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}
-                        ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
+                                                          metabase.test.data/mbql-query      {:namespaces [metabase.query-processor.cast-test]}}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]

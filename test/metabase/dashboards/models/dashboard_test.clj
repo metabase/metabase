@@ -487,16 +487,15 @@
                                                                    [:id [:= (:id card)]]]]]]]])}}
             (-> dash (t2/hydrate :resolved-params) :resolved-params)))))
 
-(deftest find-stale-query-test
-  (testing "the Dashboard `find-stale-query` method selects stale dashboards and applies the model's own exclusions"
+(deftest stale-candidates-test
+  (testing "the Dashboard staleness spec selects stale dashboards and applies the model's own exclusions"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Dashboard {stale-id :id}    (stale-test/stale-dashboard {:name "stale" :collection_id col-id})
                    :model/Dashboard {fresh-id :id}    {:name "fresh" :collection_id col-id
                                                        :last_viewed_at (stale-test/datetime-months-ago 1)}
                    :model/Dashboard {archived-id :id} (stale-test/stale-dashboard {:name "archived" :collection_id col-id
                                                                                    :archived true})]
-      (let [stale-ids (fn [] (set (map :id (t2/query (staleness/find-stale-query
-                                                      :model/Dashboard
+      (let [stale-ids (fn [] (set (map :id (t2/query ((staleness/candidates-fn :model/Dashboard)
                                                       {:collection-ids #{col-id}
                                                        :cutoff-date    (stale-test/date-months-ago 6)})))))]
         (testing "a stale, unarchived dashboard is returned; recent and archived dashboards are not"

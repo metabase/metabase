@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
@@ -816,6 +817,35 @@
                            (cc))))]
       (is (= (call-count 2) (call-count 6))))))
 
+(deftest collection-items-metadata-query-count-test
+  (testing "GET /api/collection/:id/items/metadata builds each type of item once per query it needs, for a non-admin too"
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [transforms-enabled true]
+       (mt/with-premium-features #{:library :snippet-collections :transforms :transforms-python :content-verification
+                                   :official-collections :data-studio :tenants :remote-sync}
+         (mt/with-temp [:model/Collection {a :id :as coll-a} {:name "A"}
+                        :model/Collection {b :id} {:name "B" :location (collection/children-location coll-a)}
+                        :model/Card _ {:name "Question" :collection_id a}
+                        :model/Card _ {:name "Question in B" :collection_id b}
+                        :model/Dashboard _ {:name "Dashboard" :collection_id a}
+                        :model/Card _ {:name "Root question"}]
+           (perms/revoke-collection-permissions! (perms/all-users-group) a)
+           (perms/revoke-collection-permissions! (perms/all-users-group) b)
+           (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+           (let [query-count (fn [url & params]
+                               (apply mt/user-http-request :rasta :get 200 url params)
+                               (t2/with-call-count [call-count]
+                                 (apply mt/user-http-request :rasta :get 200 url params)
+                                 (call-count)))
+                 a-url       (str "collection/" a "/items/metadata")]
+             (is (= 27 (query-count a-url)))
+             (is (= 41 (query-count a-url :archived true)))
+             (is (= 25 (query-count "collection/root/items/metadata")))
+             (is (= 39 (query-count "collection/root/items/metadata" :archived true)))
+             (doseq [collection-namespace ["snippets" "transforms" "data-actions" "data-apps"]]
+               (is (= 9 (query-count "collection/root/items/metadata" :namespace collection-namespace))
+                   collection-namespace)))))))))
+
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
@@ -966,18 +996,15 @@
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :rasta)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :crowberto)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id lucky-card-id
                                                                          :user_id  (mt/user->id :lucky)
-                                                                         :object   (revision/serialize-instance
-                                                                                    lucky-card lucky-card-id lucky-card)}]
+                                                                         :object   (revision/snapshot :model/Card lucky-card)}]
       (letfn [(item-names [q]
                 (->> (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (u/the-id collection) "/items")
@@ -1559,11 +1586,11 @@
          :model/Revision   revision1                {:model    "Card"
                                                      :model_id card1-id
                                                      :user_id  user2-id
-                                                     :object   (revision/serialize-instance card1 card1-id card1)}
+                                                     :object   (revision/snapshot :model/Card card1)}
          :model/Revision   _revision2               {:model    "Card"
                                                      :model_id card2-id
                                                      :user_id  user1-id
-                                                     :object   (revision/serialize-instance card2 card2-id card2)}]
+                                                     :object   (revision/snapshot :model/Card card2)}]
         ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
         (is (= 1
                (t2/query-one {:update :revision
@@ -1659,19 +1686,19 @@
                      :model/Revision   card-revision1 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   card-revision2 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   dash-revision1 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}
                      :model/Revision   dash-revision2 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
           (t2/query-one {:update :revision
                          ;; in the past
@@ -1782,7 +1809,7 @@
               [:type :asc-nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
+             (collection-items/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1792,9 +1819,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1804,9 +1831,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1818,9 +1845,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1832,9 +1859,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1843,9 +1870,9 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1854,9 +1881,9 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :desc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1866,18 +1893,18 @@
               [:%lower.description :asc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :asc
-                                                         :official-collections-first? true} :postgres))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :asc
+                                                     :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
               [:%lower.description :desc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :desc
-                                                         :official-collections-first? true} :postgres))))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :desc
+                                                     :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1968,7 +1995,7 @@
                                                   (swap! queries conj query)
                                                   (apply real-query query args))]
             (request/with-limit-and-offset 0 0
-              (is (pos? (:total (collections.children/collection-children
+              (is (pos? (:total (collection-items/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
                                  {:archived?                   false
                                   :show-dashboard-questions?   false
@@ -4308,16 +4335,14 @@
                       {:model       "Exploration"
                        :model_id    (:id e)
                        :user_id     (mt/user->id :crowberto)
-                       :object      (revision/serialize-instance :model/Exploration (:id e)
-                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :object      (revision/snapshot :model/Exploration (t2/select-one :model/Exploration :id (:id e)))
                        :timestamp   (.minusSeconds t 60)
                        :is_creation true})
           (t2/insert! :model/Revision
                       {:model     "Document"
                        :model_id  (:id doc)
                        :user_id   (mt/user->id :rasta)
-                       :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :object    (revision/snapshot :model/Document (t2/select-one :model/Document :id (:id doc)))
                        :timestamp t}))
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))

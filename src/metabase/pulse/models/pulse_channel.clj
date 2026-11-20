@@ -2,6 +2,10 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.models :as notification.models]
@@ -69,12 +73,6 @@
   (derive ::mi/read-policy.always-allow)
   (derive ::mi/write-policy.superuser)
   (derive :hook/events))
-
-(defmethod events/spec :model/PulseChannel
-  [_model]
-  {:create :event/pulse-channel-create
-   :update :event/pulse-channel-update
-   :delete :event/pulse-channel-delete})
 
 (t2/deftransforms :model/PulseChannel
   {:details (mi/transform-encrypted-json "pulse_channel.details")
@@ -284,3 +282,29 @@
   "Don't include `:emails`, we use that purely internally"
   [pulse-channel json-generator]
   (next-method (m/dissoc-in pulse-channel [:details :emails]) json-generator))
+
+;;; ------------------------------------------------------- Specs --------------------------------------------------------
+
+(defmethod events/spec :model/PulseChannel
+  [_model]
+  {:create :event/pulse-channel-create
+   :update :event/pulse-channel-update
+   :delete :event/pulse-channel-delete})
+
+(defmethod app-db-copy/spec :model/PulseChannel [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PulseChannel [_model]
+  {:track [:pulse_id :channel_type :details :schedule_type :schedule_hour :schedule_day :schedule_frame :enabled
+           :entity_id :channel_id]
+   :skip  []})
+
+(defmethod audit/spec :model/PulseChannel [_model]
+  {:track          []
+   :track-redacted [:channel_id :channel_type :details :enabled :pulse_id :schedule_day :schedule_frame
+                    :schedule_hour :schedule_type]
+   :skip           [:entity_id]
+   :parent         {:model :model/Pulse, :key :pulse_id}})
+
+(defmethod eid-translation/spec :model/PulseChannel [_model]
+  {:names [:pulse-channel]})

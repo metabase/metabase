@@ -26,6 +26,16 @@
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
+(def ^:private transforms-test
+  "A private copy of [[transforms-dataset/transforms-test]]. The tests here insert rows into its `transforms_products`
+  table and delete them afterwards. The shared dataset is static, and drivers like Snowflake, BigQuery and MotherDuck
+  share static datasets between concurrent CI jobs, so tests elsewhere that read `transforms_products` would see the
+  extra rows. With `:static false` each test run gets its own copy. It needs its own name too, because the app DB finds
+  dataset databases by name."
+  (-> transforms-dataset/transforms-test
+      (assoc :database-name "transforms-incremental-test")
+      (assoc-in [:options :static] false)))
+
 (def checkpoint-configs
   {:integer {:field-name "id"
              :template-tag-type :number
@@ -257,7 +267,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_test")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name]} checkpoint-config
@@ -290,7 +300,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "incremental_twice")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint expected-second-checkpoint]} checkpoint-config
@@ -339,7 +349,7 @@
   (testing "POST /api/transform/:id/reset-checkpoint clears the checkpoint and forces a full reprocess"
     (mt/test-drivers (test-drivers)
       (mt/with-premium-features #{:transforms-basic :hosting}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table (target-table-gen "reset_checkpoint")]
             (let [checkpoint-config (get checkpoint-configs :integer)
                   transform-payload (make-incremental-transform-payload "Reset Checkpoint Transform" target-table :mbql checkpoint-config)]
@@ -368,7 +378,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_incr_to_non_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
@@ -421,7 +431,7 @@
       (testing (format "with %s checkpoint on %s transform" (name checkpoint-type) (name transform-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic :transforms-python :hosting}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "switch_non_incr_to_incr")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [expected-initial-checkpoint]} checkpoint-config
@@ -482,7 +492,7 @@
   (testing "Transform fails at runtime with unsupported checkpoint column type"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic :hosting}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "unsupported_type_test"]
             (let [name-field-id (mt/id :transforms_products :name)
                   table-id (mt/id :transforms_products)
@@ -508,7 +518,7 @@
 (deftest empty-table-test
   (mt/test-drivers #{:postgres}
     (mt/with-premium-features #{:transforms-basic}
-      (mt/dataset transforms-dataset/transforms-test
+      (mt/dataset transforms-test
         (with-transform-cleanup! [target-table "empty_table_target"]
           (let [db-id   (mt/id)
                 db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
@@ -539,7 +549,7 @@
   (testing "Transform with non-existent checkpoint-filter-field-id fails gracefully"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "missing_field_target"]
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
@@ -564,7 +574,7 @@
   (testing "Transform with inactive checkpoint field fails gracefully"
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (with-transform-cleanup! [target-table "inactive_field_target"]
             (let [db-id   (mt/id)
                   table-id (mt/id :transforms_products)
@@ -594,7 +604,7 @@
 (deftest changing-query-keeps-checkpoint-test
   (mt/test-drivers #{:postgres}
     (mt/with-premium-features #{:transforms-basic}
-      (mt/dataset transforms-dataset/transforms-test
+      (mt/dataset transforms-test
         (with-transform-cleanup! [target-table "change_table_target"]
           (let [db-id   (mt/id)
                 db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
@@ -639,7 +649,7 @@
       (testing (format "with %s checkpoint" (name checkpoint-type))
         (mt/test-drivers (test-drivers)
           (mt/with-premium-features #{:transforms-basic}
-            (mt/dataset transforms-dataset/transforms-test
+            (mt/dataset transforms-test
               (with-transform-cleanup! [target-table (target-table-gen "native_table_tag")]
                 (let [checkpoint-config (get checkpoint-configs checkpoint-type)
                       {:keys [field-name expected-initial-checkpoint]} checkpoint-config
@@ -693,7 +703,7 @@
     ;; live table, so `apply-target-indexes!`'s full-rebuild gate skips it (a broken gate would re-create them).
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic :transforms-python}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (let [{:keys [indexes expected physical-indexes]} (index-util/driver-cases driver/*driver*)
                 checkpoint-config (:integer checkpoint-configs)
                 checkpoint-field  (:field-name checkpoint-config)]
@@ -727,7 +737,7 @@
     ;; broken pending-changes gate would leave this run an append and the index would never reach the warehouse.
     (mt/test-drivers (incremental-index-test-drivers)
       (mt/with-premium-features #{:transforms-basic}
-        (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-test
           (let [{:keys [expected physical-indexes indexes]} (index-util/driver-cases driver/*driver*)
                 checkpoint-config (:integer checkpoint-configs)
                 checkpoint-field  (:field-name checkpoint-config)]

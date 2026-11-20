@@ -5,7 +5,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.change-log.db :as change-log.db]
-   [metabase.change-log.log :as change-log.log]
+   [metabase.change-log.spec :as change-log.spec]
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
@@ -17,8 +17,7 @@
   "The tracked models that have loaded, by table name."
   []
   (into {}
-        (for [model change-log.log/tracked-models
-              :when (isa? model :hook/events)]
+        (for [model (change-log.spec/tracked-models)]
           [(name (t2/table-name model)) model])))
 
 (defn- cascades

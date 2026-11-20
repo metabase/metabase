@@ -211,7 +211,8 @@
                 ;; A chart seeded from the viewing context holds the user's query as legacy MBQL.
                 seeded      (atom {:state   {:queries {}
                                              :charts  {"c-1" {:chart_id     "c-1"
-                                                              :queries      [(lib/->legacy-MBQL (venues-query))]
+                                                              ;; existing usage -- do not use going forward
+                                                              :queries      [#_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL (venues-query))]
                                                               :chart_config {:display_type "bar"}}}}
                                    :context {}})
                 as-metabot  (fn [metabot thunk]

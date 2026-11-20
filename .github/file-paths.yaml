@@ -393,6 +393,20 @@ yaml:
   - "**/*.yml"
   - "**/*.yaml"
 
+migrations:
+  - ".github/file-paths.yaml"
+  - ".github/workflows/lint.yml"
+  - ".github/workflows/migrations.yml"
+  - "bb.edn"
+  - "bin/mage"
+  - "bin/mage.bb"
+  - "bin/check-clojure-cli.sh"
+  - "bin/check-migration-versions"
+  - "bin/clear-outdated-cpcaches.sh"
+  - "bin/pre-lint-migrations-file.sh"
+  - "bin/lint-migrations-file/src/**"
+  - "resources/migrations/**"
+
 codeql:
   - ".github/workflows/lint.yml"
   - "frontend/src/**"

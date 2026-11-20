@@ -4,6 +4,8 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
@@ -11,6 +13,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,16 +30,8 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(defmethod events/spec :model/Dimension
-  [_model]
-  {:create :event/dimension-create
-   :update :event/dimension-update
-   :delete :event/dimension-delete})
-
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
-
-(def ^:private dimension-slug "___dimension")
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
@@ -75,34 +70,31 @@
       (check-human-readable-field dimension))
     dimension))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(def ^:private field-id-transform
-  "The transform of `field_id`, which keeps the Field id that a Dimension nested in its Field's entity loads with."
-  (assoc serialization/field-transform
-         :import (fn [store _ field-ids opts]
-                   (mapv (fn [field-id imported] (if (int? field-id) field-id imported))
-                         field-ids
-                         (serialization/column-ids store :model/Field (mapv #(when-not (int? %) %) field-ids) opts)))))
+(defmethod events/spec :model/Dimension
+  [_model]
+  {:create :event/dimension-create
+   :update :event/dimension-update
+   :delete :event/dimension-delete})
+
+(defmethod app-db-copy/spec :model/Dimension [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/Dimension [_]
-  {:schema    ::warehouse-schema.schema/external-dimension
-   :identity  [:field_id]
-   :copy      [:name :type :entity_id]
-   :parent    {:model :model/Field :key :field_id :import-only? true}
-   :transform {:human_readable_field_id serialization/field-transform
-               :field_id                field-id-transform}})
-
-(defmethod serialization/storage-paths :model/Dimension [_ entities _ctx]
-  (mapv (fn [dimension]
-          (let [field-path (serialization/storage-path-prefixes (:field_id dimension))]
-            (update field-path (dec (count field-path))
-                    (fn [segment] (assoc segment :suffix dimension-slug)))))
-        entities))
-
-;;; -------------------------------------------------- Remote sync ---------------------------------------------------
+  {:schema        ::warehouse-schema.schema/external-dimension
+   :identity      [:field_id]
+   :copy          [:name :type :entity_id]
+   :parent        {:model :model/Field :key :field_id :import-only? true}
+   :transform     {:human_readable_field_id serialization/field-transform
+                   :field_id                warehouse-schema.serialization/dimension-field-id-transform}
+   :storage-paths warehouse-schema.serialization/dimension-storage-paths
+   :rows-by-refs  serialization/dimension-rows-by-refs})
 
 (defmethod remote-sync/spec :model/Dimension
   [_model]
   {:synced-items         warehouse-schema.db/synced-dimension-items
    :synced-filter-clause warehouse-schema.db/synced-field-clause})
+
+(defmethod eid-translation/spec :model/Dimension [_model]
+  {:names [:dimension]})

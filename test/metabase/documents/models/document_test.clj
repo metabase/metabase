@@ -740,8 +740,7 @@
                                                                                :view_count 5})
                    :model/Document {never-id :id} {:name       "never viewed"
                                                    :created_at (stale-test/datetime-months-ago 7)}]
-      (let [rows   (t2/query (staleness/find-stale-query
-                              :model/Document
+      (let [rows   (t2/query ((staleness/candidates-fn :model/Document)
                               {:collection-ids #{nil}
                                :cutoff-date    (stale-test/date-months-ago 6)}))
             anchor (fn [id] (:last_used_at (first (filter #(= id (:id %)) rows))))]

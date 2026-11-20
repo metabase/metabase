@@ -8,7 +8,6 @@
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -1370,11 +1369,11 @@
        (= expected-quasi-dashcards
           (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
 
-    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    {[:field 10] [:update [:field {:temporal-unit :month, :lib/uuid "00000000-0000-0000-0000-000000000000"} 10]]}
     [{:parameter_mappings []}]
     nil
 
-    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    {[:field 10] [:update [:field {:temporal-unit :month, :lib/uuid "00000000-0000-0000-0000-000000000000"} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
 
@@ -1382,7 +1381,7 @@
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     nil
 
-    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    {[:field 10] [:update [:field {:temporal-unit :month, :lib/uuid "00000000-0000-0000-0000-000000000000"} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
                                  {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                                  {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
@@ -1518,8 +1517,7 @@
          {:name "My metric"
           :type :metric
           :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                             (lib/aggregate (lib/count))
-                             lib.convert/->legacy-MBQL)}]
+                             (lib/aggregate (lib/count)))}]
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
 
@@ -1535,8 +1533,7 @@
          {:name "My metric"
           :type :metric
           :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                             (lib/aggregate (lib/count))
-                             lib.convert/->legacy-MBQL)}]
+                             (lib/aggregate (lib/count)))}]
         (testing "provider fetches skip it"
           (is (not (contains? (t2/select-one :metadata/metric :id id) :query-description)))
           (is (not (contains? (t2/select-one :metadata/card :id id) :query-description))))
@@ -1554,8 +1551,7 @@
                         :aggregation  [["metric" metric-id]]}})]
     (let [count-query (let [mp (mt/metadata-provider)]
                         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                            (lib/aggregate (lib/count))
-                            lib.convert/->legacy-MBQL))]
+                            (lib/aggregate (lib/count))))]
       ;; the cyclic cards must stay out of the shared search queue that concurrent tests drain
       (binding [search.ingestion/*disable-updates* true]
         (mt/with-temp
@@ -1926,16 +1922,15 @@
                  :dataset_query {:database db2-id}}
                 (t2/select-one :model/Card :id (:id question))))))))
 
-(deftest find-stale-query-test
-  (testing "the Card `find-stale-query` method selects stale cards and applies the model's own exclusions"
+(deftest stale-candidates-test
+  (testing "the Card staleness spec selects stale cards and applies the model's own exclusions"
     (mt/with-temp [:model/Collection {col-id :id} {}
                    :model/Card {stale-id :id}    (stale-test/stale-card {:name "stale" :collection_id col-id})
                    :model/Card {fresh-id :id}    {:name "fresh" :collection_id col-id
                                                   :last_used_at (stale-test/datetime-months-ago 1)}
                    :model/Card {archived-id :id} (stale-test/stale-card {:name "archived" :collection_id col-id
                                                                          :archived true})]
-      (let [stale-ids (fn [] (set (map :id (t2/query (staleness/find-stale-query
-                                                      :model/Card
+      (let [stale-ids (fn [] (set (map :id (t2/query ((staleness/candidates-fn :model/Card)
                                                       {:collection-ids #{col-id}
                                                        :cutoff-date    (stale-test/date-months-ago 6)})))))]
         (testing "a stale, unarchived card is returned; recent and archived cards are not"

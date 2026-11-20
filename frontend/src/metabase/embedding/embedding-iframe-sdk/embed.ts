@@ -517,13 +517,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     if (settings.componentName === "metabase-data-app") {
       validateDataAppPath(settings.path);
 
-      if (
-        settings.isGuest ||
-        settings.guestEmbedProviderUri ||
-        settings.useExistingUserSession ||
-        settings.apiKey
-      ) {
-        raiseError("Data apps require SSO authentication.");
+      if (settings.isGuest || settings.guestEmbedProviderUri) {
+        raiseError("Guest embeds are not supported for data apps.");
+      }
+
+      if (settings.useExistingUserSession) {
+        raiseError(
+          "Existing browser sessions are not supported for data apps.",
+        );
       }
     }
 

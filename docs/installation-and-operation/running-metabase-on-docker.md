@@ -221,7 +221,7 @@ docker run -d -p 3000:3000 \
   --name metabase metabase/metabase:v0.65.6
 ```
 
-When you launch your container, Metabase will use the database file (`MB_DB_FILE`) at `~/metabase-data/metabase.db` instead of its default location, and we are mounting that folder from our local filesystem into the container.
+When you launch your container, Metabase will use the database file ([`MB_DB_FILE`](../configuring-metabase/environment-variables.md#mb_db_file)) at `~/metabase-data/metabase.db` instead of its default location, and we are mounting that folder from our local filesystem into the container.
 
 ### Getting your config back if you stopped your container
 

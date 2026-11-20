@@ -65,12 +65,7 @@ describe("data app embedding setup", () => {
       initialState: { resourceType: "data-app", resourceId: "sales" },
     });
 
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
-        "Sales",
-      ),
-    );
-    expect(screen.getByTitle("Data app preview")).toHaveAttribute(
+    expect(await screen.findByTitle("Data app preview")).toHaveAttribute(
       "src",
       `${window.location.origin}/mb/embed/apps/sales`,
     );
@@ -93,7 +88,7 @@ describe("data app embedding setup", () => {
     });
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Get code" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled(),
     );
 
     expect(screen.queryByText("Authentication")).not.toBeInTheDocument();
@@ -103,14 +98,27 @@ describe("data app embedding setup", () => {
     expect(
       screen.queryByTestId("enable-embedding-card"),
     ).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
-    await screen.findByTestId("embed-code-snippet");
-
     expect(
       screen.queryByRole("radio", {
         name: "Existing session (local testing only)",
       }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens on the code step without a way back to other embed experiences", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+    });
+
+    expect(await screen.findByTestId("embed-code-snippet")).toHaveTextContent(
+      '<metabase-data-app path="sales"></metabase-data-app>',
+    );
+
+    expect(
+      screen.queryByText("Select your embed experience"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Back" }),
     ).not.toBeInTheDocument();
   });
 
@@ -121,14 +129,6 @@ describe("data app embedding setup", () => {
       initialState: { resourceType: "data-app", resourceId: "sales" },
       savedTheme: { preset: "dark" },
     });
-
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
-        "Sales",
-      ),
-    );
-
-    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
     expect(
       await screen.findByTestId("embed-code-snippet"),
@@ -168,12 +168,42 @@ describe("data app embedding setup", () => {
     expect(
       screen.getByRole("button", { name: "Agree and enable" }),
     ).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+    expect(
+      screen.getByText("Preview will appear when you enable modular embedding"),
+    ).toBeInTheDocument();
   });
 
-  it("excludes draft and outdated apps and replaces the selection with an available app", async () => {
+  // jsdom ignores `inert`, so these check for it instead of tabbing to the
+  // button. Browsers skip inert elements for focus, selection and copying.
+  it("does not let the admin copy the code from the keyboard before embedding is enabled", async () => {
     setupDataApps({
-      initialState: { resourceType: "data-app", resourceId: draftApp.slug },
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+      modularEmbeddingEnabled: false,
+      showModularEmbedTerms: true,
+    });
+
+    await waitForRequestsToSettle();
+
+    expect(screen.getByTestId("embed-code-section")).toHaveAttribute("inert");
+  });
+
+  it("lets the admin copy the code from the keyboard once embedding is enabled", async () => {
+    setupDataApps({
+      initialState: { resourceType: "data-app", resourceId: "sales" },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled(),
+    );
+
+    expect(screen.getByTestId("embed-code-section")).not.toHaveAttribute(
+      "inert",
+    );
+  });
+
+  it("excludes draft and outdated apps and selects an available app", async () => {
+    setupDataApps({
       apps: [
         draftApp,
         outdatedApp,
@@ -181,7 +211,8 @@ describe("data app embedding setup", () => {
       ],
     });
 
-    // if the selected app is a draft app, we replace the selection with an available app
+    await userEvent.click(screen.getByRole("radio", { name: /Data App/ }));
+
     await waitFor(() =>
       expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
         "Sales",
@@ -237,19 +268,32 @@ describe("data app embedding setup", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("clears a missing app and allows switching experiences when the app list is empty", async () => {
-    setupDataApps({
-      initialState: { resourceType: "data-app", resourceId: "removed-app" },
-      apps: [],
-    });
+  it.each([
+    { status: "a draft", resourceId: draftApp.slug },
+    { status: "an outdated", resourceId: outdatedApp.slug },
+    { status: "a removed", resourceId: "removed-app" },
+  ])(
+    "does not let the admin finish embedding $status app",
+    async ({ resourceId }) => {
+      setupDataApps({
+        initialState: { resourceType: "data-app", resourceId },
+        apps: [draftApp, outdatedApp],
+      });
 
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "Data app" })).toBeEnabled(),
-    );
+      await waitForRequestsToSettle();
 
-    expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue("");
-    expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
+      expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("This data app can't be previewed."),
+      ).toBeInTheDocument();
+    },
+  );
 
+  it("lets the admin switch away from data apps when the app list is empty", async () => {
+    setupDataApps({ apps: [] });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Data App/ }));
     await userEvent.click(screen.getByRole("textbox", { name: "Data app" }));
     expect(await screen.findByText("No data apps found")).toBeInTheDocument();
 
@@ -272,8 +316,8 @@ describe("data app embedding setup", () => {
     });
 
     try {
-      // get code is disabled until the list of data apps loads
-      expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
+      // done is disabled until the list of data apps loads
+      expect(screen.getByRole("button", { name: /Done/ })).toBeDisabled();
       expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
     } finally {
       appsListRequest.resolve([
@@ -282,16 +326,16 @@ describe("data app embedding setup", () => {
     }
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Get code" })).toBeEnabled(),
+      expect(screen.getByRole("button", { name: /Done/ })).toBeEnabled(),
     );
 
     expect(screen.getByTitle("Data app preview")).toBeInTheDocument();
   });
 
   it("hides the loading indicator after app preview loads", async () => {
-    setupDataApps({
-      initialState: { resourceType: "data-app", resourceId: "sales" },
-    });
+    setupDataApps();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Data App/ }));
 
     const preview = await screen.findByTitle("Data app preview");
     expect(screen.getByTestId("preview-loading-indicator")).toBeInTheDocument();
@@ -302,9 +346,7 @@ describe("data app embedding setup", () => {
     ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("textbox", { name: "Data app" }));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Boba HQ" }),
-    );
+    await userEvent.click(await screen.findByRole("option", { name: "Sales" }));
     expect(screen.getByTestId("preview-loading-indicator")).toBeInTheDocument();
 
     fireEvent.load(screen.getByTitle("Data app preview"));
@@ -313,7 +355,7 @@ describe("data app embedding setup", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("lets the admin go back to the data app picker after the selected app is removed", async () => {
+  it("disables 'done' when the app is removed while the wizard is open", async () => {
     let apps = [createMockDataApp({ slug: "sales", name: "Sales" })];
 
     const { store } = setupDataApps({
@@ -321,35 +363,18 @@ describe("data app embedding setup", () => {
       initialState: { resourceType: "data-app", resourceId: "sales" },
     });
 
-    await waitFor(() =>
-      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
-        "Sales",
-      ),
-    );
+    const doneButton = await screen.findByRole("button", { name: /Done/ });
+    await waitFor(() => expect(doneButton).toBeEnabled());
 
-    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
-    const backButton = await screen.findByRole("button", { name: "Back" });
-    const doneButton = screen.getByRole("button", { name: /Done/ });
-
-    // admin can open `Embed` while a `Make draft` request is pending.
-    // list of data apps then refreshes when the admins reaches the `Get code` step.
+    // admin can open `Embed` while a `Make draft` request is pending,
+    // so the list of data apps can refresh while the wizard is open.
     apps = [];
 
     act(() => {
       store.dispatch(Api.util.resetApiState());
     });
 
-    // the `Done` button will be disabled as there are no available apps to select
     await waitFor(() => expect(doneButton).toBeDisabled());
-    expect(backButton).toBeEnabled();
-
-    // data app list should be refreshed - should now be empty
-    await userEvent.click(backButton);
-    expect(
-      await screen.findByRole("textbox", { name: "Data app" }),
-    ).toHaveValue("");
-
-    expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
   });
 
   it.each(["Data Apps", "Exploration", "Browser"])(
