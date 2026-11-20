@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.config.core :as config]
+   [metabase.global-system.system :as global-system]
    [metabase.util.log :as log])
   (:import
    (java.nio.file Files Path)
@@ -131,37 +132,28 @@
      TimeUnit/MINUTES)
     (reset! dump-executor-atom executor)))
 
-(defn maybe-enable-monitoring!
-  "If `MB_MONITOR_PERFORMANCE` is set, starts a JFR recording.
-   - Value `\"true\"` auto-generates a timestamped filename (includes date+time)
-   - Value ending in `.jfr` is used as the output filename
-   - `\"\"` or `\"false\"` disables monitoring
-   - Any other value is treated as a directory for rolling 30-minute JFR files"
-  []
-  (try
-    (let [setting (config/config-str :mb-monitor-performance)]
-      (when (and (not (str/blank? setting))
-                 (not= "false" setting))
-        (if (directory-mode? setting)
-          ;; Rolling directory mode: new file every 30 minutes
-          (let [^Path dir-path (.toAbsolutePath (Path/of setting (into-array String [])))]
-            (start-rolling-mode! dir-path (save-rate-minutes 30))
-            (log/infof "Performance monitoring started in rolling mode. Output directory: %s" (str dir-path)))
-          ;; Single file mode
-          (let [output-path (resolve-output-path setting)
-                parent-dir  (.getParent output-path)]
-            (when parent-dir
-              (Files/createDirectories parent-dir (into-array FileAttribute [])))
-            (let [recording (create-recording!)]
-              (.setDumpOnExit recording true)
-              (.setDestination recording output-path)
-              (reset! recording-atom recording)
-              (start-periodic-dump! recording output-path (save-rate-minutes 5))
-              (log/infof "Performance monitoring started. Output file: %s" (str output-path)))))))
-    (catch Throwable e
-      (log/warnf "Failed to start performance monitoring: %s" (ex-message e)))))
+(defn- start-recording!
+  "Start a JFR recording as `setting` asks, and return it."
+  [^String setting]
+  (if (directory-mode? setting)
+    ;; Rolling directory mode: new file every 30 minutes
+    (let [^Path dir-path (.toAbsolutePath (Path/of setting (into-array String [])))]
+      (start-rolling-mode! dir-path (save-rate-minutes 30))
+      (log/infof "Performance monitoring started in rolling mode. Output directory: %s" (str dir-path)))
+    ;; Single file mode
+    (let [output-path (resolve-output-path setting)
+          parent-dir  (.getParent output-path)]
+      (when parent-dir
+        (Files/createDirectories parent-dir (into-array FileAttribute [])))
+      (let [recording (create-recording!)]
+        (.setDumpOnExit recording true)
+        (.setDestination recording output-path)
+        (reset! recording-atom recording)
+        (start-periodic-dump! recording output-path (save-rate-minutes 5))
+        (log/infof "Performance monitoring started. Output file: %s" (str output-path)))))
+  @recording-atom)
 
-(defn stop-monitoring!
+(defn- stop-recording!
   "Stops and closes the JFR recording if one is active."
   []
   (when-let [^Recording recording @recording-atom]
@@ -181,3 +173,29 @@
       (log/info "Performance monitoring stopped")
       (catch Throwable e
         (log/warnf "Error stopping performance monitoring: %s" (ex-message e))))))
+
+;; The recording, as a global-system component, so halting the system stops it too.
+;; Startup starts it before any other component, so the halt, which stops components in reverse start order unless
+;; their dependencies say otherwise, stops it after them, and it records the rest of the shutdown.
+(def ^:private recording-component
+  (global-system/mutable-component-handle ::recording (constantly nil)))
+
+(defn maybe-enable-monitoring!
+  "If `MB_MONITOR_PERFORMANCE` is set, starts a JFR recording.
+   - Value `\"true\"` auto-generates a timestamped filename (includes date+time)
+   - Value ending in `.jfr` is used as the output filename
+   - `\"\"` or `\"false\"` disables monitoring
+   - Any other value is treated as a directory for rolling 30-minute JFR files"
+  []
+  (try
+    (let [setting (config/config-str :mb-monitor-performance)]
+      (when (and (not (str/blank? setting))
+                 (not= "false" setting))
+        (global-system/start! recording-component #(start-recording! setting) (fn [_] (stop-recording!)))))
+    (catch Throwable e
+      (log/warnf "Failed to start performance monitoring: %s" (ex-message e)))))
+
+(defn stop-monitoring!
+  "Stops and closes the JFR recording if one is active."
+  []
+  (global-system/stop! recording-component))
