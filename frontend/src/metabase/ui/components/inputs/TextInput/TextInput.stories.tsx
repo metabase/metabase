@@ -129,12 +129,21 @@ const STATES: {
   {
     id: "read-only-variant",
     label: 'variant="read-only"',
-    props: { readOnly: true, variant: "read-only" },
+    // a read-only field always shows a value, so it ignores the `filled` toggle
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
   },
   {
     id: "read-only-variant-focus",
     label: 'variant="read-only" (focused)',
-    props: { readOnly: true, variant: "read-only" },
+    props: {
+      readOnly: true,
+      variant: "read-only",
+      defaultValue: sampleArgs.value,
+    },
   },
 ];
 
