@@ -14,6 +14,36 @@ export const clampWeight = (value) =>
   Math.min(2, Math.max(0, Math.round(10 * value) / 10));
 
 /**
+ * Serialize the weights that differ from the default of 1 as `kind:weight` pairs joined by commas.
+ * @param {readonly string[]} kinds
+ * @param {Readonly<Record<string, number>>} weights
+ */
+export const formatWeights = (kinds, weights) =>
+  kinds
+    .map((kind) => [kind, clampWeight(weights[kind] ?? 1)])
+    .filter(([, weight]) => weight !== 1)
+    .map(([kind, weight]) => `${kind}:${weight}`)
+    .join(",");
+
+/**
+ * Parse `kind:weight` pairs joined by commas, dropping unknown kinds and malformed weights.
+ * @param {readonly string[]} kinds
+ * @param {string} text
+ * @returns {Record<string, number>}
+ */
+export function parseWeights(kinds, text) {
+  /** @type {Record<string, number>} */
+  const weights = {};
+  for (const pair of text.split(",").filter(Boolean)) {
+    const [kind, value] = pair.split(":");
+    if (kinds.includes(kind) && /^\d(\.\d)?$/.test(value)) {
+      weights[kind] = clampWeight(Number(value));
+    }
+  }
+  return weights;
+}
+
+/**
  * Return nonempty goal groups in the supplied kind order.
  * @param {readonly string[]} kinds
  * @param {readonly Goal[]} goals
@@ -65,7 +95,8 @@ export function ranking(scores, key) {
 }
 
 /**
- * Average each kind before weighting it; all-zero weights produce null scores and empty rankings.
+ * Average each kind before weighting it.
+ * All-zero weights produce null scores, which leave the rankings empty.
  * @param {readonly string[]} engines
  * @param {readonly GoalGroup[]} groups
  * @param {Readonly<Record<string, number>>} weights
@@ -109,8 +140,8 @@ export function weightedScores(engines, groups, weights) {
     totalWeight,
     scores,
     rankings: {
-      typedScore: totalWeight ? ranking(scores, "typedScore") : [],
-      bestScore: totalWeight ? ranking(scores, "bestScore") : [],
+      typedScore: ranking(scores, "typedScore"),
+      bestScore: ranking(scores, "bestScore"),
     },
   };
 }

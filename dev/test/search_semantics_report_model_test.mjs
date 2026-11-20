@@ -5,7 +5,9 @@ import test from "node:test";
 
 import {
   clampWeight,
+  formatWeights,
   groupGoals,
+  parseWeights,
   ranking,
   weightedScores,
 } from "../resources/dev/search_semantics_report_model.mjs";
@@ -154,4 +156,28 @@ test("rankings omit unavailable scores", () => {
     ).map((row) => row.id),
     ["available"],
   );
+});
+
+test("formatted weights list only kinds that differ from the default", () => {
+  assert.equal(
+    formatWeights(["or", "and", "typing"], { or: 1, and: 0.5, typing: 3 }),
+    "and:0.5,typing:2",
+  );
+  assert.equal(formatWeights(["or"], {}), "");
+});
+
+test("parsed weights drop unknown kinds and malformed values", () => {
+  assert.deepEqual(
+    parseWeights(
+      ["or", "and", "typing"],
+      "and:0.5,typing:3,other:1,or:1.25,,or",
+    ),
+    { and: 0.5, typing: 2 },
+  );
+});
+
+test("weights survive a format and parse round trip", () => {
+  const kinds = ["or", "and", "typing"];
+  const weights = { and: 0, typing: 1.7 };
+  assert.deepEqual(parseWeights(kinds, formatWeights(kinds, weights)), weights);
 });
