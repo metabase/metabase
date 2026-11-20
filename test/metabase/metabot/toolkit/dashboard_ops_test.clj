@@ -521,15 +521,15 @@
     (testing "adding the first tab, which the stored cards now show on, moves none of them"
       (let [payload (compile-with-stub-cards dash [{:op "add_tab" :id -1 :name "Details"}])]
         (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 12 4]} (layout payload)))
-        (is (empty? (dashboard-ops/pushed-dashcard-ids payload)))))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
     (testing "resizing a card that covers neither leaves them as they are"
       (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 9 :size {:size_x 24 :size_y 4}}])]
         (is (= {7 [0 0 12 6], 8 [2 0 12 6], 9 [20 0 24 4]} (layout payload)))
-        (is (empty? (dashboard-ops/pushed-dashcard-ids payload)))))
+        (is (empty? (:pushed-dashcard-ids (dashboard-ops/effects payload))))))
     (testing "a placed card that covers one of them pushes it below the other too"
       (let [payload (compile-with-stub-cards dash [{:op "resize" :dashcard_id 7 :size {:size_x 12 :size_y 8}}])]
         (is (= {7 [0 0 12 8], 8 [8 0 12 6], 9 [20 0 12 4]} (layout payload)))
-        (is (= [8] (dashboard-ops/pushed-dashcard-ids payload)))))))
+        (is (= [8] (:pushed-dashcard-ids (dashboard-ops/effects payload))))))))
 
 (deftest ^:parallel positioned-cards-must-not-overlap-test
   (testing "two cards given positions in one call that cover each other fail, naming both"
