@@ -68,6 +68,25 @@
      :offset offset
      :total  (data-testing.db/test-run-count filters)}))
 
+
+(api.macros/defendpoint :get "/:id" :- ::data-testing.schema/data-test-run.detail
+  "Get a run with the user who started it and the result it stored: what each expectation found, or the refusal that
+  ended the run. The caller needs read access to the run's test. The run of a test that was deleted is not found.
+
+  The stored result holds rows that the test read, and input SQL can read any table of the database, so only a caller
+  who may run the test gets it. For any other caller `:result` is nil and `:can_read_result` is false."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (let [{:keys [test_type test_id]} (api/check-404 (data-testing.db/test-run id))
+        model                       (:model (data-testing.test-type/spec test_type))]
+    (api/check-404 (and model test_id))
+    (let [saved-test       (api/read-check model test_id)
+          can-read-result? (mi/can-query? (t2/hydrate saved-test :can_query))]
+      (-> (api/check-404 (data-testing.db/test-run-with-result test_type test_id id))
+          (t2/hydrate :initiated_by_user)
+          (cond-> (not can-read-result?) (assoc :result nil))
+          (assoc :can_read_result can-read-result?)))))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-test-run` routes."
   (api.macros/ns-handler *ns* +auth))

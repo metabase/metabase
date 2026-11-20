@@ -42,15 +42,20 @@
      run)))
 
 (mu/defn finish-run!
-  "Finish `run-id` if it is still started, then release this process's ownership.
+  "Finish `run-id` with `status` and `result`, what the run reported or nil, if it is still started, then release this
+  process's ownership.
 
   The status guard prevents a late completion from overwriting a timeout assigned by the cluster reaper."
-  [run-id :- ms/PositiveInt
-   status :- ::data-testing.schema/run-status]
-  (try
-    (data-testing.models.data-test-run/finish-data-test-run! run-id status)
-    (finally
-      (swap! active-runs disj run-id))))
+  ([run-id :- ms/PositiveInt
+    status :- ::data-testing.schema/run-status]
+   (finish-run! run-id status nil))
+  ([run-id :- ms/PositiveInt
+    status :- ::data-testing.schema/run-status
+    result :- [:maybe ::data-testing.schema/stored-run-result]]
+   (try
+     (data-testing.models.data-test-run/finish-data-test-run! run-id status result)
+     (finally
+       (swap! active-runs disj run-id)))))
 
 (mu/defn start-suite-run! :- ::data-testing.schema/test-suite-run
   "Create a started run of the suite `suite-id`, publish its start event, and register the run as owned by this

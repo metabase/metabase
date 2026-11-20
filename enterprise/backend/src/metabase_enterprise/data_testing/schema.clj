@@ -561,7 +561,7 @@
 (mr/def ::expectation-result
   "What one expectation found. Each type owns the schema of its own result, registered under the key
   named here."
-  [:multi {:dispatch :type}
+  [:multi {:dispatch (comp keyword :type)}
    [:equals :metabase-enterprise.data-testing.expectations.equals/result]
    [:empty  :metabase-enterprise.data-testing.expectations.empty/result]])
 
@@ -572,7 +572,30 @@
   [:map {:closed true}
    [:status       ::status]
    [:expectations [:sequential ::expectation-result]]
-   [:tables       [:map-of :string :string]]])
+   [:tables       (ms/string-keyed-map :string)]])
+
+(mr/def ::run-refusal
+  "What the run endpoint tells its caller about a run that was refused after it started: the message, and the
+  `:error-code` naming which refusal it was."
+  [:map {:closed true}
+   [:message    :string]
+   [:error-code :string]])
+
+(mr/def ::stored-run-result
+  "What a finished run keeps of its outcome: the result its caller received, or the refusal that ended it."
+  [:or ::run-result ::run-refusal])
+
+(mr/def ::data-test-run.detail
+  "One test run as the API returns it, with the user who started it and the result it stored. `:can_read_result` is
+  whether the caller may see the result, which is whether they may run the test. `:result` is nil for a caller who may
+  not, and for a
+  run that is still started, that timed out, that ended in an error the endpoint gave no error code for, that
+  finished before results were stored, or whose result was cleared after the retention period."
+  [:merge
+   ::data-test-run.response
+   [:map {:closed true}
+    [:result          [:maybe ::stored-run-result]]
+    [:can_read_result :boolean]]])
 
 (mr/def ::test-suite-run.member-status
   "The outcome of one member of a suite run. The suite passes only when every member is `:passed`.
