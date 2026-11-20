@@ -123,6 +123,12 @@ dataset_query:
     - - field
       - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_query_log, ip_address]
+    order-by:
+    - - desc
+      - {}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ}
+        - [Internal Metabase Database, public, v_query_log, started_at]
     source-table: [Internal Metabase Database, public, v_query_log]
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
