@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { ColumnNameColumnSplitSetting } from "metabase-types/api";
 
 import type {
@@ -30,10 +30,11 @@ function sortByOrder(names: string[], order: string[]) {
 }
 
 /**
- * Where the groupings and the values of the summary go in pivot mode. `columnSplit` gives the
- * groupings that go in Rows, and the order of the Columns groupings and of the values. A grouping
- * that is not in its rows goes in Columns, and a column that it doesn't have comes last. Without
- * a grouping in Rows there is no pivot table, and the columns keep the order of the query.
+ * Where the groupings and the values of the summary go in pivot mode. `columnSplit.rows` gives
+ * the Rows groupings, and every other grouping goes in Columns. `columnSplit` also gives the order
+ * of Columns and of the values, and a column that it doesn't have comes last in its well.
+ *
+ * Without a grouping in Rows there is no pivot table, and the columns keep the order of the query.
  */
 export function getPivotLayout(
   query: Lib.Query,
@@ -97,124 +98,10 @@ export function getPivotChange(
   return pivotSplit ? { type: "hide" } : undefined;
 }
 
-type SummaryClause = Lib.BreakoutClause | Lib.AggregationClause;
-
-type SummaryColumn = {
-  key: string;
-  clause: SummaryClause;
-};
-
-function getSummaryColumns(
-  clauses: SummaryClause[],
-  names: string[],
-): SummaryColumn[] {
-  return clauses.map((clause, index) => ({ key: names[index], clause }));
-}
-
-function hasClause(columns: SummaryColumn[], clause: SummaryClause) {
-  return columns.some((column) => Lib.isSameClause(column.clause, clause));
-}
-
-function getGroupingsAndValues(query: Lib.Query, stageIndex: number) {
-  const { breakoutNames, aggregationNames } = getResultColumnNames(
-    query,
-    stageIndex,
-  );
-  return {
-    groupings: getSummaryColumns(
-      Lib.breakouts(query, stageIndex),
-      breakoutNames,
-    ),
-    values: getSummaryColumns(
-      Lib.aggregations(query, stageIndex),
-      aggregationNames,
-    ),
-  };
-}
-
-/**
- * The keys of the columns after a query change, in the order they had. Keys are result column
- * names, which shift when another column of the same name goes away, so columns are matched by
- * their clauses. A column that is changed in place is a different clause, and keeps its
- * position.
- */
-function getNextKeys(
-  keys: string[],
-  columns: SummaryColumn[],
-  nextColumns: SummaryColumn[],
-  canChangeInPlace: boolean,
-): string[] {
-  const isChangedInPlace =
-    canChangeInPlace && columns.length === nextColumns.length;
-
-  const getNextKey = (key: string) => {
-    const index = columns.findIndex((column) => column.key === key);
-    if (index === -1) {
-      return undefined;
-    }
-    const { clause } = columns[index];
-    const sameColumn = nextColumns.find((column) =>
-      Lib.isSameClause(column.clause, clause),
-    );
-    if (sameColumn) {
-      return sameColumn.key;
-    }
-    const replacement = nextColumns[index];
-    return isChangedInPlace && !hasClause(columns, replacement.clause)
-      ? replacement.key
-      : undefined;
-  };
-
-  return keys.map(getNextKey).filter(isNotNull);
-}
-
-type NextPivotLayoutOpts = {
-  query: Lib.Query;
-  nextQuery: Lib.Query;
-  stageIndex: number;
-  layout: ColumnNameColumnSplitSetting;
-  /** The well that takes the groupings `nextQuery` adds. */
-  addedWellId?: SummaryWellId;
-};
-
-/**
- * The layout after `query` becomes `nextQuery`. The groupings and the values that stay keep their
- * well and their order, and the ones that `nextQuery` adds come last in their well.
- */
-export function getNextPivotLayout({
-  query,
-  nextQuery,
-  stageIndex,
-  layout,
-  addedWellId,
-}: NextPivotLayoutOpts): ColumnNameColumnSplitSetting {
-  if (layout.rows.length === 0 && addedWellId !== "rows") {
-    return getPivotLayout(nextQuery, stageIndex, layout);
-  }
-  const { groupings, values } = getGroupingsAndValues(query, stageIndex);
-  const next = getGroupingsAndValues(nextQuery, stageIndex);
-  const canChangeInPlace = addedWellId === undefined;
-  const getNextGroupingKeys = (keys: string[]) =>
-    getNextKeys(keys, groupings, next.groupings, canChangeInPlace);
-
-  const addedRowKeys =
-    addedWellId === "rows"
-      ? next.groupings
-          .filter(({ clause }) => !hasClause(groupings, clause))
-          .map(({ key }) => key)
-      : [];
-
-  return getPivotLayout(nextQuery, stageIndex, {
-    rows: [...getNextGroupingKeys(layout.rows), ...addedRowKeys],
-    columns: getNextGroupingKeys(layout.columns),
-    values: getNextKeys(layout.values, values, next.values, canChangeInPlace),
-  });
-}
-
 /**
  * The layout after a drop. A grouping chip that moves between the Columns and Rows wells changes
- * only the layout, not the query, and comes last in its new well. Returns `layout` itself for any
- * other drop.
+ * only the layout, not the query, and comes last in its new well. Any other drop gives `layout`
+ * itself.
  */
 export function getPivotLayoutAfterDrop(
   query: Lib.Query,
