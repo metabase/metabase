@@ -537,13 +537,13 @@ Related: [contains](#contains), [regexExtract](#regexextract).
 
 ### domain
 
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
+
 Extracts the domain name from a URL or email.
 
 Syntax: `domain(urlOrEmail)`
 
 Example: `domain([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `domain([Page URL])` would return `metabase`. `domain([Email])` would extract `metabase` from `hello@metabase.com`.
-
-Databases that don't support `domain`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [host](#host), [path](#path), [subdomain](#subdomain).
 
@@ -574,13 +574,13 @@ Example: `float("123.45")` would return `123.45` as a floating point value.
 
 ### host
 
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
+
 Extracts the host, which is the domain and the TLD, from a URL or email.
 
 Syntax: `host(urlOrEmail)`
 
 Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://www.metabase.com`, `host([Page URL])` would return `metabase.com`. `host([Email])` would extract `metabase.com` from `hello@metabase.com`.
-
-Databases that don't support `host`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
@@ -649,13 +649,13 @@ Related: [isEmpty](#isempty), [isNull](#isnull), [notNull](#notnull)
 
 ### path
 
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
+
 Extracts the pathname from a URL.
 
 Syntax: `path(url)`
 
 Example: `path([Page URL])`. For example, `path("https://www.example.com/path/to/page.html?key1=value")` would return `/path/to/page.html`.
-
-Databases that don't support `path`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [host](#host), [subdomain](#subdomain).
 
@@ -728,13 +728,13 @@ Related: [endsWith](#endswith), [contains](#contains), [doesNotContain](#doesnot
 
 ### subdomain
 
+> Available for PostgreSQL, MySQL, Databricks, SparkSQL, and Druid-JDBC.
+
 Extracts the subdomain from a URL. Ignores `www` (returns a blank string).
 
 Syntax: `subdomain(url)`
 
 Example: `subdomain([Page URL])`. If the `[Page URL]` column had a value of `https://status.metabase.com`, `subdomain([Page URL])` would return `status`.
-
-Databases that don't support `subdomain`: Athena, BigQuery, ClickHouse, MariaDB, MongoDB, MotherDuck, Oracle, Presto, Redshift, Snowflake, SQL Server, SQLite, Starburst, and Vertica.
 
 Related: [domain](#domain), [host](#host), [path](#path).
 
@@ -1070,8 +1070,6 @@ Limitations are noted for each aggregation and function above, and here they are
 **Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
 **MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`, `domain`, `host`, `path`, `subdomain`.
-
-**MotherDuck**: `domain`, `host`, `path`, `subdomain`.
 
 **MariaDB**: `Median`, `Percentile`, `Offset`, `domain`, `host`, `path`, `subdomain`.
 
