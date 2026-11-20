@@ -614,14 +614,11 @@
   information, or when its earlier turns were stored before the agent stored their blocks: then the next turn sends
   one."
   [messages]
-  ;; The web chat supports one user per conversation. So this function assumes that the full block in the history
-  ;; was rendered for the user who sends this turn. It does not check whose block it is.
-  ;; Warning: multi-user conversations break this assumption. Examples are a superuser who posts in another user's
-  ;; conversation, a retry by another user, or a fork of another user's conversation. Then the model can take another
-  ;; user's details and recent views as those of the user who sends this turn. To fix it, store the user id with the
-  ;; block. Then count only the newest full block, and only when it was rendered for the current user. That fix was
-  ;; proposed in review and reverted, because the scenario is not supported
-  ;; (https://github.com/metabase/metabase/pull/87316).
+  ;; This function assumes that the full block in the history was rendered for the user who sends this turn. It does
+  ;; not check whose block it is.
+  ;; Warning: this assumption fails today, because a superuser can post in another user's conversation. The fix needs
+  ;; more than the user row's `user_id`.
+  ;; TODO: fix this case (BOT-2718).
   ;; Slack Metabot does not store or replay the block. It sends the full context on every turn (see
   ;; `metabase.slackbot.streaming`). To store and replay the block there too is a possible improvement.
   (boolean (some (fn [turn-rows]
