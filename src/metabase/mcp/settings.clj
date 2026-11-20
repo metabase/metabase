@@ -1,7 +1,6 @@
 (ns metabase.mcp.settings
   "Settings for MCP Apps CORS origins and MCP session key derivation."
   (:require
-   [clojure.data.csv :as csv]
    [clojure.string :as str]
    [metabase.llm.settings :as llm.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
@@ -114,11 +113,8 @@
                       (catch Exception _ nil))
                     default-query-handle-ttl-hours)))
 
-(defn- bad-request
-  ([message]
-   (bad-request message nil))
-  ([message cause]
-   (ex-info message {:status-code 400} cause)))
+(defn- bad-request [message]
+  (ex-info message {:status-code 400}))
 
 (defn- setter-entries
   "The entries in `new-value`, a list of names or a CSV string of one line.
@@ -128,16 +124,9 @@
     (or (nil? new-value) (sequential? new-value))
     new-value
 
-    ;; The API and config.yml can both pass a CSV string; the :csv setter would store it unparsed.
+    ;; The API and config.yml can both pass a CSV string. Parse it as the :csv type will, to check its names first.
     (string? new-value)
-    (let [rows (try
-                 (doall (csv/read-csv new-value))
-                 (catch Exception e
-                   (throw (bad-request (tru "Malformed list of MCP clients: {0}" (ex-message e)) e))))]
-      ;; An env var keeps only the first line, so saving one would silently drop the rest.
-      (when (next rows)
-        (throw (bad-request (tru "List MCP clients on one line, separated by commas."))))
-      (first rows))
+    (setting/csv-string-entries new-value)
 
     :else
     (throw (bad-request (tru "MCP clients must be a list of names, or a comma-separated string.")))))
@@ -176,16 +165,14 @@
   (let [source (or (first (setting/env-var-source :mcp-apps-cors-enabled-clients))
                    "mcp-apps-cors-enabled-clients")]
     (try
-      ;; Lazy, like the :csv type: the getter parses the first line only, and so does `first` here.
-      (let [rows (csv/read-csv (or (setting/get-value-of-type :string :mcp-apps-cors-enabled-clients) ""))]
-        (when-let [unknown (not-empty (:unknown (parse-enabled-clients (first rows))))]
-          (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
-                     source
-                     (str/join ", " unknown)
-                     (accepted-client-names-text)))
-        ;; Later lines are ignored whether or not they parse.
-        (when (try (next rows) (catch Exception _ true))
-          (log/warnf "Only the first line of %s is used. List MCP clients on one line, separated by commas." source)))
+      (when-let [unknown (not-empty (:unknown (parse-enabled-clients
+                                               (setting/get-value-of-type :csv :mcp-apps-cors-enabled-clients))))]
+        (log/warnf "Ignoring unknown MCP clients in %s: %s. Accepted values: %s."
+                   source
+                   (str/join ", " unknown)
+                   (accepted-client-names-text)))
+      ;; Startup skips settings with a custom getter. This one reads the value as :csv, so it ignores later lines too.
+      (setting/warn-about-ignored-csv-lines! :mcp-apps-cors-enabled-clients)
       (catch Exception _
         ;; The getter already treats this value as no clients; say so once, without a stack trace.
         (log/warnf "Could not parse %s as comma-separated MCP clients, so all MCP clients are disabled."

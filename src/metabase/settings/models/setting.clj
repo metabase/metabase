@@ -1022,6 +1022,21 @@
        (u.date/format timestamp)
        (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
+(defn csv-string-entries
+  "The entries in `csv-string`, a CSV string of one line, without surrounding spaces or blank entries.
+   This is how a `:csv` setting reads a string it is given to store, so a custom setter can check the entries first.
+   Throws a 400 for a string that is not valid CSV or spans several lines."
+  [csv-string]
+  (let [rows (try
+               (doall (csv-rows csv-string))
+               (catch Exception _
+                 ;; Leave the parse error out: it can quote part of the value, which may be secret.
+                 (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
+    ;; Every read of a `:csv` value parses only its first line, so storing more would silently drop the rest.
+    (when (next rows)
+      (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
+    (csv-entries (first rows))))
+
 (defn- serialize-csv
   "The stored form of `value`, a list of entries or a CSV string of one line.
    Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]` or `,`.
@@ -1030,14 +1045,7 @@
   [value]
   (cond
     (string? value)
-    (let [rows (try
-                 (doall (csv-rows value))
-                 (catch Exception _
-                   ;; Leave the parse error out: it can quote part of the value, which may be secret.
-                   (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
-      (when (next rows)
-        (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
-      (serialize-csv (first rows)))
+    (serialize-csv (csv-string-entries value))
 
     (sequential? value)
     (let [entries (csv-entries value)]
@@ -1838,13 +1846,16 @@
                :parse-error parse-error
                :env-var? env-var?)))))
 
-(defn- warn-about-ignored-csv-lines!
-  "Logs a warning when `setting` is a `:csv` setting whose env var has lines after the first, which are not read."
-  [setting]
-  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
-  (when-let [[env-var value] (and (= :csv (:type setting))
-                                  (not (:custom-getter? setting))
-                                  (env-var-source setting))]
+(defn warn-about-ignored-csv-lines!
+  "Logs a warning when `setting-definition-or-name`, a `:csv` setting, has an env var with lines after the first,
+   which are not read.
+   [[validate-settings-formatting!]] calls this for every `:csv` setting without a custom getter. A setting whose
+   custom getter reads its value with `get-value-of-type :csv` also ignores later lines, so its startup logic can call
+   this too."
+  [setting-definition-or-name]
+  (when-let [[env-var value] (let [setting (resolve-setting setting-definition-or-name)]
+                               (and (= :csv (:type setting))
+                                    (env-var-source setting)))]
     ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
     ;; they parse, so a parse error after the first line counts as one.
     (let [rows               (csv-rows value)
@@ -1858,7 +1869,8 @@
 
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
-  (run! warn-about-ignored-csv-lines! (vals @registered-settings))
+  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
+  (run! warn-about-ignored-csv-lines! (remove :custom-getter? (vals @registered-settings)))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"

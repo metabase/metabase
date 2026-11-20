@@ -111,12 +111,12 @@
     (testing "rejects a malformed CSV string"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Malformed list of MCP clients.*"
+           #"Invalid comma-separated value\."
            (mcp.settings/mcp-apps-cors-enabled-clients! "claude,\"chatgpt"))))
-    (testing "rejects a string of several lines, which an env var would read only the first line of"
+    (testing "rejects a string of several lines, of which only the first would be read"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"List MCP clients on one line, separated by commas\."
+           #"Put comma-separated values on one line\."
            (mcp.settings/mcp-apps-cors-enabled-clients! "claude\nchatgpt"))))
     (testing "rejects a value that is neither a list nor a string with a 400"
       (doseq [bad [5 true :claude {"claude" 1}]]
@@ -136,9 +136,11 @@
 
 (deftest warn-about-unknown-mcp-apps-cors-enabled-clients-test
   (letfn [(warnings []
-            (mt/with-log-messages-for-level [messages [metabase.mcp.settings :warn]]
-              (startup/def-startup-logic! ::mcp.settings/warn-about-unknown-mcp-apps-cors-enabled-clients)
-              (mapv :message (messages))))]
+            ;; The warning about later lines comes from the settings module.
+            (mt/with-log-messages-for-level [mcp-messages [metabase.mcp.settings :warn]]
+              (mt/with-log-messages-for-level [setting-messages [metabase.settings.models.setting :warn]]
+                (startup/def-startup-logic! ::mcp.settings/warn-about-unknown-mcp-apps-cors-enabled-clients)
+                (mapv :message (concat (mcp-messages) (setting-messages))))))]
     (testing "names the env var, the ignored entries and the accepted values"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude,zed,copilot"]
         (is (= [(str "Ignoring unknown MCP clients in MB_MCP_APPS_CORS_ENABLED_CLIENTS: zed, copilot. "
@@ -152,13 +154,13 @@
     (testing "says that only the first line is used, which the setter would reject"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude\nchatgpt"]
         (is (= [(str "Only the first line of MB_MCP_APPS_CORS_ENABLED_CLIENTS is used. "
-                     "List MCP clients on one line, separated by commas.")]
+                     "Put comma-separated values on one line.")]
                (warnings)))))
     (testing "does not call a malformed later line a reason to disable every client"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude\n\"chatgpt"]
         (is (= ["claude"] (mcp.settings/mcp-apps-cors-enabled-clients)))
         (is (= [(str "Only the first line of MB_MCP_APPS_CORS_ENABLED_CLIENTS is used. "
-                     "List MCP clients on one line, separated by commas.")]
+                     "Put comma-separated values on one line.")]
                (warnings)))))
     (testing "says nothing when every entry names a client"
       (mt/with-temp-env-var-value! [mb-mcp-apps-cors-enabled-clients "claude,vscode"]
