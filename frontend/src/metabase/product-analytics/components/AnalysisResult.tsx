@@ -4,6 +4,7 @@ import { noop } from "underscore";
 import { Warnings } from "metabase/common/components/Warnings";
 import { Alert, Box, Flex, Icon, Stack, Title } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
 import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { CardDisplayType, RawSeries } from "metabase-types/api";
 
@@ -26,6 +27,14 @@ export const AnalysisResult = ({
   error,
 }: AnalysisResultProps) => {
   const [warnings, setWarnings] = useState<string[]>([]);
+  // A rerun has no result until it finishes, so the last run's chart stays up
+  // under a running overlay. When the last run failed, or there was none, a
+  // skeleton shows instead.
+  const [lastRawSeries, setLastRawSeries] = useState(rawSeries);
+  if (!isRunning && rawSeries !== lastRawSeries) {
+    setLastRawSeries(rawSeries);
+  }
+  const shownRawSeries = isRunning ? lastRawSeries : rawSeries;
 
   return (
     <Stack flex={1} mih={0}>
@@ -35,7 +44,7 @@ export const AnalysisResult = ({
           {error}
         </Alert>
       )}
-      {isRunning && (
+      {isRunning && shownRawSeries === null && (
         <Flex
           direction="column"
           flex={1}
@@ -45,15 +54,16 @@ export const AnalysisResult = ({
           {getChartSkeletonImage(display)}
         </Flex>
       )}
-      {!isRunning && rawSeries !== null && (
+      {shownRawSeries !== null && (
         <Box flex={1} mih={0} pos="relative">
           <Warnings warnings={warnings} className={S.warnings} size={18} />
           <Visualization
-            rawSeries={rawSeries}
+            rawSeries={shownRawSeries}
             isQueryBuilder={false}
             onChangeCardAndRun={noop}
             onUpdateWarnings={setWarnings}
           />
+          {isRunning && <VisualizationRunningState className={S.overlay} />}
         </Box>
       )}
     </Stack>

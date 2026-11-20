@@ -39,17 +39,25 @@ const HABIT_DATASET: Dataset = createMockDataset({
 type SetupOpts = {
   table?: Table;
   dataset?: Dataset;
+  storedSettings?: Record<string, unknown>;
 };
 
-const setup = ({ table = EVENT_TABLE, dataset = HABIT_DATASET }: SetupOpts) => {
+const setup = ({
+  table = EVENT_TABLE,
+  dataset = HABIT_DATASET,
+  storedSettings = {},
+}: SetupOpts) => {
   setupAdhocQueryEndpoint(dataset);
-  return renderHookWithProviders(() => useAnalysis({ kind: "habit", table }), {
-    storeInitialState: createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
+  return renderHookWithProviders(
+    () => useAnalysis({ kind: "habit", table, storedSettings }),
+    {
+      storeInitialState: createMockState({
+        entities: createMockEntitiesState({
+          databases: [createSampleDatabase()],
+        }),
       }),
-    }),
-  });
+    },
+  );
 };
 
 const getRunRequests = () => fetchMock.callHistory.calls("path:/api/dataset");
@@ -69,6 +77,24 @@ describe("useAnalysis", () => {
       database: EVENT_TABLE.db_id,
       stages: [{ "source-table": ORDERS_ID }, {}],
     });
+  });
+
+  it("computes the settings from the stored ones, and runs with them", async () => {
+    const { result } = setup({
+      storedSettings: { granularity: "week" },
+    });
+
+    expect(result.current.settings).toEqual({
+      date_range: "past90days",
+      counting: "person",
+      granularity: "week",
+    });
+    await waitFor(() => expect(result.current.rawSeries).not.toBeNull());
+    expect(result.current.rawSeries?.[0].card.name).toBe(
+      "How many weeks did people show up?",
+    );
+    const request: unknown = await getRunRequests()[0].request?.json();
+    expect(JSON.stringify(request)).toContain('"temporal-unit":"week"');
   });
 
   it("gives the error a run failed with", async () => {
@@ -99,6 +125,11 @@ describe("useAnalysis", () => {
     const { result } = setup({ table });
 
     expect(result.current.analysis).toBeUndefined();
+    expect(result.current.settings).toEqual({
+      date_range: "past90days",
+      counting: "person",
+      granularity: "day",
+    });
     expect(result.current.isRunning).toBe(false);
     expect(result.current.error).toMatch(/No person column/);
     expect(getRunRequests()).toHaveLength(0);

@@ -1,0 +1,13 @@
+/*
+ * Keeps the resting look on hover and press. Outranks the default button's
+ * `:hover:not([data-loading])` and `:active:not([data-loading])` rules.
+ */
+.static[data-variant="default"]:is(:hover, :active):not(
+    [data-loading],
+    [data-disabled]
+  ) {
+  cursor: default;
+  color: var(--button-color);
+  background-color: var(--button-bg);
+  box-shadow: var(--mantine-shadow-xs);
+}

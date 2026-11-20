@@ -13,10 +13,9 @@ import type {
 } from "metabase-types/api";
 
 import { computeAnalysisSettings, getAnalysisConfig } from "./analyses/config";
+import type { AnalysisSettingsByKind } from "./analyses/types";
 import { getAnalysisState } from "./analysis-state";
 import { useStableQuery } from "./use-stable-value";
-
-const STORED_SETTINGS = {};
 
 type Analysis = {
   title: string;
@@ -24,18 +23,35 @@ type Analysis = {
   vizSettings: VisualizationSettings;
 };
 
-type AnalysisBuild =
-  | { analysis: Analysis; query: Lib.Query; error?: never }
-  | { analysis?: never; query?: never; error: unknown };
+type AnalysisBuild<K extends ProductAnalyticsKind> =
+  | {
+      settings: AnalysisSettingsByKind[K];
+      analysis: Analysis;
+      query: Lib.Query;
+      error?: never;
+    }
+  | {
+      /** Missing when the settings can't be computed. */
+      settings?: AnalysisSettingsByKind[K];
+      analysis?: never;
+      query?: never;
+      error: unknown;
+    };
 
 function buildAnalysis<K extends ProductAnalyticsKind>(
   kind: K,
   table: Table,
+  storedSettings: Record<string, unknown>,
   metadataProvider: Lib.MetadataProvider,
-): AnalysisBuild {
+): AnalysisBuild<K> {
+  let settings: AnalysisSettingsByKind[K];
+  try {
+    settings = computeAnalysisSettings(kind, { table }, storedSettings);
+  } catch (error) {
+    return { error };
+  }
   try {
     const config = getAnalysisConfig(kind);
-    const settings = computeAnalysisSettings(kind, { table }, STORED_SETTINGS);
     const analysisState = getAnalysisState({
       kind,
       settings,
@@ -43,6 +59,7 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
       metadataProvider,
     });
     return {
+      settings,
       analysis: {
         title: config.getTitle(settings),
         display: config.getDisplay(settings),
@@ -51,7 +68,7 @@ function buildAnalysis<K extends ProductAnalyticsKind>(
       query: Lib.buildProductAnalyticsQuery(analysisState),
     };
   } catch (error) {
-    return { error };
+    return { settings, error };
   }
 }
 
@@ -59,9 +76,13 @@ type UseAnalysisOptions<K extends ProductAnalyticsKind> = {
   kind: K;
   /** An event table that's set up for product analysis, once it's loaded. */
   table: Table | undefined;
+  /** The settings the user changed. Invalid values fall back to defaults. */
+  storedSettings: Record<string, unknown>;
 };
 
-type UseAnalysisResult = {
+type UseAnalysisResult<K extends ProductAnalyticsKind> = {
+  /** Undefined without a table, and when they can't be computed. */
+  settings: AnalysisSettingsByKind[K] | undefined;
   /** Undefined without a table, and when the query can't be built. */
   analysis: Analysis | undefined;
   /** The query that runs. It keeps its identity while it's unchanged. */
@@ -72,18 +93,19 @@ type UseAnalysisResult = {
   error: string | undefined;
 };
 
-/** Builds the analysis's query with its default settings, and runs it. */
+/** Computes the analysis's settings, builds its query, and runs it. */
 export const useAnalysis = <K extends ProductAnalyticsKind>({
   kind,
   table,
-}: UseAnalysisOptions<K>): UseAnalysisResult => {
+  storedSettings,
+}: UseAnalysisOptions<K>): UseAnalysisResult<K> => {
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const build = useMemo(
     () =>
       table !== undefined
-        ? buildAnalysis(kind, table, metadataProvider)
+        ? buildAnalysis(kind, table, storedSettings, metadataProvider)
         : undefined,
-    [kind, table, metadataProvider],
+    [kind, table, storedSettings, metadataProvider],
   );
   const analysis = build?.analysis;
   const query = useStableQuery(build?.query);
@@ -122,6 +144,7 @@ export const useAnalysis = <K extends ProductAnalyticsKind>({
   // A query that fails still answers 202, with its error in the body.
   const error = build?.error ?? requestError ?? dataset?.error;
   return {
+    settings: build?.settings,
     analysis,
     query,
     rawSeries,

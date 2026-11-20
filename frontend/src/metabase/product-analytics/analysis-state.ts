@@ -1,6 +1,5 @@
 import { getColumnRoleValue } from "metabase/product-analytics-core";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
-import { deserializeDateParameterValue } from "metabase/querying/parameters/utils/parsing";
 import * as Lib from "metabase-lib";
 import type {
   EventTableColumnRole,
@@ -9,6 +8,7 @@ import type {
 } from "metabase-types/api";
 
 import type { AnalysisSettingsByKind } from "./analyses/types";
+import { parseDateRange } from "./date-range";
 
 type AnalysisStateOptions<K extends ProductAnalyticsKind> = {
   kind: K;
@@ -38,8 +38,8 @@ function getDateRangeFilter(
   column: Lib.ColumnMetadata,
   dateRange: string,
 ): Lib.ExpressionClause {
-  const value = deserializeDateParameterValue(dateRange);
-  if (value === null) {
+  const value = parseDateRange(dateRange);
+  if (value === undefined) {
     throw new Error(`Invalid date range ${dateRange}`);
   }
   return getDateFilterClause(column, value);
@@ -48,7 +48,7 @@ function getDateRangeFilter(
 /**
  * What the planner builds the analysis's query from. Throws when the table
  * isn't in the metadata provider, lacks a column for a required role, or the
- * date range isn't a date filter value.
+ * date range isn't one the date picker can produce.
  */
 export function getAnalysisState<K extends ProductAnalyticsKind>({
   kind,

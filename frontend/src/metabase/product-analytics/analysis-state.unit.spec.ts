@@ -75,7 +75,7 @@ describe("getAnalysisState", () => {
     ]);
   });
 
-  it("throws when the date range isn't a date filter value", () => {
+  it("throws when the date range isn't one the date picker can produce", () => {
     const settings = { ...SETTINGS, date_range: "not a date range" };
 
     expect(() => setup({ settings })).toThrow("Invalid date range");
