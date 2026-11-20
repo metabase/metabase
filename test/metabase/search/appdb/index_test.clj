@@ -173,8 +173,10 @@
           (is (= 2 (index-hits "organ")))
           (is (= 2 (index-hits "organi"))))
         (testing "We get false-positive for 'Organi' here"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organization"))))
+          ;; those two results are "Organization Reference" and "Nobody Expects Organi".
+          ;; PostgreSQL 19's English stemmer reduces "organization" to "organiz", so "Organi" no longer matches.
+          (let [stem (:stem (t2/query-one ["SELECT to_tsquery('english', 'organization')::text AS stem"]))]
+            (is (= (if (= "'organ'" stem) 2 1) (index-hits "organization")))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 

@@ -760,8 +760,14 @@
     (testing "PGJDBC parses :contains/:starts-with/:ends-with SQL regardless of standard_conforming_strings (#73721)"
       (let [mp       (mt/metadata-provider)
             venues   (lib.metadata/table mp (mt/id :venues))
-            name-col (lib.metadata/field mp (mt/id :venues :name))]
-        (doseq [scs ["on" "off"]]
+            name-col (lib.metadata/field mp (mt/id :venues :name))
+            spec     (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+            major-v  (sql-jdbc.execute/do-with-connection-with-options
+                      :postgres spec nil
+                      (fn [^Connection conn]
+                        (.. conn getMetaData getDatabaseMajorVersion)))]
+        ;; PostgreSQL 19 removed support for `standard_conforming_strings = off`
+        (doseq [scs (if (>= major-v 19) ["on"] ["on" "off"])]
           (testing (str "standard_conforming_strings = " scs)
             ;; Fresh non-pooled connection per setting (the pool is bypassed because we pass a
             ;; raw JDBC spec rather than a Database ID), so:
@@ -770,7 +776,7 @@
             ;;   `prepareStatement` actually exercises the parser.
             (sql-jdbc.execute/do-with-connection-with-options
              :postgres
-             (sql-jdbc.conn/connection-details->spec :postgres (:details (mt/db)))
+             spec
              nil
              (fn [^Connection conn]
                (with-open [stmt (.createStatement conn)]
