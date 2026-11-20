@@ -160,11 +160,11 @@ See [Remove Metabase branding from exports](./exporting-results.md#remove-metaba
 
 ## Tables in alerts show the first 20 rows
 
-When an alert is for a question that displays a table, the alert shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
+When an alert is for a question that displays a table (not a pivot table), the alert shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
 
 ## Email alerts include the results as a CSV file
 
-Email alerts attach the question's results as a CSV file, as long as the person who created the alert has [permission to download results](../permissions/data.md#download-results-permissions). The CSV file includes up to 1,048,575 rows by default. On self-hosted Metabases, admins can change this limit with the [`MB_ATTACHMENT_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_row_limit) environment variable.
+Email alerts attach the question's results as a CSV file, as long as the person who created the alert has [permission to download results](../permissions/data.md#download-results-permissions). The CSV file includes up to 1,048,575 rows by default, but if the results take up more than 10 MB, Metabase leaves the CSV file out of the email. On self-hosted Metabases, admins can change this limit with the [`MB_ATTACHMENT_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_row_limit) environment variable.
 
 ## Alerts in embedded questions exclude links
 

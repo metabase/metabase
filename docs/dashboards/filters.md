@@ -409,7 +409,7 @@ Admins of self-hosted Metabases can turn off this behavior with the [`MB_DASHBOA
 Metabase doesn't apply your last-used values when:
 
 - **You access the dashboard through a link that includes filter values**, like `?category=Widget`. Metabase applies the values in the link, and uses the default values for any filters that aren't in the link.
-- **You're viewing a [public link](../embedding/public-links.md) or a [guest embed](../embedding/guest-embedding.md)**. These always open with the dashboard's default values.
+- **You're viewing a [public link](../embedding/public-links.md) or a [guest embed](../embedding/guest-embedding.md)**. Metabase doesn't save filter values for these, so filters use the dashboard's default values unless the link or embed sets them.
 
 To go back to a filter's default value, click the **Reset filter to default state** icon on the filter widget. To reset every filter on the dashboard, click the three-dot menu **...** and select **Reset all filters**.
 

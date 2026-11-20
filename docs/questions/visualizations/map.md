@@ -57,7 +57,7 @@ To change the pin type:
    - **Markers**. Each point is a pin, and you can hover over it to see its details. Maps default to markers for results with fewer than 1,000 rows.
    - **Tiles**. Each point is a small square, without tooltips. Maps default to tiles for results with 1,000 rows or more. Tile maps can show more points than marker maps (see below).
 
-By default, marker maps show up to 2,000 points, the same limit as every chart that displays unaggregated data. To raise this limit, use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting affects _all_ charts, not just pin maps, so raising it too much can slow down your Metabase and your browser.
+By default, marker maps show up to 2,000 points, the same limit as every chart that displays unaggregated data. To raise this limit on self-hosted Metabases, use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting affects _all_ charts, not just pin maps, so raising it too much can slow down your Metabase and your browser.
 
 Tile maps aren't limited to the rows in your results, so they can show more than 2,000 points. In very dense areas, though, a tile map might not show every point.
 

@@ -128,7 +128,7 @@ On self-hosted Metabases, you can also set the filter with the [`MB_LDAP_GROUP_M
 
 {% include plans-blockquote.html feature="LDAP advanced features" is_plural=true %}
 
-Metabase always reads people's email, first name, and last name from your LDAP directory, as well as their groups, which Metabase uses if you turn on [group mapping](#group-mapping). You can also sync other [user attributes][user-attributes-def], such as roles, from your LDAP directory.
+Metabase always reads people's email, first name, and last name from your LDAP directory. If you turn on [group mapping](#group-mapping), Metabase also reads their groups. You can also sync other [user attributes][user-attributes-def], such as roles, from your LDAP directory.
 
 To choose which user attributes to sync, list them, separated by commas, in the [`MB_LDAP_SYNC_USER_ATTRIBUTES_ALLOWLIST`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes_allowlist) environment variable or as `ldap-sync-user-attributes-allowlist` in the [config file](../configuring-metabase/config-file.md). By default, the list is empty, so Metabase doesn't sync any user attributes. To turn off user attribute syncing entirely, set [`MB_LDAP_SYNC_USER_ATTRIBUTES`](../configuring-metabase/environment-variables.md#mb_ldap_sync_user_attributes) to `false`.
 

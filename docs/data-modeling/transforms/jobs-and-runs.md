@@ -106,7 +106,7 @@ Metabase skips a dependency when the dependency:
 
 The job's page in **Data Studio > Data transformation > Jobs** lists every transform the job will run and in which order. The **Notes** column tells you when Metabase will skip a dependency, and flags dependencies that have no schedule of their own.
 
-Metabase runs up to three SQL transforms from a job at the same time, and Python transforms one at a time. A transform still waits for the transforms it depends on. On self-hosted Pro and Enterprise plans, you can change how many SQL transforms run at once with the [`MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`](../../configuring-metabase/environment-variables.md#mb_transform_run_job_sql_concurrency) environment variable.
+Metabase runs up to three query-based transforms (SQL or query builder) from a job at the same time, and Python transforms one at a time. A transform still waits for the transforms it depends on. On self-hosted Pro and Enterprise plans, you can change how many query-based transforms run at once with the [`MB_TRANSFORM_RUN_JOB_SQL_CONCURRENCY`](../../configuring-metabase/environment-variables.md#mb_transform_run_job_sql_concurrency) environment variable.
 
 ## Runs
 

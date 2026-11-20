@@ -156,7 +156,7 @@ See [Remove Metabase branding from exports](../questions/exporting-results.md#re
 
 ## Tables in subscriptions show the first 20 rows
 
-When a dashboard card displays a table, the subscription shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
+When a dashboard card displays a table (not a pivot table), the subscription shows the first 20 rows of the table, followed by a note like "Showing 20 of 1,250 rows." On self-hosted Metabases, admins can change how many rows the table shows with the [`MB_ATTACHMENT_TABLE_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_table_row_limit) environment variable, up to 100 rows.
 
 To send all of the results, [attach the results as a file](#email-attachments) (email subscriptions only). File attachments have their own [row limit](#questions-to-attach).
 
