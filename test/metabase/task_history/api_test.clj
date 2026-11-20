@@ -7,6 +7,11 @@
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
+;; Load test-data before the tests run: its first sync records a TaskRun that tests counting TaskRuns would see.
+(use-fixtures :once (fn [thunk]
+                      (mt/db)
+                      (thunk)))
+
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true, :duration 10, :task_details nil
    :status "success" :logs nil :run_id false})
