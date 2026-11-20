@@ -16,13 +16,13 @@ import { NotificationConfigBanner } from "./NotificationConfigBanner";
 interface SetupOpts {
   emailConfigured?: boolean;
   slackConfigured?: boolean;
-  openSettings?: () => void;
+  onConfigureClick?: () => void;
 }
 
 function setup({
   emailConfigured = false,
   slackConfigured = false,
-  openSettings = () => {},
+  onConfigureClick = () => {},
 }: SetupOpts = {}) {
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: true,
@@ -44,7 +44,7 @@ function setup({
   renderWithProviders(
     <Route
       path="*"
-      element={<NotificationConfigBanner openSettings={openSettings} />}
+      element={<NotificationConfigBanner onConfigureClick={onConfigureClick} />}
     />,
     {
       initialRoute: "/",
@@ -79,12 +79,12 @@ describe("NotificationConfigBanner", () => {
     ).not.toBeInTheDocument();
   });
   it(`has a Configure button`, async () => {
-    const openSettings = jest.fn();
-    setup({ openSettings });
+    const onConfigureClick = jest.fn();
+    setup({ onConfigureClick });
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Configure/i }),
     );
-    expect(openSettings).toHaveBeenCalledTimes(1);
+    expect(onConfigureClick).toHaveBeenCalledTimes(1);
   });
 });

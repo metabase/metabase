@@ -177,7 +177,7 @@ export function SecurityCenterPage() {
             </Text>
             <UpgradeBanner targetVersion={targetVersion} />
             <NotificationConfigBanner
-              openSettings={() => setSettingsOpen(true)}
+              onConfigureClick={() => setSettingsOpen(true)}
             />
           </Stack>
           <Stack gap="xxl" className={S.content}>

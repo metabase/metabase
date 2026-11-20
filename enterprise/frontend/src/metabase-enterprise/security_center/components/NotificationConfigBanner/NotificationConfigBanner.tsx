@@ -24,11 +24,11 @@ function useShouldShow(): boolean {
 }
 
 type NotificationConfigBannerProps = {
-  openSettings: () => void;
+  onConfigureClick: () => void;
 };
 
 export function NotificationConfigBanner({
-  openSettings,
+  onConfigureClick,
 }: NotificationConfigBannerProps) {
   const shouldShow = useShouldShow();
 
@@ -48,7 +48,7 @@ export function NotificationConfigBanner({
           className={S.link}
           fw="bold"
           size="md"
-          onClick={() => openSettings()}
+          onClick={() => onConfigureClick()}
         >
           {t`Configure`}
         </Anchor>
