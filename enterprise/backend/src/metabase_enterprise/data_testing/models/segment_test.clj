@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -45,6 +46,7 @@
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
   (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
   segment-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -88,6 +90,13 @@
   [instance changes]
   (and (mi/can-write? instance)
        (can-save-test? (:segment_id changes (:segment_id instance)))))
+
+(defmethod data-testing.test-type/spec :segment [_test-type]
+  {:model      :model/SegmentTest
+   :run-topics {:start   :event/segment-test-run-start
+                :timeout :event/segment-test-run-timeout}
+   :subject    #(data-testing.db/segment (:segment_id %))
+   :can-run?   can-run?})
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 

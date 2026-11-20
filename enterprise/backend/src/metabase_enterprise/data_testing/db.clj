@@ -3,7 +3,9 @@
   additional logic, so no other namespace in the module runs a query itself."
   (:require
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -36,6 +38,141 @@
   (t2/select :model/TransformTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
                                     transform-id (assoc :where [:= :transform_id transform-id]))))
 
+(mu/defn saved-tests :- [:sequential ::data-testing.schema/saved-test]
+  "Every saved test of `model`."
+  [model :- :keyword]
+  (t2/select model))
+
+(mu/defn saved-tests-where :- [:sequential ::data-testing.schema/saved-test]
+  "The saved tests of `model` whose `column` is one of `values`."
+  [model  :- :keyword
+   column :- [:enum :id :entity_id]
+   values :- [:sequential [:or ms/PositiveInt :string]]]
+  (if (seq values)
+    (t2/select model column [:in values])
+    []))
+
+(mu/defn test-suites :- [:sequential ::data-testing.schema/test-suite]
+  "Every TestSuite, in name order."
+  []
+  (t2/select :model/TestSuite {:order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn test-suite :- [:maybe ::data-testing.schema/test-suite]
+  "The TestSuite with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/TestSuite :id id))
+
+(def ^:private SuiteMemberRows
+  [:sequential [:map {:closed true}
+                [:test_type      ::data-testing.schema/test-type]
+                [:test_entity_id :string]]])
+
+(mu/defn- replace-suite-members!
+  "Replace the members of the TestSuite `suite-id` with `members`, positioned in their order."
+  [suite-id :- ms/PositiveInt
+   members  :- SuiteMemberRows]
+  (t2/delete! :model/TestSuiteMember :suite_id suite-id)
+  (when (seq members)
+    (t2/insert! :model/TestSuiteMember (map-indexed (fn [i member] (assoc member :suite_id suite-id :position i))
+                                                    members))))
+
+(mu/defn insert-test-suite! :- ms/PositiveInt
+  "Insert the TestSuite `suite` with `members`, positioned in their order, and return its id. The audit log records
+  the write as one create of the suite."
+  [suite   :- [:map {:closed true}
+               [:name        :string]
+               [:description {:optional true} [:maybe :string]]
+               [:creator_id  ::lib.schema.id/user]]
+   members :- SuiteMemberRows]
+  (events/with-batched-events
+    (t2/with-transaction [_conn]
+      (let [id (t2/insert-returning-pk! :model/TestSuite suite)]
+        (replace-suite-members! id members)
+        id))))
+
+(mu/defn update-test-suite!
+  "Apply `updates` to the TestSuite with `id`, and replace its members with `members` unless `members` is nil. A change
+  of members alone also sets the suite's update time. The audit log records the write as one update of the suite."
+  [id      :- ms/PositiveInt
+   updates :- [:map {:closed true}
+               [:name        {:optional true} :string]
+               [:description {:optional true} [:maybe :string]]]
+   members :- [:maybe SuiteMemberRows]]
+  (events/with-batched-events
+    (t2/with-transaction [_conn]
+      ;; The suite row is updated first: its row lock makes a concurrent update of the same suite wait until this one
+      ;; commits, so the second replaces the members the first wrote instead of merging with them.
+      (let [updates (cond-> updates
+                      (some? members) (assoc :updated_at :%now))]
+        (when (seq updates)
+          (t2/update! :model/TestSuite :id id updates)))
+      (when (some? members)
+        (replace-suite-members! id members)))))
+
+(mu/defn delete-test-suite!
+  "Delete the TestSuite with `id`, and its members."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/TestSuite :id id))
+
+(mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
+  "The members of the TestSuites with `suite-ids`, by suite and then position."
+  [suite-ids :- [:sequential ms/PositiveInt]]
+  (if (seq suite-ids)
+    (t2/select :model/TestSuiteMember {:where    [:in :suite_id suite-ids]
+                                       :order-by [[:suite_id :asc] [:position :asc]]})
+    []))
+
+(mu/defn insert-suite-run! :- ::data-testing.schema/test-suite-run
+  "Insert a started TestSuiteRun of the suite `suite-id` and return it."
+  [suite-id     :- ms/PositiveInt
+   initiated-by :- [:maybe ::lib.schema.id/user]]
+  (t2/insert-returning-instance! :model/TestSuiteRun {:suite_id     suite-id
+                                                      :initiated_by initiated-by
+                                                      :status       :started}))
+
+(mu/defn finish-started-suite-run! :- :int
+  "Set `status`, the end time, and `members` of the TestSuiteRun `run-id` if it is still started. Returns the number of
+  rows updated."
+  [run-id  :- ms/PositiveInt
+   status  :- ::data-testing.schema/run-status
+   members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
+  (t2/update! :model/TestSuiteRun
+              :id run-id
+              :status "started"
+              (cond-> {:status status :end_time :%now}
+                members (assoc :members members))))
+
+(mu/defn add-members-to-ended-suite-run! :- :int
+  "Set the `members` of the TestSuiteRun `run-id` if the run has ended. Returns the number of rows updated. The cluster
+  reaper ends a run without its members; this sets them afterward."
+  [run-id  :- ms/PositiveInt
+   members :- ::data-testing.schema/test-suite-run.stored-members]
+  (t2/update! :model/TestSuiteRun
+              :id run-id
+              :status [:not= "started"]
+              {:members members}))
+
+(mu/defn suite-runs :- [:sequential ::data-testing.schema/test-suite-run]
+  "A page of the runs of the suite `suite-id`, newest first."
+  [suite-id :- ms/PositiveInt
+   limit    :- ms/PositiveInt
+   offset   :- ms/IntGreaterThanOrEqualToZero]
+  (t2/select :model/TestSuiteRun {:where    [:= :suite_id suite-id]
+                                  :order-by [[:start_time :desc] [:id :desc]]
+                                  :limit    limit
+                                  :offset   offset}))
+
+(mu/defn suite-run-count :- :int
+  "The number of runs of the suite `suite-id`."
+  [suite-id :- ms/PositiveInt]
+  (t2/count :model/TestSuiteRun :suite_id suite-id))
+
+(mu/defn delete-suite-members-of-test!
+  "Remove the `test-type` test with entity id `entity-id` from every TestSuite."
+  [test-type :- ::data-testing.schema/test-type
+   entity-id :- :string]
+  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id entity-id))
+
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
@@ -60,17 +197,6 @@
                                   :initiated_by initiated-by
                                   :status       :started}))
 
-(def test-type->model
-  "The model of the saved tests of each test type."
-  {:transform :model/TransformTest
-   :card      :model/CardTest
-   :segment   :model/SegmentTest})
-
-(mu/defn saved-tests :- [:sequential ::data-testing.schema/saved-test]
-  "Every saved test of `test-type`."
-  [test-type :- ::data-testing.schema/test-type]
-  (t2/select (test-type->model test-type)))
-
 (mu/defn- runs-of-tests-clause :- vector?
   "A clause that holds for a run of one of the `test-type` tests with `test-ids` that started no earlier than its test
   was created."
@@ -84,7 +210,7 @@
      ;; test_id has no foreign key, so a run can keep the id of a deleted test, and a later test can get the same id.
      ;; The start time tells the runs of the later test from those of the deleted one.
      [:exists ^:allow-subquery {:select [1]
-                                :from   [[(t2/table-name (test-type->model test-type)) :the_test]]
+                                :from   [[(t2/table-name (:model (data-testing.test-type/spec test-type))) :the_test]]
                                 :where  [:and
                                          [:= :the_test.id :data_test_run.test_id]
                                          [:>= :data_test_run.start_time :the_test.created_at]]}]]))
@@ -306,6 +432,11 @@
     (-> (t2/select [:model/TransformTest :id :name :transform_id] :id [:in ids])
         (t2/hydrate [:transform [:collection :effective_ancestors]])
         (->> (mapv (fn [row] (update row :transform #(some-> % (collection.root/hydrate-root-collection root)))))))))
+
+(mu/defn synced-test-suite-items :- [:sequential ::data-testing.schema/test-suite.synced-item]
+  "The TestSuites with `ids`, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (t2/select [:model/TestSuite :id :name] :id [:in ids]))
 
 (mu/defn synced-card-test-items :- [:sequential ::data-testing.schema/card-test]
   "The CardTests with `ids`, with their Card and its Collection and ancestors, as remote sync lists them."

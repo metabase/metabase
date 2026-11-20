@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-testing.serialization
-  "The SerDes of saved tests, stored in the directory of the file of the subject they test."
+  "The SerDes of test suites and of saved tests. A saved test is stored in the directory of the file of the subject it
+  tests."
   (:require
    [metabase.serialization.core :as serialization]))
 
@@ -74,4 +75,11 @@
   [entities]
   (mapv (fn [{:keys [segment_id]}]
           #{[:model/Segment segment_id]})
+        entities))
+
+(defn test-suite-storage-paths
+  "The storage path of each of the TestSuite `entities`: a file named after the suite, in `test_suites`."
+  [entities _ctx]
+  (mapv (fn [suite]
+          [{:label "test_suites"} {:label (:name suite) :key (:entity_id suite)}])
         entities))

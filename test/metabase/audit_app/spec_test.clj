@@ -97,6 +97,7 @@
     :custom-viz-plugin-create :custom-viz-plugin-delete :custom-viz-plugin-update
     :segment-test-create :segment-test-delete :segment-test-update
     :tenant-create :tenant-update
+    :test-suite-create :test-suite-delete :test-suite-update
     :transform-test-create :transform-test-delete :transform-test-update})
 
 (deftest stored-topics-test

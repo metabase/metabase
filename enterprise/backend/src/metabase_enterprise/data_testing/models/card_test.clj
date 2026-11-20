@@ -5,6 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
+   [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -50,6 +51,7 @@
   ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
   ;; runs are never listed or shown as `last_run`.
   (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
+  (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
   card-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
@@ -122,6 +124,13 @@
   :feature :none
   [card-id]
   (data-testing.db/delete-card-tests! card-id))
+
+(defmethod data-testing.test-type/spec :card [_test-type]
+  {:model      :model/CardTest
+   :run-topics {:start   :event/card-test-run-start
+                :timeout :event/card-test-run-timeout}
+   :subject    #(data-testing.db/card (:card_id %))
+   :can-run?   can-run?})
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 
