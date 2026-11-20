@@ -1074,10 +1074,25 @@
   (when @jvm-alloc-rate-thread (@jvm-alloc-rate-thread))
   (try (stop-web-server sys)
        (prometheus/clear (.-registry sys))
-       (alter-var-root #'system (constantly nil))
        (log/info "Prometheus web-server shut down")
        (catch Exception e
-         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))))
+         (log/warnf "Error stopping prometheus web-server: %s" (ex-message e)))
+       ;; cleared even when the stop fails, so a later [[setup!]] can start a new system
+       (finally
+         (alter-var-root #'system (constantly nil)))))
+
+(defn- start-system!
+  "Start a Prometheus system on `port`, set the `system` var to it, and return it.
+  If installing the reporter fails, stops the system again and rethrows."
+  [port]
+  (let [sys (make-prometheus-system port "metabase-registry")]
+    (alter-var-root #'system (constantly sys))
+    (try
+      (install-real-reporter!)
+      sys
+      (catch Throwable e
+        (stop-system! sys)
+        (throw e)))))
 
 ;; The running system, as a global-system component, so halting the system stops it too.
 ;; Readers still use the `system` var, which the component's start and stop set, so tests can redefine it.
@@ -1091,13 +1106,7 @@
    (when (not system)
      (when-not port
        (log/info "Running prometheus metrics without a webserver"))
-     (global-system/start! system-component
-                           (fn []
-                             (let [sys (make-prometheus-system port "metabase-registry")]
-                               (alter-var-root #'system (constantly sys))
-                               (install-real-reporter!)
-                               sys))
-                           #(stop-system! %))
+     (global-system/start! system-component #(start-system! port) #(stop-system! %))
      nil)))
 
 (defn observe-initial-values
@@ -1116,9 +1125,7 @@
 (defn shutdown!
   "Stop the prometheus metrics web-server if it is running. Halting the global system stops it too."
   []
-  ;; a start that threw after setting `system` registered nothing, and a stop that threw left `system` set
-  (when-not (global-system/stop! system-component)
-    (some-> system stop-system!))
+  (global-system/stop! system-component)
   nil)
 
 ;; Threads still working during shutdown, like notification sends, call these after [[shutdown!]] drops the registry.
