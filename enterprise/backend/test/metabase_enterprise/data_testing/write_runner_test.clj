@@ -9,6 +9,7 @@
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -178,12 +179,15 @@
 
 (deftest write-to-a-table-named-like-a-cte-runs-on-its-input-test
   (mt/test-drivers (drivers-that-write)
-    (let [people (:name (data-testing.test-util/table-ref :people))]
-      (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
-        (is (=? {:status       :passed
-                 :expectations [{:name "only person 1 is refunded" :status :passed}]}
-                (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
-                            ["refunded" 1] [(people-rows)] [(reading refunded-only-1)])))))))
+    ;; MariaDB 10.6 takes a WITH clause only before a SELECT; MariaDB 13.0 also takes one before an UPDATE.
+    (when-not (and (mysql/mariadb? (mt/db))
+                   (some-> (mt/db) :dbms_version :semantic-version first (< 13)))
+      (let [people (:name (data-testing.test-util/table-ref :people))]
+        (testing "the target of an UPDATE named like a CTE is rewritten to its input's temp table, which the write changes"
+          (is (=? {:status       :passed
+                   :expectations [{:name "only person 1 is refunded" :status :passed}]}
+                  (run-write! (str "WITH " people " AS (SELECT 1 AS id) UPDATE " people " SET name = ? WHERE id = ?")
+                              ["refunded" 1] [(people-rows)] [(reading refunded-only-1)]))))))))
 
 (deftest write-must-be-one-insert-update-or-delete-test
   (mt/test-drivers (drivers-that-write)
@@ -314,26 +318,28 @@
 
 (deftest write-runs-with-standard-conforming-strings-on-test
   (mt/test-driver :postgres
-    (testing "on a database whose connections turn standard_conforming_strings off"
-      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
-                                                  :details (assoc (:details (mt/db))
-                                                                  :additional-options
-                                                                  "options=-c%20standard_conforming_strings%3Doff")}]
-        (testing "premise: a query on the database sees the setting off"
-          (is (= "off" (string-setting db-id))))
-        (testing "a run turns the setting on: the write records it, and the expectation reads it"
-          (is (=? {:status       :passed
-                   :expectations [{:name "the write saw the setting on" :status :passed}]}
-                  (run-write! db-id
-                              (str "UPDATE " (data-testing.test-util/qualified :people)
-                                   " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
-                              [1]
-                              [(people-rows)]
-                              [(reading {:type :empty
-                                         :name "the write saw the setting on"
-                                         :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
-        (testing "a run leaves the setting as it found it"
-          (is (= "off" (string-setting db-id))))))))
+    ;; Postgres 19 refuses a connection that turns standard_conforming_strings off.
+    (when (some-> (mt/db) :dbms_version :semantic-version first (< 19))
+      (testing "on a database whose connections turn standard_conforming_strings off"
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                    :details (assoc (:details (mt/db))
+                                                                    :additional-options
+                                                                    "options=-c%20standard_conforming_strings%3Doff")}]
+          (testing "premise: a query on the database sees the setting off"
+            (is (= "off" (string-setting db-id))))
+          (testing "a run turns the setting on: the write records it, and the expectation reads it"
+            (is (=? {:status       :passed
+                     :expectations [{:name "the write saw the setting on" :status :passed}]}
+                    (run-write! db-id
+                                (str "UPDATE " (data-testing.test-util/qualified :people)
+                                     " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
+                                [1]
+                                [(people-rows)]
+                                [(reading {:type :empty
+                                           :name "the write saw the setting on"
+                                           :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
+          (testing "a run leaves the setting as it found it"
+            (is (= "off" (string-setting db-id)))))))))
 
 (defn- write-name-1!
   "Run a saved test of the UPDATE of the people table that sets person 1's name to the Postgres expression `value`,
