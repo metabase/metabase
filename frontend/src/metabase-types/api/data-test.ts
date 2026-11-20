@@ -72,12 +72,42 @@ export type ListTransformTestsRequest = {
 
 export type TransformTestResultStatus = "passed" | "failed" | "error";
 
-export type TransformTestExpectationResult = {
+export type DataTestResultColumn = {
   name: string;
-  type: DataTestExpectation["type"];
+  database_type: string;
+};
+
+export type DataTestCellMismatch = {
+  column: string;
+  expected: DataTestRowValue;
+  actual: DataTestRowValue;
+};
+
+type DataTestExpectationResultBase = {
+  name: string;
   status: TransformTestResultStatus;
+  columns?: DataTestResultColumn[];
   error?: { type: string; message: string };
 };
+
+export type DataTestEqualsExpectationResult = DataTestExpectationResultBase & {
+  type: "equals";
+  "row-counts"?: { actual: number; expected: number };
+  "extra-rows"?: DataTestRow[];
+  "missing-rows"?: DataTestRow[];
+  "cell-mismatches"?: DataTestCellMismatch[];
+  truncated?: number;
+};
+
+export type DataTestEmptyExpectationResult = DataTestExpectationResultBase & {
+  type: "empty";
+  sample?: DataTestRow[];
+  truncated?: number;
+};
+
+export type TransformTestExpectationResult =
+  | DataTestEqualsExpectationResult
+  | DataTestEmptyExpectationResult;
 
 export type RunTransformTestResponse = {
   status: TransformTestResultStatus;

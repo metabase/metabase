@@ -12,16 +12,23 @@ import {
 } from "metabase/common/data-studio/components/PaneHeader";
 import { useCollectionPath } from "metabase/common/data-studio/hooks/use-collection-path/useCollectionPath";
 import * as Urls from "metabase/urls";
-import type { Transform, TransformTest } from "metabase-types/api";
+import type { DataTestRun, Transform, TransformTest } from "metabase-types/api";
+
+import {
+  DataTestRunTitle,
+  getDataTestRunBreadcrumbs,
+} from "../DataTestRunTitle";
 
 type TransformTestHeaderProps = {
   transform: Transform;
   test: TransformTest;
+  run?: DataTestRun;
 };
 
 export function TransformTestHeader({
   transform,
   test,
+  run,
 }: TransformTestHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: transform.collection_id,
@@ -43,9 +50,13 @@ export function TransformTestHeader({
 
   return (
     <PaneHeader
-      title={<PanelHeaderTitle>{test.name}</PanelHeaderTitle>}
+      title={
+        <PanelHeaderTitle>
+          {run != null ? <DataTestRunTitle run={run} /> : test.name}
+        </PanelHeaderTitle>
+      }
       icon="test_tube"
-      tabs={<PillTabNavigation tabs={tabs} />}
+      tabs={run == null ? <PillTabNavigation tabs={tabs} /> : undefined}
       breadcrumbs={
         <DataStudioBreadcrumbs loading={isLoadingPath}>
           <Link to={Urls.transformList()}>{t`Data transformation`}</Link>
@@ -60,7 +71,14 @@ export function TransformTestHeader({
           <Link to={Urls.transformTestList(transform.id)}>
             {transform.name}
           </Link>
-          {test.name}
+          {run != null
+            ? getDataTestRunBreadcrumbs({
+                testName: test.name,
+                testUrl: Urls.transformTest(transform.id, test.id),
+                runsUrl,
+                run,
+              })
+            : test.name}
         </DataStudioBreadcrumbs>
       }
       data-testid="transform-test-header"

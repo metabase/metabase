@@ -1,4 +1,4 @@
-import type { DataTestRunStatus } from "metabase-types/api";
+import type { DataTestRunId, DataTestRunStatus } from "metabase-types/api";
 
 export type DataTestRunListParams = {
   page?: number;
@@ -27,4 +27,8 @@ export function dataTestRuns(
   const queryString = searchParams.toString();
   const baseUrl = `${testUrl}/runs`;
   return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+}
+
+export function dataTestRun(testUrl: string, runId: DataTestRunId) {
+  return `${testUrl}/runs/${runId}`;
 }
