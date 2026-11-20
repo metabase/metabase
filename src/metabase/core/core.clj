@@ -110,27 +110,29 @@
 ;; order decides for it, so these edges take effect as steps move into the halt.
 (def ^:private system-dependencies
   "Component key -> the keys of the components it uses, each of which [[global-system/halt!]] stops after it."
-  {:metabase.server.instance/server           #{:metabase.analytics.prometheus/system
-                                                :metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; scheduled jobs run queries, record traces and metrics, and keep their state in the app DB
-   :metabase.task.impl/scheduler              #{:metabase.analytics.prometheus/system
-                                                :metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics and writes
-   ;; the index
-   :metabase.queue-listener.core/listeners    #{:metabase.analytics.prometheus/system
-                                                :metabase.app-db.core/app-db
-                                                :metabase.driver.sql-jdbc.connection/pools
-                                                :metabase.tracing.core/otel-sdk}
-   ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs, and publishes and
-   ;; deliveries record metrics
-   :metabase.mq.init/mq                       #{:metabase.analytics.prometheus/system
-                                                :metabase.app-db.core/app-db
-                                                :metabase.task.impl/scheduler}
-   :metabase-enterprise.api-keys.usage/flush  #{:metabase.app-db.core/app-db}})
+  (cond->
+   {:metabase.server.instance/server           #{:metabase.analytics.prometheus/system
+                                                 :metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; scheduled jobs run queries, record traces and metrics, and keep their state in the app DB
+    :metabase.task.impl/scheduler              #{:metabase.analytics.prometheus/system
+                                                 :metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; the field-value listener runs warehouse queries, and the search listener records traces and metrics and
+    ;; writes the index
+    :metabase.queue-listener.core/listeners    #{:metabase.analytics.prometheus/system
+                                                 :metabase.app-db.core/app-db
+                                                 :metabase.driver.sql-jdbc.connection/pools
+                                                 :metabase.tracing.core/otel-sdk}
+    ;; the default queue backend stores messages in the app DB and runs deliveries as scheduler jobs, and publishes
+    ;; and deliveries record metrics
+    :metabase.mq.init/mq                       #{:metabase.analytics.prometheus/system
+                                                 :metabase.app-db.core/app-db
+                                                 :metabase.task.impl/scheduler}}
+    ;; an OSS classpath has no API key flush component to depend on
+    config/ee-available? (assoc :metabase-enterprise.api-keys.usage/flush #{:metabase.app-db.core/app-db})))
 
 ;; Named here because only this namespace sees every step. Each entry says which other steps' stops a step's work still
 ;; needs. Requests queue search updates, MQ messages, API key usage and notifications, and schedule jobs.
