@@ -160,6 +160,11 @@
         (is (= 1 (index-hits "satisfaction and customer")))
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
+(defn- postgres-major-version
+  "The major version of the Postgres app DB."
+  []
+  (-> (t2/query-one ["SHOW server_version_num"]) :server_version_num parse-long (quot 10000)))
+
 (deftest phrase-test
   (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
     (with-index
@@ -172,9 +177,11 @@
           ;; those two results are "Organization Reference" and "Nobody Expects Organi"
           (is (= 2 (index-hits "organ")))
           (is (= 2 (index-hits "organi"))))
-        (testing "We get false-positive for 'Organi' here"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organization"))))
+        (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
+          ;; Older english stemmers reduce "organization" to "organ", a prefix of "Organi", so the two results are
+          ;; "Organization Reference" and "Nobody Expects Organi". PostgreSQL 19's stemmer gives "organiz" instead.
+          (is (= (if (< (postgres-major-version) 19) 2 1)
+                 (index-hits "organization"))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 
