@@ -348,6 +348,15 @@ describe("metabot > where a sidebar turn leaves the user", () => {
     expect(mockedNavigate).not.toHaveBeenCalled();
   });
 
+  it("still opens a saved dashboard after a later save that only links to it", async () => {
+    const linkedPart = dashboardSavedPart({ action: "updated", open: false });
+
+    await streamTurn({ parts: [dashboardSavedPart(), linkedPart] });
+
+    expect(mockedNavigate).toHaveBeenCalledTimes(1);
+    expect(mockedNavigate).toHaveBeenCalledWith("/dashboard/43");
+  });
+
   it("opens a chart made after the turn trashed its saved dashboard", async () => {
     const card = createCard();
     const trashedPart = dashboardSavedPart({ action: "trashed", open: false });

@@ -705,8 +705,14 @@ export const sendAgentRequest = createAsyncThunk<
                 pushDataPart({ type: "data_part", part });
               })
               .with({ type: "data-dashboard_saved" }, (part) => {
-                const { dashboard_id, collection_id, open, saved_charts, url } =
-                  part.data;
+                const {
+                  dashboard_id,
+                  action,
+                  collection_id,
+                  open,
+                  saved_charts,
+                  url,
+                } = part.data;
                 // lists elsewhere, such as the dashboard's collection, refetch it
                 dispatch(
                   Api.util.invalidateTags([
@@ -736,8 +742,10 @@ export const sendAgentRequest = createAsyncThunk<
                     url,
                   };
                   destination = savedDashboard;
-                } else if (savedDashboard?.dashboardId === dashboard_id) {
-                  // a later save that doesn't open it means the turn trashed it, which withdraws it
+                } else if (
+                  action === "trashed" &&
+                  savedDashboard?.dashboardId === dashboard_id
+                ) {
                   if (destination === savedDashboard) {
                     destination = undefined;
                   }
