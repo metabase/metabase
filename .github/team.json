@@ -191,6 +191,7 @@
     {
       "name": "Verification",
       "label": ".Team/Verification",
+      "codeowner": "@metabase/verification",
       "owns": [
         "data testing",
         "workspaces",
