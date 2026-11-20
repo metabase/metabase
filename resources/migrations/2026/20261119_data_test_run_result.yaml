@@ -14,3 +14,31 @@ databaseChangeLog:
                   name: result
                   type: ${text.type}
                   remarks: JSON of what the run reported, the result of its expectations or the refusal that ended it, or null when none was stored
+
+  - changeSet:
+      id: k4wq9z
+      author: undrfined
+      comment: Index data_test_run by test and start time, to find the newest run of a test
+      changes:
+        - createIndex:
+            tableName: data_test_run
+            indexName: idx_data_test_run_test_start_time
+            columns:
+              - column:
+                  name: test_type
+              - column:
+                  name: test_id
+              - column:
+                  name: start_time
+
+  - changeSet:
+      id: p7dm2x
+      author: undrfined
+      comment: Index data_test_run by start time, to find the runs older than a retention period
+      changes:
+        - createIndex:
+            tableName: data_test_run
+            indexName: idx_data_test_run_start_time
+            columns:
+              - column:
+                  name: start_time

@@ -33,10 +33,19 @@
         (is (= :error (t2/select-one-fn :status :model/DataTestRun :id old-id)))
         (is (= result (stored-result recent-id)))))))
 
+(deftest clear-expired-run-results-in-batches-test
+  (mt/with-temp [:model/DataTestRun {first-id :id}  {:status :error, :start_time (days-ago 8), :result result}
+                 :model/DataTestRun {second-id :id} {:status :error, :start_time (days-ago 9), :result result}
+                 :model/DataTestRun {third-id :id}  {:status :error, :start_time (days-ago 10), :result result}]
+    (mt/with-temporary-setting-values [data-test-run-result-retention-days 7]
+      (with-redefs [data-testing.run-retention/batch-size 2]
+        (is (<= 3 (data-testing.run-retention/clear-expired-run-results!)))
+        (is (= [nil nil nil] (map stored-result [first-id second-id third-id])))))))
+
 (deftest delete-expired-runs-test
   (mt/with-temp [:model/Transform     {transform-id :id} {}
-                 :model/TransformTest {active-id :id}    {:transform_id transform-id}
-                 :model/TransformTest {idle-id :id}      {:transform_id transform-id}
+                 :model/TransformTest {active-id :id}    {:transform_id transform-id, :created_at (days-ago 60)}
+                 :model/TransformTest {idle-id :id}      {:transform_id transform-id, :created_at (days-ago 60)}
                  :model/DataTestRun   {old-id :id}       {:test_id active-id, :status :failed, :start_time (days-ago 9)}
                  :model/DataTestRun   {older-id :id}     {:test_id active-id, :status :passed, :start_time (days-ago 20)}
                  :model/DataTestRun   {recent-id :id}    {:test_id active-id, :status :passed, :start_time (days-ago 6)}
@@ -57,3 +66,29 @@
           (data-testing.run-retention/delete-expired-runs!)
           (testing "but not a recent run, the newest run of a test that has not run since, or a run still started"
             (is (= #{recent-id idle-last-id started-id} (remaining)))))))))
+
+(deftest delete-expired-runs-of-deleted-tests-test
+  (mt/with-temp [:model/Transform     {transform-id :id} {}
+                 :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                          :created_at   (days-ago 5)}
+                 :model/DataTestRun   {gone-id :id}      {:test_id Integer/MAX_VALUE, :status :failed, :start_time (days-ago 9)}
+                 :model/DataTestRun   {earlier-id :id}   {:test_id test-id, :status :failed, :start_time (days-ago 9)}]
+    (mt/with-temporary-setting-values [data-test-run-retention-days 7]
+      (with-redefs [data-testing.run-retention/batch-size 1]
+        (data-testing.run-retention/delete-expired-runs!))
+      (testing "the newest run of a test that no longer exists is deleted"
+        (is (not (t2/exists? :model/DataTestRun :id gone-id))))
+      (testing "and so is a run that started before the test with its id was created"
+        (is (not (t2/exists? :model/DataTestRun :id earlier-id)))))))
+
+(deftest delete-expired-runs-keeps-one-of-two-runs-that-started-together-test
+  (let [start-time (days-ago 9)]
+    (mt/with-temp [:model/Transform     {transform-id :id} {}
+                   :model/TransformTest {test-id :id}      {:transform_id transform-id
+                                                            :created_at   (days-ago 30)}
+                   :model/DataTestRun   {first-id :id}     {:test_id test-id, :status :failed, :start_time start-time}
+                   :model/DataTestRun   {second-id :id}    {:test_id test-id, :status :failed, :start_time start-time}]
+      (mt/with-temporary-setting-values [data-test-run-retention-days 7]
+        (data-testing.run-retention/delete-expired-runs!)
+        (is (= #{(max first-id second-id)}
+               (t2/select-pks-set :model/DataTestRun :id [:in [first-id second-id]])))))))

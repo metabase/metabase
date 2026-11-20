@@ -435,10 +435,10 @@
 
 (mr/def ::data-test-run.detail
   "One test run as the API returns it, with the user who started it and the result it stored. `:can_read_result` is
-  whether the caller may see the result, which is whether they may run the test. `:result` is nil for a caller who may
-  not, and for a
-  run that is still started, that timed out, that ended in an error the endpoint gave no error code for, that
-  finished before results were stored, or whose result was cleared after the retention period."
+  whether the caller may see the result: the user who started the run, while they may still run the test, and an
+  admin. `:result` is nil for a caller who may not, and for a run that is still started, that timed out, that ended in
+  an error the endpoint gave no error code for, that finished before results were stored, whose result was too large
+  to store, or whose result was cleared after the retention period."
   [:merge
    ::data-test-run.response
    [:map {:closed true}

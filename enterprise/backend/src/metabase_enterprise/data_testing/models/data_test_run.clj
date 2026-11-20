@@ -28,19 +28,50 @@
              #(mc/decoder ::data-testing.schema/stored-run-result
                           (mtx/transformer mtx/json-transformer {:name :normalize}))))
 
+(def ^:private max-stored-string-length
+  "How many characters of any one string of a result are stored. A cell or a message can be as long as the warehouse
+  makes it."
+  1000)
+
+(def ^:private max-stored-result-length
+  "How many characters of JSON a stored result may take. A larger result is not stored."
+  1000000)
+
+(defn- shortened
+  "`x` with every string value in it cut to [[max-stored-string-length]]. Map keys stay whole."
+  [x]
+  (cond
+    (string? x)     (if (> (count x) max-stored-string-length)
+                      (str (subs x 0 max-stored-string-length) "…")
+                      x)
+    (map? x)        (update-vals x shortened)
+    (sequential? x) (mapv shortened x)
+    :else           x))
+
+(defn- result-in
+  "The JSON to store for `result`, with its long strings cut, or nil when it is still too large to store."
+  [result]
+  (let [json (mi/json-in (shortened result))]
+    (if (> (count json) max-stored-result-length)
+      (log/warnf "Not storing the result of a test run: %d characters of JSON" (count json))
+      json)))
+
 (defn- result-out
   "The stored result read from the JSON `s`, or nil when it is not one this version can read."
   [s]
-  (when-let [result (mi/json-out-with-keywordization s)]
-    (let [decoded ((stored-result-decoder) result)]
-      (if (mr/validate ::data-testing.schema/stored-run-result decoded)
-        decoded
-        (log/warn "Ignoring a data_test_run.result that is not a stored run result")))))
+  (try
+    (when-let [result (mi/json-out-with-keywordization s)]
+      (let [decoded ((stored-result-decoder) result)]
+        (if (mr/validate ::data-testing.schema/stored-run-result decoded)
+          decoded
+          (log/warn "Ignoring a data_test_run.result that is not a stored run result"))))
+    (catch Throwable e
+      (log/warnf "Ignoring a data_test_run.result that cannot be read: %s" (ex-message e)))))
 
 (t2/deftransforms :model/DataTestRun
   {:status    mi/transform-keyword
    :test_type mi/transform-keyword
-   :result    {:in mi/json-in :out result-out}})
+   :result    {:in result-in :out result-out}})
 
 (methodical/defmethod t2/batched-hydrate [:model/DataTestRun :initiated_by_user]
   "Add the user who started each run, or nil."
