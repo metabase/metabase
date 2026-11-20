@@ -31,7 +31,8 @@
    [:metered_as {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]])
 
 (mu/defn async-run-response :- ::transforms-rest.schema/async-run-response
   "Launch `start!` — a fn of a start-promise — on a virtual thread and respond `202` as soon as the

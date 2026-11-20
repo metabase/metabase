@@ -1,3 +1,5 @@
+import type { RemoteSyncWorktreeId } from "./remote-sync";
+
 export type DataAppId = number;
 
 /**
@@ -36,6 +38,7 @@ export interface DataApp {
   bundle_hash: string | null;
   created_at: string;
   updated_at: string;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 /**

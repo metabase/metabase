@@ -119,5 +119,6 @@ export function convertActionToQuestionCard(
     can_manage_db: true,
     dashboard_count: null,
     dashboard_id: null,
+    worktree_id: action.worktree_id,
   };
 }

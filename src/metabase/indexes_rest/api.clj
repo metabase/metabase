@@ -34,7 +34,8 @@
    [:created_by [:maybe ms/PositiveInt]]
    [:created_at :any]
    [:updated_at :any]
-   [:last_executed_at [:maybe :any]]])
+   [:last_executed_at [:maybe :any]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private Index
   "An index on a transform's target: as observed in the warehouse, plus a `:request` when Metabase manages it. Built

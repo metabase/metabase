@@ -29,7 +29,8 @@
    [:collection_position {:optional true} [:maybe :int]]
    [:entity_id           {:optional true} [:maybe :string]]
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id         {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
@@ -78,7 +79,8 @@
    [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.dimension]]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-page
   "A ExplorationPage as selected from the app DB: every column of `:exploration_page`."
@@ -99,7 +101,8 @@
    [:starred              {:optional true} [:maybe :boolean]]
    [:hidden               {:optional true} [:maybe :boolean]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id          {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-query.visualization-settings
   "The `:visualization_settings` column of a ExplorationQuery, decoded."
@@ -155,7 +158,8 @@
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
-   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
+   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]
+   [:worktree_id            {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-query.update.stamped-together
   "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
@@ -186,7 +190,8 @@
    [:contextual_interestingness_score {:optional true} [:maybe number?]]
    [:chart_stats                      {:optional true} [:maybe ::exploration-query-result.chart-stats]]
    [:metric_description               {:optional true} [:maybe :string]]
-   [:chart_description                {:optional true} [:maybe :string]]])
+   [:chart_description                {:optional true} [:maybe :string]]
+   [:worktree_id                      {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-thread.query-plan-transcript.plan-item
   "One entry of the `:plan` a query planner emits."
@@ -274,7 +279,8 @@
    [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]
-   [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
+   [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."
@@ -290,4 +296,5 @@
    [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
    [:position              {:optional true} [:maybe :int]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+   [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])

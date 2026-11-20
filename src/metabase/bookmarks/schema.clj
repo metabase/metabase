@@ -21,7 +21,8 @@
    [:user_id  {:optional true} [:maybe ::lib.schema.id/user]]
    [:type     {:optional true} ::bookmark-ordering.type]
    [:item_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:ordering {:optional true} [:maybe :int]]])
+   [:ordering {:optional true} [:maybe :int]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::card-bookmark
   "A CardBookmark as selected from the app DB: every column of `:card_bookmark`."
@@ -35,7 +36,8 @@
   [:map {:closed true}
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:card_id    {:optional true} [:maybe ::lib.schema.id/card]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::collection-bookmark
   "A CollectionBookmark as selected from the app DB: every column of `:collection_bookmark`."
@@ -49,7 +51,8 @@
   [:map {:closed true}
    [:user_id       {:optional true} [:maybe ::lib.schema.id/user]]
    [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id   {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::dashboard-bookmark
   "A DashboardBookmark as selected from the app DB: every column of `:dashboard_bookmark`."
@@ -63,7 +66,8 @@
   [:map {:closed true}
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::document-bookmark
   "A DocumentBookmark as selected from the app DB: every column of `:document_bookmark`."
@@ -77,7 +81,8 @@
   [:map {:closed true}
    [:user_id     {:optional true} [:maybe ::lib.schema.id/user]]
    [:document_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::exploration-bookmark
   "A ExplorationBookmark as selected from the app DB: every column of `:exploration_bookmark`."
@@ -91,4 +96,5 @@
   [:map {:closed true}
    [:user_id        {:optional true} [:maybe ::lib.schema.id/user]]
    [:exploration_id {:optional true} [:maybe ms/PositiveInt]]
-   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at     {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id    {:optional true} [:maybe ms/PositiveInt]]])

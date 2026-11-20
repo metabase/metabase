@@ -73,6 +73,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
@@ -108,7 +109,8 @@
    ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
    ;; Referenced by registry keyword (not a require) to avoid a transforms-rest -> driver module dependency; the schema
    ;; is registered by `metabase.driver`, which is loaded well before any response is coerced.
-   [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]])
+   [:requestable_indexes {:optional true} [:maybe :metabase.driver/supported-index-methods]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]])
 
 (def ^:private TransformRunResponse
   [:map {:closed true}
@@ -128,6 +130,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe pos-int?]]
    [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}

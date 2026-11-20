@@ -170,7 +170,8 @@
    [:is_sample            {:optional true} [:maybe :boolean]]
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
-   [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+   [:is_remote_synced     {:optional true} [:maybe :boolean]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::external-collection
   "A Collection as serialization writes it, with portable references in place of ids."

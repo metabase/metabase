@@ -581,6 +581,7 @@
       (let [new-dim (dimension-for-field field-id)]
         (is (= {:id                      true
                 :entity_id               true
+                :worktree_id             false
                 :created_at              true
                 :updated_at              true
                 :type                    :internal
@@ -593,6 +594,7 @@
           (let [updated-dim (dimension-for-field field-id)]
             (is (= {:id                      true
                     :entity_id               true
+                    :worktree_id             false
                     :created_at              true
                     :updated_at              true
                     :type                    :internal
@@ -689,6 +691,7 @@
         (testing "before deletion"
           (is (= {:id                      true
                   :entity_id               true
+                  :worktree_id             false
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -719,6 +722,7 @@
         (testing "before update"
           (is (= {:id                      true
                   :entity_id               true
+                  :worktree_id             false
                   :created_at              true
                   :updated_at              true
                   :type                    :external
@@ -742,6 +746,7 @@
                                    {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (let [expected {:id                      true
                         :entity_id               true
+                        :worktree_id             false
                         :created_at              true
                         :updated_at              true
                         :type                    :external
@@ -839,6 +844,7 @@
         (testing "before API request"
           (is (= {:id                      true
                   :entity_id               true
+                  :worktree_id             false
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -856,6 +862,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
                         :entity_id               true
+                        :worktree_id             false
                         :created_at              true
                         :updated_at              true
                         :type                    :internal

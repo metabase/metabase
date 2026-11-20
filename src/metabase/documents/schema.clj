@@ -68,7 +68,8 @@
    [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
    [:public_uuid_prefix  {:optional true} [:maybe :string]]
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
-   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+   [:is_placeholder      {:optional true} [:maybe :boolean]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."

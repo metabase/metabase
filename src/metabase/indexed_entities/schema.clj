@@ -32,7 +32,8 @@
    [:indexed_at {:optional true} [:maybe ms/TemporalInstant]]
    [:error      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::model-index-value
   "A ModelIndexValue as selected from the app DB: every column of `:model_index_value`."
@@ -45,4 +46,5 @@
   [:map {:closed true}
    [:model_index_id {:optional true} [:maybe ms/PositiveInt]]
    [:model_pk       {:optional true} [:maybe :int]]
-   [:name           {:optional true} [:maybe :string]]])
+   [:name           {:optional true} [:maybe :string]]
+   [:worktree_id    {:optional true} [:maybe ms/PositiveInt]]])

@@ -4,6 +4,7 @@ import type { Database, DatabaseId, InitialSyncStatus } from "./database";
 import type { DatasetData } from "./dataset";
 import type { Field, FieldId } from "./field";
 import type { Measure } from "./measure";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { Segment } from "./segment";
 import type { Transform, TransformId } from "./transform";
 import type { UserId, UserInfo } from "./user";
@@ -286,4 +287,5 @@ export type TableUserSettings = {
   is_published: boolean;
   table?: Table;
   collection?: Collection | null;
+  worktree_id: RemoteSyncWorktreeId | null;
 };

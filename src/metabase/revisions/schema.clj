@@ -28,7 +28,8 @@
    [:is_creation      {:optional true} [:maybe :boolean]]
    [:message          {:optional true} [:maybe :string]]
    [:most_recent      {:optional true} [:maybe :boolean]]
-   [:metabase_version {:optional true} [:maybe :string]]])
+   [:metabase_version {:optional true} [:maybe :string]]
+   [:worktree_id      {:optional true} [:maybe ms/PositiveInt]]])
 
 ;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
 (mr/def ::last-edit-info

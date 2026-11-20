@@ -1760,7 +1760,8 @@
                                                       :name                    "Category"
                                                       :type                    "external"
                                                       :human_readable_field_id (mt/id :categories :name)
-                                                      :human_readable_field    categories-name}])]}
+                                                      :human_readable_field    categories-name
+                                                      :worktree_id             nil}])]}
                    (:param_fields (client/client :get 200 (str "public/card/" (:public_uuid card))))))))))))
 
 (deftest dashboard-param-fields-unmapped-template-tag-test

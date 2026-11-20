@@ -7,6 +7,7 @@ import type {
 } from "metabase/api";
 import { defer } from "metabase/utils/promise";
 import type { GlossaryItem } from "metabase-types/api";
+import { createMockGlossaryItem } from "metabase-types/api/mocks";
 
 import { GlossaryTable } from "./GlossaryTable";
 
@@ -17,12 +18,12 @@ const SERVER_FIELDS = {
 };
 
 function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
-  return {
+  return createMockGlossaryItem({
     id: overrides.id ?? 1,
     term: overrides.term ?? "Alpha",
     definition: overrides.definition ?? "First",
     ...SERVER_FIELDS,
-  };
+  });
 }
 
 type SetupOpts = {

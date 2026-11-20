@@ -7,7 +7,8 @@
   - `:skip`, the columns whose change alone records nothing: usage stats that reads update, and what Metabase works
     out for its own use.
 
-  Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists."
+  Together they list every column of the table but `:id`, `:created_at`, `:updated_at` and `:worktree_id`, which no spec
+  lists."
   (:require
    [toucan2.model :as t2.model]))
 
@@ -27,8 +28,9 @@
       (spec model))))
 
 (def implicit-columns
-  "The columns that no spec lists: the key, which never changes, and the timestamps that every write sets."
-  #{:id :created_at :updated_at})
+  "The columns that no spec lists: the key, which never changes, the timestamps that every write sets, and the worktree
+  that a write puts a row in."
+  #{:id :created_at :updated_at :worktree_id})
 
 (defn tracked?
   "Whether the change log tracks `model`."

@@ -34,6 +34,7 @@ export function createDashCard(
     card_id: null,
     parameter_mappings: [],
     visualization_settings: {},
+    worktree_id: null,
     ...attrs,
   };
 }

@@ -228,7 +228,8 @@
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
    [:metabot_conversation_id                   {:optional true} [:maybe :string]]
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
-   [:verified-result-metadata?                 {:optional true} :boolean]])
+   [:verified-result-metadata?                 {:optional true} :boolean]
+   [:worktree_id                               {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
@@ -245,7 +246,8 @@
    [:card_id                   {:optional true} [:maybe ::lib.schema.id/card]]
    [:parameterized_object_type {:optional true} [:maybe [:or :keyword :string]]]
    [:parameterized_object_id   {:optional true} [:maybe ms/PositiveInt]]
-   [:parameter_id              {:optional true} [:maybe :string]]])
+   [:parameter_id              {:optional true} [:maybe :string]]
+   [:worktree_id               {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::query.query
   "The `:query` column of a Query, decoded."
@@ -335,7 +337,8 @@
    [:card_id  {:optional true} [:maybe ::lib.schema.id/card]]
    [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
    [:schema   {:optional true} [:maybe :string]]
-   [:table    {:optional true} [:maybe :string]]])
+   [:table    {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::stored-result.dataset-query
   "The `:dataset_query` column of a StoredResult, decoded."
@@ -382,7 +385,8 @@
    [:exploration_id   {:optional true} [:maybe ms/PositiveInt]]
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
-   [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+   [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
+   [:worktree_id      {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::external-card
   "A Card as serialization writes it, with portable references in place of ids."

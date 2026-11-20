@@ -254,7 +254,8 @@
              [subject       {:optional true} [:maybe subject-schema]]
              [:creator_id   {:optional true} ::lib.schema.id/user]
              [:created_at   {:optional true} ms/TemporalInstant]
-             [:updated_at   {:optional true} ms/TemporalInstant]]
+             [:updated_at   {:optional true} ms/TemporalInstant]
+             [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]]
     subject-key ::now))
 
 (defn- test-update
@@ -331,7 +332,8 @@
    [:start_time     ms/TemporalInstant]
    [:end_time       [:maybe ms/TemporalInstant]]
    [:status         ::run-status]
-   [:last_heartbeat ms/TemporalInstant]])
+   [:last_heartbeat ms/TemporalInstant]
+   [:worktree_id    {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::stored-data-test-run
   "A DataTestRun row of any test type, including a type that this version does not know."

@@ -53,6 +53,7 @@ export const createMockQueryAction = ({
     public_uuid: null,
     ...opts,
     type: "query",
+    worktree_id: null,
   };
 };
 
@@ -80,6 +81,7 @@ export const createMockImplicitQueryAction = ({
   public_uuid: null,
   ...opts,
   type: "implicit",
+  worktree_id: null,
 });
 
 export const createMockImplicitCUDActions = (

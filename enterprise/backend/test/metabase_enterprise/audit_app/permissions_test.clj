@@ -25,13 +25,19 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
+(def ^:private non-audit-view-names
+  "The app DB views prefixed with `v_` that are not audit views, in lower case."
+  #{"v_worktree_table" "v_worktree_field"})
+
 (deftest audit-db-view-names-test
-  (testing "`audit-db-view-names` includes all views in the app DB prefixed with `v_`"
+  (testing "`audit-db-view-names` includes all audit views in the app DB prefixed with `v_`"
     (let [view-query "SELECT table_name FROM information_schema.views WHERE table_name LIKE 'v\\_%';"]
       (is (set/superset?
            audit-app.permissions/audit-db-view-names
            (into #{}
-                 (map :table_name (t2/query view-query))))))))
+                 (comp (map :table_name)
+                       (remove (comp non-audit-view-names u/lower-case-en)))
+                 (t2/query view-query)))))))
 
 (deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!

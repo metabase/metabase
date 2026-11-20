@@ -145,7 +145,8 @@
                     :parameters       nil
                     :tenant_id        nil
                     :user_agent       nil
-                    :sanitized_user_agent nil}
+                    :sanitized_user_agent nil
+                    :worktree_id      nil}
                    (format-response (most-recent-query-execution-for-query query))))))))))
 
 (deftest failure-test

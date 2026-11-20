@@ -18,5 +18,6 @@ export const createMockMeasure = (opts?: Partial<Measure>): Measure => ({
   creator_id: 1,
   dimensions: [],
   dimension_mappings: [],
+  worktree_id: null,
   ...opts,
 });

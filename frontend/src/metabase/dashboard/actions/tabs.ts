@@ -208,6 +208,7 @@ export function getDefaultTab({
     id: tabId,
     dashboard_id: dashId,
     name,
+    worktree_id: null,
   };
 }
 

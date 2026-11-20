@@ -80,7 +80,8 @@
    [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:deleted_at        {:optional true} [:maybe ms/TemporalInstant]]
    [:content_html      {:optional true} [:maybe :string]]
-   [:context           {:optional true} [:maybe ::comment.context]]])
+   [:context           {:optional true} [:maybe ::comment.context]]
+   [:worktree_id       {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
@@ -114,4 +115,5 @@
    [:comment_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])

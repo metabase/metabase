@@ -29,7 +29,8 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id  {:optional true} [:maybe :string]]
-   [:is_default {:optional true} [:maybe :boolean]]])
+   [:is_default {:optional true} [:maybe :boolean]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::external-python-library
   "A PythonLibrary as serialization writes it, with portable references in place of ids."

@@ -84,7 +84,8 @@
    [:error_type           {:optional true} [:maybe [:or :keyword :string]]]
    [:error_detail         {:optional true} [:maybe :string]]
    [:source_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:source_entity_id     {:optional true} [:maybe ms/PositiveInt]]])
+   [:source_entity_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id          {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::dependency
   "A Dependency as selected from the app DB: every column of `:dependency`."
@@ -99,4 +100,5 @@
    [:from_entity_type {:optional true} [:maybe [:or :keyword :string]]]
    [:from_entity_id   {:optional true} [:maybe ms/PositiveInt]]
    [:to_entity_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]])
+   [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id      {:optional true} [:maybe ms/PositiveInt]]])

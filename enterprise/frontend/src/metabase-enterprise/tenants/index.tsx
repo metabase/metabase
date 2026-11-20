@@ -293,6 +293,7 @@ export function initializePlugin() {
           location: "/",
           icon: getCollectionIcon({ id: userTenantCollectionId }),
           children: [],
+          worktree_id: null,
         };
 
         return [

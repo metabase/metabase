@@ -161,6 +161,7 @@
    :model/RecentViews
    :model/ReplacementRun
    :model/RemoteSyncTask
+   :model/RemoteSyncWorktree
    :model/ResultMetadataStatus
    :model/Revision
    :model/Sandbox

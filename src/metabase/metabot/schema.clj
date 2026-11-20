@@ -396,7 +396,8 @@
    [:prompt     {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:metabot_id {:optional true} [:maybe ms/PositiveInt]]])
+   [:metabot_id {:optional true} [:maybe ms/PositiveInt]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::metabot-source-feedback
   "A MetabotSourceFeedback as selected from the app DB: every column of `:metabot_source_feedback`."

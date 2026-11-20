@@ -710,7 +710,8 @@
    [:here                  {:optional true} [:set :keyword]]
    [:below                 {:optional true} [:set :keyword]]
    [:is_library_root       {:optional true} :boolean]
-   [:effective_ancestors   {:optional true} [:sequential ::collections.schema/collection-or-root]]])
+   [:effective_ancestors   {:optional true} [:sequential ::collections.schema/collection-or-root]]
+   [:worktree_id           {:optional true} [:maybe ms/PositiveInt]]])
 
 (mu/defn shared-tenant-collection?
   "Whether or not a collection is a tenant collection."

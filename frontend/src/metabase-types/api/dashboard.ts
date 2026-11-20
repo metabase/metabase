@@ -37,6 +37,7 @@ import type {
 } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { SearchModel } from "./search";
 
 // x-ray dashboard have string ids
@@ -103,6 +104,7 @@ export interface Dashboard {
   transient_name?: string;
   related?: RelatedDashboardXRays;
   more?: string | null;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export type RelatedDashboardXRays = {
@@ -167,6 +169,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   justAdded?: boolean;
   created_at: string;
   updated_at: string;
+  worktree_id: RemoteSyncWorktreeId | null;
 };
 
 export type VirtualCard = Partial<
@@ -240,6 +243,7 @@ export type DashboardTab = {
   position?: number;
   created_at?: string;
   updated_at?: string;
+  worktree_id: RemoteSyncWorktreeId | null;
 };
 
 export type DashboardParameterMapping = {

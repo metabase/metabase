@@ -33,6 +33,7 @@ import type {
 } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { TimelineEventId, TimelineId } from "./timeline";
@@ -123,6 +124,7 @@ export interface Card<
 
   download_perms?: DownloadPermission;
   displayIsLocked?: boolean;
+  worktree_id: RemoteSyncWorktreeId | null;
 }
 
 export interface PublicCard {

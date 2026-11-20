@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import type { Card, CreateCardRequest } from "./card";
 import type { Collection, CollectionId } from "./collection";
+import type { RemoteSyncWorktreeId } from "./remote-sync";
 import type { BaseUser, UserId } from "./user";
 
 export type DocumentId = number;
@@ -30,6 +31,7 @@ export type Document = {
   view_count?: number;
   exploration_id?: number | null;
   is_placeholder?: boolean;
+  worktree_id: RemoteSyncWorktreeId | null;
 };
 
 export type GetDocumentRequest = { id: DocumentId };

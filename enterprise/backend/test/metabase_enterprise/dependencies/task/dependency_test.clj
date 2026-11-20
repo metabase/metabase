@@ -585,7 +585,7 @@
                     :from_entity_id dashboard-id
                     :to_entity_type :card
                     :to_entity_id param-source-card-id}}
-                 (into #{} (map #(dissoc % :id)
+                 (into #{} (map #(dissoc % :id :worktree_id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
          (t2/delete! :model/DashboardCard :id basic-dashcard-id)
          (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
@@ -660,7 +660,7 @@
                       :from_entity_id dashboard-id
                       :to_entity_type :dashboard
                       :to_entity_id column-click-target-dashboard-id}}
-                   (into #{} (map #(dissoc % :id)
+                   (into #{} (map #(dissoc % :id :worktree_id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
            (t2/delete! :model/Dashboard :id dashboard-id)
            (deps.test/synchronously-run-dependency-job!)
@@ -693,7 +693,7 @@
                       :from_entity_id document-id
                       :to_entity_type :card
                       :to_entity_id embedded-card-id}}
-                   (into #{} (map #(dissoc % :id)
+                   (into #{} (map #(dissoc % :id :worktree_id)
                                   (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
            (let [updated-doc (assoc document :document {:type "doc"
                                                         :content [{:type "paragraph"
@@ -713,7 +713,7 @@
                         :from_entity_id document-id
                         :to_entity_type :table
                         :to_entity_id products-id}}
-                     (into #{} (map #(dissoc % :id)
+                     (into #{} (map #(dissoc % :id :worktree_id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
              (t2/delete! :model/Document :id document-id)
              (deps.test/synchronously-run-dependency-job!)
@@ -735,7 +735,7 @@
                     :from_entity_id sandbox-id
                     :to_entity_type :card
                     :to_entity_id card1-id}}
-                 (into #{} (map #(dissoc % :id)
+                 (into #{} (map #(dissoc % :id :worktree_id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
          (t2/update! :model/Sandbox :id sandbox-id (assoc sandbox :card_id card2-id))
          (deps.test/synchronously-run-dependency-job!)
@@ -743,7 +743,7 @@
                     :from_entity_id sandbox-id
                     :to_entity_type :card
                     :to_entity_id card2-id}}
-                 (into #{} (map #(dissoc % :id)
+                 (into #{} (map #(dissoc % :id :worktree_id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
          (t2/delete! :model/Sandbox :id sandbox-id)
          (deps.test/synchronously-run-dependency-job!)
@@ -953,7 +953,7 @@
                      :from_entity_id segment-id
                      :to_entity_type :table
                      :to_entity_id products-id}}
-                  (into #{} (map #(dissoc % :id)
+                  (into #{} (map #(dissoc % :id :worktree_id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
            (t2/update! :model/Segment :id segment-id {:definition (let [mp (mt/metadata-provider)]
@@ -965,7 +965,7 @@
                      :from_entity_id segment-id
                      :to_entity_type :table
                      :to_entity_id products-id}}
-                  (into #{} (map #(dissoc % :id)
+                  (into #{} (map #(dissoc % :id :worktree_id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "deleting segment removes all dependencies"
            (t2/delete! :model/Segment :id segment-id)
@@ -993,7 +993,7 @@
                        :from_entity_id card-id
                        :to_entity_type :table
                        :to_entity_id products-id}}
-                    (into #{} (map #(dissoc % :id)
+                    (into #{} (map #(dissoc % :id :worktree_id)
                                    (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card))))))))))))
 
 (deftest measure-update-sets-correct-dependencies
@@ -1013,7 +1013,7 @@
                        :from_entity_id measure-id
                        :to_entity_type :table
                        :to_entity_id orders-id}}
-                    (into #{} (map #(dissoc % :id)
+                    (into #{} (map #(dissoc % :id :worktree_id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
              (t2/update! :model/Measure :id measure-id {:definition (-> (lib/query mp orders)
@@ -1024,7 +1024,7 @@
                        :from_entity_id measure-id
                        :to_entity_type :table
                        :to_entity_id orders-id}}
-                    (into #{} (map #(dissoc % :id)
+                    (into #{} (map #(dissoc % :id :worktree_id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "deleting measure removes all dependencies"
              (t2/delete! :model/Measure :id measure-id)
@@ -1137,7 +1137,7 @@
                          :from_entity_id measure2-id
                          :to_entity_type :measure
                          :to_entity_id measure1-id}}
-                      (into #{} (map #(dissoc % :id)
+                      (into #{} (map #(dissoc % :id :worktree_id)
                                      (t2/select :model/Dependency :from_entity_id measure2-id :from_entity_type :measure)))))))))))))
 
 (deftest card-with-measure-dependencies
@@ -1163,7 +1163,7 @@
                          :from_entity_id card-id
                          :to_entity_type :table
                          :to_entity_id orders-id}}
-                      (into #{} (map #(dissoc % :id)
+                      (into #{} (map #(dissoc % :id :worktree_id)
                                      (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card)))))))))))))
 
 (deftest serdes-load-recalculates-changed-entities-test

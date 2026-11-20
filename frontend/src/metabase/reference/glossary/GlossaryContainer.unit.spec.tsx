@@ -14,7 +14,10 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { defer } from "metabase/utils/promise";
 import type { GlossaryItem } from "metabase-types/api";
-import { createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockGlossaryItem,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { GlossaryContainer } from "./GlossaryContainer";
 
@@ -25,12 +28,12 @@ const SERVER_FIELDS = {
 };
 
 const GLOSSARY: GlossaryItem[] = [
-  {
+  createMockGlossaryItem({
     id: 1,
     term: "ARR",
     definition: "Annual recurring revenue",
     ...SERVER_FIELDS,
-  },
+  }),
 ];
 
 type SetupOpts = {
@@ -71,19 +74,19 @@ const getRequestBody = (url: string, method: "POST" | "PUT"): unknown => {
 
 type GlossaryServer = { glossary: GlossaryItem[] };
 
-const BOAT: GlossaryItem = {
+const BOAT = createMockGlossaryItem({
   id: 7,
   term: "Boat",
   definition: "A small vessel for traveling on water.",
   ...SERVER_FIELDS,
-};
+});
 
-const KITTEN: GlossaryItem = {
+const KITTEN = createMockGlossaryItem({
   id: 7,
   term: "Kitten",
   definition: "Young cat",
   ...SERVER_FIELDS,
-};
+});
 
 async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
   const createResponse = defer<GlossaryItem>();

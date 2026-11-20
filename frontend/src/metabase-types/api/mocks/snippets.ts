@@ -23,6 +23,7 @@ export const createMockNativeQuerySnippet = ({
   archived: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
+  worktree_id: null,
   ...opts,
 });
 

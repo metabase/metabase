@@ -102,7 +102,8 @@
    [:jwt_attributes          [:maybe LoginAttributes]]
    [:deactivated_with_tenant [:maybe :boolean]]
    [:is_data_analyst         :boolean]
-   [:common_name             {:optional true} [:maybe :string]]])
+   [:common_name             {:optional true} [:maybe :string]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::user.update
   "What an update (or insert) of a User accepts: every column of `:core_user` except `id`, all optional."
@@ -131,7 +132,8 @@
    [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]
    [:jwt_attributes          {:optional true} [:maybe LoginAttributes]]
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
-   [:is_data_analyst         {:optional true} [:maybe :boolean]]])
+   [:is_data_analyst         {:optional true} [:maybe :boolean]]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
@@ -180,4 +182,5 @@
    [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
    [:parameter_id {:optional true} [:maybe :string]]
    [:value        {:optional true} [:maybe ::user-parameter-value.value]]
-   [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]])
+   [:dashboard_id {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:worktree_id  {:optional true} [:maybe ms/PositiveInt]]])

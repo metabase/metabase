@@ -45,7 +45,8 @@
    [:human_readable_field_id {:optional true} [:maybe ::lib.schema.id/field]]
    [:created_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id               {:optional true} [:maybe :string]]])
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
@@ -141,7 +142,8 @@
    [:nfc_path           {:optional true} [:maybe :string]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
-   [:fk_target_field_id_set {:optional true} :boolean]])
+   [:fk_target_field_id_set {:optional true} :boolean]
+   [:worktree_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::field-values.human-readable-values
   [:sequential [:maybe ms/NonBlankString]])
@@ -229,7 +231,8 @@
    [:caveats_set             {:optional true} :boolean]
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
-   [:data_source_set         {:optional true} :boolean]])
+   [:data_source_set         {:optional true} :boolean]
+   [:worktree_id             {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."

@@ -1,6 +1,7 @@
 import { setupListGlossaryEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { ListGlossaryResponse } from "metabase/api";
+import { createMockGlossaryItem } from "metabase-types/api/mocks";
 
 import { GlossaryPage } from "./GlossaryPage";
 
@@ -10,7 +11,13 @@ jest.mock("metabase/nav/components/AppSwitcher", () => ({
 
 function setup({ can_write }: Pick<ListGlossaryResponse, "can_write">) {
   const response: ListGlossaryResponse = {
-    data: [{ id: 1, term: "ARR", definition: "Annual recurring revenue" }],
+    data: [
+      createMockGlossaryItem({
+        id: 1,
+        term: "ARR",
+        definition: "Annual recurring revenue",
+      }),
+    ],
     can_write,
   };
   setupListGlossaryEndpoint(response);

@@ -18,6 +18,7 @@ const FAKE_COLLECTION_DEFAULTS = {
   can_restore: false,
   can_delete: false,
   namespace: null,
+  worktree_id: null,
 } as const satisfies Partial<Collection>;
 
 // given list of collections with { id, name, location } returns a map of ids to
@@ -69,6 +70,7 @@ function getExpandedCollectionsById(
       id: userPersonalCollectionId,
       parent: root,
       children: personalCollection?.children || [],
+      worktree_id: null,
     });
   }
 
@@ -78,6 +80,7 @@ function getExpandedCollectionsById(
     ...PERSONAL_COLLECTIONS,
     parent: root,
     children: [],
+    worktree_id: null,
   };
   root.children.push(collectionsById[PERSONAL_COLLECTIONS.id]);
 
