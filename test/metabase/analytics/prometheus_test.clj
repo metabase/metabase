@@ -369,3 +369,15 @@
                                     prometheus/stop-system!           #(swap! stopped conj %)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reporter failed" (#'prometheus/start-system! 0)))
           (is (= [::system] @stopped)))))))
+
+(deftest start-system-sets-the-var-only-after-the-reporter-installs-test
+  (testing "setup! finds the system var set only once nothing in the start can fail"
+    (let [seen-while-installing (atom ::not-installed)]
+      (with-redefs [prometheus/system nil]
+        (mt/with-dynamic-fn-redefs [prometheus/make-prometheus-system (constantly ::system)
+                                    prometheus/install-real-reporter! #(reset! seen-while-installing
+                                                                               @#'prometheus/system)]
+          (is (= {:returned ::system, :seen-while-installing nil, :after ::system}
+                 {:returned              (#'prometheus/start-system! 0)
+                  :seen-while-installing @seen-while-installing
+                  :after                 @#'prometheus/system})))))))
