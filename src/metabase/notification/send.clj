@@ -644,7 +644,7 @@
 
 (defn shutdown!
   "Stop both notification dispatchers, letting each send what it has queued.
-   Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
+  Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
   []
   ;; a dispatcher that cannot be created takes no work, so the others still drain
   (let [workers (into [] (keep #(try @%
