@@ -3,12 +3,13 @@ import { type Page, expect, test } from "@playwright/test";
 const SCHEMES = ["light", "dark"] as const;
 type Scheme = (typeof SCHEMES)[number];
 
-// Dayjs `w` (week of year, locale `en`) for Jan 1, Apr 1, Jul 1 and Oct 1, 2024.
+// Dayjs `w` (week of year) and `L` (localized date), locale `en`, for the first day of each 2024 quarter.
+// `L` needs the localizedFormat plugin, which only the app's Day.js setup registers.
 const EXPECTED_QUARTERS = [
-  "Q1 week 1",
-  "Q2 week 14",
-  "Q3 week 27",
-  "Q4 week 40",
+  "Q1 week 1 · 01/01/2024",
+  "Q2 week 14 · 04/01/2024",
+  "Q3 week 27 · 07/01/2024",
+  "Q4 week 40 · 10/01/2024",
 ];
 
 const expectScheme = (page: Page, scheme: Scheme) =>
@@ -203,7 +204,7 @@ for (const scheme of SCHEMES) {
       await expect(page.getByTestId("tooltip-target")).toBeVisible();
     });
 
-    test(`QuarterPicker formats the custom week format (${scheme})`, async ({
+    test(`QuarterPicker formats a custom week and localized-date format (${scheme})`, async ({
       page,
     }) => {
       await openPage(page, scheme);
