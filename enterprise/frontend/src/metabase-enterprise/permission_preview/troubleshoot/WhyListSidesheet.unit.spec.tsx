@@ -15,7 +15,9 @@ import {
 } from "__support__/ui";
 
 import type {
+  ConflictingDatabase,
   ItemDependencies,
+  MissingDatabaseAttribute,
   PermissionDebugResponse,
   PreviewCell,
   PreviewCollection,
@@ -38,7 +40,10 @@ const SANDY: PreviewPrincipal = {
   superuser: false,
   tenant_side: false,
   attributes: null,
-  groups: [],
+  groups: [
+    { id: 5, name: "Sales" },
+    { id: 8, name: "Finance readers" },
+  ],
 };
 
 const SALES_OVERVIEW_ID = 12;
@@ -183,6 +188,27 @@ const PRODUCTS_WITHOUT_VALUES: PreviewTableAccess = {
   ...PRODUCTS,
   security: PRODUCTS_RULE_WITHOUT_VALUE,
   policies: [PRODUCTS_RULE_WITHOUT_VALUE],
+};
+
+/** Sales' row and column security and Finance readers' connection impersonation both apply on the sample database. */
+const CONFLICTING_DATABASE: ConflictingDatabase = {
+  "database-id": 1,
+  "sandbox-group-ids": [5],
+  "impersonation-group-ids": [8],
+};
+
+/** Finance readers' impersonation policy reads `role`, and the sample database routes by `tenant`; Sandy has neither. */
+const MISSING_ROLE: MissingDatabaseAttribute = {
+  attribute: "role",
+  "database-id": 1,
+  kind: "impersonation",
+  "group-id": 8,
+};
+
+const MISSING_ROUTE: MissingDatabaseAttribute = {
+  attribute: "tenant",
+  "database-id": 1,
+  kind: "routing",
 };
 
 /** What the query check says when the Sales rules on Orders and Products read attributes Sandy lacks. */
@@ -601,6 +627,86 @@ describe("WhyListSidesheet", () => {
         "Sales needs the attribute category, which Sandy Sales doesn't have. Finance readers needs the attribute category, which Sandy Sales doesn't have. Set it on Sandy Sales, or pick a value for it in the preview.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("says the cards can't load when row and column security and connection impersonation apply on one database, naming both groups", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      dashboardQuery: {
+        decision: "denied",
+        data: {
+          "card-count": 1,
+          "blocked-card-count": 1,
+          "conflicting-databases": [CONFLICTING_DATABASE],
+          "blocked-cards": [
+            {
+              id: 134,
+              name: "Revenue by month",
+              tables: [],
+              "conflicting-databases": [CONFLICTING_DATABASE],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can open this dashboard but can't see any of its cards.",
+    );
+    expect(
+      screen.getByText("Conflicting policies on Sample Database"),
+    ).toBeInTheDocument();
+    // the card's status, and the database's table
+    expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
+      2,
+    );
+    expect(
+      screen.getByText(
+        "Row and column security from Sales and connection impersonation from Finance readers both apply on Sample Database. Keep one of the two policies.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Rows filtered/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says the cards can't load when connection impersonation or routing reads an attribute the person lacks, naming the group or the router", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      // two tables with full access, which would otherwise fold into one row
+      tables: [{ ...ORDERS, security: null, policies: [] }, REVIEWS],
+      tableIds: [ORDERS_ID, REVIEWS_ID],
+      dashboardQuery: {
+        decision: "denied",
+        data: {
+          "card-count": 1,
+          "blocked-card-count": 1,
+          "missing-database-attributes": [MISSING_ROLE, MISSING_ROUTE],
+          "blocked-cards": [
+            {
+              id: 134,
+              name: "Revenue by month",
+              tables: [],
+              "missing-database-attributes": [MISSING_ROLE, MISSING_ROUTE],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
+      "Sandy Sales can open this dashboard but can't see any of its cards.",
+    );
+    expect(screen.getByText("Missing role and tenant")).toBeInTheDocument();
+    // the card's status, and each table's
+    expect(screen.getAllByRole("button", { name: /Can't load/ })).toHaveLength(
+      3,
+    );
+    expect(
+      screen.getAllByText(
+        "Finance readers needs the attribute role to pick the database role on Sample Database, which Sandy Sales doesn't have. Sample Database routes by the attribute tenant, which Sandy Sales doesn't have. Set them on Sandy Sales, or pick values for them in the preview.",
+      ),
+    ).toHaveLength(2);
   });
 
   it("keeps Rows filtered for a table with one group's rule that the dashboard reaches", async () => {

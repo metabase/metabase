@@ -40,8 +40,7 @@ import {
   SecurityRows,
   WhyContent,
   type WhyTarget,
-  getConflictFix,
-  getConflictSentence,
+  getConflictLines,
   getMissingAttributeFix,
   getMissingAttributeSentences,
   getPolicies,
@@ -555,12 +554,14 @@ function BlockedCardRow({
     ...card.tables,
     ...card.conflictingTables,
     ...card.missingAttributeTables,
+    ...card.databaseTables,
   ];
   const attributeNames = formatList(card.missingAttributes);
   const blockedNames = card.tables.map((target) => target.title).join(", ");
-  const conflictingNames = card.conflictingTables
-    .map((target) => target.title)
-    .join(", ");
+  const conflictingNames = [
+    ...card.conflictingTables.map((target) => target.title),
+    ...card.conflictingDatabases,
+  ].join(", ");
   const causes = [
     card.tables.length > 0
       ? ngettext(
@@ -569,7 +570,7 @@ function BlockedCardRow({
           card.tables.length,
         )
       : null,
-    card.conflictingTables.length > 0
+    conflictingNames.length > 0
       ? t`Conflicting policies on ${conflictingNames}`
       : null,
     card.missingAttributes.length > 0 ? t`Missing ${attributeNames}` : null,
@@ -690,14 +691,13 @@ function DataRows({
   const fullAccess = targets.filter(isFullAccess);
   const tableCount = fullAccess.length;
   const isFolded = tableCount > 1;
-  const hasToggle =
-    isFolded || targets.some((target) => target.security != null);
+  const hasToggle = isFolded || targets.some(hasRulesToShow);
   return (
     <CardRows>
       {targets
         .filter((target) => !isFolded || !isFullAccess(target))
         .map((target, index) =>
-          target.security != null ? (
+          hasRulesToShow(target) ? (
             <ToggleRow
               key={index}
               rowKey={`filtered-table-${index}`}
@@ -757,8 +757,8 @@ function DataRows({
 function PolicyRules({ target }: { target: WhyTarget }) {
   return (
     <Stack gap="sm">
-      {isConflicting(target) && (
-        <Text>{`${getConflictSentence(target)} ${getConflictFix(target)}`}</Text>
+      {getConflictLines(target).length > 0 && (
+        <Text>{getConflictLines(target).join(" ")}</Text>
       )}
       {hasMissingAttributes(target) && (
         <Text>
@@ -783,7 +783,16 @@ function PolicyRules({ target }: { target: WhyTarget }) {
 }
 
 function isFullAccess(target: WhyTarget) {
-  return target.cell.value === "unrestricted" && target.security == null;
+  return (
+    target.cell.value === "unrestricted" &&
+    target.security == null &&
+    !isFailing(target)
+  );
+}
+
+/** A table under row security, or one that fails every query, even with no rule of its own, opens to what's wrong. */
+function hasRulesToShow(target: WhyTarget) {
+  return target.security != null || isFailing(target);
 }
 
 /** A table's View data in the words of "Data in this dashboard": "Rows filtered", "Blocked", "Full access". */

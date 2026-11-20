@@ -33,7 +33,10 @@ const SANDY: PreviewPrincipal = {
   superuser: false,
   tenant_side: false,
   attributes: null,
-  groups: [],
+  groups: [
+    { id: 5, name: "Sales" },
+    { id: 8, name: "Finance readers" },
+  ],
 };
 
 const SANDY_PREVIEW: WhyPreview = {
@@ -359,6 +362,150 @@ describe("useWhyList", () => {
           },
         ],
       });
+    });
+
+    it("says a dashboard's cards can't load when row and column security and impersonation apply on its database, naming both groups on its tables", async () => {
+      const conflict = {
+        "database-id": 1,
+        "sandbox-group-ids": [5],
+        "impersonation-group-ids": [8],
+      };
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        orders: { view_data: "sandboxed", security: ORDERS_SANDBOX },
+        query: {
+          decision: "denied",
+          data: {
+            "card-count": 1,
+            "blocked-card-count": 1,
+            "conflicting-databases": [conflict],
+            "blocked-cards": [
+              {
+                id: 134,
+                name: "Revenue by month",
+                tables: [],
+                "conflicting-databases": [conflict],
+              },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toEqual({
+          kind: "partial",
+          text: "Sandy Sales can open this dashboard but can't see any of its cards.",
+        }),
+      );
+      expect(result.current?.page).toMatchObject({
+        blockedCards: [
+          {
+            name: "Revenue by month",
+            conflictingDatabases: ["Sample Database"],
+            databaseTables: [{ title: "Orders" }],
+          },
+        ],
+        tables: [
+          {
+            title: "Orders",
+            databaseConflict: {
+              sandboxGroups: ["Sales"],
+              impersonationGroups: ["Finance readers"],
+            },
+          },
+        ],
+      });
+    });
+
+    it("says a dashboard's cards can't load when impersonation or routing reads an attribute the person lacks, naming the group or the router", async () => {
+      const missingRole = {
+        attribute: "role",
+        "database-id": 1,
+        kind: "impersonation" as const,
+        "group-id": 8,
+      };
+      const missingRoute = {
+        attribute: "tenant",
+        "database-id": 1,
+        kind: "routing" as const,
+      };
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        query: {
+          decision: "denied",
+          data: {
+            "card-count": 1,
+            "blocked-card-count": 1,
+            "missing-database-attributes": [missingRole, missingRoute],
+            "blocked-cards": [
+              {
+                id: 134,
+                name: "Revenue by month",
+                tables: [],
+                "missing-database-attributes": [missingRole, missingRoute],
+              },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() =>
+        expect(getVerdict(result.current)).toEqual({
+          kind: "partial",
+          text: "Sandy Sales can open this dashboard but can't see any of its cards.",
+        }),
+      );
+      expect(result.current?.page).toMatchObject({
+        blockedCards: [
+          {
+            name: "Revenue by month",
+            missingAttributes: ["role", "tenant"],
+            databaseTables: [{ title: "Orders" }],
+          },
+        ],
+        tables: [
+          {
+            title: "Orders",
+            missingDatabaseAttributes: [
+              {
+                attribute: "role",
+                kind: "impersonation",
+                group: "Finance readers",
+              },
+              { attribute: "tenant", kind: "routing" },
+            ],
+          },
+        ],
+      });
+    });
+
+    it("keeps a table out of the failure of a database the check names that holds none of the item's tables", async () => {
+      const { result } = setup({
+        path: "/dashboard/1-orders-by-state",
+        query: {
+          decision: "denied",
+          data: {
+            "card-count": 1,
+            "blocked-card-count": 1,
+            "conflicting-databases": [
+              {
+                "database-id": 2,
+                "sandbox-group-ids": [5],
+                "impersonation-group-ids": [8],
+              },
+            ],
+          },
+        },
+      });
+
+      await waitFor(() => expect(getVerdict(result.current)).toBeDefined());
+      const page = result.current?.page;
+      expect(page?.kind === "item" ? page.tables : []).toEqual([
+        expect.objectContaining({
+          title: "Orders",
+          databaseConflict: undefined,
+        }),
+      ]);
     });
 
     it("asks whether the data loads with the preview's picked values, and whether the item opens without", async () => {

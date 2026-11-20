@@ -29,6 +29,14 @@ export type WhyTarget = {
   policies?: PreviewSecurity[];
   /** The attributes the person lacks that a rule on this table reads, which fail every query that reaches it. */
   missingAttributes?: MissingAttribute[];
+  /** The groups, by name, whose row and column security and connection impersonation both apply on the table's database. */
+  databaseConflict?: { sandboxGroups: string[]; impersonationGroups: string[] };
+  /** The attributes the person lacks that impersonation (`group` names the policy's group) or routing reads on the table's database. */
+  missingDatabaseAttributes?: {
+    attribute: string;
+    kind: "impersonation" | "routing";
+    group?: string;
+  }[];
 };
 
 /** Every row and column security rule or impersonation that applies to a table's View data, one per group. */
@@ -70,25 +78,65 @@ export function getConflictFix(target: WhyTarget) {
   return t`Keep one policy, or give one of the groups Can view on ${table}.`;
 }
 
+/** Row and column security with connection impersonation on the table's database: every query on it fails. */
+export function hasDatabaseConflict({ databaseConflict }: WhyTarget) {
+  return databaseConflict != null;
+}
+
+/** "Row and column security from Sales and connection impersonation from Analysts both apply on Sample Postgres." */
+export function getDatabaseConflictSentence({
+  databaseConflict,
+  databaseName,
+}: WhyTarget) {
+  const sandboxGroups = formatList(databaseConflict?.sandboxGroups ?? []);
+  const impersonationGroups = formatList(
+    databaseConflict?.impersonationGroups ?? [],
+  );
+  return t`Row and column security from ${sandboxGroups} and connection impersonation from ${impersonationGroups} both apply on ${databaseName}.`;
+}
+
+/** What fixes it: the two kinds of policy can't both stay. */
+export function getDatabaseConflictFix() {
+  return t`Keep one of the two policies.`;
+}
+
 /** A table that every query reaching it fails on: two groups' row and column security, or an attribute a rule reads that the person lacks. */
 export function isFailing(target: WhyTarget) {
-  return isConflicting(target) || hasMissingAttributes(target);
+  return (
+    isConflicting(target) ||
+    hasDatabaseConflict(target) ||
+    hasMissingAttributes(target)
+  );
 }
 
-export function hasMissingAttributes({ missingAttributes }: WhyTarget) {
-  return (missingAttributes ?? []).length > 0;
+export function hasMissingAttributes({
+  missingAttributes,
+  missingDatabaseAttributes,
+}: WhyTarget) {
+  return (
+    (missingAttributes ?? []).length > 0 ||
+    (missingDatabaseAttributes ?? []).length > 0
+  );
 }
 
-/** "Sales needs the attributes category and state, which Sandy Sales doesn't have.", one per group whose rule needs one. */
+/**
+ * "Sales needs the attributes category and state, which Sandy Sales doesn't have.", one per group whose rule needs one,
+ * then one per group whose connection impersonation, or database whose router, reads one.
+ */
 export function getMissingAttributeSentences(target: WhyTarget) {
-  const { who, missingAttributes = [] } = target;
+  const {
+    who,
+    databaseName,
+    missingAttributes = [],
+    missingDatabaseAttributes = [],
+  } = target;
   const groups = getPolicies(target).map(({ group_id, group_name }) => ({
     group: group_name,
     attributes: missingAttributes
       .filter((missing) => missing["group-id"] === group_id)
       .map(({ attribute }) => attribute),
   }));
-  return groups
+  const ruleSentences = groups
     .filter(({ attributes }) => attributes.length > 0)
     .map(({ group, attributes }) => {
       const list = formatList(attributes);
@@ -98,12 +146,25 @@ export function getMissingAttributeSentences(target: WhyTarget) {
         attributes.length,
       );
     });
+  const databaseSentences = missingDatabaseAttributes.map(
+    ({ attribute, kind, group }) =>
+      kind === "impersonation"
+        ? t`${group} needs the attribute ${attribute} to pick the database role on ${databaseName}, which ${who} doesn't have.`
+        : t`${databaseName} routes by the attribute ${attribute}, which ${who} doesn't have.`,
+  );
+  return [...ruleSentences, ...databaseSentences];
 }
 
 /** What fixes it: give the person a value, or try one in the preview. */
-export function getMissingAttributeFix({ who, missingAttributes }: WhyTarget) {
+export function getMissingAttributeFix({
+  who,
+  missingAttributes,
+  missingDatabaseAttributes,
+}: WhyTarget) {
   const count = new Set(
-    (missingAttributes ?? []).map(({ attribute }) => attribute),
+    [...(missingAttributes ?? []), ...(missingDatabaseAttributes ?? [])].map(
+      ({ attribute }) => attribute,
+    ),
   ).size;
   return ngettext(
     msgid`Set it on ${who}, or pick a value for it in the preview.`,
@@ -205,12 +266,22 @@ export function WhyContent({ target }: { target: WhyTarget }) {
   );
 }
 
-/** Why every query reaching the table fails, and what fixes it: the conflict first, then the missing attributes. */
-function getFailureLines(target: WhyTarget) {
+/** What conflicts on the table, each with what fixes it: two groups' row and column security, then impersonation against it. */
+export function getConflictLines(target: WhyTarget) {
   return [
     ...(isConflicting(target)
       ? [getConflictSentence(target), getConflictFix(target)]
       : []),
+    ...(hasDatabaseConflict(target)
+      ? [getDatabaseConflictSentence(target), getDatabaseConflictFix()]
+      : []),
+  ];
+}
+
+/** Why every query reaching the table fails, and what fixes it: the conflict first, then the missing attributes. */
+function getFailureLines(target: WhyTarget) {
+  return [
+    ...getConflictLines(target),
     ...(hasMissingAttributes(target)
       ? [
           ...getMissingAttributeSentences(target),

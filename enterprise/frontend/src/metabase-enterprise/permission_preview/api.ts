@@ -261,6 +261,21 @@ export type MissingAttribute = {
   "group-id": GroupId;
 };
 
+/** A database where the person's row and column security and a group's connection impersonation both apply, which fails every query on it. */
+export type ConflictingDatabase = {
+  "database-id": DatabaseId;
+  "sandbox-group-ids": GroupId[];
+  "impersonation-group-ids": GroupId[];
+};
+
+/** A user attribute the person lacks that a connection impersonation policy (of `group-id`) or a database's router reads. */
+export type MissingDatabaseAttribute = {
+  attribute: string;
+  "database-id": DatabaseId;
+  kind: "impersonation" | "routing";
+  "group-id"?: GroupId;
+};
+
 export type PermissionDebugResponse = {
   decision: "allow" | "denied" | "limited";
   data: {
@@ -271,6 +286,9 @@ export type PermissionDebugResponse = {
     "conflicting-tables"?: TableId[];
     /** The attributes the person lacks that a rule on a table the queries reach reads. */
     "missing-attributes"?: MissingAttribute[];
+    /** The databases the queries reach that fail every query on them, and the attributes their impersonation or routing reads that the person lacks. */
+    "conflicting-databases"?: ConflictingDatabase[];
+    "missing-database-attributes"?: MissingDatabaseAttribute[];
     /** Each card that can't load, with the names of its blocked tables, the ids of its conflicting ones and its missing attributes. */
     "blocked-cards"?: {
       id: number;
@@ -278,6 +296,8 @@ export type PermissionDebugResponse = {
       tables: string[];
       "conflicting-tables"?: TableId[];
       "missing-attributes"?: MissingAttribute[];
+      "conflicting-databases"?: ConflictingDatabase[];
+      "missing-database-attributes"?: MissingDatabaseAttribute[];
     }[];
   };
 };

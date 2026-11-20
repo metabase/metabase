@@ -1,7 +1,7 @@
 import { msgid, ngettext, t } from "ttag";
 
 import { skipToken } from "metabase/api";
-import type { CollectionId } from "metabase-types/api";
+import type { CollectionId, DatabaseId, GroupId } from "metabase-types/api";
 
 import {
   type ItemDependencies,
@@ -12,6 +12,7 @@ import {
   type PreviewCollectionsResponse,
   type PreviewDataResponse,
   type PreviewDatabase,
+  type PreviewPrincipal,
   type PreviewTableAccess,
   type Principal,
   type PrincipalType,
@@ -70,8 +71,12 @@ export type BlockedCard = {
   conflictingTables: WhyTarget[];
   /** The tables it reaches whose row and column security reads an attribute the person lacks. */
   missingAttributeTables: WhyTarget[];
-  /** The names of those attributes. */
+  /** The names of those attributes, with the ones its databases' impersonation or routing reads. */
   missingAttributes: string[];
+  /** The names of its databases where row and column security and connection impersonation both apply. */
+  conflictingDatabases: string[];
+  /** The item's tables on its databases that fail every query: those conflicting or missing an attribute. */
+  databaseTables: WhyTarget[];
 };
 
 /** A collection: whether the person can open it, and from which group; on Our analytics, also the collections in it. */
@@ -470,8 +475,16 @@ function getItemPage(
       )
       .map((table) => ({ database, table })),
   );
+  const groups = dataPreview.principal.groups;
   const viewTargets = tables.map(({ database, table }) =>
-    getTableWhyTarget(who, database, table, "view_data", missingAttributes),
+    getTableWhyTarget(
+      who,
+      database,
+      table,
+      "view_data",
+      missingAttributes,
+      getDatabaseProblems(database.id, queryCheck.data, groups),
+    ),
   );
   const filtered = viewTargets.filter(isFiltered);
   const tablesInOrder = tables
@@ -511,9 +524,27 @@ function getItemPage(
         .map(({ view }) => view),
       missingAttributes: [
         ...new Set(
-          (card["missing-attributes"] ?? []).map(({ attribute }) => attribute),
+          [
+            ...(card["missing-attributes"] ?? []),
+            ...(card["missing-database-attributes"] ?? []),
+          ].map(({ attribute }) => attribute),
         ),
       ],
+      conflictingDatabases: dataPreview.databases
+        .filter(({ id }) =>
+          (card["conflicting-databases"] ?? []).some(
+            (conflict) => conflict["database-id"] === id,
+          ),
+        )
+        .map(({ name }) => name),
+      databaseTables: tablesInOrder
+        .filter(({ database }) =>
+          [
+            ...(card["conflicting-databases"] ?? []),
+            ...(card["missing-database-attributes"] ?? []),
+          ].some((problem) => problem["database-id"] === database.id),
+        )
+        .map(({ view }) => view),
     })),
     filtered,
     collection: collectionTarget,
@@ -673,6 +704,7 @@ function getTableWhyTarget(
   table: PreviewTableAccess,
   column: Extract<PreviewColumn, "view_data" | "create_queries">,
   missingAttributes: MissingAttribute[] = [],
+  databaseProblems: DatabaseProblems = {},
 ): WhyTarget {
   const tableName = table.display_name ?? table.name;
   return {
@@ -690,5 +722,47 @@ function getTableWhyTarget(
             (missing) => missing["table-id"] === table.id,
           )
         : [],
+    ...(column === "view_data" ? databaseProblems : {}),
+  };
+}
+
+type DatabaseProblems = Pick<
+  WhyTarget,
+  "databaseConflict" | "missingDatabaseAttributes"
+>;
+
+/**
+ * What fails every query on the database `databaseId`, by group name: row and column security with connection
+ * impersonation, and the attributes its impersonation policies or router read that the person lacks.
+ */
+function getDatabaseProblems(
+  databaseId: DatabaseId,
+  data: PermissionDebugResponse["data"],
+  groups: PreviewPrincipal["groups"],
+): DatabaseProblems {
+  const getGroupName = (groupId: GroupId) =>
+    groups.find(({ id }) => id === groupId)?.name ?? t`Unknown group`;
+  const conflict = (data["conflicting-databases"] ?? []).find(
+    (found) => found["database-id"] === databaseId,
+  );
+  const missing = (data["missing-database-attributes"] ?? []).filter(
+    (found) => found["database-id"] === databaseId,
+  );
+  return {
+    databaseConflict:
+      conflict != null
+        ? {
+            sandboxGroups: conflict["sandbox-group-ids"].map(getGroupName),
+            impersonationGroups:
+              conflict["impersonation-group-ids"].map(getGroupName),
+          }
+        : undefined,
+    missingDatabaseAttributes: missing.map(
+      ({ attribute, kind, "group-id": groupId }) => ({
+        attribute,
+        kind,
+        group: groupId != null ? getGroupName(groupId) : undefined,
+      }),
+    ),
   };
 }
