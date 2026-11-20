@@ -36,6 +36,14 @@ Version E copies B's two folders (without B's unit spec). Figma: frame 304:15005
 
 Version F copies E's two folders. Figma: frame 304:14982.
 
+### The custom column pill
+
+A separate switcher, **Expression pill** (`expression-pill-version`), for the style of the pill (like `Total + Subtotal`), to show that it can be renamed. Only the styling differs; the behaviour stays the same.
+
+| Version | Axis | Folder | Based on | Status |
+|---|---|---|---|---|
+| A | The current pill | `notebook/components/ExpressionStep/ExpressionPill.tsx` | — | active |
+
 ## Constraints
 - Enter, in order: an input method composing → its own; a text field (AI prompt, name) → its own; a highlighted suggestion → picks it; inside a function's placeholders → next placeholder; a request in words in a new column → sends it to the AI; otherwise → saves and keeps the editor open.
 - A: Cmd+Enter behaves like Enter (since Oleh's d1054a7e59f).
@@ -82,7 +90,8 @@ Version F copies E's two folders. Figma: frame 304:14982.
 - 2026-11-19 — D: the docs button in the code row shows when the user closes the docs side panel.
 
 ## Settings
-- `expression-editor-version` — which version shows.
+- `expression-editor-version` — which version of the editor shows.
+- `expression-pill-version` — which style of the custom column pill shows.
 - `expression-columns-outside-brackets` — suggest columns for a bare word, not only after `[`.
 - `expression-sql-fixes` — suggest the custom expression for SQL syntax.
 - `expression-hide-ai` — behave as without an AI provider.

@@ -1,6 +1,7 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import {
   EXPRESSION_EDITOR_VERSION_SETTING,
+  EXPRESSION_PILL_VERSION_SETTING,
   PrototypeVersionSwitcher,
 } from "metabase/prototype";
 import { useDispatch } from "metabase/redux";
@@ -77,6 +78,10 @@ export const Notebook = ({
       <PrototypeVersionSwitcher
         setting={EXPRESSION_EDITOR_VERSION_SETTING}
         label="Expression editor"
+      />
+      <PrototypeVersionSwitcher
+        setting={EXPRESSION_PILL_VERSION_SETTING}
+        label="Expression pill"
       />
     </NotebookProvider>
   );

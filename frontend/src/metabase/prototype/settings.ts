@@ -21,6 +21,16 @@ export const EXPRESSION_EDITOR_VERSION_SETTING: SegmentedPrototypeSetting = {
   defaultValue: "a",
 };
 
+export const EXPRESSION_PILL_VERSION_SETTING: SegmentedPrototypeSetting = {
+  key: "expression-pill-version",
+  type: "segmented",
+  label: "Expression pill",
+  description:
+    "The style of the custom column pill, to show that a double-click renames it. A: the current pill.",
+  options: [{ value: "a", label: "Version A" }],
+  defaultValue: "a",
+};
+
 export const EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING: BooleanPrototypeSetting =
   {
     key: "expression-columns-outside-brackets",
@@ -69,6 +79,7 @@ export const EXPRESSION_PREVIEW_CONTEXT_SETTING: SegmentedPrototypeSetting = {
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   EXPRESSION_EDITOR_VERSION_SETTING,
+  EXPRESSION_PILL_VERSION_SETTING,
   EXPRESSION_COLUMNS_OUTSIDE_BRACKETS_SETTING,
   EXPRESSION_SQL_FIXES_SETTING,
   EXPRESSION_HIDE_AI_SETTING,

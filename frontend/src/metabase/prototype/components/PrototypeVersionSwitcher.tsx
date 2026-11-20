@@ -14,6 +14,23 @@ import { usePrototypeSetting } from "../use-prototype-setting";
 
 import S from "./PrototypeVersionSwitcher.module.css";
 
+const STACK_ID = "prototype-version-switchers";
+
+/**
+ * The column at the bottom of the window that holds the switchers, one above
+ * the other, so that several can show at once.
+ */
+function getSwitcherStack() {
+  let stack = document.getElementById(STACK_ID);
+  if (stack == null) {
+    stack = document.createElement("div");
+    stack.id = STACK_ID;
+    stack.className = S.stack;
+    document.body.append(stack);
+  }
+  return stack;
+}
+
 interface PrototypeVersionSwitcherProps {
   setting: SegmentedPrototypeSetting;
   label: string;
@@ -23,7 +40,7 @@ interface PrototypeVersionSwitcherProps {
  * Prototype: a floating bar at the bottom of the window that switches between
  * the versions of a prototype, like developer tools. It changes the same
  * value as the prototype settings menu, and a click on the icon hides it to
- * a small button.
+ * a small button. Several switchers stack, one above the other.
  */
 export function PrototypeVersionSwitcher({
   setting,
@@ -44,7 +61,7 @@ export function PrototypeVersionSwitcher({
           <Icon name="beaker" size={14} />
         </UnstyledButton>
       </Tooltip>,
-      document.body,
+      getSwitcherStack(),
     );
   }
 
@@ -67,6 +84,6 @@ export function PrototypeVersionSwitcher({
         onChange={setValue}
       />
     </div>,
-    document.body,
+    getSwitcherStack(),
   );
 }
