@@ -244,8 +244,10 @@
                     ;; only once registered, so a halt that finds nothing in flight finds this registered
                     (swap! admissions update :starting dissoc k)))))))))))
 
-;; A long start holds up the threads that need the component, and [[halt!]] waits for it with no timeout.
-;; A start that exits the JVM deadlocks: the shutdown hook's halt waits for the start, and the exit waits for the hook.
+;; A long start holds up the threads that need the component, and [[halt!]] waits for it up to its `:start-timeout-ms`,
+;; with no limit by default.
+;; Without a limit, a start that exits the JVM deadlocks: the shutdown hook's halt waits for the start, and the exit
+;; waits for the hook.
 (defn ensure-started!
   "The value of the component behind `handle` as this thread sees it, starting the component first if it has none.
    A thread that binds the component gets the bound value, nil included, and starts nothing.
