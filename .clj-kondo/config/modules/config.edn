@@ -2635,7 +2635,7 @@
    :uses #{lib util}}
 
   queue-listener
-  {:team "Metabot"
+  {:team "UX West"
    :api  #{metabase.queue-listener.core}
    :uses #{global-system util}}
 
