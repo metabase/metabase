@@ -10,6 +10,7 @@ import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import type { Database } from "metabase-types/api";
 
 import type { AnonymousAccessQuestion } from "../AnonymousAccessChoiceModal";
+import type { PanelReachFraming } from "../AnonymousReachList";
 
 export const useDatabaseRoutingPanel = (
   database: Database,
@@ -20,10 +21,13 @@ export const useDatabaseRoutingPanel = (
   const [updateRouterDatabase, { error }] = useUpdateRouterDatabaseMutation();
 
   // The anonymous-reach endpoint is admin-only.
-  const { data: anonymousReach } = useGetDatabaseAnonymousReachQuery(
-    skip || !isAdmin ? skipToken : database.id,
-  );
+  const { data: anonymousReach, isLoading: isReachabilityPending } =
+    useGetDatabaseAnonymousReachQuery(
+      skip || !isAdmin ? skipToken : database.id,
+    );
   const anonymouslyReachable = (anonymousReach?.total ?? 0) > 0;
+  // A failed request also counts as settled.
+  const isReachabilityKnown = !isReachabilityPending;
 
   const userAttribute = database.router_user_attribute ?? undefined;
   const isRoutingStored = hasDbRoutingEnabled(database);
@@ -41,6 +45,7 @@ export const useDatabaseRoutingPanel = (
   const [sentAttribute, setSentAttribute] = useState<string | undefined>(
     undefined,
   );
+  const [isConfirmingRevoke, setIsConfirmingRevoke] = useState(false);
 
   const routerAttribute = userAttribute ?? sentAttribute;
   const pendingGrant = isRoutingStored ? undefined : pendingAnonymousAccess;
@@ -48,6 +53,10 @@ export const useDatabaseRoutingPanel = (
     pendingGrant ?? !!database.router_anonymous_access_granted;
   const canChangeAnonymousAccess =
     isRoutingStored || pendingGrant !== undefined;
+
+  // Before reach loads, a revoke would skip its confirmation.
+  const isRevokeHeldForReachability =
+    anonymousAccessGranted && !isReachabilityKnown;
 
   const hasStoppedServingAnonymousVisitors =
     isRoutingStored && !anonymousAccessGranted && anonymouslyReachable;
@@ -59,9 +68,25 @@ export const useDatabaseRoutingPanel = (
     mustAnswerBeforeStoring &&
     (tempEnabled || attributeAwaitingAnswer !== undefined);
 
-  const openQuestion: AnonymousAccessQuestion | null = isChoosingGrant
-    ? "choose"
-    : null;
+  const getPanelReachFraming = (): PanelReachFraming | null => {
+    if (!enabled || !anonymouslyReachable) {
+      return null;
+    }
+    if (anonymousAccessGranted) {
+      return "keeps-working";
+    }
+    if (isRoutingStored) {
+      return "has-stopped";
+    }
+    return pendingGrant === false ? "would-stop" : null;
+  };
+
+  const getOpenQuestion = (): AnonymousAccessQuestion | null => {
+    if (isConfirmingRevoke) {
+      return "revoke";
+    }
+    return isChoosingGrant ? "choose" : null;
+  };
 
   const storeRouter = async (
     attribute: string,
@@ -116,11 +141,16 @@ export const useDatabaseRoutingPanel = (
       setPendingAnonymousAccess(granted);
       return;
     }
+    if (!granted && anonymouslyReachable) {
+      setIsConfirmingRevoke(true);
+      return;
+    }
     await writeAnonymousAccess(routerAttribute, granted);
   };
 
   const discardPendingRouting = () => {
     setTempEnabled(false);
+    setIsConfirmingRevoke(false);
     setPendingAnonymousAccess(undefined);
     setAttributeAwaitingAnswer(undefined);
     setSentAttribute(undefined);
@@ -153,21 +183,36 @@ export const useDatabaseRoutingPanel = (
     await storeRouter(attributeAwaitingAnswer, granted);
   };
 
+  const confirmRevoke = async () => {
+    setIsConfirmingRevoke(false);
+    // always set here; the check only narrows the type
+    if (routerAttribute) {
+      await writeAnonymousAccess(routerAttribute, false);
+    }
+  };
+
+  const dismissRevoke = () => setIsConfirmingRevoke(false);
+
   return {
     /** True from a pending enable, before anything is stored. */
     enabled,
+    anonymousReach,
+    panelReachFraming: getPanelReachFraming(),
     userAttribute,
     isRoutingStored,
     error,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
     hasStoppedServingAnonymousVisitors,
-    openQuestion,
+    openQuestion: getOpenQuestion(),
     cancelUndoesEnable: tempEnabled,
+    isRevokeHeldForReachability,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
     chooseGrant,
     cancelGrantChoice: discardPendingRouting,
+    confirmRevoke,
+    dismissRevoke,
   };
 };
