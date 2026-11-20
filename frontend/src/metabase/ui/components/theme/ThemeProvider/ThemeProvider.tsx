@@ -2,11 +2,11 @@
 import { ThemeProvider as _CompatibilityEmotionThemeProvider } from "@emotion/react";
 import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
-import { getNonce } from "get-nonce";
 import { type ReactNode, useContext, useMemo } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getCspNonce } from "metabase/utils/csp";
 import { deepMerge } from "metabase/utils/deep-merge";
 import type { ColorSettings } from "metabase-types/api/color-settings";
 
@@ -117,7 +117,7 @@ export const ThemeProvider = ({
     <MantineProvider
       theme={theme}
       forceColorScheme={resolvedColorScheme}
-      getStyleNonce={() => getNonce() ?? "metabase"}
+      getStyleNonce={() => getCspNonce() ?? "metabase"}
       classNamesPrefix="mb-mantine"
       cssVariablesSelector={cssVariablesSelector}
       withCssVariables={withCssVariables}
