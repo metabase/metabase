@@ -27,12 +27,14 @@ interface SetupOptions {
   modelCount: number;
   recentModelCount?: number;
   hasDataPermissions?: boolean;
+  hasNativePermissions?: boolean;
 }
 
 const setup = ({
   modelCount,
   recentModelCount = 5,
   hasDataPermissions = true,
+  hasNativePermissions = hasDataPermissions,
 }: SetupOptions) => {
   const mockModelResults = mockModels.map((model) =>
     createMockModelResult(model),
@@ -57,7 +59,7 @@ const setup = ({
         currentUser: createMockUser({
           permissions: createMockUserPermissions({
             can_create_queries: hasDataPermissions,
-            can_create_native_queries: hasDataPermissions,
+            can_create_native_queries: hasNativePermissions,
           }),
         }),
         setup: createMockSetupState({
@@ -424,6 +426,19 @@ describe("BrowseModels", () => {
         within(header).queryByLabelText("Create a new model"),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("should not display a new model button to a user who cannot write native queries", async () => {
+    setup({
+      modelCount: 1,
+      hasDataPermissions: true,
+      hasNativePermissions: false,
+    });
+    const header = await screen.findByTestId("browse-models-header");
+    expect(within(header).getByRole("heading")).toHaveTextContent("Models");
+    expect(
+      within(header).queryByLabelText("Create a new model"),
+    ).not.toBeInTheDocument();
   });
 
   it("displays the Our Analytics collection if it has a model", async () => {
