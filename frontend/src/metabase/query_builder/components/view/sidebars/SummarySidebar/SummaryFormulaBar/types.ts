@@ -1,3 +1,4 @@
+import type { FormulaSourceStatus } from "metabase/querying/components/FormulaEditor";
 import type * as Lib from "metabase-lib";
 
 import type { SummaryQueryChangeOptions, SummaryWellId } from "../types";
@@ -33,6 +34,9 @@ export type SummaryFormulaDraft = {
   | {
       kind: "edit";
       uuid: string;
+      /** The printed formula, once it has loaded. */
+      originalSource?: string;
+      sourceStatus: FormulaSourceStatus;
       hasCustomName: boolean;
     }
 );

@@ -19,6 +19,7 @@ import {
   serializeCardForUrl,
 } from "metabase/common/utils/card";
 import { format } from "metabase/querying/expressions";
+import * as formatter from "metabase/querying/expressions/formatter/formatter";
 import { useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type {
@@ -111,6 +112,7 @@ function sumOf(name: string): TestOperatorSpec {
 }
 
 type SetupOpts = {
+  stageIndex?: number;
   database?: Database;
   databaseResponse?: Promise<Database>;
   query?: Lib.Query;
@@ -120,6 +122,7 @@ type SetupOpts = {
 async function setup({
   database = createSampleDatabase(),
   databaseResponse,
+  stageIndex = -1,
   query: initialQuery = Lib.createTestQuery(
     SAMPLE_PROVIDER,
     DEFAULT_TEST_QUERY,
@@ -161,7 +164,7 @@ async function setup({
         {mode === "view" && (
           <SummarySidebar
             query={query}
-            stageIndex={-1}
+            stageIndex={stageIndex}
             onQueryChange={(nextQuery) => {
               savedCard = question.setQuery(nextQuery).card();
               setCard(savedCard);
@@ -660,6 +663,30 @@ describe("summary formula handoff", () => {
 describe("editing a formula chip", () => {
   afterEach(() => {
     jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it("keeps the saved formula when it fails to load into the bar", async () => {
+    const { onQueryChange } = await setupFormulaQuery();
+    const loading = defer<string>();
+    jest.spyOn(formatter, "format").mockReturnValueOnce(loading.promise);
+    await userEvent.click(getFormulaChip("Sum total"));
+    await screen.findByRole("textbox", { name: "Formula" });
+    await changeFormula("Count()");
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+
+    await act(async () => loading.reject(new Error("Failed to load")));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load this formula",
+    );
+    await userEvent.keyboard("{Enter}");
+    expect(onQueryChange).not.toHaveBeenCalled();
+
+    await userEvent.keyboard("{Escape}");
+    await expectClosed();
+    await openFormula("Sum total");
+    await expectFormula("Sum([Total])");
   });
 
   it("opens the formula of a Summarize by chip and updates it under its name", async () => {
@@ -889,6 +916,125 @@ describe("editing a formula chip", () => {
       );
     },
   );
+
+  it.each([1, 2])(
+    "keeps a later-stage filter on a grouping when its formula is updated with a %i-day offset",
+    async (days) => {
+      const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          FORMULA_QUERY_SPEC.stages[0],
+          {
+            filters: [
+              {
+                type: "operator",
+                operator: "<",
+                args: [
+                  { type: "column", name: "Order date" },
+                  { type: "literal", value: "2026-03-15" },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const { onQueryChange } = await setup({ query, stageIndex: 0 });
+      await openFormula("Order date: Year");
+      await changeFormula(`datetimeAdd([Created At], ${days}, "day")`);
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+      await expectClosed();
+
+      const isChanged = days !== 1;
+      expect(onQueryChange).toHaveBeenCalledTimes(isChanged ? 1 : 0);
+      const [nextQuery] = onQueryChange.mock.calls[0] ?? [query];
+      expect(Lib.toJsQuery(nextQuery)).toMatchObject({
+        stages: [
+          expect.anything(),
+          {
+            filters: [
+              [
+                "<",
+                expect.anything(),
+                ["field", { "inherited-temporal-unit": "year" }, "Order date"],
+                "2026-03-15",
+              ],
+            ],
+          },
+        ],
+      });
+      expect(
+        await format(Lib.expressions(nextQuery, 0)[0], {
+          query: nextQuery,
+          stageIndex: 0,
+        }),
+      ).toBe(`datetimeAdd([Created At], ${days}, "day")`);
+    },
+  );
+
+  it("keeps an unbucketed date grouping unbucketed when its formula is updated", async () => {
+    const { onQueryChange } = await setup({
+      query: Lib.createTestQuery(SAMPLE_PROVIDER, {
+        stages: [
+          {
+            ...FORMULA_QUERY_SPEC.stages[0],
+            breakouts: [{ type: "column", name: "Order date" }],
+          },
+        ],
+      }),
+    });
+    await openFormula("Order date");
+    await changeFormula('datetimeAdd([Created At], 2, "day")');
+    await userEvent.keyboard("{Enter}");
+    await expectClosed();
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    const [nextQuery] = onQueryChange.mock.calls[0];
+    expect(Lib.temporalBucket(Lib.breakouts(nextQuery, -1)[0])).toBeNull();
+  });
+
+  it("groups by month and keeps a later-stage filter when a number formula becomes a date", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          ...FORMULA_QUERY_SPEC.stages[0],
+          expressions: [
+            { name: "Custom", value: { type: "column", name: "TOTAL" } },
+          ],
+          breakouts: [{ type: "column", name: "Custom" }],
+        },
+        {
+          filters: [
+            {
+              type: "operator",
+              operator: "not-null",
+              args: [{ type: "column", name: "Custom" }],
+            },
+          ],
+        },
+      ],
+    });
+    const { onQueryChange } = await setup({ query, stageIndex: 0 });
+    await openFormula("Custom");
+    await changeFormula('datetimeAdd([Created At], 2, "day")');
+    await userEvent.keyboard("{Enter}");
+    await expectClosed();
+
+    expect(onQueryChange).toHaveBeenCalledTimes(1);
+    const [nextQuery] = onQueryChange.mock.calls[0];
+    expect(Lib.toJsQuery(nextQuery)).toMatchObject({
+      stages: [
+        { breakout: [["expression", { "temporal-unit": "month" }, "Custom"]] },
+        {
+          filters: [
+            [
+              "not-null",
+              expect.anything(),
+              ["field", { "inherited-temporal-unit": "month" }, "Custom"],
+            ],
+          ],
+        },
+      ],
+    });
+  });
 
   it("leaves the query alone when a formula is updated without changes", async () => {
     const { onQueryChange } = await setupFormulaQuery();

@@ -201,8 +201,20 @@ function rebucketFormulaBreakouts(
   name: string,
   nextName: string,
 ): Lib.Query {
-  // Lib keeps a grouping's bucket through a rename only. A changed formula leaves bare
-  // references, and groupings that became duplicates of each other are dropped.
+  const column = findFormulaColumn(query, stageIndex, name);
+  const nextColumn = findFormulaColumn(nextQuery, stageIndex, nextName);
+  if (!column || !nextColumn) {
+    return nextQuery;
+  }
+  const isSameType =
+    Lib.displayInfo(query, stageIndex, column).effectiveType ===
+    Lib.displayInfo(nextQuery, stageIndex, nextColumn).effectiveType;
+  if (isSameType) {
+    // Lib already kept each grouping, its bucket, and the references to it in later stages.
+    return nextQuery;
+  }
+  // A new type can drop the old bucket and leave groupings that duplicate each other, which
+  // Lib removes. A clause, not a column, keeps the references to the grouping in later stages.
   const previousBreakouts = getFormulaBreakouts(query, stageIndex, name);
   const currentBreakouts = getFormulaBreakouts(nextQuery, stageIndex, nextName);
   const rebucketedQuery = currentBreakouts.reduce(
@@ -215,11 +227,13 @@ function rebucketFormulaBreakouts(
         currentQuery,
         stageIndex,
         breakout,
-        withPreviousBucket(
-          currentQuery,
-          stageIndex,
-          column,
-          previousBreakouts[index],
+        Lib.expressionClause(
+          withPreviousBucket(
+            currentQuery,
+            stageIndex,
+            column,
+            previousBreakouts[index],
+          ),
         ),
       );
     },

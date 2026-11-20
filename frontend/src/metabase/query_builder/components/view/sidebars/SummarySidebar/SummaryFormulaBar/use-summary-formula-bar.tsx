@@ -132,14 +132,20 @@ export function useSummaryFormulaBar({
         activeDraft.wellId,
       );
     } else if (activeDraft?.kind === "edit" && editedFormula) {
-      const result = editSummaryFormula(
-        query,
-        stageIndex,
-        editedFormula,
-        expression,
-        activeDraft.hasCustomName,
-      );
-      onEdit(result.query, result.options);
+      // Replacing an unchanged formula still rewrites the clauses that refer to it, so skip it.
+      const isChanged =
+        activeDraft.originalSource !==
+        viewRef.current?.state.doc.toString().trim();
+      if (isChanged) {
+        const result = editSummaryFormula(
+          query,
+          stageIndex,
+          editedFormula,
+          expression,
+          activeDraft.hasCustomName,
+        );
+        onEdit(result.query, result.options);
+      }
     }
     close();
   };
@@ -156,13 +162,17 @@ export function useSummaryFormulaBar({
   // The bar opens at once and the printed formula lands in it, so a double-click's rename
   // keeps its focus. Text typed before the formula arrives stands.
   const showEditedSource = (key: number, source: string, name?: string) => {
-    if (name != null && isDefaultFormulaName(name, source)) {
-      setDraft((draft) =>
-        draft?.kind === "edit" && draft.key === key
-          ? { ...draft, hasCustomName: false }
-          : draft,
-      );
-    }
+    const hasCustomName = name != null && !isDefaultFormulaName(name, source);
+    setDraft((draft) =>
+      draft?.kind === "edit" && draft.key === key
+        ? {
+            ...draft,
+            originalSource: source,
+            sourceStatus: "ready",
+            hasCustomName,
+          }
+        : draft,
+    );
     const view = viewRef.current;
     if (view == null) {
       pendingSource.current = { kind: "edit", source };
@@ -196,18 +206,25 @@ export function useSummaryFormulaBar({
       wellId,
       uuid,
       source: "",
+      sourceStatus: "loading",
       hasCustomName: formula.name != null,
     });
     ownership.open();
     // the bar holds one line, so the printer must not wrap
-    format(formula.clause, { query, stageIndex, printWidth: Infinity })
-      .catch(() => null)
-      .then((source) => {
+    format(formula.clause, { query, stageIndex, printWidth: Infinity }).then(
+      (source) => {
         // a formula opened since, new or edited, has taken the bar
-        if (source != null && nextKey.current === key) {
+        if (nextKey.current === key) {
           showEditedSource(key, source, formula.name);
         }
-      });
+      },
+      () =>
+        setDraft((draft) =>
+          draft?.kind === "edit" && draft.key === key
+            ? { ...draft, sourceStatus: "failed" }
+            : draft,
+        ),
+    );
   };
 
   const getFormulaInput = (
@@ -257,6 +274,9 @@ export function useSummaryFormulaBar({
             expressionMode={getExpressionMode(openDraft.wellId)}
             expressionIndex={editedFormula?.index}
             initialSource={openDraft.source}
+            sourceStatus={
+              openDraft.kind === "edit" ? openDraft.sourceStatus : undefined
+            }
             submitLabel={openDraft.kind === "edit" ? t`Update` : t`Add`}
             onEditorCreate={handleEditorCreate}
             onNameChange={

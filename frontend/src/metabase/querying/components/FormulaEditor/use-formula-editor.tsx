@@ -24,6 +24,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     expressionMode,
     expressionIndex,
     initialSource,
+    sourceStatus = "ready",
     onEditorCreate,
     onNameChange,
     onSubmit,
@@ -48,7 +49,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     onEditorCreate,
     onChange: () => setErrorMessage(null),
   });
-  const hasFormula = source.trim().length > 0;
+  const hasFormula = source.trim().length > 0 && sourceStatus === "ready";
   const formulaName = getDefaultFormulaName(source);
 
   useEffect(() => {
@@ -78,7 +79,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
 
   // names the formula after its formatted text, which is what `isDefaultFormulaName` compares names with.
   const handleSubmit = () => {
-    if (isSubmitting) {
+    if (isSubmitting || sourceStatus !== "ready") {
       return;
     }
     const clause = getClause();
@@ -126,7 +127,10 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     source,
     hasFormula,
     isSubmitting,
-    errorMessage,
+    errorMessage:
+      sourceStatus === "failed"
+        ? t`Couldn't load this formula. Please, close it and try again.`
+        : errorMessage,
     extensions,
     completionTooltipPortal,
     handleChange,
