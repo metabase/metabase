@@ -160,8 +160,8 @@
 (mu/defn update-result-metadata! :- nat-int?
   "Delete the statuses of deleted cards, then re-derive up to `batch-size` MBQL cards whose ResultMetadataStatus counts
   a write, is missing or is outdated, clearing each one's `stale` count unless a write raised it meanwhile, or counting
-  its failure, returning how many statuses it took, deleted ones included; with `reported-only?`, only the cards the
-  findings report lists or something depends on."
+  its failure, returning how many statuses it took, deleted ones included; with `reported-only?`, only the cards
+  something depends on, whose metadata is what the findings report reads."
   ([batch-size :- ms/PositiveInt]
    (update-result-metadata! batch-size {}))
   ([batch-size :- ms/PositiveInt

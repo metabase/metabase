@@ -22,8 +22,8 @@
 
 (def ^:private job-batches
   "The jobs' batches, in the order work flows between them. The last two take only what the findings report reads,
-  leaving the rest to their scheduled runs; dependencies are computed for every entity, since they say which skipped
-  cards something depends on."
+  leaving the rest, such as archived entities and the metadata of cards nothing depends on, to their scheduled runs;
+  dependencies are computed for every entity, since they say which cards something depends on."
   [task.dependency/run-batch-in-place!
    #(task.result-metadata/run-batch-in-place! {:reported-only? true})
    #(task.analysis-finding/run-batch-in-place! {:reported-only? true})])

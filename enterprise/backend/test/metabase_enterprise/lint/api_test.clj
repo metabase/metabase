@@ -146,7 +146,10 @@
                               :name      "Lint model"}}]
                 (card-results report dependent-card)))
          (is (= {:severity "error" :description "A query reads a column its source does not have."}
-                (get-in report [:rules :missing-column]))))))))
+                (get-in report [:rules :missing-column])))
+         (testing "without re-deriving the result metadata of the dependent, which nothing reads"
+           (is (not (t2/exists? :model/ResultMetadataStatus
+                                :entity_type "card" :entity_id (:id dependent-card) :stale 0)))))))))
 
 (deftest ^:synchronized broken-native-sql-without-cause-test
   (testing "POST /api/ee/lint reports native SQL reading an unknown table, with no cause to trace it to"
