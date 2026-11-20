@@ -132,27 +132,6 @@
      TimeUnit/MINUTES)
     (reset! dump-executor-atom executor)))
 
-(defn- start-recording!
-  "Start a JFR recording as `setting` asks, and return it."
-  [^String setting]
-  (if (directory-mode? setting)
-    ;; Rolling directory mode: new file every 30 minutes
-    (let [^Path dir-path (.toAbsolutePath (Path/of setting (into-array String [])))]
-      (start-rolling-mode! dir-path (save-rate-minutes 30))
-      (log/infof "Performance monitoring started in rolling mode. Output directory: %s" (str dir-path)))
-    ;; Single file mode
-    (let [output-path (resolve-output-path setting)
-          parent-dir  (.getParent output-path)]
-      (when parent-dir
-        (Files/createDirectories parent-dir (into-array FileAttribute [])))
-      (let [recording (create-recording!)]
-        (.setDumpOnExit recording true)
-        (.setDestination recording output-path)
-        (reset! recording-atom recording)
-        (start-periodic-dump! recording output-path (save-rate-minutes 5))
-        (log/infof "Performance monitoring started. Output file: %s" (str output-path)))))
-  @recording-atom)
-
 (defn- stop-recording!
   "Stops and closes the JFR recording if one is active."
   []
@@ -173,6 +152,33 @@
       (log/info "Performance monitoring stopped")
       (catch Throwable e
         (log/warnf "Error stopping performance monitoring: %s" (ex-message e))))))
+
+(defn- start-recording!
+  "Start a JFR recording as `setting` asks, and return it.
+  If the start fails part way, stops what it started and rethrows."
+  [^String setting]
+  (try
+    (if (directory-mode? setting)
+      ;; Rolling directory mode: new file every 30 minutes
+      (let [^Path dir-path (.toAbsolutePath (Path/of setting (into-array String [])))]
+        (start-rolling-mode! dir-path (save-rate-minutes 30))
+        (log/infof "Performance monitoring started in rolling mode. Output directory: %s" (str dir-path)))
+      ;; Single file mode
+      (let [output-path (resolve-output-path setting)
+            parent-dir  (.getParent output-path)]
+        (when parent-dir
+          (Files/createDirectories parent-dir (into-array FileAttribute [])))
+        (let [recording (create-recording!)]
+          ;; recorded at once, so a failure below can stop it
+          (reset! recording-atom recording)
+          (.setDumpOnExit recording true)
+          (.setDestination recording output-path)
+          (start-periodic-dump! recording output-path (save-rate-minutes 5))
+          (log/infof "Performance monitoring started. Output file: %s" (str output-path)))))
+    (catch Throwable e
+      (stop-recording!)
+      (throw e)))
+  @recording-atom)
 
 ;; The recording, as a global-system component, so halting the system stops it too.
 ;; Startup starts it before any other component, the web server included, so the halt, which stops components in
