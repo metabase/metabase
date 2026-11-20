@@ -61,31 +61,31 @@
 
 (defn- engine-hits
   "Each engine's expected hits for the scenario query."
-  [case]
-  (zipmap engines (map #(fixtures/expected-hits case %) engines)))
+  [scenario]
+  (zipmap engines (map #(fixtures/expected-hits scenario %) engines)))
 
 (defn scenario-rows
   "One identical-query result row per isolated scenario."
   [cases]
-  (for [case cases]
-    (assoc (select-keys case [:id :focus :note :config :query :docs])
-           :semantic-arms (get-in case [:expect :semantic])
-           :results       (engine-hits case))))
+  (for [scenario cases]
+    (assoc (select-keys scenario [:id :focus :note :config :query :docs])
+           :semantic-arms (get-in scenario [:expect :semantic])
+           :results       (engine-hits scenario))))
 
 (defn translation-rows
   "One result row per adapted-query comparison, with its scenario query and correct result set.
   Each engine's `:results` are its hits for its own query, and its `:typed` hits are for the scenario query.
   Its `:scores` are both result sets scored against the correct one, as `{:best score, :typed score}`."
   [cases]
-  (for [case       cases
-        comparison (:comparisons case)
-        :let [specs   (zipmap engines (map #(fixtures/comparison-spec case comparison %) engines))
+  (for [scenario   cases
+        comparison (:comparisons scenario)
+        :let [specs   (zipmap engines (map #(fixtures/comparison-spec scenario comparison %) engines))
               results (update-vals specs :hits)
-              typed   (engine-hits case)
+              typed   (engine-hits scenario)
               correct (set (:correct comparison))]]
-    (assoc (select-keys case [:config :docs :query])
-           :scenario-id   (:id case)
-           :scenario-note (:note case)
+    (assoc (select-keys scenario [:config :docs :query])
+           :scenario-id   (:id scenario)
+           :scenario-note (:note scenario)
            :id            (:id comparison)
            :focus         (:focus comparison)
            :note          (:note comparison)
