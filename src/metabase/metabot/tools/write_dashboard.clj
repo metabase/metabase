@@ -557,7 +557,8 @@
          ;; dashcard's own card, not as a series.
          (not (:archived card))
          (nil? (:document_id card))
-         (curation/curated-query? (:dataset_query card)))))
+         ;; A stored query that can't be parsed reads back as `{}`, which can't be judged, so it isn't curated.
+         (some-> (not-empty (:dataset_query card)) curation/curated-query?))))
 
 (defn- check-cards-curated!
   "Under [[shared/curated-only?]], throws [[cards-not-curated!]] unless every saved question `ops` use is curated.

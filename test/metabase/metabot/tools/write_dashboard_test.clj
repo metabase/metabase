@@ -1032,6 +1032,10 @@
                                                                  :dataset_query           (curated-chart-query curated-id)
                                                                  :metabot_conversation_id convo-id
                                                                  :metabot_chart_id        "D"}
+                    :model/Card                {broken-q :id}   {:name                    "Unreadable"
+                                                                 :dataset_query           (curated-chart-query curated-id)
+                                                                 :metabot_conversation_id convo-id
+                                                                 :metabot_chart_id        "E"}
                     ;; A dashboard question must be on its dashboard, or the save trashes it.
                     :model/DashboardCard       _                {:dashboard_id dash-id, :card_id curated-q
                                                                  :row 6, :col 0, :size_x 12, :size_y 6}
@@ -1058,7 +1062,15 @@
                         :text (re-pattern (str "(?s)\\QQuestion " card-id " \\E.*"))}
                        (failure {:dashboard_id dash-id
                                  :ops          [{:op "add_card", :id -1, :card_id curated-id}
-                                                {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))))))))
+                                                {:op "set_series", :dashcard_id -1, :card_ids [card-id]}]})))))
+           (testing "and so is one whose stored query can't be read"
+             ;; Written past the model, whose transform refuses a query it can't parse.
+             (t2/query-one {:update :report_card, :set {:dataset_query "{\"bogus\":1}"}, :where [:= :id broken-q]})
+             (is (=? {:code ::write-dashboard/cards-not-curated
+                      :text (re-pattern (str "(?s)\\QQuestion " broken-q " \\E.*"))}
+                     (failure {:dashboard_id dash-id
+                               :ops          [{:op "add_card", :id -1, :card_id curated-id}
+                                              {:op "set_series", :dashcard_id -1, :card_ids [broken-q]}]}))))))))))
 
 (deftest curated-only-conversation-chart-test
   (curated-dashboard!
