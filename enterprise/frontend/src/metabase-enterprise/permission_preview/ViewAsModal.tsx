@@ -28,7 +28,7 @@ type ViewAsModalProps = {
 };
 
 /**
- * Picks a user, group or tenant, then switches this tab to `path` with the whole app running,
+ * Picks a user or group, then switches this tab to `path` with the whole app running,
  * read-only, as that principal. A group whose access depends on user attributes also asks for
  * their values.
  */
@@ -170,8 +170,6 @@ function getAttributesHint(type: Exclude<PrincipalType, "user">) {
   switch (type) {
     case "group":
       return t`Pick the user attribute values to preview this group with.`;
-    case "tenant":
-      return t`This tenant's user attributes.`;
   }
 }
 

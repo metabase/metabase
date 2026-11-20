@@ -20,8 +20,8 @@ export type WhyTarget = {
   /** A table's database, shown after the title. */
   databaseName?: string;
   who: string;
-  /** The group or tenant a preview is of, whose stand-in user has no attribute values to set; absent for a person. */
-  standIn?: { type: "group" | "tenant"; name: string };
+  /** The group a preview is of, whose stand-in user has no attribute values to set; absent for a person. */
+  standIn?: { name: string };
   /** What the value is about, such as "Sample Database / Products", under its label. */
   subject: { label: string; value: string };
   column: PreviewColumn;
@@ -123,7 +123,7 @@ export function hasMissingAttributes({
 
 /**
  * "Sales needs the attributes category and state, which Sandy Sales doesn't have.", one per group whose rule needs one,
- * then one per group whose connection impersonation, or database whose router, reads one. A group or tenant preview
+ * then one per group whose connection impersonation, or database whose router, reads one. A group preview
  * has no person to set them on: "Members of Sales need the attribute category (rule set by Sales)."
  */
 export function getMissingAttributeSentences(target: WhyTarget) {
@@ -173,13 +173,12 @@ export function getMissingAttributeSentences(target: WhyTarget) {
   return [...ruleSentences, ...databaseSentences];
 }
 
-function getStandInSubject({ type, name }: NonNullable<WhyTarget["standIn"]>) {
-  return type === "group" ? t`Members of ${name}` : t`Users of ${name}`;
+function getStandInSubject({ name }: NonNullable<WhyTarget["standIn"]>) {
+  return t`Members of ${name}`;
 }
 
 /**
- * What fixes it: give the person a value, or try one in the preview. A group or tenant has no value to set, only one
- * to try.
+ * What fixes it: give the person a value, or try one in the preview. A group has no value to set, only one to try.
  */
 export function getMissingAttributeFix({
   who,

@@ -5,16 +5,11 @@ import { Group, Icon, Stack, Text, Tooltip, UnstyledButton } from "metabase/ui";
 
 import {
   type Principal,
-  type PrincipalType,
   useGetCollectionsPreviewQuery,
   useListPreviewPrincipalsQuery,
 } from "./api";
 
-/** The principals a preview runs as a stand-in user for: a group's member, or a tenant's user. */
-export type StandInType = Exclude<PrincipalType, "user">;
-
 type GroupPreviewInfoProps = {
-  type: StandInType;
   /** The groups the stand-in is in, such as All internal users and Sales; empty while they load. */
   groupNames: string[];
   /** Troubleshoot and full screen run the stand-in with the values picked; the grids combine each member's own. */
@@ -24,21 +19,14 @@ type GroupPreviewInfoProps = {
 };
 
 /**
- * "ⓘ How group preview works" (or tenant preview): on hover or keyboard focus, a tooltip saying the preview runs as a
- * stand-in user, not a real one, in which groups, and with which attribute values.
+ * "ⓘ How group preview works": on hover or keyboard focus, a tooltip saying the preview runs as a stand-in user, not
+ * a real one, in which groups, and with which attribute values.
  */
 export function GroupPreviewInfo({
-  type,
   groupNames,
   attributeValues,
   isCompact = false,
 }: GroupPreviewInfoProps) {
-  const label =
-    type === "group" ? t`How group preview works` : t`How tenant preview works`;
-  const compactName =
-    type === "group"
-      ? t`How it works: group preview`
-      : t`How it works: tenant preview`;
   return (
     <Tooltip
       // above the band, so it stays clear of the attribute chips under it; at the top of the screen it flips below
@@ -59,7 +47,7 @@ export function GroupPreviewInfo({
     >
       <UnstyledButton
         // starts with the shown words, so voice control finds it by them
-        aria-label={isCompact ? compactName : undefined}
+        aria-label={isCompact ? t`How it works: group preview` : undefined}
         c="text-primary"
         mih="1.5rem"
         style={{ flexShrink: 0 }}
@@ -67,7 +55,7 @@ export function GroupPreviewInfo({
         <Group gap="xs" wrap="nowrap">
           <Icon name="info" />
           <Text size="sm" c="inherit" style={{ whiteSpace: "nowrap" }}>
-            {isCompact ? t`How it works` : label}
+            {isCompact ? t`How it works` : t`How group preview works`}
           </Text>
         </Group>
       </UnstyledButton>
@@ -93,22 +81,20 @@ function getValuesSentence(attributeValues: "picked" | "each-member") {
     : t`Where a rule reads an attribute, it uses each member's own value.`;
 }
 
-/** Under a who-picker's search while Group or Tenant is chosen. */
-export function getStandInHint(type: StandInType) {
-  return type === "group"
-    ? t`Previews a stand-in member, not a real user.`
-    : t`Previews a stand-in user, not a real user.`;
+/** Under a who-picker's search while Group is chosen. */
+export function getStandInHint() {
+  return t`Previews a stand-in member, not a real user.`;
 }
 
-export function StandInHint({ type }: { type: StandInType }) {
+export function StandInHint() {
   return (
     <Text size="sm" c="text-secondary">
-      {getStandInHint(type)}
+      {getStandInHint()}
     </Text>
   );
 }
 
-/** The names of the groups a group's or tenant's stand-in is in; empty for a user, or while they load. */
+/** The names of the groups a group's stand-in is in; empty for a user, or while they load. */
 export function useStandInGroupNames(principal: Principal | null): string[] {
   const { data } = useGetCollectionsPreviewQuery(
     principal != null && principal.type !== "user"
@@ -121,7 +107,7 @@ export function useStandInGroupNames(principal: Principal | null): string[] {
   return data?.principal.groups.map((group) => group.name) ?? [];
 }
 
-/** How many members a group has, for "Gadget · 2 of 7 members"; undefined for a user or a tenant, or while loading. */
+/** How many members a group has, for "Gadget · 2 of 7 members"; undefined for a user, or while loading. */
 export function useGroupMemberCount(principal: Principal | null) {
   const { data } = useListPreviewPrincipalsQuery(
     principal?.type === "group" ? undefined : skipToken,

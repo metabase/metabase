@@ -23,7 +23,7 @@ export type PrincipalRow = {
   name: string;
   /** A user's email, after their tenant's name for a tenant user ("Acme · tina@acme.example"). */
   secondary?: string;
-  /** A group's or tenant's size. */
+  /** A group's size. */
   detail?: string;
   icon: IconName;
 };
@@ -35,8 +35,9 @@ export type PrincipalSection = {
 };
 
 /**
- * The users, groups or tenants an admin can preview, in the sections both who-pickers show.
- * Admins and the Administrators group are left out: an admin already sees everything.
+ * The users or groups an admin can preview, in the sections both who-pickers show.
+ * Admins and the Administrators group are left out: an admin already sees everything. So is All tenant users, since
+ * tenants are previewed through their users.
  */
 export function usePrincipalSections(type: PrincipalType) {
   const hasTenants = Boolean(hasPremiumFeature("tenants"));
@@ -102,17 +103,6 @@ function getPreviewSections(
           },
         })),
       );
-    case "tenant":
-      return [
-        {
-          rows: (data?.tenants ?? []).map((tenant) => ({
-            id: tenant.id,
-            name: tenant.name,
-            detail: getUserCount(tenant.member_count ?? 0),
-            icon: "globe",
-          })),
-        },
-      ];
   }
 }
 
@@ -161,7 +151,11 @@ function getSections({
       return getGroupSections(
         hasTenants,
         groups
-          .filter((group) => group.magic_group_type !== "admin")
+          .filter(
+            (group) =>
+              group.magic_group_type !== "admin" &&
+              group.magic_group_type !== "all-external-users",
+          )
           .map((group) => {
             // the Permissions group sidebar gives these the bolt (`group-sidebar.ts`)
             const isBuiltIn = group.magic_group_type != null;
@@ -178,19 +172,6 @@ function getSections({
             };
           }),
       );
-    case "tenant":
-      return [
-        {
-          rows: _.sortBy(tenants, (tenant) => tenant.name.toLowerCase()).map(
-            (tenant) => ({
-              id: tenant.id,
-              name: tenant.name,
-              detail: getUserCount(tenant.member_count),
-              icon: "globe",
-            }),
-          ),
-        },
-      ];
   }
 }
 
@@ -274,8 +255,4 @@ function getGroupIcon(isBuiltIn: boolean, isTenantGroup: boolean): IconName {
 
 function getMemberCount(count: number) {
   return ngettext(msgid`${count} member`, `${count} members`, count);
-}
-
-export function getUserCount(count: number) {
-  return ngettext(msgid`${count} user`, `${count} users`, count);
 }

@@ -183,7 +183,6 @@ function setup({ isNarrow = false }: SetupOpts) {
       },
     ],
     groups: [],
-    tenants: [],
   });
   setupPermissionPreviewCollectionsEndpoint("default", {
     principal: {

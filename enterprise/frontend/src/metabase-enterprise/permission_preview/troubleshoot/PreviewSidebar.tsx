@@ -1,10 +1,8 @@
-import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PermissionsSidebar } from "metabase/permissions";
-import { SegmentedControl, Stack, Text, Tooltip } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { SegmentedControl, Stack, Text } from "metabase/ui";
 
 import { StandInHint } from "../GroupPreviewInfo";
 import type { Principal, PrincipalType } from "../api";
@@ -16,36 +14,23 @@ type PreviewSidebarProps = {
   title?: string;
   principalType: PrincipalType;
   principal: Principal | null;
-  /** Why Tenant can't be picked on this tab, shown on hovering it; Tenant is enabled when unset. */
-  tenantDisabledReason?: string;
   onPrincipalTypeChange: (type: PrincipalType) => void;
   onPrincipalChange: (principal: Principal) => void;
 };
 
-/** The Preview sidebar: User | Group | Tenant, then a searchable list of them. */
+/** The Preview sidebar: User | Group, then a searchable list of them. */
 export function PreviewSidebar({
   title,
   principalType,
   principal,
-  tenantDisabledReason,
   onPrincipalTypeChange,
   onPrincipalChange,
 }: PreviewSidebarProps) {
   const { sections, isLoading, error } = usePrincipalSections(principalType);
-  const { typeSwitchRef, tenantSegment } = useTenantSegment();
 
   const typeOptions = [
     { value: "user", label: t`User` },
     { value: "group", label: t`Group` },
-    ...(hasPremiumFeature("tenants")
-      ? [
-          {
-            value: "tenant",
-            label: t`Tenant`,
-            disabled: tenantDisabledReason != null,
-          },
-        ]
-      : []),
   ];
 
   return (
@@ -61,7 +46,7 @@ export function PreviewSidebar({
       emptyState={{ text: t`No results found`, icon: "search" }}
       selectedId={principal?.type === principalType ? principal.id : undefined}
       headerContent={
-        <Stack gap="sm" mt="md" ref={typeSwitchRef}>
+        <Stack gap="sm" mt="md">
           <SegmentedControl
             fullWidth
             aria-label={t`Preview as`}
@@ -73,16 +58,8 @@ export function PreviewSidebar({
               }
             }}
           />
-          {tenantDisabledReason != null && tenantSegment != null && (
-            <Tooltip
-              label={tenantDisabledReason}
-              target={tenantSegment}
-              maw="18rem"
-              multiline
-            />
-          )}
           {/* the search is core's (`FilterableTree`), with no room under it, so the hint sits just above it */}
-          {principalType !== "user" && <StandInHint type={principalType} />}
+          {principalType !== "user" && <StandInHint />}
         </Stack>
       }
       onSelect={(item) => {
@@ -92,18 +69,6 @@ export function PreviewSidebar({
       }}
     />
   );
-}
-
-/** The Tenant segment's label, for a tooltip saying why it's disabled: the switch's labels can only be text. */
-function useTenantSegment() {
-  const [tenantSegment, setTenantSegment] = useState<HTMLElement | null>(null);
-  // a callback ref: the switch mounts only once the sidebar has loaded
-  const typeSwitchRef = useCallback((node: HTMLDivElement | null) => {
-    setTenantSegment(
-      node?.querySelector<HTMLElement>('input[value="tenant"] + label') ?? null,
-    );
-  }, []);
-  return { typeSwitchRef, tenantSegment };
 }
 
 function toTreeItem(row: PrincipalRow): ITreeNodeItem<PrincipalRow> {
@@ -144,7 +109,5 @@ function getPlaceholder(principalType: PrincipalType) {
       return t`Search for a user`;
     case "group":
       return t`Search for a group`;
-    case "tenant":
-      return t`Search for a tenant`;
   }
 }

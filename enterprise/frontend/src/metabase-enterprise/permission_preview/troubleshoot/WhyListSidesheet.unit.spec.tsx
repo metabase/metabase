@@ -266,12 +266,6 @@ const SALES_GROUP_PREVIEW: WhyPreview = {
   userId: SANDY.id,
 };
 
-const ACME_TENANT_PREVIEW: WhyPreview = {
-  principalType: "tenant",
-  principalName: "Acme",
-  userId: SANDY.id,
-};
-
 const REVIEWS: PreviewTableAccess = {
   ...ORDERS,
   id: REVIEWS_ID,
@@ -766,28 +760,6 @@ describe("WhyListSidesheet", () => {
     expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
   });
 
-  it("says a tenant's users need the attributes a rule reads, and to pick values in the preview, not to set them", async () => {
-    setup({
-      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tables: [ORDERS_WITHOUT_VALUES, PRODUCTS_WITHOUT_VALUES],
-      dashboardQuery: MISSING_ATTRIBUTES_QUERY,
-      preview: ACME_TENANT_PREVIEW,
-      sentenceWhoName: "A user of Acme",
-    });
-
-    expect(
-      await screen.findByText(
-        "Users of Acme need the attributes category and state (rule set by Sales). Pick values for them in the preview to see their view.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Users of Acme need the attribute category (rule set by Sales). Pick a value for it in the preview to see their view.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
-  });
-
   it("says a group's members need the attribute impersonation reads, not that it can be set on a stand-in", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
@@ -805,23 +777,6 @@ describe("WhyListSidesheet", () => {
     expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
   });
 
-  it("says a tenant's users need the attribute impersonation reads, not that it can be set on a stand-in", async () => {
-    setup({
-      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tables: [{ ...ORDERS, security: null, policies: [] }],
-      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROLE),
-      preview: ACME_TENANT_PREVIEW,
-      sentenceWhoName: "A user of Acme",
-    });
-
-    expect(
-      await screen.findByText(
-        "Users of Acme need the attribute role to pick the database role on Sample Database (rule set by Finance readers). Pick a value for it in the preview to see their view.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
-  });
-
   it("says a group's members need the attribute a database's router reads, not that it can be set on a stand-in", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
@@ -834,23 +789,6 @@ describe("WhyListSidesheet", () => {
     expect(
       await screen.findByText(
         "Members of Sales need the attribute tenant (Sample Database routes by it). Pick a value for it in the preview to see their view.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
-  });
-
-  it("says a tenant's users need the attribute a database's router reads, not that it can be set on a stand-in", async () => {
-    setup({
-      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
-      tables: [{ ...ORDERS, security: null, policies: [] }],
-      dashboardQuery: getMissingDatabaseAttributeQuery(MISSING_ROUTE),
-      preview: ACME_TENANT_PREVIEW,
-      sentenceWhoName: "A user of Acme",
-    });
-
-    expect(
-      await screen.findByText(
-        "Users of Acme need the attribute tenant (Sample Database routes by it). Pick a value for it in the preview to see their view.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Set it on|Set them on/)).not.toBeInTheDocument();
@@ -1754,23 +1692,6 @@ describe("WhyListSidesheet", () => {
     expect(
       screen.queryByText("Tenant Collection: Globex"),
     ).not.toBeInTheDocument();
-  });
-
-  it("starts a tenant preview's sentences with A user of Acme, and keeps a user of Acme mid-sentence", async () => {
-    setup({
-      openedItem: null,
-      isAllCollections: true,
-      whoName: "a user of Acme",
-      sentenceWhoName: "A user of Acme",
-    });
-
-    await userEvent.click(
-      await screen.findByText("See everything a user of Acme can access"),
-    );
-
-    expect(await screen.findByTestId("why-verdict")).toHaveTextContent(
-      "A user of Acme can open",
-    );
   });
 });
 

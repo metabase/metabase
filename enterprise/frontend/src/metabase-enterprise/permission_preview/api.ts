@@ -10,7 +10,7 @@ import type {
   UserAttributeMap,
 } from "metabase-types/api";
 
-export type PrincipalType = "user" | "group" | "tenant";
+export type PrincipalType = "user" | "group";
 
 export type Principal = {
   type: PrincipalType;
@@ -31,7 +31,7 @@ export type PreviewPrincipal = {
   id: number;
   name: string;
   detail: string | null;
-  /** A group's members or a tenant's users. */
+  /** A group's members. */
   member_count: number | null;
   superuser: boolean;
   tenant_side: boolean;
@@ -44,7 +44,7 @@ export type PrincipalListItem = {
   name: string;
   /** A user's tenant. */
   detail: string | null;
-  /** A group's members or a tenant's users. */
+  /** A group's members. */
   member_count: number | null;
   tenant_side: boolean;
 };
@@ -52,7 +52,6 @@ export type PrincipalListItem = {
 export type PreviewPrincipalsResponse = {
   users: (PrincipalListItem & { email: string | null; group_ids: GroupId[] })[];
   groups: (PrincipalListItem & { built_in: boolean })[];
-  tenants: PrincipalListItem[];
 };
 
 /** One resolved value: the winning group's value, and each group's own. */

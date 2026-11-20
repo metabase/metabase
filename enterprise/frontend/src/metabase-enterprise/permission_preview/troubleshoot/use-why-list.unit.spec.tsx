@@ -803,31 +803,6 @@ describe("useWhyList", () => {
       );
     });
 
-    it("names the personal collection Their personal collection in a tenant preview, so it isn't read as the tenant's own", async () => {
-      const { result } = setup({
-        path: "/",
-        isAllCollections: true,
-        isTenantUser: true,
-        preview: { ...SANDY_PREVIEW, principalType: "tenant" },
-        collections: {
-          default: [PERSONAL_COLLECTION],
-          tenant: [
-            {
-              ...getCollection(9, "Tenant Collection: Acme", 0, "write"),
-              source: "tenant",
-            },
-          ],
-        },
-      });
-
-      await waitFor(() =>
-        expect(getPageCollections(result.current)).toEqual([
-          "Tenant Collection: Acme",
-          "Their personal collection",
-        ]),
-      );
-    });
-
     it("lists the collections in Our analytics instead when the person can't open it", async () => {
       const { result } = setup({
         path: "/",

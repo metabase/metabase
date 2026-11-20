@@ -53,7 +53,7 @@ import { parseOpenedItem } from "./item-path";
 const START_PATH = CONTENT_PREVIEW_ALL_COLLECTIONS_PATH;
 
 /**
- * Admin › Permissions › Troubleshoot: pick a user, group or tenant, and the app runs as them,
+ * Admin › Permissions › Troubleshoot: pick a user or group, and the app runs as them,
  * read-only, in a frame; a pasted link opens there and stays open while the admin switches person.
  */
 export function TroubleshootPage() {
@@ -138,7 +138,7 @@ export function TroubleshootPage() {
       {principal == null ? (
         <PermissionsEditorEmptyState
           icon="eye"
-          message={t`Select a user, group, or tenant to see what they can open`}
+          message={t`Select a user or group to see what they can open`}
         />
       ) : (
         <Flex direction="column" flex={1} miw={0} p="md" gap="sm">
@@ -152,7 +152,6 @@ export function TroubleshootPage() {
               principal.type !== "user" &&
               preview != null && (
                 <GroupPreviewInfo
-                  type={principal.type}
                   groupNames={standInGroupNames}
                   attributeValues="picked"
                   isCompact={isNarrow}

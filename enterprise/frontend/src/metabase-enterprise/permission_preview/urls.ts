@@ -6,7 +6,7 @@ export type PreviewRouteParams = {
 };
 
 export function isPrincipalType(value: unknown): value is PrincipalType {
-  return value === "user" || value === "group" || value === "tenant";
+  return value === "user" || value === "group";
 }
 
 export function parsePrincipalType(params: PreviewRouteParams): PrincipalType {

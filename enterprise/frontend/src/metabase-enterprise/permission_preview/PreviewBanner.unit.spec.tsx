@@ -204,7 +204,6 @@ async function setup({ widthPx, unsavedEdits }: SetupOpts) {
       },
     ],
     groups: [],
-    tenants: [],
   });
   // the name's card, open while the name has focus
   setupPermissionPreviewCollectionsEndpoint("default", {

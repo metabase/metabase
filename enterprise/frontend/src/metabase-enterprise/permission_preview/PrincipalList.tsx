@@ -12,7 +12,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { StandInHint } from "./GroupPreviewInfo";
 import type { Principal, PrincipalType } from "./api";
@@ -70,9 +69,6 @@ export function PrincipalList({
   const typeOptions = [
     { value: "user", label: t`User` },
     { value: "group", label: t`Group` },
-    ...(hasPremiumFeature("tenants")
-      ? [{ value: "tenant", label: t`Tenant` }]
-      : []),
   ];
 
   const handleListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -121,7 +117,7 @@ export function PrincipalList({
           setActiveId(null);
         }}
       />
-      {type !== "user" && <StandInHint type={type} />}
+      {type !== "user" && <StandInHint />}
       {hasNoResults && (
         <Box py="xl">
           <EmptyState message={t`No results found`} icon="search" />
@@ -249,8 +245,6 @@ function getListName(type: PrincipalType) {
       return t`Users`;
     case "group":
       return t`Groups`;
-    case "tenant":
-      return t`Tenants`;
   }
 }
 
@@ -260,7 +254,5 @@ function getPlaceholder(type: PrincipalType) {
       return t`Search for a user`;
     case "group":
       return t`Search for a group`;
-    case "tenant":
-      return t`Search for a tenant`;
   }
 }

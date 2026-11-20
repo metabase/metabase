@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 
-import { GroupPreviewInfo, type StandInType } from "./GroupPreviewInfo";
+import { GroupPreviewInfo } from "./GroupPreviewInfo";
 
 describe("GroupPreviewInfo", () => {
   it("opens on hover and closes when the pointer leaves", async () => {
@@ -61,49 +61,28 @@ describe("GroupPreviewInfo", () => {
     );
   });
 
-  it("says a tenant preview is a stand-in too, in the tenant's groups, with the picked values", async () => {
-    setup({ type: "tenant", groupNames: ["All tenant users"] });
+  it("reads How it works on a narrow band, named after group preview", () => {
+    setup({ isCompact: true });
 
-    act(() => getLabel("How tenant preview works").focus());
-
-    const tooltip = await screen.findByRole("tooltip");
-    expect(tooltip).toHaveTextContent("A stand-in, not a real user");
-    expect(tooltip).toHaveTextContent(
-      "In All tenant users only. Where a rule reads an attribute, it uses the value you pick.",
-    );
+    expect(
+      screen.getByRole("button", { name: "How it works: group preview" }),
+    ).toHaveTextContent("How it works");
   });
-
-  it.each([
-    ["group", "How it works: group preview"],
-    ["tenant", "How it works: tenant preview"],
-  ] as const)(
-    "reads How it works on a narrow band, named after %s preview",
-    (type, name) => {
-      setup({ type, isCompact: true });
-
-      expect(screen.getByRole("button", { name })).toHaveTextContent(
-        "How it works",
-      );
-    },
-  );
 });
 
 type SetupOpts = {
-  type?: StandInType;
   groupNames?: string[];
   attributeValues?: "picked" | "each-member";
   isCompact?: boolean;
 };
 
 function setup({
-  type = "group",
   groupNames = ["All internal users", "Sales"],
   attributeValues = "picked",
   isCompact = false,
 }: SetupOpts = {}) {
   renderWithProviders(
     <GroupPreviewInfo
-      type={type}
       groupNames={groupNames}
       attributeValues={attributeValues}
       isCompact={isCompact}

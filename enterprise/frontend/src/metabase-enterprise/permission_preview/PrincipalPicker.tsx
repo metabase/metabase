@@ -12,7 +12,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { getStandInHint } from "./GroupPreviewInfo";
 import type { Principal, PrincipalType } from "./api";
@@ -32,7 +31,7 @@ type PrincipalPickerProps = {
 type OptionsFilter = NonNullable<SelectProps["filter"]>;
 
 /**
- * Picks a user, a group or a tenant, with the same rows and sections as the Preview sidebar.
+ * Picks a user or a group, with the same rows and sections as the Preview sidebar.
  */
 export function PrincipalPicker({ value, onChange }: PrincipalPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -48,9 +47,6 @@ export function PrincipalPicker({ value, onChange }: PrincipalPickerProps) {
   const typeOptions = [
     { value: "user", label: t`User` },
     { value: "group", label: t`Group` },
-    ...(hasPremiumFeature("tenants")
-      ? [{ value: "tenant", label: t`Tenant` }]
-      : []),
   ];
 
   const filter: OptionsFilter = ({ options, search }) => {
@@ -90,7 +86,7 @@ export function PrincipalPicker({ value, onChange }: PrincipalPickerProps) {
       <Select
         aria-label={t`Who to preview`}
         placeholder={getPlaceholder(type)}
-        description={type !== "user" ? getStandInHint(type) : undefined}
+        description={type !== "user" ? getStandInHint() : undefined}
         searchable
         // a searchable Select only opens on click; this makes a second click close it
         openOnFocus={false}
@@ -160,8 +156,6 @@ function getTypeIcon(type: PrincipalType) {
       return "person";
     case "group":
       return "group";
-    case "tenant":
-      return "globe";
   }
 }
 
@@ -171,7 +165,5 @@ function getPlaceholder(type: PrincipalType) {
       return t`Search for a user`;
     case "group":
       return t`Search for a group`;
-    case "tenant":
-      return t`Search for a tenant`;
   }
 }

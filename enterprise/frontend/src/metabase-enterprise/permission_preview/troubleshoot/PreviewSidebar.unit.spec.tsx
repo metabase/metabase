@@ -20,19 +20,16 @@ import type { PrincipalType } from "../api";
 import { PreviewSidebar } from "./PreviewSidebar";
 
 describe("PreviewSidebar", () => {
-  it("disables Tenant and says why on hover", async () => {
-    setup({ tenantDisabledReason: "Shared collections have no tenants." });
+  it("offers User and Group only, even with tenants on", async () => {
+    setup();
 
-    expect(await screen.findByRole("radio", { name: "Tenant" })).toBeDisabled();
-    await userEvent.hover(screen.getByText("Tenant"));
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "Shared collections have no tenants.",
-    );
+    expect(await screen.findByRole("radio", { name: "User" })).toBeVisible();
+    expect(screen.getByRole("radio", { name: "Group" })).toBeVisible();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
   });
 
   it("says No results found when the search matches nobody", async () => {
-    setup({});
+    setup();
 
     expect(await screen.findByText("Sandy Sales")).toBeInTheDocument();
     await userEvent.type(
@@ -51,22 +48,13 @@ describe("PreviewSidebar", () => {
       await screen.findByText("Previews a stand-in member, not a real user."),
     ).toBeInTheDocument();
   });
-
-  it("says a tenant preview is a stand-in while Tenant is chosen", async () => {
-    setup({ principalType: "tenant" });
-
-    expect(
-      await screen.findByText("Previews a stand-in user, not a real user."),
-    ).toBeInTheDocument();
-  });
 });
 
 type SetupOpts = {
-  tenantDisabledReason?: string;
   principalType?: PrincipalType;
 };
 
-function setup({ tenantDisabledReason, principalType = "user" }: SetupOpts) {
+function setup({ principalType = "user" }: SetupOpts = {}) {
   setupUsersEndpoints([
     createMockUserListResult({
       id: 2,
@@ -86,7 +74,6 @@ function setup({ tenantDisabledReason, principalType = "user" }: SetupOpts) {
         <PreviewSidebar
           principalType={principalType}
           principal={null}
-          tenantDisabledReason={tenantDisabledReason}
           onPrincipalTypeChange={jest.fn()}
           onPrincipalChange={jest.fn()}
         />

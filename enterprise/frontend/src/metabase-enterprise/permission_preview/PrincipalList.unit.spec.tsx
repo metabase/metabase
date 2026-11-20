@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupPermissionPreviewPrincipalsEndpoint } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { PrincipalList } from "./PrincipalList";
 import type { PreviewPrincipalsResponse, Principal } from "./api";
@@ -15,14 +18,6 @@ const SALES_GROUP = {
   member_count: 2,
   built_in: false,
   tenant_side: false,
-};
-
-const ACME_TENANT = {
-  id: 1,
-  name: "Acme",
-  detail: null,
-  member_count: 2,
-  tenant_side: true,
 };
 
 const USERS = [
@@ -190,25 +185,21 @@ describe("PrincipalList", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says a tenant preview is a stand-in while Tenant is chosen", async () => {
-    await setup({
-      principal: { type: "tenant", id: ACME_TENANT.id },
-      tenants: [ACME_TENANT],
-    });
+  it("offers User and Group only, even with tenants on", async () => {
+    await setup({ principal: { type: "user", id: 2 } });
 
-    expect(
-      screen.getByText("Previews a stand-in user, not a real user."),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: "User" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Group" })).toBeInTheDocument();
   });
 });
 
 type SetupOpts = {
   principal: Principal;
   groups?: PreviewPrincipalsResponse["groups"];
-  tenants?: PreviewPrincipalsResponse["tenants"];
 };
 
-async function setup({ principal, groups = [], tenants = [] }: SetupOpts) {
+async function setup({ principal, groups = [] }: SetupOpts) {
   setupPermissionPreviewPrincipalsEndpoint({
     users: USERS.map((user) => ({
       ...user,
@@ -217,7 +208,6 @@ async function setup({ principal, groups = [], tenants = [] }: SetupOpts) {
       tenant_side: false,
     })),
     groups,
-    tenants,
   });
   const onPrincipalChange = jest.fn<void, [Principal]>();
 
@@ -226,6 +216,13 @@ async function setup({ principal, groups = [], tenants = [] }: SetupOpts) {
       principal={principal}
       onPrincipalChange={onPrincipalChange}
     />,
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "token-features": createMockTokenFeatures({ tenants: true }),
+        }),
+      }),
+    },
   );
   await screen.findAllByRole("option");
 

@@ -30,7 +30,15 @@ describe("PrincipalPicker", () => {
     expect(screen.queryByText("Sandy Sales")).not.toBeInTheDocument();
   });
 
-  it("lists groups in the Data tab's order, with Data Analysts built in", async () => {
+  it("offers User and Group only, even with tenants on", () => {
+    setup();
+
+    expect(screen.getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByRole("radio", { name: "User" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Group" })).toBeInTheDocument();
+  });
+
+  it("lists groups in the Data tab's order, with Data Analysts built in, and no All tenant users", async () => {
     setup({ type: "group" });
 
     await userEvent.click(
@@ -43,11 +51,9 @@ describe("PrincipalPicker", () => {
       "Data Analysts1 member",
       "Sales1 member",
       "Acme partners1 member",
-      "All tenant users1 member",
       "Globex resellers1 member",
     ]);
     expect(within(options[1]).getByLabelText("bolt icon")).toBeInTheDocument();
-    expect(within(options[4]).getByLabelText("bolt icon")).toBeInTheDocument();
   });
 });
 

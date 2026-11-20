@@ -198,7 +198,7 @@ function ReadOnlyBadge() {
   );
 }
 
-/** Who the band names: "Sandy Sales", "a member of Sales", "a user of Acme". */
+/** Who the band names: "Sandy Sales", "a member of Sales". */
 export function getPrincipalWhoName(
   principalType: PrincipalType,
   userName: string,
@@ -209,12 +209,10 @@ export function getPrincipalWhoName(
       return userName;
     case "group":
       return t`a member of ${principalName}`;
-    case "tenant":
-      return t`a user of ${principalName}`;
   }
 }
 
-/** Who a sentence starts with: "Sandy Sales", "A member of Sales", "A user of Acme". */
+/** Who a sentence starts with: "Sandy Sales", "A member of Sales". */
 export function getPrincipalSentenceName(
   principalType: PrincipalType,
   userName: string,
@@ -225,7 +223,5 @@ export function getPrincipalSentenceName(
       return userName;
     case "group":
       return t`A member of ${principalName}`;
-    case "tenant":
-      return t`A user of ${principalName}`;
   }
 }

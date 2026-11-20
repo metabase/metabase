@@ -58,7 +58,7 @@ const SIDESHEET_TOP_PROPERTY = "--mb-sidesheet-top";
 
 /**
  * The banner of a tab that previews the app as another person: a button that opens and closes the panel holding the
- * Troubleshoot page's controls (the attribute bar, and the list where picking a user, group or tenant reloads the same
+ * Troubleshoot page's controls (the attribute bar, and the list where picking a user or group reloads the same
  * address as them), "Explain access", and the way back to the admin's own view.
  */
 export function PreviewBanner({ state }: { state: PreviewState }) {
@@ -171,7 +171,6 @@ export function PreviewBanner({ state }: { state: PreviewState }) {
             <>
               {state.principalType !== "user" && (
                 <GroupPreviewInfo
-                  type={state.principalType}
                   groupNames={standInGroupNames}
                   attributeValues="picked"
                   isCompact={isNarrow}

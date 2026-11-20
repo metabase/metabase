@@ -156,7 +156,7 @@ function removeParams(params: URLSearchParams, names: string[]) {
 }
 
 function parsePrincipalType(value: unknown): PrincipalType {
-  return value === "group" || value === "tenant" ? value : "user";
+  return value === "group" ? value : "user";
 }
 
 function parseAttributes(value: unknown): Record<string, string> {
