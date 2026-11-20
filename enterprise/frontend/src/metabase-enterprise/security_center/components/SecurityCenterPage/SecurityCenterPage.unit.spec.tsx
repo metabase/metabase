@@ -6,7 +6,13 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import {
+  act,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { getEolReachedMessage } from "metabase/admin/settings/components/widgets/VersionUpdateNotice/utils";
 import { Route } from "metabase/router";
 import type { Advisory, VersionInfo } from "metabase-types/api";
@@ -118,6 +124,7 @@ const mockSyncFinished = (syncResult: SyncResult) => {
 
 describe("SecurityCenterPage", () => {
   afterEach(() => {
+    jest.useRealTimers();
     jest.restoreAllMocks();
     mockAcknowledge.mockClear();
     mockAcknowledgeAll.mockClear();
@@ -604,12 +611,15 @@ describe("SecurityCenterPage", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("reports 'up to date' when the sync succeeds", async () => {
+    it("reports 'up to date' and clears the error when a sync succeeds after a failed one", async () => {
       fetchMock.post("path:/api/ee/security-center/sync", 200);
       setup([], {
         lastCheckedAt: "2026-11-10T12:00:00Z",
         lastSyncAttemptedAt: "2026-11-10T12:00:00Z",
+        lastSyncError: "Advisory fetch failed with status 502",
       });
+      expect(screen.getByTestId("last-sync-error")).toBeInTheDocument();
+
       mockSyncFinished({
         lastCheckedAt: "2026-11-11T12:00:00Z",
         lastSyncAttemptedAt: "2026-11-11T12:00:00Z",
@@ -624,6 +634,27 @@ describe("SecurityCenterPage", () => {
       expect(
         screen.queryByText("Checking for security advisories…"),
       ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("last-sync-error")).not.toBeInTheDocument();
+    });
+
+    it("stops polling and warns when the sync takes too long", async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      fetchMock.post("path:/api/ee/security-center/sync", 200);
+      const spy = jest.spyOn(advisoriesHook, "useSecurityAdvisories");
+      setup();
+
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .click(screen.getByTestId("sync-advisories"));
+      await waitFor(() => expect(spy).toHaveBeenLastCalledWith(true));
+      act(() => jest.advanceTimersByTime(60_000));
+
+      expect(
+        await screen.findByText(
+          "Security advisory check is taking longer than expected. Results will appear when ready.",
+        ),
+      ).toBeInTheDocument();
+      expect(spy).toHaveBeenLastCalledWith(false);
     });
   });
 });
