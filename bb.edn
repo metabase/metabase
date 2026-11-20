@@ -404,17 +404,15 @@
    :requires [[mage.modules]]
    :task (task! (mage.modules/cli-fix-config (cli/parse! (current-task))))}
 
-  serdes-json-schemas
+  print-json-schema
   {:group "Local dev"
-   :doc "Write the JSON Schema of every serialized model as <Model>.json."
-   :examples [["./bin/mage serdes-json-schemas" "Write the schemas into ./serdes-json-schemas"]
-              ["./bin/mage serdes-json-schemas ../representations/core-spec/v1/schemas" "Write the schemas into another directory"]]
+   :doc "Print the JSON Schema of a registered Malli schema."
+   :examples [["./bin/mage print-json-schema :metabase.lib.schema/external-query" "Print the JSON Schema of an MBQL 5 query"]
+              ["./bin/mage print-json-schema :metabase.lib.schema/external-query > query.json" "Write it to a file"]]
    :options [["-p" "--port PORT" "nREPL port to use, defaults to value in .nrepl-port"]]
-   :arg-schema [:or
-                [:tuple]
-                [:tuple [:string {:description "Output directory"}]]]
-   :requires [[mage.serdes-json-schemas :as serdes-json-schemas]]
-   :task (task! (serdes-json-schemas/write! parsed))}
+   :arg-schema [:tuple [:string {:description "Namespaced keyword of the Malli schema"}]]
+   :requires [[mage.print-json-schema :as print-json-schema]]
+   :task (task! (print-json-schema/print! parsed))}
 
   project-tests
   {:group "Tests & checks"
