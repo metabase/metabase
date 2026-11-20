@@ -21,6 +21,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
@@ -414,6 +415,43 @@
             (testing (format "%s user: %s, settings: %s" verb user settings)
               (is (= expected-msg (error-or-ok response))))))))))
 
+(deftest ^:synchronized editing-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses data-grid edits: they skip the workspace's table remapping, so they would write to production tables"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+            (is (= "Editing table data is not supported on a workspace instance."
+                   (action-v2.tu/create-rows! table-id :crowberto 400 [{:name "Pidgey" :song "Car alarms"}]))))
+          (is (= [] (table-rows table-id))))))))
+
+(deftest ^:synchronized undo-and-redo-refused-in-workspace-mode-test
+  (mt/with-premium-features #{actions-feature-flag}
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions/data-editing)
+      (testing "a workspace instance refuses undo and redo, and the table keeps its rows"
+        (action-v2.tu/with-test-tables! [table-id action-v2.tu/default-test-table]
+          (let [undo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/undo" :scope {:table-id table-id} :input {}}))
+                redo! (fn [status]
+                        (mt/user-http-request :crowberto :post status execute-url
+                                              {:action "data-editing/redo" :scope {:table-id table-id} :input {}}))]
+            (action-v2.tu/create-rows! table-id [{:name "Pidgey" :song "Car alarms"}])
+            (action-v2.tu/update-rows! table-id [{:id 1 :song "Hold music"}])
+            (action-v2.tu/update-rows! table-id [{:id 1 :song "Dial tone"}])
+            (undo! 200)
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (mt/with-dynamic-fn-redefs [workspaces/workspace-mode? (constantly true)]
+              (is (= "Editing table data is not supported on a workspace instance." (undo! 400)))
+              (is (= "Editing table data is not supported on a workspace instance." (redo! 400))))
+            (is (= [[1 "Pidgey" "Hold music"]] (table-rows table-id)))
+            (testing "outside workspace mode, the same redo and undo change the table"
+              (redo! 200)
+              (is (= [[1 "Pidgey" "Dial tone"]] (table-rows table-id)))
+              (undo! 200)
+              (undo! 200)
+              (is (= [[1 "Pidgey" "Car alarms"]] (table-rows table-id))))))))))
+
 (defn- check-coercion-fn-coverage
   ([test-cases]
    (check-coercion-fn-coverage #{} test-cases))
@@ -444,12 +482,12 @@
                         (action-v2.tu/with-test-tables! [table-id [{:id 'auto-inc-type
                                                                     :o  [t :null]}
                                                                    {:primary-key [:id]}]]
-                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] table-id)
+                          (let [table-name-kw (t2/select-one-fn (comp keyword :name) [:model/Table :name] :id table-id)
                                 field-id      (t2/select-one-fn :id [:model/Field :id] :table_id table-id :name "o")
                                 driver        driver/*driver*
                                 get-qp-state  (fn [] (map #(zipmap [:id :o] %) (table-rows table-id)))
                                 get-db-state  (fn [] (sql-jdbc/query driver (lib.metadata/database (mt/metadata-provider)) {:select [:*] :from [table-name-kw]}))]
-                            (t2/update! :model/Field field-id {:coercion_strategy coercion-strategy})
+                            (t2/update! :model/Field :id field-id {:coercion_strategy coercion-strategy})
                             (testing "create"
                               (let [row                {:o input}
                                     {outputs :outputs} (action-v2.tu/create-rows! table-id [row])
@@ -664,6 +702,23 @@
                         (mt/user-http-request :crowberto :post 200 execute-form-url
                                               {:scope     scope
                                                :action delete-id})))))))))))
+
+(deftest execute-form-fk-field-test
+  (testing "execute-form sends the FK semantic type, so the form does not offer new values for FK fields"
+    (binding [actions.tu/*actions-test-data-tables* #{"people" "products" "orders"}]
+      (mt/with-premium-features #{actions-feature-flag}
+        (action-v2.tu/with-temp-test-db!
+          (let [params-by-id (fn [action]
+                               (->> (mt/user-http-request :crowberto :post 200 execute-form-url
+                                                          {:scope  {:table-id (mt/id :orders)}
+                                                           :action action})
+                                    :parameters
+                                    (into {} (map (juxt :id identity)))))]
+            (doseq [action ["data-grid.row/create" "data-grid.row/update"]]
+              (testing action
+                (is (=? {(mt/format-name :user_id)    {:input_type "dropdown" :semantic_type "type/FK"}
+                         (mt/format-name :product_id) {:input_type "dropdown" :semantic_type "type/FK"}}
+                        (params-by-id action)))))))))))
 
 (deftest validate-inputs-api-test
   (testing "Validation via bulk execute endpoint"

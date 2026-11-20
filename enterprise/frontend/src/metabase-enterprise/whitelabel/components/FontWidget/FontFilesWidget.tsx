@@ -104,7 +104,7 @@ const FontFileRow = ({
     <Flex className={S.rowDivider} align="center" c="text-secondary">
       <Box flex="0 0 auto" w="12rem" px="xl" py="lg" fw={option.fontWeight}>
         {option.name}
-        <Box component="span" c="text-disabled" ml="xxs">
+        <Box component="span" c="text-secondary" ml="xxs">
           {option.fontWeight}
         </Box>
       </Box>

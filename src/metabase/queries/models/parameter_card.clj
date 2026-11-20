@@ -1,6 +1,7 @@
 (ns metabase.queries.models.parameter-card
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.db :as queries.db]
@@ -82,23 +83,26 @@
   [parameters]
   (into #{} (keep values-source-card-id) parameters))
 
+(defn- read-check-cards
+  "Throws unless the current user can read every Card of `card-ids`, with a 404 for an id without a Card."
+  [card-ids]
+  (let [id->card (into {} (map (juxt :id identity)) (t2/hydrate (queries.db/cards card-ids) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id)))))
+
 (mu/defn check-parameter-source-card-permissions
   "Read-check the Cards `parameters` draw their values from."
   [parameters :- [:maybe [:sequential ::parameters.schema/parameter]]]
-  (doseq [card-id (values-source-card-ids parameters)]
-    (api/read-check :model/Card card-id)))
+  (read-check-cards (values-source-card-ids parameters)))
 
 (mu/defn check-new-parameter-source-card-permissions
   "Read-check the source Cards newly referenced by `parameters` that are not already stored for this object."
   [parameterized-object-type :- ::parameterized-object-type
    parameterized-object-id   :- pos-int?
    parameters                :- [:maybe [:sequential ::parameters.schema/parameter]]]
-  (when-not mi/*deserializing?*
-    (when-let [wanted (not-empty (values-source-card-ids parameters))]
-      (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
-        (doseq [card-id wanted
-                :when   (not (contains? existing card-id))]
-          (api/read-check :model/Card card-id))))))
+  (when-let [wanted (not-empty (values-source-card-ids parameters))]
+    (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
+      (read-check-cards (into #{} (remove #(contains? existing %)) wanted)))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
@@ -112,3 +116,8 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ParameterCard [_model]
+  {:skip? false})

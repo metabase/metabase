@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor, within } from "__support__/ui";
+import { act, screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
   createMockCollection,
@@ -136,8 +136,8 @@ describe("PaletteResults", () => {
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
-    await waitFor(async () => {
-      expect(await screen.findByText("Results")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Results")).toBeInTheDocument();
     });
 
     expect(
@@ -160,6 +160,31 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should link a metric search result to its metric page", async () => {
+    setup({
+      query: "Count of orders",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "card",
+          name: "Count of orders by month",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "metric",
+          name: "Count of orders",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Count of orders",
+    });
+    expect(
+      within(option).getByRole("link", { name: "Count of orders" }),
+    ).toHaveAttribute("href", "/metric/2");
+  });
+
   it("should link a data app search result to its app", async () => {
     setup({
       query: "Link",
@@ -176,6 +201,32 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("link", { name: "Link Test" }),
     ).toHaveAttribute("href", "/apps/link-test");
+  });
+
+  it("should link an indexed record search result to the record in its model", async () => {
+    setup({
+      query: "marble shoes",
+      searchItems: [
+        createMockSearchResult({
+          id: 1,
+          model: "indexed-entity",
+          name: "Rustic Paper Wallet",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+        createMockSearchResult({
+          id: 2,
+          model: "indexed-entity",
+          name: "Small Marble Shoes",
+          model_id: 3,
+          model_name: "Products Model",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Small Marble Shoes" }),
+    ).toHaveAttribute("href", "/model/3-products-model/2");
   });
 
   it("should label a data app search result as a data app, not by a collection", async () => {
@@ -195,6 +246,40 @@ describe("PaletteResults", () => {
     const option = await screen.findByRole("option", { name: "Link Test" });
     expect(option).toHaveTextContent("Data app");
     expect(option).not.toHaveTextContent("Shorebirds");
+  });
+
+  it("should label a dashboard question search result with its dashboard, not its collection", async () => {
+    setup({
+      query: "Total",
+      searchItems: [
+        createMockSearchResult({
+          id: 8,
+          model: "card",
+          name: "Total Orders Dashboard Question",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          dashboard: {
+            id: 5,
+            name: "Orders in a dashboard",
+            moderation_status: null,
+          },
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", {
+      name: "Total Orders Dashboard Question",
+    });
+    expect(option).toHaveTextContent("Orders in a dashboard");
+    expect(option).not.toHaveTextContent("Shorebirds");
+
+    const paletteSearchRequests = fetchMock.callHistory
+      .calls("path:/api/search")
+      .map((call) => new URL(call.url).searchParams)
+      .filter((params) => params.get("q") === "Total");
+    expect(paletteSearchRequests.length).toBeGreaterThan(0);
+    paletteSearchRequests.forEach((params) =>
+      expect(params.get("include_dashboard_questions")).toBe("true"),
+    );
   });
 
   it("should display collections that search results are from", async () => {
@@ -324,6 +409,29 @@ describe("PaletteResults", () => {
       await screen.findByText(`Search Metabase's docs for "new action"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("New action")).not.toBeInTheDocument();
+  });
+
+  it("should start a new research", async () => {
+    const { router } = setup({ query: "new research" });
+
+    await userEvent.click(await screen.findByText("New research"));
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/question/research"),
+    );
+  });
+
+  it("should not offer the New research action without NLQ access", async () => {
+    setup({
+      query: "new research",
+      metabotPermissions: { "metabot-nlq": "no" },
+    });
+
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new research"`),
+    ).toBeInTheDocument();
+    await act(() => fetchMock.callHistory.flush(true));
+    expect(screen.queryByText("New research")).not.toBeInTheDocument();
   });
 
   it("should start a new metric", async () => {

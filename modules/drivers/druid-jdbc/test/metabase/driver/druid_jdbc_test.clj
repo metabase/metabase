@@ -151,7 +151,7 @@
       (mt/with-temporary-setting-values [driver.settings/nested-field-columns-value-length-limit 10]
         (testing "nested fields when length limit is exceeded"
           (is (= #{}
-                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table (mt/id :json)))))))
+                 (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :json)))))))
       (testing "nested fields when length limit is exceeded"
         (is (= #{{:name "json_bit → noop",
                   :database-type "timestamp",
@@ -216,7 +216,7 @@
                   :json-unfolding false,
                   :visibility-type :normal,
                   :nfc-path [:json_bit "title"]}}
-               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table (mt/id :json)))))))))
+               (sql-jdbc.sync.interface/describe-nested-field-columns driver/*driver* (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :json)))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version :model/Database :id (u/the-id db-or-id)))
@@ -233,7 +233,7 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (t2/update! :model/Database (u/the-id db) {:dbms_version nil})
+              _                    (t2/update! :model/Database :id (u/the-id db) {:dbms_version nil})
               db                   (t2/select-one :model/Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! (driver.u/lib-database (:id db)))]

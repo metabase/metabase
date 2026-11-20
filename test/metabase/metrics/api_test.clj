@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -218,7 +218,7 @@
                                     %)
                                  dimension_mappings)]
         (is (some? orphan-mapping))
-        (t2/update! :model/Card (:id metric) {:dimension_mappings mappings})
+        (t2/update! :model/Card :id (:id metric) {:dimension_mappings mappings})
         (let [response             (mt/user-http-request :rasta :get 200 (str "metric/" (:id metric)))
               response-ids         (into #{} (map :id) (:dimensions response))
               response-mapping-ids (into #{} (map :dimension_id) (:dimension_mappings response))]
@@ -323,7 +323,6 @@
           mbql5-definition (-> (lib/query mp table-metadata)
                                (lib/aggregate (lib/count)))]
       (mt/with-temp [:model/Measure measure {:name       "Test Measure"
-                                             :table_id   (mt/id :venues)
                                              :definition mbql5-definition}]
         (mt/with-full-data-perms-for-all-users!
           (let [response (mt/user-http-request :rasta :post 202 "metric/dataset"

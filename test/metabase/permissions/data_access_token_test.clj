@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.permissions.data-access-token :as data-access-token]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
@@ -184,3 +185,52 @@
 (deftest data-access-token-unparseable-reads-as-nil-test
   (testing "an unparseable blob fails closed"
     (is (nil? (transform-out "{not json ][")))))
+
+(deftest data-access-token-reader-reads-each-contributor-once-test
+  (testing "a reader shares contributor reads across its calls, and its tokens match [[data-access-token]]'s"
+    (let [reads (atom [])]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table    (fn [table-id]
+                                                        (swap! reads conj [:sandbox table-id])
+                                                        [1 table-id])
+         data-access-token/impersonation-token-for-db (fn [db-id]
+                                                        (swap! reads conj [:impersonation db-id])
+                                                        {:role "ro"})
+         data-access-token/routing-token-for-db       (fn [db-id] (swap! reads conj [:routing db-id]) nil)]
+        (let [reader   (data-access-token/data-access-token-reader)
+              expected (data-access-token/data-access-token {:database-id 5 :table-ids #{10 20}})]
+          (reset! reads [])
+          (is (= expected (reader {:database-id 5 :table-ids #{10 20}})))
+          (is (= expected (reader {:database-id 5 :table-ids #{20 10}})))
+          (reader {:database-id 5 :table-ids #{10}})
+          (is (= {[:sandbox 10] 1 [:sandbox 20] 1 [:impersonation 5] 1 [:routing 5] 1}
+                 (frequencies @reads))
+              "a nil contributor read is shared too")
+          (testing "a second reader shares nothing with the first"
+            (reset! reads [])
+            ((data-access-token/data-access-token-reader) {:database-id 5 :table-ids #{10}})
+            (is (= 3 (count @reads)))))))))
+
+(deftest data-access-token-reader-does-not-memoize-a-throw-test
+  (testing "a contributor that throws throws again on the next call rather than reading as a value"
+    (let [calls (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table    (fn [_] nil)
+         data-access-token/impersonation-token-for-db (fn [_] nil)
+         data-access-token/routing-token-for-db       (fn [_] (swap! calls inc) (throw (ex-info "no attribute" {})))]
+        (let [reader (data-access-token/data-access-token-reader)]
+          (is (thrown? clojure.lang.ExceptionInfo (reader {:database-id 5 :table-ids #{}})))
+          (is (thrown? clojure.lang.ExceptionInfo (reader {:database-id 5 :table-ids #{}})))
+          (is (= 2 @calls)))))))
+
+(deftest data-access-token-reader-keys-by-current-user-test
+  (testing "a reader called under a different user binding reads that user's lens rather than reusing another's"
+    (dynamic-redefs/with-dynamic-fn-redefs
+      [data-access-token/sandbox-token-for-table    (fn [_] [api/*current-user-id*])
+       data-access-token/impersonation-token-for-db (fn [_] nil)
+       data-access-token/routing-token-for-db       (fn [_] nil)]
+      (let [reader (data-access-token/data-access-token-reader)
+            token  (fn [user-id] (binding [api/*current-user-id* user-id]
+                                   (reader {:database-id 5 :table-ids #{10}})))]
+        (is (not= (token 1) (token 2)))
+        (is (= (token 1) (token 1)))))))

@@ -80,7 +80,7 @@
                       {:name          "Routed document card"
                        :document_id   (u/the-id document)
                        :dataset_query str-query}]
-         (t2/update! :model/Document (u/the-id document)
+         (t2/update! :model/Document :id (u/the-id document)
                      {:document (documents.test-util/cards->prose-mirror-ast
                                  [(u/the-id document-card)])})
          (let [card-id     (u/the-id card)

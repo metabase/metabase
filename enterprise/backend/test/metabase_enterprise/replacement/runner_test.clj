@@ -3,7 +3,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.replacement.runner-test]}}}}}}
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.dependencies.hooks]
+   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.runner :as replacement.runner]
@@ -31,10 +31,7 @@
                    :model/Table {table-id :id} {:name   "Custom Table"
                                                 :db_id  (mt/id)
                                                 :active true}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}]
+                   :model/Segment {segment-id :id} {:name "Test Segment"}]
       (let [entities          [[:card card-id-1]
                                [:card card-id-2]
                                [:table table-id]
@@ -106,12 +103,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:name          "Test Card"
                                               :database_id   (mt/id)
                                               :dataset_query (mt/mbql-query venues)}
-                   :model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Segment"
-                                                    :definition (mt/mbql-query venues
-                                                                  {:filter [:> $price 3]})}
-                   :model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :name       "Test Measure"
+                   :model/Segment {segment-id :id} {:name "Test Segment"}
+                   :model/Measure {measure-id :id} {:name       "Test Measure"
                                                     :definition (let [mp (mt/metadata-provider)
                                                                       table-metadata (lib.metadata/table mp (mt/id :venues))]
                                                                   (-> (lib/query mp table-metadata)
@@ -263,7 +256,7 @@
                                             [:stages 0 :source-card]))))))))))))))
 
 (deftest copy-model-metadata-overrides!-test
-  (testing "copies user-edited metadata from model result_metadata to FieldUserSettings only"
+  (testing "copies user-edited metadata from model result_metadata as user settings"
     (mt/with-temp [:model/Table {table-id :id} {:name   "transform_output"
                                                 :db_id  (mt/id)
                                                 :active true}
@@ -296,14 +289,14 @@
                                              :base_type     "type/DateTimeWithLocalTZ"}])}
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
-      (testing "Field records are untouched; they stay sync-owned"
+      (testing "Field rows show copied metadata"
         (let [field-1 (t2/select-one :model/Field :id field-1-id)
               field-2 (t2/select-one :model/Field :id field-2-id)]
-          (is (= "Total" (:display_name field-1)))
-          (is (nil? (:description field-1)))
-          (is (nil? (:semantic_type field-1)))
-          (is (= "Created At" (:display_name field-2)))
-          (is (nil? (:semantic_type field-2)))))
+          (is (= "Order Total" (:display_name field-1)))
+          (is (= "The total amount" (:description field-1)))
+          (is (= :type/Currency (:semantic_type field-1)))
+          (is (= "Order Date" (:display_name field-2)))
+          (is (= :type/CreationTimestamp (:semantic_type field-2)))))
       (testing "FieldUserSettings are created so overrides survive sync"
         (let [fus-1 (t2/select-one :model/FieldUserSettings :field_id field-1-id)
               fus-2 (t2/select-one :model/FieldUserSettings :field_id field-2-id)]
@@ -341,8 +334,8 @@
                      :where  [:= :id card-id]})
       (#'replacement.runner/copy-model-metadata-overrides! card-id table-id)
       (let [field (t2/select-one :model/Field :id field-id)]
-        (is (= "Products  ID" (:display_name field)))
-        (is (nil? (:description field))))
+        (is (= "Product ID" (:display_name field)))
+        (is (= "The product identifier" (:description field))))
       (let [fus (t2/select-one :model/FieldUserSettings :field_id field-id)]
         (is (some? fus))
         (is (= "Product ID" (:display_name fus)))

@@ -26,7 +26,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn set-sample-database-details!
   "Set the `details` of the sample Database, returning the ids of the updated rows."
@@ -48,7 +48,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:engine :details :settings])]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn set-database-tables-schema!
   "Set the `schema` of every Table of the Database with `database-id`, returning the number updated."

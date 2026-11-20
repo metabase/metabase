@@ -10,7 +10,6 @@ import type { QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -28,7 +27,6 @@ interface ViewNativeQueryEditorProps {
   card?: Card;
 
   question: Question;
-  query: NativeQuery;
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
@@ -53,7 +51,7 @@ interface ViewNativeQueryEditorProps {
   runQuery: () => void;
   toggleEditor: () => void;
   handleResize: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setQuery: (query: Lib.Query) => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
@@ -77,7 +75,6 @@ interface ViewNativeQueryEditorProps {
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   const { question, isNativeEditorOpen, onSetDatabaseId } = props;
 
-  const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
     getHighlightedNativeQueryLineNumbers,
   );
@@ -95,8 +92,8 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   // So the model is opened as an underlying native question and the query editor becomes visible
   // This check makes it hide the editor in this particular case
   // More details: https://github.com/metabase/metabase/pull/20161
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if ((question.type() === "model" && !isEditable) || !legacyNativeQuery) {
+  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
+  if ((question.type() === "model" && !isEditable) || !isNative) {
     return null;
   }
 
@@ -104,7 +101,6 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     <Box className={NativeQueryEditorS.NativeQueryEditorContainer}>
       <NativeQueryEditor
         {...props}
-        query={legacyNativeQuery}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
         canAutoOpenDataReference={!isMetabotSidebarOpen}

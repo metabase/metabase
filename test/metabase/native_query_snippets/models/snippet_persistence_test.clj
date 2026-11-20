@@ -23,7 +23,7 @@
           (is (contains? template-tags "snippet: Snippet A"))
           (is (= snippet-a-id (get-in template-tags ["snippet: Snippet A" :snippet-id])))))
       (testing "with Snippet A renamed to Snippet C"
-        (t2/update! :model/NativeQuerySnippet snippet-a-id {:name "Snippet C"})
+        (t2/update! :model/NativeQuerySnippet :id snippet-a-id {:name "Snippet C"})
         (testing "Snippet B should still refer to snippet-a-id"
           (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-b-id)]
             ;; The template tag key is still "snippet: Snippet A" because we haven't edited Snippet B
@@ -31,7 +31,7 @@
             ;; But it still points to the same snippet (now named Snippet C)
             (is (= snippet-a-id (get-in updated-tags ["snippet: Snippet A" :snippet-id])))))
         (testing "with Snippet B edited but preserving reference to Snippet A"
-          (t2/update! :model/NativeQuerySnippet snippet-b-id
+          (t2/update! :model/NativeQuerySnippet :id snippet-b-id
                       {:content "SELECT id, name FROM orders {{snippet: Snippet A}} LIMIT 10"})
           (let [edited-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-b-id)]
             ;; The reference text is still "snippet: Snippet A"
@@ -56,7 +56,7 @@
         (let [template-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-ref-id)]
           (is (= snippet-x-id (get-in template-tags ["snippet: Snippet X" :snippet-id])))
           (testing "Changing the referenced snippet name should update the reference"
-            (t2/update! :model/NativeQuerySnippet snippet-ref-id
+            (t2/update! :model/NativeQuerySnippet :id snippet-ref-id
                         {:content "SELECT * FROM users {{snippet: Snippet Y}}"})
             (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-ref-id)]
               (is (not (contains? updated-tags "snippet: Snippet X")))
@@ -89,8 +89,8 @@
         (is (= filter1-id (get-in template-tags ["snippet: Filter One" :snippet-id])))
         (is (= filter2-id (get-in template-tags ["snippet: Filter Two" :snippet-id])))
         (testing "After renaming referenced snippets, references should persist"
-          (t2/update! :model/NativeQuerySnippet filter1-id {:name "Renamed Filter One"})
-          (t2/update! :model/NativeQuerySnippet filter2-id {:name "Renamed Filter Two"})
+          (t2/update! :model/NativeQuerySnippet :id filter1-id {:name "Renamed Filter One"})
+          (t2/update! :model/NativeQuerySnippet :id filter2-id {:name "Renamed Filter Two"})
           (let [updated-tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id combined-id)]
             (is (= filter1-id (get-in updated-tags ["snippet: Filter One" :snippet-id])))
             (is (= filter2-id (get-in updated-tags ["snippet: Filter Two" :snippet-id])))))))))
@@ -110,7 +110,7 @@
         (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
           (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id])))))
       ;; Step 3: Rename the wrong snippet to "affordable" (fixing the mistake)
-      (t2/update! :model/NativeQuerySnippet expensive-wrong-id {:name "affordable"})
+      (t2/update! :model/NativeQuerySnippet :id expensive-wrong-id {:name "affordable"})
       (testing "After renaming, reference still points to same snippet (now 'affordable')"
         (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]
           (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id]))
@@ -124,7 +124,7 @@
             (is (= expensive-wrong-id (get-in tags ["snippet: expensive" :snippet-id]))
                 "Without re-saving, query still points to the old (now 'affordable') snippet")))
         ;; Step 5: Re-save the query (simulating user editing and saving)
-        (t2/update! :model/NativeQuerySnippet query-id
+        (t2/update! :model/NativeQuerySnippet :id query-id
                     {:content "SELECT * FROM orders {{snippet: expensive}}"})
         (testing "After re-saving the query, reference switches to the new exact-match snippet"
           (let [tags (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id query-id)]

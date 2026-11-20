@@ -8,7 +8,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
 (mu/defn recent-cards
@@ -43,8 +42,7 @@
               :display_name [:metabase_database.initial_sync_status :initial-sync-status]
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
-             {:from [(warehouse-schema-overlay/table-query)]
-              :where     [:in :metabase_table.id ids]
+             {:where     [:in :metabase_table.id ids]
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
 (mu/defn recent-dashboard-and-table-views
@@ -69,7 +67,7 @@
                           [:and
                            [:= :model "dashboard"]
                            [:= :d.id :model_id]]
-                          (warehouse-schema-overlay/table-query {:alias :t})
+                          [(t2/table-name :model/Table) :t]
                           [:and
                            [:= :model "table"]
                            [:= :t.id :model_id]]]}))
@@ -101,7 +99,7 @@
 (mu/defn table-exists?
   "Whether a Table with `id` exists."
   [id :- ::lib.schema.id/table]
-  (t2/exists? :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :id id))
 
 (mu/defn collection-exists?
   "Whether a Collection with `id` exists."
@@ -121,7 +119,7 @@
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id id))
 
 (mu/defn collection
   "The Collection with `id`, or nil."
@@ -202,98 +200,18 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
-(mu/defn cards-for-recent-views
-  "The Cards with `card-ids` with their Dashboard, Collection, and moderation status."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card
-             {:select [:card.name
-                       :card.description
-                       :card.archived
-                       :card.id
-                       :card.database_id
-                       :card.display
-                       :card.card_schema
-                       ;; required alongside :card_schema for the Card schema upgrade
-                       :card.type
-                       :card.dimensions
-                       :card.dimension_mappings
-                       :card.result_metadata
-                       :card.dataset_query
-                       :card.entity_id
-                       :card.visualization_settings
-                       [:dashboard.id :dashboard_id]
-                       [:dashboard.name :dashboard_name]
-                       [:card.collection_id :entity-coll-id]
-                       [:mr.status :moderated-status]
-                       [:collection.id :collection_id]
-                       [:collection.name :collection_name]
-                       [:collection.authority_level :collection_authority_level]]
-              :from [[:report_card :card]]
-              :where [:in :card.id card-ids]
-              :left-join [[:moderation_review :mr]
-                          [:and
-                           [:= :mr.moderated_item_id :card.id]
-                           [:= :mr.moderated_item_type "card"]
-                           [:= :mr.most_recent true]]
-                          [:collection]
-                          [:and
-                           [:= :collection.id :card.collection_id]
-                           [:= :collection.archived false]]
-                          [:report_dashboard :dashboard]
-                          [:= :dashboard.id :card.dashboard_id]]}))
-
-(mu/defn dashboards-for-recent-views
-  "The Dashboards with `dashboard-ids` with their Collection and moderation status."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/Dashboard
-             {:select [:dash.id
-                       :dash.name
-                       :dash.description
-                       :dash.archived
-                       [:dash.collection_id :entity-coll-id]
-                       [:c.id :collection_id]
-                       [:c.name :collection_name]
-                       [:c.authority_level :collection_authority_level]
-                       [:mr.status :moderated-status]]
-              :from [[:report_dashboard :dash]]
-              :where [:in :dash.id dashboard-ids]
-              :left-join [[:moderation_review :mr]
-                          [:and
-                           [:= :mr.moderated_item_id :dash.id]
-                           [:= :mr.moderated_item_type "dashboard"]
-                           [:= :mr.most_recent true]]
-                          [:collection :c]
-                          [:and
-                           [:= :c.id :dash.collection_id]
-                           [:= :c.archived false]]]}))
-
-(mu/defn unarchived-collections-with-details
-  "The unarchived Collections with `collection-ids`, with their location, type, and authority level."
+(mu/defn recent-view-collections
+  "The unarchived Collections with `collection-ids`, with their location, type, authority level, effective parent, and
+  permissions."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection
-             {:select [:id :name :description :authority_level
-                       :archived :location :type]
-              :where [:and
-                      [:in :id collection-ids]
-                      [:= :archived false]]}))
-
-(mu/defn visible-tables-for-recent-views
-  "The non-hidden Tables with `table-ids` with their Database name and sync status."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table
-             {:select [:t.id :t.name :t.description
-                       :t.display_name :t.active :t.visibility_type :t.schema
-                       [:db.name :database-name]
-                       [:db.id :db_id]
-                       [:db.initial_sync_status :initial-sync-status]]
-              :from [(warehouse-schema-overlay/table-query {:alias :t})]
-              :where [:and
-                      [:or
-                       [:= :visibility_type nil]
-                       [:!= :visibility_type "hidden"]]
-                      [:in :t.id table-ids]]
-              :left-join [[:metabase_database :db]
-                          [:= :db.id :t.db_id]]}))
+  (t2/hydrate
+   (t2/select :model/Collection
+              {:select [:id :name :description :authority_level
+                        :archived :location :type :namespace :is_remote_synced]
+               :where [:and
+                       [:in :id collection-ids]
+                       [:= :archived false]]})
+   :effective_parent :can_read :can_write))
 
 (mu/defn recent-views-with-card-type
   "The RecentViews of the User with `user-id` in `contexts`, newest first, with the type of the viewed Card. Narrowed
@@ -346,21 +264,3 @@
                            [:= :rv.model "document"]
                            [:= :doc.id :rv.model_id]]]
               :order-by  [[:rv.timestamp :desc]]}))
-
-(mu/defn documents-for-recent-views
-  "The Documents with `document-ids` with their Collection."
-  [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Document
-             {:select [:d.id
-                       :d.name
-                       :d.archived
-                       [:d.collection_id :entity-coll-id]
-                       [:c.id :collection_id]
-                       [:c.name :collection_name]
-                       [:c.authority_level :collection_authority_level]]
-              :from [[:document :d]]
-              :where [:in :d.id document-ids]
-              :left-join [[:collection :c]
-                          [:and
-                           [:= :c.id :d.collection_id]
-                           [:= :c.archived false]]]}))

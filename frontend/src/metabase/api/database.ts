@@ -20,7 +20,6 @@ import type {
   ListDatabaseSchemasRequest,
   ListDatabasesRequest,
   ListDatabasesResponse,
-  ListVirtualDatabaseTablesRequest,
   SchemaName,
   Table,
   UpdateDatabaseRequest,
@@ -165,20 +164,6 @@ export const databaseApi = Api.injectEndpoints({
           params: isQueryParam ? { ...params, schema } : params,
         };
       },
-      providesTags: (tables = []) => [
-        listTag("table"),
-        ...tables.map((table) => idTag("table", table.id)),
-      ],
-    }),
-    listVirtualDatabaseTables: builder.query<
-      Table[],
-      ListVirtualDatabaseTablesRequest
-    >({
-      query: ({ id, schema, ...params }) => ({
-        method: "GET",
-        url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
-        params,
-      }),
       providesTags: (tables = []) => [
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),
@@ -351,7 +336,6 @@ export const {
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemaTablesQuery,
-  useListVirtualDatabaseTablesQuery,
   useListDatabaseIdFieldsQuery,
   useValidateDatabaseMutation,
   useCreateDatabaseMutation,

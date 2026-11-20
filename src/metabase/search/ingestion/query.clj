@@ -37,7 +37,7 @@
 
 (defn- spec-index-query*
   [_db-type search-model]
-  (let [spec         (search.spec/spec search-model)
+  (let [spec         (search.spec/search-model-spec search-model)
         fn-deps      (search.spec/collect-fn-attr-req-fields spec)
         fn-selects   (map (fn [field]
                             [(keyword (str "this." (name field))) field])
@@ -54,9 +54,7 @@
                                                                      (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
-      :from      [(if-let [source (:source spec)]
-                    (source)
-                    [(t2/table-name (:model spec)) :this])]
+      :from      [[(t2/table-name (:model spec)) :this]]
       :where     (:where spec [:= [:inline 1] [:inline 1]])
       :left-join (when (:joins spec)
                    (into []
@@ -78,3 +76,19 @@
   [search-model where-clause]
   (-> (spec-index-query search-model)
       (sql.helpers/where where-clause)))
+
+(defn doc-id-select-item
+  "The select item `search-model`'s documents take their id from, qualified to `:this` as [[spec-index-query]]
+  qualifies it: a bare column gains the prefix, but a compound expression such as indexed entities' `concat_ws`
+  keeps its columns bare."
+  [search-model]
+  ;; Built through the same attr machinery as [[spec-index-query]], so a compound `:id` lands identically here.
+  (first (search.spec/qualify-columns
+          :this
+          (attrs->select-items {:id (-> (search.spec/search-model-spec search-model) :attrs :id)}))))
+
+(defn doc-id-expression
+  "[[doc-id-select-item]] without any alias."
+  [search-model]
+  (let [select-item (doc-id-select-item search-model)]
+    (if (vector? select-item) (first select-item) select-item)))

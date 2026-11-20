@@ -5,6 +5,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.embedding.util :as embedding.util]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -121,7 +122,7 @@
 (def ^:private RowValueSchema
   "One cell value in a chart series, matching the frontend's `RowValue`. The `object` arm is never read by this
   code -- it's forwarded to the interestingness stats/repr code as-is -- so it's opaque rather than typed."
-  [:maybe [:or :string number? :boolean ms/OpaqueJSONObject]])
+  [:maybe [:or :string number? :boolean ::metabot.schema/row-value.object]])
 
 (def ^:private SeriesConfigSchema
   "One series of a chart, pre-materialized by the frontend for `analyze_chart`."
@@ -207,7 +208,9 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; The open tab, sent with a dashboard
+   [:tab_id          {:optional true} [:maybe :int]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."
@@ -265,7 +268,7 @@
    [:default_database_id        {:optional true} [:maybe :int]]
    [:code_editor                {:optional true} [:maybe CodeEditorContextSchema]]
    [:research_plan              {:optional true} [:maybe ::research-plan]]
-   [:references                 {:optional true} [:maybe ms/OpaqueJSONObject]]
+   [:references                 {:optional true} [:maybe ::metabot.schema/references]]
    ;; The agent-streaming API overwrites this from the request's client header (see [[host-app-request?]]),
    ;; so a value sent by the client has no effect.
    [:in_host_app                {:optional true} [:maybe :boolean]]])
@@ -281,7 +284,7 @@
   [request]
   (boolean (and request
                 (or (embedding.util/is-modular-embedding-request? request)
-                    (embedding.util/has-data-app-header? request)))))
+                    (data-apps/data-app-header? request)))))
 
 (defn- query-for-sql-parsing
   "Return the native query in a viewing-context item, or nil."
@@ -379,10 +382,12 @@
     context))
 
 (defn- filter-recents-to-curated
-  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative).
-  Delegates to metabot.curation/curated-ids, the source-of-truth check, so recent-view filtering can't drift
-  from the canonical rule and doesn't depend on the search index."
+  "Keep only recents that are curated (verified, official-collection, library/published, or authoritative)."
   [recents]
+  ;; Delegates to `curation/curated-ids`, the source-of-truth check, so recent-view filtering can't drift from the
+  ;; canonical rule and doesn't depend on the search index. A metric needs its own curation signal here, as in search
+  ;; results, though `read_resource` listings also show metrics whose definition passes
+  ;; `curation/usable-metric-ids`: these recents are suggested unasked on every request.
   (let [curated (curation/curated-ids (map (juxt (comp name :model) :id) recents))]
     (filter (fn [{:keys [model id]}] (contains? curated [(name model) id])) recents)))
 

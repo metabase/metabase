@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- FIXME: any-typed values */
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.parameters.shared";
@@ -11,6 +12,7 @@ import type {
   FieldFilterUiParameter,
   UiParameter,
 } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getParameterTargetField,
@@ -210,7 +212,7 @@ function buildSavedDashboardParameter(
   const uniqueParameterFields = _.uniq(
     fields?.[parameter.id] ?? [],
     (field) => field.id,
-  );
+  ).map(getParameterFieldInfo);
 
   return {
     ...parameter,

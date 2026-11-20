@@ -1,5 +1,6 @@
 ---
 title: "Accounts and billing"
+summary: Manage your Metabase Store account. Change plans, add managers and billing contacts, update payment details, and download past invoices.
 version: latest
 has_magic_breadcrumbs: true
 show_category_breadcrumb: true
@@ -9,8 +10,6 @@ layout: new-docs
 ---
 
 # Accounts and billing
-
-Managing billing and accounts in the Metabase Store.
 
 ## Upgrade to Pro (or downgrade to Starter)
 

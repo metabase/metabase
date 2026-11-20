@@ -107,7 +107,7 @@ const setup = ({ table, remoteSyncType }: SetupOpts = {}) => {
   const enterprisePlugins: ENTERPRISE_PLUGIN_NAME[] = ["remote_sync"];
   enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   setupEnterpriseOnlyPlugin("library");
-  setupLibraryEndpoints(true);
+  setupLibraryEndpoints({ hasLibrary: true });
   setupCollectionsEndpoints({
     collections: [],
     rootCollection: createMockCollection({

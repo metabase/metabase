@@ -180,10 +180,10 @@
          (not (pos? (compare ((juxt :major :minor :patch) required-version)
                              [major minor patch]))))))
 
+;; Public for [[metabase.app-db.core/verify-application-db-connection!]], which most callers should use instead.
 (mu/defn verify-db-connection
-  "Test connection to application database with `data-source` and throw an exception if we have any troubles
-  connecting. Public so [[metabase.app-db.core/verify-application-db-connection!]] can call it from outside this
-  namespace; most callers should use that wrapper instead of invoking this directly."
+  "Check the application database connection through `data-source`, and throw if it fails or has an unsupported version.
+  Returns whether the database is MariaDB."
   [db-type     :- :keyword
    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Verifying %s Database Connection ..." (name db-type)))
@@ -195,10 +195,10 @@
          (catch Throwable e
            (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
-    (let [metadata (.getMetaData conn)
+    (let [metadata   (.getMetaData conn)
           db-version (db-version metadata)
-          db-type (or (when (= "MariaDB" (.getDatabaseProductName metadata)) :mariadb)
-                      db-type)]
+          mariadb?   (= "MariaDB" (.getDatabaseProductName metadata))
+          db-type    (if mariadb? :mariadb db-type)]
       (if (supported-app-db-version? db-type db-version)
         (log/infof "Successfully verified %s %s application database connection. %s"
                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅"))
@@ -215,7 +215,8 @@
                                                            (:minor required-version)
                                                            (:patch required-version))))
                                             "https://www.metabase.com/docs/latest/installation-and-operation/migrating-from-h2#supported-databases-for-storing-your-metabase-application-data"])
-                        {}))))))
+                        {})))
+      mariadb?)))
 
 (mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
@@ -323,18 +324,21 @@
         [:manage-encryption-state?      {:optional true} :boolean]]]
    (u/profile (trs "Database setup")
      (u/with-us-locale
-       (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
-                 config/*disable-setting-cache*            true
+       (binding [config/*disable-setting-cache* true
                  custom-migrations/*create-sample-content* create-sample-content?]
-         (verify-db-connection db-type data-source)
-         (error-if-downgrade-required! data-source)
-         (let [db-state (mdb.encryption/encryption-state)]
-           (when manage-encryption-state?
-             (mdb.encryption/check-encryption db-state))
-           (run-schema-migrations! data-source auto-migrate?)
-           (migrate-settings! db-state)
-           (when manage-encryption-state?
-             (mdb.encryption/record-encryption-state! db-state))))))
+         (mdb.connection/with-application-db
+           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
+           ;; Migrations ask whether this is MariaDB while Liquibase holds a connection. Answering now spares them a
+           ;; second checkout.
+           (mdb.connection/record-mariadb! (verify-db-connection db-type data-source))
+           (error-if-downgrade-required! data-source)
+           (let [db-state (mdb.encryption/encryption-state)]
+             (when manage-encryption-state?
+               (mdb.encryption/check-encryption db-state))
+             (run-schema-migrations! data-source auto-migrate?)
+             (migrate-settings! db-state)
+             (when manage-encryption-state?
+               (mdb.encryption/record-encryption-state! db-state)))))))
    :done))
 
 (defn release-migration-locks!
@@ -356,7 +360,7 @@
 ;;; Done at namespace load time these days.
 
 ;;; create a custom HoneySQL quoting style called `::application-db` that uses the appropriate quote function based on
-;;; [[*application-db*]]; register this as the default quoting style for Toucan. Then
+;;; the current application DB; register this as the default quoting style for Toucan. Then
 (defn quote-for-application-db
   "Quote SQL identifier string `s` appropriately for the currently bound application database."
   ([s]

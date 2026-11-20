@@ -6,6 +6,7 @@
   paired with the card being read-checked, and by [[assert-can-view-card-snapshots!]] to enumerate
   every snapshot a Card renders from. Lives in the queries module alongside `:model/StoredResult`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.db :as queries.db]
    [metabase.util.i18n :refer [tru]]
@@ -52,8 +53,13 @@
   "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
   from."
   [card-id :- ms/PositiveInt]
-  (let [snapshots (queries.db/stored-results-for-card card-id)]
+  (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
     (when (empty? snapshots)
       (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
     (doseq [snapshot snapshots]
       (cached-result/assert-can-view-cached-result! snapshot))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/StoredResultUse [_model]
+  {:skip? true})

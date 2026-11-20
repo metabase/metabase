@@ -3,6 +3,8 @@ import { isValidElement } from "react";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { formatValue } from "metabase/value-formatting";
+import type * as Lib from "metabase-lib";
+import { getParameterFieldFormatColumn } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   ColumnSettings,
   DashboardId,
@@ -22,6 +24,7 @@ export const Value = ({
   parameter?: Parameter;
   cardId?: number;
   dashboardId?: DashboardId;
+  field?: Lib.ParameterFieldInfo;
 } & ColumnSettings) => {
   const tc = useTranslateContent<unknown>();
   const { uuid, token } = useEmbeddingEntityContext();
@@ -41,8 +44,12 @@ export const Value = ({
   if (rawOptions.remap) {
     return <RemappedValue value={value} {...options} />;
   }
+  const { field, ...formatOptions } = options;
   const formatted = formatValue(value, {
-    ...options,
+    ...formatOptions,
+    column:
+      formatOptions.column ??
+      (field != null ? getParameterFieldFormatColumn(field) : undefined),
     jsx: true,
   });
   if (isValidElement(formatted)) {

@@ -57,7 +57,7 @@
                                                                        :name         "str"
                                                                        :display-name "Str"
                                                                        :type         :dimension
-                                                                       :dimension    (lib/ref str-field)
+                                                                       :field-id     field-id
                                                                        :widget-type  :string/=}}))
                     :tile-query    (lib/query mp table)
                     :lat-field     (json/encode [:field lat-field-id nil])

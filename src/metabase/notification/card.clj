@@ -1,14 +1,22 @@
 (ns metabase.notification.card
   (:require
    [metabase.events.core :as events]
-   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]))
 
-(defn delete-card-notifications-and-notify!
-  "Removes all of the alerts and notifies all of the email recipients of the alerts change."
-  [topic actor card]
-  (when-let [card-notifications (seq (models.notification/notifications-for-card (:id card)))]
-    (notification.db/delete-notifications! (map :id card-notifications))
-    (events/publish-event! topic {:card          card
-                                  :actor         actor
-                                  :notifications card-notifications})))
+(defn card-notifications
+  "The notifications of the alerts on `card`."
+  [card]
+  (models.notification/notifications-for-card (:id card)))
+
+(defn notify-card-notifications-deleted!
+  "Announces that the alerts of `card`, whose `notifications` were deleted, stopped, because the Card was archived when
+  `reason` is `:card-archived` and because it was changed when it is `:card-changed`, which has their recipients
+  emailed."
+  [reason actor card notifications]
+  (when (seq notifications)
+    (events/publish-event! (case reason
+                             :card-archived :event/card-update.notification-deleted.card-archived
+                             :card-changed  :event/card-update.notification-deleted.card-changed)
+                           {:card          card
+                            :actor         actor
+                            :notifications notifications})))

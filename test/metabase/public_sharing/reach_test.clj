@@ -4,8 +4,8 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.documents.test-util :as documents.test-util]
-   [metabase.models.serialization :as serdes]
    [metabase.public-sharing.reach :as public-sharing.reach]
+   [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -13,7 +13,7 @@
   "Rewrite the Document with `document-id` so its content embeds each of `card-ids` inline. Done after the cards exist,
   since a `cardEmbed` node carries the card's id."
   [document-id card-ids]
-  (t2/update! :model/Document document-id
+  (t2/update! :model/Document :id document-id
               {:document (documents.test-util/cards->prose-mirror-ast card-ids)}))
 
 (defn- anonymously-reachable?
@@ -119,12 +119,14 @@
   (mt/with-temp
     [:model/Database {db-id :id}       {}
      :model/Table    {table-id :id}    {:db_id db-id}
-     :model/Document {document-id :id} {:public_uuid (str (random-uuid)), :archived true}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
      :model/Card     {card-id :id}     {:database_id db-id
                                         :table_id    table-id
                                         :type        :question
                                         :document_id document-id}]
     (embed-cards-in-document! document-id [card-id])
+    ;; archived by table name, so the card stays unarchived and only the document's own archiving is under test
+    (t2/update! (t2/table-name :model/Document) {:id document-id} {:archived true})
     (testing "an archived document's public link no longer resolves, so it does not make this database reachable"
       (is (false? (anonymously-reachable? db-id))))))
 
@@ -439,7 +441,7 @@
      :model/Table    {table-id :id}    {:db_id db-id}
      :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
      :model/Card     {target-id :id}   {:database_id db-id, :table_id table-id, :type :question}]
-    (t2/update! :model/Document document-id
+    (t2/update! :model/Document :id document-id
                 {:document {:type    "doc"
                             :content [{:type  "paragraph"
                                        :content [{:type  "smartLink"
@@ -479,12 +481,21 @@
           (is (false? (anonymously-reachable? db-id)))
           (is (some? model-id)))))))
 
-;;; ------------------------------- Pinned against serialization's descendant walk ----------------------------------
+;;; ------------------------------ Pinned against serialization's export dependencies -------------------------------
+
+(def ^:private not-content-models
+  "The models an export depends on that say where a row lives or what warehouse metadata it names, not what it contains."
+  #{:model/Collection :model/Database :model/Table :model/Field :model/User})
 
 (defn- serialization-containments
-  "What serialization's descendant walk records the entity `model-name`/`id` as containing, as `[model-name id]` pairs."
+  "What serialization's export dependencies record the entity `model-name`/`id` as containing, as `[model-name id]`
+  pairs."
   [model-name id]
-  (set (keys (serdes/descendants model-name id {}))))
+  (let [model (keyword "model" model-name)]
+    (into #{}
+          (comp (remove (comp not-content-models first))
+                (map (fn [[dependency-model dependency-id]] [(name dependency-model) dependency-id])))
+          (first (serialization/export-dependencies model [(t2/select-one model :id id)])))))
 
 (defn- rendered-refs
   "The questions the entity `model`/`id` renders, as `[model-name id]` pairs."
@@ -599,7 +610,7 @@
       [:model/Card {embedded :id}     {:database_id db-id, :table_id table-id, :document_id document-id}
        :model/Card {unowned :id}      {:database_id db-id, :table_id table-id}
        :model/Card {link-target :id}  {:database_id db-id, :table_id table-id}]
-      (t2/update! :model/Document document-id
+      (t2/update! :model/Document :id document-id
                   {:document {:type    "doc"
                               :content [{:type "cardEmbed" :attrs {"id" embedded}}
                                         {:type "cardEmbed" :attrs {"id" unowned}}
@@ -623,7 +634,7 @@
      :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
      :model/Card     {card-id :id}     {:database_id db-id, :table_id table-id, :document_id document-id}]
     (embed-cards-in-document! document-id [card-id])
-    (t2/update! :model/Document document-id {:content_type "text/plain"})
+    (t2/update! :model/Document :id document-id {:content_type "text/plain"})
     (testing "a document whose content type reach cannot read fails loudly rather than reaching nothing"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"prose mirror content-type"
                             (public-sharing.reach/shown-card-ids :model/Document [document-id]))))))

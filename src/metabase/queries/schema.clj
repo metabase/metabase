@@ -5,10 +5,14 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
+   [metabase.models.schema :as models.schema]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.query-permissions.schema :as query-permissions.schema]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -46,10 +50,10 @@
    [:id                      {:optional true} [:maybe ::lib.schema.id/field]]
    [:description             {:optional true} [:maybe :string]]
    [:display_name            {:optional true} [:maybe :string]]
-   [:semantic_type           {:optional true} [:maybe ms/FieldSemanticOrRelationType]]
+   [:semantic_type           {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:fk_target_field_id      {:optional true} [:maybe ::lib.schema.id/field]]
-   [:settings                {:optional true} [:maybe ms/VisualizationSettings]]
-   [:visibility_type         {:optional true} [:maybe [:or :keyword :string]]]
+   [:settings                {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
+   [:visibility_type         {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:lib/source_display_name {:optional true} [:maybe :string]]])
 
 (mr/def ::card
@@ -60,6 +64,7 @@
    ::card.update
    [:map {:closed true}
     [:id                    {:optional true} [:maybe ::lib.schema.id/card]]
+    [:dataset_query         {:optional true} [:maybe ::card.dataset-query]]
     [:persisted/active      {:optional true} [:maybe :boolean]]
     [:persisted/definition  {:optional true} [:maybe :string]]
     [:persisted/query_hash  {:optional true} [:maybe :string]]
@@ -146,12 +151,16 @@
                                                  [:human_readable_field {:optional true} [:maybe ::param-field.name-field]]]]]]]])
 
 (mr/def ::card.dataset-query
-  "The `:dataset_query` column of a Card, decoded."
+  "The `:dataset_query` column of a Card as stored, decoded, which may be the empty query of an old row."
   ::lib-be.schema/maybe-legacy-or-empty-query)
+
+(mr/def ::card.dataset-query.write
+  "The `:dataset_query` a write of a Card gives: a real query, never an empty one."
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::card.visualization-settings
   "The `:visualization_settings` column of a Card, decoded."
-  ms/VisualizationSettings)
+  ::lib.schema.visualization/visualization-settings)
 
 (mr/def ::card.parameter
   "One entry of the `:parameters` column of a Card, decoded."
@@ -169,15 +178,18 @@
   "One entry of the `:dimension_mappings` column of a Card, decoded."
   ::lib-metric.schema/dimension-mapping)
 
+(mr/def ::card.name
+  ms/NonBlankString)
+
 (mr/def ::card.update
   "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
-   [:name                                      {:optional true} [:maybe :string]]
+   [:name                                      {:optional true} [:maybe ::card.name]]
    [:description                               {:optional true} [:maybe :string]]
-   [:display                                   {:optional true} [:maybe [:or :keyword :string]]]
-   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query]]
+   [:display                                   {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:dataset_query                             {:optional true} [:maybe ::card.dataset-query.write]]
    [:visualization_settings                    {:optional true} [:maybe ::card.visualization-settings]]
    [:creator_id                                {:optional true} [:maybe ::lib.schema.id/user]]
    [:database_id                               {:optional true} [:maybe ::lib.schema.id/database]]
@@ -186,7 +198,7 @@
    [:archived                                  {:optional true} [:maybe :boolean]]
    [:collection_id                             {:optional true} [:maybe ::lib.schema.id/collection]]
    [:public_uuid                               {:optional true} [:maybe :string]]
-   [:made_public_by_id                         {:optional true} [:maybe ms/PositiveInt]]
+   [:made_public_by_id                         {:optional true} [:maybe ::lib.schema.id/user]]
    [:enable_embedding                          {:optional true} [:maybe :boolean]]
    [:embedding_params                          {:optional true} [:maybe ms/EmbeddingParams]]
    [:cache_ttl                                 {:optional true} [:maybe :int]]
@@ -197,7 +209,6 @@
    [:entity_id                                 {:optional true} [:maybe :string]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
    [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
-   [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstant]]
@@ -209,9 +220,9 @@
    [:source_card_id                            {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashboard_id                              {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:card_schema                               {:optional true} [:maybe :int]]
-   [:document_id                               {:optional true} [:maybe ::documents.schema/document.id]]
+   [:document_id                               {:optional true} [:maybe ::lib.schema.id/document]]
    [:legacy_query                              {:optional true} [:maybe :string]]
-   [:embedding_type                            {:optional true} [:maybe [:or :keyword :string]]]
+   [:embedding_type                            {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix                        {:optional true} [:maybe :string]]
    [:dimensions                                {:optional true} [:maybe [:sequential ::card.dimension]]]
    [:dimension_mappings                        {:optional true} [:maybe [:sequential ::card.dimension-mapping]]]
@@ -334,6 +345,9 @@
   "The `:data_access_token` column of a StoredResult, decoded."
   ::permissions.schema/data-access-token)
 
+(mr/def ::stored-result.resolved-source-ids
+  ::query-permissions.schema/resolved-source-ids)
+
 (mr/def ::stored-result
   "A StoredResult as selected from the app DB: every column of `:stored_result`."
   [:merge
@@ -344,14 +358,15 @@
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
-   [:result_data       {:optional true} [:maybe [:or bytes? :string]]]
-   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
-   [:database_id       {:optional true} [:maybe ::lib.schema.id/database]]
-   [:dataset_query     {:optional true} [:maybe ::stored-result.dataset-query]]
-   [:data_access_token {:optional true} [:maybe ::stored-result.data-access-token]]
-   [:row_count         {:optional true} [:maybe :int]]
-   [:created_at        {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at        {:optional true} [:maybe ms/TemporalInstant]]])
+   [:result_data         {:optional true} [:maybe [:or bytes? :string]]]
+   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:database_id         {:optional true} [:maybe ::lib.schema.id/database]]
+   [:dataset_query       {:optional true} [:maybe ::stored-result.dataset-query]]
+   [:data_access_token   {:optional true} [:maybe ::stored-result.data-access-token]]
+   [:resolved_source_ids {:optional true} [:maybe ::stored-result.resolved-source-ids]]
+   [:row_count           {:optional true} [:maybe :int]]
+   [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::stored-result-use
   "A StoredResultUse as selected from the app DB: every column of `:stored_result_use`."
@@ -368,3 +383,15 @@
    [:created_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]])
+
+(mr/def ::external-card
+  "A Card as serialization writes it, with portable references in place of ids."
+  [:schema {:registry lib-be.schema/external-registry}
+   [:merge
+    [:select-keys ::card [:archived :archived_directly :collection_position :description :display
+                          :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
+                          :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
+                          :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
+                          :dashboard_id :made_public_by_id :document_id]]
+    [:map {:closed true}
+     [:serdes/meta {:optional true} ::models.schema/external-meta]]]])

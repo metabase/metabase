@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+cd "$I18N_ROOT"
+
+pin=$(i18n_pin)
+snapshot=$(./bin/i18n/fetch-translations "$pin")
+checkout=$(mktemp -d "locales/metabase-i18n/update.XXXXXX")
+cp -R "$snapshot" "$checkout/locales"
+chmod -R u+w "$checkout/locales"
+printf '%s\n' "$pin" > "$checkout/base"
+printf '%s\n' "$checkout"

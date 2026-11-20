@@ -130,6 +130,7 @@ export const actionIconOverrides = {
     classNames: {
       root: ActionIconStyles.root,
       icon: ActionIconStyles.icon,
+      loader: ActionIconStyles.loader,
     },
   }),
 };

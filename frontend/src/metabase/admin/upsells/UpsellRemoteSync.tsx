@@ -22,7 +22,7 @@ export const UpsellRemoteSync = ({ source }: { source: string }) => {
     location: source,
   });
   const { url: remoteSyncDocsUrl } = useDocsUrl(
-    "installation-and-operation/remote-sync",
+    "data-modeling/semantic-layer/remote-sync",
   );
 
   if (hasRemoteSync || isPro) {

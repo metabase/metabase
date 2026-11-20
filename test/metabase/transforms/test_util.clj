@@ -147,7 +147,7 @@
   [table-name]
   (let [pk (or (try (mt/id (keyword table-name)) (catch Exception _ nil))
                (if-let [schema (when-let [products-id (try (mt/id :transforms_products) (catch Exception _ nil))]
-                                 (t2/select-one-fn :schema :model/Table products-id))]
+                                 (t2/select-one-fn :schema :model/Table :id products-id))]
                  (t2/select-one-pk :model/Table :db_id (mt/id) :schema schema :name table-name)
                  (t2/select-one-pk :model/Table :db_id (mt/id) :name table-name)))]
     (->>
@@ -265,7 +265,7 @@
   "Get the schema from the products table in the test dataset.
    This is needed for databases like BigQuery that require a schema/dataset."
   []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
+  (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products)))
 
 (defn default-schema-or-public
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.

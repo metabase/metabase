@@ -1,5 +1,6 @@
 ---
 title: Troubleshooting LDAP
+summary: Fix LDAP authentication problems, with a sample configuration you can test against.
 ---
 
 # Troubleshooting LDAP
@@ -71,7 +72,7 @@ For the `USER FILTER`, you can leave the default value, which will look for the 
 
 If you run into an issue, check that you can login to your LDAP directory and issue queries using software like [Apache Directory Studio][apache-directory-studio]. It will let you see the whole LDAP tree and view the logs of your LDAP application to see queries run.
 
-<h2 id="current-limitations">Current limitations</h2>
+## Current limitations
 
 - When using Metabase Enterprise with a MySQL database and LDAP enabled, make sure that you disable synchronization of binary fields from your LDAP directory by using the `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST` environment variable. If you do not, you may hit the 60K field size limitation of the text field in MySQL, which will prevent you from creating users or those users from logging in.
 

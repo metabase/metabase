@@ -42,6 +42,16 @@
   [s]
   (like-pattern (u/lower-case-en s) #(str % "%")))
 
+(defn assert-map-or-nil!
+  "`honeysql`, a Honey SQL query or conditions map (or nil), to pass to a Toucan 2 call such as `t2/select` after the
+  model. Throws for anything else.
+
+  The `:metabase/t2-implicit-pk` linter accepts a call to this where it would otherwise ask for `:id`."
+  [honeysql]
+  (when-not (or (nil? honeysql) (map? honeysql))
+    (throw (ex-info "Expected a Honey SQL map" {:value honeysql})))
+  honeysql)
+
 ;;; `[:inline <clojure.lang.Ratio>] should emit something wrapped in parens. Because otherwise the result could be
 ;;; something unintended. e.g.
 ;;;
@@ -181,7 +191,7 @@
    :boolean
    nil?
    ms/TemporalInstant
-   [:fn {:error/message "::h2x/typed Honey SQL form"} (fn [x] (and (vector? x) (= (first x) ::typed)))]
+   [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} (fn [x] (and (vector? x) (= (first x) ::typed)))]
    [:sequential [:ref ::expr]]])
 
 (defn identifier?
@@ -306,7 +316,7 @@
 
 (def ^:private TypeInfo
   "Type info for a `TypedHoneySQLForm` before [[normalize-type-info]], open to the namespaced keys drivers own (e.g. `:metabase.driver.postgres/target-timezone`)."
-  [:map {:closed false, ::mr/deliberately-open true}
+  [:map {:closed false}
    [:database-type  {:optional true} [:maybe ms/KeywordOrString]]
    [:base-type      {:optional true} [:maybe :keyword]]
    [:effective-type {:optional true} [:maybe :keyword]]])
@@ -417,11 +427,11 @@
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression
-  [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
+  [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} typed?])
 
 (mr/def ::honeysql-clause-opts
   "A map inside a Honey SQL 2 clause (a window spec, a subquery, ...), whose keys the Honey SQL library and the clauses drivers register own."
-  [:map {:closed false, ::mr/deliberately-open true}])
+  [:map {:closed false}])
 
 (mr/def ::honeysql-expr
   "A Honey SQL 2 expression: a literal value, a column/identifier keyword, a `TypedHoneySQLForm` wrapping another
@@ -434,7 +444,7 @@
    :boolean
    nil?
    ms/TemporalInstant
-   [:fn {:error/message "::h2x/typed Honey SQL form"} typed?]
+   [:fn {:error/message "::h2x/typed Honey SQL form", :json-schema {:type "array"}} typed?]
    [:sequential [:or [:ref ::honeysql-expr] ::honeysql-clause-opts]]])
 
 (def ^:private raw-type-name-regex

@@ -1,23 +1,22 @@
 (ns metabase.sql-parsing.core
-  "Stateless SQL parsing via sqlglot (Python) and GraalVM Polyglot.
+  "Stateless SQL parsing via GraalPy or Java SQLGlot.
 
-  This module provides dialect-aware SQL parsing with no Metabase dependencies.
+  This module provides dialect-aware SQL parsing. It uses only the Metabase util, settings and analytics modules.
   All functions take strings and return strings/simple data structures.
 
-  API:
-    (referenced-tables sql dialect) → [[catalog schema table] ...]
-    (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+  API (`parser` is a [[parser]], chosen by the caller):
+    (referenced-tables parser dialect sql) → [[catalog schema table] ...]
+    (referenced-fields parser dialect sql) → [[catalog schema table field] ...]
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
-  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
-  owns the JVM-side pre- and post-processing around it."
+  GraalPy or Java implementation); this namespace owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.results :as results]
+   [metabase.sql-parsing.settings :as sql-parsing.settings]
+   [metabase.sql-parsing.shadow :as shadow]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -26,14 +25,66 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parser
-  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
-  []
-  (parser/parser))
+(def ^:private shadow-backends
+  "Each shadow backend, as the backend that answers and the backend compared with it in the background."
+  {:sqlglot-shadow      [:sqlglot :sqlglot-java]
+   :sqlglot-java-shadow [:sqlglot-java :sqlglot]})
+
+(defn- base-parser
+  "The SqlParser for a backend that is not a shadow backend."
+  [backend]
+  (case backend
+    :sqlglot      ((requiring-resolve 'metabase.sql-parsing.graal/parser))
+    :sqlglot-java ((requiring-resolve 'metabase.sql-parsing.sqlglot-java/parser))
+    (throw (ex-info (str "Unknown SQL parser backend; choose :sqlglot (GraalPy), :sqlglot-java, :sqlglot-shadow or"
+                         " :sqlglot-java-shadow.")
+                    {:backend backend}))))
+
+(defn- sample?
+  [_method]
+  (< (rand) (sql-parsing.settings/sql-parsing-shadow-sample-rate)))
+
+(defonce ^:private shadow-difference-recorder
+  (atom nil))
+
+(defn set-shadow-difference-recorder!
+  "Make `f` receive each difference that a shadow backend finds, on the background thread of the comparison. See
+  `record-difference!` in [[metabase.sql-parsing.shadow/parser]] for the argument. Nil removes it."
+  [f]
+  (reset! shadow-difference-recorder f))
+
+(defn- record-shadow-difference!
+  [difference]
+  (when-let [f @shadow-difference-recorder]
+    (f difference)))
+
+(def ^:private shadow-parsers
+  "One parser per shadow backend for the life of the process: each owns the thread pool its comparisons run on."
+  (update-vals shadow-backends
+               (fn [[primary-backend shadow-backend]]
+                 (delay (shadow/parser {:primary-backend    primary-backend
+                                        :primary            (base-parser primary-backend)
+                                        :shadow-backend     shadow-backend
+                                        :shadow             (base-parser shadow-backend)
+                                        :sample?            sample?
+                                        :record-difference! record-shadow-difference!})))))
+
+(def backends
+  "Every backend name [[parser]] accepts."
+  (into #{:sqlglot :sqlglot-java} (keys shadow-backends)))
+
+(defn parser
+  "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy), `:sqlglot-java` (the Java
+  port), or the shadow backends `:sqlglot-shadow` and `:sqlglot-java-shadow`.
+  Every parsing function in this namespace takes it as its first argument."
+  [backend]
+  (if-let [shadow-parser (shadow-parsers backend)]
+    @shadow-parser
+    (base-parser backend)))
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
-  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  backend threw it. Other parser failures (and non-sqlglot exceptions) are false."
   [e]
   (let [data (ex-data e)]
     (boolean (and (:sql-parsing/error data)
@@ -107,10 +158,16 @@
 ;; CPython). We strip them on the JVM side before passing SQL to Python, because GraalPy is too
 ;; slow at character-by-character string scanning over multi-MB inputs.
 
-(def ^:private ^:const strip-threshold
+(def ^:private ^:const literal-list-strip-threshold
   "Strip VALUES clauses with more than this many tuples, and IN lists / ARRAY literals with at
-   least this many commas."
+   least this many commas. Tuned for the fail-soft *analysis* callers, which run in bulk background
+   passes over stored queries: over-stripping is free there (they never need the literal values), so a
+   low cutoff — far below the thousands of items where GraalPy actually OOMs — is the safe default."
   100)
+
+(def ^:private ^:const executable-literal-list-ceiling
+  "The literal-list ceiling for a caller that will execute what it validates."
+  2000)
 
 (def ^:private literal-list-keyword-pattern
   "Pattern to find a VALUES, IN, or ARRAY keyword followed by its opening delimiter."
@@ -200,12 +257,17 @@
 (defn- strip-values-at
   "Decide whether to strip the VALUES clause whose `VALUES (` match spans [match-start, match-end).
    Returns [replacement resume-pos]: a single-row NULL placeholder (column count taken from the
-   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched."
-  [^String sql ^long match-start ^long match-end ^long n]
-  (let [paren-start (dec match-end)
+   first tuple) covering the SQL up to resume-pos, or [nil match-end] to leave the clause untouched.
+
+   Takes `threshold` rather than reading a var so the impersonation validator can ask for its own, much
+   higher ceiling; `n` is derived rather than passed because a fn carrying primitive hints is capped at
+   four args."
+  [^String sql ^long match-start ^long match-end ^long threshold]
+  (let [n           (.length sql)
+        paren-start (dec match-end)
         first-end   (skip-balanced-parens sql paren-start n)
         [tuple-count end-pos] (count-and-skip-tuples sql first-end n)]
-    (if (and (> (long tuple-count) strip-threshold)
+    (if (and (> (long tuple-count) threshold)
              (> first-end (inc paren-start)))
       [(make-null-placeholder (extract-keyword sql match-start match-end)
                               (count-top-level-commas (.substring sql (inc paren-start) (dec first-end))))
@@ -241,20 +303,23 @@
    [match-start, match-end). Returns [replacement resume-pos]: `IN (NULL)` / `ARRAY[NULL]`
    covering the whole list, or [nil match-end] to leave it untouched (resuming just inside the
    delimiter, so a large list nested in a subquery — `IN (SELECT ... WHERE x IN (...))` — is
-   still found)."
-  [^String sql ^long match-start ^long match-end ^long n]
+   still found).
+
+   Takes `threshold` rather than reading a var, and derives `n`, for the reasons
+   on [[strip-values-at]]."
+  [^String sql ^long match-start ^long match-end ^long threshold]
   (let [open-pos         (dec match-end)
-        [commas end-pos] (simple-list-end sql open-pos n)]
-    (if (and commas (>= (long commas) strip-threshold))
+        [commas end-pos] (simple-list-end sql open-pos (.length sql))]
+    (if (and commas (>= (long commas) threshold))
       [(str (extract-keyword sql match-start match-end)
             (if (= (.charAt sql open-pos) \[) "[NULL]" " (NULL)"))
        end-pos]
       [nil match-end])))
 
 (defn- strip-large-literal-lists*
-  "Single pass over `sql`, replacing every oversized literal list — VALUES clause or literal-only
-   IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
-  ^String [^String sql]
+  "Single pass over `sql`, replacing every literal list larger than `threshold` — VALUES clause
+   or literal-only IN list — with a NULL placeholder. Returns `sql` itself when nothing was stripped."
+  ^String [^String sql ^long threshold]
   (let [matcher (re-matcher literal-list-keyword-pattern sql)
         n       (.length sql)]
     (if-not (.find matcher)
@@ -269,8 +334,8 @@
                   match-end   (.end matcher)
                   [replacement resume] (let [ch (.charAt sql match-start)]
                                          (if (or (= ch \V) (= ch \v))
-                                           (strip-values-at sql match-start match-end n)
-                                           (strip-list-at sql match-start match-end n)))]
+                                           (strip-values-at sql match-start match-end threshold)
+                                           (strip-list-at sql match-start match-end threshold)))]
               (if replacement
                 (-> sb (.append sql (int i) (int match-start)) (.append ^String replacement))
                 (.append sb sql (int i) (int resume)))
@@ -279,24 +344,29 @@
                      (.find matcher (int resume))))))))))
 
 (defn strip-large-literal-lists
-  "Replace large literal lists with NULL placeholders: VALUES clauses with more than
-   [[strip-threshold]] tuples become a single-row NULL tuple (preserving the column count from the
-   first tuple), and simple IN lists / ARRAY literals — numbers, single-quoted strings, and
-   VALUES-style tuples of them — with at least [[strip-threshold]] commas become `IN (NULL)` /
-   `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+  "Replace large literal lists with NULL placeholders: VALUES clauses with more than `threshold`
+   tuples become a single-row NULL tuple (preserving the column count from the first tuple), and simple
+   IN lists / ARRAY literals — numbers, single-quoted strings, and VALUES-style tuples of them — with at
+   least `threshold` commas become `IN (NULL)` / `ARRAY[NULL]`. All surrounding SQL structure is preserved.
+   `threshold` defaults to [[literal-list-strip-threshold]] (the analysis default).
 
    This runs on the JVM side (fast) before passing SQL to GraalPy (slow at char scanning).
    On any error, returns the original SQL unchanged so parsing can proceed normally.
 
-   Best-effort by design: stripping only feeds fail-soft analysis, and execution paths restore the
-   original SQL when anything was stripped ([[is-single-stmt-of-type?]]), so edge cases like
-   keyword-shaped text inside string literals or comments are deliberately not guarded against."
-  ^String [^String sql]
-  (try
-    (strip-large-literal-lists* sql)
-    (catch Exception e
-      (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
-      sql)))
+   Best-effort by design: stripping feeds fail-soft *analysis* (lineage, referenced tables/fields, returned
+   columns), so edge cases like keyword-shaped text inside string literals or comments are deliberately not
+   guarded against. A caller that needs its answer to hold for the string it goes on to run must NOT use
+   the rewrite: [[validate-executable-stmt]] and [[classify-stmt]] parse the original SQL and call this
+   only to find out whether a list is over their ceiling, refusing outright when it is rather than
+   answering about a rewrite — those same unguarded edge cases are what make a rewrite unsound to reason
+   about."
+  (^String [^String sql] (strip-large-literal-lists sql literal-list-strip-threshold))
+  (^String [^String sql ^long threshold]
+   (try
+     (strip-large-literal-lists* sql threshold)
+     (catch Exception e
+       (log/warnf "Error stripping large literal lists, passing SQL through unchanged: %s" (ex-message e))
+       sql))))
 
 ;;; -------------------------------------------------- Public API --------------------------------------------------
 
@@ -308,8 +378,8 @@
 
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
-  [dialect sql]
-  (protocol/referenced-tables (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/referenced-tables parser dialect (strip-large-literal-lists sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -326,71 +396,21 @@
    - Table aliases (returns actual table names)
 
    Examples:
-   (referenced-fields \"postgres\" \"SELECT id FROM users\")
+   (referenced-fields parser \"postgres\" \"SELECT id FROM users\")
    => [[nil nil \"users\" \"id\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
+   (referenced-fields parser \"postgres\" \"SELECT * FROM public.users\")
    => [[nil \"public\" \"users\" \"*\"]]
 
-   (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
+   (referenced-fields parser \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
-  [dialect sql]
-  (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
-
-(defn returned-columns-lineage
-  "Extract column lineage from SQL query, showing which output columns depend on which source columns.
-
-   Returns a vector of [alias pure? [[schema table col]...]] tuples:
-   - alias: The output column name/alias
-   - pure?: Boolean - true if the column is a direct pass-through from a source column
-   - deps: Vector of [schema table column] dependencies
-
-   Requires a schema map of the form:
-   {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
-
-   Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
-   => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
-
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
-   => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
-  [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
-
-(defn validate-query
-  "Validate a SQL query against a schema using sqlglot's qualify optimizer.
-
-   Operates in two modes based on whether a schema is provided:
-
-   **Strict mode** (sqlglot-schema provided):
-   Validates that column and table references exist in the provided schema.
-   Returns errors for unknown tables, unresolved columns, missing table aliases.
-
-   **Permissive mode** (sqlglot-schema is nil or empty):
-   Only checks SQL syntax. Infers schema from query structure.
-   Useful for UDTFs and queries where the schema is unknown.
-
-   Parameters:
-   - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil
-   - sql: The SQL query string to validate
-   - default-table-schema: Default schema name for unqualified table references
-   - sqlglot-schema: Schema map of {schema-name {table-name {column-name type}}},
-                     or nil/empty for permissive mode
-
-   Returns a map with:
-   - If valid: {:status \"ok\"}
-   - If error: {:status \"error\", :type \"...\", :message \"...\", ...}
-
-   Error types (strict mode):
-   - \"unknown_table\": Table not found in schema
-   - \"column_not_resolved\": Column not found (includes :column key)
-   - \"invalid_expression\": Syntax/parse error
-   - \"unhandled\": Other errors"
-  [dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
+  [parser dialect sql]
+  (protocol/referenced-fields parser dialect (strip-large-literal-lists sql)))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
+
+   Used by Workspaces to determine if automatic checkpoints can be inserted.
 
    Parameters:
    - dialect: SQLGlot dialect string (e.g., \"postgres\", \"mysql\"), or nil for default
@@ -401,13 +421,13 @@
    - :reason - string explaining why query is not simple (when false)
 
    Examples:
-   (simple-query? \"postgres\" \"SELECT * FROM users\")
+   (simple-query? parser \"postgres\" \"SELECT * FROM users\")
    => {:is_simple true}
 
-   (simple-query? nil \"SELECT * FROM users LIMIT 10\")
+   (simple-query? parser nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
-  [dialect sql]
-  (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/simple-query parser dialect (strip-large-literal-lists sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -424,98 +444,29 @@
    - table-name: The target table name (already formatted/quoted)
 
    Returns: Modified SQL string with INTO clause"
-  [dialect sql table-name]
-  (protocol/add-into-clause (parser) dialect sql table-name))
+  [parser dialect sql table-name]
+  (protocol/add-into-clause parser dialect sql table-name))
 
-(defn- convert-field-type
-  "Convert field type string (snake_case) to keyword (kebab-case)."
-  [type-str]
-  (-> type-str
-      (str/replace "_" "-")
-      keyword))
+(defn add-insert-clause
+  "Make an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO.
 
-(defn- convert-error
-  "Convert Python error format to Metabase lib error format."
-  [error]
-  (let [;; Get type from various possible key formats
-        err-type (or (:type error) (get error "type"))
-        ;; Get name/table/column from various possible formats
-        table-name (or (:table error) (get error "table"))
-        column-name (or (:column error) (get error "column") (:name error) (get error "name"))]
-    (cond
-      ;; Python frozenset came through as vector of pairs: [["type" "syntax_error"]]
-      (and (sequential? error) (sequential? (first error)))
-      (let [m (into {} error)
-            err-type (get m "type")]
-        (case err-type
-          "syntax_error" {:type :syntax-error}
-          "missing_column" {:type :missing-column :name (get m "column")}
-          "missing_table_alias" {:type :missing-table-alias :name (get m "table")}
-          {:type (keyword err-type)}))
+   Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+   Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
 
-      ;; Handle string or keyword types
-      (or (string? err-type) (keyword? err-type))
-      (case (if (keyword? err-type) (name err-type) err-type)
-        ("syntax-error" "syntax_error") {:type :syntax-error}
-        ("missing-column" "missing_column") {:type :missing-column :name column-name}
-        ("missing-table-alias" "missing_table_alias") {:type :missing-table-alias :name table-name}
-        {:type (keyword err-type)})
+   Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`.
 
-      :else error)))
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
+   - sql: The SELECT SQL query string
+   - table-name: The target table name (already formatted/quoted)
 
-(defn- convert-field
-  "Convert a field spec from Python format to Clojure format."
-  [field]
-  (when field
-    (let [field-type (some-> (or (:type field) (get field "type")) convert-field-type)]
-      (case field-type
-        :single-column
-        {:type :single-column
-         :column (or (:column field) (get field "column"))
-         :alias (or (:alias field) (get field "alias"))
-         :source-columns (mapv (fn [scope]
-                                 (mapv convert-field scope))
-                               (or (:source-columns field)
-                                   (:source_columns field)
-                                   (get field "source_columns")
-                                   []))}
+   Returns: The INSERT INTO SQL string"
+  [parser dialect sql table-name]
+  (protocol/add-insert-clause parser dialect sql table-name))
 
-        :all-columns
-        {:type :all-columns
-         :table (let [t (or (:table field) (get field "table"))]
-                  (cond-> {}
-                    (or (:table t) (get t "table"))
-                    (assoc :table (or (:table t) (get t "table")))
-                    (or (:schema t) (get t "schema"))
-                    (assoc :schema (or (:schema t) (get t "schema")))
-                    (or (:database t) (get t "database"))
-                    (assoc :database (or (:database t) (get t "database")))
-                    (or (:table-alias t) (:table_alias t) (get t "table_alias"))
-                    (assoc :table-alias (or (:table-alias t) (:table_alias t) (get t "table_alias")))))}
-
-        :custom-field
-        {:type :custom-field
-         :alias (or (:alias field) (get field "alias"))
-         :used-fields (set (map convert-field
-                                (or (:used-fields field)
-                                    (:used_fields field)
-                                    (get field "used_fields")
-                                    [])))}
-
-        :composite-field
-        {:type :composite-field
-         :alias (or (:alias field) (get field "alias"))
-         :member-fields (mapv convert-field
-                              (or (:member-fields field)
-                                  (:member_fields field)
-                                  (get field "member_fields")
-                                  []))}
-
-        :unknown-columns
-        {:type :unknown-columns}
-
-        ;; Fallback - return as-is with type conversion
-        (assoc field :type field-type)))))
+(def ^{:arglists '([cache k compute])} cached-by-identity!
+  "Same as [[results/cached-by-identity!]]."
+  results/cached-by-identity!)
 
 (defn field-references
   "Extract field references from SQL, returning used and returned fields.
@@ -532,20 +483,13 @@
    - :alias - column alias (nil if none)
    - :source-columns - nested list of possible source columns
    - :table - table info (for all-columns)
-   - :used-fields - set of fields used (for custom-field)
    - :member-fields - list of fields (for composite-field)
 
    On timeout, returns an error map instead of throwing, consistent with the
    'fail soft' pattern used for parsing failures."
-  [dialect sql]
+  [parser dialect sql]
   (try
-    (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
-          used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
-          returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
-          errors (or (:errors raw) (get raw "errors") [])]
-      {:used-fields (set (map convert-field used-fields))
-       :returned-fields (vec (map convert-field returned-fields))
-       :errors (set (map convert-error errors))})
+    (results/field-references (protocol/field-references parser dialect (strip-large-literal-lists sql)))
     (catch TimeoutException e
       {:used-fields #{}
        :returned-fields []
@@ -569,50 +513,101 @@
    See sql_tools.py replace_names for details.
 
    Examples:
-   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
+   (replace-names parser \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
-  [dialect sql replacements]
-  (protocol/replace-names (parser) dialect sql replacements))
+  [parser dialect sql replacements]
+  (protocol/replace-names parser dialect sql replacements))
 
-;; Parsing time and memory grow with the length of the SQL, whatever it holds, and the "read-only" check runs on SQL
-;; a user or a model wrote.
+;;; --------------------------------------- Single-statement classification ----------------------------------------
+
+;; Parsing time and memory grow with the length of the SQL, whatever it holds.
 ;; As of 2026-10-10, the densest SQL that fits, a list of about 8,000 one-character items, takes about a second to
 ;; check, and six such checks at once complete on a 1 GB heap. At 60,000 characters one check took 1 to 3 seconds.
-(def ^:private max-read-only-sql-chars
-  "The longest SQL, in characters, that the \"read-only\" check parses."
+(def ^:private ^:const max-gate-sql-chars
+  "The longest SQL, in characters, that [[classify-stmt]] parses. A cheap ceiling on work spent for a
+   caller that is only gating, and whose SQL a user or a model wrote."
   (* 16 1024))
 
-(defn is-single-stmt-of-type?
-  "Validates that a query is a single read statement (SELECT) or a single write statement (INSERT, UPDATE, DELETE)
-   and returns the query reconstructed from the parsed AST. `stmt-type` is \"read\", \"write\", or \"read-only\": a
-   read statement that also holds nothing that writes or locks anywhere in its tree.
-   For \"read-only\", SQL that is not allowed carries a `:reason`, and SQL that is too long or holds a literal list
-   too large to parse whole is refused without being parsed."
-  [dialect sql stmt-type]
-  ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that grows with it.
-  (if (and (= stmt-type "read-only") (< max-read-only-sql-chars (count sql)))
-    {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "too-long"}
-    (let [stripped-sql (strip-large-literal-lists sql)]
-      ;; Stripping does not skip comments, so it can rewrite a second statement into a commented-out list.
-      ;; "read-only" must judge the SQL that will run, and parsing a large list unstripped risks a GraalPy OOM, so it
-      ;; refuses.
-      (if (and (= stmt-type "read-only") (not= sql stripped-sql))
-        {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
-        (let [result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
-                         (perf/update-keys (comp keyword u/->kebab-case-en)))]
-          ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
-          ;; We generally want to use the reconstructed SQL, but if the original SQL had its VALUES/IN
-          ;; literal lists stripped (to avoid GraalPy OOM) then we need to return the original SQL to
-          ;; preserve the values. (#74284)
-          (cond-> result
-            (not= sql stripped-sql) (assoc :sql sql)))))))
+(def ^:private executable-limits
+  "Limits for a caller that will execute the `:sql` the verdict carries — [[validate-executable-stmt]].
 
-(comment
-  (referenced-tables "postgres" "select * from transactions")
+   Such a caller needs the verdict to hold for the exact string it goes on to run, so a known `dialect` is
+   required: `nil` makes SQLGlot parse in its generic dialect and hand back a confident verdict plus a
+   generically-regenerated `:sql`, which is not the string that was checked."
+  {:max-sql-chars        nil
+   :literal-list-ceiling executable-literal-list-ceiling
+   :require-dialect?     true})
 
-  (validate-query "postgres" "SELECT * FROM users" nil)
+(def ^:private gate-limits
+  "Limits for a caller that only reads the verdict and never executes its `:sql` — [[classify-stmt]]."
+  {:max-sql-chars        max-gate-sql-chars
+   :literal-list-ceiling literal-list-strip-threshold
+   :require-dialect?     false})
 
-  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+(defn- unknown
+  "A verdict that `sql` could not be checked, for `reason`."
+  [sql reason]
+  {:verdict :unknown, :reason reason, :sql sql})
+
+(defn- verdict
+  "Turn the parser's raw result for `sql` into a verdict map."
+  [sql raw]
+  (let [{:keys [is-single-stmt? allowed-stmt-type? error reason reason-detail] parsed-sql :sql}
+        (perf/update-keys raw (comp keyword u/->kebab-case-en))]
+    (cond
+      ;; SQL that does not parse is SQL we know nothing about. `:error` carries the parser's message, which
+      ;; a caller may want to word differently from the refusals it *can* explain.
+      error              (assoc (unknown sql "unparseable") :error error)
+      allowed-stmt-type? {:verdict :allowed, :single-stmt? true, :sql parsed-sql}
+      :else              (cond-> {:verdict :disallowed, :single-stmt? (boolean is-single-stmt?)}
+                           reason        (assoc :reason reason)
+                           reason-detail (assoc :detail reason-detail)
+                           parsed-sql    (assoc :sql parsed-sql)))))
+
+(defn- classify-single-stmt
+  "Classify `sql` as a single statement of `stmt-type` for `dialect` with `parser`, spending no more than `limits` allow.
+   Applies `limits` as given; it does not infer them from `stmt-type`."
+  [parser dialect sql stmt-type {:keys [max-sql-chars literal-list-ceiling require-dialect?]}]
+  (cond
+    ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that
+    ;; grows with it.
+    (and max-sql-chars (< (long max-sql-chars) (count sql)))
+    (unknown sql "too-long")
+
+    (and require-dialect? (nil? dialect))
+    (unknown sql "unknown-dialect")
+
+    ;; Stripping is only ever a size guard: if it would collapse a list, parsing that list could OOM the
+    ;; shared JVM, so refuse rather than parse the collapsed form and answer about that instead. Stripping
+    ;; also does not skip comments, so a collapsed list can swallow a second statement into a comment.
+    ;; Under the ceiling nothing is stripped, so we parse exactly the string the caller holds.
+    (not= sql (strip-large-literal-lists sql literal-list-ceiling))
+    (unknown sql "large-literal-list")
+
+    :else
+    (verdict sql (protocol/single-stmt-of-type parser dialect sql stmt-type))))
+
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect`, for a caller that will **execute** the
+  `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or DELETE,
+  `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its tree.
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched
+  for in its original one. See [[executable-limits]] for what that costs, and [[classify-stmt]] for the
+  same question asked by a caller that only needs a verdict."
+  [parser dialect sql stmt-type]
+  (classify-single-stmt parser dialect sql stmt-type executable-limits))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `dialect` (see [[validate-executable-stmt]] for
+  the `stmt-type` values), for a caller that only reads the verdict and never executes its `:sql`.
+
+  Cheaper and more permissive about `dialect` than [[validate-executable-stmt]] — see [[gate-limits]].
+  Do not execute the `:sql` this returns: with no `dialect` it is a generic-dialect regeneration, not the
+  string that was checked."
+  [parser dialect sql stmt-type]
+  (classify-single-stmt parser dialect sql stmt-type gate-limits))
 
 ;;;; Transpile sql
 
@@ -627,6 +622,6 @@
 (defn transpile-sql
   "Transpiles sql string from one dialect to another. An `:error-message` is cleaned of the parser's internals as
   [[parse-error-message]] cleans a parse failure."
-  [sql from-dialect to-dialect]
+  [parser sql from-dialect to-dialect]
   (normalize-transpilation-result
-   (protocol/transpile-sql (parser) sql from-dialect to-dialect)))
+   (protocol/transpile-sql parser sql from-dialect to-dialect)))

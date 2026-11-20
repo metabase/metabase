@@ -2,23 +2,21 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.experimental :as mx]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.defn :as mu.defn]
-   [metabase.util.malli.fn :as mu.fn]))
+   [metabase.util.malli.fn :as mu.fn]
+   [metabase.util.match :as match]))
 
 (defn- deanon-fn-names
   "Walk the form and remove the numeric part in symbols like `symbol12345`."
   [form]
-  (walk/postwalk
-   #(if-some [[_ prefix] (when (symbol? %)
-                           (re-matches #"(.+?)\d+" (str %)))]
-      (symbol prefix)
-      %)
-   form))
+  (match/replace-all form
+    #'symbol? (if-some [[_ prefix] (re-matches #"(.+?)\d+" (str &match))]
+                (symbol prefix)
+                &match)))
 
 (deftest ^:parallel annotated-docstring-test
   (are [fn-tail expected] (= expected
@@ -54,7 +52,7 @@
     (is (=? {:humanized {:x ["should be an int, got: \"3\""]
                          :y ["missing required key, got: nil"]}}
             (try (baz)
-                 (catch Exception e (def eed (ex-data e)) eed)))
+                 (catch Exception e (ex-data e))))
         "when baz returns an invalid form um/defn throws")
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))

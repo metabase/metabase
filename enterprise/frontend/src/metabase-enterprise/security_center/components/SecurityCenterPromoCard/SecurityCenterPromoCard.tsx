@@ -8,6 +8,7 @@ import { NavbarPromoCard } from "metabase/nav/components/NavbarPromoCard";
 import { useSelector } from "metabase/redux";
 import { getPlan, useSetting } from "metabase/settings";
 import { Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 
 import { useListSecurityAdvisoriesQuery } from "../../api";
 import { isAffected } from "../../utils";
@@ -83,7 +84,7 @@ export function SecurityCenterPromoCard() {
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- This only shows for admins
       body={t`Metabase's Security Center can send you alerts via email or Slack immediately about security vulnerabilities.`}
       linkText={t`Set up security alerts`}
-      linkTo="/admin/security-center?open=notifications"
+      linkTo={Urls.securityCenterNotifications()}
       onDismiss={dismiss}
     />
   );

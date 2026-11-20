@@ -5,8 +5,6 @@ summary: Add context to your dashboards with text and heading cards, including f
 
 # Dashboard heading and text cards
 
-Add heading and text cards to your dashboards to label sections, link to other content, display images, and more.
-
 ## Add a heading or text card
 
 To add a heading or text card to a dashboard:

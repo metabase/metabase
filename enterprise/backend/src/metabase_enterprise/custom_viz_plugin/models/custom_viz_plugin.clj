@@ -1,12 +1,14 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
-   [buddy.core.codecs :as codecs]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
-   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
-   [metabase-enterprise.custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
+   [metabase.serialization.core :as serialization]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -32,8 +34,23 @@
    :manifest mi/transform-json
    :bundle   transform-bundle})
 
+(defn- with-bundle-hash
+  "The `row` with `bundle_hash` matching the `bundle` it sets."
+  [row]
+  (cond-> row
+    (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) cache/bytes-hash))))
+
+(t2/define-before-insert :model/CustomVizPlugin
+  [plugin]
+  (with-bundle-hash plugin))
+
+(t2/define-before-update :model/CustomVizPlugin
+  [plugin]
+  (merge plugin (some-> (t2/changes plugin) with-bundle-hash)))
+
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (def non-blob-columns
@@ -42,13 +59,13 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   (some? api/*current-user-id*))
-  ([_model _pk]  (some? api/*current-user-id*)))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (some? api/*current-user-id*))))
 
-(defmethod mi/can-write? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+(methodical/defmethod t2/simple-hydrate [:model/CustomVizPlugin :can_write]
+  [_model k instance]
+  (assoc instance k (boolean api/*is-superuser?*)))
 
 (defmethod mi/can-create? :model/CustomVizPlugin
   [_model _instance]
@@ -59,59 +76,30 @@
   [plugin json-generator]
   (next-method (dissoc plugin :bundle) json-generator))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(defn- bundle->b64 ^String [^bytes b]
-  (some-> b codecs/bytes->b64-str))
+(defmethod events/spec :model/CustomVizPlugin
+  [_model]
+  {:create :event/custom-viz-plugin-create
+   :update :event/custom-viz-plugin-update
+   :delete :event/custom-viz-plugin-delete})
 
-(defn- b64->bundle ^bytes [^String s]
-  (some-> s codecs/b64->bytes))
+(defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
+  {:skip? false})
 
-(defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-               :status :error_message
-               ;; dev-only plugins are never served from another instance
-               :dev_bundle_url]
-   :defaults  {:enabled true}
-   :transform {:bundle     {:export bundle->b64
-                            :import b64->bundle}}})
+(defmethod serialization/spec :model/CustomVizPlugin [_]
+  {:schema        ::custom-viz-plugin.schema/external-custom-viz-plugin
+   :identity      [:identifier]
+   :copy          [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip          [:status :error_message :dev_bundle_url :bundle_hash]
+   :defaults      {:enabled true}
+   :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
+   :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
+   :storage-paths custom-viz-plugin.serialization/storage-paths
+   :before-load   custom-viz-plugin.serialization/before-load
+   :after-load    custom-viz-plugin.serialization/after-load})
 
-(defn- bundle-columns
-  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
-  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
-  reason when it is not. The same checks guard a bundle upload."
-  [{:keys [identifier bundle]}]
-  (try
-    (->> (cache/validate-bundle! bundle)
-         (cache/check-bundle-identifier! identifier)
-         cache/derived-columns)
-    (catch Exception e
-      {:status        :error
-       :error_message (ex-message e)})))
-
-(defmethod serdes/load-insert! "CustomVizPlugin"
-  [_model-name ingested]
-  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
-
-(defmethod serdes/load-update! "CustomVizPlugin"
-  [_model-name ingested {:keys [id]}]
-  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
-  (cache/purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
-
-(defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
-  identifier)
-
-(defmethod serdes/generate-path "CustomVizPlugin" [_ entity]
-  [{:model "CustomVizPlugin"
-    :id    (:identifier entity)
-    :label (:identifier entity)}])
-
-(defmethod serdes/load-find-local "CustomVizPlugin" [path]
-  (let [{:keys [id]} (last path)]
-    (custom-viz-plugin.db/plugin-by-identifier id)))
-
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+(defmethod audit/spec :model/CustomVizPlugin [_model]
+  {:track          [:identifier :display_name :status :enabled :bundle_hash]
+   :track-redacted [:bundle :dev_bundle_url :error_message :icon :manifest :metabase_version]
+   :skip           []})

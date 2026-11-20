@@ -1,5 +1,6 @@
 (ns metabase.usage-metadata.models.source-metric-daily
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,3 +14,8 @@
    :temporal_unit  mi/transform-keyword})
 
 (derive :model/SourceMetricDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceMetricDaily [_model]
+  {:skip? true})

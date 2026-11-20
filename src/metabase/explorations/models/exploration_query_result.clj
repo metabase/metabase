@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.composite :as composite]
    [metabase.explorations.db :as explorations.db]
    [metabase.interestingness.core :as interestingness]
@@ -96,6 +97,17 @@
                       {:status-code 400})))
     (first tokens)))
 
+(defn- composite-resolved-source-ids
+  "The union of every source's resolved source ids, stamped from `dataset-query`, the query the composite row carries.
+  A source with no verified stamp is resolved live."
+  [dataset-query eq-results]
+  (query-perms/stamped-resolved-source-ids
+   dataset-query
+   (query-perms/merge-resolved-source-ids
+    (map (fn [{:keys [sr]}]
+           (query-perms/query->resolved-source-ids (:dataset_query sr) (:resolved_source_ids sr)))
+         eq-results))))
+
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly
   built from multiple `ExplorationQuery` snapshots combined into one — for a single document
@@ -158,7 +170,8 @@
                                    :row_count     (:row_count composite-qp)
                                    ;; Without this the read gate denies the composite to
                                    ;; every non-superuser. See [[composite-data-access-token]].
-                                   :data_access_token (composite-data-access-token eq-results)}))
+                                   :data_access_token (composite-data-access-token eq-results)
+                                   :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))
@@ -180,3 +193,8 @@
             (doseq [{:keys [sr]} eq-results]
               (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationQueryResult [_model]
+  {:skip? true})

@@ -74,14 +74,14 @@ export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
     <Route path={Urls.DATA_APP_URL_SEGMENT} element={<IsAdmin />}>
       <Route lazy={sectionLayout}>
         <Route index lazy={listPage} />
-        <Route path=":name" lazy={overviewPage} />
-        <Route path=":name/questions" lazy={questionsPage} />
-        <Route path=":name/actions" lazy={actionsPage} />
-        <Route path=":name/permissions" lazy={permissionsPage} />
-        <Route path=":name/questions/:cardId" lazy={questionPage} />
+        <Route path=":slug" lazy={overviewPage} />
+        <Route path=":slug/questions" lazy={questionsPage} />
+        <Route path=":slug/actions" lazy={actionsPage} />
+        <Route path=":slug/permissions" lazy={permissionsPage} />
+        <Route path=":slug/questions/:cardId" lazy={questionPage} />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
-            path=":name/questions/:cardId/dependencies"
+            path=":slug/questions/:cardId/dependencies"
             lazy={questionDependenciesPage}
           >
             <Route
@@ -90,15 +90,15 @@ export function getDataStudioDataAppRoutes(IsAdmin: ComponentType) {
             />
           </Route>
         )}
-        <Route path=":name/actions/:actionId" lazy={actionDefinitionPage} />
-        <Route path=":name/actions/:actionId/fields" lazy={actionFieldsPage} />
+        <Route path=":slug/actions/:actionId" lazy={actionDefinitionPage} />
+        <Route path=":slug/actions/:actionId/fields" lazy={actionFieldsPage} />
         <Route
-          path=":name/actions/:actionId/fields/:fieldId"
+          path=":slug/actions/:actionId/fields/:fieldId"
           lazy={actionFieldsPage}
         />
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route
-            path=":name/actions/:actionId/dependencies"
+            path=":slug/actions/:actionId/dependencies"
             lazy={actionDependenciesPage}
           >
             <Route

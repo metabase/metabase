@@ -1,4 +1,7 @@
-import Question from "metabase-lib/v1/Question";
+import {
+  NATIVE_QUERY_TEMPLATE,
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   PythonTransformSourceDraft,
@@ -6,18 +9,16 @@ import type {
 } from "metabase-types/api";
 
 export function getInitialQuerySource(): QueryTransformSource {
-  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "query" });
   return {
     type: "query",
-    query: question.datasetQuery(),
+    query: STRUCTURED_QUERY_TEMPLATE,
   };
 }
 
 export function getInitialNativeSource(): QueryTransformSource {
-  const question = Question.create({ DEPRECATED_RAW_MBQL_type: "native" });
   return {
     type: "query",
-    query: question.datasetQuery(),
+    query: NATIVE_QUERY_TEMPLATE,
   };
 }
 

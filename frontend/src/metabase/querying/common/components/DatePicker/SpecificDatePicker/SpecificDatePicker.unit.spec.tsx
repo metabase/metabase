@@ -56,6 +56,18 @@ describe("SpecificDatePicker", () => {
     jest.setSystemTime(new Date(2020, 0, 1));
   });
 
+  it("should list operators", () => {
+    setup();
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Between",
+      "Before",
+      "On",
+      "After",
+    ]);
+  });
+
   it('should be able to set "on" filter', async () => {
     const { onChange } = setup();
 

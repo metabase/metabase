@@ -10,7 +10,8 @@
    [toucan2.core :as t2]))
 
 (deftest guest-embeds-backfilled-by-the-upgrade-keep-working-test
-  (impl/test-migrations ["3i2jpz" "6m7im9"] [migrate!]
+  ;; open-ended, so the models below read the current schema
+  (impl/test-migrations ["3i2jpz"] [migrate!]
     (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Router"
                                                        :last_name   "Owner"
                                                        :email       "router-owner@metabase.com"

@@ -209,7 +209,7 @@
                  :channel_id   (:id chn)
                  :recipients   [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}]}])]
         (testing "sending to a deactivated channel fails with a human-readable error, without retries (#76802)"
-          (t2/update! :model/Channel (:id chn) {:active false})
+          (t2/update! :model/Channel :id (:id chn) {:active false})
           (let [send-count (atom 0)]
             (with-redefs [channel/send! (fn [& _] (swap! send-count inc))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to deliver"

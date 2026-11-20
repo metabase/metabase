@@ -2,10 +2,7 @@
   "Public API for sql-tools SQL parsing functionality.
 
    This namespace provides parser-agnostic functions that delegate to the
-   configured backend (Macaw or SQLGlot) via multimethods.
-
-   Note: Implementation namespaces (macaw.core, sqlglot.core) are loaded via
-   metabase.sql-tools.init to avoid circular dependencies."
+   configured backend (Macaw or SQLGlot) via multimethods."
   (:require
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.sql-tools.common :as common]
@@ -73,7 +70,8 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl])
+  add-into-clause-impl
+  add-insert-clause-impl])
 
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."
@@ -144,7 +142,7 @@
 
    SECURITY: Replacement values are injected into the SQL AST as identifier names
    without sanitization. Callers MUST ensure replacement values are system-generated
-   (e.g., database metadata). Never pass
+   (e.g., workspace isolation schema names, database metadata). Never pass
    user-controlled input as replacement values."
   ([driver :- [:maybe :keyword]
     sql-string :- :string
@@ -160,7 +158,7 @@
 
 (mu/defn referenced-tables-raw :- [:sequential ::table-spec]
   "Given a driver and SQL string, return table references. With `:fail-on-parse-error?`, propagate
-  SQLGlot parse errors instead of treating them as an empty set of references."
+  parse errors instead of treating them as an empty set of references."
   ([driver :- :keyword
     sql-str :- [:maybe :string]]
    (referenced-tables-raw driver sql-str {}))
@@ -174,6 +172,7 @@
 
 (mu/defn simple-query? :- ::simple-query-result
   "Check if SQL string is a simple SELECT (no LIMIT, OFFSET, or CTEs).
+  Used by Workspaces to determine if automatic checkpoints can be inserted.
 
   Returns a map with:
   - `:is_simple` - boolean indicating if query is simple
@@ -184,8 +183,9 @@
       (interface/simple-query?-impl parser sql-string))))
 
 (mu/defn add-into-clause :- :string
-  "Rewrite a SELECT into a SQL Server `SELECT ... INTO` statement, wrapping each base table in a
-  self-UNION subquery so the created table doesn't inherit a source column's IDENTITY property.
+  "Rewrite a SELECT, or a set operation (UNION, INTERSECT, EXCEPT) whose first query is a SELECT, into a SQL Server
+  `SELECT ... INTO` statement, wrapping each base table in a self-UNION subquery so the created table doesn't inherit a
+  source column's IDENTITY property. A set operation takes the INTO in its first SELECT.
 
   Transforms: 'SELECT * FROM products'
   Into:       'SELECT * INTO \"TABLE\" FROM (SELECT * FROM products UNION ALL SELECT * FROM products WHERE 1 = 0) AS products'
@@ -206,6 +206,21 @@
     (metrics/with-operation-timing [parser "add-into-clause"]
       (interface/add-into-clause-impl parser driver sql table-name))))
 
+(mu/defn add-insert-clause :- :string
+  "Make an INSERT INTO statement that inserts the result of `sql`, a SELECT, into `table-name`. If `sql` has a `WITH`
+  clause, the `WITH` clause goes before `INSERT INTO`.
+
+  Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+  Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
+
+  Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`."
+  [driver :- :keyword
+   sql :- :string
+   table-name :- :string]
+  (let [parser (sql-tools.settings/current-parser-backend)]
+    (metrics/with-operation-timing [parser "add-insert-clause"]
+      (interface/add-insert-clause-impl parser driver sql table-name))))
+
 (defn find-table-or-transform
   "Given a table and schema parsed from a native query, find the matching table or transform.
   Returns {:table table-id} or {:transform transform-id}, or nil."
@@ -217,6 +232,12 @@
   See [[metabase.sql-tools.common/resolve-field]] for details."
   [driver mp col-spec]
   (common/resolve-field driver mp col-spec))
+
+(defn field-candidates
+  "Every candidate column for `col-spec`, a `:single-column` field reference; [[resolve-field]] picks the first.
+  See [[metabase.sql-tools.common/field-candidates]] for details."
+  [driver mp col-spec]
+  (common/field-candidates driver mp col-spec))
 
 (def ^:private TranspilationResult
   [:map
@@ -230,13 +251,43 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+  (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn is-single-stmt-of-type?
-  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+(defn sqlglot-backend
+  "The current backend when it is one of [[metabase.sql-parsing.core/backends]], else `:sqlglot`. Statement checks
+  always parse with sqlglot, so with Macaw selected they use the default sqlglot backend."
+  []
+  (let [backend (sql-tools.settings/current-parser-backend)]
+    (if (sql-parsing/backends backend) backend :sqlglot)))
+
+(defn sqlglot-parser
+  "The sqlglot parser for [[sqlglot-backend]]."
+  []
+  (sql-parsing/parser (sqlglot-backend)))
+
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
+  **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
+  DELETE, `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its
+  tree (see [[read-only-select?]]).
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk the parser
+  running out of memory) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  original one. Only `:verdict :allowed` is permission to proceed.
+
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
+  for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
-  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
+  the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
+  [[validate-executable-stmt]]; do not execute the `:sql` it returns."
+  [driver sql stmt-type]
+  (sql-parsing/classify-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
@@ -246,21 +297,24 @@
   Comments and a trailing semicolon are allowed.
   SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
   literal list too large to parse whole.
-  A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
+  A function this does not name, a user-defined one included, passes when called by its name.
+  Only the database's own permissions stop it.
+  A call through Snowflake's `IDENTIFIER(...)` is refused whatever it names."
   [driver :- :keyword
    sql    :- :string]
-  (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
+  (= :allowed (:verdict (classify-stmt driver sql "read-only"))))
 
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`,
-  `:unicode-identifier`, `:large-literal-list`, `:too-long` and `:unparseable`.
+  `:session-function`, `:external-table`, `:sql-executing-function`, `:dynamic-function-call`,
+  `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`, `:lone-carriage-return`, `:unicode-identifier`,
+  `:large-literal-list`, `:too-long` and `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword
    sql    :- :string]
-  (let [{:keys [allowed-stmt-type? reason reason-detail]} (is-single-stmt-of-type? driver sql "read-only")]
-    (when-not (true? allowed-stmt-type?)
+  (let [{:keys [verdict reason detail]} (classify-stmt driver sql "read-only")]
+    (when-not (= :allowed verdict)
       {:reason (keyword (or reason "unparseable"))
-       :detail reason-detail})))
+       :detail detail})))

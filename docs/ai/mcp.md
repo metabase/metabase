@@ -9,6 +9,8 @@ summary: Connect MCP-compatible AI clients to Metabase to search, explore, and q
 
 Metabase includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI clients connect directly to your Metabase, all scoped to the connecting person's permissions.
 
+The MCP server is available on every Metabase plan. Some controls, like [MCP tools access](./usage-controls.md#mcp-tools-access) and [MCP analytics](#mcp-analytics), require a [Pro or Enterprise plan](https://www.metabase.com/pricing).
+
 ## Connect a client to your Metabase MCP server's URL
 
 Your Metabase's MCP server is served from the `/api/metabase-mcp` endpoint.
@@ -162,6 +164,13 @@ The consent page lists the permission scopes the client is asking for. Each [too
 
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
 
+## MCP requests run with your Metabase permissions
+
+The MCP server runs every request with the Metabase permissions of the person who signed in. In particular, the MCP server applies Metabase's [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md) to every tool call, so an AI client can only see or query what the person using it can see and query in Metabase itself.
+
+On Pro and Enterprise plans, admins can further restrict which MCP functionality is available to each group by configuring [MCP tools access](./usage-controls.md#mcp-tools-access). Permissions for MCP tools access are independent of data and collection permissions (like impersonation or row-level security) - so for example, you can have a group with data permissions that allow SQL queries, but MCP access that forbids it, in which case people in this group will be able to run SQL in Metabase but not through MCP. MCP tools access can only limit access and can't grant additional access beyond what's specified by data, collection, notification, and other permissions.
+
+When first connecting the AI client to the MCP server, people will be asked to approve [permission scopes](#permission-scopes). Here, "permissions" refers to OAuth scopes, not Metabase permissions. Oauth scopes control what the agent is allowed do _in theory_, but they don't grant additional access beyond what's already configured in Metabase.
 ### Using the MCP server when embedding Metabase
 
 {% include plans-blockquote.html feature="Headless access with JWT" %}

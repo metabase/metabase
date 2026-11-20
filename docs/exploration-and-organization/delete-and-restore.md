@@ -1,6 +1,6 @@
 ---
 title: Delete and restore
-summary: You can move questions, dashboards, models, and metrics to Trash where they can be restored or permanently deleted. Deleting items affects related content like dashboards and subscriptions. Other entities in Metabase can be deleted or archived, but won't show up in Trash.
+summary: Move questions, dashboards, models, and metrics to Trash, then restore them or delete them permanently. Other items, like snippets and timelines, don't go to Trash.
 ---
 
 # Delete and restore
@@ -91,11 +91,13 @@ What happens to related items when you delete a dashboard?
 
 What happens to related items when you delete a model?
 
-| Related item                       | In Trash       | Permanently deleted                | Restored       |
-| ---------------------------------- | -------------- | ---------------------------------- | -------------- |
-| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated    |
-| Dashboard                          | Card removed   | Card removed                       | Card restored  |
-| Action                             | Works normally | Deleted                            | Works normally |
+| Related item                       | In Trash       | Permanently deleted                | Restored      |
+| ---------------------------------- | -------------- | ---------------------------------- | ------------- |
+| Question based on deleted question | Works normally | Breaks with `Card not found` error | Reactivated   |
+| Dashboard                          | Card removed   | Card removed                       | Card restored |
+| Action                             | Deleted        | Deleted                            | Not restored  |
+
+Metabase also removes the dashboard buttons that use the model's actions. The same happens when you move the collection that the model is in to the trash. See [Deleting a model deletes its actions](../data-modeling/models/actions/introduction.md#deleting-a-model-deletes-its-actions).
 
 ## Collections
 

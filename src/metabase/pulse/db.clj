@@ -3,8 +3,11 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [metabase.app-db.core :as app-db]
+   [metabase.change-log.core :as change-log]
+   [metabase.collections.listing :as collections.listing]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -12,7 +15,19 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
+
+(mu/defn cards
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select :model/Card :id [:in card-ids])
+    []))
+
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -23,7 +38,7 @@
   (t2/select-one-fn :dataset_query
                     [:model/Card :id :dataset_query :card_schema :type :entity_id
                      :result_metadata :dimensions :dimension_mappings]
-                    card-id))
+                    :id [:auto/param card-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
@@ -95,6 +110,11 @@
   "The id of the Pulse with `pulse-id` if it exists, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/Pulse :id pulse-id))
+
+(mu/defn pulse-id-of-channel
+  "The id of the Pulse of the PulseChannel with `pulse-channel-id`, or nil."
+  [pulse-channel-id :- ms/PositiveInt]
+  (t2/select-one-fn :pulse_id :model/PulseChannel :id [:auto/param pulse-channel-id]))
 
 (mu/defn unarchived-pulse
   "The unarchived Pulse with `pulse-id`, or nil."
@@ -211,7 +231,7 @@
   "Apply `changes` to the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse
    changes  :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse pulse-id changes))
+  (t2/update! :model/Pulse :id pulse-id changes))
 
 (mu/defn update-pulses-for-dashboard!
   "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
@@ -220,10 +240,8 @@
   (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
 
 (mu/defn pulse-cards-for-pulses
-  "The Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order. Excludes
-  archived Cards unless `include-archived?`."
-  [pulse-ids         :- [:sequential ::lib.schema.id/pulse]
-   include-archived? :- :boolean]
+  "The non-archived Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (t2/select
    :model/Card
    {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
@@ -234,7 +252,7 @@
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
                 [:in :p.id pulse-ids]
-                (when-not include-archived? [:= :c.archived false])]
+                [:= :c.archived false]]
     :order-by [[:pc.position :asc]]}))
 
 (mu/defn pulse-card-refs
@@ -332,7 +350,7 @@
   "Apply `changes` to the PulseChannel with `channel-id`."
   [channel-id :- ms/PositiveInt
    changes    :- ::pulse.schema/pulse-channel.update]
-  (t2/update! :model/PulseChannel channel-id changes))
+  (t2/update! :model/PulseChannel :id channel-id changes))
 
 (mu/defn set-pulse-channels-enabled!
   "Set the enabled flag of the PulseChannels of the Pulse with `pulse-id`."
@@ -398,7 +416,10 @@
   running model hooks."
   [channel-id :- ms/PositiveInt
    user-ids   :- [:set ::lib.schema.id/user]]
-  (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids]))
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
+    (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."
@@ -413,7 +434,7 @@
 (defn user-name-and-email
   "The first name, last name, and email of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :first_name :last_name :email] :id [:auto/param user-id]))
 
 (defn users-names-and-emails
   "The first names, last names, and emails of the Users with `user-ids`."
@@ -425,6 +446,16 @@
   [pulse-id]
   (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
 
+(defn pulses-with-ids
+  "The Pulses whose ids are in `pulse-ids`, archived or not."
+  [pulse-ids]
+  (t2/select :model/Pulse :id [:in pulse-ids]))
+
+(defn enabled-pulse-channels
+  "The id, channel type, details, and channel id of the enabled PulseChannels of the Pulse with `pulse-id`."
+  [pulse-id]
+  (t2/select [:model/PulseChannel :id :channel_type :details :channel_id] :pulse_id [:= pulse-id] :enabled true))
+
 (defn pulse-channel-recipient-rows
   "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
   [channel-id]
@@ -433,14 +464,36 @@
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :parameters] :id [:auto/param dashboard-id]))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id [:auto/param dashboard-id]))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
   (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+
+(mu/defn collection-pulse-items :- [:maybe :map]
+  "The query of the Pulses, but the alerts and the dashboard subscriptions, in `collection` that the collection items
+  listing of `opts` holds, nil when `opts` restrict the items to
+  those created by a user, which Pulses do not record."
+  [collection                                        :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select-distinct [:p.id
+                       :p.name
+                       :p.entity_id
+                       :p.collection_position
+                       :p.collection_id
+                       [(h2x/literal "pulse") :model]]
+     :from            [[:pulse :p]]
+     :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+     :where           [:and
+                       [:= :p.collection_id      (:id collection)]
+                       [:= :p.archived           (boolean archived?)]
+                       [:= :p.alert_condition    nil]
+                       [:= :p.dashboard_id nil]
+                       (collections.listing/pinned-state->clause pinned-state :p.collection_position)]}))

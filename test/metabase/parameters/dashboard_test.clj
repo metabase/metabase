@@ -2,13 +2,16 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util.notebook-helpers :as nb]
+   [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
-   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor :as qp]
@@ -87,9 +90,9 @@
                                                                 :type "date/all-options"}]})]
               (is (= "completed" (:status response))))))))))
 
+;; Test for issue #47951: Dashboard filters should show remapped values even when
+;; user has view-data but not create-queries permissions on the target table.
 (deftest ^:synchronized dashboard-remapping-multi-field-permissions-test
-  "Test for issue #47951: Dashboard filters should show remapped values even when
-   user has view-data but not create-queries permissions on the target table."
   (testing "Dashboard parameter remapping with multi-field FK scenario"
     (mt/dataset test-data
       (let [orders-product-id-field-id (mt/id :orders :product_id)
@@ -118,14 +121,13 @@
                                       reviews.product_id products.title]
             (testing "Test parameter remapping for multi-field scenario"
               (mt/with-full-data-perms-for-all-users!
-                (data-perms/disable-perms-cache
-                 (binding [api/*current-user-id*         (mt/user->id :rasta)
-                           qp.perms/*param-values-query* true]
-                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                         parameter (first (:parameters dashboard))]
-                     (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
-                       (is (= [1 "Rustic Paper Wallet"]
-                              (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))))))
+                (binding [api/*current-user-id*         (mt/user->id :rasta)
+                          qp.perms/*param-values-query* true]
+                  (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                        parameter (first (:parameters dashboard))]
+                    (testing "Should get remapped values for parameter with multiple FK fields pointing to same PK"
+                      (is (= [1 "Rustic Paper Wallet"]
+                             (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))))
 
 (deftest ^:synchronized dashboard-remapping-restricted-permissions-test
   ;; Test for issue #47951: Dashboard filters should show remapped values even when
@@ -166,26 +168,22 @@
                     {(mt/id :reviews)  {:perms/create-queries :no}
                      (mt/id :orders)   {:perms/create-queries :no}
                      products-table-id {:perms/create-queries :no}}
-                    (data-perms/disable-perms-cache
-                     ;; Mimicks the API endpoint (required):
-                     (binding [qp.perms/*param-values-query* true]
-                       (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                         (is (= [1 "Rustic Paper Wallet"]
-                                remapped-values)
-                             "we still get the remapped value"))))))
+                    (binding [qp.perms/*param-values-query* true]
+                      (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                        (is (= [1 "Rustic Paper Wallet"]
+                               remapped-values)
+                            "we still get the remapped value")))))
                 (testing "With highly-restricted permissions (view-data is blocked)"
                   (perms.test-util/with-perm-for-group-and-table! (perms-group/all-users) products-table-id
                     :perms/view-data :blocked
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
-                      (data-perms/disable-perms-cache
-                       ;; Mimicks the API endpoint (required):
-                       (binding [qp.perms/*param-values-query* true]
-                         (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                               parameter (first (:parameters dashboard))]
-                           (is (thrown-with-msg?
-                                Exception #"Error executing"
-                                (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))
-                               "Querying fails due to insufficient permissions")))))))))))))))
+                      (binding [qp.perms/*param-values-query* true]
+                        (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                              parameter (first (:parameters dashboard))]
+                          (is (thrown-with-msg?
+                               Exception #"Error executing"
+                               (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))
+                              "Querying fails due to insufficient permissions"))))))))))))))
 
 (deftest ^:synchronized dashboard-remapping-parallel-fks-test
   (testing "two FKs to the same table, same remap, but pointing to different rows (#65838)"
@@ -228,6 +226,462 @@
                                            (keys expected))]
                         (is (= expected actual))))))))))))))
 
+(deftest ^:parallel chain-filter-parallel-fks-test
+  (testing "linked-filter values follow the FK used by the card's join, not an arbitrary FK (#85225)"
+    (mt/dataset avian-singles
+      (let [mp       (mt/metadata-provider)
+            messages (lib.metadata/table mp (mt/id :messages))
+            users-id (mt/id :users :id)
+            text-id  (mt/id :messages :text)
+            rasta-id  1
+            brenda-id 7]
+        (doseq [fk-display-name ["Sender ID" "Receiver ID"]
+                uid             [rasta-id brenda-id]]
+          (testing (format "\ncard joins Users on %s, Sender=%d" fk-display-name uid)
+            (let [card-query (nb/add-join (lib/query mp messages) "Users" fk-display-name "ID")
+                  join-alias (lib/current-join-alias (first (lib/joins card-query 0)))
+                  users-id-col (nb/find-col-with-spec card-query
+                                                      (lib/filterable-columns card-query)
+                                                      "Users" "ID")
+                  text-col     (nb/find-col-with-spec card-query
+                                                      (lib/breakoutable-columns card-query)
+                                                      {:is-main-group true} "Text")
+                  filtered     (-> card-query
+                                   (lib/filter (lib/= users-id-col uid))
+                                   (lib/breakout text-col))
+                  expected     (into #{} (map first) (mt/rows (qp/process-query filtered)))]
+              (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                             :model/Dashboard    {dash-id :id}
+                             {:parameters [{:id        "sender"   :name "Sender" :slug "sender"
+                                            :type      "id"       :sectionId "id"}
+                                           {:id        "text"     :name "Text"   :slug "text"
+                                            :type      "category" :sectionId "string"
+                                            :filteringParameters ["sender"]}]}
+                             :model/DashboardCard {}
+                             {:dashboard_id dash-id
+                              :card_id      card-id
+                              :parameter_mappings
+                              [{:card_id      card-id
+                                :parameter_id "sender"
+                                :target       ["dimension" ["field" users-id {:join-alias join-alias}]]}
+                               {:card_id      card-id
+                                :parameter_id "text"
+                                :target       ["dimension" ["field" text-id nil]]}]}]
+                (binding [api/*current-user-id*         (mt/user->id :rasta)
+                          qp.perms/*param-values-query* true]
+                  (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                        actual   (into #{} (map first)
+                                       (:values (parameters.dashboard/chain-filter
+                                                 dashboard "text" {"sender" uid})))]
+                    (is (= expected actual))))))))))))
+
+(deftest ^:parallel chain-filter-multi-mapping-union-test
+  (testing "a parameter mapped to one base field via two joins unions each mapping's dropdown values (#85225)"
+    (mt/dataset avian-singles
+      (let [mp         (mt/metadata-provider)
+            users      (lib.metadata/table mp (mt/id :users))
+            messages   (lib.metadata/table mp (mt/id :messages))
+            users-id   (mt/id :users :id)
+            text-id    (mt/id :messages :text)
+            rasta-id   1
+            brenda-id  7
+            card-query (-> (lib/query mp users)
+                           (nb/add-join "Messages" "ID" "Sender ID")
+                           (nb/add-join "Messages" "ID" "Receiver ID"))
+            joins          (lib/joins card-query 0)
+            sender-alias   (lib/current-join-alias (first joins))
+            receiver-alias (lib/current-join-alias (second joins))
+            base         (lib/query mp messages)
+            sender-col   (nb/find-col-with-spec base (lib/filterable-columns base)
+                                                {:is-main-group true} "Sender ID")
+            receiver-col (nb/find-col-with-spec base (lib/filterable-columns base)
+                                                {:is-main-group true} "Receiver ID")
+            text-col     (nb/find-col-with-spec base (lib/breakoutable-columns base)
+                                                {:is-main-group true} "Text")]
+        (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id        "owner"    :name "Owner" :slug "owner"
+                                      :type      "id"       :sectionId "id"}
+                                     {:id        "text"     :name "Text"  :slug "text"
+                                      :type      "category" :sectionId "string"
+                                      :filteringParameters ["owner"]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      card-id
+                        :parameter_mappings
+                        [{:card_id      card-id
+                          :parameter_id "owner"
+                          :target       ["dimension" ["field" users-id nil]]}
+                         {:card_id      card-id
+                          :parameter_id "text"
+                          :target       ["dimension" ["field" text-id {:join-alias sender-alias}]]}
+                         {:card_id      card-id
+                          :parameter_id "text"
+                          :target       ["dimension" ["field" text-id {:join-alias receiver-alias}]]}]}]
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard (t2/select-one :model/Dashboard :id dash-id)]
+              (doseq [uid [rasta-id brenda-id]]
+                (testing (format "\nOwner=%d, Text should union sender- and receiver-side values" uid)
+                  (let [expected-q (-> base
+                                       (lib/filter (lib/or (lib/= sender-col uid)
+                                                           (lib/= receiver-col uid)))
+                                       (lib/breakout text-col))
+                        expected   (into #{} (map first) (mt/rows (qp/process-query expected-q)))
+                        actual     (into #{} (map first)
+                                         (:values (parameters.dashboard/chain-filter
+                                                   dashboard "text" {"owner" uid})))]
+                    (is (= expected actual))))))))))))
+
+(deftest ^:parallel chain-filter-nested-card-join-fk-test
+  (testing "parameter mapped to a column that originated from a join inside a nested card follows that FK (#85225)"
+    (mt/dataset avian-singles
+      (let [mp       (mt/metadata-provider)
+            messages (lib.metadata/table mp (mt/id :messages))
+            users-id (mt/id :users :id)
+            text-id  (mt/id :messages :text)
+            rasta-id 1]
+        (doseq [fk-display-name ["Sender ID" "Receiver ID"]]
+          (testing (format "\ninner card joins Users on %s" fk-display-name)
+            (let [inner-q      (nb/add-join (lib/query mp messages) "Users" fk-display-name "ID")
+                  inner-users  (nb/find-col-with-spec inner-q (lib/filterable-columns inner-q) "Users" "ID")
+                  inner-text   (nb/find-col-with-spec inner-q (lib/breakoutable-columns inner-q)
+                                                      {:is-main-group true} "Text")
+                  expected     (into #{} (map first)
+                                     (mt/rows (qp/process-query
+                                               (-> inner-q
+                                                   (lib/filter (lib/= inner-users rasta-id))
+                                                   (lib/breakout inner-text)))))]
+              (mt/with-temp [:model/Card {inner-id :id} {:dataset_query inner-q}]
+                (let [mp'       (lib-be/application-database-metadata-provider (mt/id))
+                      outer-q   (lib/query mp' (lib.metadata/card mp' inner-id))
+                      users-col (m/find-first #(= users-id (:id %)) (lib/filterable-columns outer-q))
+                      ;; FE emits a name-based legacy field ref for a column surfaced from a nested card.
+                      users-ref [:field (:lib/source-column-alias users-col) {:base-type (:base-type users-col)}]]
+                  (mt/with-temp [:model/Card         {card-id :id} {:dataset_query outer-q}
+                                 :model/Dashboard    {dash-id :id}
+                                 {:parameters [{:id        "owner"    :name "Owner" :slug "owner"
+                                                :type      "id"       :sectionId "id"}
+                                               {:id        "text"     :name "Text"  :slug "text"
+                                                :type      "category" :sectionId "string"
+                                                :filteringParameters ["owner"]}]}
+                                 :model/DashboardCard {}
+                                 {:dashboard_id dash-id
+                                  :card_id      card-id
+                                  :parameter_mappings
+                                  [{:card_id      card-id
+                                    :parameter_id "owner"
+                                    :target       ["dimension" users-ref]}
+                                   {:card_id      card-id
+                                    :parameter_id "text"
+                                    :target       ["dimension" ["field" text-id nil]]}]}]
+                    (binding [api/*current-user-id*         (mt/user->id :rasta)
+                              qp.perms/*param-values-query* true]
+                      (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                            actual   (into #{} (map first)
+                                           (:values (parameters.dashboard/chain-filter
+                                                     dashboard "text" {"owner" rasta-id})))]
+                        (is (= expected actual))))))))))))))
+
+(deftest ^:parallel chain-filter-implicit-join-non-pk-target-test
+  (testing "parameter mapping with :source-field reaches a non-PK column through the FK's own target (#85225)"
+    (mt/dataset avian-singles
+      (let [sender-id  (mt/id :messages :sender_id)
+            name-id    (mt/id :users :name)
+            text-id    (mt/id :messages :text)
+            card-query (mt/mbql-query messages)
+            rasta-name "Rasta Toucan"
+            expected   (into #{} (map first)
+                             (mt/rows (mt/process-query
+                                       (mt/mbql-query messages
+                                         {:filter   [:= [:field sender-id nil] 1]
+                                          :breakout [[:field text-id nil]]}))))]
+        (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id        "sender-name" :name "Sender Name" :slug "sender-name"
+                                      :type      "category"    :sectionId "string"}
+                                     {:id        "text"        :name "Text"        :slug "text"
+                                      :type      "category"    :sectionId "string"
+                                      :filteringParameters ["sender-name"]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      card-id
+                        :parameter_mappings
+                        ;; Target is users.name reached via sender_id — a column that is NOT the FK's PK target.
+                        ;; The emitted FK edge must be sender_id → users.id (the FK's own target), not users.name.
+                        [{:card_id card-id :parameter_id "sender-name"
+                          :target ["dimension" ["field" name-id {:source-field sender-id}]]}
+                         {:card_id card-id :parameter_id "text"
+                          :target ["dimension" ["field" text-id nil]]}]}]
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                  actual   (into #{} (map first)
+                                 (:values (parameters.dashboard/chain-filter
+                                           dashboard "text" {"sender-name" rasta-name})))]
+              (is (= expected actual)))))))))
+
+(deftest ^:parallel chain-filter-implicit-join-source-field-test
+  (testing "parameter mapping with :source-field (implicit join) pins the FK so the dropdown follows it (#85225)"
+    (mt/dataset avian-singles
+      (let [users-id   (mt/id :users :id)
+            text-id    (mt/id :messages :text)
+            card-query (mt/mbql-query messages)
+            rasta-id   1]
+        (doseq [[fk-kw fk-id] [[:sender_id   (mt/id :messages :sender_id)]
+                               [:receiver_id (mt/id :messages :receiver_id)]]]
+          (testing (format "\nparameter reaches users.id via %s" fk-kw)
+            (let [expected (into #{} (map first)
+                                 (mt/rows (mt/process-query
+                                           (mt/mbql-query messages
+                                             {:filter   [:= [:field fk-id nil] rasta-id]
+                                              :breakout [[:field text-id nil]]}))))]
+              (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                             :model/Dashboard    {dash-id :id}
+                             {:parameters [{:id        "owner"    :name "Owner" :slug "owner"
+                                            :type      "id"       :sectionId "id"}
+                                           {:id        "text"     :name "Text"  :slug "text"
+                                            :type      "category" :sectionId "string"
+                                            :filteringParameters ["owner"]}]}
+                             :model/DashboardCard {}
+                             {:dashboard_id dash-id
+                              :card_id      card-id
+                              :parameter_mappings
+                              ;; `:source-field` names the FK directly — this is what an FK
+                              ;; click-through in the query builder produces.
+                              [{:card_id      card-id
+                                :parameter_id "owner"
+                                :target       ["dimension" ["field" users-id {:source-field fk-id}]]}
+                               {:card_id      card-id
+                                :parameter_id "text"
+                                :target       ["dimension" ["field" text-id nil]]}]}]
+                (binding [api/*current-user-id*         (mt/user->id :rasta)
+                          qp.perms/*param-values-query* true]
+                  (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                        actual   (into #{} (map first)
+                                       (:values (parameters.dashboard/chain-filter
+                                                 dashboard "text" {"owner" rasta-id})))]
+                    (is (= expected actual))))))))))))
+
+(deftest ^:synchronized chain-filter-cross-card-linked-filter-test
+  (testing "linked filter across cards: constraint's via-path must not dangle from the target card's source table"
+    (mt/dataset test-data
+      (mt/with-full-data-perms-for-all-users!
+        (let [mp             (mt/metadata-provider)
+              orders         (lib.metadata/table mp (mt/id :orders))
+              products-table (lib.metadata/table mp (mt/id :products))
+              people-name    (mt/id :people :name)
+              products-cat   (mt/id :products :category)
+              orders-query   (nb/add-join (lib/query mp orders) "People" "User ID" "ID")
+              join-alias     (lib/current-join-alias (first (lib/joins orders-query 0)))
+              products-query (lib/query mp products-table)]
+          (mt/with-temp [:model/Card         {orders-card-id :id}   {:dataset_query orders-query}
+                         :model/Card         {products-card-id :id} {:dataset_query products-query}
+                         :model/Dashboard    {dash-id :id}
+                         {:parameters [{:id "user" :name "User" :slug "user"
+                                        :type "string/=" :sectionId "string"}
+                                       {:id "cat" :name "Category" :slug "cat"
+                                        :type "string/=" :sectionId "string"
+                                        :filteringParameters ["user"]}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      orders-card-id
+                          :parameter_mappings
+                          [{:card_id      orders-card-id
+                            :parameter_id "user"
+                            :target       ["dimension" ["field" people-name {:join-alias join-alias}]]}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      products-card-id
+                          :parameter_mappings
+                          [{:card_id      products-card-id
+                            :parameter_id "cat"
+                            :target       ["dimension" ["field" products-cat nil]]}]}]
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                    response  (parameters.dashboard/chain-filter dashboard "cat" {"user" "Hudson Borer"})]
+                (is (seq (:values response)))))))))))
+
+(deftest ^:synchronized param->fields-dedupes-entries-test
+  (testing "param->fields returns one entry per distinct (field-id, via-path, fk-pairs) (#85225)"
+    (mt/dataset test-data
+      (let [mp             (mt/metadata-provider)
+            products-table (lib.metadata/table mp (mt/id :products))
+            products-cat   (mt/id :products :category)
+            products-query (lib/query mp products-table)]
+        (mt/with-temp [:model/Card         {card-a :id} {:dataset_query products-query}
+                       :model/Card         {card-b :id} {:dataset_query products-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id "cat" :name "Category" :slug "cat"
+                                      :type "string/=" :sectionId "string"}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id :card_id card-a
+                        :parameter_mappings
+                        [{:card_id card-a :parameter_id "cat"
+                          :target  ["dimension" ["field" products-cat nil]]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id :card_id card-b
+                        :parameter_mappings
+                        [{:card_id card-b :parameter_id "cat"
+                          :target  ["dimension" ["field" products-cat nil]]}]}]
+          (let [dashboard (-> (t2/select-one :model/Dashboard :id dash-id)
+                              (t2/hydrate :resolved-params))
+                param     (get-in dashboard [:resolved-params "cat"])]
+            (is (= [{:field-id products-cat
+                     :op       :=
+                     :options  nil
+                     :via-path nil
+                     :fk-pairs nil}]
+                   (#'parameters.dashboard/param->fields param)))))))))
+
+(deftest ^:synchronized chain-filter-linked-filter-cache-reuse-test
+  (testing "repeated loads of a linked-filter dropdown hit the cache after the first warehouse query (#85225)"
+    (mt/dataset test-data
+      (mt/with-full-data-perms-for-all-users!
+        (let [mp            (mt/metadata-provider)
+              orders        (lib.metadata/table mp (mt/id :orders))
+              orders-qty    (mt/id :orders :quantity)
+              products-cat  (mt/id :products :category)
+              card-query    (nb/add-join (lib/query mp orders) "Products" "Product ID" "ID")
+              join-alias    (lib/current-join-alias (first (lib/joins card-query 0)))]
+          (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                         :model/Dashboard    {dash-id :id}
+                         {:parameters [{:id "cat" :name "Category" :slug "cat"
+                                        :type "string/=" :sectionId "string"}
+                                       {:id "qty" :name "Quantity" :slug "qty"
+                                        :type "number/=" :sectionId "number"
+                                        :filteringParameters ["cat"]}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      card-id
+                          :parameter_mappings
+                          [{:card_id card-id :parameter_id "cat"
+                            :target  ["dimension" ["field" products-cat {:join-alias join-alias}]]}
+                           {:card_id card-id :parameter_id "qty"
+                            :target  ["dimension" ["field" orders-qty nil]]}]}]
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard  (t2/select-one :model/Dashboard :id dash-id)
+                    orig       (mt/original-fn #'chain-filter/unremapped-chain-filter)
+                    call-count (atom 0)]
+                (mt/with-dynamic-fn-redefs [chain-filter/unremapped-chain-filter
+                                            (fn [& args]
+                                              (swap! call-count inc)
+                                              (apply orig args))]
+                  (dotimes [_ 3]
+                    (parameters.dashboard/chain-filter dashboard "qty" {"cat" "Gizmo"}))
+                  (is (= 1 @call-count)))))))))))
+
+(deftest ^:synchronized chain-filter-search-linked-filter-cache-reuse-test
+  (testing "repeated searches on a linked-filter dropdown hit the cache after the first warehouse query (#85225)"
+    (mt/dataset test-data
+      (mt/with-full-data-perms-for-all-users!
+        (let [mp           (mt/metadata-provider)
+              orders       (lib.metadata/table mp (mt/id :orders))
+              orders-qty   (mt/id :orders :quantity)
+              products-cat (mt/id :products :category)
+              card-query   (nb/add-join (lib/query mp orders) "Products" "Product ID" "ID")
+              join-alias   (lib/current-join-alias (first (lib/joins card-query 0)))]
+          (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                         :model/Dashboard    {dash-id :id}
+                         {:parameters [{:id "qty" :name "Quantity" :slug "qty"
+                                        :type "number/=" :sectionId "number"}
+                                       {:id "cat" :name "Category" :slug "cat"
+                                        :type "string/=" :sectionId "string"
+                                        :filteringParameters ["qty"]}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      card-id
+                          :parameter_mappings
+                          [{:card_id card-id :parameter_id "qty"
+                            :target  ["dimension" ["field" orders-qty nil]]}
+                           {:card_id card-id :parameter_id "cat"
+                            :target  ["dimension" ["field" products-cat {:join-alias join-alias}]]}]}]
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard  (t2/select-one :model/Dashboard :id dash-id)
+                    orig       (mt/original-fn #'chain-filter/unremapped-chain-filter)
+                    call-count (atom 0)]
+                (mt/with-dynamic-fn-redefs [chain-filter/unremapped-chain-filter
+                                            (fn [& args]
+                                              (swap! call-count inc)
+                                              (apply orig args))]
+                  ;; Populate the cache via the plain /values path — search never populates on its own,
+                  ;; it only reads entries the plain path has already materialized.
+                  (parameters.dashboard/chain-filter dashboard "cat" {"qty" 2})
+                  (reset! call-count 0)
+                  (dotimes [_ 3]
+                    (parameters.dashboard/chain-filter dashboard "cat" {"qty" 2} "Giz"))
+                  (is (= 0 @call-count)))))))))))
+
+(deftest ^:synchronized chain-filter-remapping-ignores-unrelated-join-test
+  (testing "FK remapping on a receiver follows the receiver FK, not the card's sender join (#85225)"
+    (mt/dataset avian-singles
+      (let [mp          (mt/metadata-provider)
+            messages    (lib.metadata/table mp (mt/id :messages))
+            receiver-id (mt/id :messages :receiver_id)
+            name-id     (mt/id :users :name)
+            card-query  (nb/add-join (lib/query mp messages) "Users" "Sender ID" "ID")
+            expected    (into #{} (mt/rows (mt/process-query
+                                            (mt/mbql-query messages
+                                              {:breakout [[:field receiver-id nil]
+                                                          [:field name-id {:source-field receiver-id}]]}))))]
+        (mt/with-column-remappings [messages.receiver_id users.name]
+          (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                         :model/Dashboard    {dash-id :id}
+                         {:parameters [{:id "receiver" :name "Receiver" :slug "receiver"
+                                        :type "id" :sectionId "id"}]}
+                         :model/DashboardCard {}
+                         {:dashboard_id dash-id
+                          :card_id      card-id
+                          :parameter_mappings
+                          [{:card_id card-id :parameter_id "receiver"
+                            :target  ["dimension" ["field" receiver-id nil]]}]}]
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                    actual   (into #{} (:values (parameters.dashboard/chain-filter dashboard "receiver" {})))]
+                (is (= expected actual))))))))))
+
+(deftest ^:parallel target->via-path-condition-shapes-test
+  (testing "target->via-path matches by alias, so condition operand order doesn't matter"
+    (mt/dataset avian-singles
+      (let [mp         (mt/metadata-provider)
+            users-id   (mt/id :users :id)
+            messages   (lib.metadata/table mp (mt/id :messages))
+            card-query (-> (lib/query mp messages)
+                           (nb/add-join "Users" "Sender ID" "ID"))
+            target     [:dimension [:field users-id {:join-alias "Users - Sender"}]]
+            expected   [{:lhs {:table (mt/id :messages) :field (mt/id :messages :sender_id)}
+                         :rhs {:table (mt/id :users)    :field (mt/id :users :id)}}]
+            flipped    (update-in card-query [:stages 0 :joins 0 :conditions 0]
+                                  (fn [[op opts a b]] [op opts b a]))
+            non-eq     (assoc-in card-query [:stages 0 :joins 0 :conditions 0 0] :>=)
+            multi      (update-in card-query [:stages 0 :joins 0 :conditions]
+                                  (fn [[eq]] [(lib/fresh-uuids (assoc eq 0 :>=)) eq]))]
+        (testing "\nstandard LHS/RHS ordering"
+          (is (= expected (#'parameters.dashboard/target->via-path card-query target))))
+        (testing "\nflipped operand order"
+          (is (= expected (#'parameters.dashboard/target->via-path flipped target))))
+        (testing "\nnon-equality condition yields no link"
+          (is (nil? (#'parameters.dashboard/target->via-path non-eq target))))
+        (testing "\nmulti-condition join: walker picks the := link past a non-equality condition"
+          (is (= expected (#'parameters.dashboard/target->via-path multi target))))))))
+
+(deftest ^:parallel target->via-path-cross-stage-string-ref-test
+  (testing "2nd-stage join against a previous-stage result column yields no via-path"
+    (mt/dataset avian-singles
+      (let [mp         (mt/metadata-provider)
+            messages   (lib.metadata/table mp (mt/id :messages))
+            users-id   (mt/id :users :id)
+            card-query (-> (lib/query mp messages)
+                           (nb/add-breakout "Sender ID")
+                           lib/append-stage
+                           (nb/add-join "Users" "Sender ID" "ID"))
+            target     [:dimension [:field users-id {:join-alias "Users"}] {:stage-number 1}]]
+        (is (nil? (#'parameters.dashboard/target->via-path card-query target)))))))
+
 (deftest ^:synchronized dashboard-remapping-conflict-scenarios-test
   ;; Test various scenarios where FK1, FK2, and PK have different remapping configurations.
   ;; This tests the logic in find-common-remapping-target and documents that it was
@@ -235,74 +689,73 @@
   (testing "Remapping conflict resolution scenarios"
     (mt/dataset test-data
       (mt/with-full-data-perms-for-all-users!
-        (data-perms/disable-perms-cache
-         (binding [qp.perms/*param-values-query* true]
-           (let [orders-product-id-field-id  (mt/id :orders :product_id)
-                 reviews-product-id-field-id (mt/id :reviews :product_id)]
-             (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
-                            :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
-                            :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
-                                                                               :name      "Product ID"
-                                                                               :slug      "p1"
-                                                                               :type      "id"
-                                                                               :sectionId "id"
-                                                                               :default   1}]}
-                            :model/DashboardCard {} {:dashboard_id       dashboard-id
-                                                     :card_id            orders-card-id
-                                                     :parameter_mappings [{:card_id      orders-card-id
-                                                                           :parameter_id "p1"
-                                                                           :target       ["dimension" ["field" orders-product-id-field-id nil]]}]}
-                            :model/DashboardCard {} {:dashboard_id       dashboard-id
-                                                     :card_id            reviews-card-id
-                                                     :parameter_mappings [{:card_id      reviews-card-id
-                                                                           :parameter_id "p1"
-                                                                           :target       ["dimension" ["field" reviews-product-id-field-id nil]]}]}]
-               (testing "Scenario 1: FK1→A, FK2→B should return raw value (no common remapping)"
-                 (mt/with-column-remappings [orders.product_id products.title
-                                             reviews.product_id products.category ; Different remapping
-                                             products.id products.title] ; PK remapping (ignored)
-                   (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
-                           parameter       (first (:parameters dashboard))
-                           remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                       (is (= [1] remapped-values)
-                           "Should return raw value when FK remappings conflict")))))
-               (testing "Scenario 2: FK1→A, FK2→A, PK→C should return A (common FK remapping wins)"
-                 (mt/with-column-remappings [orders.product_id products.title
-                                             reviews.product_id products.title ; Same remapping as FK1
-                                             products.id products.category] ; Different PK remapping
-                   (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
-                           parameter       (first (:parameters dashboard))
-                           remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                       (is (= [1 "Rustic Paper Wallet"] remapped-values)
-                           "Should return common FK remapping when FKs agree")))))
-               (testing "Scenario 3: FK1→∅, FK2→A should return raw value (no consensus among FKs)"
-                 ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
-                 (mt/with-column-remappings [reviews.product_id products.title
-                                             products.id products.category]
-                   (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
-                           parameter       (first (:parameters dashboard))
-                           remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                       (is (= [1] remapped-values)
-                           "Should return raw value when only some FKs have remapping")))))
-               (testing "Scenario 4: No remappings at all should return raw value"
-                 ;; No remappings set up
-                 (binding [api/*current-user-id* (mt/user->id :rasta)]
-                   (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
-                         parameter       (first (:parameters dashboard))
-                         remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                     (is (= [1] remapped-values)
-                         "Should return only raw value when no remappings are configured"))))
-               (testing "Scenario 5: Only PK remapping should return raw value (PK ignored)"
-                 (mt/with-column-remappings [products.id products.title]
-                   (binding [api/*current-user-id* (mt/user->id :rasta)]
-                     (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
-                           parameter       (first (:parameters dashboard))
-                           remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
-                       (is (= [1] remapped-values)
-                           "Should return raw value when only PK is remapped (PK ignored)")))))))))))))
+        (binding [qp.perms/*param-values-query* true]
+          (let [orders-product-id-field-id  (mt/id :orders :product_id)
+                reviews-product-id-field-id (mt/id :reviews :product_id)]
+            (mt/with-temp [:model/Card {orders-card-id :id} {:dataset_query (mt/mbql-query orders)}
+                           :model/Card {reviews-card-id :id} {:dataset_query (mt/mbql-query reviews)}
+                           :model/Dashboard {dashboard-id :id} {:parameters [{:id        "p1"
+                                                                              :name      "Product ID"
+                                                                              :slug      "p1"
+                                                                              :type      "id"
+                                                                              :sectionId "id"
+                                                                              :default   1}]}
+                           :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                                    :card_id            orders-card-id
+                                                    :parameter_mappings [{:card_id      orders-card-id
+                                                                          :parameter_id "p1"
+                                                                          :target       ["dimension" ["field" orders-product-id-field-id nil]]}]}
+                           :model/DashboardCard {} {:dashboard_id       dashboard-id
+                                                    :card_id            reviews-card-id
+                                                    :parameter_mappings [{:card_id      reviews-card-id
+                                                                          :parameter_id "p1"
+                                                                          :target       ["dimension" ["field" reviews-product-id-field-id nil]]}]}]
+              (testing "Scenario 1: FK1→A, FK2→B should return raw value (no common remapping)"
+                (mt/with-column-remappings [orders.product_id products.title
+                                            reviews.product_id products.category ; Different remapping
+                                            products.id products.title] ; PK remapping (ignored)
+                  (binding [api/*current-user-id* (mt/user->id :rasta)]
+                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                          parameter       (first (:parameters dashboard))
+                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                      (is (= [1] remapped-values)
+                          "Should return raw value when FK remappings conflict")))))
+              (testing "Scenario 2: FK1→A, FK2→A, PK→C should return A (common FK remapping wins)"
+                (mt/with-column-remappings [orders.product_id products.title
+                                            reviews.product_id products.title ; Same remapping as FK1
+                                            products.id products.category] ; Different PK remapping
+                  (binding [api/*current-user-id* (mt/user->id :rasta)]
+                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                          parameter       (first (:parameters dashboard))
+                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                      (is (= [1 "Rustic Paper Wallet"] remapped-values)
+                          "Should return common FK remapping when FKs agree")))))
+              (testing "Scenario 3: FK1→∅, FK2→A should return raw value (no consensus among FKs)"
+                ;; Set up FK2 with remapping, but leave FK1 without remapping, PK with different remapping
+                (mt/with-column-remappings [reviews.product_id products.title
+                                            products.id products.category]
+                  (binding [api/*current-user-id* (mt/user->id :rasta)]
+                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                          parameter       (first (:parameters dashboard))
+                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                      (is (= [1] remapped-values)
+                          "Should return raw value when only some FKs have remapping")))))
+              (testing "Scenario 4: No remappings at all should return raw value"
+                ;; No remappings set up
+                (binding [api/*current-user-id* (mt/user->id :rasta)]
+                  (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                        parameter       (first (:parameters dashboard))
+                        remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                    (is (= [1] remapped-values)
+                        "Should return only raw value when no remappings are configured"))))
+              (testing "Scenario 5: Only PK remapping should return raw value (PK ignored)"
+                (mt/with-column-remappings [products.id products.title]
+                  (binding [api/*current-user-id* (mt/user->id :rasta)]
+                    (let [dashboard       (t2/select-one :model/Dashboard :id dashboard-id)
+                          parameter       (first (:parameters dashboard))
+                          remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
+                      (is (= [1] remapped-values)
+                          "Should return raw value when only PK is remapped (PK ignored)"))))))))))))
 
 (deftest find-common-remapping-target-test
   (testing "Finding common remapping targets"
@@ -355,19 +808,17 @@
                                               :card_id            card-id
                                               :parameter_mappings [{:card_id      card-id
                                                                     :parameter_id "p1"
-                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :products :category))))]}]}]
         (perms.test-util/with-perms-for-group-and-tables!
           (perms-group/all-users)
           {(mt/id :products) {:perms/create-queries :no}}
-          (data-perms/disable-perms-cache
-           ;; Mimicks the API endpoint (required):
-           (binding [api/*current-user-id*         (mt/user->id :rasta)
-                     qp.perms/*param-values-query* true]
-             (let [dashboard        (t2/select-one :model/Dashboard :id dashboard-id)
-                   {:keys [values]} (parameters.dashboard/param-values dashboard "p1" {})]
-               (is (= #{["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]}
-                      (set values)))))))))))
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard        (t2/select-one :model/Dashboard :id dashboard-id)
+                  {:keys [values]} (parameters.dashboard/param-values dashboard "p1" {})]
+              (is (= #{["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]}
+                     (set values))))))))))
 
 (deftest ^:synchronized remapped-param-value-with-model-card-test
   (testing "remapped id-param values work when the mapped source card is a model (#44231)"
@@ -385,17 +836,16 @@
                                               :card_id            model-id
                                               :parameter_mappings [{:card_id      model-id
                                                                     :parameter_id "p1"
-                                                                    :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                    :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :product_id))))]}]}]
         (mt/with-column-remappings [orders.product_id products.title]
           (mt/with-full-data-perms-for-all-users!
-            (data-perms/disable-perms-cache
-             (binding [api/*current-user-id*         (mt/user->id :rasta)
-                       qp.perms/*param-values-query* true]
-               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                     parameter (first (:parameters dashboard))]
-                 (is (= [1 "Rustic Paper Wallet"]
-                        (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                    parameter (first (:parameters dashboard))]
+                (is (= [1 "Rustic Paper Wallet"]
+                       (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))
 
 (deftest ^:synchronized implicit-fk-pk-name-remapped-value-single-field-test
   (testing "a single-field id param on an FK column resolves via the implicit fk->pk->name remap"
@@ -418,13 +868,12 @@
                                                 :card_id            card-id
                                                 :parameter_mappings [{:card_id      card-id
                                                                       :parameter_id "p1"
-                                                                      :target       [:dimension (lib.convert/->legacy-MBQL
+                                                                      :target       [:dimension (lib.convert/->legacy-MBQL-ref
                                                                                                  (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :orders :user_id))))]}]}]
           (mt/with-full-data-perms-for-all-users!
-            (data-perms/disable-perms-cache
-             (binding [api/*current-user-id*         (mt/user->id :rasta)
-                       qp.perms/*param-values-query* true]
-               (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
-                     parameter (first (:parameters dashboard))]
-                 (is (= [1 person-name]
-                        (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1))))))))))))
+            (binding [api/*current-user-id*         (mt/user->id :rasta)
+                      qp.perms/*param-values-query* true]
+              (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
+                    parameter (first (:parameters dashboard))]
+                (is (= [1 person-name]
+                       (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)))))))))))

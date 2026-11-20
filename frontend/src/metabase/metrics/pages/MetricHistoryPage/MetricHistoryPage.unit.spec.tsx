@@ -10,12 +10,15 @@ import {
   setupEntityRevisionsEndpoint,
   setupMetricEndpoint,
   setupRevertRevisionEndpoint,
+  setupRevertRevisionErrorEndpoint,
 } from "__support__/server-mocks";
 import { setupAuditInfoEndpoint } from "__support__/server-mocks/audit";
 import { setupBookmarksEndpoints } from "__support__/server-mocks/bookmark";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -47,18 +50,25 @@ const RENAMED = createMockRevision({
   is_creation: false,
 });
 
-function setup() {
+type SetupOpts = {
+  revertErrorMessage?: string;
+};
+
+function setup({ revertErrorMessage }: SetupOpts = {}) {
   const card = createMockCard({
     id: CARD_ID,
     type: "metric",
     name: "Count of Orders",
     database_id: SAMPLE_DB_ID,
     table_id: ORDERS_ID,
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-    },
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    }),
   });
   setupDatabaseEndpoints(SAMPLE_DB);
   setupCardEndpoints(card);
@@ -73,11 +83,19 @@ function setup() {
   setupListNotificationEndpoints({ card_id: card.id }, []);
   setupAuditInfoEndpoint({ auditInfo: {} });
   setupEntityRevisionsEndpoint("card", card.id, [RENAMED, CREATED]);
-  setupRevertRevisionEndpoint(CREATED);
+  if (revertErrorMessage) {
+    setupRevertRevisionErrorEndpoint({ message: revertErrorMessage });
+  } else {
+    setupRevertRevisionEndpoint(CREATED);
+  }
 
   renderWithProviders(
     <Route path="/metric/:cardId/history" element={<MetricHistoryPage />} />,
-    { withRouter: true, initialRoute: `/metric/${CARD_ID}/history` },
+    {
+      withRouter: true,
+      withUndos: true,
+      initialRoute: `/metric/${CARD_ID}/history`,
+    },
   );
 }
 
@@ -97,6 +115,23 @@ describe("MetricHistoryPage", () => {
         true,
       ),
     );
+    const call = fetchMock.callHistory.lastCall("path:/api/revision/revert");
+    expect(await call?.request?.json()).toEqual({
+      entity: "card",
+      id: CARD_ID,
+      revision_id: CREATED.id,
+    });
+  });
+
+  it("shows the backend message when a revert fails (UXW-310)", async () => {
+    setup({ revertErrorMessage: "Cannot revert: missing metric" });
+
+    const list = await screen.findByTestId("saved-question-history-list");
+    await userEvent.click(within(list).getByTestId("question-revert-button"));
+
+    expect(
+      await screen.findByText("Cannot revert: missing metric"),
+    ).toBeInTheDocument();
     const call = fetchMock.callHistory.lastCall("path:/api/revision/revert");
     expect(await call?.request?.json()).toEqual({
       entity: "card",

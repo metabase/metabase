@@ -1,10 +1,11 @@
 ---
 title: Troubleshooting notifications
+summary: Fix alerts and dashboard subscriptions that fail to send.
 ---
 
 # Troubleshooting notifications
 
-Metabase is failing to send notifications like alerts or dashboard subscriptions.
+## Long-running queries block the notification queue
 
 **Root cause:**
 

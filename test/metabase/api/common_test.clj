@@ -26,7 +26,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false false nil false) vals first)
+             "Content-Security-Policy"           (str (-> (@#'mw.security/content-security-policy-header nil false false nil false false) vals first)
                                                       " frame-ancestors 'none';")
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
@@ -162,13 +162,13 @@
 (deftest query-check-returns-object-when-user-has-query-permissions-test
   (testing "query-check returns object when user has query permissions"
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-query? (constantly true)]
+      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly true)]
         (is (= card (api/query-check card)))))))
 
 (deftest query-check-throws-403-when-user-lacks-query-permissions-test
   (testing "query-check throws 403 when user lacks query permissions"
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-query? (constantly false)]
+      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly false)]
         (is (thrown-with-msg? ExceptionInfo #"permissions"
                               (api/query-check card)))))))
 

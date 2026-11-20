@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { Children, type ReactNode } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";

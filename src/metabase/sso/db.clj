@@ -35,6 +35,14 @@
    provider :- :string]
   (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
 
+(mu/defn used-password-exists?
+  "Whether the User with `user-id` has a `password` AuthIdentity that has been used to log in."
+  [user-id :- ::lib.schema.id/user]
+  (t2/exists? :model/AuthIdentity
+              :user_id      user-id
+              :provider     "password"
+              :last_used_at [:not= nil]))
+
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
   [user-id :- ::lib.schema.id/user]

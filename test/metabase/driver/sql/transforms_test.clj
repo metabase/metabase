@@ -258,7 +258,7 @@
     (mt/with-premium-features #{:transforms-basic}
       (testing "a target name containing special characters is created and its rows round-trip"
         (transforms.tu/with-transform-cleanup! [target {:type     :table
-                                                        :schema   (t2/select-one-fn :schema :model/Table (mt/id :venues))
+                                                        :schema   (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
                                                         :name     "qcq_a\\`b"
                                                         :database (mt/id)}]
           (let [expected (venues-row-count)
@@ -267,7 +267,7 @@
                           :transform-type :table
                           :conn-spec      (driver/connection-spec driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                           :query          (transforms-base.u/compile-source
-                                           {:source {:type "query" :query (venues-source-query)} :target target} nil)
+                                           {:source {:type :query :query (venues-source-query)} :target target} nil)
                           :output-schema  (:schema target)
                           :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
             (driver/run-transform! driver/*driver* details {})
@@ -282,12 +282,12 @@
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
                          :bigquery-cloud-sdk :redshift :snowflake)
     (mt/with-premium-features #{:transforms-basic}
-      (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
+      (let [schema  (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
             written (venues-row-count)]
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema
                                                         :name "ctas_rows_affected_probe"
                                                         :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (venues-source-query)}
+          (let [transform {:source {:type :query :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (lib.metadata/database (mt/metadata-provider))
@@ -306,10 +306,10 @@
   ;; goes through `compile-insert`. No exclusions — a failing driver also undercounts INSERTs.
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms-basic}
-      (let [schema  (t2/select-one-fn :schema :model/Table (mt/id :venues))
+      (let [schema  (t2/select-one-fn :schema :model/Table :id (mt/id :venues))
             written (venues-row-count)]
         (transforms.tu/with-transform-cleanup! [target {:type :table :schema schema :name "insert_rows_affected_probe" :database (mt/id)}]
-          (let [transform {:source {:type "query" :query (venues-source-query)}
+          (let [transform {:source {:type :query :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
                            :database       (lib.metadata/database (mt/metadata-provider))
@@ -358,7 +358,7 @@
         ;; `rnq_a_b`, so the rename lands on a different table instead of failing
         (doseq [dst ["rnq_a`b\\" "rnq-a-b"]]
           (testing (str "renaming a table to " (pr-str dst) " keeps it as a single queryable table")
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+            (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))
                   src    (str "rnq_src_" (subs (str (random-uuid)) 0 8))]
               (try
                 (driver/create-table! driver/*driver* (mt/id) (keyword schema src)

@@ -2,6 +2,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -12,6 +13,8 @@
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
@@ -194,3 +197,8 @@
   [database-id]
   (model-persistence.db/ready-deletable-persisted-infos! database-id (default-persistent-info-state))
   (ready-unpersisted-models! database-id))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/PersistedInfo [_model]
+  {:skip? false})

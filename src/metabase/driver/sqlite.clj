@@ -71,7 +71,8 @@
                               :database-routing                       true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -176,6 +177,11 @@
                  (sample-database? details))
     (check-db-file! details))
   nil)
+
+;; `:db` is a file path, not part of a URL
+(defmethod driver/url-building-detail-keys :sqlite
+  [driver]
+  (remove #{:db} ((get-method driver/url-building-detail-keys :default) driver)))
 
 (defmethod driver/can-connect? :sqlite
   [driver details]
@@ -308,18 +314,23 @@
                                   :limit  1}))
 
 (defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
-  [_driver conn-spec & _options]
-  ;; SQLite has no per-user privileges; allow SELECT on all tables and views
-  (let [rows (jdbc/query conn-spec ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"])]
-    (map (fn [{:keys [table]}]
-           {:role   nil
-            :schema nil
-            :table  table
-            :select true
-            :insert true
-            :update true
-            :delete true})
-         rows)))
+  [driver conn-spec & _options]
+  ;; SQLite has no per-user privileges. Every table and view is readable, and a write works or fails for the whole
+  ;; file, by the mode the connection was opened in.
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver conn-spec nil
+   (fn [^Connection conn]
+     (let [writable? (not (.isReadOnly conn))]
+       (mapv (fn [{:keys [table]}]
+               {:role   nil
+                :schema nil
+                :table  table
+                :select true
+                :insert writable?
+                :update writable?
+                :delete writable?})
+             (jdbc/query {:connection conn}
+                         ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"]))))))
 
 (defn- ->date [& args]
   (-> (into [:date] args)
@@ -337,10 +348,6 @@
   [:strftime (h2x/literal format-str) expr])
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
-
-(defmethod sql.qp/use-ctes-for-stages? :sqlite
-  [_driver]
-  true)
 
 ;; SQLite stores datetimes as text and the QP wraps datetime literals in `DATETIME(...)` (space-separated),
 ;; so raw column reads (T-separated) don't compare equal to those literals. Wrap only when we can

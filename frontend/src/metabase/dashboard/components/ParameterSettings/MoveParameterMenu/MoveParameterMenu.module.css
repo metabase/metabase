@@ -28,18 +28,3 @@
     color: var(--mb-color-text-brand-hover);
   }
 }
-
-.MoveParameterMenuOptionIcon {
-  color: var(--mb-color-text-disabled);
-}
-
-.MoveParameterMenuOptionText {
-  color: var(--mb-color-text-primary);
-}
-
-.MoveParameterMenuOption[aria-selected="true"] {
-  .MoveParameterMenuOptionIcon,
-  .MoveParameterMenuOptionText {
-    color: var(--mb-color-text-selected);
-  }
-}

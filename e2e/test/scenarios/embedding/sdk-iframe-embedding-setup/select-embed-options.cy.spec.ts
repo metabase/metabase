@@ -1,8 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  embedModalEnableEmbedding,
-  mockEmbedJsToDevServer,
-} from "e2e/support/helpers";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   codeBlock,
@@ -36,8 +33,6 @@ describe("OSS", { tags: "@OSS" }, () => {
       H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      mockEmbedJsToDevServer();
     });
 
     it("should show upsell for Allow subscriptions option", () => {
@@ -71,8 +66,6 @@ describe("EE without license", () => {
       H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-
-      mockEmbedJsToDevServer();
     });
 
     it("should show upsell banner", () => {
@@ -100,8 +93,6 @@ describe(suiteTitle, () => {
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
     );
-
-    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {

@@ -3,13 +3,34 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.collections.models.collection :as collection]
+   [metabase.api.common :as api]
+   [metabase.collections.listing :as collections.listing]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.timeline.schema :as timeline.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn synced-timeline-events-clause :- [:fn vector?]
+  "The clause over the TimelineEvent table aliased `alias` selecting the events of the timelines remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  (remote-sync/synced-fk-clause alias :timeline_id :model/Timeline opts))
+
+(mu/defn synced-timelines-clause :- [:fn vector?]
+  "The clause over the Timeline table aliased `alias` selecting the timelines remote sync syncs."
+  [alias :- :keyword
+   opts  :- ::remote-sync.schema/synced-filter-opts]
+  [:and
+   (when-not (:include-archived? opts)
+     [:= (u/qualified-key alias :archived) false])
+   (remote-sync/synced-fk-clause alias :collection_id :model/Collection opts)])
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."
@@ -23,7 +44,7 @@
   (t2/select :model/Timeline
              {:where    [:and
                          [:= :archived archived]
-                         (collection/visible-collection-filter-clause)]
+                         (perms/visible-collections-filter-clause :timeline.collection_id (api/current-user-info) {:root-namespace nil})]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline
@@ -51,7 +72,12 @@
   "Apply `changes` to the Timeline with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
-  (t2/update! :model/Timeline id changes))
+  (t2/update! :model/Timeline :id id changes))
+
+(mu/defn directly-archived-timeline-ids
+  "The ids among `ids` of the Timelines archived on their own rather than along with their Collection."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-set :model/Timeline :id [:in ids] :archived true :archived_directly true))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
@@ -110,9 +136,31 @@
   "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+  (t2/update! :model/TimelineEvent :id id changes))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/TimelineEvent :id id))
+
+(mu/defn synced-timeline-items :- [:sequential ::timeline.schema/timeline]
+  "The Timelines with `ids`, with their Collection and its ancestors, as remote sync lists them."
+  [ids :- [:sequential pos-int?]]
+  (let [root (collection.root/hydrated-root-collection)]
+    (-> (t2/select [:model/Timeline :id :name :collection_id] :id [:in ids])
+        (t2/hydrate [:collection :effective_ancestors])
+        (->> (mapv #(collection.root/hydrate-root-collection % root))))))
+
+(mu/defn collection-timeline-items :- [:maybe :map]
+  "The query of the Timelines in `collection` that the collection items listing of `opts` holds, nil when
+  `opts` restrict the items to those created by a user, which Timelines do not record,
+  and none of them when `opts` restrict the items to the pinned ones, which no Timeline is."
+  [collection                                       :- :map
+   {:keys [archived? pinned-state created-by-id]} :- :map]
+  (when (nil? created-by-id)
+    {:select [:id :collection_id :name [(h2x/literal "timeline") :model] :description :entity_id :icon]
+     :from   [[:timeline :timeline]]
+     :where  [:and
+              (collections.listing/poison-when-pinned-clause pinned-state)
+              [:= :collection_id (:id collection)]
+              [:= :archived (boolean archived?)]]}))

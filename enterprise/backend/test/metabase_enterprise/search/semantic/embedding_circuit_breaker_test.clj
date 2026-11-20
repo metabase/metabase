@@ -6,10 +6,10 @@
    ;; loaded for side effects: the health namespaces register the breaker state-change hooks that
    ;; state-change-persists-affected-checks-test exercises
    [metabase-enterprise.search.entity-retrieval.health]
+   [metabase-enterprise.search.semantic.db :as semantic-search.db]
    [metabase-enterprise.search.semantic.embedding :as semantic.embedding]
    [metabase-enterprise.search.semantic.embedding-health :as embedding-health]
    [metabase-enterprise.search.semantic.health]
-   [metabase-enterprise.search.semantic.models.token-tracking :as token-tracking]
    [metabase-enterprise.search.semantic.settings :as semantic.settings]
    [metabase.analytics-interface.core :as analytics]
    [metabase.health-inspector.core :as health-inspector]
@@ -26,6 +26,16 @@
 (def ^:private test-embedding-model {:provider test-provider})
 
 (defmethod semantic.embedding/embedder-circuit-endpoint test-provider [_] test-endpoint)
+
+(def ^:private misconfigured-provider ::misconfigured)
+
+(defmethod semantic.embedding/embedder-circuit-endpoint misconfigured-provider [_]
+  (throw (ex-info "embedding service misconfigured" {})))
+
+(def ^:private interrupted-provider ::interrupted)
+
+(defmethod semantic.embedding/embedder-circuit-endpoint interrupted-provider [_]
+  (throw (InterruptedException. "cancelled")))
 
 (def ^:private call-through* #'semantic.embedding/call-through-embedder-breaker)
 (def ^:private openai-compatible-get-embeddings-batch* #'semantic.embedding/openai-compatible-get-embeddings-batch)
@@ -62,6 +72,20 @@
                                             :config {:api-key "test-key" :base-url "https://openai.example"}})]
       (is (= "https://openai.example/v1/embeddings"
              (semantic.embedding/embedder-circuit-endpoint {:provider "openai"}))))))
+
+(deftest misconfigured-provider-counts-as-untrusted-test
+  (testing "a provider whose endpoint resolution throws is untrusted, not an error"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                  (constantly {:provider misconfigured-provider})]
+        (is (true? (semantic.embedding/embedder-circuit-untrusted?)))))))
+
+(deftest interruption-during-resolution-propagates-test
+  (testing "an interruption during endpoint resolution propagates, rather than counting as untrusted"
+    (mt/with-temporary-setting-values [semantic-search-embedder-circuit-breaker-enabled true]
+      (mt/with-dynamic-fn-redefs [semantic.embedding/get-configured-model
+                                  (constantly {:provider interrupted-provider})]
+        (is (thrown? InterruptedException (semantic.embedding/embedder-circuit-untrusted?)))))))
 
 (deftest ^:synchronized request-failure-does-not-change-service-failure-history-test
   (testing "request-, model-, and policy-specific failures neither trip the circuit nor reset service-failure history"
@@ -172,30 +196,29 @@
         (is (= :ok (call-through (constantly :ok))))
         (is (= :closed (circuit-state)))))))
 
-(deftest ^:synchronized local-bookkeeping-failure-does-not-trip-breaker-test
-  (testing "a token-tracking failure propagates without being attributed to the embedding service"
-    (with-redefs [semantic.embedding/embedder-circuit-breakers
-                  (atom {"https://example.test/v1/embeddings"
-                         (dh.cb/circuit-breaker
-                          {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
-      (mt/with-dynamic-fn-redefs
-        [http/post                    (constantly {:body (str "{\"usage\":{\"total_tokens\":0},"
-                                                              "\"data\":[{\"embedding\":\"AAAAAA==\"}]}")})
-         analytics/inc!               (constantly nil)
-         token-tracking/record-tokens (fn [& _] (throw (ex-info "appdb unavailable" {})))]
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"appdb unavailable"
-             (#'semantic.embedding/openai-compatible-get-embeddings-batch
-              {:provider       "openai"
-               :endpoint       "https://example.test/v1/embeddings"
-               :api-key        "test-key"
-               :model-name     "test-model"
-               :vector-dimensions 1
-               :texts          ["bird"]
-               :record-tokens? true
-               :snowplow?      false})))
-        (is (= :closed (circuit-state "https://example.test/v1/embeddings")))))))
+(deftest ^:synchronized token-tracking-failure-does-not-fail-embedding-test
+  (testing "a token-tracking failure neither fails the embedding call nor is attributed to the embedding service"
+    (let [endpoint "https://example.test/v1/embeddings"
+          body     "{\"usage\":{\"total_tokens\":0},\"data\":[{\"embedding\":\"AAAAAA==\"}]}"]
+      (with-redefs [semantic.embedding/embedder-circuit-breakers
+                    (atom {endpoint (dh.cb/circuit-breaker
+                                     {:failure-threshold 1, :success-threshold 1, :delay-ms 60000})})]
+        (mt/with-dynamic-fn-redefs
+          [http/post                                 (constantly {:body body})
+           analytics/inc!                            (constantly nil)
+           semantic-search.db/insert-token-tracking! (fn [& _] (throw (ex-info "appdb unavailable" {})))]
+          (is (= 1
+                 (count
+                  (#'semantic.embedding/openai-compatible-get-embeddings-batch
+                   {:provider          "openai"
+                    :endpoint          endpoint
+                    :api-key           "test-key"
+                    :model-name        "test-model"
+                    :vector-dimensions 1
+                    :texts             ["bird"]
+                    :record-tokens?    true
+                    :snowplow?         false}))))
+          (is (= :closed (circuit-state endpoint))))))))
 
 (deftest ^:synchronized malformed-response-trips-breaker-test
   (testing "a successful HTTP response is not a circuit success until its vectors are validated"

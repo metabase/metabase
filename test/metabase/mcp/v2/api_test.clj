@@ -21,7 +21,7 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.oauth-server.test-util :as oauth-server.tu]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
@@ -1257,7 +1257,7 @@
 (defn- orders-query
   "A portable MBQL 5 query over the test data Orders table."
   []
-  (let [table (t2/select-one :model/Table (mt/id :orders))]
+  (let [table (t2/select-one :model/Table :id (mt/id :orders))]
     {:lib/type "mbql/query"
      :stages   [{:lib/type     "mbql.stage/mbql"
                  :source-table [(:name (mt/db)) (:schema table) (:name table)]

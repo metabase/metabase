@@ -6,11 +6,12 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
-   [metabase.models.interface :as mi]
+   [metabase.config.core :as config]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -19,9 +20,9 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
-   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
+   [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -31,8 +32,6 @@
    (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
-
-(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
 
@@ -299,18 +298,14 @@
     (with-collection-hierarchy! [a b]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
         (mt/with-temp [:model/Card _ {:name "Personal Card"
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "Personal Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id personal-collection)}
                        :model/Card _ {:name "A Card"
-                                      :collection_preview false
                                       :collection_id (:id a)}
                        :model/Card _ {:name "B Model"
                                       :type :model
-                                      :collection_preview false
                                       :collection_id (:id b)}]
           (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
                    {:here ["card" "dataset"]}]
@@ -639,11 +634,10 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
+           (testing "Data and Metrics collections are both marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type
-                        collection/library-dashboards-collection-type}
+                        collection/library-metrics-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -691,7 +685,6 @@
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
       (mt/with-temp [:model/Card          {card-id :id}                     {:name               "Birthday Card"
-                                                                             :collection_preview false
                                                                              :collection_id      collection-id-or-nil}
                      :model/Dashboard     {dashboard-id :id}                {:name          "Dine & Dashboard"
                                                                              :collection_id collection-id-or-nil}
@@ -782,7 +775,6 @@
                   :location            nil
                   :name                (:name card)
                   :collection_position nil
-                  :collection_preview  true
                   :database_id         (mt/id)
                   :display             "table"
                   :description         nil
@@ -824,6 +816,35 @@
                            (items! coll-id)
                            (cc))))]
       (is (= (call-count 2) (call-count 6))))))
+
+(deftest collection-items-metadata-query-count-test
+  (testing "GET /api/collection/:id/items/metadata builds each type of item once per query it needs, for a non-admin too"
+    (mt/when-ee-evailable
+     (mt/with-temporary-setting-values [transforms-enabled true]
+       (mt/with-premium-features #{:library :snippet-collections :transforms :transforms-python :content-verification
+                                   :official-collections :data-studio :tenants :remote-sync}
+         (mt/with-temp [:model/Collection {a :id :as coll-a} {:name "A"}
+                        :model/Collection {b :id} {:name "B" :location (collection/children-location coll-a)}
+                        :model/Card _ {:name "Question" :collection_id a}
+                        :model/Card _ {:name "Question in B" :collection_id b}
+                        :model/Dashboard _ {:name "Dashboard" :collection_id a}
+                        :model/Card _ {:name "Root question"}]
+           (perms/revoke-collection-permissions! (perms/all-users-group) a)
+           (perms/revoke-collection-permissions! (perms/all-users-group) b)
+           (perms/grant-collection-read-permissions! (perms/all-users-group) a)
+           (let [query-count (fn [url & params]
+                               (apply mt/user-http-request :rasta :get 200 url params)
+                               (t2/with-call-count [call-count]
+                                 (apply mt/user-http-request :rasta :get 200 url params)
+                                 (call-count)))
+                 a-url       (str "collection/" a "/items/metadata")]
+             (is (= 27 (query-count a-url)))
+             (is (= 41 (query-count a-url :archived true)))
+             (is (= 25 (query-count "collection/root/items/metadata")))
+             (is (= 39 (query-count "collection/root/items/metadata" :archived true)))
+             (doseq [collection-namespace ["snippets" "transforms" "data-actions" "data-apps"]]
+               (is (= 9 (query-count "collection/root/items/metadata" :namespace collection-namespace))
+                   collection-namespace)))))))))
 
 (deftest collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
@@ -975,18 +996,15 @@
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :rasta)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id rasta-card-id
                                                                          :user_id  (mt/user->id :crowberto)
-                                                                         :object   (revision/serialize-instance
-                                                                                    rasta-card rasta-card-id rasta-card)}
+                                                                         :object   (revision/snapshot :model/Card rasta-card)}
                    :model/Revision   _                                  {:model    "Card"
                                                                          :model_id lucky-card-id
                                                                          :user_id  (mt/user->id :lucky)
-                                                                         :object   (revision/serialize-instance
-                                                                                    lucky-card lucky-card-id lucky-card)}]
+                                                                         :object   (revision/snapshot :model/Card lucky-card)}]
       (letfn [(item-names [q]
                 (->> (mt/user-http-request :crowberto :get 200
                                            (str "collection/" (u/the-id collection) "/items")
@@ -1379,7 +1397,7 @@
         (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
-                                                 :collection_preview false,           :display     "table", :entity_id true}
+                                                 :display "table", :entity_id true}
                                                 {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                                 {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
                             (assoc-in [1 :fully_parameterized] true))
@@ -1400,7 +1418,7 @@
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "dashboard")))))
             (is (partial= [(-> {:name               "Birthday Card", :description nil,     :model     "card",
-                                :collection_preview false,           :display     "table", :entity_id true}
+                                :display "table", :entity_id true}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
@@ -1443,6 +1461,22 @@
   ([user coll] (->> (get-items user coll)
                     (map :name)
                     set)))
+
+(deftest transforms-folder-cannot-be-archived-test
+  (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}]
+    (testing "archiving a transforms folder is refused"
+      (is (= "A transforms folder cannot be archived. Delete it instead."
+             (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:archived true})))
+      (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))
+    (testing "a refused archive also leaves the other fields of the request unwritten"
+      (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:name "Renamed" :archived true})
+      (is (= "Folder" (t2/select-one-fn :name :model/Collection :id folder-id))))
+    (testing "an already archived transforms folder can still be unarchived"
+      (t2/update! :model/Collection :id folder-id {:archived             true
+                                                   :archived_directly    true
+                                                   :archive_operation_id (str (random-uuid))})
+      (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived false})
+      (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))))
 
 (deftest collections-are-moved-to-trash-when-archived
   (testing "I can trash something by marking it as archived"
@@ -1552,11 +1586,11 @@
          :model/Revision   revision1                {:model    "Card"
                                                      :model_id card1-id
                                                      :user_id  user2-id
-                                                     :object   (revision/serialize-instance card1 card1-id card1)}
+                                                     :object   (revision/snapshot :model/Card card1)}
          :model/Revision   _revision2               {:model    "Card"
                                                      :model_id card2-id
                                                      :user_id  user1-id
-                                                     :object   (revision/serialize-instance card2 card2-id card2)}]
+                                                     :object   (revision/snapshot :model/Card card2)}]
         ;; need different timestamps and Revision has a pre-update to throw as they aren't editable
         (is (= 1
                (t2/query-one {:update :revision
@@ -1652,19 +1686,19 @@
                      :model/Revision   card-revision1 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   card-revision2 {:model    "Card"
                                                        :model_id card-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance card card-id card)}
+                                                       :object   (revision/snapshot :model/Card card)}
                      :model/Revision   dash-revision1 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}
                      :model/Revision   dash-revision2 {:model    "Dashboard"
                                                        :model_id dashboard-id
                                                        :user_id  failuser-id
-                                                       :object   (revision/serialize-instance dashboard dashboard-id dashboard)}]
+                                                       :object   (revision/snapshot :model/Dashboard dashboard)}]
         (letfn [(at-year [year] (ZonedDateTime/of year 1 1 0 0 0 0 (ZoneId/of "UTC")))]
           (t2/query-one {:update :revision
                          ;; in the past
@@ -1775,7 +1809,7 @@
               [:type :asc-nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
+             (collection-items/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1785,9 +1819,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1797,9 +1831,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-at
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-at
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1811,9 +1845,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1825,9 +1859,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :last-edited-by
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :last-edited-by
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1836,9 +1870,9 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :asc
-                                                       :official-collections-first? true} :postgres)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :asc
+                                                   :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1847,9 +1881,9 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (collections.children/children-sort-clause {:sort-column :model
-                                                       :sort-direction :desc
-                                                       :official-collections-first? true} :mysql)))))
+           (collection-items/children-sort-clause {:sort-column :model
+                                                   :sort-direction :desc
+                                                   :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1859,18 +1893,18 @@
               [:%lower.description :asc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :asc
-                                                         :official-collections-first? true} :postgres))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :asc
+                                                     :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc-nulls-last]
               [:type :asc-nulls-first]
               [:%lower.description :desc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (collections.children/children-sort-clause {:sort-column :description
-                                                         :sort-direction :desc
-                                                         :official-collections-first? true} :postgres))))))
+             (collection-items/children-sort-clause {:sort-column :description
+                                                     :sort-direction :desc
+                                                     :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1931,30 +1965,25 @@
 
 (deftest data-app-collection-items-test
   (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
-    (mt/with-temp [:model/Collection  {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
-                   :model/Collection  {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
-                   :model/Action      {in-app :id}          {:type :query, :name "In app", :collection_id app-coll-id}
-                   :model/QueryAction _                     {:action_id     in-app
-                                                             :database_id   (mt/id)
-                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
-                   :model/Action      {in-folder :id}       {:type :query, :name "In folder", :collection_id actions-coll-id}
-                   :model/QueryAction _                     {:action_id     in-folder
-                                                             :database_id   (mt/id)
-                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}]
-      (binding [mi/*deserializing?* true]
-        (mt/with-temp [:model/Card _ {:name          "App question"
-                                      :collection_id app-coll-id
-                                      :dataset_query (mt/mbql-query venues)}]
-          (let [items (fn [coll-id model]
-                        (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
-                             :data
-                             (map #(select-keys % [:name :model :collection_namespace]))))]
-            (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
-                   (items app-coll-id "action")))
-            (is (= [{:name "App question", :model "card"}]
-                   (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
-            (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
-                   (items actions-coll-id "action")))))))))
+    (mt/with-temp [:model/Collection     {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                   :model/Collection     {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Action         {in-app :id}          {:type :implicit, :name "In app", :collection_id app-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-app, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Action         {in-folder :id}       {:type :implicit, :name "In folder", :collection_id actions-coll-id}
+                   :model/ImplicitAction _                     {:action_id in-folder, :kind "row/update", :table_id (mt/id :venues)}
+                   :model/Card           _                     {:name          "App question"
+                                                                :collection_id app-coll-id
+                                                                :dataset_query (mt/mbql-query venues)}]
+      (let [items (fn [coll-id model]
+                    (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                         :data
+                         (map #(select-keys % [:name :model :collection_namespace]))))]
+        (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+               (items app-coll-id "action")))
+        (is (= [{:name "App question", :model "card"}]
+               (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+        (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+               (items actions-coll-id "action")))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
@@ -1966,7 +1995,7 @@
                                                   (swap! queries conj query)
                                                   (apply real-query query args))]
             (request/with-limit-and-offset 0 0
-              (is (pos? (:total (collections.children/collection-children
+              (is (pos? (:total (collection-items/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
                                  {:archived?                   false
                                   :show-dashboard-questions?   false
@@ -2234,7 +2263,7 @@
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
       (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                          :collection_preview false, :display "table"}
+                          :display "table"}
                          default-item
                          (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2603,9 +2632,9 @@
                      :model/Dashboard {dash-id :id} {:collection_id coll-id}
                      :model/Card {card-id :id} {:collection_id coll-id :dataset_query (mt/mbql-query venues)}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
-        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
-        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest ^:parallel post-move-dashboard-question-candidates-root-collection
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2614,7 +2643,7 @@
                      :model/Card {card-id :id} {:collection_id nil :dataset_query (mt/mbql-query venues)}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (mt/user-http-request :crowberto :post 200 "collection/root/move-dashboard-question-candidates")
-        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest ^:parallel post-move-dashboard-question-candidates-non-admin
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2633,7 +2662,7 @@
                      :model/DashboardCard _ {:dashboard_id dash1-id :card_id card-id}
                      :model/DashboardCard _ {:dashboard_id dash2-id :card_id card-id}]
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
-        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest post-move-dashboard-question-candidates-nonexistent
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2649,7 +2678,7 @@
                      :model/Card {card-id :id} {:collection_id coll-id :archived true}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
-        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest post-move-dashboard-question-candidates-archived-dashboard
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2659,7 +2688,7 @@
                      :model/Card {card-id :id} {:collection_id coll-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll-id))
-        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest post-move-dashboard-question-candidates-different-collection
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2670,7 +2699,7 @@
                      :model/Card {card-id :id} {:collection_id coll2-id}
                      :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
         (mt/user-http-request :crowberto :post 200 (format "collection/%d/move-dashboard-question-candidates" coll2-id))
-        (is (nil? (t2/select-one-fn :dashboard_id :model/Card card-id)))))))
+        (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card-id)))))))
 
 (deftest post-move-dashboard-question-candidates-specific-cards
   (testing "POST /api/collection/:id/move-dashboard-question-candidates"
@@ -2684,17 +2713,17 @@
                      :model/DashboardCard _ {:dashboard_id dash1-id :card_id card2-id}
                      :model/DashboardCard _ {:dashboard_id dash1-id :card_id card3-id}]
         (testing "initially no cards should have dashboard_id set"
-          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
-          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id)))
-          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card3-id))))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card2-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card3-id))))
         (testing "move only card1 and card2"
           (mt/user-http-request :crowberto :post 200
                                 (format "collection/%d/move-dashboard-question-candidates" coll-id)
                                 {:card_ids #{card1-id card2-id}}))
         (testing "verify only specified cards were moved"
-          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card card1-id)))
-          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card card2-id)))
-          (is (nil? (t2/select-one-fn :dashboard_id :model/Card card3-id))))))))
+          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
+          (is (= dash1-id (t2/select-one-fn :dashboard_id :model/Card :id card2-id)))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card3-id))))))))
 
 (deftest move-dashboard-question-candidates-is-atomic-test
   (testing "POST /api/collection/:id/move-dashboard-question-candidates is atomic"
@@ -2705,8 +2734,8 @@
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card1-id}
                    :model/DashboardCard _ {:dashboard_id dash-id :card_id card2-id}]
       ;; Initially no cards should have dashboard_id set
-      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
-      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id)))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card2-id)))
       ;; Mock card/update-card! to fail on the second call
       (mt/with-dynamic-fn-redefs [card/update-card!
                                   (let [call-count (atom 0)]
@@ -2718,8 +2747,8 @@
         (mt/user-http-request :crowberto :post 500
                               (format "collection/%d/move-dashboard-question-candidates" coll-id)))
       ;; Verify neither card was moved (operation rolled back)
-      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card1-id)))
-      (is (nil? (t2/select-one-fn :dashboard_id :model/Card card2-id))))))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card1-id)))
+      (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id card2-id))))))
 
 (deftest ^:synchronized fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
@@ -2765,7 +2794,7 @@
                          :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.collections.models.collection.root/is-root? true}))
             (is (partial= [(-> {:name               "Birthday Card", :description nil, :model "card",
-                                :collection_preview false,           :display     "table"}
+                                :display "table"}
                                default-item
                                (assoc :fully_parameterized true))
                            (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
@@ -2801,7 +2830,6 @@
              [{:name                "Business Card"
                :description         nil
                :collection_position nil
-               :collection_preview  true
                :display             "table"
                :moderated_status    nil
                :entity_id           (:entity_id card)
@@ -2848,7 +2876,7 @@
                                                                                   :param1 {:type         "dimension"
                                                                                            :display-name "Param 1"
                                                                                            :required     true
-                                                                                           :dimension    [:field 1 nil]}}
+                                                                                           :field-id     1}}
                                                                   :query         "select {{param0}}, {{param1}}"}}}]
         (is (partial= [{:name               "Business Card"
                         :entity_id          (:entity_id card)
@@ -2911,7 +2939,7 @@
                                                                                   :param2 {:type         :number
                                                                                            :display-name "Param 2"}
                                                                                   :param3 {:type         "dimension"
-                                                                                           :dimension    [:field (mt/id :venues :id) nil]
+                                                                                           :field-id     (mt/id :venues :id)
                                                                                            :display-name "Param 3"}}
                                                                   :query         "select {{param0}}, {{param1}} [[ , {{param2}} ]] from t {{param3}}"}}}]
         (is (partial= [{:name               "Business Card"
@@ -3209,6 +3237,15 @@
                  (mt/user-http-request :rasta :post 403 "collection"
                                        {:name "Bar" :parent_id (u/the-id lucky-collection)}))))))))
 
+(deftest blank-collection-name-test
+  (testing "a whitespace-only name is refused on create and update"
+    (is (=? {:errors {:name "value must be a non-blank string."}}
+            (mt/user-http-request :crowberto :post 400 "collection" {:name "   "})))
+    (mt/with-temp [:model/Collection {:keys [id]} {}]
+      (is (contains? (:errors (mt/user-http-request :crowberto :put 400 (str "collection/" id) {:name "   "})) :name))
+      (is (=? {:name "Renamed"}
+              (mt/user-http-request :crowberto :put 200 (str "collection/" id) {:name "Renamed"}))))))
+
 (deftest create-collection-different-namespace-test
   (testing "POST /api/collection"
     (testing "\nShould be able to create a Collection in a different namespace"
@@ -3377,7 +3414,24 @@
                          :subject "One of your alerts has stopped working"
                          :body    [{"the question was archived by Crowberto Corv" true}]}
                         (mt/summarize-multipart-single-email email #"the question was archived by Crowberto Corv"))))
-              (= nil (t2/select-one :model/Notification :id (:id notification))))))))))
+              (is (nil? (t2/select-one :model/Notification :id (:id notification)))))))))))
+
+(deftest archive-collection-alerts-of-cards-in-sub-collections-test
+  (testing "PUT /api/collection/:id"
+    (testing "Archiving a collection deletes the alerts of the cards directly in it, not those of cards in its sub-collections"
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Collection {sub-id :id}  {:location (str "/" coll-id "/")}]
+        (notification.tu/with-card-notification
+          [direct {:card {:collection_id coll-id}}]
+          (notification.tu/with-card-notification
+            [nested {:card {:collection_id sub-id}}]
+            (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived true})
+            (is (not (t2/exists? :model/Notification :id (:id direct))))
+            (is (t2/exists? :model/Notification :id (:id nested)))
+            (testing "restoring the collection brings back no alert"
+              (mt/user-http-request :crowberto :put 200 (str "collection/" coll-id) {:archived false})
+              (is (not (t2/exists? :model/Notification :id (:id direct))))
+              (is (t2/exists? :model/Notification :id (:id nested))))))))))
 
 (deftest archive-collection-perms-test
   (testing "PUT /api/collection/:id"
@@ -3487,6 +3541,29 @@
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
 
+(deftest move-collection-permission-matrix-test
+  (testing "PUT /api/collection/:id moves a collection only for who writes it, its descendants and the new parent"
+    (letfn [(move-as [user status granted]
+              (mt/with-non-admin-groups-no-root-collection-perms
+                (mt/with-temp [:model/Collection source     {}
+                               :model/Collection descendant {:location (collection/children-location source)}
+                               :model/Collection target     {}]
+                  (doseq [coll (map {:source source :descendant descendant :target target} granted)]
+                    (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll))
+                  (mt/user-http-request user :put status (str "collection/" (u/the-id source))
+                                        {:parent_id (u/the-id target)})
+                  (t2/select-one-fn :location :model/Collection :id (u/the-id source)))))]
+      (testing "an admin moves it"
+        (is (not= "/" (move-as :crowberto 200 []))))
+      (testing "write access to the collection and its descendants only is refused"
+        (is (= "/" (move-as :rasta 403 [:source :descendant]))))
+      (testing "write access to the new parent only is refused"
+        (is (= "/" (move-as :rasta 403 [:target]))))
+      (testing "write access to the collection and the new parent but not to a descendant is refused"
+        (is (= "/" (move-as :rasta 403 [:source :target]))))
+      (testing "write access to the collection, its descendants and the new parent moves it"
+        (is (not= "/" (move-as :rasta 200 [:source :descendant :target])))))))
+
 (deftest move-collection-with-archived-descendants-test
   (testing "PUT /api/collection/:id"
     (testing "I should be allowed to move a collection if I have perms on it and all non-archived descendants"
@@ -3513,6 +3590,46 @@
         (mt/user-http-request :crowberto :put 500 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
         (is (= location-before
                (t2/select-one-fn :location :model/Collection :id (u/the-id a))))))))
+
+(deftest move-collection-to-namespace-root-checks-that-root-test
+  (testing "PUT /api/collection/:id checks write perms on the root of the collection's own namespace"
+    ;; without EE, snippet collections have no-op perms
+    (when config/ee-available?
+      (mt/with-premium-features #{:snippet-collections}
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-non-admin-groups-no-root-collection-for-namespace-perms "snippets"
+            (let [all-users     (perms/all-users-group)
+                  snippets-root (assoc collection/root-collection :namespace "snippets")]
+              (letfn [(location-after-move [user status archived?]
+                        (mt/with-temp [:model/Collection parent {:namespace "snippets"}
+                                       :model/Collection folder {:namespace "snippets"
+                                                                 :location  (collection/children-location parent)}]
+                          (doseq [coll [parent folder]]
+                            ;; a folder created under a granted root already inherited the grant
+                            (perms/revoke-collection-permissions! all-users coll)
+                            (perms/grant-collection-readwrite-permissions! all-users coll))
+                          (let [url (str "collection/" (u/the-id folder))]
+                            (when archived?
+                              (mt/user-http-request :crowberto :put 200 url {:archived true}))
+                            (mt/user-http-request user :put status url
+                                                  (cond-> {:parent_id nil} archived? (assoc :archived false))))
+                          (t2/select-one-fn :location :model/Collection :id (u/the-id folder))))
+                      (with-root-write [root f]
+                        (perms/grant-collection-readwrite-permissions! all-users root)
+                        (try
+                          (f)
+                          (finally
+                            (perms/revoke-collection-permissions! all-users root))))]
+                (doseq [archived? [false true]]
+                  (testing (if archived? "unarchive to root" "move to root")
+                    (testing "write on the default root but not the snippets root is not enough"
+                      (with-root-write collection/root-collection
+                        #(is (not= "/" (location-after-move :rasta 403 archived?)))))
+                    (testing "write on the snippets root is enough without write on the default root"
+                      (with-root-write snippets-root
+                        #(is (= "/" (location-after-move :rasta 200 archived?)))))
+                    (testing "an admin can do it"
+                      (is (= "/" (location-after-move :crowberto 200 archived?))))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
@@ -3920,18 +4037,18 @@
     (testing "C was NOT deleted"
       (is (t2/exists? :model/Collection :id coll-c-id)))
     (testing "C was moved to the root collection (a's parent)"
-      (is (= "/" (:location (t2/select-one :model/Collection coll-c-id)))))
+      (is (= "/" (:location (t2/select-one :model/Collection :id coll-c-id)))))
     (testing "C is still archived"
-      (is (:archived (t2/select-one :model/Collection coll-c-id))))
+      (is (:archived (t2/select-one :model/Collection :id coll-c-id))))
     (testing "Dashboards in A and B were deleted"
-      (is (not (t2/exists? :model/Dashboard dash-a-id)))
-      (is (not (t2/exists? :model/Dashboard dash-b-id))))
+      (is (not (t2/exists? :model/Dashboard :id dash-a-id)))
+      (is (not (t2/exists? :model/Dashboard :id dash-b-id))))
     (testing "Dashboard in C was not deleted"
-      (is (t2/exists? :model/Dashboard dash-c-id)))
+      (is (t2/exists? :model/Dashboard :id dash-c-id)))
     (testing "Collection D still exists in C"
-      (is (t2/exists? :model/Collection coll-d-id))
+      (is (t2/exists? :model/Collection :id coll-d-id))
       (is (= (str "/" coll-c-id "/")
-             (t2/select-one-fn :location :model/Collection coll-d-id))))))
+             (t2/select-one-fn :location :model/Collection :id coll-d-id))))))
 
 (deftest collection-delete-middle-hoists-survivor
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
@@ -3945,10 +4062,10 @@
       (is (not (t2/exists? :model/Collection :id b-id))))
     (testing "c survives + is still archived"
       (is (t2/exists? :model/Collection :id c-id))
-      (is (:archived (t2/select-one :model/Collection c-id))))
+      (is (:archived (t2/select-one :model/Collection :id c-id))))
     (testing "c hoisted under a"
       (is (= (str "/" a-id "/")
-             (:location (t2/select-one :model/Collection c-id)))))))
+             (:location (t2/select-one :model/Collection :id c-id)))))))
 
 (deftest collection-deep-prune-multiple-ancestors
   (mt/with-temp [:model/Collection {a-id :id :as a} {}
@@ -3962,9 +4079,9 @@
       (is (not (t2/exists? :model/Collection :id a-id)))
       (is (not (t2/exists? :model/Collection :id b-id))))
     (testing "c at root"
-      (is (= "/" (:location (t2/select-one :model/Collection c-id)))))
+      (is (= "/" (:location (t2/select-one :model/Collection :id c-id)))))
     (testing "d still under c"
-      (is (= (str "/" c-id "/") (:location (t2/select-one :model/Collection d-id)))))))
+      (is (= (str "/" c-id "/") (:location (t2/select-one :model/Collection :id d-id)))))))
 
 (deftest collection-multiple-survivor-subtrees-hoist
   (mt/with-temp
@@ -3983,8 +4100,8 @@
     (testing "c leaves survive, both at root and still archived"
       (doseq [cid [c1-id c2-id]]
         (is (t2/exists? :model/Collection :id cid))
-        (is (= "/" (:location (t2/select-one :model/Collection cid))))
-        (is (:archived (t2/select-one :model/Collection cid)))))))
+        (is (= "/" (:location (t2/select-one :model/Collection :id cid))))
+        (is (:archived (t2/select-one :model/Collection :id cid)))))))
 
 (deftest collection-deletion-path-normalization-and-dashboard-cascade
   (mt/with-temp
@@ -3999,11 +4116,11 @@
     (mt/user-http-request :rasta :put 200 (str "/collection/" a-id) {:archived true})
     (mt/user-http-request :crowberto :delete 200 (str "/collection/" a-id))
     (testing "no double slashes; root is exactly '/'"
-      (is (= "/" (:location (t2/select-one :model/Collection c-id)))))
+      (is (= "/" (:location (t2/select-one :model/Collection :id c-id)))))
     (testing "dashboards in deleted nodes gone; dashboard in survivor intact"
-      (is (not (t2/exists? :model/Dashboard da-id)))
-      (is (not (t2/exists? :model/Dashboard db-id)))
-      (is (t2/exists? :model/Dashboard dc-id)))))
+      (is (not (t2/exists? :model/Dashboard :id da-id)))
+      (is (not (t2/exists? :model/Dashboard :id db-id)))
+      (is (t2/exists? :model/Dashboard :id dc-id)))))
 
 (deftest collection-deletion-prohibitions
   (mt/with-temp [:model/Collection {a-id :id} {}]
@@ -4021,16 +4138,20 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
-                     :model/Table {table-id :id} {:collection_id coll-id
+                     :model/Collection {data-coll-id :id} {:name "Data Collection"
+                                                           :type collection/library-data-collection-type}
+                     :model/Table {table-id :id} {:collection_id data-coll-id
                                                   :is_published  true
                                                   :name          "Published Table"}]
         (let [items (:data (mt/user-http-request :crowberto :get 200
-                                                 (str "collection/" coll-id "/items")))]
+                                                 (str "collection/" coll-id "/items")))
+              data-items (:data (mt/user-http-request :crowberto :get 200
+                                                      (str "collection/" data-coll-id "/items")))]
           (testing "Card should appear"
             (is (some #(= card-id (:id %)) items)
                 "Card should be in collection items"))
           (testing "Published table should NOT appear"
-            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
+            (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) data-items))
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
@@ -4112,9 +4233,8 @@
       (testing "rasta cannot see the exploration"
         (let [resp (mt/user-http-request :rasta :get (str "collection/" (:id coll) "/items"))]
           ;; Either the collection itself is forbidden (403) or the items list omits the exploration.
-          (cond
-            (= 403 (:status-code resp)) (is true)
-            :else (is (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
+          (is (or (= 403 (:status-code resp))
+                  (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
       (testing "after granting read, the exploration appears"
         (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
         (let [items (exploration-items-in (:id coll) :user :rasta)]
@@ -4175,11 +4295,11 @@
                      :model/Exploration e    {:name          "Created"
                                               :creator_id    (mt/user->id :crowberto)
                                               :collection_id (:id coll)}]
-        (revision/push-revision! {:entity       :model/Exploration
-                                  :id           (:id e)
-                                  :object       (t2/select-one :model/Exploration :id (:id e))
-                                  :user-id      (mt/user->id :crowberto)
-                                  :is-creation? true})
+        (revisions.tu/push-revision! {:entity       :model/Exploration
+                                      :id           (:id e)
+                                      :object       (t2/select-one :model/Exploration :id (:id e))
+                                      :user-id      (mt/user->id :crowberto)
+                                      :is-creation? true})
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))
                                      (:id e))]
@@ -4208,23 +4328,21 @@
                                               :document       {:type "doc" :content []}}]
         ;; Older Exploration revision by :crowberto, newer Document revision by :rasta.
         ;; Insert directly so we control timestamps — within a `with-temp` transaction
-        ;; the DB-side NOW() is frozen, so the standard push-revision! path would emit
+        ;; the DB-side NOW() is frozen, so a revision recorded by a write would carry
         ;; identical timestamps and tiebreak non-deterministically.
         (let [t (java.time.OffsetDateTime/now)]
           (t2/insert! :model/Revision
                       {:model       "Exploration"
                        :model_id    (:id e)
                        :user_id     (mt/user->id :crowberto)
-                       :object      (revision/serialize-instance :model/Exploration (:id e)
-                                                                 (t2/select-one :model/Exploration :id (:id e)))
+                       :object      (revision/snapshot :model/Exploration (t2/select-one :model/Exploration :id (:id e)))
                        :timestamp   (.minusSeconds t 60)
                        :is_creation true})
           (t2/insert! :model/Revision
                       {:model     "Document"
                        :model_id  (:id doc)
                        :user_id   (mt/user->id :rasta)
-                       :object    (revision/serialize-instance :model/Document (:id doc)
-                                                               (t2/select-one :model/Document :id (:id doc)))
+                       :object    (revision/snapshot :model/Document (t2/select-one :model/Document :id (:id doc)))
                        :timestamp t}))
         (let [item (find-exploration (:data (mt/user-http-request :crowberto :get 200
                                                                   (str "collection/" (:id coll) "/items")))

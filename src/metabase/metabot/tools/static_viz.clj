@@ -3,9 +3,11 @@
   (:require
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.curation :as curation]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
 
 (set! *warn-on-reflection* true)
@@ -34,6 +36,9 @@
   (handle [_ {:keys [entity_id]} _ctx]
     (let [card (tools/with-entity {:kind :card :id entity_id}
                  (api/read-check (metabot.db/card entity_id)))]
+      ;; a question or a metric: judged as a metric read is, a curated card on its own or a metric by its definition
+      (when (shared/curated-only?)
+        (curation/check-curated-subject! (str (name (:type card)) " " entity_id) ["metric" entity_id]))
       {:output     (queued-output card)
        :data-parts [(streaming/static-viz-part {:entity_id entity_id})]})))
 

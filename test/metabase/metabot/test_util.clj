@@ -8,7 +8,8 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream InputStream IOException OutputStream)
    (java.net InetAddress ServerSocket Socket SocketException)
@@ -234,6 +235,18 @@
                                        :display-name "snip"
                                        :snippet-id   Integer/MAX_VALUE}}}
               {:lib/type :mbql.stage/mbql}]})
+
+(defn reject-app-db-lookup
+  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
+  [& _]
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+
+(def internal-failure
+  "What the model reads when a call fails inside Metabase in a way no tool declared."
+  {:output (str "This call failed with an unexpected error. Don't retry the same call. "
+                "Try another approach, or tell the user it failed.")
+   :error  {:class :unrecoverable :code :internal}})
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Chunked SSE fake server

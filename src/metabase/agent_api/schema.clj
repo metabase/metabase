@@ -24,3 +24,7 @@
    [:duration_ms   {:optional true} [:maybe :int]]
    [:ip_address    {:optional true} [:maybe :string]]
    [:error_message {:optional true} [:maybe :string]]])
+
+(mr/def ::query-object
+  "A query a client sends as a JSON object, validated by the representations pipeline that reads it."
+  [:map {:closed false, :description "a query as a JSON object"}])

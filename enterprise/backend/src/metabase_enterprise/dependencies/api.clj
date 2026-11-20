@@ -53,11 +53,10 @@
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
    :measure   [:name :description :created_at :creator :creator_id :table :table_id]
    :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]
-   :data-app  [:name :display_name :description :created_at]})
+   :data-app  [:slug :name :description :created_at]})
 
 (mr/def ::data-value
-  [:schema {::mr/deliberately-open true, :description "any column or hydrated value of a dependency-tracked entity"}
-   :any])
+  :metabase.util.malli/value)
 
 (mu/defn- format-subentity :- ::data-value
   "`entity` slimmed to the keys the response shows when it is a hydrated Collection, Dashboard, or Document."
@@ -240,7 +239,7 @@
    :metabase.segments.schema/segment
    :metabase.measures.schema/measure
    ::actions.schema/action
-   :metabase-enterprise.data-apps.schema/data-app])
+   :metabase.data-apps.schema/data-app])
 
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -282,7 +281,7 @@
    :segment   [:id :name :description :created_at :creator_id :table_id]
    :measure   [:id :name :description :created_at :creator_id :table_id]
    :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]
-   :data-app  [:id :name :display_name :description :created_at]})
+   :data-app  [:id :slug :name :description :created_at]})
 
 (mr/def ::include-archived-items
   [:enum :exclude :all :only])
@@ -421,7 +420,7 @@
                          (dependencies.db/action-root-namespace (nil? (:model_id %)))))))
     ;; Like the data-app API, which gives a non-admin only an app's names.
     :data-app (cond->> entities
-                (not api/*is-superuser?*) (map #(select-keys % [:id :name :display_name])))))
+                (not api/*is-superuser?*) (map #(select-keys % [:id :slug :name])))))
 
 (mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.
@@ -498,7 +497,7 @@
   [entity :- ::entity-node]
   (let [data (:data entity)]
     (case (:type entity)
-      (:table :data-app) (:display_name data)
+      :table             (:display_name data)
       :sandbox           nil
       (:name data))))
 
@@ -654,9 +653,7 @@
   (let [types (or types (case query-type
                           :unreferenced (vec deps.dependency-types/dependency-types)
                           :breaking [:card :table]))
-        selected-types (cond->> (if (sequential? types) types [types])
-                         ;; Sandboxes have no name or location to search.
-                         query (remove #{:sandbox}))]
+        selected-types (if (sequential? types) types [types])]
     (merge (current-user-visibility nil)
            {:query-type query-type
             :entity-types selected-types
@@ -878,11 +875,19 @@
         (sort-dependents sort-column sort-direction))))
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
-                                                    [:complete :boolean]]
-  "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers."
+                                                    [:complete :boolean]
+                                                    [:failed [:sequential [:map
+                                                                           [:type ::deps.dependency-types/dependency-types]
+                                                                           [:id   ms/PositiveInt]]]]]
+  "Whether no entity awaits the computation of its dependencies, as `complete`, and the entities whose dependencies
+  the job gave up computing until they change, as `failed`, for superusers. Those don't count as awaiting, so the
+  graph is only whole when `complete` is true and `failed` is empty."
   [_route-params _query-params]
   (api/check-superuser)
-  {:complete (not (deps.dependency-status/has-pending-entities?))})
+  ;; Unpaged, assuming the job gives up on few entities. Page `failed` if instances with many show up.
+  {:complete (not (deps.dependency-status/has-pending-entities?))
+   :failed   (mapv (fn [{:keys [entity_type entity_id]}] {:type entity_type :id entity_id})
+                   (dependencies.db/given-up-dependency-statuses))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

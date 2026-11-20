@@ -1,4 +1,7 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { ALL_EXTERNAL_USERS_GROUP_ID } from "e2e/support/cypress_sample_instance_data";
 import { JWT_SHARED_SECRET } from "e2e/support/helpers/e2e-jwt-helpers";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { H } = cy;
 
@@ -58,13 +61,22 @@ describe("scenarios > sidecar > tenant users", () => {
       "jwt-attribute-firstname": "first_name",
       "jwt-attribute-lastname": "last_name",
       "jwt-enabled": true,
-      "jwt-identity-provider-uri": "localhost:4000",
+      "jwt-identity-provider-uri": H.AUTH_PROVIDER_URL,
       "jwt-shared-secret": JWT_SHARED_SECRET,
       "jwt-user-provisioning-enabled?": true,
       "use-tenants": true,
     });
 
     cy.request("POST", "/api/ee/tenant", GIZMO_TENANT);
+
+    cy.updatePermissionsGraph({
+      [ALL_EXTERNAL_USERS_GROUP_ID!]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": DataPermissionValue.UNRESTRICTED,
+          "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+        },
+      },
+    });
 
     H.createSharedTenantCollection("Shared tenant collection 1").then(
       ({ body }) => {
@@ -136,7 +148,6 @@ describe("scenarios > sidecar > tenant users", () => {
     // Setup git sync
     H.setupGitSync();
     H.copySyncedCollectionFixture();
-    H.updateSetting("remote-sync-custom-collections-enabled", true);
     H.commitToRepo();
 
     // Make shared tenant collections synced

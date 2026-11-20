@@ -7,32 +7,32 @@ import {
   setupCardQueryMetadataEndpoint,
   setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
-  setupTableEndpoints,
 } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
+import { checkNotNull } from "metabase/utils/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockCard,
   createMockCardQueryMetadata,
   createMockCollection,
   createMockColumn,
-  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
-  createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { SdkQuestion } from "./SdkQuestion";
 
 const TEST_USER = createMockUser();
-const TEST_DB_ID = 1;
-const TEST_DB = createMockDatabase({ id: TEST_DB_ID });
-
-const TEST_TABLE_ID = 1;
-const TEST_TABLE = createMockTable({ id: TEST_TABLE_ID, db_id: TEST_DB_ID });
+const TEST_DB = createSampleDatabase();
+const TEST_TABLE = checkNotNull(
+  TEST_DB.tables?.find((table) => table.name === "ORDERS"),
+);
 
 const TEST_COLUMN = createMockColumn({
   display_name: "Test Column",
@@ -58,6 +58,7 @@ const setup = ({
   const TEST_CARD = createMockCard({
     can_delete: true,
     enable_embedding: true,
+    dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
   });
 
   setupCardEndpoints(TEST_CARD);
@@ -71,8 +72,6 @@ const setup = ({
 
   setupAlertsEndpoints(TEST_CARD, []);
   setupDatabaseEndpoints(TEST_DB);
-
-  setupTableEndpoints(TEST_TABLE);
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 

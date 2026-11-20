@@ -4,12 +4,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.actions.actions :as actions]
    [metabase.actions.error :as actions.error]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -19,8 +17,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -34,7 +34,7 @@
   {:style/indent 0}
   [& body]
   `(mt/with-actions-test-data-and-actions-enabled
-     (binding [*current-user-permissions-set* (delay #{"/"})]
+     (mt/with-test-user :crowberto
        ~@body)))
 
 (mu/defn- format-field-name :- :string
@@ -134,7 +134,7 @@
   (doseq [{:keys [action request-body]} (mock-requests)]
     (testing action
       (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-actions false}}
-        (binding [*current-user-permissions-set* (delay #{"/"})]
+        (mt/with-test-user :crowberto
           (testing "Should return a 400 if Database feature flag is disabled."
             (is (thrown-with-msg?
                  Throwable
@@ -156,8 +156,11 @@
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
     (mt/with-temp [:model/Database {db-id :id}    {:name     "Birds"
                                                    :engine   ::feature-flag-test-driver
-                                                   :settings {:database-enable-actions true}}
+                                                   :settings {}}
                    :model/Table    {table-id :id} {:db_id db-id}]
+      (t2/query-one {:update :metabase_database
+                     :set    {:settings (json/encode {:database-enable-actions true})}
+                     :where  [:= :id db-id]})
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)
@@ -188,7 +191,7 @@
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
-      (binding [*current-user-permissions-set* (delay #{"/"})]
+      (mt/with-test-user :crowberto
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update-row {(format-field-name :name) "new-name"})
               query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
@@ -205,7 +208,7 @@
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
-      (binding [*current-user-permissions-set* (delay #{"/"})]
+      (mt/with-test-user :crowberto
         (let [query-that-returns-more-than-one (mt/mbql-query checkins {:filter [:>= $id 1]})
               query-that-returns-zero-row      (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
@@ -368,20 +371,16 @@
           (is (= 75 (categories-row-count)))
           (is (= [{:table-id table-id, :op :deleted, :row {:id 75}}
                   {:table-id table-id, :op :deleted, :row {:id 74}}]
-                 (walk/postwalk
-                  (fn [x]
-                    (if (map? x)
-                      (u/lower-case-map-keys x)
-                      x))
-                  (:outputs
-                   (actions/perform-action-v2! :table.row/delete
-                                               test-scope
-                                               [{:database (mt/id)
-                                                 :table-id table-id
-                                                 :row      {(format-field-name :id) 75}}
-                                                {:database (mt/id)
-                                                 :table-id table-id
-                                                 :row      {(format-field-name :id) 74}}])))))
+                 (match/replace-all (:outputs
+                                     (actions/perform-action-v2! :table.row/delete
+                                                                 test-scope
+                                                                 [{:database (mt/id)
+                                                                   :table-id table-id
+                                                                   :row      {(format-field-name :id) 75}}
+                                                                  {:database (mt/id)
+                                                                   :table-id table-id
+                                                                   :row      {(format-field-name :id) 74}}]))
+                   #'map? (u/lower-case-map-keys &match))))
           (is (= 73 (categories-row-count))))))))
 
 (deftest table-row-delete-no-pk
@@ -610,7 +609,7 @@
             (let [ssh-port (.getPort ssh-server)
                   table-id (mt/id :categories)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
-                (t2/update! 'Database (mt/id)
+                (t2/update! 'Database :id (mt/id)
                             ;; enable ssh tunnel
                             {:details (assoc details
                                              :tunnel-enabled true
@@ -689,7 +688,7 @@
                               [#uuid "d39bbe77-4e2e-4b7b-8565-cce90c25c99b" "Bob"]
                               [#uuid "b34b5c6e-2613-494a-9278-8a74c7ea915e" "Jane"]]]]
      (mt/with-actions-enabled
-       (binding [*current-user-permissions-set* (delay #{"/"})]
+       (mt/with-test-user :crowberto
          ~@body))))
 
 (deftest uuid-update-test
@@ -843,13 +842,13 @@
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before action execution"
-              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
-            (binding [*current-user-permissions-set* (delay #{"/"})]
+              (is (not (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key))))
+            (mt/with-test-user :crowberto
               (actions/perform-action! :model.row/create
                                        (assoc (mt/mbql-query categories)
                                               :create-row {(format-field-name :name) "write_pool_test"})))
             (testing "write pool is created during action execution"
-              (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+              (is (contains? (#'sql-jdbc.conn/pool-cache-key->connection-pool) write-cache-key)))
             (finally
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 

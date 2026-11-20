@@ -7,7 +7,8 @@
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest get-profile-test
   ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
@@ -18,7 +19,7 @@
         (is (some? profile))
         (is (= :embedding_next (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "construct_notebook_query"))
         (is (contains? (tool-names profile) "search"))
@@ -29,7 +30,7 @@
         (is (some? profile))
         (is (= :internal (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         ;; Should have more tools than embedding_next profile
         (is (> (count (:tools profile)) 5))
@@ -51,7 +52,7 @@
         ;; the :name stays :nlq even when redirected to the fallback, so telemetry/recents are unaffected
         (is (= :nlq (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         ;; In tests the library index can't answer, so :nlq is transparently served the general-search
         ;; fallback; the curated/fallback swap by availability is covered by nlq-data-discovery-fallback-test.
         (is (contains? (tool-names profile) "search"))
@@ -62,7 +63,7 @@
         (is (some? profile))
         (is (= :slackbot (:name profile)))
         (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 15 (:max-iterations profile)))
+        (is (= 20 (:max-iterations profile)))
         (is (vector? (:tools profile)))
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "construct_notebook_query"))
@@ -147,8 +148,7 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
-                "curated nlq swaps search for the library tool")
+  (testing "NLQ profiles add run_query and write_dashboard to embedding_next's tools"
     (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
@@ -156,9 +156,9 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback (conj embedding "run_query")))
+      (is (= fallback (conj embedding "run_query" "write_dashboard")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query" "write_dashboard"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
@@ -208,6 +208,15 @@
                   scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
           (is (=? {"create_sql_query" some?, "run_query" some?}
                   (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
+
+(deftest sql-profile-offers-snippet-tools-with-sql-generation-test
+  (testing "the :sql profile offers the snippet tools only to a user with Metabot's SQL generation permission"
+    (let [snippet-tools #{"list_snippets" "get_snippet_details"}
+          offered       (fn [perms]
+                          (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes perms)]
+                            (into #{} (filter snippet-tools) (keys (profiles/get-tools-for-profile :sql [])))))]
+      (is (= snippet-tools (offered scope/all-yes-permissions)))
+      (is (= #{} (offered (assoc scope/all-yes-permissions :permission/metabot-sql-generation :no)))))))
 
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
@@ -267,3 +276,13 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
+
+(deftest ^:parallel every-tool-is-in-a-profile-test
+  (testing "every tool is in a profile"
+    ;; `profile->tools` adds load_skill to every profile that has skills
+    (let [offered (into #{#'tools/load-skill-tool} (mapcat :tools) (vals @@#'profiles/*profiles))]
+      (is (= #{}
+             (into #{}
+                   (comp (filter #(mr/validate @#'profiles/tool-var-schema %))
+                         (remove offered))
+                   (vals (ns-publics 'metabase.metabot.tools))))))))

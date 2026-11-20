@@ -103,7 +103,7 @@ export function PeriodsAgoMenuOption({
             onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}
             onClick={handleInputClick}
-            size="xs"
+            size="md"
             w={rem(56)}
             required
             ref={inputRef}
@@ -111,7 +111,7 @@ export function PeriodsAgoMenuOption({
           <Text fw="bold">{name}</Text>
         </Group>
         {!!message && (
-          <Text size="xs" color="text-disabled" mt="xxs">
+          <Text size="xs" color="text-secondary" mt="xxs">
             {message}
           </Text>
         )}

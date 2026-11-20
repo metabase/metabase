@@ -109,6 +109,31 @@ describe("TimeseriesFilterPicker", () => {
     });
   });
 
+  it("should show an existing relative filter that includes the current unit", async () => {
+    const initialQuery = Lib.createTestQuery(
+      SAMPLE_PROVIDER,
+      DEFAULT_TEST_QUERY,
+    );
+    const { query, column, filter } = createQueryWithFilter(
+      initialQuery,
+      Lib.relativeDateFilterClause({
+        column: findDateColumn(initialQuery),
+        value: 30,
+        unit: "year",
+        offsetValue: null,
+        offsetUnit: null,
+        options: { includeCurrent: true },
+      }),
+    );
+    setup({ query, column, filter });
+
+    await userEvent.click(screen.getByText("Next 30 years or this year"));
+    await waitForFloatingPosition();
+
+    expect(await screen.findByDisplayValue("Next")).toBeInTheDocument();
+    expect(screen.getByLabelText("Include this year")).toBeChecked();
+  });
+
   it("should allow to remove a filter", async () => {
     const { query, column, filter } = createQueryWithFilter();
     const { getNextFilterParts } = setup({ query, column, filter });

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -62,7 +63,7 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
+import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/templates";
 import type {
   Card,
   CardId,
@@ -90,6 +91,7 @@ import {
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
+import { DashCardFilterMenu } from "./DashCardFilterMenu/DashCardFilterMenu";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
@@ -168,6 +170,8 @@ interface DashCardVisualizationProps {
 
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
+
+const SCALAR_DISPLAYS = new Set<string>(["scalar", "smartscalar"]);
 
 export function DashCardVisualization({
   dashcard,
@@ -496,6 +500,9 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
+  const display = series?.[0]?.card.display;
+  const isScalarCard = display != null && SCALAR_DISPLAYS.has(display);
+
   const fontFamily = useSelector((state) =>
     getSetting(state, "application-font"),
   );
@@ -530,6 +537,17 @@ export function DashCardVisualization({
   const withTimelineEvents =
     isTimelineEventsEnabled && isChartTimelineEventsEnabled;
 
+  // A 403 means the viewer may not see the card's data, so its filters stay hidden too.
+  const hasViewAccess = useMemo(() => {
+    const cardId = dashcard.card_id ?? dashcard.card?.id;
+    const cardResult = cardId ? datasets?.[cardId] : undefined;
+    const errorStatus =
+      cardResult?.error && typeof cardResult.error === "object"
+        ? cardResult.error.status
+        : undefined;
+    return !cardResult || errorStatus !== 403;
+  }, [dashcard, datasets]);
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -551,13 +569,10 @@ export function DashCardVisualization({
         withTimelineEvents,
       });
 
-    const errorStatus =
-      cardResult?.error && typeof cardResult.error === "object"
-        ? cardResult.error.status
-        : undefined;
-    const hasViewAccess = !cardResult || errorStatus !== 403;
-
-    const showInlineParams = inlineParameters.length > 0 && hasViewAccess;
+    // Number and Trend cards have no header row, so their filters render in
+    // the leading slot instead of here.
+    const showInlineParams =
+      inlineParameters.length > 0 && hasViewAccess && !isScalarCard;
 
     if (!showMenu && !showInlineParams) {
       return null;
@@ -607,7 +622,17 @@ export function DashCardVisualization({
     titleMenuItems,
     shouldCollapseList,
     parameterListRef,
+    isScalarCard,
+    hasViewAccess,
   ]);
+
+  const cardLevelFilters = useMemo(() => {
+    if (!isScalarCard || inlineParameters.length === 0 || !hasViewAccess) {
+      return null;
+    }
+
+    return <DashCardFilterMenu parameters={inlineParameters} />;
+  }, [hasViewAccess, inlineParameters, isScalarCard]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
     dashcardId: dashcard.id,
@@ -683,6 +708,7 @@ export function DashCardVisualization({
           isEditingParameter={isEditingParameter}
           isMobile={isMobile}
           actionButtons={actionButtons}
+          cardLevelFilters={cardLevelFilters}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
           transformClickObject={transformClickObject}

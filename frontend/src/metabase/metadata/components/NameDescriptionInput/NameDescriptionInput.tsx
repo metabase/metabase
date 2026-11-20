@@ -61,12 +61,17 @@ export const NameDescriptionInput = ({
   return (
     <Box ref={ref}>
       <Input
-        classNames={{ root: S.name }}
+        classNames={{
+          input: S.nameInput,
+          root: S.name,
+          section: S.nameSection,
+          wrapper: S.nameWrapper,
+        }}
         fw="bold"
         leftSection={
           <Group
             align="center"
-            c="text-disabled"
+            c="text-secondary"
             gap={10}
             flex="1"
             fs="lg"
@@ -84,7 +89,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-disabled" component="span" size="lg">
+                <Text c="text-secondary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
@@ -128,13 +133,16 @@ export const NameDescriptionInput = ({
 
       <Textarea
         autosize
+        classNames={{
+          input: S.descriptionInput,
+          root: S.description,
+        }}
         maxRows={4}
         minRows={2}
         placeholder={descriptionPlaceholder}
         pos="relative"
         styles={{
           input: {
-            lineHeight: "var(--mantine-line-height-lg)",
             borderStartStartRadius: 0,
             borderStartEndRadius: 0,
             borderEndStartRadius: "var(--mantine-radius-sm)",

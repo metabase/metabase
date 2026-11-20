@@ -1,6 +1,8 @@
 (ns metabase.models.resolution
   (:require
+   [clojure.string :as str]
    [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [methodical.core :as methodical]
    [toucan2.model :as t2.model]))
 
@@ -25,6 +27,7 @@
     :model/BookmarkOrdering                  metabase.bookmarks.models.bookmark
     :model/CacheConfig                       metabase.cache.models.cache-config
     :model/Card                              metabase.queries.models.card
+    :model/CardTest                          metabase-enterprise.data-testing.models.card-test
     :model/CardBookmark                      metabase.bookmarks.models.bookmark
     :model/Channel                           metabase.channel.models.channel
     :model/ChannelTemplate                   metabase.channel.models.channel
@@ -45,6 +48,7 @@
     :model/DashboardCardSeries               metabase.dashboards.models.dashboard-card-series
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
+    :model/DataTestRun                       metabase-enterprise.data-testing.models.data-test-run
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
@@ -69,6 +73,7 @@
     :model/Glossary                          metabase.glossary.models.glossary
     :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/ImplicitAction                    metabase.actions.models
+    :model/ImpersonationQueryCache           metabase-enterprise.impersonation.models.impersonation-query-cache
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/McpFeedback                       metabase.mcp.models.mcp-feedback
     :model/McpGroupPermission                metabase.mcp.models.mcp-group-permission
@@ -123,7 +128,6 @@
     :model/QueryField                        metabase.queries.models.query-field
     :model/QueryTable                        metabase.queries.models.query-table
     :model/RecentViews                       metabase.activity-feed.models.recent-views
-    :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
     :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/ResultMetadataStatus              metabase-enterprise.dependencies.models.result-metadata-status
@@ -132,14 +136,17 @@
     :model/Secret                            metabase.secrets.models.secret
     :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
+    :model/SegmentTest                       metabase-enterprise.data-testing.models.segment-test
     :model/SemanticSearchTokenTracking       metabase-enterprise.search.semantic.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
+    :model/SqlParsingShadowDifference       metabase.sql-tools.models.sql-parsing-shadow-difference
     :model/SsoRelayState                     metabase-enterprise.sso.models.relay-state
     :model/StoredResult                      metabase.queries.models.stored-result
     :model/StoredResultUse                   metabase.queries.models.stored-result-use
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
+    :model/TableRemapping                    metabase-enterprise.workspaces.models.table-remapping
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
     :model/Tenant                            metabase-enterprise.tenants.models
@@ -153,8 +160,7 @@
     :model/TransformRun                      metabase.transforms.models.transform-run
     :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase.transforms.models.transform-tag
-    :model/TransformTest                     metabase-enterprise.transform-testing.models
-    :model/TransformTestRun                  metabase-enterprise.transform-testing.models.transform-test-run
+    :model/TransformTest                     metabase-enterprise.data-testing.models
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
@@ -165,7 +171,9 @@
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
-    :model/ViewLog                           metabase.view-log.models.view-log})
+    :model/ViewLog                           metabase.view-log.models.view-log
+    :model/Workspace                         metabase-enterprise.workspaces.models.workspace
+    :model/WorkspaceDatabase                 metabase-enterprise.workspaces.models.workspace-database})
 
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;;; !!                                                                                                !!
@@ -173,6 +181,13 @@
 ;;; !!                                                                                                !!
 ;;; !!   Please read https://metaboat.slack.com/archives/CKZEMT1MJ/p1738972144181069 for more info    !!
 ;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+(defn- require-model-namespace
+  "Require the namespace `nspace` of a model. The registry selects the namespace dynamically, so this uses
+  [[classloader/require]] for thread safety."
+  [nspace]
+  #_{:clj-kondo/ignore [:metabase/modules]}
+  (classloader/require nspace))
 
 (methodical/defmethod t2.model/resolve-model :before :default
   "Ensure the namespace for given model is loaded. This is a safety mechanism as we are moving to toucan2 and we don't
@@ -182,9 +197,7 @@
     ;; Always require the model's namespace when we know it. It is fast, and there can be race conditions between
     ;; before side effects like `deftransforms` and `define-before-insert` have run
     (when-let [nspace (get model->namespace x)]
-      ;; The registry selects the namespace dynamically; use [[classloader/require]] for thread safety.
-      #_{:clj-kondo/ignore [:metabase/modules]}
-      (classloader/require nspace)))
+      (require-model-namespace nspace)))
   x)
 
 (methodical/defmethod t2.model/resolve-model :around clojure.lang.Symbol
@@ -210,3 +223,29 @@
       ;; loading the model namespace by calling `resolve-model` can add a new implementation to `table-name`, and
       ;; apparently we need to refer back to the var to pick up the updated multimethod.
       (#'t2.model/table-name (t2.model/resolve-model model)))))
+
+(defn load-all-models!
+  "Require the namespace of every known model, skipping the enterprise ones unless the build has them."
+  []
+  (doseq [nspace (distinct (vals model->namespace))
+          :when  (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+    (require-model-namespace nspace)))
+
+(defn spec-entries-by-name
+  "The entries that the methods of the multimethod `spec-multifn`, which dispatches on a model, define as `{name [model
+  entry]}` after loading every model namespace, where `spec->entries` (by default `identity`) turns a model's spec into
+  a map from name to entry; throws when two models define the same name."
+  ([spec-multifn]
+   (spec-entries-by-name spec-multifn identity))
+  ([spec-multifn spec->entries]
+   (load-all-models!)
+   (reduce (fn [acc [model method]]
+             (reduce-kv (fn [acc entry-name entry]
+                          (when-let [[other] (get acc entry-name)]
+                            (throw (ex-info (str "Two models define " (pr-str entry-name))
+                                            {:name entry-name :models [other model]})))
+                          (assoc acc entry-name [model entry]))
+                        acc
+                        (spec->entries (method model))))
+           {}
+           (dissoc (methods spec-multifn) :default))))

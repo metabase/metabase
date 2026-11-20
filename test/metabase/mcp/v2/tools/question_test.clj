@@ -75,7 +75,7 @@
                  (catch clojure.lang.ExceptionInfo e (ex-message e)))))))))
 
 (defn- tag-by-name
-  "Template tags are stored on the pMBQL stage as a vector (not a map keyed by name — see
+  "Template tags are stored on the MBQL 5 stage as a vector (not a map keyed by name — see
    `metabase.lib.schema.template-tag/template-tags`), so tests look up by `:name`."
   [q tag-name]
   (some #(when (= tag-name (:name %)) %) (get-in q [:stages 0 :template-tags])))
@@ -96,6 +96,14 @@
         (is (:isError result))
         (is (not (re-find #"(?i)internal error" text))
             "the schema rejects it with a teaching error rather than failing deep in the insert")))))
+
+(deftest blank-name-test
+  (testing "a whitespace-only name is refused on create and update by the argument schema"
+    (doseq [args [{:method "create" :name "   " :native {:database_id (mt/id) :sql "SELECT 1"}}
+                  {:method "update" :id 13371337 :name "   "}]]
+      (let [result (call-tool v2.tu/all-scopes (str (random-uuid)) "question_write" args)]
+        (is (:isError result))
+        (is (str/starts-with? (-> result :content first :text) "Invalid arguments"))))))
 
 (deftest native-template-tags-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -138,7 +146,7 @@
                                               :widget_type "number/="}}}} nil v2.tu/all-scopes)]
         (is (=? {:type :dimension
                  :widget-type :number/=
-                 :dimension [:field {} field-id]}
+                 :field-id  field-id}
                 (tag-by-name q "d")))))))
 
 (deftest native-template-tags-teaching-errors-carry-the-contract-test
@@ -192,7 +200,7 @@
                {:native {:database_id (mt/id)
                          :sql "SELECT * FROM orders WHERE {{unit}}"
                          :template_tags {"unit" {:type "temporal-unit" :field_id field-id}}}} nil v2.tu/all-scopes)]
-        (is (=? {:type :temporal-unit :dimension [:field {} field-id]}
+        (is (=? {:type :temporal-unit :field-id field-id}
                 (tag-by-name q "unit")))))))
 
 (deftest native-template-tags-read-shape-round-trip-test
@@ -207,11 +215,11 @@
                                               :name           "d"
                                               (keyword "display-name") "Total"
                                               (keyword "widget-type")  "number/="
-                                              :dimension      ["field" field-id nil]}}}} nil v2.tu/all-scopes)]
+                                              :field-id       field-id}}}} nil v2.tu/all-scopes)]
         (is (=? {:type :dimension
                  :display-name "Total"
                  :widget-type :number/=
-                 :dimension [:field {} field-id]}
+                 :field-id  field-id}
                 (tag-by-name q "d")))))
     (testing "reference tags — a snippet as get_content emits it — are accepted and ignored, so a card using one round-trips"
       (let [q (#'v2.question/resolve-query-source
@@ -224,15 +232,15 @@
                                                                     (keyword "display-name") "Snippet: base"}}}} nil v2.tu/all-scopes)]
         (is (= :number (:type (tag-by-name q "min"))))
         (is (= :snippet (:type (tag-by-name q "snippet: base"))))))
-    (testing "an MBQL 5 dimension ref (options second, id third) also yields the field"
+    (testing "read-shape field-id also yields field"
       (let [field-id (mt/id :orders :total)
             q (#'v2.question/resolve-query-source
                {:native {:database_id (mt/id)
                          :sql "SELECT * FROM orders WHERE {{d}}"
                          :template_tags {"d" {:type "dimension"
                                               (keyword "widget-type") "number/="
-                                              :dimension ["field" {} field-id]}}}} nil v2.tu/all-scopes)]
-        (is (=? {:dimension [:field {} field-id]}
+                                              :field-id  field-id}}}} nil v2.tu/all-scopes)]
+        (is (=? {:field-id field-id}
                 (tag-by-name q "d")))))))
 
 (deftest create-question-happy-path-test
@@ -265,7 +273,7 @@
 
 (defn- mint-handle-via-execute!
   "Mint a query_handle for `query` the way `execute_query` does — straight into the handle store,
-   reproducing the exact round-trip (pMBQL → JSON → string-valued map) the save path must survive.
+   reproducing the exact round-trip (MBQL 5 → JSON → string-valued map) the save path must survive.
    Deferred-tests ledger: `execute_query` itself lands in the query PR (GHY-4363); when it does,
    route this through `registry/call-tool` with `:validate_only true` so the whole tool path is
    exercised, not just the store."

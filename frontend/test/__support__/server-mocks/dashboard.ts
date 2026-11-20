@@ -10,31 +10,14 @@ import type {
 } from "metabase-types/api";
 import { createMockDashboard } from "metabase-types/api/mocks";
 
-type SetupDashboardEndpointsOpts = {
-  /** What PUT responds with. By default it echoes the request body back. */
-  updatedDashboard?: Dashboard;
-};
-
 export function setupDashboardEndpoints(
   dashboard: Dashboard,
-  { updatedDashboard }: SetupDashboardEndpointsOpts = {},
+  { delay }: { delay?: number } = {},
 ) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
+  fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard, { delay });
   fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
-    if (updatedDashboard != null) {
-      return updatedDashboard;
-    }
     const lastCall = fetchMock.callHistory.lastCall(call.url);
     return createMockDashboard(await lastCall?.request?.json());
-  });
-}
-
-export function setupUpdateDashboardEndpointWithError(
-  dashboardId: DashboardId,
-) {
-  fetchMock.put(`path:/api/dashboard/${dashboardId}`, {
-    status: 500,
-    body: {},
   });
 }
 
@@ -66,8 +49,15 @@ export function setupDashboardCreateEndpoint(dashboard: Partial<Dashboard>) {
 export function setupDashboardQueryMetadataEndpoint(
   dashboard: Dashboard,
   metadata: DashboardQueryMetadata,
+  { delay }: { delay?: number } = {},
 ) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}/query_metadata`, metadata);
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}/query_metadata`,
+    metadata,
+    {
+      delay,
+    },
+  );
 }
 
 export function setupDashboardsEndpoints(dashboards: Dashboard[]) {

@@ -19,7 +19,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
@@ -273,7 +273,11 @@
                   (log/info "Done processing notification")))
               (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (throw-when-handlers-failed id @failures)
-              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
+              (analytics/inc! :metabase-notification/send-ok {:payload-type payload_type})
+              (if skip-reason
+                {:status :skipped
+                 :skip_reason (str (skip-reason notification.payload/skip-reason->message (name skip-reason)))}
+                {:status :sent}))))
         (catch Exception e
           (let [undelivered? (delivery-failure? e)]
             ;; a delivery failure is already logged per channel, and the caller or the notification worker logs it
@@ -288,8 +292,7 @@
           ;; observed here so a send that throws is counted too
           (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
           (when-let [total-time (since-trigger-ms notification-info)]
-            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))))
-      nil)))
+            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time)))))))
 
 (defn- cron->next-execution-times
   "Returns the next n fired times for a given cron schedule.
@@ -482,7 +485,7 @@
   (let [executor (Executors/newFixedThreadPool
                   pool-size
                   (.build
-                   (doto (BasicThreadFactory$Builder.)
+                   (doto (BasicThreadFactory/builder)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
         start-worker! (fn []

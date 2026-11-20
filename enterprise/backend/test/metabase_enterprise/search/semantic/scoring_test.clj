@@ -428,7 +428,6 @@
            {:model "card" :id 2 :name "never viewed card"}]
           (testing "Transform ranks between recently viewed and never viewed cards"
             (let [results (search-results :user-recency "card" {:current-user-id user-id})]
-              (def results results)
               (is (= [["card" c1 "recently viewed card"]
                       ["transform" 1 "transform no views"]
                       ["card" 2 "never viewed card"]]

@@ -1,5 +1,6 @@
 ---
 title: Usage analytics
+summary: See how people use your Metabase with a ready-made collection of dashboards, questions, and models, and build your own reports from them.
 redirect-from:
     - /docs/latest/enterprise-guide/audit
     - /docs/latest/usage-and-performance-tools/audit
@@ -44,6 +45,10 @@ To view usage analytics for a question, dashboard, or model:
 - Click **Insights**.
 
 Metabase will take you to the relevant usage dashboard and plug in the item's ID.
+
+## Turn on user data collection to see IP addresses and user agents
+
+To see IP addresses, user agents, embed paths, query parameters, the values people submit when they run an action, and Metabot conversation metadata in usage analytics, an admin needs to go to **Admin** > **Settings** > **General** and turn on [**Collect user data to display in usage analytics**](../configuring-metabase/settings.md#collect-user-data-to-display-in-usage-analytics). The setting is off by default. Metabase only logs this data while the setting is on, so activity from before you turn it on won't include this data.
 
 ## How long Metabase keeps usage data
 

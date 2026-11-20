@@ -13,7 +13,6 @@
    5. Metabase exchanges code for tokens and creates session"
   (:require
    [java-time.api :as t]
-   [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.auth-identity.core :as auth-identity]
@@ -47,9 +46,12 @@
       (throw (ex-info (tru "OIDC provider ''{0}'' is not enabled" provider-key)
                       {:status-code 400}))))
 
+  ;; Validate the redirect here with the same predicate `create-oidc-state` uses when it builds the state cookie, so
+  ;; an unacceptable value is rejected before we contact the identity provider.
   (let [redirect-url (let [redirect (get-in request [:params :redirect])]
                        (if redirect
-                         (sso-utils/check-sso-redirect redirect)
+                         (do (sso/validate-redirect-url! redirect)
+                             redirect)
                          "/"))
         auth-result  (auth-identity/authenticate
                       :provider/custom-oidc

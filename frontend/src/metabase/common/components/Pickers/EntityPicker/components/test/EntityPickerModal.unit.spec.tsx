@@ -268,6 +268,68 @@ describe("EntityPickerModal", () => {
       await expectInactiveItem("Question in Nested Coll"); // level 3
     });
 
+    it.each<{ pickerName: string; models: OmniPickerItem["model"][] }>([
+      { pickerName: "collection picker", models: ["collection"] },
+      {
+        pickerName: "data picker",
+        models: ["table", "card", "dataset", "metric"],
+      },
+    ])(
+      "should not list the trash in Our analytics in the $pickerName",
+      async ({ models }) => {
+        await setup({
+          models,
+          value: { id: "root", model: "collection" },
+          archivedRootCollectionItems: [
+            createMockCollectionItem({
+              id: 20000000,
+              model: "collection",
+              name: "Trash",
+              type: "trash",
+              here: ["card", "dataset", "collection"],
+              below: ["card", "dataset", "collection"],
+              collection_id: null,
+            }),
+          ],
+        });
+
+        await expectActiveItem("Our analytics");
+        expect(await screen.findByText("First Collection")).toBeInTheDocument();
+        expect(screen.queryByText("Trash")).not.toBeInTheDocument();
+      },
+    );
+
+    it("should scroll to the left edge of the newly opened column", async () => {
+      const COLUMN_WIDTH_PX = 320;
+      jest
+        .spyOn(HTMLElement.prototype, "offsetLeft", "get")
+        .mockImplementation(function (this: HTMLElement) {
+          const level = this.dataset.testid?.match(/^item-picker-level-(\d+)$/);
+          return level ? Number(level[1]) * COLUMN_WIDTH_PX : 0;
+        });
+      const scrollTo = jest.spyOn(HTMLElement.prototype, "scrollTo");
+
+      await setup({ value: { id: "root", model: "collection" } });
+      await expectActiveItem("Our analytics");
+      scrollTo.mockClear();
+
+      await userEvent.click(await screen.findByText("First Collection"));
+      expect(
+        await screen.findByTestId("item-picker-level-2"),
+      ).toBeInTheDocument();
+
+      const container = screen.getByTestId("nested-item-picker");
+      const getContainerScrolls = () =>
+        scrollTo.mock.calls.filter(
+          (_call, index) => scrollTo.mock.contexts[index] === container,
+        );
+      await waitFor(() =>
+        expect(getContainerScrolls()).toEqual([
+          [{ left: 2 * COLUMN_WIDTH_PX, behavior: "smooth" }],
+        ]),
+      );
+    });
+
     it("should navigate back", async () => {
       await setup({ value: { id: 33, model: "collection" } });
 
@@ -776,6 +838,33 @@ describe("EntityPickerModal", () => {
       await expectActiveItem("Question in Collection 1");
     });
 
+    it("should not restore the previous location when the user left the search results before clearing the input", async () => {
+      await setup();
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("First Collection"));
+      await expectActiveItem("First Collection");
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "My",
+        { delay: 50 },
+      );
+      await waitForSearchResults();
+      await userEvent.click(
+        within(screen.getByTestId("item-picker-level-0")).getByRole("link", {
+          name: /Our analytics/,
+        }),
+      );
+      await expectActiveItem("Our analytics");
+      await userEvent.click(await screen.findByTestId("clear-search"));
+
+      expect(await screen.findByPlaceholderText("Search…")).toHaveValue("");
+      await expectActiveItem("Our analytics");
+      await expectInactiveItem("First Collection");
+      expect(
+        screen.queryByText("Question in Collection 1"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should show search results", async () => {
       await setup();
 
@@ -789,6 +878,20 @@ describe("EntityPickerModal", () => {
       await expectVisibleItem("Search Result Dashboard 5");
       const searchList = await screen.findByTestId("item-picker-level-1");
       expect(within(searchList).getAllByRole("link")).toHaveLength(11);
+    });
+
+    it("should show the no objects illustration when the search finds nothing", async () => {
+      await setup({ searchResults: [] });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "This aren't the objects you're looking for",
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("We didn't find anything")).toBeInTheDocument();
+        expect(screen.getByAltText("Nothing found")).toBeInTheDocument();
+      });
     });
 
     it("should hide search results based on isHiddenItem", async () => {
@@ -1007,6 +1110,62 @@ describe("EntityPickerModal", () => {
     });
   });
 
+  describe("Escape key", () => {
+    it("should close a new collection dialog first, then the picker", async () => {
+      const { onClose } = await setup({
+        value: { id: "root", model: "collection" },
+        options: { canCreateCollections: true },
+      });
+      const newCollectionButton = await screen.findByRole("button", {
+        name: /New collection/,
+      });
+      await waitFor(() => expect(newCollectionButton).toBeEnabled());
+      await userEvent.click(newCollectionButton);
+      expect(
+        await screen.findByRole("dialog", { name: "Create a new collection" }),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Create a new collection" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByText("Pick a thing")).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("should close a new dashboard dialog first, then the picker", async () => {
+      const { onClose } = await setup({
+        value: { id: "root", model: "collection" },
+        models: ["dashboard", "collection"],
+        options: { canCreateDashboards: true },
+      });
+      const newDashboardButton = await screen.findByRole("button", {
+        name: /New dashboard/,
+      });
+      await waitFor(() => expect(newDashboardButton).toBeEnabled());
+      await userEvent.click(newDashboardButton);
+      expect(
+        await screen.findByRole("dialog", { name: "Create a new dashboard" }),
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("dialog", { name: "Create a new dashboard" }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(onClose).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{Escape}");
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("Recents", () => {
     it("should show a recents menu item", async () => {
       await setup();
@@ -1087,13 +1246,13 @@ describe("EntityPickerModal", () => {
   describe("Data apps", () => {
     const OWLS = createMockDataApp({
       id: 8,
-      name: "owls",
-      display_name: "Owls",
+      slug: "owls",
+      name: "Owls",
     });
     const HERONS = createMockDataApp({
       id: 9,
-      name: "herons",
-      display_name: "Herons",
+      slug: "herons",
+      name: "Herons",
     });
     const options = { hasDataApps: true, hasConfirmButtons: false };
     const models: OmniPickerItem["model"][] = ["card", "data-app"];

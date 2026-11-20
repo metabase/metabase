@@ -1,17 +1,17 @@
 import { createContext, useContext } from "react";
 
-import type { ConcreteTableId } from "metabase-types/api";
+import type { TableId } from "metabase-types/api";
 
 type SchemaViewerContextValue = {
-  visibleTableIds: Set<ConcreteTableId>;
+  visibleTableIds: Set<TableId>;
   /**
    * IDs of tables whose fetch was triggered by an FK-field expansion and has
    * not yet resolved. Field rows use this to show a loader in place of the
    * database type while the new table is being loaded.
    */
-  expandingTableIds: Set<ConcreteTableId>;
+  expandingTableIds: Set<TableId>;
   expandToTable: (
-    tableId: ConcreteTableId,
+    tableId: TableId,
     /**
      * Edge IDs to try selecting once the new table arrives in the graph.
      * Pass both possible orderings (source-first and target-first) since

@@ -12,7 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -366,9 +366,9 @@
            (let [created (mt/user-http-request :crowberto :post 200 "action"
                                                (cross-db-native-action model-id model-db-id model-db-id))
                  url     (str "action/" (:id created))]
-             (testing "blanking the query leaves the action on the database it was created against"
-               (is (=? {:database_id model-db-id}
-                       (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
+             (testing "blanking the query is refused and leaves the action on the database it was created against"
+               (is (=? {:specific-errors {:dataset_query some?}}
+                       (mt/user-http-request :crowberto :put 400 url {:dataset_query {}}))))
              (testing "a database_id in the body is dropped"
                (is (=? {:database_id model-db-id}
                        (mt/user-http-request :crowberto :put 200 url {:database_id other-db-id}))))
@@ -636,9 +636,31 @@
             (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id (:id created)))))))))
   (testing "a query action needs a query"
     (mt/with-actions-test-data-and-actions-enabled
-      (is (= "Must provide a dataset_query for query actions"
-             (mt/user-http-request :crowberto :post 400 "action"
-                                   (dissoc (model-less-query-action nil) :dataset_query)))))))
+      (is (=? {:specific-errors {:dataset_query some?}}
+              (mt/user-http-request :crowberto :post 400 "action"
+                                    (dissoc (model-less-query-action nil) :dataset_query))))
+      (testing "that is not empty"
+        (mt/with-model-cleanup [:model/Action]
+          (is (=? {:specific-errors {:dataset_query some?}}
+                  (mt/user-http-request :crowberto :post 400 "action"
+                                        (assoc (model-less-query-action nil) :dataset_query {})))))))))
+
+(deftest query-action-update-needs-real-query-test
+  (testing "PUT /api/action/:id refuses an empty query, takes a native one, and edits an action whose stored query is empty"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (let [{id :id} (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))
+              path     (str "action/" id)]
+          (is (=? {:specific-errors {:dataset_query some?}}
+                  (mt/user-http-request :crowberto :put 400 path {:dataset_query {}})))
+          (is (some? (mt/user-http-request :crowberto :put 200 path
+                                           {:dataset_query {:database (mt/id)
+                                                            :type     "native"
+                                                            :native   {:query "UPDATE categories SET name = 'x' WHERE id = 1"}}})))
+          (t2/query-one {:update :query_action :set {:dataset_query "{}"} :where [:= :action_id id]})
+          (is (some? (mt/user-http-request :crowberto :get 200 path)))
+          (is (=? {:name "Renamed"}
+                  (mt/user-http-request :crowberto :put 200 path {:name "Renamed"}))))))))
 
 (defn- table-query
   "A query of the test Table `table-key`."
@@ -1139,6 +1161,32 @@
                                        (format "action/%s/execute"
                                                "AAAAAAAAAAAAAAAAAAAAA")
                                        {:parameters {:id 1 :name "European"}}))))))))
+
+(deftest execute-adhoc-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (let [action-count (t2/count :model/Action)
+          implicit     {:name "Rename" :type "implicit" :kind "row/update" :table_id (mt/id :categories)}
+          query        {:name          "Rename"
+                        :type          "query"
+                        :dataset_query (mt/native-query {:query         "UPDATE categories SET name = {{name}} WHERE id = 1"
+                                                         :template-tags {"name" {:id           "name"
+                                                                                 :name         "name"
+                                                                                 :display-name "Name"
+                                                                                 :type         "text"}}})
+                        :parameters    [{:id "name" :slug "name" :type "string/="
+                                         :target [:variable [:template-tag "name"]]}]}]
+      (testing "a superuser runs an ad-hoc implicit action"
+        (is (=? {:rows-updated some?}
+                (mt/user-http-request :crowberto :post 200 "action/execute"
+                                      {:action implicit :parameters {:id 1 :name "European"}}))))
+      (testing "a superuser runs an ad-hoc query action"
+        (is (=? {:rows-affected 1}
+                (mt/user-http-request :crowberto :post 200 "action/execute"
+                                      {:action query :parameters {:name "European"}}))))
+      (testing "nobody else does"
+        (mt/user-http-request :rasta :post 403 "action/execute" {:action implicit :parameters {:id 1 :name "European"}}))
+      (testing "nothing is saved"
+        (is (= action-count (t2/count :model/Action)))))))
 
 (deftest execute-action-test-3
   (mt/with-actions-test-data-and-actions-enabled

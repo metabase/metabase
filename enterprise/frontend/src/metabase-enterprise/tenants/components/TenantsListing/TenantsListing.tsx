@@ -81,7 +81,6 @@ export const TenantsListing = ({
           <Flex gap="sm">
             <Button
               variant="filled"
-              size="lg"
               onClick={openNewTenantModal}
             >{t`New tenant`}</Button>
           </Flex>
@@ -125,7 +124,7 @@ export const TenantsListing = ({
           ta="center"
           mt="xxl"
           py="xxl"
-          c="text-disabled"
+          c="text-secondary"
         >
           {t`No matching tenants found.`}
         </Text>
@@ -138,7 +137,7 @@ export const TenantsListing = ({
           ta="center"
           mt="xxl"
           py="xxl"
-          c="text-disabled"
+          c="text-secondary"
         >
           {t`Add your first tenant to get started.`}
         </Text>
@@ -158,7 +157,7 @@ function ActionsPopover({ tenant }: ActionsPopoverProps) {
     <Menu shadow="sm" width={200} position="bottom-end">
       <Menu.Target>
         <UnstyledButton>
-          <Icon c="text-disabled" name="ellipsis" />
+          <Icon c="text-secondary" name="ellipsis" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

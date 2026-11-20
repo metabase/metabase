@@ -1,4 +1,4 @@
-(ns metabase.agent-api.api-test
+(ns ^:synchronized metabase.agent-api.api-test
   "Agent API functional tests using session-based authentication.
    JWT and scope-related tests live in metabase-enterprise.agent-api.api-test."
   (:require
@@ -7,9 +7,9 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase.agent-api.api :as agent-api.api]
-   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
@@ -30,7 +30,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
@@ -52,6 +52,12 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
+
+;; The Agent API is deprecated and off until an admin opts in. These tests exercise it, so they opt in.
+;; The namespace is `^:synchronized` because this fixture sets a Setting.
+(use-fixtures :each (fn [thunk]
+                      (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+                        (thunk))))
 
 (defn- orders-count-query
   "Create a simple count query on the orders table using lib functions."
@@ -166,16 +172,34 @@
       (testing "a session request with nil token-scopes is still unrestricted"
         (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
-(deftest agent-api-enabled-setting-test
-  (testing "External Agent API routes return 403 when disabled"
-    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
-      (is (= "Agent API is not enabled."
-             (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
+(def ^:private agent-api-off-message
+  "The Agent API is deprecated and off by default. An admin can turn it on in Admin > AI > MCP.")
+
+(deftest deprecated-agent-api-enabled-setting-test
+  (testing "External Agent API routes return 403 until an admin opts in to the deprecated Agent API"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? nil]
+      (is (= agent-api-off-message
+             (mt/user-http-request :rasta :get 403 "agent/v1/ping")))
+      ;; `agent-api-enabled?` is a stub with no effect. An upgraded instance can still hold a value for it: a stored
+      ;; row, or the env var. The rows are written raw, because the setter of the stub stores nothing.
+      (testing "a stored value of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temporary-raw-setting-values [:agent-api-enabled? "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))
+      (testing "the env var of the old setting agent-api-enabled? is not an opt-in"
+        (mt/with-temp-env-var-value! [mb-agent-api-enabled "true"]
+          (is (= agent-api-off-message
+                 (mt/user-http-request :rasta :get 403 "agent/v1/ping")))))))
+  (testing "External Agent API routes are served after the opt-in, whatever the old agent-api-enabled? holds"
+    (mt/with-temporary-setting-values [deprecated-agent-api-enabled? true]
+      (mt/with-temporary-raw-setting-values [:agent-api-enabled? "false"]
+        (is (= {:message "pong"}
+               (mt/user-http-request :rasta :get 200 "agent/v1/ping")))))))
 
 (deftest ai-features-enabled-setting-test
   (testing "External Agent API routes return 403 when AI features are globally disabled"
-    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
-                                           :agent-api-enabled?   "true"]
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled?          "false"
+                                           :deprecated-agent-api-enabled? "true"]
       (is (= "AI features are not enabled."
              (mt/user-http-request :rasta :get 403 "agent/v1/ping"))))))
 
@@ -253,7 +277,7 @@
   "Canonical name of the application database \u2014 the literal string the LLM is expected
   to put as the first element of every portable FK in a representations query."
   []
-  (t2/select-one-fn :name :model/Database (mt/id)))
+  (t2/select-one-fn :name :model/Database :id (mt/id)))
 
 (defn- orders-query
   "Build a portable MBQL 5 representations external-query map against the `ORDERS` table in
@@ -375,6 +399,112 @@
                                                                 agent-error? (assoc :agent-error? true))))))]
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
+
+(defn- recovery-uri
+  "The `metabase://` URI that a recovery hint tells the agent to read, e.g.
+  \"Call `read_resource` with `metabase://table/5/fields` to ...\" → \"metabase://table/5/fields\"."
+  [message]
+  (second (re-find #"`(metabase://[^`]+)`" message)))
+
+(defn- check-read-resource
+  "Check that `user` can read `uri` with `POST /v1/read-resource`.
+
+  The endpoint returns 200 with a per-item `:error` for a URI it cannot read, so check the item too."
+  [user uri]
+  (let [{:keys [resources]} (mt/user-http-request user :post 200 "agent/v1/read-resource" {:uris [uri]})
+        resource            (first resources)]
+    (is (= uri (:uri resource)))
+    (is (some? (:content resource)))
+    (is (nil? (:error resource)))))
+
+(defn- unknown-table-query
+  "A count query on `[db \"PUBLIC\" table]`, by default on the misspelled `ORDRS` table of the test database."
+  ([] (unknown-table-query (db-name) "ORDRS"))
+  ([db table]
+   {:lib/type "mbql/query"
+    :stages   [{:lib/type     "mbql.stage/mbql"
+                :source-table [db "PUBLIC" table]
+                :aggregation  [["count" {}]]}]}))
+
+(deftest construct-query-recovery-hints-name-the-real-ids-test
+  (let [tables-uri  (str "metabase://database/" (mt/id) "/tables")
+        orders-uri  (str "metabase://table/" (mt/id :orders) "/fields")
+        check-error (fn [endpoint query error uri]
+                      (let [response (mt/user-http-request :crowberto :post 400 endpoint {:query query})]
+                        (is (= error (:error response)))
+                        (is (= uri (recovery-uri (:message response))))))]
+    (doseq [endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing endpoint
+        (testing "an unknown table names the query's database"
+          (check-error endpoint (unknown-table-query) "unknown-table" tables-uri)
+          (check-read-resource :crowberto tables-uri))
+        (testing "an ambiguous table names the query's database"
+          ;; The app DB's unique keys forbid a duplicate table, so both tables exist only in the metadata provider.
+          (let [mp (lib.tu/mock-metadata-provider
+                    (mt/metadata-provider)
+                    {:tables [{:id 99999901 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}
+                              {:id 99999902 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}]})]
+            (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+              (check-error endpoint (unknown-table-query (db-name) "SHIPMENTS") "ambiguous-table" tables-uri))))
+        (testing "an unknown column names its table"
+          (check-error endpoint
+                       (orders-query :aggregation [["count" {}]]
+                                     :breakout    [["field" {} [(db-name) "PUBLIC" "ORDERS" "CREATD_AT"]]])
+                       "unknown-field"
+                       orders-uri)
+          (check-read-resource :crowberto orders-uri))
+        (testing "an unknown column on another table names that table"
+          (let [products-uri (str "metabase://table/" (mt/id :products) "/fields")]
+            (check-error endpoint
+                         (orders-query :aggregation [["count" {}]]
+                                       :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGRY"]]])
+                         "unknown-field"
+                         products-uri)
+            (check-read-resource :crowberto products-uri)))
+        (testing "an ambiguous foreign key names the source table"
+          (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:fk_target_field_id (mt/id :products :id)}
+            (check-error endpoint
+                         (orders-query :aggregation [["count" {}]]
+                                       :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGORY"]]])
+                         "ambiguous-fk"
+                         orders-uri)))))))
+
+(deftest construct-query-recovery-hint-names-the-database-only-when-readable-test
+  (testing "the pipeline finds the database by name before any permission check, so a user who cannot read it
+           gets the placeholder instead of its id"
+    (mt/with-no-data-perms-for-all-users!
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query (unknown-table-query)})]
+        (is (= "unknown-table" (:error response)))
+        (is (= "metabase://database/<numeric id>/tables" (recovery-uri (:message response)))))))
+  (testing "a user who can read the database gets its id, and can read the URI"
+    (mt/with-full-data-perms-for-all-users!
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query (unknown-table-query)})
+            uri      (recovery-uri (:message response))]
+        (is (= (str "metabase://database/" (mt/id) "/tables") uri))
+        (check-read-resource :rasta uri)))))
+
+(deftest construct-query-recovery-hint-skips-a-routing-destination-test
+  (testing "`read_resource` never opens a routing destination, so even an admin gets the placeholder"
+    (mt/with-temp [:model/Database {router-id :id}     {}
+                   :model/Database {destination :name} {:router_database_id router-id}]
+      (let [response (mt/user-http-request :crowberto :post 400 "agent/v2/construct-query"
+                                           {:query (unknown-table-query destination "ORDERS")})]
+        (is (= "unknown-table" (:error response)))
+        (is (= "metabase://database/<numeric id>/tables" (recovery-uri (:message response))))))))
+
+(deftest construct-query-unknown-field-on-an-unqueryable-table-test
+  (testing "a misspelled column on a table the user cannot query gets a 403 that does not name the table"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :query-builder)
+      (testing "the user can query ORDERS, so a 403 below comes from PRODUCTS"
+        (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                              {:query (orders-query :aggregation [["count" {}]])}))
+      (let [query    (orders-query
+                      :aggregation [["count" {}]]
+                      :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGRY"]]])
+            response (mt/user-http-request :rasta :post 403 "agent/v2/construct-query" {:query query})]
+        (is (not (str/includes? (pr-str response) (str "metabase://table/" (mt/id :products)))))))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
@@ -1197,6 +1327,16 @@
                               {:name "Forbidden Rename"})))))
 
 ;;; ----------------------------------------------- Create Dashboard Tests ------------------------------------------
+
+(deftest create-dashboard-tracks-snowplow-test
+  (snowplow-test/with-fake-snowplow-collector
+    (let [resp (mt/user-http-request :rasta :post 200 "agent/v1/dashboard"
+                                     {:name "Agent Snowplow Dashboard"})]
+      (is (some #{{:data    {"dashboard_id" (:id resp)
+                             "event"        "dashboard_created"}
+                   :user-id (str (mt/user->id :rasta))}}
+                (snowplow-test/pop-event-data-and-user-id!)))
+      (t2/delete! :model/Dashboard :id (:id resp)))))
 
 (deftest create-dashboard-test
   (testing "Creates an empty dashboard, defaulting to the caller's personal collection"
@@ -2050,7 +2190,20 @@
       (is (<= (count attribute) 200))
       (is (str/ends-with? attribute "...[truncated]")))))
 
-(deftest ^:parallel read-resource-tool-description-test
+(deftest read-resource-non-numeric-database-id-test
+  (testing "a database or collection name points at its listing URI, not at `search`"
+    (let [{[database-item collection-item] :resources}
+          (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                {:uris ["metabase://database/redshift/schemas/core/tables"
+                                        "metabase://collection/our-analytics/items"]})]
+      (doseq [[item listing-uri] [[database-item   "metabase://databases"]
+                                  [collection-item "metabase://collections?tree=true"]]]
+        (testing (:uri item)
+          (is (not (contains? item :content)))
+          (is (str/includes? (:error item) listing-uri))
+          (is (not (str/includes? (:error item) "Call `search`"))))))))
+
+(deftest read-resource-tool-description-test
   (let [endpoint    (some (fn [[_ endpoint]]
                             (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
                               endpoint))
@@ -2142,7 +2295,8 @@
                             result ((get-in entries ["get_field_values" :fn]) args)]
                         (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
                         (if blocked?
-                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                          (is (= {:result-type :field-metadata :field_id "count" :reference_name "count"
+                                  :value_metadata nil}
                                  (:structured-output result)))
                           (is (= unrestricted result)))))))
                 (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"

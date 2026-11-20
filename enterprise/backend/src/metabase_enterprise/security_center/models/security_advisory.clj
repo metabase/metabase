@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -66,3 +67,8 @@
   [advisory-ids user-id]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SecurityAdvisory [_model]
+  {:skip? true})

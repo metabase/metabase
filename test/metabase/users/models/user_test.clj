@@ -2,8 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -17,10 +20,13 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +35,7 @@
   :once
   (fixtures/initialize :test-users :notifications))
 
-;;; Tests for invite-user and create-new-google-auth-user!
+;;; Tests for invite-user and SSO user provisioning
 
 (defn- maybe-accept-invite!
   "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token since this is
@@ -51,10 +57,29 @@
              [address (for [{subject :subject} emails]
                         (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
 
+(def ^:private ^:dynamic *sso-user-data* nil)
+
+(methodical/defmethod provider/authenticate :provider/test-sso
+  [_provider _request]
+  {:success? true :user-data *sso-user-data*})
+
+(defn- sso-login!
+  "Provision `user-data` by logging in through `:provider/test-sso`. The provider joins the auth-identity hierarchy only
+  for this call, so tests that check every registered provider (e.g. the MFA gate's) never see it."
+  [user-data]
+  (auth-identity/derive! :provider/test-sso ::provider/provider)
+  (auth-identity/derive! :provider/test-sso ::provider/create-user-if-not-exists)
+  (try
+    (binding [*sso-user-data* user-data]
+      (provider/login! :provider/test-sso {:session/skip? true}))
+    (finally
+      (auth-identity/underive! :provider/test-sso ::provider/create-user-if-not-exists)
+      (auth-identity/underive! :provider/test-sso ::provider/provider))))
+
 (defn- invite-user-accept-and-check-inboxes!
-  "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,
-  and return a map of addresses emails were sent to to the email subjects."
-  [& {:keys [google-auth? accept-invite? password invitor]
+  "Create user by passing `invite-user-args` to `create-and-invite-user!`, or via a dummy sso provider,
+  and return a map of each email address to the subjects of the emails sent to it."
+  [& {:keys [sso-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (mt/with-temporary-setting-values [site-name "Metabase"]
     (mt/with-fake-inbox
@@ -66,8 +91,8 @@
                                  :email      new-user-email
                                  :password   password}]
         (try
-          (if google-auth?
-            (user/create-new-google-auth-user! (dissoc new-user :password))
+          (if sso-auth?
+            (sso-login! (-> new-user (dissoc :password) (assoc :sso_source :google)))
             (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
@@ -89,7 +114,7 @@
   to `f`, then let `mt/with-temp` clean them up."
   [f]
   (mt/with-temp [:model/User admin {:is_superuser true, :email "accepted-admin@example.com"}]
-    (t2/update! :model/User (:id admin) {:last_login :%now})
+    (t2/update! :model/User :id (:id admin) {:last_login :%now})
     (f admin)))
 
 (deftest new-user-invite-email-test
@@ -152,11 +177,11 @@
       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
         (mt/with-temp [:model/User admin-1 {:is_superuser true, :email "accepted-admin-1@example.com"}
                        :model/User admin-2 {:is_superuser true, :email "accepted-admin-2@example.com"}]
-          (t2/update! :model/User (:id admin-1) {:last_login :%now})
-          (t2/update! :model/User (:id admin-2) {:last_login :%now})
+          (t2/update! :model/User :id (:id admin-1) {:last_login :%now})
+          (t2/update! :model/User :id (:id admin-2) {:last_login :%now})
           (is (= {(:email admin-1) ["<New User> created a Metabase account"]
                   (:email admin-2) ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                 (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                      (select-keys [(:email admin-1) (:email admin-2)])))))))))
 
 (deftest google-auth-site-admin-email-test
@@ -168,7 +193,7 @@
             (fn [admin]
               (is (= {(:email admin)      ["<New User> created a Metabase account"]
                       "cam2@metabase.com" ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) "cam2@metabase.com"])))))))))))
 
 (deftest google-auth-inactive-admin-no-email-test
@@ -179,7 +204,7 @@
           (fn [admin]
             (mt/with-temp [:model/User inactive {:is_superuser true, :is_active false}]
               (is (= {(:email admin) ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) (:email inactive)])))))))))))
 
 (deftest google-auth-setting-disabled-test
@@ -192,7 +217,7 @@
               (is (= (if config/ee-available?
                        {}
                        {(:email admin) ["<New User> created a Metabase account"]})
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin)])))))))))))
 
 (deftest sso-login-link-email-test
@@ -375,14 +400,14 @@
     (testing "updating a User"
       (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (t2/update! :model/User user-id {:locale "en_GB"})
+          (t2/update! :model/User :id user-id {:locale "en_GB"})
           (is (= "en_GB"
                  (t2/select-one-fn :locale :model/User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (t2/update! :model/User user-id {:locale "en_XX"}))))))))
+               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -391,7 +416,7 @@
         (is (= "en_US"
                (t2/select-one-fn :locale :model/User :id user-id))))
       (testing "updating a User"
-        (t2/update! :model/User user-id {:locale "en-GB"})
+        (t2/update! :model/User :id user-id {:locale "en-GB"})
         (is (= "en_GB"
                (t2/select-one-fn :locale :model/User :id user-id)))))))
 
@@ -406,10 +431,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! :model/User user-id {:is_active true :first_name "New name"})))
+          (is (pos? (t2/update! :model/User :id user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! :model/User user-id {:is_active false}))))
+          (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -440,18 +465,18 @@
                                      :last_name  "Smith"
                                      :email      "john.smith@gmail.com"}]
       (is (= "John Smith"
-             (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user)))))
+             (:common_name (t2/select-one [:model/User :first_name :last_name] :id (:id user)))))
       (is (= "John Smith"
-             (:common_name (t2/select-one :model/User (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :email] (:id user)))))))
+             (:common_name (t2/select-one :model/User :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :email] :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :email] :id (:id user)))))))
   (testing "common_name should be present if first_name and last_name are selected but nil and email is also selected"
     (mt/with-temp [:model/User user {:first_name nil
                                      :last_name  nil
                                      :email      "john.smith@gmail.com"}]
       (is (= "john.smith@gmail.com"
-             (:common_name (t2/select-one [:model/User :email :first_name :last_name] (:id user)))))
-      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] (:id user))))))))
+             (:common_name (t2/select-one [:model/User :email :first_name :last_name] :id (:id user)))))
+      (is (nil? (:common_name (t2/select-one [:model/User :first_name :last_name] :id (:id user))))))))
 
 (deftest block-sso-provisioning-if-instance-not-set-up
   (testing "SSO users should not be created if an admin user has not already been created (metabase-private#201)"
@@ -471,11 +496,11 @@
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
     (mt/with-temp [:model/User {user-id :id :as user} {}]
       (is (nil? (:deactivated_at user)))
-      (t2/update! :model/User user-id {:is_active false})
-      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+      (t2/update! :model/User :id user-id {:is_active false})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (instance? java.time.OffsetDateTime deactivated-at)))
-      (t2/update! :model/User user-id {:is_active true})
-      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User user-id)]
+      (t2/update! :model/User :id user-id {:is_active true})
+      (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (nil? deactivated-at))))))
 
 (deftest add-attributes-merges-login-and-jwt-attributes-test
@@ -688,3 +713,69 @@
                                (str "Discarding unreadable settings for user " user-id)))
             (testing "without leaking the unreadable column contents, which are user data"
               (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))
+
+(deftest internal-user-update-test
+  (testing "internal user cannot be updated"
+    (let [before (t2/select-one :model/User :id config/internal-mb-user-id)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:first_name "Changed"})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
+                            (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
+      (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
+
+(deftest schema-checks-type-test
+  (is (mr/validate ::users.schema/user.type :api-key))
+  (is (mr/validate ::users.schema/user.type "personal"))
+  (is (not (mr/validate ::users.schema/user.type :robot))))
+
+(deftest update-check-test
+  (mt/with-temp [:model/User {self-id :id}   {}
+                 :model/User other           {}
+                 :model/User {google-id :id} {:sso_source :google}]
+    (let [self   (t2/select-one [:model/User :id :email :sso_source] :id self-id)
+          google (t2/select-one [:model/User :id :email :sso_source] :id google-id)]
+      (testing "a user changes their own profile columns and nothing else"
+        (mt/with-current-user (:id self)
+          (is (api/update-check self {:first_name "Changed" :email "changed@example.com" :is_qbnewb false}))
+          (doseq [changes [{:is_superuser true} {:login_attributes {"key" "value"}} {:tenant_id 1}
+                           {:is_data_analyst true} {:is_active false}]]
+            (testing changes
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                    (api/update-check self changes)))))))
+      (testing "a user changes nothing of another user"
+        (mt/with-current-user (:id self)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check other {:first_name "Changed"})))))
+      (testing "a Google user does not change their own email"
+        (mt/with-current-user google-id
+          (is (api/update-check google {:email (:email google)}))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check google {:email "changed@example.com"})))))
+      (testing "a user selected without its SSO source does not change their email"
+        (mt/with-current-user google-id
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                                (api/update-check (dissoc google :sso_source) {:email "changed@example.com"})))))
+      (testing "a superuser changes admin columns of another user"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (api/update-check google {:email "changed@example.com" :is_superuser true :login_attributes {}})))))))
+
+(deftest read-and-write-check-test
+  (mt/with-temp [:model/User self  {}
+                 :model/User other {}]
+    (mt/with-current-user (:id self)
+      (is (api/read-check self))
+      (is (api/write-check self))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/read-check other)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (api/write-check other))))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (is (api/read-check other))
+      (is (api/write-check other)))))
+
+(deftest create-check-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                          (api/create-check :model/User {:email "user@example.com"}))))
+  (mt/with-current-user (mt/user->id :crowberto)
+    (is (api/create-check :model/User {:email "user@example.com"}))))

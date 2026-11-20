@@ -154,7 +154,7 @@ function ExplorationTreeHeading({
         <Icon
           name={isExpanded ? "chevrondown" : "chevronright"}
           size={12}
-          c="text-disabled"
+          c="text-secondary"
         />
       </Box>
       <ExplorationHeadingIcon

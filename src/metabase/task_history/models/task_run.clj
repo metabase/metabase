@@ -2,6 +2,8 @@
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
    [java-time.api :as t]
+   [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -19,16 +21,24 @@
 (methodical/defmethod t2/table-name :model/TaskRun [_model] :task_run)
 
 (doto :model/TaskRun
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write TaskRun. Same as TaskHistory - requires superusers or monitoring permission.
-(defmethod mi/perms-objects-set :model/TaskRun
-  [_task-run _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskRun rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskRun :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (def run-types
   "Valid run types."
@@ -38,26 +48,9 @@
   "Valid entity types for task runs."
   #{:database :card :dashboard})
 
-(def ^:private task-run-status #{:started :success :failed :abandoned})
-
-(defn- assert-task-run-status
-  [status]
-  (assert (task-run-status (keyword status)) "Invalid task run status"))
-
 (t2/define-before-insert :model/TaskRun
   [task-run]
   (merge {:started_at (mi/now), :updated_at (mi/now)} task-run))
-
-(t2/define-after-insert :model/TaskRun
-  [task-run]
-  (assert-task-run-status (:status task-run))
-  task-run)
-
-(t2/define-before-update :model/TaskRun
-  [task-run]
-  (when (contains? task-run :status)
-    (assert-task-run-status (:status task-run)))
-  task-run)
 
 (t2/deftransforms :model/TaskRun
   {:run_type    mi/transform-keyword
@@ -212,3 +205,8 @@
   {:style/indent 1}
   [run-info & body]
   `(do-with-task-run ~run-info (fn [] ~@body)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskRun [_model]
+  {:skip? true})

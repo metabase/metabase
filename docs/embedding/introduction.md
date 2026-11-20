@@ -32,7 +32,7 @@ The hub opens to **Get started**, a checklist for your first embed. The sidebar 
 - **Authentication**: set up [JWT SSO](./authentication.md). SAML settings stay in Admin.
 - **Permissions**: control what data people can see in your embeds. If you use tenants, see [data permissions for tenants](./tenants.md#data-permissions-for-tenants).
 - **Tenancy**: [turn on multi-tenant strategy](./tenants.md#enable-multi-tenant-strategy) and manage tenants, tenant groups, and tenant users.
-- **Appearance**: create and manage [embedding themes](./appearance.md#embedding-themes).
+- **Appearance**: create and manage [embedding themes](./appearance.md#save-a-theme-in-metabase).
 - **Localization**: [add a translation dictionary](./translations.md#add-a-translation-dictionary).
 - **New embed**: open the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
@@ -59,7 +59,7 @@ All SSO options require a Pro or Enterprise plan.
 | Dashboards                                                                                | ✅  | ✅    |
 | [Filter widgets](https://www.metabase.com/glossary/filter-widget)                         | ✅  | ✅    |
 | Export results\*                                                                          | ✅  | ✅    |
-| [Basic appearance customization](../configuring-metabase/appearance.md)\*\*               | ✅  | ✅    |
+| [Light and dark themes](./appearance.md#pick-a-light-or-dark-theme)                       | ✅  | ✅    |
 | Row-level data segregation                                                                | ✅  | ✅    |
 | [Drill-through menus](../questions/visualizations/drill-through.md)                       | ✅  | ❌    |
 | [Query builder](../questions/query-builder/editor.md)                                     | ✅  | ❌    |
@@ -71,13 +71,11 @@ All SSO options require a Pro or Enterprise plan.
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*                     | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*                       | ❌  | ✅    |
 
 \* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
 
-\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing) plan with either authentication method.
-
-\*\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
+\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
 
 ### Components with SSO authentication
 

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.revisions.sql :as revisions.sql]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -17,7 +18,6 @@
    :current-user-id                1
    :is-superuser?                  true
    :is-data-analyst?               false
-   :current-user-perms             #{"/"}
    :calculate-available-models?    false
    :is-sandboxed-user?             false
    :is-impersonated-user?          false
@@ -238,6 +238,10 @@
             base-search-query "card"
             (merge default-search-ctx {:created-at "2016-04-18~2016-04-23"}))))))
 
+(def ^:private newest-revision
+  "The filter that keeps the newest Revision of a card."
+  (revisions.sql/newest-revision-clause :revision "Card" :card.id))
+
 (deftest ^:parallel last-edited-at-filter-test
   (testing "last edited at filter"
     (is (= {:select [:*]
@@ -245,8 +249,8 @@
             :join   [:revision [:= :revision.model_id :card.id]]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
+                     newest-revision
                      [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                      [:< [:cast :revision.timestamp :date] #t "2016-04-24"]]}
            (search.filter/build-filters
@@ -258,8 +262,8 @@
               :join   [:revision [:= :revision.model_id :card.id]]
               :where  [:and
                        [:= :card.archived false]
-                       [:= :revision.most_recent true]
                        [:= :revision.model "Card"]
+                       newest-revision
                        [:>= [:cast :revision.timestamp :date] #t "2016-04-18"]
                        [:< [:cast :revision.timestamp :date] #t "2016-04-24"]
                        [:= :revision.user_id 1]]}
@@ -296,8 +300,8 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
+                     newest-revision
                      [:= :revision.user_id 1]]
             :join   [:revision [:= :revision.model_id :card.id]]}
            (search.filter/build-filters
@@ -311,8 +315,8 @@
             :from   [:table]
             :where  [:and
                      [:= :card.archived false]
-                     [:= :revision.most_recent true]
                      [:= :revision.model "Card"]
+                     newest-revision
                      [:in :revision.user_id #{1 2}]]
             :join   [:revision [:= :revision.model_id :card.id]]}
            (search.filter/build-filters

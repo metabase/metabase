@@ -1,7 +1,12 @@
 (ns metabase.query-processor.execute
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -64,6 +69,7 @@
   ;; to execute INSIDE the `binding` blocks established by the EE postprocessing middlewares below. See
   ;; [[metabase.query-processor.middleware.process-userland-query/capture-execution-context-middleware]] for why.
   [#'qp.process-userland-query/capture-execution-context-middleware
+   #'qp.middleware.enterprise/apply-workspace-sql-remapping-middleware
    #'qp.middleware.enterprise/swap-destination-db-middleware
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
@@ -75,16 +81,23 @@
 
 (def ^:private execute* nil)
 
-(mu/defn- run [query :- ::qp.schema/any-query
+(mu/defn- run [query :- ::lib.schema/query
                rff   :- ::qp.schema/rff]
-  ;; if the query has a `:qp/compiled` key (i.e., this query was compiled from MBQL), rename it to `:native`, so the
-  ;; driver implementations only need to look for one key. Can't really do this any sooner because it will break schema
-  ;; checks in the middleware
-  (let [query (cond-> query
-                ;; TODO (Cam 9/15/25) -- update this and downstream code (drivers) to handle MBQL 5
-                (:lib/type query) lib/->legacy-MBQL)
-        query (cond-> query
-                (not (:native query)) (assoc :native (:qp/compiled query)))]
+  (let [query (if (driver.u/supports? driver/*driver* :mbql-5-native-query-execution (lib.metadata/database query))
+                ;; keep MBQL 5 for execution
+                (if (lib/native-only-query? query)
+                  query
+                  ;; keep any driver-specific keys in the compiled query, e.g. MongoDB's `:collection`
+                  (let [native-stage (-> (:qp/compiled query)
+                                         (set/rename-keys {:query :native})
+                                         (assoc :lib/type :mbql.stage/native))]
+                    (assoc query
+                           :stages             [native-stage]
+                           :qp/original-stages (:stages query))))
+                ;; convert to legacy (drop this code branch in 69)
+                (let [legacy-query #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL query)]
+                  (cond-> legacy-query
+                    (not (:native legacy-query)) (assoc :native (:qp/compiled legacy-query)))))]
     (qp.pipeline/*run* query rff)))
 
 (mu/defn- execute-fn :- ::qp.schema/qp

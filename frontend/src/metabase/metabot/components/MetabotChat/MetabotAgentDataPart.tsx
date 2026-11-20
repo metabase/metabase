@@ -37,6 +37,7 @@ import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotInlineChart } from "./MetabotInlineChart";
+import { MetabotInlineChartLink } from "./MetabotInlineChartLink";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
 type AgentDataPartProps = {
@@ -46,6 +47,8 @@ type AgentDataPartProps = {
   debug: boolean;
   conversationId: string;
   size: "md" | "lg";
+  /** Show a generated chart as a link that opens it, not as an inline chart. */
+  chartsAsLinks?: boolean;
 };
 
 export const AgentDataPart = ({
@@ -55,6 +58,7 @@ export const AgentDataPart = ({
   debug,
   conversationId,
   size,
+  chartsAsLinks = false,
 }: AgentDataPartProps) =>
   match(dataPart)
     .with({ part: { type: "data-todo_list" } }, ({ part }) => (
@@ -96,21 +100,27 @@ export const AgentDataPart = ({
     })
     .with(
       { part: { type: "data-generated_entity", data: { type: "card" } } },
-      ({ part }) => (
-        <Stack gap="lg">
-          {debug && <DataPartJsonCard type={part.type} value={part.data} />}
-          <MetabotInlineChart
-            value={part.data}
-            readonly={readonly}
-            conversationId={conversationId}
-            size={size}
-          />
-          <GeneratedCardTablePills
-            value={part.data}
-            messageId={readonly ? undefined : externalId}
-          />
-        </Stack>
-      ),
+      ({ part }) =>
+        chartsAsLinks ? (
+          <Stack gap="lg">
+            {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+            <MetabotInlineChartLink value={part.data} />
+          </Stack>
+        ) : (
+          <Stack gap="sm" mb="lg">
+            {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+            <MetabotInlineChart
+              value={part.data}
+              readonly={readonly}
+              conversationId={conversationId}
+              size={size}
+            />
+            <GeneratedCardTablePills
+              value={part.data}
+              messageId={readonly ? undefined : externalId}
+            />
+          </Stack>
+        ),
     )
     .with(
       { part: { type: "data-generated_entity", data: { type: "dashboard" } } },
@@ -125,6 +135,18 @@ export const AgentDataPart = ({
       <Stack gap="lg">
         {debug && <DataPartJsonCard type={part.type} value={part.data} />}
         <EntitySavedMessage value={part.data} />
+      </Stack>
+    ))
+    .with({ part: { type: "data-dashboard_saved" } }, ({ part }) => (
+      <Stack gap="lg">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <MetabotInlineDashboardLink
+          value={{
+            type: "dashboard",
+            title: part.data.name,
+            url: part.data.url,
+          }}
+        />
       </Stack>
     ))
     .with({ part: { type: "data-adhoc_viz" } }, ({ part }) =>

@@ -2,6 +2,7 @@
   "Application database queries for the metabot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
@@ -41,17 +42,13 @@
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id   :- ms/PositiveInt
-   perm-type  :- :keyword
-   perm-value :- :keyword]
+   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
+   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
   (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
 
 (mu/defn insert-permission!
   "Insert the MetabotPermissions `row`."
-  [row :- [:map {:closed true}
-           [:id         {:optional true} ms/PositiveInt]
-           [:group_id   {:optional true} [:maybe ms/PositiveInt]]
-           [:perm_type  {:optional true} [:maybe [:or :keyword :string]]]
-           [:perm_value {:optional true} [:maybe [:or :keyword :string]]]]]
+  [row :- ::metabot-ee.schema/metabot-permissions.update]
   (t2/insert! :model/MetabotPermissions row))
 
 (mu/defn delete-hidden-group-permissions!
@@ -87,14 +84,14 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:group_id  {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotGroupLimit row))
 
 (mu/defn update-group-limit!
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit limit-id {:max_usage max-usage}))
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
+  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
@@ -116,14 +113,14 @@
   [row :- [:map {:closed true}
            [:id        {:optional true} ms/PositiveInt]
            [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
-           [:max_usage {:optional true} [:maybe :int]]]]
+           [:max_usage {:optional true} ::metabot-ee.schema/metabot-limit.max-usage]]]
   (t2/insert! :model/MetabotInstanceLimit row))
 
 (mu/defn update-instance-limit!
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
-   max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit limit-id {:max_usage max-usage}))
+   max-usage :- ::metabot-ee.schema/metabot-limit.max-usage]
+  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
@@ -152,13 +149,22 @@
                  :where  (usage-window-expr period-start user-id tenant-id)}))
 
 (mu/defn usage-message-count
-  "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:cnt` row of messages sent since `period-start`, narrowed by the optional `user-id` and `tenant-id`.
+
+  A message is one agent loop. The LLM calls of a loop log one `ai_usage_log` row each, under the loop's
+  `request_id`, so the count is the number of distinct ids among the rows from `sources`. The loop that asks,
+  `request-id`, is left out, so a turn's earlier calls do not count against its later ones; nil leaves every loop
+  in. Rows without a `request_id` do not count."
   [period-start :- ms/TemporalInstant
+   sources      :- [:set :string]
+   request-id   :- [:maybe :string]
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:count :*] :cnt]]
+  (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
+                 :where  (cond-> (usage-window-expr period-start user-id tenant-id)
+                           (seq sources) (conj [:in :source sources])
+                           request-id    (conj [:not= :request_id request-id]))}))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.lib.core :as lib]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -10,7 +11,9 @@
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
+   [metabase.task-history.schema :as task-history.schema]
    [metabase.test :as mt]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -344,7 +347,7 @@
                                                          :pulse_channel_id pc-id}]
             (notification.tu/with-javascript-visualization-stub
               (pulse.tu/with-captured-channel-send-messages!
-                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+                (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))
             (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
               (is (some? run) "task run was created")
               (is (= :subscription (:run_type run)))
@@ -372,7 +375,7 @@
                                                           (throw (ex-info "second channel failed" {}))))
                           channel/send!               (constantly nil)]
               (is (thrown? clojure.lang.ExceptionInfo
-                           (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))))
+                           (pulse.send/send-pulse! (t2/select-one :model/Pulse :id pulse-id))))))
           (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
             (is (= {:success 1 :failed 1}
                    (frequencies (t2/select-fn-vec :status :model/TaskHistory :run_id (:id run) :task "notification-send"))))
@@ -431,3 +434,9 @@
       (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/testing
                   :payload      {}}))))))
+
+(deftest status-must-be-known-test
+  (testing "the schema refuses an unknown status and takes a known one, as a keyword or a string"
+    (is (not (mr/validate ::task-history.schema/task-run.update {:status :bogus})))
+    (is (mr/validate ::task-history.schema/task-run.update {:status :abandoned}))
+    (is (= {:status :abandoned} (lib/normalize ::task-history.schema/task-run.update {:status "abandoned"})))))

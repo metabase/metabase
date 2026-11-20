@@ -110,7 +110,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -186,7 +186,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -317,7 +317,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -375,7 +375,7 @@ describe("scenarios > admin > transforms", { tags: ["@external"] }, () => {
 
         cy.log("run the transform and make sure its table can be queried");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.expectUnstructuredSnowplowEvent({
           event: "transform_trigger_manual_run",
         });
@@ -420,7 +420,7 @@ LIMIT
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_trigger_manual_run",
       });
@@ -470,7 +470,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -794,288 +794,24 @@ LIMIT
   });
 
   describe("settings inline editing", () => {
-    it("should manage ownership, update incremental settings inline, debounce no-op toggles, and roll back on errors", () => {
+    it("should update source strategy and checkpoint field inline", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
 
-      const dismissToast = () => {
-        H.undoToast().icon("close").click();
-        H.undoToast().should("not.exist");
-      };
-
-      cy.log("verify the ownership section is displayed");
-      getTransformsTargetContent().within(() => {
-        cy.findByText("Ownership").should("be.visible");
-        cy.findByText("Specify who is responsible for this transform.").should(
-          "be.visible",
-        );
-        cy.findByText("Owner").should("be.visible");
-      });
-
-      cy.log("change the owner to another user");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("Robert Tableton").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("set an external email as owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-        cy.findByLabelText("Owner").clear().type("external@example.com");
-      });
-      H.popover().findByText("external@example.com").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("clear the owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("No owner").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("Toggle incremental on");
-      isIncrementalSwitchDisabled();
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchEnabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental off");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchDisabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental on and immediately off");
-      isIncrementalSwitchDisabled();
-
-      // Stub the updateTransform call to track how many times it's called
-      let updateCallCount = 0;
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        updateCallCount++;
-        req.continue();
-      });
-
-      // Toggle on then immediately off (within debounce window)
-      getIncrementalSwitch().click();
-      getIncrementalSwitch().click();
-
-      // Wait for debounce period (300ms) plus some buffer
-      cy.wait(500);
-
-      cy.log(
-        "Verify no request was made since we toggled back to original value",
-      );
-      // The switch should be back to unchecked
-      isIncrementalSwitchDisabled();
-      // No request should have been made
-      cy.wrap(null).then(() => {
-        expect(updateCallCount).to.equal(0);
-      });
-
-      cy.log("Intercept and force the update to fail");
-      cy.intercept("PUT", "/api/transform/*", {
-        statusCode: 500,
-        body: { message: "Internal server error" },
-      }).as("updateTransformError");
-
-      cy.log("Toggle incremental on");
+      cy.log("enable incremental once its checkpoint options have loaded");
       getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
-
-      cy.log("Wait for the failed request");
-      cy.wait("@updateTransformError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      cy.log("Intercept and simulate network failure");
-      cy.intercept("PUT", "/api/transform/*", {
-        forceNetworkError: true,
-      }).as("updateTransformNetworkError");
-
-      cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransformNetworkError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      let requestCount = 0;
-      cy.log("Intercept and fail the first request after a delay");
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // First request fails after a delay to ensure second change happens while it's in progress
-          req.reply({
-            statusCode: 500,
-            body: { message: "Internal server error" },
-            delay: 500,
-          });
-        } else {
-          // Subsequent requests should not happen
-          req.continue();
-        }
-      }).as("updateTransformConditional");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for debounce, then toggle again (second change)");
-      cy.wait(400);
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for the error");
-      cy.wait("@updateTransformConditional");
-
-      cy.log("Wait a bit to ensure no second request is made");
-      cy.wait(500);
-
-      cy.log("Verify only one request was made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(1);
+      cy.wait("@updateTransform").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        expect(request.body.target.type).to.eq("table-incremental");
+        expect(request.body.source["source-incremental-strategy"]).to.include({
+          type: "checkpoint",
+        });
       });
 
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch is back to unchecked");
-      isIncrementalSwitchDisabled();
-    });
-
-    it("should handle sequential changes correctly when first update is in progress", () => {
-      // Use composite_pk_table which has at least two numeric fields (id1, score)
-      // so we can reliably select a second checkpoint field
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Verify initial state");
-      isIncrementalSwitchDisabled();
-
-      let requestCount = 0;
-
-      // Intercept and delay the first request using a Promise
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // Delay the first request by 1 second
-          req.reply({
-            body: req.body,
-            delay: 1000,
-          });
-        } else {
-          // Let subsequent requests through normally
-          req.continue();
-        }
-      }).as("updateTransformDelayed");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log(
-        "Wait for debounce plus a bit, then select checkpoint field (second change)",
-      );
-      // Wait for first request to start (debounce 300ms + buffer)
-      cy.wait(400);
-
-      // Make a second change while first is still in progress
-      // Select the second checkpoint field (composite_pk_table has id1 and score)
-      getFieldPicker().scrollIntoView().should("be.visible");
-      getFieldPicker().click();
-
-      H.popover().findAllByRole("option").eq(1).click();
-
-      cy.log("Wait for both requests to complete");
-      cy.wait("@updateTransformDelayed");
-      cy.wait("@updateTransformDelayed");
-
-      cy.log(
-        "Verify final state - incremental on with checkpoint field selected",
-      );
+      cy.log("the settings are read back from the server after a reload");
+      cy.reload();
       isIncrementalSwitchEnabled();
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
-
-      cy.log("Verify both requests were made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(2);
-      });
-    });
-
-    it("should update source strategy and checkpoint field inline", () => {
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Enable incremental transformation");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-
-      cy.log("Source strategy and checkpoint field should be visible");
-      // The source strategy select should be visible
-      // (Currently only one option "checkpoint" is available, so select might not be shown)
-      // The checkpoint field select should be visible
-      getFieldPicker().scrollIntoView().should("be.visible");
-
-      cy.log("Select a checkpoint field");
-      getFieldPicker().click();
-      // Click the first available option in the popover
-      H.popover().findAllByRole("option").eq(1).click();
-      cy.wait("@updateTransform");
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-
-      cy.log("Verify the field was selected");
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
+      getFieldPicker().should("have.value", "Score");
     });
   });
 
@@ -1123,7 +859,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1164,7 +900,7 @@ LIMIT
 
       cy.log("run the transform and verify the table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1182,7 +918,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1204,7 +940,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1228,7 +964,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("modify the transform after running");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1251,7 +987,7 @@ LIMIT
 
       cy.log("run the transform and verify the new table");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink()
@@ -1275,7 +1011,7 @@ LIMIT
       cy.log("create and run a transform");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("delete the old target without creating the new one");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1298,7 +1034,7 @@ LIMIT
 
       cy.log("run the transform to re-create the original target");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("verify the target is available");
       H.DataStudio.Transforms.settingsTab().click();
@@ -1311,7 +1047,7 @@ LIMIT
       cy.log("run a transform so its target table exists");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("change another transform's target to that table");
       createMbqlTransform({
@@ -1362,7 +1098,7 @@ LIMIT
 
       cy.log("after table creation");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getSchemaLink().click();
       H.main().within(() => {
@@ -1429,7 +1165,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
@@ -1464,7 +1200,7 @@ LIMIT
 
       cy.log("run the transform and make sure the query has changed");
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1531,7 +1267,7 @@ LIMIT
 
         cy.log("run the transform and make sure the query has changed");
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
@@ -1549,7 +1285,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("create and run another transform");
       createSqlTransform({
@@ -1558,7 +1294,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
 
       cy.log("assert that the list is filtered by the current transform");
       getRunListLink().click();
@@ -1600,7 +1336,7 @@ LIMIT
       cy.log("create a transform and the table");
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1625,7 +1361,7 @@ LIMIT
         visitTransform: true,
       });
       H.DataStudio.Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      H.runTransformFromUiAndWaitForStatus("succeeded");
       H.DataStudio.Transforms.settingsTab().click();
       getTableLink().should("have.attr", "aria-disabled", "false");
 
@@ -1643,66 +1379,6 @@ LIMIT
       cy.log("make sure the table is deleted");
       visitTableQuestion({ targetTable: TARGET_TABLE_2 });
       assertTableDoesNotExistError({ targetTable: TARGET_TABLE_2 });
-    });
-  });
-
-  describe("disconnected database", () => {
-    it("should warn about transforms when deleting a database and show disconnected banner on transform pages", () => {
-      cy.log("create a transform");
-      createMbqlTransform({ visitTransform: false });
-
-      cy.log("go to admin and delete the writable database");
-      cy.intercept("GET", "/api/database/*/usage_info").as("usageInfo");
-      cy.intercept("DELETE", "/api/database/*").as("deleteDb");
-      cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-      cy.button("Remove this database").click();
-      cy.wait("@usageInfo");
-
-      cy.log(
-        "verify the delete modal warns about transforms that will stop working",
-      );
-      H.modal().within(() => {
-        cy.findByLabelText(/1 transform will stop working/)
-          .should("not.be.checked")
-          .click()
-          .should("be.checked");
-        cy.findByTestId("database-name-confirmation-input").type(DB_NAME);
-        cy.findByText("Delete this DB connection").click();
-        cy.wait("@deleteDb");
-      });
-
-      cy.log(
-        "visit the transform query page and verify the disconnected banner",
-      );
-      cy.visit("/data-studio/transforms/1");
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log("edit definition button should not be visible");
-      H.DataStudio.Transforms.editDefinitionButton().should("not.exist");
-
-      cy.log(
-        "visit the run page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.runTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the settings page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.settingsTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the inspect page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.inspectTab().click();
-      verifyDisconnectedDatabaseBanner();
-
-      cy.log(
-        "visit the dependencies page and verify the disconnected banner is visible",
-      );
-      H.DataStudio.Transforms.dependenciesTab().click();
-      verifyDisconnectedDatabaseBanner();
     });
   });
 
@@ -1819,7 +1495,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1829,7 +1505,7 @@ LIMIT
         visitTransform: true,
       }).then(() => {
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
       });
 
       createMbqlTransform({
@@ -1900,7 +1576,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1954,7 +1630,7 @@ LIMIT
         });
 
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -1979,7 +1655,7 @@ LIMIT
           `,
         );
         H.DataStudio.Transforms.runTab().click();
-        runTransformAndWaitForSuccess();
+        H.runTransformFromUiAndWaitForStatus("succeeded");
         H.DataStudio.Transforms.settingsTab().click();
         getTableLink().click();
         H.queryBuilderHeader()
@@ -2305,16 +1981,32 @@ LIMIT
       ]);
     });
 
-    it("should edit collection details and archive a collection with transforms", () => {
+    it("should edit collection details and delete a collection with transforms", () => {
+      cy.intercept("DELETE", "/api/transform/collection/*").as(
+        "deleteTransformsFolder",
+      );
       H.createTransformCollection({ name: "Original Name" });
       H.createTransformCollection({ name: "Target Parent" });
-      H.createTransformCollection({ name: "Archive Me" }).then((collection) => {
+      H.createTransformCollection({ name: "Delete Me" }).then((collection) => {
         createMbqlTransform({
           name: "Transform In Collection",
-          targetTable: "archived_transform_table",
+          targetTable: "deleted_transform_table",
           collectionId: collection.body.id,
+        }).then(({ body: transform }) => {
+          H.runTransformAndWaitForSuccess(transform.id);
         });
       });
+      H.createTransformCollection({ name: "Delete Tables Too" }).then(
+        (collection) => {
+          createMbqlTransform({
+            name: "Transform With Table",
+            targetTable: TARGET_TABLE_2,
+            collectionId: collection.body.id,
+          }).then(({ body: transform }) => {
+            H.runTransformAndWaitForSuccess(transform.id);
+          });
+        },
+      );
 
       visitTransformListPage();
 
@@ -2350,39 +2042,112 @@ LIMIT
         cy.findByText("Renamed Collection").should("be.visible");
       });
 
-      cy.log("archive a collection with transforms");
+      cy.log("expand the collection to see the transform in it");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("be.visible");
-        cy.findByText("Archive Me").click();
+        cy.findByText("Delete Me").should("be.visible");
+        cy.findByText("Delete Me").click();
         cy.findByText("Transform In Collection").should("be.visible");
       });
 
-      cy.log("archive the collection via menu");
+      cy.log("delete the collection via menu, keeping the output tables");
       getTransformsList()
-        .findByText("Archive Me")
+        .findByText("Delete Me")
         .closest('[role="row"]')
         .findByRole("button", { name: "Collection options" })
         .click();
 
-      H.popover().findByText("Archive").click();
+      H.popover().within(() => {
+        cy.findByText("Delete").should("be.visible");
+        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Delete").click();
+      });
 
       H.modal().within(() => {
-        cy.findByText('Archive "Archive Me"?').should("be.visible");
-        cy.findByText("This will also archive 1 transform inside it.").should(
+        cy.findByText('Delete "Delete Me" and its contents?').should(
           "be.visible",
         );
-        cy.button("Archive").click();
+        cy.findByText(
+          "This will delete this folder, its subfolders, and the 1 transform inside it. This can’t be undone.",
+        ).should("be.visible");
+        cy.findByLabelText(
+          "Also delete the tables generated by these transforms.",
+        ).should("not.be.checked");
+        cy.findByText("Here’s what will be deleted:").should("be.visible");
+        cy.findByText("Transform In Collection").should("be.visible");
+        cy.button("Delete folder and contents").click();
       });
+
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("not.contain", "delete-tables");
 
       H.undoToast()
-        .findByText('"Archive Me" has been archived')
+        .findByText('Deleted "Delete Me" and 1 transform')
         .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_only",
+        triggered_from: "transform_list_page",
+        result: "success",
+      });
 
-      cy.log("verify collection and its children are no longer visible");
+      cy.log("verify collection and its transform are gone");
       getTransformsList().within(() => {
-        cy.findByText("Archive Me").should("not.exist");
+        cy.findByText("Target Parent").should("be.visible");
+        cy.findByText("Delete Me").should("not.exist");
         cy.findByText("Transform In Collection").should("not.exist");
       });
+
+      cy.log(
+        "make sure the output table of the deleted transform still exists",
+      );
+      visitTableQuestion({ targetTable: "deleted_transform_table" });
+      H.assertQueryBuilderRowCount(3);
+
+      cy.log("delete the other collection together with the output tables");
+      visitTransformListPage();
+      getTransformsList()
+        .findByText("Delete Tables Too")
+        .closest('[role="row"]')
+        .findByRole("button", { name: "Collection options" })
+        .click();
+      H.popover().findByText("Delete").click();
+
+      H.modal().within(() => {
+        cy.findByText('Delete "Delete Tables Too" and its contents?').should(
+          "be.visible",
+        );
+        cy.findByLabelText(
+          "Also delete the tables generated by these transforms.",
+        ).click();
+        cy.findByText("Transform With Table").should("be.visible");
+        cy.findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_2}`).should(
+          "be.visible",
+        );
+        cy.button("Delete folder, contents, and tables").click();
+      });
+
+      cy.wait("@deleteTransformsFolder")
+        .its("request.url")
+        .should("contain", "delete-tables=true");
+
+      H.undoToast()
+        .findByText('Deleted "Delete Tables Too", 1 transform and its table')
+        .should("be.visible");
+      H.expectUnstructuredSnowplowEvent({
+        event: "transform_folder_deleted",
+        event_detail: "transforms_and_tables",
+        triggered_from: "transform_list_page",
+        result: "success",
+      });
+      getTransformsList().within(() => {
+        cy.findByText("Delete Tables Too").should("not.exist");
+        cy.findByText("Transform With Table").should("not.exist");
+      });
+
+      cy.log("make sure the output table is deleted");
+      visitTableQuestion({ targetTable: TARGET_TABLE_2 });
+      assertTableDoesNotExistError({ targetTable: TARGET_TABLE_2 });
     });
   });
 
@@ -2489,9 +2254,12 @@ LIMIT
         tableVariableTable: SOURCE_TABLE,
         tableVariableSchema: TARGET_SCHEMA,
       });
-      cy.log("set up remote sync");
+      cy.log("set up remote sync and push the transform");
       H.setupGitSync();
+      H.configureGit("read-write");
+      H.pushChangesWithApi();
       H.configureGit("read-only");
+      H.pollForTask({ taskName: "import" });
     });
 
     it("should make transform pages read-only", () => {
@@ -2870,6 +2638,12 @@ describe("scenarios > admin > transforms > jobs", () => {
   });
 
   describe("runs", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/transform-job/*/transforms").as(
+        "jobTransforms",
+      );
+    });
+
     it("should be able to manually run a job", () => {
       H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
         createMbqlTransform({
@@ -2882,13 +2656,14 @@ describe("scenarios > admin > transforms > jobs", () => {
       });
 
       cy.log("the job renders its transforms table");
+      cy.wait("@jobTransforms");
       H.DataStudio.Jobs.editor()
         .findByText("Transforms")
         .scrollIntoView()
         .should("be.visible");
       getJobTransformTable().findByText("MBQL transform").should("be.visible");
 
-      runTransformAndWaitForSuccess();
+      H.runTransformJobFromUiAndWaitForStatus("succeeded");
       H.expectUnstructuredSnowplowEvent({
         event: "transform_job_trigger_manual_run",
       });
@@ -2901,11 +2676,15 @@ describe("scenarios > admin > transforms > jobs", () => {
 
       getRunsNavLink().click();
       getDetailedViewSwitch().click();
-      getTransformRunTable().within(() => {
-        cy.findByText("MBQL transform").should("be.visible");
-        cy.findByText("Success").should("be.visible");
-        cy.findByText("Manual").should("be.visible");
-      });
+      cy.log("the manual run is listed, whatever scheduled runs exist");
+      getTransformRunTable()
+        .findAllByRole("row")
+        .filter(':contains("Manual")')
+        .should("have.length", 1)
+        .within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("Success").should("be.visible");
+        });
     });
 
     it("should display the error message from a failed run", () => {
@@ -2919,7 +2698,9 @@ describe("scenarios > admin > transforms > jobs", () => {
           { visitTransformJob: true },
         );
       });
-      runTransformAndWaitForFailure();
+      cy.log("the run button stays disabled until the job transforms load");
+      cy.wait("@jobTransforms");
+      H.runTransformJobFromUiAndWaitForStatus("failed");
       H.DataStudio.Jobs.editor().findByText(
         "Last run failed a few seconds ago.",
       );
@@ -3042,7 +2823,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForSuccess();
+          H.runTransformFromUiAndWaitForStatus("succeeded");
           createSqlTransform({
             sourceQuery: "SELECT * FROM abc",
             targetTable: TARGET_TABLE_2,
@@ -3050,7 +2831,7 @@ describe("scenarios > admin > transforms > runs", () => {
             visitTransform: true,
           });
           H.DataStudio.Transforms.runTab().click();
-          runTransformAndWaitForFailure();
+          H.runTransformFromUiAndWaitForStatus("failed");
 
           cy.log("the failed run shows its error message");
           getRunErrorInfoButton().click();
@@ -3553,26 +3334,16 @@ describe("scenarios > admin > transforms", () => {
     );
     H.DataStudio.Transforms.sectionHeader().should("be.visible");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Transforms" })
+      .findByRole("tab", { name: "Transforms" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Jobs" })
+      .findByRole("tab", { name: "Jobs" })
       .should("not.exist");
     H.DataStudio.Transforms.sectionHeader()
-      .findByRole("link", { name: "Runs" })
+      .findByRole("tab", { name: "Runs" })
       .should("not.exist");
   });
 });
-
-function verifyDisconnectedDatabaseBanner() {
-  return cy
-    .findByRole("alert")
-    .should("be.visible")
-    .and(
-      "contain.text",
-      "The database this transform depends on has been disconnected",
-    );
-}
 
 function getTransformsNavLink() {
   return H.DataStudio.nav().findByRole("link", { name: "Data transformation" });
@@ -3667,9 +3438,6 @@ function getIncrementalSwitch() {
 function isIncrementalSwitchEnabled() {
   return getIncrementalSwitch().findByRole("switch").should("be.checked");
 }
-function isIncrementalSwitchDisabled() {
-  return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
-}
 
 function getJobTransformTable() {
   return cy.findByLabelText("Job transforms");
@@ -3727,16 +3495,6 @@ function visitRunListPage() {
 
 function getDetailedViewSwitch() {
   return cy.findByTestId("detailed-view-switch");
-}
-
-function runTransformAndWaitForSuccess() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
-}
-
-function runTransformAndWaitForFailure() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform(

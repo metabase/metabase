@@ -1,7 +1,6 @@
 (ns metabase.metabot.task.suggested-prompts-generator-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.config :as metabot.config]
@@ -21,8 +20,7 @@
         (let [original-metabot (t2/select-one :model/Metabot
                                               :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        lib.convert/->legacy-MBQL)
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
               admin-id (:id (mt/fetch-user :crowberto))]
           (mt/with-model-cleanup [:model/MetabotPrompt]
             (mt/with-temp
@@ -41,13 +39,13 @@
                                               {:table_questions []
                                                :metric_questions []}))]
                 (testing "Non-verified card with use_verified_content=false generates prompts"
-                  (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                  (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                     (is (seq prompts))))
                 (testing "Non-verified card with use_verified_content=true generates no prompts"
                   (t2/delete! :model/MetabotPrompt)
-                  (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                  (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                     (is (empty? prompts))))
@@ -62,18 +60,18 @@
                       :most_recent true}]
                     (testing "with use_verified_content=true"
                       (t2/delete! :model/MetabotPrompt)
-                      (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content true})
+                      (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content true})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                       (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                         (is (seq prompts))))
                     (testing "with use_verified_content=false"
                       (t2/delete! :model/MetabotPrompt)
-                      (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+                      (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
                       (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                       (let [prompts (t2/select :model/MetabotPrompt :card_id card-id)]
                         (is (seq prompts))))))
                 ;; Reset metabot state
-                (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})))))))))
+                (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})))))))))
 
 (defn- enabled-builtin-metabots-with [internal? embedded?]
   (mt/with-dynamic-fn-redefs [metabot.settings/metabot-enabled?          (constantly internal?)
@@ -97,8 +95,7 @@
         (mt/with-temporary-setting-values [metabot.settings/metabot-enabled?          true
                                            metabot.settings/embedded-metabot-enabled? true]
           (let [mp (mt/metadata-provider)
-                query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                          lib.convert/->legacy-MBQL)
+                query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                 internal-id (:id (metabot.config/resolve-metabot metabot.config/internal-metabot-id))
                 embedded-id (:id (metabot.config/resolve-metabot metabot.config/embedded-metabot-id))]
             (mt/with-model-cleanup [:model/MetabotPrompt]
@@ -107,7 +104,7 @@
                                             (fn [_]
                                               {:table_questions [{:questions ["What is the total for this model?"]}]
                                                :metric_questions []})]
-                  (run! #(t2/update! :model/Metabot % {:use_verified_content false}) [internal-id embedded-id])
+                  (run! #(t2/update! :model/Metabot :id % {:use_verified_content false}) [internal-id embedded-id])
                   (#'metabot.task.suggested-prompts-generator/maybe-generate-suggested-prompts!)
                   (is (seq (t2/select :model/MetabotPrompt :metabot_id internal-id :card_id card-id))
                       "internal bot is seeded")
@@ -122,14 +119,13 @@
         (let [original-metabot (t2/select-one :model/Metabot
                                               :entity_id metabot.config/internal-metabot-id)
               mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        lib.convert/->legacy-MBQL)]
+              query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
           (mt/with-model-cleanup [:model/MetabotPrompt]
             (mt/with-temp [:model/Card
                            {card-id :id}
                            {:type :model
                             :dataset_query query}]
-              (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false})
+              (t2/update! :model/Metabot :id (:id original-metabot) {:use_verified_content false})
               (mt/with-dynamic-fn-redefs [premium-features/token-status
                                           (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
                                                                                                      :is-locked   true}}})

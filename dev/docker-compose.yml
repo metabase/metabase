@@ -102,7 +102,7 @@ services:
   # App dbs. You only need one. If running metabase containerized, use the
   # corresponding service.
   metabase-postgres-app-db:
-    image: postgres
+    image: postgres:18.6-bookworm
     container_name: metabase-postgres-app-db
     restart: always
     ports:

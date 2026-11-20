@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import type { FormEvent, MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
@@ -87,7 +88,9 @@ export const DeleteDatabaseModal = ({
   const canConfirmName = isContentRemovalConfirmed || !hasContent;
   const canDelete = canConfirmName && isDatabaseNameConfirmed;
 
-  const deleteButtonLabel = t`Delete this DB connection`;
+  const deleteButtonLabel = hasContent
+    ? t`Delete this content and the DB connection`
+    : t`Delete`;
 
   const errorMessage = getDeleteErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;

@@ -2,14 +2,18 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase-enterprise.dependencies.models.dependency-test]}}}}}}
   (:require
    [clojure.set :as set]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- depends-on-> [from-type from-id to-type to-id]
   {:from_entity_type from-type
@@ -120,8 +124,7 @@
    :display                :table
    :query_type             :query
    :type                   :question
-   :dataset_query          (-> (lib/native-query metadata-provider sql)
-                               lib/->legacy-MBQL)
+   :dataset_query          (lib/native-query metadata-provider sql)
    :visualization_settings {}})
 
 (deftest ^:synchronized card-deps-graph-test-2-native-card-chain
@@ -204,13 +207,13 @@
             (mt/with-temp [:model/Transform transform]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
               (computed! :transform (:id transform))
-              (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}})
+              (t2/update! :model/Transform :id (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})
               (is (pending? :transform (:id transform)))))
           (testing "snippets"
             (mt/with-temp [:model/NativeQuerySnippet snippet]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
               (computed! :snippet (:id snippet))
-              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"})
+              (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "new content"})
               (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test
@@ -277,64 +280,6 @@
                 (is (= #{}
                        (set deps))
                     "Should be empty, chain is broken at card2")))))))))
-
-(deftest swap-dependency!-test
-  (testing "swap-dependency! handles the various cases correctly"
-    (mt/with-temp [:model/Card card1 {}
-                   :model/Card card2 {}
-                   :model/Table table1 {:db_id (mt/id)}
-                   :model/Table table2 {:db_id (mt/id)}]
-      (mt/with-model-cleanup [:model/Dependency]
-        (testing "basic swap - old dep exists, new dep doesn't"
-          (t2/insert! :model/Dependency {:from_entity_type :card
-                                         :from_entity_id (:id card1)
-                                         :to_entity_type :table
-                                         :to_entity_id (:id table1)})
-          (deps.graph/swap-dependency! :card (:id card1) [:table (:id table1)] [:table (:id table2)])
-          (deps.test/synchronously-run-dependency-job!)
-          (is (not (t2/exists? :model/Dependency
-                               :from_entity_type :card
-                               :from_entity_id (:id card1)
-                               :to_entity_type :table
-                               :to_entity_id (:id table1)))
-              "Old dependency should be gone")
-          (is (t2/exists? :model/Dependency
-                          :from_entity_type :card
-                          :from_entity_id (:id card1)
-                          :to_entity_type :table
-                          :to_entity_id (:id table2))
-              "New dependency should exist"))
-        (testing "swap when new dep already exists - should just delete old"
-          ;; Set up: card2 depends on both table1 and table2
-          (t2/insert! :model/Dependency [{:from_entity_type :card
-                                          :from_entity_id (:id card2)
-                                          :to_entity_type :table
-                                          :to_entity_id (:id table1)}
-                                         {:from_entity_type :card
-                                          :from_entity_id (:id card2)
-                                          :to_entity_type :table
-                                          :to_entity_id (:id table2)}])
-          ;; This would fail with duplicate key error before the fix
-          (deps.graph/swap-dependency! :card (:id card2) [:table (:id table1)] [:table (:id table2)])
-          (deps.test/synchronously-run-dependency-job!)
-          (is (not (t2/exists? :model/Dependency
-                               :from_entity_type :card
-                               :from_entity_id (:id card2)
-                               :to_entity_type :table
-                               :to_entity_id (:id table1)))
-              "Old dependency should be deleted")
-          (is (t2/exists? :model/Dependency
-                          :from_entity_type :card
-                          :from_entity_id (:id card2)
-                          :to_entity_type :table
-                          :to_entity_id (:id table2))
-              "New dependency should still exist (only one copy)")
-          (is (= 1 (t2/count :model/Dependency
-                             :from_entity_type :card
-                             :from_entity_id (:id card2)
-                             :to_entity_type :table
-                             :to_entity_id (:id table2)))
-              "Should have exactly one dependency to table2"))))))
 
 (deftest replace-dependencies!-rejects-non-integer-ids-test
   (testing "a non-integer to-entity-id is rejected before it is inserted"

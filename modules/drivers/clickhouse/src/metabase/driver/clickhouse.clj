@@ -11,6 +11,7 @@
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -22,12 +23,12 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
-   (java.sql Connection SQLException PreparedStatement)
+   (java.sql Connection SQLException Statement PreparedStatement)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
@@ -45,7 +46,24 @@
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
+(defmethod driver/disallowed-connection-parameters :clickhouse
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        [;; Loads arbitrary classes
+         "typeMappings"
+         ;; Loads arbitrary classes
+         "type_hint_mapping"
+         ;; Instantiates an arbitrary class
+         "jdbc_json_parser_factory"
+         ;; Instantiates an arbitrary class
+         "jdbc_metrics_recorder"
+         ;; Instantiates an arbitrary class (legacy v1 driver)
+         "dialect"
+         ;; Loads arbitrary classes (legacy v1 driver)
+         "load_balancing_policy"]))
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
+(defn- quote-field  [s] (sql.u/quote-name :clickhouse :field s))
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -59,6 +77,7 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
+                              :workspace                        true
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true
@@ -69,6 +88,10 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
+                              ;; The JDBC driver sends the query timeout as the `max_execution_time` server setting,
+                              ;; which fails for users with `readonly = 1` (#85850). Long running queries will still
+                              ;; be cancelled by `schedule-query-timeout-cancel!`.
+                              :jdbc/set-query-timeout           false
                               :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
@@ -78,6 +101,7 @@
                               :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               :standard-deviation-aggregations  true
                               :test/date-time-type              false
                               :test/jvm-timezone-setting        false
@@ -174,8 +198,6 @@
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          :custom_http_params             (cond-> "select_sequential_consistency=1"
-                                           (not (some->> clickhouse-settings (re-find #"(?:^|,)\s*join_use_nulls\s*=")))
-                                           (str ",join_use_nulls=1")
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))
          :jdbc_metadata_use_show_statements false}
@@ -670,6 +692,302 @@
 (defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
   [_ ^PreparedStatement prepared-statement i object]
   (.setObject prepared-statement i object))
+
+;;; ------------------------------------------ Workspace Isolation ------------------------------------------
+
+(defn- workspace-object-exists-exception
+  "The 409 for a user or database that already has the workspace's name. It may belong to another workspace, so the
+  caller must not tear it down: `:workspace/cleanup? false`."
+  [kind object-name cause]
+  (ex-info (format "The warehouse already has a %s named %s. It may belong to another workspace, so it was left unchanged."
+                   (name kind) (quote-field object-name))
+           {:status-code 409, :workspace/cleanup? false, kind object-name}
+           cause))
+
+(defn- check-workspace-names-free!
+  "Throws a 409 when the warehouse already has a user or a database with the workspace's name. Either may belong to
+  another workspace, so init leaves it as it is and the caller must not tear it down. Runs before any DDL, so when
+  the check itself fails (the admin login may lack the grant to read `system.users`), its error also says
+  `:workspace/cleanup? false`: init created nothing, and a teardown would drop a user of that name that may exist."
+  [conn user db-name]
+  (doseq [[table kind object-name] [["system.users" :user user]
+                                    ["system.databases" :database db-name]]
+          :when (seq (try
+                       (jdbc/query {:connection conn}
+                                   [(format "SELECT 1 FROM %s WHERE name = ?" table) object-name])
+                       (catch SQLException e
+                         (throw (ex-info (format "Could not check whether the warehouse already has a %s named %s, so init created nothing: %s"
+                                                 (name kind) (quote-field object-name) (ex-message e))
+                                         {:workspace/cleanup? false, kind object-name}
+                                         e)))))]
+    (throw (workspace-object-exists-exception kind object-name nil))))
+
+(def ^:private already-exists-error-codes
+  "ClickHouse error codes for a CREATE whose object exists: DATABASE_ALREADY_EXISTS and ACCESS_ENTITY_ALREADY_EXISTS."
+  #{82 493})
+
+(defn- create-workspace-object!
+  "Runs the plain CREATE `sql`. The object can exist even after [[check-workspace-names-free!]]: another init created
+  it in between, or the admin cannot see it in `system.users`/`system.databases`. Then this runs `undo-sqls` to drop
+  what this init already created, and throws the same 409 as the check, so the caller does not tear down the object
+  init refused to adopt."
+  [^Statement stmt ^String sql kind object-name undo-sqls]
+  (try
+    (.execute stmt sql)
+    (catch SQLException e
+      (when-not (already-exists-error-codes (.getErrorCode e))
+        (throw e))
+      (let [refusal (workspace-object-exists-exception kind object-name e)]
+        ;; a failed undo must still surface as the 409 (cleanup? false): otherwise the caller's
+        ;; compensating destroy would drop the object init refused to adopt. The undo error is logged, not attached:
+        ;; the caller rebuilds the 409 with `scrub-exceptions`, which drops suppressed exceptions.
+        (doseq [^String undo undo-sqls]
+          (try (.execute stmt undo)
+               (catch Throwable undo-error
+                 (log/warnf undo-error "Refused the existing %s %s and left it unchanged. Could not undo what this init created: run %s by hand."
+                            (name kind) (quote-field object-name) undo))))
+        (throw refusal)))))
+
+(defn- init-workspace-sqls
+  "The statements that create the workspace database and user, and grant the user what it needs. Plain CREATEs: a
+  user or database that appears after [[check-workspace-names-free!]] makes init fail rather than adopt it."
+  [db-name user escaped-password canonical-db]
+  (let [quoted-db   (quote-schema db-name)
+        quoted-user (quote-field user)]
+    (cond-> [(format "CREATE DATABASE %s" quoted-db)
+             (format "CREATE USER %s IDENTIFIED BY '%s'" quoted-user escaped-password)
+             ;; Least-privilege grant on the workspace's own DB (ClickHouse has no
+             ;; owner auto-privileges, so grant each verb explicitly):
+             ;;   SELECT       - read its own tables
+             ;;   INSERT       - CTAS populate + incremental insert
+             ;;   CREATE TABLE - transform target
+             ;;   DROP TABLE   - swap/cleanup
+             ;; (these four also satisfy the atomic-swap RENAME TABLE.)
+             (format "GRANT SELECT, INSERT, CREATE TABLE, DROP TABLE ON %s.* TO %s" quoted-db quoted-user)]
+      (not (str/blank? canonical-db))
+      (conj (format "GRANT SHOW DATABASES ON %s.* TO %s" (quote-schema canonical-db) quoted-user)))))
+
+(defn- system-db-readable?
+  "Whether the user of `details` can read the `system` database without a grant. The server setting
+  `access_control_improvements.select_from_system_db_requires_grant` decides this; ClickHouse does not report it in
+  `system.server_settings`, so this asks the server as that user."
+  [driver details]
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [driver details]]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver spec nil
+     (fn [^Connection conn]
+       ;; any failure here is not about the system database, so it propagates
+       (jdbc/query {:connection conn} ["SELECT 1"])
+       (try
+         (jdbc/query {:connection conn} ["SELECT 1 FROM system.processes LIMIT 0"])
+         true
+         (catch SQLException e
+           ;; 497 is ACCESS_DENIED
+           (if (= 497 (.getErrorCode e))
+             false
+             (throw e))))))))
+
+(defn- check-admin-reads-system-processes!
+  "Throws a 412 when the login of `conn` cannot read `system.processes`. Teardown's KILL QUERY reads that table, even
+  when no query matches. When the server requires a grant to read the `system` database, a login without one fails
+  every teardown. Init runs this check before any DDL, so every error the check throws says
+  `:workspace/cleanup? false`: init created nothing, and a teardown would drop a user and a database with the
+  workspace's names that may belong to another workspace."
+  [^Connection conn]
+  (try
+    (jdbc/query {:connection conn} ["SELECT query_id, user, query FROM system.processes LIMIT 0"])
+    (catch SQLException e
+      ;; 497 is ACCESS_DENIED
+      (when-not (= 497 (.getErrorCode e))
+        (throw (ex-info (format "Could not check whether the admin connection's login can read system.processes, so init created nothing: %s"
+                                (ex-message e))
+                        {:workspace/cleanup? false}
+                        e)))
+      (let [login (try
+                    (-> (jdbc/query {:connection conn} ["SELECT currentUser() AS login"]) first :login)
+                    (catch SQLException login-error
+                      (throw (ex-info (format "Could not read the admin connection's login, so init created nothing: %s"
+                                              (ex-message login-error))
+                                      {:workspace/cleanup? false}
+                                      login-error))))]
+        (throw (ex-info (format (str "The admin connection's login cannot read system.processes. Workspace teardown "
+                                     "reads it to end the workspace user's queries. Run GRANT SELECT ON "
+                                     "system.processes TO %s and retry.")
+                                (quote-field login))
+                        {:status-code 412, :workspace/cleanup? false}
+                        e))))))
+
+(defn- check-system-db-requires-grant!
+  "Throws a 412 when the workspace user can read the `system` database without a grant: see [[system-db-readable?]].
+  Then it could read `system.query_log` and `system.processes`, which hold the queries of every user."
+  [driver details]
+  (let [readable? (system-db-readable? driver details)]
+    (when readable?
+      (throw (ex-info (str "This ClickHouse server lets every user read the system database, which holds the queries "
+                           "of all users. A ClickHouse server administrator must set "
+                           "access_control_improvements.select_from_system_db_requires_grant to true in the server "
+                           "configuration (config.xml), restart the server, and retry. It is off by default on "
+                           "ClickHouse 23.3 to 24.3. The setting persists in the configuration, so this is a one-time "
+                           "setup step.")
+                      {:status-code 412})))))
+
+(defmethod driver/init-workspace-isolation! :clickhouse
+  [driver database workspace]
+  (let [lib-db           (driver.u/ensure-lib-database database)
+        db-name          (:schema workspace)
+        canonical-db     (:db (driver.conn/effective-details lib-db))
+        {:keys [user password] :as read-user} (:database_details workspace)
+        escaped-password (sql.u/escape-sql password :ansi+backslashes)
+        ddl-started?     (volatile! false)]
+    ;; No transaction: ClickHouse has no transactional DDL — CREATE/GRANT apply
+    ;; immediately. Failure recovery is compensation via the idempotent destroy.
+    (try
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver lib-db {:write? true}
+       (fn [^Connection conn]
+         (check-admin-reads-system-processes! conn)
+         (check-workspace-names-free! conn user db-name)
+         (with-open [stmt (.createStatement conn)]
+           (let [[create-db create-user & grants] (init-workspace-sqls db-name user escaped-password canonical-db)]
+             (vreset! ddl-started? true)
+             (try
+               (create-workspace-object! stmt create-db :database db-name [])
+               (create-workspace-object! stmt create-user :user user
+                                         [(format "DROP DATABASE IF EXISTS %s" (quote-schema db-name))])
+               (doseq [^String grant grants]
+                 (.execute stmt grant))
+               (catch Throwable t
+                 (throw (driver.u/scrub-exceptions t [password escaped-password]))))))))
+      (catch Throwable t
+        ;; an error before the first CREATE, such as a failed connection, leaves nothing to tear down: it says
+        ;; `:workspace/cleanup? false`. After the first CREATE, something may exist, so the error goes to the caller as
+        ;; it is, and the caller tears down
+        (throw (if (or @ddl-started? (contains? (ex-data t) :workspace/cleanup?))
+                 t
+                 (ex-info (str "Init failed before it created anything: " (ex-message t))
+                          (assoc (ex-data t) :workspace/cleanup? false)
+                          t)))))
+    ;; the workspace user connects with the database's own details, as workspace queries do
+    (try
+      (check-system-db-requires-grant! driver (merge (:details lib-db) (perf/select-keys read-user [:user :password])))
+      (catch Throwable t
+        (throw (driver.u/scrub-exceptions t [password escaped-password]))))
+    nil))
+
+(defmethod driver/grant-workspace-read-access! :clickhouse
+  [driver database workspace schemas]
+  (let [read-user-name (-> workspace :database_details :user)
+        quoted-user    (quote-field read-user-name)]
+    (when-not read-user-name
+      (throw (ex-info (tru "Cannot grant workspace read access. Workspace details have no read user — initialization may have failed. Re-run workspace initialization and retry.")
+                      {:workspace-id (:id workspace) :step :grant})))
+    ;; ClickHouse `qualified-name-components` is `[:schema]` — each entry in
+    ;; `schemas` is a database-as-schema. Grant `*` covers all tables in the
+    ;; database; ClickHouse re-resolves `*` so future tables get coverage too.
+    (let [sqls (for [schema schemas
+                     :let [_ (when (str/blank? schema)
+                               (throw (ex-info (tru "Cannot grant workspace read access. Input schema name is blank. Remove the blank entry from the workspace input schemas and retry.")
+                                               {:database-id (:id database) :step :grant})))]]
+                 (format "GRANT SELECT ON %s.* TO %s"
+                         (quote-schema schema)
+                         quoted-user))]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver (driver.u/ensure-lib-database database) {:write? true}
+       (fn [^Connection conn]
+         (with-open [stmt (.createStatement conn)]
+           (doseq [sql sqls]
+             (.addBatch ^Statement stmt ^String sql))
+           (try
+             (.executeBatch ^Statement stmt)
+             (catch Throwable t
+               (throw (driver.u/batch-exception t))))))))))
+
+(defn- destroy-workspace-sqls
+  "The teardown statements, in order. `HOST NONE` refuses every new login of the user, and every HTTP request, which
+  logs in each time. A native-protocol session that is already open can still start queries until DROP USER. A query
+  already running survives HOST NONE, so KILL QUERY ... SYNC ends those queries and waits for them. HOST NONE needs the
+  ALTER USER grant. Without it, the user is not locked out, and new logins work until DROP USER.
+  DROP DATABASE then removes the user's tables and views, including a materialized view that ClickHouse runs inside
+  every INSERT into an input table. The user goes next: on 26.10 a view whose definer is the user makes DROP USER fail,
+  and on 24.3 dropping that definer makes every INSERT into the view's source table fail. A query that started after the
+  first KILL QUERY survives DROP USER, so a second KILL QUERY ... SYNC runs last and ends it."
+  [db-name user]
+  (let [kill (format "KILL QUERY WHERE user = '%s' SYNC" (sql.u/escape-sql user :ansi+backslashes))]
+    [(format "ALTER USER IF EXISTS %s HOST NONE" (quote-field user))
+     kill
+     ;; DROP DATABASE cascades to all tables within it
+     (format "DROP DATABASE IF EXISTS %s SYNC" (quote-schema db-name))
+     (format "DROP USER IF EXISTS %s" (quote-field user))
+     kill]))
+
+(defn- execute-for-error
+  "Executes `sql` on `stmt`. Returns the SQLException it throws, or nil."
+  [^Statement stmt ^String sql]
+  (try
+    (.execute stmt sql)
+    nil
+    (catch SQLException e
+      e)))
+
+(defn- destroy-workspace!
+  "Runs [[destroy-workspace-sqls]] one at a time. A failed ALTER USER or KILL QUERY does not stop the statements after
+  it. A failed DROP DATABASE stops DROP USER: a view in the database may have the user as its definer. The second
+  KILL QUERY runs in every case.
+
+  When DROP DATABASE or DROP USER fails, a workspace object remains. Then its error is thrown, and the ALTER USER and
+  KILL QUERY errors are attached to it as suppressed.
+
+  When both drops succeed, an ALTER USER error is logged, not thrown: a dropped user cannot log in. So the admin
+  connection's login does not need the ALTER USER grant. Without it, the lock-out step is skipped. The login needs
+  KILL QUERY, SELECT ON system.processes, DROP DATABASE and DROP USER.
+
+  A KILL QUERY error is thrown, with the other KILL QUERY's error attached as suppressed. When it is access denied, the
+  thrown error names both grants the login may lack: ClickHouse checks KILL QUERY only when another user's query
+  matches, and checks SELECT ON system.processes every time when the server requires a grant to read the `system`
+  database. When both KILL QUERYs are denied, only the first error is kept."
+  [^Statement stmt db-name user]
+  (let [[lock kill drop-db drop-user kill-again] (destroy-workspace-sqls db-name user)
+        lock-error                     (execute-for-error stmt lock)
+        kill-error                     (execute-for-error stmt kill)
+        drop-db-error                  (execute-for-error stmt drop-db)
+        drop-user-error                (when-not drop-db-error
+                                         (execute-for-error stmt drop-user))
+        kill-again-error               (execute-for-error stmt kill-again)
+        drop-error                     (or drop-db-error drop-user-error)
+        ;; 497 is ACCESS_DENIED: ClickHouse's own message for it can be unreadable
+        denied?                        #(= 497 (some-> ^SQLException % .getErrorCode))
+        kill-errors                    (remove nil? (if (and (denied? kill-error) (denied? kill-again-error))
+                                                      [kill-error]
+                                                      [kill-error kill-again-error]))
+        ;; a dropped user cannot log in, so the lock-out error matters only when a drop failed
+        [^SQLException error & others] (remove nil? (if drop-error
+                                                      (into [drop-error lock-error] kill-errors)
+                                                      kill-errors))]
+    (when (and lock-error (not drop-error))
+      (log/warnf lock-error "Could not lock out the workspace user %s before dropping it. Dropped the user and its database %s."
+                 (quote-field user) (quote-schema db-name)))
+    (when error
+      (doseq [^Throwable other others]
+        (.addSuppressed error other))
+      (throw (if (and (not drop-error) (denied? error))
+               (ex-info (format (str "Dropped the workspace user %s and its database %s, but could not check for "
+                                     "and end the user's running queries: the admin connection's login lacks the "
+                                     "KILL QUERY grant or SELECT on system.processes. Without SELECT on "
+                                     "system.processes, teardown fails on every retry. Without KILL QUERY, the "
+                                     "queries run until they finish, and teardown fails until then. Grant both to "
+                                     "the login and retry.")
+                                (quote-field user) (quote-schema db-name))
+                        {:user user, :database db-name}
+                        error)
+               error)))))
+
+(defmethod driver/destroy-workspace-isolation! :clickhouse
+  [driver database workspace]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver (driver.u/ensure-lib-database database) {:write? true}
+   (fn [^Connection conn]
+     (with-open [stmt (.createStatement conn)]
+       (destroy-workspace! stmt (:schema workspace) (-> workspace :database_details :user))))))
 
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
   "metabot/prompts/dialects/clickhouse.md")

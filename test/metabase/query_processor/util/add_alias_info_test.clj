@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -30,11 +29,8 @@
 (defn- remove-source-metadata
   "This is mostly to make the test failure diffs sane."
   [x]
-  (walk/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :source-metadata :lib/stage-metadata)))
-   x))
+  (match/replace-all x
+    #'map? (dissoc &match :source-metadata :lib/stage-metadata)))
 
 (defn- add-alias-info [query]
   (if-not (:lib/type query)
@@ -44,6 +40,8 @@
            meta/metadata-provider)
          query)
         add-alias-info
+        ;; existing usage -- do not use going forward
+        #_{:clj-kondo/ignore [:deprecated-var]}
         lib/->legacy-MBQL)
     (driver/with-driver (or driver/*driver* :h2)
       (->> query
@@ -696,33 +694,35 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL))))))))
 
 ;;; see also [[metabase.lib.join.util-test/desired-alias-should-respect-ref-name-test]]
 (deftest ^:parallel preserve-field-options-name-test
-  (qp.store/with-metadata-provider meta/metadata-provider
-    (driver/with-driver :h2
-      (is (=? {:source-query {:source-table (meta/id :orders)
-                              :breakout     [[:field (meta/id :orders :id) {}]]
-                              :aggregation  [[:aggregation-options
-                                              [:cum-sum [:field (meta/id :orders :id) {}]]
-                                              {:name "sum", ::add/desired-alias "sum"}]]}
-               :breakout     [[:field "ID" {:base-type :type/Integer, ::add/desired-alias "ID"}]
-                              [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
-               :aggregation  [[:aggregation-options
-                               [:cum-sum [:field "sum" {:base-type :type/Integer}]]
-                               {::add/desired-alias "sum"}]]}
-              (add/add-alias-info
-               {:source-query {:source-table (meta/id :orders)
-                               :breakout     [[:field (meta/id :orders :id) nil]]
-                               :aggregation  [[:aggregation-options
-                                               [:cum-sum [:field (meta/id :orders :id) nil]]
-                                               {:name "sum"}]]}
-                :breakout     [[:field "ID" {:base-type :type/Integer}]
-                               [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]]
-                :aggregation  [[:aggregation-options
-                                [:cum-sum [:field "sum" {:base-type :type/Integer}]]
-                                {:name "sum"}]]}))))))
+  (driver/with-driver :h2
+    (is (=? {:query {:source-query {:source-table (meta/id :orders)
+                                    :breakout     [[:field (meta/id :orders :id) {}]]
+                                    :aggregation  [[:aggregation-options
+                                                    [:cum-sum [:field (meta/id :orders :id) {}]]
+                                                    {:name "sum", ::add/desired-alias "sum"}]]}
+                     :breakout     [[:field "ID" {:base-type :type/Integer, ::add/desired-alias "ID"}]
+                                    [:field "sum" {:base-type :type/Integer, ::add/desired-alias "__cumulative_sum"}]]
+                     :aggregation  [[:aggregation-options
+                                     [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                                     {::add/desired-alias "sum"}]]}}
+            (add-alias-info
+             {:type  :query
+              :query {:source-query {:source-table (meta/id :orders)
+                                     :breakout     [[:field (meta/id :orders :id) nil]]
+                                     :aggregation  [[:aggregation-options
+                                                     [:cum-sum [:field (meta/id :orders :id) nil]]
+                                                     {:name "sum"}]]}
+                      :breakout     [[:field "ID" {:base-type :type/Integer}]
+                                     [:field "sum" {:base-type :type/Integer, :name "__cumulative_sum"}]]
+                      :aggregation  [[:aggregation-options
+                                      [:cum-sum [:field "sum" {:base-type :type/Integer}]]
+                                      {:name "sum"}]]}})))))
 
 (deftest ^:parallel field-literals-test
   (testing "Correctly handle similar column names in nominal field literal refs (#41325)"
@@ -744,6 +744,8 @@
                                 $total]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    ;; existing usage -- do not use going forward
+                    #_{:clj-kondo/ignore [:deprecated-var]}
                     lib/->legacy-MBQL
                     :query)))))))
 
@@ -780,6 +782,8 @@
                                      [:field "CREATED_AT_2" {:base-type :type/Date, :temporal-unit :default}]]})
                     qp.preprocess/preprocess
                     add/add-alias-info
+                    ;; existing usage -- do not use going forward
+                    #_{:clj-kondo/ignore [:deprecated-var]}
                     lib/->legacy-MBQL
                     :query)))))))
 
@@ -815,6 +819,8 @@
                   (-> query
                       qp.preprocess/preprocess
                       (add/add-alias-info {:globally-unique-join-aliases? true})
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL
                       :query))))))))
 
@@ -831,8 +837,7 @@
                                                               [(lib/=
                                                                 (lib.metadata/field mp (meta/id :products :id))
                                                                 (lib.metadata/field mp (meta/id :reviews :product-id)))])
-                                             (lib/with-join-fields :all)))
-                               lib/->legacy-MBQL)
+                                             (lib/with-join-fields :all))))
                            :database-id (meta/id)
                            :name        "Products+Reviews"
                            :type        :model}]})
@@ -849,8 +854,7 @@
                                                                (m/find-first (comp #{"Price"} :display-name)))))
                                (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
                                                                   (lib/breakoutable-columns $q))
-                                                    (lib/with-temporal-bucket :month)))
-                               (lib/->legacy-MBQL $q)))
+                                                    (lib/with-temporal-bucket :month)))))
                            :database-id (meta/id)
                            :name        "Products+Reviews Summary"
                            :type        :model}]})
@@ -885,6 +889,8 @@
           (let [preprocessed (-> query qp.preprocess/preprocess)
                 expected     (-> preprocessed
                                  add/add-alias-info
+                                 ;; existing usage -- do not use going forward
+                                 #_{:clj-kondo/ignore [:deprecated-var]}
                                  lib/->legacy-MBQL)]
             (testing ":source-query -> :source-query -> :joins"
               (is (=? [{:alias     "Reviews"
@@ -969,6 +975,8 @@
                   (-> query
                       qp.preprocess/preprocess
                       add/add-alias-info
+                      ;; existing usage -- do not use going forward
+                      #_{:clj-kondo/ignore [:deprecated-var]}
                       lib/->legacy-MBQL
                       :query))))))))
 
@@ -1378,8 +1386,7 @@
                                            (lib/join (lib/join-clause
                                                       (lib.metadata/table meta/metadata-provider (meta/id :products))
                                                       [(lib/= (lib.metadata/field meta/metadata-provider (meta/id :orders :product-id))
-                                                              (lib.metadata/field meta/metadata-provider (meta/id :products :id)))]))
-                                           lib/->legacy-MBQL)
+                                                              (lib.metadata/field meta/metadata-provider (meta/id :products :id)))])))
                         :database-id   (meta/id)
                         :name          "Orders+Products"
                         :type          :model}]})

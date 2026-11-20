@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
@@ -27,12 +28,18 @@
   []
   {:type  :query
    :query (query-test-util/make-query
-           {:source-table (t2/select-one-fn :name :model/Table (mt/id :transforms_products))})})
+           {:source-table (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))})})
+
+(defn- native-source
+  "A SQL transform source that selects a constant."
+  []
+  {:type  :query
+   :query (lib/native-query (mt/metadata-provider) "SELECT 1")})
 
 (defn- python-source
   "A Python transform source that returns `transforms_products` unchanged (built via `create-table!`)."
   []
-  {:type            "python"
+  {:type            :python
    :source-database (mt/id)
    :source-tables   [(transforms.tu/source-table-entry "transforms_products" (mt/id :transforms_products))]
    :body            "def transform(transforms_products):\n    return transforms_products"})
@@ -51,7 +58,7 @@
   "Run a transform (source from the 0-arg `make-source`) with the driver's `:indexes` persisted as its index requests,
   then assert `:physical-indexes` reads `:expected` from the catalog. Runs twice to check they survive a rebuild."
   [{:keys [indexes expected physical-indexes]} make-source]
-  (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+  (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
     (with-transform-cleanup! [{table-name :name :as target}
                               {:type     "table"
                                :schema   schema
@@ -94,7 +101,7 @@
     (mt/test-drivers (index-util/index-test-drivers)
       (mt/dataset transforms-dataset/transforms-test
         (let [{:keys [indexes]} (index-util/driver-cases driver/*driver*)
-              schema            (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+              schema            (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
           (with-transform-cleanup! [{table-name :name :as target}
                                     {:type "table" :schema schema :name "idx_verify_products" :database (mt/id)}]
             (mt/with-temp [:model/Transform {tid :id :as transform} {:name   "index-verify-transform"
@@ -121,7 +128,7 @@
           (is (some? test-case) (index-util/missing-case-message driver/*driver*))
           (when test-case
             (let [bogus  (index-util/bogus-indexes (:indexes test-case))
-                  schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+                  schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               (with-transform-cleanup! [target {:type     "table"
                                                 :schema   schema
                                                 :name     "idx_fail_products"
@@ -149,7 +156,7 @@
           (is (some? test-case) (index-util/missing-case-message driver/*driver*))
           (when test-case
             (let [db     (mt/db)
-                  schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+                  schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               (with-transform-cleanup! [{table-name :name :as target}
                                         {:type     "table"
                                          :schema   schema
@@ -239,7 +246,7 @@
 (deftest ^:synchronized apply-index-outcomes!-writes-each-bucket-test
   (testing "each classified outcome is written back: status, error message, last_executed_at, and row removal"
     (mt/with-temp [:model/Transform {tid :id} {:name               (mt/random-name)
-                                               :source             {:type "query"}
+                                               :source             (native-source)
                                                :source_database_id (mt/id)
                                                :target             {:database (mt/id) :type "table"
                                                                     :schema "public" :name "t"}}
@@ -264,15 +271,15 @@
                                                   :delete-pending [{:id kept-id}]
                                                   :delete-row     [{:id dropped-id}]})
       (testing "succeeded: status set, stale error cleared, execution stamped"
-        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex succeeded-id)))
-        (is (nil? (t2/select-one-fn :error_message :model/TableIndex succeeded-id)))
-        (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex succeeded-id))))
+        (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
+        (is (nil? (t2/select-one-fn :error_message :model/TableIndex :id succeeded-id)))
+        (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex :id succeeded-id))))
       (testing "failed: status set with the not-found message"
-        (is (= :failed (t2/select-one-fn :status :model/TableIndex failed-id)))
-        (is (re-find #"not.*found" (t2/select-one-fn :error_message :model/TableIndex failed-id))))
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex :id failed-id)))
+        (is (re-find #"not.*found" (t2/select-one-fn :error_message :model/TableIndex :id failed-id))))
       (testing "a still-present delete-pending row is kept and stamped"
-        (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex kept-id)))
-        (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex kept-id))))
+        (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id kept-id)))
+        (is (some? (t2/select-one-fn :last_executed_at :model/TableIndex :id kept-id))))
       (testing "a vanished delete-pending row is removed, freeing its (transform, name) for re-create"
         (is (not (t2/exists? :model/TableIndex :id dropped-id)))
         (is (some? (t2/insert-returning-pk! :model/TableIndex
@@ -282,7 +289,7 @@
 
 (deftest ^:synchronized ddl-failure-marks-row-failed-test
   (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                             :source {:type "query"}
+                                             :source (native-source)
                                              :source_database_id (mt/id)
                                              :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
                  :model/TableIndex {idx-id :id} {:transform_id tid :index_name "boom_idx"
@@ -296,8 +303,8 @@
         (is (thrown? Throwable
                      (#'transforms-base.u/apply-standalone-indexes!
                       {:lib/type :metadata/database :engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
-        (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
-        (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex :id idx-id)))
+        (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex :id idx-id)))))))
 
 (def ^:private access-denied-message
   "A ClickHouse privilege error, as Cloud Storage's shared ClickHouse raises it for a tenant reading `system`."
@@ -306,7 +313,7 @@
 (deftest ^:synchronized unreadable-warehouse-marks-running-indexes-failed-test
   (testing "a failed warehouse read fails the requests this run started, carrying the driver's own reason"
     (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
-                                               :source {:type "query"}
+                                               :source (native-source)
                                                :source_database_id (mt/id)
                                                :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
                    :model/TableIndex {running-id :id} {:transform_id tid :index_name "running_idx"
@@ -319,12 +326,12 @@
       (with-redefs [driver/fetch-table-indexes (fn [& _] (throw (ex-info access-denied-message {})))]
         (transforms-base.u/verify-managed-indexes!
          {:id     tid
-          :source {:type "query"}
+          :source (native-source)
           :target {:database (mt/id) :type "table" :schema "public" :name "t"}}))
       (testing "the running request is failed, with the driver message trimmed of its version tail"
-        (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex :id running-id)))
         (is (= (str "Couldn't read the table's indexes to verify this one: "
                     (reconcile/driver-error-message (:engine (mt/db)) (ex-info access-denied-message {})))
-               (t2/select-one-fn :error_message :model/TableIndex running-id))))
+               (t2/select-one-fn :error_message :model/TableIndex :id running-id))))
       (testing "a request this run never started is left for the next one"
-        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex pending-id)))))))
+        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex :id pending-id)))))))

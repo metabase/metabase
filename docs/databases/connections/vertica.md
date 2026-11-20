@@ -1,5 +1,6 @@
 ---
 title: Working with Vertica in Metabase
+summary: On self-hosted Metabase Open Source, add the Vertica JDBC driver yourself, because licensing restrictions keep Metabase from bundling it. Metabase Cloud, Pro, and Enterprise include the driver.
 redirect_from:
   - /docs/latest/administration-guide/databases/vertica
 ---
@@ -44,10 +45,6 @@ The process for adding plugins when running via Docker is similar, but you'll ne
 ## Writable connection
 
 Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
-
-## Model features
-
-There aren't (yet) any model features for Vertica.
 
 ## Danger zone
 

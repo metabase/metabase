@@ -12,12 +12,18 @@ import type {
   DashboardTabId,
 } from "./dashboard";
 import type { Database, DatabaseId } from "./database";
-import type { RowValue } from "./dataset";
+import type { DatasetColumn, RowValue } from "./dataset";
 import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  DurationStyle,
+  DurationUnit,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -40,6 +46,8 @@ import type {
 
 export const CARD_TYPES = ["model", "question", "metric"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
+
+export type CardQueryType = "query" | "native";
 
 export type CardCreationType =
   | "simple_question"
@@ -66,6 +74,7 @@ export interface Card<
   name: string;
   description: string | null;
   type: CardType;
+  query_type?: CardQueryType;
   public_uuid: string | null;
 
   /* Indicates whether static embedding for this card has been published */
@@ -82,7 +91,8 @@ export interface Card<
   collection?: Collection | null;
   collection_id: CollectionId | null;
   collection_position: number | null;
-  dashboard: CardDashboardInfo | null;
+  /** Hydrated by the card endpoints only; a dashcard's card has no such key */
+  dashboard?: CardDashboardInfo | null;
   dashboard_id: DashboardId | null;
   document_id?: DocumentId | null;
   document?: CardDocumentInfo | null;
@@ -92,7 +102,7 @@ export interface Card<
   parameter_usage_count?: number | null;
   parameter_mappings?: CardParameterMapping[] | null;
 
-  result_metadata: Field[] | null;
+  result_metadata: DatasetColumn[] | null;
   param_fields?: Record<ParameterId, Field[]>;
   moderation_reviews?: ModerationReview[];
   persisted?: boolean;
@@ -295,11 +305,15 @@ export type ColumnSettings = TimeOnlyOptions & {
   compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;
   date_style?: string | null;
   decimals?: number;
+  duration_precision?: DurationUnit;
+  duration_style?: DurationStyle;
+  duration_unit?: DurationUnit;
   isExclude?: boolean;
   jsx?: boolean;
   link_text?: string;
@@ -365,6 +379,9 @@ export type VisualizationSettings = {
   /** Whether a table of two breakouts and one aggregation pivots; `false` keeps a row per group. */
   "table.pivot"?: boolean;
 
+  /** Show a `#` column numbering rows 1, 2, 3… in display order. Defaults to `false`. */
+  "table.row_index"?: boolean;
+
   /**
    * Per-column titles, number or currency formatting, and click behavior.
    * Keys can be modern (`getColumnKey`) or legacy (`getLegacyColumnKey`).
@@ -390,6 +407,13 @@ export type VisualizationSettings = {
 
   /** Let Metabase choose the y-axis bounds automatically. */
   "graph.y_axis.auto_range"?: boolean;
+
+  /**
+   * Fit the y-axis to the data instead of always including 0. Only for unstacked
+   * line and scatter charts with `graph.y_axis.auto_range` on; ignored otherwise.
+   * Defaults to `true` for scatter, `false` for the rest.
+   */
+  "graph.y_axis.unpin_from_zero"?: boolean;
 
   /** Show the y-axis title. `"auto"` hides it on narrow cards. */
   "graph.y_axis.labels_enabled"?: boolean | "auto";
@@ -450,8 +474,19 @@ export type VisualizationSettings = {
   /** Per-series labels, colors, and display tweaks. Keys are data-dependent. */
   series_settings?: Record<string, SeriesSettings | undefined>;
 
-  /** Explicit order, labels, colors, and enabled state for breakout series. */
+  /**
+   * Order of a chart's breakout series; `enabled: false` hides one. Ignored
+   * unless `graph.series_order_dimension` is set and every entry has `key`,
+   * `name` and `color` (`name` and `color` aren't drawn). On a stacked chart,
+   * the first entry is the top (on a row chart, the left end).
+   */
   "graph.series_order"?: SeriesOrderSetting[];
+
+  /**
+   * The breakout column `graph.series_order` applies to: the second
+   * `graph.dimensions` entry. Unless it matches, `graph.series_order` is ignored.
+   */
+  "graph.series_order_dimension"?: string;
 
   // Timeline events settings
   "timeline.selected_timeline_ids"?: TimelineId[];
@@ -639,6 +674,7 @@ export type CardQueryMetadata = {
   databases: Database[];
   tables: Table[];
   fields: Field[];
+  cards: Card[];
 };
 
 export type ListCardsRequest = {
@@ -648,8 +684,6 @@ export type ListCardsRequest = {
 
 export interface GetCardRequest {
   id: CardId | EntityToken;
-  context?: "collection";
-  ignore_view?: boolean;
   ignore_error?: boolean;
 }
 
@@ -667,7 +701,7 @@ export interface CreateCardRequest {
   document_id?: DocumentId | null;
   dashboard_tab_id?: DashboardTabId;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number | null;
   size?: DashboardCardSize;
   source_card_id?: CardId;
@@ -695,9 +729,8 @@ export interface UpdateCardRequest {
   dashboard_id?: DashboardId | null;
   document_id?: DocumentId | null;
   collection_position?: number | null;
-  result_metadata?: Field[] | null;
+  result_metadata?: DatasetColumn[] | null;
   cache_ttl?: number;
-  collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
 
@@ -723,7 +756,6 @@ export type InvalidCard = Pick<
   | "creator"
 > & {
   collection: CollectionEssentials;
-  collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
   display: CardDisplayType;
@@ -748,7 +780,6 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   stored_result_id?: number;

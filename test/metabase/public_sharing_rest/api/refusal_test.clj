@@ -17,7 +17,7 @@
 
 (defn- embed-cards-in-document!
   [document-id card-ids]
-  (t2/update! :model/Document document-id
+  (t2/update! :model/Document :id document-id
               {:document (documents.test-util/cards->prose-mirror-ast card-ids)}))
 
 (deftest refusal-test

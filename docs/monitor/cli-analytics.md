@@ -11,7 +11,7 @@ _Monitor > CLI analytics_
 
 The CLI analytics page shows how people use the [Metabase CLI](../installation-and-operation/metabase-cli.md) with your instance. Metabase records one row for every API call the CLI makes, so you can see whether anyone is using it, which operations they run, how often they run them, and when each person last used it.
 
-Admins and people in groups with [Monitoring access](../permissions/application.md#monitoring-access) can view CLI analytics. See [Permissions for Monitor](./start.md#permissions-for-monitor).
+Only admins can view CLI analytics. See [Permissions for Monitor](./start.md#permissions-for-monitor).
 
 The page has two tabs:
 

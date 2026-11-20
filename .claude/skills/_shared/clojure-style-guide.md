@@ -12,8 +12,19 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 **Function Naming:**
 
 - Pure functions should be nouns describing the value they return (e.g., `age` not `calculate-age` or `get-age`)
-- Functions with side effects must end with `!`
+- End a function's name with `!` when, and only when, it mutates shared global state, which makes it unsafe to call
+  from several threads at once: it writes to the app DB, an atom or another global, a setting or a cache, or changes
+  something outside the process, such as a file or an external service. The `!` warns callers, and the
+  `:metabase/validate-deftest` linter treats every function whose name ends in `!` as unsafe in a `^:parallel` test.
+- Throwing an exception is not a reason for `!`. A throw mutates no shared state and is thread-safe, so a function
+  that only checks something and throws, or only builds an exception and throws it, has no `!`: name it for what it
+  checks or throws (`check-declared-type`, `throw-invalid-date`). When the parallel-test linter flags such a function,
+  fix its name; don't add it to the linter's `:parallel/safe` list.
 - Don't repeat namespace alias in function names
+- Name MBQL things in MBQL 5 terms. "Inner query" and "outer query" are legacy MBQL terms; in MBQL 5 they are a
+  stage and a query, so a local holding an MBQL 5 stage is `stage`, not `inner-query`, and one holding the whole query
+  is `query`, not `outer-query`. "pMBQL" is an outdated name for MBQL 5: write "MBQL 5" in prose and `mbql5` in names
+  (`->mbql5`, `mbql5-query`), never `pmbql` or `pMBQL`. Rename such names in code you touch that works with MBQL 5.
 
 **Destructuring:**
 
@@ -25,7 +36,10 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - Every public var in `src` or `enterprise/backend/src` must have docstring
 - Format using Markdown conventions
-- Reference other vars with `[[other-var]]` not backticks
+- Refer to a namespace or var as a link, `[[metabase.util.json/decode]]` or `[[metabase.sql-parsing.core]]`, never in
+  backticks: the brackets tell tooling it is a real namespace or var, so it can be resolved and linked. An
+  alias-qualified `[[sql/unsupported]]` or an unqualified `[[decode-manifest]]` works too. Backticks are for everything
+  else: keys, literals, SQL, file names, shell commands.
 
 A docstring states the *contract*: what it returns (including when it returns nil), what its
 params mean, what it throws versus swallows, and any precondition or invariant the caller must
@@ -79,6 +93,20 @@ These seven things are, and each is a reason to cut or relocate:
 
 Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMessage`/`(.getData ^ExceptionInfo …)` where possible.
 
+**`(set! *warn-on-reflection* true)` goes in a file only when that file does Java interop:**
+
+Add it after the `ns` form when the file has `.method` calls, `Class/staticMethod` calls, constructors or used
+`:import`s, so the compiler reports any call it has to resolve by reflection. A file with no interop does not get the
+line, whatever its neighbours do: nine sibling files that use interop say nothing about a tenth that does not. Add it
+when interop is added later.
+
+In a `.cljc` file the same rule applies to the JVM-only code: when a `#?(:clj …)` or `#?@(:clj …)` branch does Java
+interop, the file gets the line, itself inside a reader conditional:
+
+```clojure
+#?(:clj (set! *warn-on-reflection* true))
+```
+
 ## Style Conventions
 
 **Keywords and Metadata:**
@@ -103,6 +131,73 @@ Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMes
 
 Only `(:import java.time.X)` when interop with a Java method genuinely needs the class.
 
+**A branch that yields `nil` is a `when` or `when-not`, not an `if` with a `nil` arm:**
+
+```clojure
+;; good
+(when-not (= agg :count)
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+
+;; bad
+(if (= agg :count)
+  nil
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+```
+
+The same goes for `(if c x nil)`: write `(when c x)`.
+
+**A local binding never shadows a `clojure.core` var or a var in the current namespace:**
+
+```clojure
+;; good
+(defn field-metadata [field-name field-base-type] ...)
+(let [{entity-type :type} entity] ...)
+
+;; bad
+(defn field-metadata [name base-type] ...)      ; `name` is clojure.core/name; `base-type` is a fn in this ns
+(let [{:keys [type]} entity] ...)               ; `type` is clojure.core/type
+```
+
+Qualify the name instead: `field-name`, `entity-type`, `table-alias`, `unsupported-metrics`. Watch `:keys`
+destructuring in particular, since it names the local after the key. kondo's `:shadowed-var` linter finds these.
+
+**An ID takes its entity's ID schema, never a general one like `pos-int?`:**
+
+```clojure
+;; good
+(mu/defn table-ref [table-id :- ::lib.schema.id/table] ...)
+
+;; bad
+(mu/defn table-ref [table-id :- pos-int?] ...)
+```
+
+`metabase.lib.schema.id` has a schema for every entity with an ID (`::lib.schema.id/database`, `::table`, `::field`,
+`::card`, ...). Some modules define their own equivalents for their entities; those are fine to use instead.
+
+**A no-argument function passed around is a `thunk`, not an `f`:**
+
+```clojure
+;; good
+(defn with-context [context thunk]
+  (thunk))
+
+;; bad
+(defn with-context [context f]
+  (f))
+```
+
+**Find one element with `m/find-first`, not `(first (filter ...))`:**
+
+```clojure
+;; good
+(m/find-first #(= metric-name (:name %)) metrics)
+
+;; bad
+(first (filter #(= metric-name (:name %)) metrics))
+```
+
+`medley.core` is aliased as `m`. It says what is meant.
+
 **Check non-emptiness with `seq`, not `count`:**
 
 ```clojure
@@ -117,6 +212,23 @@ Only `(:import java.time.X)` when interop with a Java method genuinely needs the
     (t2/insert! :model/Prompt prompts)))
 ```
 
+**Feed `into` a transducer, not a lazy seq:**
+
+```clojure
+;; good
+(into {} (map f) coll)
+(into [] (comp (filter pred) (map f)) coll)
+
+;; bad
+(into {} (map f coll))
+(into [] (map f (filter pred coll)))
+```
+
+When a function has an arity that returns a transducer and one that returns a lazy seq (`map`, `map-indexed`,
+`filter`, `remove`, `keep`, `distinct`, `take`, `partition-all`, ...), use the transducer arity and pass the
+collection to `into`. The lazy seq is an intermediate allocation `into` has to walk; the transducer form skips it, and
+several steps compose with `comp`.
+
 ## Tests
 
 **Organization:**
@@ -127,6 +239,71 @@ Only `(:import java.time.X)` when interop with a Java method genuinely needs the
 **Performance:**
 
 - Mark pure function tests `^:parallel`
+
+**Build queries with Lib:**
+
+Every query in a test, fixture data included (`mt/with-temp` sources, `:dataset_query`, request bodies), is built with
+`metabase.lib`: `lib/query`, `lib/native-query`, `lib/with-template-tags`, and columns from the metadata provider. Never
+a hand-written map, neither legacy (`{:database … :type :native …}`, `:source-table`) nor MBQL 5
+(`{:lib/type :mbql/query :stages […]}`). The one exception is a query that must not be valid MBQL 5, in a test that
+checks it is refused or converted: write that one by hand, with a comment saying so.
+
+```clojure
+;; bad
+{:lib/type :mbql/query :database (mt/id) :stages [{:lib/type :mbql.stage/native :native "SELECT 1"}]}
+{:database (mt/id) :type :native :native {:query "SELECT 1"}}
+
+;; good
+(lib/native-query (mt/metadata-provider) "SELECT 1")
+(lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
+(let [mp (mt/metadata-provider)]
+  (lib/query mp (lib.metadata/table mp (mt/id :orders))))
+```
+
+**No `mt/mbql-query` in new tests:**
+
+Do not use `mt/mbql-query`, `mt/query`, `mt/native-query` or `mt/run-mbql-query` in a new test. They are deprecated:
+the first three return legacy MBQL and the last runs a legacy MBQL query. Build the same query with `lib/query` (or
+`lib/native-query`) and a metadata provider. Which provider depends on what the test needs:
+
+- `(mt/metadata-provider)` when the test needs objects that really exist in the app DB: it runs the query, calls an
+  API endpoint, or reads rows back.
+- `meta/metadata-provider` (`metabase.lib.test-metadata`) when the code can be tested with objects that do not exist
+  in the app DB. Such a test needs no database, so it is fast and can be `^:parallel`.
+
+With `meta/metadata-provider`, add the Cards, Segments and other objects the test needs with
+`lib.tu/mock-metadata-provider` (`metabase.lib.test-util`) instead of `mt/with-temp`.
+
+```clojure
+;; bad
+(mt/mbql-query orders {:aggregation [[:count]], :breakout [$product_id]})
+(mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query orders)}]
+  ...)
+
+;; good: the test needs real objects in the app DB
+(let [mp (mt/metadata-provider)]
+  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+      (lib/aggregate (lib/count))
+      (lib/breakout (lib.metadata/field mp (mt/id :orders :product_id)))))
+
+;; good: metadata is enough, so nothing has to exist in the app DB
+(-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+    (lib/aggregate (lib/count))
+    (lib/breakout (meta/field-metadata :orders :product-id)))
+
+;; good: a Card from a mock metadata provider instead of `mt/with-temp`
+(let [mp (lib.tu/mock-metadata-provider
+          meta/metadata-provider
+          {:cards [{:id            1
+                    :name          "Orders"
+                    :database-id   (meta/id)
+                    :dataset-query (lib/query meta/metadata-provider (meta/table-metadata :orders))}]})]
+  (lib/query mp (lib.metadata/card mp 1)))
+```
+
+Existing tests may keep their `mt/mbql-query` calls. When code under test stops accepting legacy MBQL, give those
+tests a small wrapper that converts the query with `lib/query` and then calls the real function, rather than rewriting
+every query.
 
 **Redefining `defn`-vars under test:**
 
@@ -271,6 +448,10 @@ Tag response Malli `:map` schemas with `{:closed true}` so the generated OpenAPI
 
 - No raw MBQL introspection outside of `lib`, `lib-be`, or `query-processor` modules
 - Use Lib and MBQL 5 in new source code; avoid legacy MBQL
+- Never call `lib/->legacy-MBQL` (`metabase.lib.convert/->legacy-MBQL`), in source or in tests. It is deprecated and
+  will be removed very soon, with the rest of legacy MBQL support. Do not write code that needs a query in legacy
+  shape. Code that is handed a legacy query converts it to MBQL 5 once, where it comes in (`lib-be/normalize-query`, or
+  `lib/query` with a metadata provider), and works with MBQL 5 from there
 
 ## Database and Models
 
@@ -350,6 +531,7 @@ Organized by **problem you're solving**, not by namespace.
 | `(let [x (...)] (if x then else))`                                   | `(if-let [x (...)] then else)`       | —                                                                 |
 | `(filter #(= :a (:type %)) coll)` + same for `:b` …                  | `(group-by :type coll)` then dispatch | —                                                                 |
 | `(->> xs (map f) (remove g) (mapv h))`                               | `(into [] (comp (map f) (remove g) (map h)) xs)` | when readability of the threading wins                  |
+| `(into {} (map f xs))`, `(into [] (filter p xs))`                    | `(into {} (map f) xs)`, `(into [] (filter p) xs)` | —                                                      |
 | nested `let` / `if` / `if-let`                                       | `b/cond` with `:let`                 | a 2-level nest may be clearer as-is                               |
 | `(let [{:keys [k]} arg] …)` as first form of body                    | destructure in the arg list           | when the destructure also references something computed in `let` |
 | `(or (:k m) (get m (name k)))` per field                             | normalize once: `(update-keys m keyword)` then plain `:k` | when you genuinely need both shapes per-field             |
@@ -530,7 +712,7 @@ Other useful map ops:
 - **`(:import (java.time …))` + `(LocalDate/now)`** in new code — use `[java-time.api :as t]` + `[metabase.util.date-2 :as u.date]`. Direct `java.time` interop only when a Java API genuinely needs the class.
 - **Vanilla `defmethod`** — use `methodical/defmethod` (it takes a docstring; the codebase uses it uniformly).
 - **`(when (premium/has-feature? :flag) …)` in code** — gate via `defenterprise` so OSS/EE bodies live in their respective namespaces; never sprinkle runtime feature checks.
-- **No `(set! *warn-on-reflection* true)` after the `ns` form** in a new `.clj` file — every `.clj` source file in this repo has it (not `.cljc`).
+- **`(set! *warn-on-reflection* true)` missing from a file that does Java interop, or present in one that does not** — the line is there to surface reflective calls, so it follows the interop, not the convention of neighbouring files. In `.cljc`, it is `#?(:clj (set! *warn-on-reflection* true))` when a `:clj` branch does interop. See the `*warn-on-reflection*` paragraph under "Code Organization".
 - **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
 - **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
 - **`(def Foo [:map …])` for a Malli schema** — `(mr/def ::foo "doc" [:map …])` and reference it as `::foo`, even in `dev/`. See "Schemas".

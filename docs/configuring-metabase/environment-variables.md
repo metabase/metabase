@@ -1,5 +1,6 @@
 ---
 title: Environment variables
+summary: Every environment variable you can use to configure Metabase. Environment variables take precedence over settings in the admin panel.
 redirect_from:
   - /docs/latest/operations-guide/environment-variables
 ---
@@ -488,6 +489,17 @@ Timeout in minutes for the database's query execution, both for the Metabase app
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DEPRECATED_AGENT_API_ENABLED [DEPRECATED]`
+
+> DEPRECATED: 0.66.0
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `deprecated-agent-api-enabled`.
+- [Configuration file name](./config-file.md): `deprecated-agent-api-enabled`
+
+Whether the deprecated Agent API stays available. The Agent API is deprecated and will be removed in Metabase 67; use the MCP server for agents instead. Off by default; an admin turns it on to keep using the Agent API until it is removed.
+
 ### `MB_DISABLE_AUTO_SYNC`
 
 - Type: boolean
@@ -678,6 +690,8 @@ Whether Metabot is enabled for embedding.
 
 Allow this origin to embed the full Metabase application.
 
+Use `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE` for the origins that can embed the full Metabase app, and `MB_EMBEDDING_APP_ORIGINS_SDK` for the origins that can use modular embedding and the modular embedding React SDK. If only `MB_EMBEDDING_APP_ORIGIN` is set, Metabase copies its value at every startup to the `embedding-app-origins-interactive` and `embedding-app-origins-sdk` settings, if your plan includes that kind of embedding. If you set `MB_EMBEDDING_APP_ORIGIN` together with either of these variables, Metabase stops at startup with an error.
+
 ### `MB_EMBEDDING_APP_ORIGINS_INTERACTIVE`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -724,6 +738,8 @@ Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.
 
 Allow admins to securely embed questions and dashboards within other applications?
 
+Use these variables instead: `MB_ENABLE_EMBEDDING_MODULAR` for modular embedding, guest embeds, and static embeds, `MB_ENABLE_EMBEDDING_SDK` for the modular embedding React SDK, and `MB_ENABLE_EMBEDDING_INTERACTIVE` for full-app embedding. If only `MB_ENABLE_EMBEDDING` is set, Metabase copies its value at every startup to the `enable-embedding-sdk`, `enable-embedding-interactive`, and `enable-embedding-static` settings. If the value is `true`, this also turns on modular embedding, guest embeds, and static embeds, unless you turn modular embedding off in the admin settings. If you set `MB_ENABLE_EMBEDDING` together with any of these variables, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_INTERACTIVE`
 
 - Type: boolean
@@ -766,6 +782,8 @@ Do admins link to Metabase from their own app? Only reported for analytics.
 
 Allow admins to embed Metabase via modular embedding?
 
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
+
 ### `MB_ENABLE_EMBEDDING_STATIC [DEPRECATED]`
 
 > DEPRECATED: 0.65.0
@@ -775,6 +793,8 @@ Allow admins to embed Metabase via modular embedding?
 - [Configuration file name](./config-file.md): `enable-embedding-static`
 
 Allow admins to embed Metabase via static embedding?
+
+Use `MB_ENABLE_EMBEDDING_MODULAR` instead, which controls modular embedding, guest embeds, and static embeds. Unless you turn modular embedding on or off in the admin settings, Metabase still reads this variable, and `true` turns on all three. If you set this variable together with `MB_ENABLE_EMBEDDING_MODULAR`, Metabase stops at startup with an error.
 
 ### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -917,7 +937,7 @@ Options:
 - allow-all (no restrictions including localhost).
 .
 
-Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`
+Set this when a notification webhook must reach a host on your private network (`allow-private`) or on this machine (`allow-all`). Default is `external-only`. Before Metabase 64, this variable was called `MB_HTTP_CHANNEL_HOST_STRATEGY`. Metabase still reads the old name and logs a warning at startup, so rename it to `MB_HTTP_CHANNEL_ALLOWED_NETWORKS`.
 
 ### `MB_HUMANIZATION_STRATEGY`
 
@@ -959,6 +979,29 @@ Maximum number of fields per database to score for dimension interestingness in 
   in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
   `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
   NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
+
+### `MB_ISOLATED_ORIGIN`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.
+
+Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - It is only a scheme, host and port, with no path, query or fragment.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path; leave the path out of this value.
+
+  If the value breaks one of the first four requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.
 
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
@@ -1939,7 +1982,7 @@ The display name for Metabot, shown throughout the Metabase UI.
 ### `MB_METABOT_QUERY_EXECUTION_ENABLED`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `metabot-query-execution-enabled`
 
 Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.
@@ -2240,91 +2283,83 @@ Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT`
 
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
 - Type: boolean
 - Default: `false`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import`
 
-Whether to automatically import from the remote git repository. Only applies if remote-sync-type is :read-only.
+Whether a read-only instance pulls changes from the repository on a schedule.
 
 ### `MB_REMOTE_SYNC_AUTO_IMPORT_RATE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `5`
 - [Configuration file name](./config-file.md): `remote-sync-auto-import-rate`
 
-If remote-sync-type is :read-only and remote-sync-auto-import is true, the rate (in minutes) at which to check for updates to import. Defaults to 5.
+How often, in minutes, a read-only instance that pulls automatically checks the repository for changes.
 
 ### `MB_REMOTE_SYNC_BRANCH`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-branch`
 
-The remote branch to sync with, e.g. `main`.
-
-### `MB_REMOTE_SYNC_CHECK_CHANGES_CACHE_TTL_SECONDS`
-
-- Type: integer
-- Default: `60`
-- [Configuration file name](./config-file.md): `remote-sync-check-changes-cache-ttl-seconds`
-
-Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.
-
-### `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-custom-collections-enabled`
-
-Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull or a serialization import refuses content with other synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls or imports such content. It can only be turned off once no other collection is synced.
+The branch of the repository to sync with, such as `main`.
 
 ### `MB_REMOTE_SYNC_GIT_TIMEOUT_SECONDS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `60`
 - [Configuration file name](./config-file.md): `remote-sync-git-timeout-seconds`
 
-Network timeout (in seconds) for remote git operations such as fetch, push, clone, and ls-remote. A stalled connection would otherwise hang a sync indefinitely.
+How long, in seconds, remote sync waits for the git repository to respond.
 
 ### `MB_REMOTE_SYNC_TASK_TIME_LIMIT_MS`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: integer
 - Default: `300000`
 - [Configuration file name](./config-file.md): `remote-sync-task-time-limit-ms`
 
-How long a remote sync task may go without proving its process is alive (via heartbeat, or progress on rows without one) before it is treated as dead and superseded. A slow but live task is never affected. The task itself is aborted after ten times this limit.
+How long, in milliseconds, a remote sync task can go without a sign that it is still running before Metabase ends it.
 
 ### `MB_REMOTE_SYNC_TOKEN`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-token`
 
-An Authorization Bearer token allowing access to the git repo over HTTP.
-
-### `MB_REMOTE_SYNC_TRANSFORMS`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `remote-sync-transforms`
-
-Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.
+An access token for the git repository, such as a personal access token.
 
 ### `MB_REMOTE_SYNC_TYPE`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: keyword
 - Default: `read-only`
 - [Configuration file name](./config-file.md): `remote-sync-type`
 
-Git synchronization type - :read-write or :read-only.
+Whether this instance pushes synced content to the repository (read-write) or only pulls it (read-only).
 
 ### `MB_REMOTE_SYNC_URL`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
 - Default: `null`
 - [Configuration file name](./config-file.md): `remote-sync-url`
 
-The location of your git repository, e.g. `https://github.com/acme-inco/metabase.git`.
+The URL of the git repository to sync with, such as `https://github.com/acme-inco/metabase.git`.
 
 ### `MB_REPORT_TIMEZONE`
 
@@ -2862,6 +2897,8 @@ When a user logs in via Slack Connect, create a Metabase account for them automa
 
 The name of the channel to which Metabase files should be initially uploaded.
 
+Since 0.54.0, Metabase doesn't use a files channel for Slack, so you can remove this variable, and no other variable replaces it.
+
 ### `MB_SMTP_OVERRIDE_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -3027,6 +3064,8 @@ Must be less than 1048575, and less than the number configured in MB_AGGREGATED_
 
 Database ID for uploads.
 
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
+
 ### `MB_UPLOADS_ENABLED [DEPRECATED]`
 
 > DEPRECATED: 0.50.0
@@ -3035,6 +3074,8 @@ Database ID for uploads.
 - Default: `false`
 
 Whether or not uploads are enabled.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_SCHEMA_NAME [DEPRECATED]`
 
@@ -3045,13 +3086,7 @@ Whether or not uploads are enabled.
 
 Schema name for uploads.
 
-### `MB_UPLOADS_SETTINGS`
-
-- Type: json
-- Default: `null`
-- [Configuration file name](./config-file.md): `uploads-settings`
-
-Upload settings.
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_UPLOADS_TABLE_PREFIX [DEPRECATED]`
 
@@ -3061,6 +3096,8 @@ Upload settings.
 - Default: `null`
 
 Prefix for upload table names.
+
+Metabase no longer uses this variable, because the upload settings now live on the database that receives uploads. Set them in **Admin** > **Settings** > **Uploads**, or with `PUT /api/setting/uploads-settings`. On self-hosted Pro and Enterprise plans, you can also set `uploads-settings` in the [configuration file](./config-file.md).
 
 ### `MB_USAGE_METADATA_ENABLED`
 
@@ -3122,6 +3159,14 @@ Defaults to external-only on Metabase Cloud and allow-all when self-hosted.
 Also covers the SSH tunnel host and the database auth-provider URLs.
 
 Set this when Metabase must reach a warehouse on a private network (allow-private) or on this machine (allow-all). There is no admin UI for it, and a value stored in the application database is ignored. Defaults to external-only on Metabase Cloud and allow-all when self-hosted. Metabase refuses to start if this is set to anything but one of the three policies, rather than run on a policy nobody chose.
+
+### `MB_WORKSPACES_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `workspaces-enabled`
+
+Whether this instance is a workspace. A transform on a database that has a `database-workspace-schema` writes to that schema instead of to its production table, and later reads of the production table read the workspace copy. A transform on a database that has no `database-workspace-schema` is refused. Not the per-database switch that a parent uses to offer workspaces (`database-enable-workspaces`). Turning this setting off through the settings API, `config.yml`, or `DELETE /api/ee/workspace-instance/current` deletes every table remapping (the record that sends reads to the workspace copy). Unsetting `MB_WORKSPACES_ENABLED` does not. While `MB_WORKSPACES_ENABLED` is set, a write of the other value is refused, a `config.yml` that sets the other value stops Metabase from starting, and `PUT /api/database/:id` and `POST /api/ee/workspace-instance/current` refuse to change a database's `database-workspace-schema`.
 
 ## Other environment variables
 
