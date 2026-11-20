@@ -168,10 +168,10 @@
   "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  ;; A refresh that names no resource gets here when its token is bound to a non-MCP resource, since the token's
-  ;; resource is the one narrowed to. With no resource from either, a request asking only for MCP scopes is given the
-  ;; MCP resource by [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be
-  ;; built without a Site URL, so the URL is always there.
+  ;; A refresh that names no resource narrows to its token's resource, so it gets here when that token is bound to a
+  ;; non-MCP resource. With no resource from either, a request asking only for MCP scopes is given the MCP resource by
+  ;; [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be built without a
+  ;; Site URL, so the URL is always there.
   (str "The requested scopes are not accepted by the requested resource. "
        "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 
