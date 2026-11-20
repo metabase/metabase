@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
+  setupTableSearchEndpoint,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -10,11 +10,10 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import type { Database, SearchResult } from "metabase-types/api";
+import type { Database, Table } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockSchema,
-  createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
 
@@ -141,17 +140,19 @@ const MOCK_DATABASES = [
   DATABASE_WITH_UNNAMED_SCHEMA,
 ];
 
+interface SetupOpts {
+  path?: TreePath;
+  databases?: Database[];
+  searchTables?: Table[];
+}
+
 function setup({
   path = {},
   databases = MOCK_DATABASES,
-  searchResults = [],
-}: {
-  path?: TreePath;
-  databases?: Database[];
-  searchResults?: SearchResult[];
-} = {}) {
+  searchTables = [],
+}: SetupOpts = {}) {
   setupDatabasesEndpoints(databases);
-  setupSearchEndpoints(searchResults);
+  setupTableSearchEndpoint(searchTables);
 
   const onChange = jest.fn();
 
@@ -343,24 +344,34 @@ describe("TablePicker", () => {
   });
 
   describe("Search view", () => {
-    const DATABASE = "DATABASE";
+    const DATABASE = createMockDatabase({ id: nextId(), name: "DATABASE" });
     const SCHEMA = "SCHEMA";
-    const FOO_RESULT = createMockSearchResult({
+    const FOO_RESULT = createMockTable({
       id: nextId(),
-      model: "table",
-      name: "Foo",
-      table_name: "FOO",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      db_id: DATABASE.id,
+      db: DATABASE,
+      schema: SCHEMA,
+      name: "FOO",
+      display_name: "Foo",
       initial_sync_status: "complete",
     });
-    const BAR_RESULT = createMockSearchResult({
+    const BAR_RESULT = createMockTable({
       id: nextId(),
-      model: "table",
-      name: "Bar",
-      table_name: "BAR",
-      table_schema: SCHEMA,
-      database_name: DATABASE,
+      db_id: DATABASE.id,
+      db: DATABASE,
+      schema: SCHEMA,
+      name: "BAR",
+      display_name: "Bar",
+      initial_sync_status: "complete",
+    });
+    const HIDDEN_RESULT = createMockTable({
+      id: nextId(),
+      db_id: DATABASE.id,
+      db: DATABASE,
+      schema: SCHEMA,
+      name: "FOO_ARCHIVE",
+      display_name: "Foo Archive",
+      visibility_type: "hidden",
       initial_sync_status: "complete",
     });
 
@@ -368,12 +379,12 @@ describe("TablePicker", () => {
 
     it("should filter the tree based on the search input", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
 
-      expect(item(DATABASE)).toBeInTheDocument();
+      expect(item(DATABASE.name)).toBeInTheDocument();
       expect(item(SCHEMA)).toBeInTheDocument();
 
       expect(item(FOO_RESULT)).toBeInTheDocument();
@@ -381,9 +392,31 @@ describe("TablePicker", () => {
 
       await clickItem(FOO_RESULT);
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: DATABASE.id,
+        schemaName: SCHEMA,
         tableId: FOO_RESULT.id,
+      });
+    });
+
+    it("should include hidden tables in the search results (metabase#87330)", async () => {
+      const { onChange } = setup({
+        searchTables: [...SEARCH_RESULTS, HIDDEN_RESULT],
+      });
+
+      await userEvent.type(searchInput(), "foo");
+
+      expect(
+        await screen.findByText(HIDDEN_RESULT.display_name),
+      ).toBeInTheDocument();
+      expect(item(FOO_RESULT)).toBeInTheDocument();
+      expect(item(BAR_RESULT)).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Unhide table")).toBeInTheDocument();
+
+      await clickItem(HIDDEN_RESULT);
+      expect(onChange).toHaveBeenCalledWith({
+        databaseId: DATABASE.id,
+        schemaName: SCHEMA,
+        tableId: HIDDEN_RESULT.id,
       });
     });
 
@@ -397,12 +430,12 @@ describe("TablePicker", () => {
 
     it("should be possible to use the keyboard to select items in the search results", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "foo");
 
-      expect(item(DATABASE)).toBeInTheDocument();
+      expect(item(DATABASE.name)).toBeInTheDocument();
       expect(item(SCHEMA)).toBeInTheDocument();
 
       expect(item(FOO_RESULT)).toBeInTheDocument();
@@ -412,15 +445,15 @@ describe("TablePicker", () => {
       await userEvent.type(searchInput(), "{Enter}");
 
       expect(onChange).toHaveBeenCalledWith({
-        databaseId: FOO_RESULT.database_id,
-        schemaName: FOO_RESULT.table_schema,
+        databaseId: DATABASE.id,
+        schemaName: SCHEMA,
         tableId: FOO_RESULT.id,
       });
     });
 
     it("should not crash when pressing Enter with no item selected (metabase#63350)", async () => {
       const { onChange } = setup({
-        searchResults: SEARCH_RESULTS,
+        searchTables: SEARCH_RESULTS,
       });
 
       await userEvent.type(searchInput(), "search");
