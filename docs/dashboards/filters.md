@@ -408,16 +408,16 @@ Your active filter will only apply to your view of the dashboard. If someone els
 
 You can also set up a dashboard question to [update a filter on click](./interactive.md#use-a-chart-to-filter-a-dashboard).
 
-## Metabase remembers the filter values you last used
+## Metabase remembers your last filter values
 
-When you change the filter values on a dashboard, Metabase saves them. The next time you open the dashboard, Metabase applies the filter values you last used instead of the dashboard's [default values](#set-a-default-filter-value). Metabase saves filter values for each person separately, so your filter values won't change what other people see.
+Metabase saves filter values on a dashboard when you change them. The next time you open the dashboard, Metabase applies the filter values you last used instead of the dashboard's [default values](#set-a-default-filter-value). Your filter values don't affect other people's views.
 
-Admins of self-hosted Metabases can turn off this behavior with the [`MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`](../configuring-metabase/environment-variables.md#mb_dashboards_save_last_used_parameters) environment variable. With it turned off, dashboards always open with their default filter values.
+Admins of self-hosted Metabases can force dashboards to always show the default values when a dashboard first loads with the [`MB_DASHBOARDS_SAVE_LAST_USED_PARAMETERS`](../configuring-metabase/environment-variables.md#mb_dashboards_save_last_used_parameters) environment variable. 
 
 Metabase doesn't apply your last-used values when:
 
-- **You access the dashboard through a link that includes filter values**, like `?category=Widget`. Metabase applies the values in the link, and uses the default values for any filters that aren't in the link.
-- **You're viewing a [public link](../embedding/public-links.md) or a [guest embed](../embedding/guest-embedding.md)**. Metabase doesn't save filter values for these, so filters use the dashboard's default values unless the link or embed sets them.
+- **You visit the dashboard through a link that includes filter values**, like `?category=Widget`. Metabase applies the values in the link, and uses the default values for any filters that aren't in the link (not your last-used values).
+- **You're viewing a [public link](../embedding/public-links.md) or a [guest embed](../embedding/guest-embedding.md)**.
 
 To go back to a filter's default value, click the **Reset filter to default state** icon on the filter widget. To reset every filter on the dashboard, click the three-dot menu **...** and select **Reset all filters**.
 
