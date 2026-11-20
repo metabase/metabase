@@ -572,6 +572,7 @@
            appearance
            audit-app
            collections
+           custom-viz-plugin
            dashboards
            driver
            events
@@ -818,6 +819,11 @@
            task
            util
            util.config}}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}}
 
   dashboards
   {:team "UX West"

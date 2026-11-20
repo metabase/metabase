@@ -19,6 +19,7 @@ export type RenderChartOptions = {
   applicationColors: ColorSettings;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
+  locale?: string | null;
   // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
   // chart legends
   width?: number;
