@@ -67,7 +67,7 @@
   `:row-counts` sets the output's row count against the number of expected rows.
   `:cell-mismatches` is filled only when exactly one row is missing and exactly one is extra.
   `:extra-rows` and `:missing-rows` are capped; `:truncated` is how many rows that cap dropped."
-  [:multi {:dispatch :status}
+  [:multi {:dispatch (comp keyword :status)}
    [:error  base]
    [:passed findings]
    [:failed findings]])
