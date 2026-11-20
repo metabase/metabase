@@ -42,6 +42,7 @@ export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
+export const COLUMN_TEXT_ALIGN = "text_align";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 

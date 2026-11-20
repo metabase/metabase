@@ -10,6 +10,7 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  COLUMN_TEXT_ALIGN,
   isPivotGroupColumn,
 } from "metabase/visualizations/lib/data_grid";
 import {
@@ -335,5 +336,24 @@ export const _columnSettings = {
     },
     widget: "input",
     getDefault: displayNameForColumn,
+  },
+  // Alignment of a measure's values in the body of the pivot table. Same
+  // setting and values as the table visualization's `text_align`; row and
+  // column headers keep their own alignment.
+  [COLUMN_TEXT_ALIGN]: {
+    get title() {
+      return t`Alignment`;
+    },
+    widget: "segmentedControl",
+    getDefault: () => "right",
+    getProps: () => ({
+      options: [
+        { name: t`Left`, value: "left" },
+        { name: t`Middle`, value: "middle" },
+        { name: t`Right`, value: "right" },
+      ],
+    }),
+    getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
+      source !== "aggregation",
   },
 };
