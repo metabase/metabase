@@ -3248,4 +3248,8 @@
                 refreshed (refresh! client (legacy! #{not-mcp}))]
             (is (nil? (:resource refreshed)))
             (is (nil? (stored-resource refreshed)))
-            (is (= #{not-mcp} (token-scope-set refreshed)))))))))
+            (is (= #{not-mcp} (token-scope-set refreshed)))))
+        (testing "a token holding an MCP scope and an unregistered one stays unbound, since the refresh keeps both"
+          (let [refreshed (refresh! client (legacy! #{"agent:content:read" "*"}))]
+            (is (nil? (:resource refreshed)))
+            (is (nil? (stored-resource refreshed)))))))))

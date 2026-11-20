@@ -660,7 +660,11 @@
     (let [body   (dissoc body :scope)
           stored (when (empty? resource)
                    (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
-          target (when (and stored (empty? (:resource stored)))
+          ;; Every held scope, registered or not, must be an MCP scope: oidc-provider keeps them all when the refresh
+          ;; names none, while [[with-default-mcp-resource]] looks only at the registered ones.
+          target (when (and stored
+                            (empty? (:resource stored))
+                            (every? (set (mcp/v2-scopes)) (:scope stored)))
                    (with-default-mcp-resource {:scope (str/join " " (:scope stored))}))]
       (cond-> body
         (and (seq (:resource target)) (refreshable-token provider authorization-header body))
