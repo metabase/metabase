@@ -39,7 +39,8 @@
    ::expectation-failed         422  ; An expectation's own query failed to execute.
 
    ;; 501 — not built yet
-   ::unsupported-format         501}); The expectation is of a type the schema knows and no `build` method handles.
+   ::unsupported-format         501  ; The expectation is of a type the schema knows and no `build` method handles.
+   ::now-on-native-sql          501}); The test sets `now` on SQL written by hand; pinning the clock there is not built.
 
 (def all
   "Every declared `:error-type`."

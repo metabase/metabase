@@ -2,7 +2,10 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.core :as audit]
    [metabase.channel.urls :as channel.urls]
+   [metabase.comments.audit :as comments.audit]
    [metabase.comments.db :as comments.db]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
@@ -18,12 +21,6 @@
   (derive :metabase/model)
   (derive :hook/events)
   (derive :hook/timestamped?))
-
-(defmethod events/spec :model/Comment
-  [_model]
-  {:create :event/comment-create
-   :update :event/comment-update
-   :delete :event/comment-delete})
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
 ;; HTML for email notifications is now rendered server-side from the `content` JSON
@@ -235,3 +232,22 @@
   [document-id]
   (->> (comments.db/document-child-target-counts document-id)
        (mapv #(select-keys % [:child_target_id :comment_count]))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/Comment
+  [_model]
+  {:create :event/comment-create
+   :update :event/comment-update
+   :delete :event/comment-delete})
+
+(defmethod app-db-copy/spec :model/Comment [_model]
+  {:skip? false})
+
+(defmethod audit/spec :model/Comment [_model]
+  {:track          [:target_type :target_id :child_target_id :parent_comment_id]
+   :track-redacted [:content :content_html :context :creator_id :deleted_at :is_resolved]
+   :skip           []
+   :topics         {:create :comment-create
+                    :update comments.audit/update-topic
+                    :delete :comment-delete}})

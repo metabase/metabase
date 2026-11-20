@@ -1,7 +1,6 @@
 (ns metabase-enterprise.dependencies.native-validation-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
    [metabase.driver.sql :as driver.sql]
@@ -12,6 +11,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.util :as u]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -543,6 +543,13 @@
                    :target {:type :table :schema "public" :name "out"}}]
     (lib.tu/mock-metadata-provider meta/metadata-provider {:transforms [transform]})))
 
+(defn- transform-errors
+  "The errors of the analysis of the transform 1 of `mp`, its query reading `mp`."
+  [mp]
+  (let [transform (lib.metadata/transform mp 1)]
+    (transforms.dependencies/analysis
+     (assoc-in transform [:source :query] (lib/query mp (-> transform :source :query))))))
+
 (deftest ^:parallel transform-aliased-name-columns-not-duplicate-test
   (testing "two `xxx.name` columns aliased to distinct names are NOT flagged as duplicates"
     (let [mp     (mp-with-transform
@@ -550,7 +557,7 @@
                    FROM CHECKINS c
                    JOIN USERS u ON c.USER_ID = u.ID
                    JOIN VENUES v ON c.VENUE_ID = v.ID")
-          errors (deps.analysis/check-entity mp :transform 1)
+          errors (transform-errors mp)
           dupes  (filter #(= :duplicate-column (:type %)) errors)]
       (is (empty? dupes)
           (str "Expected no :duplicate-column errors, got: " (pr-str dupes))))))
@@ -559,7 +566,7 @@
   (testing "a genuine output-name collision IS still flagged"
     (let [mp     (mp-with-transform
                   "SELECT TOTAL, SUBTOTAL AS total FROM ORDERS")
-          errors (deps.analysis/check-entity mp :transform 1)
+          errors (transform-errors mp)
           dupes  (filter #(= :duplicate-column (:type %)) errors)]
       (is (= [{:type :duplicate-column :name "TOTAL"}] dupes)
           (str "Expected one :duplicate-column error, got: " (pr-str dupes))))))

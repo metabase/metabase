@@ -1,10 +1,13 @@
 (ns metabase.eid-translation.util-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.analytics.stats :as stats]
-   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.eid-translation.core :as eid-translation]
+   [metabase.eid-translation.spec :as eid-translation.spec]
    [metabase.eid-translation.util :as eid-translation.util]
+   [metabase.models.resolution :as models.resolution]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -12,14 +15,56 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest ^:parallel api-name->model-test
-  (testing "api-name->model should be up-to-date"
-    (is (= (into {}
-                 (keep (fn [[k {:keys [db-model]}]]
-                         (when (#'eid-translation.util/api-model? db-model)
-                           [(keyword k) db-model])))
-                 api/model->db-model)
-           @#'eid-translation.util/api-name->model))))
+(def ^:private not-translated-models
+  "The models with entity ids whose entity ids the API does not translate."
+  #{:model/CardTest
+    :model/DataApp
+    :model/EmbeddingTheme
+    :model/ExplorationPage
+    :model/ExplorationQuery
+    :model/ExplorationThread
+    :model/Glossary
+    :model/Metabot
+    :model/MetabotPrompt
+    :model/OsiAiContext
+    :model/PythonLibrary
+    :model/SegmentTest
+    :model/TimelineEvent
+    :model/TransformJob
+    :model/TransformJobTransformTag
+    :model/TransformTag
+    :model/TransformTest
+    :model/TransformTransformTag})
+
+(defn- all-models
+  "Every model of this edition, with its namespace loaded."
+  []
+  (vec (for [[model nspace] models.resolution/model->namespace
+             :when (or config/ee-available? (not (str/starts-with? (str nspace) "metabase-enterprise")))]
+         (t2/resolve-model model))))
+
+(deftest ^:parallel spec-models-test
+  (testing "each model with entity ids declares its API names, or is one whose entity ids the API does not translate"
+    (let [models (all-models)]
+      (doseq [model models
+              :when (isa? model :hook/entity-id)]
+        (is (not= (some? (eid-translation.spec/spec model))
+                  (contains? not-translated-models model))
+            (str model " must either declare eid-translation/spec names or be in not-translated-models")))
+      (doseq [model models
+              :when (eid-translation.spec/spec model)]
+        (is (isa? model :hook/entity-id) (str model " declares names but has no entity ids"))))))
+
+(deftest ^:parallel spec-names-test
+  (testing "each API name names one model, and the names are those the API has always taken"
+    (all-models)
+    (let [api-names (mapcat (fn [[model method]] (:names (method model)))
+                            (dissoc (methods eid-translation.spec/spec) :default))]
+      (is (= (count api-names) (count (distinct api-names))))
+      (is (= #{:action :card :collection :dashboard :dashboard-card :dashboard-tab :dataset :dimension :document
+               :exploration :measure :metric :permissions-group :pulse :pulse-card :pulse-channel :segment :snippet
+               :timeline :transform :user}
+             (set api-names))))))
 
 (deftest ->id-test
   (mt/with-temporary-setting-values [synchronous-batch-updates true]

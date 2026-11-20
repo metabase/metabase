@@ -645,20 +645,19 @@
           _            (some-> current (check-not-trashed! attrs))
           ;; A dashboard question needs its dashboard, so a create with charts saves the dashboard first.
           created      (when (and (nil? current) (seq charts))
-                         (dashboard-write/write! {:attrs attrs}))
+                         (:dashboard (dashboard-write/write! {:attrs attrs})))
           target       (or current created)
           saved-charts (mapv (partial save-chart! (:id target)) charts)
-          ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))]
-      {:before       current
-       :dashboard    (dashboard-write/write! (cond-> {:ops ops}
-                                               target        (assoc :dashboard target)
-                                               (not created) (assoc :attrs attrs)))
-       :saved-charts saved-charts})))
+          ops          (with-card-ids ops (into {} (map (juxt :chart-id :card-id)) saved-charts))
+          written      (dashboard-write/write! (cond-> {:ops ops}
+                                                 target        (assoc :dashboard target)
+                                                 (not created) (assoc :attrs attrs)))]
+      (assoc written :before current :saved-charts saved-charts))))
 
 (defn- save!
-  "Saves the change to `dashboard`, nil on a create, and returns `{:before :dashboard :saved-charts}`.
+  "Saves the change to `dashboard`, nil on a create, and returns `{:before :dashboard :effects :saved-charts}`.
   The dashboard is reread before it is changed, and `:before` is that reread, nil on a create.
-  The saved dashboard is hydrated as [[dashboard-write/write!]] returns it.
+  The saved dashboard and its effects are as [[dashboard-write/write!]] returns them.
   Everything is saved in one transaction, the charts' questions included."
   [dashboard attrs ops charts]
   ;; The tool calls of one model step run in parallel, and ops save a full-replacement layout. So an edit holds the
@@ -758,14 +757,42 @@
   NLQ Metabot only links it."
   #{:internal :internal-sql})
 
+(defn- dropped-connections-text
+  "The lines telling the model which filters lost connections in `dropped`, naming each filter from `parameters`, and
+  what it can do about them."
+  [parameters dropped]
+  (let [parameter-name (into {} (map (juxt :id :name)) parameters)
+        dashcards-text (fn [connections]
+                         (let [ids (distinct (map :dashcard_id connections))]
+                           (str (if (next ids) "dashcards " "dashcard ") (ids-text ids))))]
+    [(for [[parameter-id connections] (group-by :parameter_id dropped)
+           :let [{series true, cards false} (group-by (comp boolean :series) connections)]]
+       (str "The " (pr-str (or (parameter-name parameter-id) parameter-id)) " filter is no longer connected to "
+            (str/join " or to "
+                      (cond-> []
+                        (seq cards)  (conj (dashcards-text cards))
+                        ;; A series is named by its dashcard, not its card: [[card-shown-fn]] judges only each
+                        ;; dashcard's own card, so a series card's name could show one the user can't read, or one
+                        ;; that isn't curated.
+                        (seq series) (conj (str "the series on " (dashcards-text series)))))
+            "."))
+     (when (some (complement :series) dropped)
+       "Connect a dashcard again with `wire_parameter` if its card has the field.")
+     ;; `write_dashboard` leaves out `patch_dashcard`, the only op that can connect a filter to a series card.
+     (when (some :series dropped)
+       "You can't connect a filter to a series again.")
+     "Tell the user about any you don't connect again."]))
+
 (defn- result
-  "The tool result for the saved `dashboard`."
-  [{:keys [id name collection_id] :as dashboard} action saved-charts profile-id]
+  "The tool result for a save: the `dashboard` and `effects` [[dashboard-write/write!]] returned, the `action` the save
+  took, the `saved-charts` it saved, and the `profile-id` of the Metabot that made it."
+  [{{:keys [id name collection_id parameters] :as dashboard} :dashboard
+    {:keys [pushed-dashcard-ids dropped-connections]}       :effects
+    :keys                                                   [action saved-charts profile-id]}]
   ;; Trashing doesn't navigate, so a trashed dashboard the user is viewing stays in view.
   (let [open?       (and (not= "trashed" action) (contains? opening-profiles profile-id))
         link        (str "metabase://dashboard/" id)
         layout?     (contains? #{"created" "updated"} action)
-        pushed      (dashboard-ops/pushed-dashcard-ids dashboard)
         chart-pairs (for [{:keys [chart-id card-id]} saved-charts]
                       {:chart_id chart-id, :card_id card-id})
         output      (te/lines
@@ -785,9 +812,11 @@
                        "trashed"  "Tell the user you moved it to the trash, and that they can restore it from there."
                        "restored" "Tell the user you restored it."
                        "Tell the user what you changed and where the dashboard is saved.")
-                     (when (seq pushed)
-                       (str (if (next pushed) "Cards " "Card ") (ids-text pushed)
+                     (when (seq pushed-dashcard-ids)
+                       (str (if (next pushed-dashcard-ids) "Cards " "Card ") (ids-text pushed-dashcard-ids)
                             " moved down to make room for the cards you placed. Mention it to the user."))
+                     (when (seq dropped-connections)
+                       (dropped-connections-text parameters dropped-connections))
                      (str "Link it as " (te/link name link) "."))]
     {:output            output
      :structured-output {:result-type  :dashboard-saved
@@ -844,10 +873,10 @@
       (check-cards-curated! ops)
       (check-cards-not-in-other-dashboards! dashboard ops)
       (let [charts (requested-charts ops)
-            {saved :dashboard :keys [before saved-charts]}
+            {:keys [before] :as saved}
             (save-entity/do-with-save-rejections
              #(do-with-op-errors dashboard_id (fn [] (save! dashboard attrs ops charts))))]
-        (result saved (action before attrs) saved-charts profile-id)))))
+        (result (assoc saved :action (action before attrs) :profile-id profile-id))))))
 
 (def write-dashboard-tool
   "Create, edit, trash or restore a dashboard, saving charts from this conversation onto it."

@@ -240,9 +240,11 @@
   (events.schema/register-lifecycle-topic! topic))
 
 (defn- merge-events
-  "The one event that the `events` of one row amount to, or nil when the batch both created and deleted the row."
+  "The one event that the `events` of one row amount to, a deletion whenever the batch deleted the row, or nil when the
+  batch both created and deleted it."
   [events]
   (let [create (first (filter #(= :create (:operation %)) events))
+        delete (peek (filterv #(= :delete (:operation %)) events))
         fst    (first events)
         lst    (peek events)
         shared {:user-id  (some :user-id (rseq events))
@@ -252,14 +254,14 @@
                  (:object (or (peek (filterv #(= :update (:operation %)) events)) create))
                  (:object (peek (filterv :object events))))]
     (cond
-      (and create (some #(= :delete (:operation %)) events))
+      (and create delete)
       nil
 
       create
       (merge create shared {:object object})
 
-      (= :delete (:operation lst))
-      (merge (dissoc lst :object) shared {:previous-object (:previous-object fst)})
+      delete
+      (merge (dissoc delete :object) shared {:previous-object (:previous-object fst)})
 
       :else
       (merge lst shared {:operation       :update

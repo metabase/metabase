@@ -36,6 +36,11 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
 
+;; Python transforms swap in a new table with a drop and then a rename, since this driver doesn't support
+;; `:atomic-renames`.
+(defmethod driver/database-supports? [:clickhouse :test/python-transforms-without-atomic-renames]
+  [_driver _feature _database] true)
+
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
   [_driver]
   [[1 "foo" (t/offset-date-time "2004-10-19T10:23:54Z") #t "2004-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]

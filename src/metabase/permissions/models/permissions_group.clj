@@ -10,8 +10,12 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
+   [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
+   [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
@@ -36,12 +40,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/events))
-
-(defmethod events/spec :model/PermissionsGroup
-  [_model]
-  {:create :event/group-create
-   :update :event/group-update
-   :delete :event/group-delete})
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -259,3 +257,26 @@
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/PermissionsGroup
+  [_model]
+  {:create :event/group-create
+   :update :event/group-update
+   :delete :event/group-delete})
+
+(defmethod app-db-copy/spec :model/PermissionsGroup [_model]
+  {:skip? false})
+
+(defmethod change-log/spec :model/PermissionsGroup [_model]
+  {:track [:name :entity_id :magic_group_type :is_tenant_group]
+   :skip  []})
+
+(defmethod audit/spec :model/PermissionsGroup [_model]
+  {:track          [:id :name :is_tenant_group :magic_group_type]
+   :track-redacted []
+   :skip           [:entity_id]})
+
+(defmethod eid-translation/spec :model/PermissionsGroup [_model]
+  {:names [:permissions-group]})

@@ -100,9 +100,9 @@
           ;; The message can also quote the compiled SQL, which names every column, so match only the warehouse's
           ;; naming of the missing column: `column "ADDRESS"` (H2), `column people.address` (Postgres), `column
           ;; 'people.address'` (MySQL), `Identifier 'test_data.people.address'` (ClickHouse), `column name 'ADDRESS'`
-          ;; (SQL Server, whose "column name" would otherwise match the NAME column).
+          ;; (SQL Server, whose "column name" would otherwise match the NAME column), `column named "address"` (DuckDB).
           (is (re-find #"(?i)(?:column|identifier)\s+['\"`\[]?(?:\w+\.)*(?:name|email|address|city)\b"
-                       (str/replace message #"(?i)column name" "column"))
+                       (str/replace message #"(?i)column named?\b" "column"))
               message))))))
 
 (defn- validated-outcome!
@@ -115,7 +115,7 @@
                                                       :inputs       inputs
                                                       :expectations expectations}]
     (let [segment (t2/select-one :model/Segment :id segment-id)]
-      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment inputs expectations))]
+      (if-let [{:keys [error-type]} (data-testing.test-util/refusal #(data-testing.runner/validate-test :segment segment {:inputs inputs :expectations expectations}))]
         {:refused error-type}
         (binding [api/*current-user-id* (mt/user->id :crowberto)]
           (let [result (atom nil)]

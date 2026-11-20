@@ -168,13 +168,15 @@
               [:visualization_settings {:optional true}
                [:maybe [:map {:description "Visualization settings to merge into the dashcard's own."}]]]
               [:parameter_mappings {:optional true}
-               [:maybe [:sequential [:map {:closed      true
-                                           :description "A parameter mapping, replacing the dashcard's list."}
-                                     [:parameter_id [:string {:min 1}]]
-                                     [:card_id {:optional true}
-                                      [:maybe [:int {:min         1
-                                                     :description "Card it filters, of this dashcard or its series."}]]]
-                                     [:target [:sequential :any]]]]]]
+               [:maybe [:sequential {:description (str "The dashcard's whole list of filter mappings, replacing the stored "
+                                                       "one. Send every mapping the dashcard keeps.")}
+                        [:map {:closed      true
+                               :description "A parameter mapping."}
+                         [:parameter_id [:string {:min 1}]]
+                         [:card_id {:optional true}
+                          [:maybe [:int {:min         1
+                                         :description "Card it filters, of this dashcard or its series."}]]]
+                         [:target [:sequential :any]]]]]]
               [:inline_parameters {:optional true} inline-parameters-schema]]]])
    (op-map "add_tab" (str "Add a tab. Existing cards are adopted only when the save ends with "
                           "exactly one tab; adding several at once leaves them orphaned — `move` "

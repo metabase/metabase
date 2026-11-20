@@ -22,7 +22,7 @@
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
+   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting :refer [quote-columns quote-identifier with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -1236,7 +1236,8 @@
 (defmethod driver/rename-tables!* :postgres
   [driver db-id sorted-rename-map]
   (let [sqls (mapv (fn [[from-table to-table]]
-                     (first (sql/format {:alter-table (keyword from-table)
+                     ;; `dot-qualified`: a plain keyword would rewrite `-` to `_` in the schema.
+                     (first (sql/format {:alter-table (sql-jdbc.quoting/dot-qualified from-table)
                                          :rename-table (keyword (name to-table))}
                                         :quoted true
                                         :dialect (sql.qp/quote-style driver))))

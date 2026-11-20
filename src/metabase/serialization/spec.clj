@@ -21,8 +21,30 @@
     under that key and load with, deleting the children a loaded entity no longer holds.
   - `:parent`, for a child model, `{:model parent-model :key column :order key-fn :import-only? bool}`: `column` holds
     the primary key of the parent, `key-fn` sorts the children nested in its entity, and with `:import-only?` the
-    children export as entities of their own and load nested only from older exports."
+    children export as entities of their own and load nested only from older exports.
+
+  And, all optional, the fns a model needs beyond the columns, each a default when absent:
+
+  - `:storage-paths`, `(fn [entities ctx])`, the storage path of each of `entities` (see
+    [[metabase.serialization.storage/storage-paths]]), by default the one of its collection.
+  - `:resource-paths`, `(fn [entity])`, the paths of the files stored next to the file of `entity`, by default none.
+  - `:export-dependencies`, `(fn [rows])`, the set of `[model id]` each of `rows` depends on, by default none.
+  - `:import-dependencies`, `(fn [entities])`, the set of `[model ref]` each of `entities` depends on, by default none.
+  - `:loaded-entities`, `(fn [entities])`, the entities an import loads, so a model can leave out the shapes of older
+    exports it no longer loads, by default all of them.
+  - `:before-load`, `(fn [items])`, the load items to load (see [[metabase.serialization.load/before-load]]), by
+    default all of them as they are.
+  - `:after-load`, `(fn [items])`, the side effects of loading `items`, by default none.
+  - `:entity-ref`, `(fn [entity])`, the ref of `entity`, by default made of the exported values of its `:identity`.
+  - `:rows-by-refs`, `(fn [refs columns])`, the map from each of the set `refs` to the oldest row of the app DB with
+    that ref, with only `columns` unless nil, by default found by entity id.
+  - `:rows-by-parent-pks`, `(fn [parent-pks columns])`, the rows of the app DB, with `columns`, whose parent has its
+    primary key in `parent-pks`, a batch of them, by default those whose `:parent` `:key` column holds one of them.
+
+  A method of [[spec]] returns a literal map whose fns are references to fns defined elsewhere, which keeps reading a
+  spec cheap."
   (:require
+   [metabase.util.malli.registry :as mr]
    [toucan2.model :as t2.model]))
 
 (set! *warn-on-reflection* true)
@@ -39,6 +61,44 @@
       (catch Exception _ nil))
     (when-not (= (get-method spec model) (get-method spec :default))
       (spec model))))
+
+(mr/def ::transform
+  "A transform of a column of a spec."
+  [:map {:closed true}
+   [:export           {:optional true} ifn?]
+   [:import           {:optional true} ifn?]
+   [:as               {:optional true} :keyword]
+   [:validates-query? {:optional true} :boolean]])
+
+(mr/def ::parent
+  "The `:parent` of the spec of a child model."
+  [:map {:closed true}
+   [:model        :keyword]
+   [:key          :keyword]
+   [:order        {:optional true} ifn?]
+   [:import-only? {:optional true} :boolean]])
+
+(mr/def ::spec
+  "The serialization spec of a model."
+  [:map {:closed true}
+   [:schema              some?]
+   [:copy                {:optional true} [:sequential :keyword]]
+   [:skip                {:optional true} [:sequential :keyword]]
+   [:transform           {:optional true} [:map-of :keyword ::transform]]
+   [:defaults            {:optional true} [:map-of :keyword :boolean]]
+   [:identity            {:optional true} [:sequential {:min 1} :keyword]]
+   [:children            {:optional true} [:map-of :keyword :keyword]]
+   [:parent              {:optional true} ::parent]
+   [:storage-paths       {:optional true} fn?]
+   [:resource-paths      {:optional true} fn?]
+   [:export-dependencies {:optional true} fn?]
+   [:import-dependencies {:optional true} fn?]
+   [:loaded-entities     {:optional true} fn?]
+   [:before-load         {:optional true} fn?]
+   [:after-load          {:optional true} fn?]
+   [:entity-ref          {:optional true} fn?]
+   [:rows-by-refs        {:optional true} fn?]
+   [:rows-by-parent-pks  {:optional true} fn?]])
 
 (defn spec-of
   "The serialization spec of `model`, throwing when it has none."

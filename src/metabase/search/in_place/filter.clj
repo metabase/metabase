@@ -433,7 +433,7 @@
         enabled-types (:enabled-transform-source-types search-context)
         feature->supported-models (feature->supported-models)
         hidden-by-visibility (into #{}
-                                   (remove #(search.filter/visible-to? search-context (search.spec/spec %)))
+                                   (remove #(search.filter/visible-to? search-context (search.spec/search-model-spec %)))
                                    models)]
     (cond-> models
       (seq hidden-by-visibility)   (set/difference hidden-by-visibility)
