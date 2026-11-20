@@ -545,8 +545,9 @@
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
            (analyzed-by-job!)
-           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
-             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
+           (mt/with-temp-vals-in-db :model/Table products-id {:display_name "Products"}
+             (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+               (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id])))))))))))
 
 (deftest ^:synchronized table-metadata-update-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -557,8 +558,9 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
-             (assert-has-analyses {:card {card-id nil}}))))))))
+           (mt/with-temp-vals-in-db :model/Table products-id {:display_name "Products"}
+             (mt/with-temp [:model/TableUserSettings _ {:table_id products-id :display_name "Products renamed"}]
+               (assert-has-analyses {:card {card-id nil}})))))))))
 
 (deftest ^:synchronized field-metadata-update-triggers-dependent-analysis-test
   (deps.test/run-with-dependencies-setup!
@@ -572,9 +574,10 @@
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
            (analyzed-by-job!)
-           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category)
-                                                      :display_name "Category renamed"}]
-             (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id]))))))))))
+           (mt/with-temp-vals-in-db :model/Field (mt/id :products :category) {:display_name "Category"}
+             (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category)
+                                                        :display_name "Category renamed"}]
+               (is (= #{[:card card-id]} (analyzed-among! [:card card-id] [:card other-card-id])))))))))))
 
 (deftest ^:synchronized field-metadata-update-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -585,5 +588,6 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
                                              :to_entity_type :table :to_entity_id products-id}]
-           (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
-             (assert-has-analyses {:card {card-id nil}}))))))))
+           (mt/with-temp-vals-in-db :model/Field (mt/id :products :category) {:display_name "Category"}
+             (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :category) :display_name "Category renamed"}]
+               (assert-has-analyses {:card {card-id nil}})))))))))

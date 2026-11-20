@@ -269,9 +269,10 @@
               (is (changes? #(t2/update! :model/Field :id field-id {:display_name "Cost"}))))
             (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :display_name "Cost"}]
               (is (changes? (fn [] (t2/update! :model/FieldUserSettings :field_id field-id {:display_name "Price"})))))
-            (is (changes? #(t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Places"})))
-            (is (changes? #(t2/update! :model/TableUserSettings :table_id table-id {:display_name "Spots"})))
-            (is (changes? #(t2/delete! :model/TableUserSettings :table_id table-id)))
+            (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
+              (is (changes? #(t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Places"})))
+              (is (changes? #(t2/update! :model/TableUserSettings :table_id table-id {:display_name "Spots"})))
+              (is (changes? #(t2/delete! :model/TableUserSettings :table_id table-id))))
             (let [dimension-id (atom nil)]
               (is (changes? #(reset! dimension-id (t2/insert-returning-pk! :model/Dimension
                                                                            {:field_id field-id :name "Price"
