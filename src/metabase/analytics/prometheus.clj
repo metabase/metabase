@@ -1091,7 +1091,8 @@
       (catch Throwable e
         (stop-system! sys)
         (throw e)))
-    ;; set last, since [[setup!]] skips the start when it finds the var set, so it never finds a start that may fail
+    ;; set last: a concurrent [[setup!]] skips the start when it finds the var set, so setting it earlier would let that
+    ;; call return before a start that then fails
     (alter-var-root #'system (constantly sys))
     sys))
 
