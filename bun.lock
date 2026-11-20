@@ -55,6 +55,8 @@
         "@fontsource-variable/rubik": "^5.3.0",
         "@fontsource-variable/schibsted-grotesk": "^5.3.0",
         "@fontsource-variable/source-sans-3": "^5.3.1",
+        "@fontsource-variable/wix-madefor-display": "^5.3.0",
+        "@fontsource-variable/wix-madefor-text": "^5.3.0",
         "@fontsource-variable/work-sans": "^5.3.0",
         "@fontsource/lato": "^5.3.0",
         "@juggle/resize-observer": "^3.4.0",
@@ -1040,6 +1042,10 @@
     "@fontsource-variable/schibsted-grotesk": ["@fontsource-variable/schibsted-grotesk@5.3.0", "", {}, "sha512-ndS6H/KICWANchlHF3q4UdZD+xrZ3Ji0rUobIuXlgvDUzDfqZDsVuXPXZb636nJZMHE9zZ9Fmwgqazm8hMB50Q=="],
 
     "@fontsource-variable/source-sans-3": ["@fontsource-variable/source-sans-3@5.3.1", "", {}, "sha512-u0p5Z/PM2e1uxYOMiodLM6NVzxHwULcB6Oi7QSr2WU/sdoLBFP/BeOZ3YYHeJ6rHsjPZA1nZweZVaV7sf2MAyQ=="],
+
+    "@fontsource-variable/wix-madefor-display": ["@fontsource-variable/wix-madefor-display@5.3.0", "", {}, "sha512-Qjo4/iJ7cIhm2cb6X4x5vgv5w5KxXrer2yVwEV6nEARm3roRYQ+AcYgf9S91nX/d52wLbjjv58jlBGzR0a8D0A=="],
+
+    "@fontsource-variable/wix-madefor-text": ["@fontsource-variable/wix-madefor-text@5.3.0", "", {}, "sha512-p5zs3NakLybEkOyWMXROb6P9kAyIzsRJXgommBy0QC5RaFTb+Te2OdWikitQ+6KGBPMvACLUEIXgPOBQMK5NUg=="],
 
     "@fontsource-variable/work-sans": ["@fontsource-variable/work-sans@5.3.0", "", {}, "sha512-le8h/OIIuhm5Z7TdvuMw0yKg2gaCZUiMec8zaumsVVjzeJRBPEF0bQI/MkaZDHCVzZDvZoP/O2LiGOSfDLSbaw=="],
 

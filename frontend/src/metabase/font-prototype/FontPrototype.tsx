@@ -1,6 +1,6 @@
 // PROTOTYPE: a Leva panel for trying other typefaces in the whole app.
 //
-// - Typeface: the UI font and the code font. "Show Lato" (⌥L) flips back to
+// - Typeface: the UI font, the heading font and the code font. "Show Lato" (⌥L) flips back to
 //   the app as shipped, for A/B comparison. ⌥P hides the panel.
 // - Per typeface (remembered per font): size adjust, letter spacing, vertical
 //   metrics, the weight each CSS weight renders as, variable axes, OpenType
@@ -15,7 +15,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FontTuningControls } from "./FontTuningControls";
 import { createFaceRegistry } from "./font-faces";
 import {
+  AUTO_HEADING_ID,
   CURRENT_FONT_ID,
+  HEADING_FAMILY,
   MONOSPACE_FAMILY,
   MONOSPACE_FONTS,
   UI_FAMILY,
@@ -23,6 +25,8 @@ import {
   findFont,
   getDefaultTuning,
   getFontLabel,
+  readFontTuning,
+  resolveHeadingFont,
 } from "./fonts";
 import { readStoredRecord, writeStoredRecord } from "./storage";
 import type { FontTuning } from "./types";
@@ -94,9 +98,15 @@ type GlobalCssOptions = {
   typeScale: Record<TypeScaleKey, number>;
   smoothing: string;
   tuning: FontTuning | null;
+  hasHeadingFont: boolean;
 };
 
-function buildGlobalCss({ typeScale, smoothing, tuning }: GlobalCssOptions) {
+function buildGlobalCss({
+  typeScale,
+  smoothing,
+  tuning,
+  hasHeadingFont,
+}: GlobalCssOptions) {
   const headings = (["h1", "h2", "h3", "h4"] as const)
     .map((h) => `--mantine-${h}-font-size: ${typeScale[h]}px;`)
     .join("\n");
@@ -113,11 +123,20 @@ function buildGlobalCss({ typeScale, smoothing, tuning }: GlobalCssOptions) {
       : "",
   ].join("\n");
 
+  // Mantine's Title and raw h1–h6. Text styled to look like a heading
+  // (e.g. <Text fw="bold" fz="lg">) keeps the UI font.
+  const headingFamily = `"${HEADING_FAMILY}", var(--mb-default-font-family)`;
+  const headingRules = hasHeadingFont
+    ? `h1, h2, h3, h4, h5, h6 { font-family: ${headingFamily}; }`
+    : "";
+
   return `
     :root:root {
       ${sizes}
       ${headings}
+      ${hasHeadingFont ? `--mantine-font-family-headings: ${headingFamily};` : ""}
     }
+    ${headingRules}
     body {
       font-size: ${typeScale.body}px;
       -webkit-font-smoothing: ${smoothing};
@@ -152,6 +171,7 @@ export function FontPrototype() {
 
   const uiFontIds = [CURRENT_FONT_ID, ...UI_FONTS.map((font) => font.id)];
   const monoFontIds = [CURRENT_FONT_ID, ...MONOSPACE_FONTS.map((f) => f.id)];
+  const headingFontIds = [AUTO_HEADING_ID, ...UI_FONTS.map((font) => font.id)];
 
   const [typeface, setTypeface] = useControls(
     "Typeface",
@@ -164,6 +184,14 @@ export function FontPrototype() {
           ...Object.fromEntries(
             UI_FONTS.map((font) => [getFontLabel(font), font.id]),
           ),
+        },
+      },
+      heading: {
+        label: "Heading font",
+        value: storedString(stored.heading, headingFontIds, AUTO_HEADING_ID),
+        options: {
+          "Auto (UI font or its pair)": AUTO_HEADING_ID,
+          ...Object.fromEntries(UI_FONTS.map((font) => [font.family, font.id])),
         },
       },
       compare: { label: "Show Lato (⌥L)", value: false },
@@ -222,6 +250,7 @@ export function FontPrototype() {
 
   const uiFont = findFont(typeface.font);
   const monoFont = findFont(typeface.monospace);
+  const headingFont = resolveHeadingFont(typeface.heading, uiFont);
   const isActive = !typeface.compare;
   const uiTuning =
     uiFont && fontTuning?.fontId === uiFont.id ? fontTuning.tuning : null;
@@ -233,6 +262,7 @@ export function FontPrototype() {
   const snapshotRef = useRef<Record<string, unknown>>({});
   snapshotRef.current = {
     font: uiFont?.family ?? "Lato (as shipped)",
+    headingFont: headingFont?.family ?? "same as UI font",
     monospace: monoFont?.family ?? "JetBrains Mono (as shipped)",
     tuning: uiTuning,
     typeScale: typeScaleValues,
@@ -259,6 +289,7 @@ export function FontPrototype() {
     writeStoredRecord(GLOBAL_STORAGE_KEY, {
       font: typeface.font,
       monospace: typeface.monospace,
+      heading: typeface.heading,
       smoothing: rendering.smoothing,
       collapsed: isCollapsed,
       ...Object.fromEntries(
@@ -290,6 +321,7 @@ export function FontPrototype() {
   // Register the faces.
   const uiRegistry = useMemo(() => createFaceRegistry(UI_FAMILY), []);
   const monoRegistry = useMemo(() => createFaceRegistry(MONOSPACE_FAMILY), []);
+  const headingRegistry = useMemo(() => createFaceRegistry(HEADING_FAMILY), []);
   useEffect(() => {
     uiRegistry.apply(isActive ? uiFont : undefined, uiTuning);
   }, [uiRegistry, isActive, uiFont, uiTuning]);
@@ -299,12 +331,21 @@ export function FontPrototype() {
       monoFont ? getDefaultTuning(monoFont) : null,
     );
   }, [monoRegistry, isActive, monoFont]);
+  // The heading font uses the weights, axes and size it was last tuned to as
+  // the UI font. Re-read when the UI font changes, since that's when it's saved.
+  useEffect(() => {
+    headingRegistry.apply(
+      isActive ? headingFont : undefined,
+      headingFont ? readFontTuning(headingFont) : null,
+    );
+  }, [headingRegistry, isActive, headingFont, uiFont]);
   useEffect(
     () => () => {
       uiRegistry.clear();
       monoRegistry.clear();
+      headingRegistry.clear();
     },
-    [uiRegistry, monoRegistry],
+    [uiRegistry, monoRegistry, headingRegistry],
   );
 
   // Sizes, smoothing, letter spacing and features.
@@ -314,6 +355,7 @@ export function FontPrototype() {
         typeScale: typeScaleValues,
         smoothing: rendering.smoothing,
         tuning: uiTuning,
+        hasHeadingFont: headingFont !== undefined,
       })
     : "";
   useEffect(() => {
@@ -326,7 +368,7 @@ export function FontPrototype() {
         hidden={isPanelHidden}
         collapsed={{ collapsed: isCollapsed, onChange: setIsCollapsed }}
         titleBar={{ title: "Fonts · ⌥P hides", filter: false }}
-        theme={{ sizes: { rootWidth: "360px", controlWidth: "170px" } }}
+        theme={{ sizes: { rootWidth: "400px", controlWidth: "210px" } }}
       />
       {uiFont && (
         <FontTuningControls

@@ -64,6 +64,8 @@
     "@fontsource-variable/rubik": "^5.3.0",
     "@fontsource-variable/schibsted-grotesk": "^5.3.0",
     "@fontsource-variable/source-sans-3": "^5.3.1",
+    "@fontsource-variable/wix-madefor-display": "^5.3.0",
+    "@fontsource-variable/wix-madefor-text": "^5.3.0",
     "@fontsource-variable/work-sans": "^5.3.0",
     "@fontsource/lato": "^5.3.0",
     "@juggle/resize-observer": "^3.4.0",
