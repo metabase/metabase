@@ -192,7 +192,11 @@ function parseStoredState(stored: string | null): PreviewState | null {
       "principalName" in parsed &&
       typeof parsed.principalName === "string" &&
       "returnPath" in parsed &&
-      typeof parsed.returnPath === "string"
+      typeof parsed.returnPath === "string" &&
+      // a type this version doesn't know (a tenant) would restart as a user with the same id
+      (!("principalType" in parsed) ||
+        parsed.principalType === "user" ||
+        parsed.principalType === "group")
     ) {
       return {
         userId: parsed.userId,

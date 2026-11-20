@@ -6,6 +6,8 @@ import {
   readPreviewState,
 } from "./preview-state";
 
+const STORAGE_KEY = "metabase.permissionPreview";
+
 const STATE: PreviewState = {
   userId: 7,
   userName: "Sales",
@@ -46,6 +48,29 @@ describe("permission preview state", () => {
     window.history.replaceState(null, "", `${url.pathname}${url.search}`);
     readPreviewState();
     clearPreviewState();
+
+    expect(readPreviewState()).toBeNull();
+  });
+
+  it("reads the stored user and group previews as they were stored", () => {
+    const userState: PreviewState = {
+      ...STATE,
+      principalType: "user",
+      principalId: 7,
+    };
+
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    expect(readPreviewState()).toEqual(STATE);
+
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+    expect(readPreviewState()).toEqual(userState);
+  });
+
+  it("reads no preview from a tenant preview stored by a tab opened before the Tenant tab was removed", () => {
+    window.sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...STATE, principalType: "tenant", principalId: 1 }),
+    );
 
     expect(readPreviewState()).toBeNull();
   });
