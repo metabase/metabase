@@ -1448,3 +1448,61 @@
                              :mongo
                              {:host "db.example.com" :use-conn-uri true
                               :conn-uri "not a connection string"}))))))
+
+(defn- disallowed-connection-parameter [details]
+  (try
+    (driver.u/validate-connection-parameters! :mongo details)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:disallowed-key (ex-data e)))))
+
+(deftest ^:parallel disallowed-connection-parameters-in-conn-uri-test
+  (testing "every spelling the Mongo client honours is refused"
+    (are [options expected] (= expected (disallowed-connection-parameter
+                                         {:use-conn-uri true
+                                          :conn-uri     (str "mongodb://user:pw@db.example.com:27017/db?" options)}))
+      "proxyHost=10.0.0.5&proxyPort=1080"                 "proxyHost"
+      "PROXYHOST=10.0.0.5"                                "proxyHost"
+      "ssl=false;proxyHost=10.0.0.5"                      "proxyHost"
+      "authMechanism=MONGODB-OIDC"                        "MONGODB-OIDC"
+      "authSource=admin&authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure,TOKEN_RESOURCE:x"
+      "MONGODB-OIDC"
+      "authMechanism=MONGODB%2DOIDC"                      "MONGODB-OIDC"
+      "authMechanism=%4DONGODB-OIDC"                      "MONGODB-OIDC"))
+  (testing "with no database in the path"
+    (is (= "proxyHost" (disallowed-connection-parameter
+                        {:use-conn-uri true :conn-uri "mongodb://db.example.com/?proxyHost=10.0.0.5"}))))
+  (testing "an ordinary connection string is accepted"
+    (are [conn-uri] (nil? (disallowed-connection-parameter {:use-conn-uri true :conn-uri conn-uri}))
+      "mongodb://db.example.com/db"
+      "mongodb://user:pw@a.example.com:27017,b.example.com:27017/db?authSource=admin&replicaSet=rs0&tls=true"
+      "mongodb+srv://user:pw@cluster.example.com/db?retryWrites=true&w=majority&authMechanism=SCRAM-SHA-256"
+      "mongodb://proxyHost:MONGODB-OIDC@db.example.com/db?authSource=admin"))
+  (testing "a connection string that is not in use is not searched"
+    (is (nil? (disallowed-connection-parameter
+               {:host "db.example.com" :dbname "db" :conn-uri "mongodb://db.example.com/db?proxyHost=10.0.0.5"}))))
+  (testing "additional options are refused, whether or not the connection string is in use"
+    (doseq [details [{:host "db.example.com" :dbname "db"}
+                     {:use-conn-uri true :conn-uri "mongodb://db.example.com/db?authSource=admin"}]]
+      (are [options expected] (= expected (disallowed-connection-parameter
+                                           (assoc details :additional-options options)))
+        "proxyHost=10.0.0.5"         "proxyHost"
+        "authMechanism=MONGODB-OIDC" "MONGODB-OIDC"))))
+
+(deftest disallowed-connection-parameters-in-conn-uri-are-refused-on-save-test
+  (doseq [conn-uri ["mongodb://db.example.com/db?proxyHost=10.0.0.5&proxyPort=1080"
+                    "mongodb://db.example.com/db?authMechanism=MONGODB-OIDC&authMechanismProperties=ENVIRONMENT:azure"]]
+    (testing conn-uri
+      (let [details {:use-conn-uri true :conn-uri conn-uri}
+            refusal {:status-code 400 :message "Potentially dangerous keys in connection options"}]
+        (is (=? refusal
+                (try
+                  (mt/with-temp [:model/Database _ {:engine :mongo :details details}])
+                  (catch clojure.lang.ExceptionInfo e
+                    (assoc (ex-data e) :message (ex-message e))))))
+        (mt/with-temp [:model/Database db {:engine :mongo :details {:host "db.example.com" :dbname "db"}}]
+          (is (=? refusal
+                  (try
+                    (t2/update! :model/Database :id (:id db) {:details details})
+                    (catch clojure.lang.ExceptionInfo e
+                      (assoc (ex-data e) :message (ex-message e)))))))))))

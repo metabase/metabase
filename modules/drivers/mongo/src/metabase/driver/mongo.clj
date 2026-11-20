@@ -61,6 +61,14 @@
    ;; parameter name, caught because the whole options string is searched
    "MONGODB-OIDC"])
 
+(defmethod driver/connection-option-strings :mongo
+  [_driver {:keys [additional-options use-conn-uri conn-uri]}]
+  [additional-options
+   (when use-conn-uri
+     (let [conn-uri (str conn-uri)]
+       ;; skip the credentials, which are not options
+       (some->> (str/index-of conn-uri "?") inc (subs conn-uri))))])
+
 (def ^DnsClient ^:private no-op-dns-client
   ;; `ConnectionString` resolves TXT records while parsing an SRV URI. Host extraction must be deterministic and
   ;; side-effect free. The actual client performs TXT/SRV discovery later, and every discovered server address
