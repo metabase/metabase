@@ -1152,6 +1152,11 @@
     ;; this has the same value as `:stage-ctes`.
     :stage-ctes/nested
     ;;
+    ;; Should an aggregation with no breakouts over a previous stage go in its own stage CTE? This is for databases
+    ;; like Postgres that do not use an index for MIN/MAX when the aggregation is in a SELECT that has a WITH clause.
+    ;; Only applies to queries compiled with `:stage-ctes`.
+    :stage-ctes/single-row-aggregation
+    ;;
     ;; Added in 66; this can be removed in 69 when we make this the default and only supported option.
     ;;
     ;; Does this driver supporting executing native queries in the MBQL 5 shape directly, as opposed to the legacy

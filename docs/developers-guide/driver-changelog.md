@@ -95,6 +95,10 @@ summary: Changes to the Metabase driver interface, listed by release.
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria in the
   comment for these features in `metabase.driver/features`.
 
+- New driver feature `:stage-ctes/single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own CTE. This is for databases that do not use an index
+  for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause, e.g. Postgres.
+
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
 
