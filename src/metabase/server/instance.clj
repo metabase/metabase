@@ -151,12 +151,11 @@
     (.stop server)
     ;; Jetty stops the server, then throws when requests outlasted the stop timeout; cutting them off is the intent
     (catch TimeoutException e
-      ;; Jetty attaches any other failure to stop, such as a handler's, as a suppressed exception, so log those
-      (let [message (format "Stopped the web server with requests still running after %d ms, which were cut off"
-                            (.getStopTimeout server))]
-        (if (seq (.getSuppressed e))
-          (log/warn e message)
-          (log/warn message))))))
+      (log/warnf "Stopped the web server with requests still running after %d ms, which were cut off"
+                 (.getStopTimeout server))
+      ;; Jetty attaches any other failure to stop, such as a handler's, as a suppressed exception; those fail the step
+      (when (seq (.getSuppressed e))
+        (throw e)))))
 
 (mu/defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
