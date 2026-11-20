@@ -59,7 +59,8 @@
   [path          :- :string
    source        :- :string
    insert-values :- [:map {:closed true}
-                     [:entity_id {:optional true} :string]]]
+                     [:entity_id  {:optional true} :string]
+                     [:is_default {:optional true} :boolean]]]
   (mdb/update-or-insert! :model/PythonLibrary
                          {:path path}
                          (fn [existing]

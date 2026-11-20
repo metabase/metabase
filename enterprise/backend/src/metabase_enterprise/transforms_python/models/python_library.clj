@@ -30,9 +30,7 @@
 
 (t2/define-before-insert :model/PythonLibrary
   [library]
-  (-> library
-      (update :path normalize-path)
-      (assoc :is_default (str/blank? (:source library)))))
+  (update library :path normalize-path))
 
 (t2/define-before-update :model/PythonLibrary
   [library]
@@ -71,7 +69,7 @@
   [path source]
   (let [normalized-path (normalize-path path)
         id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id})
+                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
         library         (transforms-python.db/python-library id)]
     library))
 

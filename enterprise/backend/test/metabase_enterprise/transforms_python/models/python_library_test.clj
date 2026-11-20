@@ -102,12 +102,3 @@
       (is (= "shared.py" (t2/select-one-fn :path :model/PythonLibrary :id id)))
       (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
       (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))
-
-(deftest is-default-derived-on-insert-test
-  (t2/delete! :model/PythonLibrary)
-  (testing "A plain insert with a blank source stores the default library"
-    (t2/insert! :model/PythonLibrary {:path "common.py" :source "" :entity_id (u/generate-nano-id)})
-    (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
-  (testing "A plain insert with a source stores a library that is not the default one"
-    (t2/insert! :model/PythonLibrary {:path "other.py" :source "def f(): pass" :entity_id (u/generate-nano-id)})
-    (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "other.py")))))
