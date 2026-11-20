@@ -2885,4 +2885,4 @@
 (defn ^:export analysis-state-to-mbql
   "Convert an analysis state to an MBQL query."
   [analysis-state]
-  (lib.analysis/->mbql analysis-state))
+  (lib.analysis/->mbql (js->clj analysis-state :keywordize-keys true)))
