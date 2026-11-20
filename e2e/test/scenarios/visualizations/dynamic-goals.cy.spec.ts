@@ -191,12 +191,13 @@ describe("scenarios > visualizations > dynamic goals", () => {
       { wrapId: true },
       { tab: "Browse", path: ["Our analytics"] },
     );
+    cy.intercept("POST", "/api/dynamic-goal/values").as("reopenedGoalValues");
     cy.get<CardId>("@questionId").then((questionId) => {
       H.visitQuestion(questionId);
     });
     assertGoalLineValue("600");
     cy.get<CardId>("@multiColumnSourceId").then((id) => {
-      assertAnswered("@goalValues", { id, column: "HIGH", value: 600 });
+      assertAnswered("@reopenedGoalValues", { id, column: "HIGH", value: 600 });
     });
 
     cy.log("A goal picked on a saved question resolves before it is saved");
