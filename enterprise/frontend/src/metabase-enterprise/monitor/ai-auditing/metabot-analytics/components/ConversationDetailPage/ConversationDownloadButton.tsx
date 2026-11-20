@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { Button, Icon, Loader } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import { openSaveDialog } from "metabase/utils/dom";
 
 import { useLazyGetMetabotAnalyticsConversationTextQuery } from "../../api";
@@ -51,10 +51,8 @@ export function ConversationDownloadButton({
 
   return (
     <Button
-      leftSection={
-        isFetching ? <Loader size="xs" /> : <Icon name="download" aria-hidden />
-      }
-      disabled={isFetching}
+      leftSection={<Icon name="download" aria-hidden />}
+      loading={isFetching}
       onClick={handleClick}
     >
       {t`Download JSON`}

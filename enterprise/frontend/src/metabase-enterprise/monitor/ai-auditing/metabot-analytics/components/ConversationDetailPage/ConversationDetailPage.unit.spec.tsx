@@ -501,9 +501,7 @@ describe("ConversationDetailPage", () => {
 
     async function waitForDownloadToFinish(button: HTMLElement) {
       await waitFor(() => {
-        expect(
-          within(button).queryByTestId("loading-indicator"),
-        ).not.toBeInTheDocument();
+        expect(button).not.toHaveAttribute("data-loading");
       });
       expect(button).toBeEnabled();
     }
@@ -566,9 +564,9 @@ describe("ConversationDetailPage", () => {
       );
 
       await userEvent.click(button);
-      expect(
-        await within(button).findByTestId("loading-indicator"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(button).toHaveAttribute("data-loading", "true");
+      });
       expect(button).toBeDisabled();
       await userEvent.click(button, { pointerEventsCheck: 0 });
       response.resolve(JSON.stringify(CONVERSATION));
