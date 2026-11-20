@@ -7,6 +7,19 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
+  engine and the host, and ignores a value in the request.
+
+- `PUT /api/database/:id` on the Sample Database answers `403 Forbidden` instead of `400 Bad Request`.
+
+- `POST /api/ee/transform-test`, `PUT /api/ee/transform-test/:id` and `POST /api/ee/transform-test/:id/run` refuse a
+  test whose input, given as rows, lacks a column that the transform's query reads from the input's table, with `400`
+  and the `error-code` `transform-test.missing-input-columns`; the response's `columns` names the missing columns of
+  each table. Such a test could be saved before, and every run of it failed with `422` and
+  `transform-test.query-failed`. Only the columns that the SQL parser places on one table are checked. The columns of
+  tables that Metabase hides, and the columns marked sensitive or retired, are not checked. On a database that keeps
+  the case of column names, a declared name that differs from the table's only in case is missing.
+
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
   instead. The Agent API is now off by default: every endpoint answers `403 Forbidden` until an admin turns it on in
   **Admin > AI > MCP**, or the instance starts with `MB_DEPRECATED_AGENT_API_ENABLED=true`.
@@ -108,6 +121,12 @@ summary: Breaking changes to the Metabase API, listed by release.
   `display_name`, `visibility_type` or `json_unfolding` with `400 Bad Request`. Leave a key out to keep its value.
   `PUT /api/table/:id`, `PUT /api/table` and the Data Studio bulk table edit answer `data_authority: null` the same
   way.
+
+- `PUT /api/collection/:id` with `{"archived": true}` answers `400 Bad Request` for a collection in the `transforms`
+  namespace (a transforms folder). Unarchiving a transforms folder still works.
+
+- New `DELETE /api/transform/collection/:id` deletes a transforms folder, its subfolders and every transform in them.
+  It keeps the output tables of the transforms. With `delete-tables=true`, it drops the output tables too.
 
 - `POST /api/pulse` and `PUT /api/pulse/:id` answer `collection_id` and `collection_position` on a dashboard
   subscription with `400 Bad Request` when they do not fit the dashboard. A dashboard subscription is always in its

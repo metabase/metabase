@@ -1,5 +1,6 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.explorations.schema :as explorations.schema]
@@ -48,3 +49,8 @@
               (t2/hydrate (explorations.db/queries-for-threads (map :id threads)) :interestingness_score :contextual_interestingness_score :row_count :segment_name))
    :id
    {:default []}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationThread [_model]
+  {:skip? false})

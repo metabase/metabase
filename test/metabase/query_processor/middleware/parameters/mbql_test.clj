@@ -40,6 +40,8 @@
     ;; legacy input: return a legacy query
     (-> (lib/query meta/metadata-provider (mbql.normalize/normalize query))
         expand-parameters
+        ;; existing usage -- do not use going forward
+        #_{:clj-kondo/ignore [:deprecated-var]}
         lib/->legacy-MBQL)))
 
 (defn- expanded-query-with-filter [filter-clause]
@@ -564,11 +566,12 @@
                                   (lib/visible-columns query))]
       (is (=? {:query {:filter [:= [:field (meta/id :products :title) {:join-alias "Products"}] "Google"]}}
               (expand-parameters
-               (-> (lib.convert/->legacy-MBQL query)
+               ;; existing usage -- do not use going forward
+               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
                    (assoc :parameters
                           [{:type   :string/=
                             :value  ["Google"]
-                            :target [:dimension (lib.convert/->legacy-MBQL (lib/ref title-col))]}]))))))))
+                            :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/ref title-col))]}]))))))))
 
 (deftest ^:parallel boolean-mbql-parameter-test
   (testing "a boolean/= param mapped to a boolean expression column expands to an equality filter on that expression"
@@ -582,11 +585,12 @@
         (testing (format "value = %s" (pr-str v))
           (is (=? {:query {:filter [:= [:expression "Bool" {:base-type :type/Boolean}] v]}}
                   (expand-parameters
-                   (-> (lib.convert/->legacy-MBQL query)
+                   ;; existing usage -- do not use going forward
+                   (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
                        (assoc :parameters
                               [{:type   :boolean/=
                                 :value  [v]
-                                :target [:dimension (lib.convert/->legacy-MBQL (lib/expression-ref query "Bool"))]}]))))))))))
+                                :target [:dimension (lib.convert/->legacy-MBQL-ref (lib/expression-ref query "Bool"))]}]))))))))))
 
 (deftest ^:parallel duplicate-temporal-unit-params-same-breakout-test
   ;; NOTE: this pins CURRENT product behavior. The documented intent for #44684 is for the LAST param to take priority
@@ -597,13 +601,14 @@
                 " a no-op (#44684)")
     (let [mp         meta/metadata-provider
           created-at (meta/field-metadata :orders :created-at)
-          month-ref  (fn [] (lib.convert/->legacy-MBQL (lib/with-temporal-bucket (lib/ref created-at) :month)))
+          month-ref  (fn [] (lib.convert/->legacy-MBQL-ref (lib/with-temporal-bucket (lib/ref created-at) :month)))
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
       (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :quarter}]]}}
               (expand-parameters
-               (-> (lib.convert/->legacy-MBQL query)
+               ;; existing usage -- do not use going forward
+               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
                    (assoc :parameters
                           [{:type :temporal-unit, :target [:dimension (month-ref)], :value :quarter}
                            {:type :temporal-unit, :target [:dimension (month-ref)], :value :year}]))))))))
@@ -614,7 +619,7 @@
           created-at    (meta/field-metadata :orders :created-at)
           bucket        (fn [u] (lib/with-temporal-bucket created-at u))
           ;; parameter :target dimensions carry LEGACY field refs even inside an MBQL 5 stage
-          legacy-bucket (fn [u] (lib.convert/->legacy-MBQL (lib/ref (bucket u))))
+          legacy-bucket (fn [u] (lib.convert/->legacy-MBQL-ref (lib/ref (bucket u))))
           query         (-> (lib/query mp (meta/table-metadata :orders))
                             (lib/aggregate (lib/count))
                             (lib/breakout (bucket :year))
@@ -646,7 +651,7 @@
                           [{:type   :temporal-unit
                             :value  "year"
                             :target [:dimension
-                                     (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+                                     (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :month)))
                                      {}]}]))]
       (is (=? {:stages [{:breakout [[:field {:temporal-unit :year} (meta/id :orders :created-at)]]
                          :joins    [{:conditions [[:= {}
@@ -658,7 +663,7 @@
   (testing "number operator params preserve type/BigInteger values without collapsing to a double (#5816)"
     (let [mp     meta/metadata-provider
           big    (biginteger "9223372036854775808")
-          id-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :orders :id)))]
+          id-ref (lib.convert/->legacy-MBQL-ref (lib/ref (meta/field-metadata :orders :id)))]
       (doseq [[ptype value expected]
               [[:number/!=      [big]   [:!= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
                [:number/>=      [big]   [:>= [:field (meta/id :orders :id) {:base-type :type/BigInteger}] big]]
@@ -667,7 +672,8 @@
         (testing (pr-str ptype)
           (is (=? {:query {:filter expected}}
                   (expand-parameters
-                   (-> (lib.convert/->legacy-MBQL (lib/query mp (meta/table-metadata :orders)))
+                   ;; existing usage -- do not use going forward
+                   (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL (lib/query mp (meta/table-metadata :orders)))
                        (assoc :parameters
                               [{:type   ptype
                                 :value  value
@@ -676,13 +682,14 @@
 (deftest ^:parallel two-params-same-column-conjunction-test
   (testing "two params mapped to the same column AND-combine (intersection)"
     (let [mp      meta/metadata-provider
-          cat-ref (lib.convert/->legacy-MBQL (lib/ref (meta/field-metadata :products :category)))]
+          cat-ref (lib.convert/->legacy-MBQL-ref (lib/ref (meta/field-metadata :products :category)))]
       (is (=? {:query {:filter [:and
                                 [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Doohickey" "Gizmo"]
                                 [:= [:field (meta/id :products :category) {:base-type :type/Text}] "Gadget"]]}}
               (expand-parameters
-               (-> (lib.convert/->legacy-MBQL (-> (lib/query mp (meta/table-metadata :products))
-                                                  (lib/aggregate (lib/count))))
+               ;; existing usage -- do not use going forward
+               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL (-> (lib/query mp (meta/table-metadata :products))
+                                                                                          (lib/aggregate (lib/count))))
                    (assoc :parameters
                           [{:type   :string/=
                             :value  ["Doohickey" "Gizmo"]
@@ -695,13 +702,14 @@
   (testing "a :temporal_units allow-list on the parameter is not enforced when expanding the query"
     (let [mp         meta/metadata-provider
           created-at (meta/field-metadata :orders :created-at)
-          month-ref  (lib.convert/->legacy-MBQL (lib/ref (lib/with-temporal-bucket created-at :month)))
+          month-ref  (lib.convert/->legacy-MBQL-ref (lib/ref (lib/with-temporal-bucket created-at :month)))
           query      (-> (lib/query mp (meta/table-metadata :orders))
                          (lib/aggregate (lib/count))
                          (lib/breakout (lib/with-temporal-bucket created-at :month)))]
       (is (=? {:query {:breakout [[:field (meta/id :orders :created-at) {:temporal-unit :year}]]}}
               (expand-parameters
-               (-> (lib.convert/->legacy-MBQL query)
+               ;; existing usage -- do not use going forward
+               (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query)
                    (assoc :parameters
                           [{:type           :temporal-unit
                             :target         [:dimension month-ref]

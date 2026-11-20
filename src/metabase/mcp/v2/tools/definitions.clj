@@ -20,7 +20,9 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.measures.schema :as measures.schema]
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.segments.schema :as segments.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,16 +83,6 @@
               (common/throw-teaching-error
                (message/msg [(str "\"table_id\" cannot be changed on update — the "
                                   "server derives it from \"definition\"'s source table.")])))))
-
-(defn- check-name!
-  "Reject a present-but-blank `name`. The REST endpoints these tools delegate to take
-   `ms/NonBlankString`; the tools' own JSON schema can only say `:min 1`, which \" \" satisfies, so
-   without this the tools would be laxer than the endpoints whose checks they inherit. `entity` is the
-   server's own entity name."
-  [{entity-name :name} entity]
-  (when (and (some? entity-name) (str/blank? entity-name))
-    (common/throw-teaching-error
-     (message/msg ["\"name\" cannot be blank — pass a short descriptive name for the %s."] entity))))
 
 (defn- check-revision-message!
   "Reject a blank `revision_message` on update. `entity` is the server's own entity name."
@@ -272,7 +264,7 @@
 ;;; -------------------------------------------------- Schemas -----------------------------------------------------
 
 (defn- write-args-schema
-  [{:keys [entity definition-desc name-desc]}]
+  [{:keys [entity definition-desc name-desc name-schema]}]
   [:map {:closed true}
    [:method
     [:enum {:description (format (str "\"create\" makes a new %s (requires `table_id`, `name`, `definition`); "
@@ -288,8 +280,8 @@
                                      "`definition` is reassembled into a query on this table; a full-query one "
                                      "must name this same source table — a mismatch is a teaching error, not "
                                      "silently reconciled.")}]]]
-   [:name {:optional true}
-    [:maybe [:string {:min 1 :description name-desc}]]]
+   [:name {:optional true :description name-desc}
+    [:maybe name-schema]]
    [:definition {:optional true}
     [:maybe [:or {:description definition-desc}
              [:map]
@@ -314,6 +306,7 @@
 (def ^:private segment-write-args-schema
   (write-args-schema
    {:entity          "segment"
+    :name-schema     ::segments.schema/segment.name
     :name-desc       "Create only (editable on update): display name of the segment."
     :definition-desc (str "Either (a) an array of filter clauses — what get_content's "
                           "\"definition\" include returns for a segment and what execute_query takes in "
@@ -347,7 +340,6 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body (message/raw "segment"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :segment (:definition body) table)
             _          (check-table-match! table definition)]
@@ -361,7 +353,6 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body (message/raw "segment"))
             _           (check-revision-message! body (message/raw "segment"))
             segment     (resolve-existing :model/Segment id)
             body        (m/update-existing body :definition
@@ -379,6 +370,7 @@
 (def ^:private measure-write-args-schema
   (write-args-schema
    {:entity          "measure"
+    :name-schema     ::measures.schema/measure.name
     :name-desc       "Create only (editable on update): display name of the measure."
     :definition-desc (str "Either (a) the aggregation clause — what get_content's "
                           "\"definition\" include returns for a measure (one-element array or bare clause) and "
@@ -416,7 +408,6 @@
       :create
       (let [[_ body]   dispatched
             _          (check-method-args! :create body)
-            _          (check-name! body (message/raw "measure"))
             table      (resolve-table (:table_id body))
             definition (prepare-definition :measure (:definition body) table)
             _          (check-table-match! table definition)]
@@ -430,7 +421,6 @@
       :update
       (let [[_ id body] dispatched
             _           (check-method-args! :update body)
-            _           (check-name! body (message/raw "measure"))
             _           (check-revision-message! body (message/raw "measure"))
             measure     (resolve-existing :model/Measure id)
             body        (m/update-existing body :definition

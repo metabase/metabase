@@ -1155,10 +1155,9 @@
                              (mt/metadata-provider)
                              mt/id)]
       (qp.store/with-metadata-provider metadata-provider
-        (let [legacy-query (lib.convert/->legacy-MBQL
-                            (lib.tu.mocks-31769/query metadata-provider))]
-          (mt/with-native-query-testing-context legacy-query
-            (let [results (qp/process-query legacy-query)]
+        (let [query (lib.tu.mocks-31769/query metadata-provider)]
+          (mt/with-native-query-testing-context query
+            (let [results (qp/process-query query)]
               (is (= [["Products → Category"                     "Products__CATEGORY"]
                       ["Count"                                   "count"]
                       ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
@@ -1388,7 +1387,8 @@
 (defn- check-venues+categories-with-value-wrapped-args
   [[op & args] expected-rows]
   (check-venues+categories-on-condition
-   (into [op] (map (comp lib.convert/->legacy-MBQL
+   ;; existing usage -- do not use going forward
+   (into [op] (map (comp #_{:clj-kondo/ignore [:deprecated-var]} lib.convert/->legacy-MBQL
                          lib.expression/value))
          args)
    expected-rows))

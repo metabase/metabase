@@ -501,32 +501,46 @@
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
              (t2/update! :model/Table :id table-id {:data_source nil}))))))
-  (testing "Cannot change data_source to metabase-transform"
+  (testing "Any writer can set data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
-      (testing "from another value"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
-      (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table :id table-id {:data_source :ingested})))
-        (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
-      (testing "can also change it to nil"
-        (is (some? (t2/update! :model/Table :id table-id {:data_source nil})))
-        (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
-  (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
-    (testing "can set data_source to metabase-transform on an existing synced table"
-      (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
-        (binding [mi/*deserializing?* true]
-          (is (some? (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
-        (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
-    (testing "reverse direction stays blocked even during deserialization"
-      (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
-        (binding [mi/*deserializing?* true]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Cannot change data_source from metabase-transform"
-               (t2/update! :model/Table :id table-id {:data_source nil}))))))))
+      (t2/update! :model/Table :id table-id {:data_source :metabase-transform})
+      (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id))))))
+
+(deftest db-id-is-frozen-test
+  (testing "A Table cannot move to another Database"
+    (mt/with-temp [:model/Database {db-1 :id} {}
+                   :model/Database {db-2 :id} {}
+                   :model/Table    {table-id :id} {:db_id db-1}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot move a Table to another Database"
+                            (t2/update! :model/Table :id table-id {:db_id db-2})))
+      (is (= db-1 (t2/select-one-fn :db_id :model/Table :id table-id))))))
+
+(deftest only-published-tables-sit-in-collections-test
+  (mt/with-temp [:model/Collection {coll-id :id} {}]
+    (testing "inserting an unpublished Table into a Collection is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                            (t2/insert! :model/Table {:db_id (mt/id) :name "unpublished" :collection_id coll-id}))))
+    (mt/with-temp [:model/Table {table-id :id} {}]
+      (testing "putting an unpublished Table into a Collection is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                              (t2/update! :model/Table :id table-id {:collection_id coll-id}))))
+      (testing "publishing a Table into a Collection is accepted"
+        (t2/update! :model/Table :id table-id {:is_published true :collection_id coll-id})
+        (is (= [true coll-id] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id)))))
+      (testing "unpublishing a Table while it stays in its Collection is refused"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
+                              (t2/update! :model/Table :id table-id {:is_published false}))))
+      (testing "a published Table without a Collection is accepted"
+        (t2/update! :model/Table :id table-id {:collection_id nil})
+        (is (= [true nil] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id))))))))
+
+(deftest field-order-change-repositions-fields-test
+  (testing "Changing field_order repositions the Table's Fields, whoever writes it"
+    (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
+                   :model/Field {f-b :id} {:table_id table-id :name "b" :database_position 0 :position 0}
+                   :model/Field {f-a :id} {:table_id table-id :name "a" :database_position 1 :position 1}]
+      (t2/update! :model/Table :id table-id {:field_order :alphabetical})
+      (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
@@ -541,7 +555,7 @@
   (testing "collection_id FK constraint prevents referencing non-existent collection"
     (is (thrown?
          Exception
-         (mt/with-temp [:model/Table _ {:collection_id Integer/MAX_VALUE}]))))
+         (mt/with-temp [:model/Table _ {:is_published true :collection_id Integer/MAX_VALUE}]))))
   (testing "deleting a collection unpublishes the tables in it"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}

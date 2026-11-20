@@ -9,7 +9,13 @@ export type EmbeddedAnalyticsJsEventSchema = {
 };
 
 type ComponentData = {
-  name: "dashboard" | "question" | "exploration" | "browser" | "metabot";
+  name:
+    | "dashboard"
+    | "question"
+    | "exploration"
+    | "browser"
+    | "metabot"
+    | "data_app";
   properties: ComponentProperty[];
 };
 

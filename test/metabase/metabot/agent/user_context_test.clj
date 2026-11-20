@@ -678,8 +678,7 @@
     (let [mp         (mt/metadata-provider)
           definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                          (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :venues)
-                                                      :definition definition}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition definition}]
         ;; The gate never looks at segments, so the query clears it and the segment ref is
         ;; resolved by whichever store the caller handed the export - the choice under test.
         ;; A source-card query would be refused by the gate first, whichever store was passed.
@@ -697,11 +696,11 @@
                 (is (str/includes? out "notebook editor"))
                 (is (not (str/includes? out "Query")))))))))))
 
-(defn- legacy-table-query
-  "The legacy MBQL form of a query on the table with `table-id`, as the frontend sends an ad-hoc query."
+(defn- table-query
+  "A query on the table with `table-id`."
   [table-id]
   (let [mp (mt/metadata-provider)]
-    (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp table-id)))))
+    (lib/query mp (lib.metadata/table mp table-id))))
 
 (deftest adhoc-viewing-context-lists-model-columns-test
   (testing "an ad-hoc query on a model lists the columns that its last stage can use"
@@ -709,12 +708,12 @@
                                                :type          :model
                                                :database_id   (mt/id)
                                                :table_id      (mt/id :venues)
-                                               :dataset_query (legacy-table-query (mt/id :venues))}]
+                                               :dataset_query (table-query (mt/id :venues))}]
       (mt/with-test-user :crowberto
         (let [out (user-context/format-viewing-context
                    {:user_is_viewing [{:type  "adhoc"
                                        :query (let [mp (mt/metadata-provider)]
-                                                (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp model-id))))}]})]
+                                                (lib/query mp (lib.metadata/card mp model-id)))}]})]
           (is (str/includes? out "Columns"))
           (is (str/includes? out "- \"NAME\", display name \"Name\", type/Text"))
           (is (str/includes? out "- \"PRICE\", display name \"Price\", type/Integer"))
@@ -729,15 +728,14 @@
                       :type          :model
                       :database_id   (mt/id)
                       :table_id      (mt/id :venues)
-                      :dataset_query (lib/->legacy-MBQL
-                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                          (lib/aggregate (lib/max (lib.metadata/field mp (mt/id :venues :price))))
-                                          (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))}]
+                      :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                         (lib/aggregate (lib/max (lib.metadata/field mp (mt/id :venues :price))))
+                                         (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))}]
         (mt/with-test-user :crowberto
           (let [mp          (mt/metadata-provider)
                 out         (user-context/format-viewing-context
                              {:user_is_viewing [{:type  "adhoc"
-                                                 :query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp model-id)))}]})
+                                                 :query (lib/query mp (lib.metadata/card mp model-id))}]})
                 column-name (second (re-find #"- \"([^\"]+)\", display name \"Max of Price\", type/Integer\n" out))]
             (is (= "max" column-name))
             (when column-name
@@ -758,7 +756,7 @@
   (user-context/format-viewing-context
    {:user_is_viewing [{:type  "adhoc"
                        :query (let [mp (mt/metadata-provider)]
-                                (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))}]}))
+                                (lib/query mp (lib.metadata/card mp card-id)))}]}))
 
 (deftest adhoc-viewing-context-source-card-uri-test
   (doseq [[card-type uri-type] [[:model "model"] [:question "question"]]]
@@ -767,7 +765,7 @@
                                                 :type          card-type
                                                 :database_id   (mt/id)
                                                 :table_id      (mt/id :venues)
-                                                :dataset_query (legacy-table-query (mt/id :venues))}]
+                                                :dataset_query (table-query (mt/id :venues))}]
         (mt/with-test-user :crowberto
           (let [out (adhoc-card-viewing-context card-id)]
             (is (str/includes? out (str "Source " uri-type " \"Venues source\": metabase://" uri-type "/" card-id)))
@@ -777,7 +775,7 @@
                                               :type          :model
                                               :database_id   (mt/id)
                                               :table_id      (mt/id :venues)
-                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+                                              :dataset_query (table-query (mt/id :venues))}]
       (mt/with-test-user :rasta
         (is (str/includes? (adhoc-card-viewing-context card-id)
                            (str "Source model \"Readable model\": metabase://model/" card-id))))))
@@ -789,10 +787,10 @@
                                                       :collection_id coll-id
                                                       :database_id   (mt/id)
                                                       :table_id      (mt/id :venues)
-                                                      :dataset_query (legacy-table-query (mt/id :venues))}]
+                                                      :dataset_query (table-query (mt/id :venues))}]
         (let [query (mt/with-test-user :crowberto
                       (let [mp (mt/metadata-provider)]
-                        (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))))]
+                        (lib/query mp (lib.metadata/card mp card-id))))]
           (mt/with-test-user :rasta
             (let [out (user-context/format-viewing-context
                        {:user_is_viewing [{:type "adhoc" :query query}]})]
@@ -823,10 +821,10 @@
                                               :type          :model
                                               :database_id   (mt/id)
                                               :table_id      (mt/id :venues)
-                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+                                              :dataset_query (table-query (mt/id :venues))}]
       (mt/with-test-user :crowberto
         (let [query     (let [mp (mt/metadata-provider)]
-                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id))))
+                          (lib/query mp (lib.metadata/card mp card-id)))
               cleared   (-> (shared.content-store/query-for-export query true) :query (dissoc :lib/metadata))
               built     (atom 0)
               lib-query (mt/original-fn #'lib/query)
@@ -852,7 +850,7 @@
                                                   :type          :model
                                                   :database_id   (mt/id)
                                                   :table_id      (mt/id :venues)
-                                                  :dataset_query (legacy-table-query (mt/id :venues))}
+                                                  :dataset_query (table-query (mt/id :venues))}
                      :model/Card {metric-id :id} {:name          "Venues count"
                                                   :type          :metric
                                                   :database_id   (mt/id)
@@ -869,7 +867,7 @@
         (mt/with-test-user :crowberto
           (testing "on a table"
             (let [query (let [mp (mt/metadata-provider)]
-                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id))))]
+                          (lib/query mp (lib.metadata/card mp metric-id)))]
               (is (:mp (shared.content-store/query-for-export query true)) "the permission check clears the query")
               (let [out (adhoc-card-viewing-context metric-id)]
                 (is (str/includes? out (metric-line metric-id "Venues count")))
@@ -888,7 +886,7 @@
                                                   :table_id      (mt/id :venues)
                                                   :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                                      (lib/aggregate (lib/count)))}]
-        (let [query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))
+        (let [query (lib/query mp (lib.metadata/card mp metric-id))
               out   (fn [] (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]}))]
           (testing "a database that is not addressable as a resource"
             (mt/with-test-user :crowberto
@@ -919,7 +917,7 @@
                                                                                (lib/aggregate (lib/count))))}]
           (let [query (mt/with-test-user :crowberto
                         (let [mp (mt/metadata-provider)]
-                          (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp metric-id)))))]
+                          (lib/query mp (lib.metadata/card mp metric-id))))]
             (mt/with-test-user :rasta
               (let [out (user-context/format-viewing-context {:user_is_viewing [{:type "adhoc" :query query}]})]
                 (is (not (str/includes? out "metabase://metric/")))
@@ -931,7 +929,7 @@
                                               :type          :model
                                               :database_id   (mt/id)
                                               :table_id      (mt/id :venues)
-                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+                                              :dataset_query (table-query (mt/id :venues))}]
       (mt/with-test-user :crowberto
         (mt/with-dynamic-fn-redefs [resources-tools/check-card-resource-database
                                     (fn [_] (throw (ex-info "Not found." {:status-code 404})))]
@@ -947,10 +945,10 @@
                                               :type          :model
                                               :database_id   (mt/id)
                                               :table_id      (mt/id :venues)
-                                              :dataset_query (legacy-table-query (mt/id :venues))}]
+                                              :dataset_query (table-query (mt/id :venues))}]
       (let [query  (mt/with-test-user :crowberto
                      (let [mp (mt/metadata-provider)]
-                       (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))))
+                       (lib/query mp (lib.metadata/card mp card-id))))
             checks (atom [])]
         (mt/with-no-data-perms-for-all-users!
           (mt/with-test-user :rasta
@@ -969,7 +967,7 @@
     (mt/with-test-user :crowberto
       (let [out  (user-context/format-viewing-context
                   {:user_is_viewing [{:type  "adhoc"
-                                      :query (legacy-table-query (mt/id :venues))}]})
+                                      :query (table-query (mt/id :venues))}]})
             line (re-find #"- \"NAME\", display name \"Name\", type/Text, portable FK (\[.*\])" out)
             fk   (some-> line second json/decode)]
         (is (some? line))
@@ -996,7 +994,7 @@
         (mt/with-test-user :crowberto
           (let [out  (user-context/format-viewing-context
                       {:user_is_viewing [{:type  "adhoc"
-                                          :query (legacy-table-query table-id)}]})
+                                          :query (table-query table-id)}]})
                 line (some #(when (str/includes? % "display name \"Column\"") %) (str/split-lines out))
                 fk   (second (re-find #"(?s)portable FK (\[.*\])" (str line)))]
             (is (some? fk))
@@ -1018,7 +1016,7 @@
         (mt/with-test-user :crowberto
           (let [out  (user-context/format-viewing-context
                       {:user_is_viewing [{:type  "adhoc"
-                                          :query (legacy-table-query table-id)}]})
+                                          :query (table-query table-id)}]})
                 line (some #(when (str/includes? % "display name \"Column\"") %) (str/split-lines out))
                 fk   (second (re-find #"portable FK (\[.*\])" (str line)))]
             (is (some? fk))
@@ -1055,7 +1053,7 @@
                     :type          :model
                     :database_id   (mt/id)
                     :table_id      (mt/id :categories)
-                    :dataset_query (legacy-table-query (mt/id :categories))}]
+                    :dataset_query (table-query (mt/id :categories))}]
       (mt/with-test-user :crowberto
         (let [mp          (mt/metadata-provider)
               query       (lib/join (lib/query mp (lib.metadata/table mp (mt/id :venues)))
@@ -1178,7 +1176,7 @@
     (mt/with-test-user :crowberto
       (let [out (user-context/format-viewing-context
                  {:user_is_viewing [{:type  "adhoc"
-                                     :query (legacy-table-query (mt/id :checkins))}]})]
+                                     :query (table-query (mt/id :checkins))}]})]
         (is (str/includes? out "\"VENUE_ID\""))
         (is (not (str/includes? out "\"LATITUDE\"")))))))
 
@@ -1190,7 +1188,7 @@
           (mt/with-log-messages-for-level [messages [metabase.metabot.agent.user-context :warn]]
             (let [out (user-context/format-viewing-context
                        {:user_is_viewing [{:type  "adhoc"
-                                           :query (legacy-table-query (mt/id :venues))}]})]
+                                           :query (table-query (mt/id :venues))}]})]
               (is (str/includes? out "Query"))
               (is (not (str/includes? out "Columns the query can use")))
               (let [warnings (filter #(re-find #"Omitting the column list" (:message %)) (messages))]

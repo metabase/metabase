@@ -5,6 +5,8 @@
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
@@ -127,7 +129,8 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
   (mt/with-additional-premium-features #{:workspaces}
-    (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-workspaces true}}]
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :postgres
+                                                :settings {:database-enable-workspaces true}}]
       (is (= "Cannot enable database routing for a database with workspaces enabled"
              (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                    {:user_attribute "db_name"})))))
@@ -145,7 +148,8 @@
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Transform _ {:source_database_id db-id
+                 :model/Transform _ {:source {:type  :query
+                                              :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")}
                                      :name "Test Transform"}]
     (is (= "Cannot enable database routing for a database with transforms"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)

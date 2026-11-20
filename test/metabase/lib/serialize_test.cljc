@@ -264,6 +264,7 @@
    :qp.pivot/num-unremapped-breakouts        2
    :qp.pivot/num-remapped-breakouts          3
    :qp.pivot/remapped-indexes                {0 1}
+   :qp/original-stages                       [{:lib/type :mbql.stage/mbql, :source-table 1}]
    :query-permissions/referenced-card-ids    #{1}
    :destination-database/id                  2
    :impersonation/role                       "analyst"
