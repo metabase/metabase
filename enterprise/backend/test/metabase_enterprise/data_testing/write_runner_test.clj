@@ -318,26 +318,28 @@
 
 (deftest write-runs-with-standard-conforming-strings-on-test
   (mt/test-driver :postgres
-    (testing "on a database whose connections turn standard_conforming_strings off"
-      (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
-                                                  :details (assoc (:details (mt/db))
-                                                                  :additional-options
-                                                                  "options=-c%20standard_conforming_strings%3Doff")}]
-        (testing "premise: a query on the database sees the setting off"
-          (is (= "off" (string-setting db-id))))
-        (testing "a run turns the setting on: the write records it, and the expectation reads it"
-          (is (=? {:status       :passed
-                   :expectations [{:name "the write saw the setting on" :status :passed}]}
-                  (run-write! db-id
-                              (str "UPDATE " (data-testing.test-util/qualified :people)
-                                   " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
-                              [1]
-                              [(people-rows)]
-                              [(reading {:type :empty
-                                         :name "the write saw the setting on"
-                                         :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
-        (testing "a run leaves the setting as it found it"
-          (is (= "off" (string-setting db-id))))))))
+    ;; Postgres 19 refuses a connection that turns standard_conforming_strings off.
+    (when (some-> (mt/db) :dbms_version :semantic-version first (< 19))
+      (testing "on a database whose connections turn standard_conforming_strings off"
+        (mt/with-temp [:model/Database {db-id :id} {:engine  :postgres
+                                                    :details (assoc (:details (mt/db))
+                                                                    :additional-options
+                                                                    "options=-c%20standard_conforming_strings%3Doff")}]
+          (testing "premise: a query on the database sees the setting off"
+            (is (= "off" (string-setting db-id))))
+          (testing "a run turns the setting on: the write records it, and the expectation reads it"
+            (is (=? {:status       :passed
+                     :expectations [{:name "the write saw the setting on" :status :passed}]}
+                    (run-write! db-id
+                                (str "UPDATE " (data-testing.test-util/qualified :people)
+                                     " SET name = current_setting('standard_conforming_strings') WHERE id = ?")
+                                [1]
+                                [(people-rows)]
+                                [(reading {:type :empty
+                                           :name "the write saw the setting on"
+                                           :sql  "SELECT * FROM %s WHERE id = 1 AND name <> 'on'"})]))))
+          (testing "a run leaves the setting as it found it"
+            (is (= "off" (string-setting db-id)))))))))
 
 (defn- write-name-1!
   "Run a saved test of the UPDATE of the people table that sets person 1's name to the Postgres expression `value`,
