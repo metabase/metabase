@@ -37,6 +37,8 @@ import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
+import { AnonymousAccessChoiceModal } from "../AnonymousAccessChoiceModal";
+import { AnonymousReachList } from "../AnonymousReachList";
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { useDatabaseRoutingPanel } from "./useDatabaseRoutingPanel";
@@ -62,15 +64,24 @@ export const DatabaseRoutingSection = ({
 
   const {
     enabled,
+    anonymousReach,
+    panelReachFraming,
     userAttribute,
     isRoutingStored,
     error,
     anonymousAccessGranted,
     canChangeAnonymousAccess,
+    isRevokeHeldForReachability,
     hasStoppedServingAnonymousVisitors,
+    openQuestion,
+    cancelUndoesEnable,
     toggleRouting,
     chooseUserAttribute,
     changeAnonymousAccess,
+    chooseGrant,
+    cancelGrantChoice,
+    confirmRevoke,
+    dismissRevoke,
   } = useDatabaseRoutingPanel(database, { skip: !!shouldHideSection });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -110,9 +121,24 @@ export const DatabaseRoutingSection = ({
     await toggleRouting(nextEnabled);
   };
 
+  const handleGrantChoiceCancel = () => {
+    if (cancelUndoesEnable) {
+      setIsExpanded(false);
+    }
+    cancelGrantChoice();
+  };
+
   if (shouldHideSection) {
     return null;
   }
+
+  const reachList = panelReachFraming ? (
+    <AnonymousReachList
+      reach={anonymousReach}
+      framing={panelReachFraming}
+      variant="panel"
+    />
+  ) : null;
 
   return (
     <DatabaseInfoSection
@@ -120,6 +146,14 @@ export const DatabaseRoutingSection = ({
       description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
+      <AnonymousAccessChoiceModal
+        question={openQuestion}
+        reach={anonymousReach}
+        onChooseGrant={chooseGrant}
+        onCancelGrantChoice={handleGrantChoiceCancel}
+        onConfirmRevoke={confirmRevoke}
+        onDismissRevoke={dismissRevoke}
+      />
       <Flex justify="space-between" align="center">
         <Stack>
           <Label htmlFor="database-routing-toggle">
@@ -177,7 +211,10 @@ export const DatabaseRoutingSection = ({
               title={t`This database has stopped serving anonymous visitors`}
               mb="lg"
             >
-              <Text>{t`To start serving them again, allow anonymous access below.`}</Text>
+              <Stack gap="md">
+                <Text>{t`To start serving them again, allow anonymous access below.`}</Text>
+                {reachList}
+              </Stack>
             </Alert>
           )}
           <Stack mb="xxl" gap="sm">
@@ -241,7 +278,10 @@ export const DatabaseRoutingSection = ({
                     id="db-routing-anonymous-access"
                     checked={anonymousAccessGranted}
                     disabled={
-                      !isAdmin || !!disabledFeatMsg || !canChangeAnonymousAccess
+                      !isAdmin ||
+                      !!disabledFeatMsg ||
+                      !canChangeAnonymousAccess ||
+                      isRevokeHeldForReachability
                     }
                     onChange={(e) =>
                       changeAnonymousAccess(e.currentTarget.checked)
@@ -250,6 +290,7 @@ export const DatabaseRoutingSection = ({
                 </Box>
               </Tooltip>
             </Flex>
+            {!hasStoppedServingAnonymousVisitors && reachList}
           </Stack>
 
           <Flex justify="space-between" align="center" mih="2.5rem">
