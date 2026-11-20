@@ -92,39 +92,41 @@
                                     {:name "Renamed" :revision_message "rename"}))))))
 
 (deftest create-segment-test
-  (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
-                                       "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
-    (testing format-name
-      (is (= {:name                    "A Segment"
-              :description             "I did it!"
-              :show_in_getting_started false
-              :caveats                 nil
-              :points_of_interest      nil
-              :creator_id              (mt/user->id :crowberto)
-              :creator                 (user-details (mt/fetch-user :crowberto))
-              :entity_id               true
-              :created_at              true
-              :updated_at              true
-              :archived                false
-              :definition true}
-             (-> (mt/user-http-request :crowberto :post 200 "segment"
-                                       {:name                    "A Segment"
-                                        :description             "I did it!"
-                                        :show_in_getting_started false
-                                        :caveats                 nil
-                                        :points_of_interest      nil
-                                        :definition              (definition-fn (mt/id :users :id) 20)})
-                 segment-response))))))
-
-(deftest create-segment-derives-table-id-test
-  (testing "POST /api/segment derives table_id from the definition"
+  (mt/with-model-cleanup [:model/Segment]
     (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
                                          "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
       (testing format-name
-        (is (=? {:table_id (mt/id :users)}
-                (mt/user-http-request :crowberto :post 200 "segment"
-                                      {:name       "A Segment"
-                                       :definition (definition-fn (mt/id :users :id) 20)})))))))
+        (is (= {:name                    "A Segment"
+                :description             "I did it!"
+                :show_in_getting_started false
+                :caveats                 nil
+                :points_of_interest      nil
+                :creator_id              (mt/user->id :crowberto)
+                :creator                 (user-details (mt/fetch-user :crowberto))
+                :entity_id               true
+                :created_at              true
+                :updated_at              true
+                :archived                false
+                :definition true}
+               (-> (mt/user-http-request :crowberto :post 200 "segment"
+                                         {:name                    "A Segment"
+                                          :description             "I did it!"
+                                          :show_in_getting_started false
+                                          :caveats                 nil
+                                          :points_of_interest      nil
+                                          :definition              (definition-fn (mt/id :users :id) 20)})
+                   segment-response)))))))
+
+(deftest create-segment-derives-table-id-test
+  (mt/with-model-cleanup [:model/Segment]
+    (testing "POST /api/segment derives table_id from the definition"
+      (doseq [[format-name definition-fn] {"MBQL4" (partial mbql4-segment-definition (mt/id :users))
+                                           "MBQL5" (partial mbql5-segment-definition (mt/id :users))}]
+        (testing format-name
+          (is (=? {:table_id (mt/id :users)}
+                  (mt/user-http-request :crowberto :post 200 "segment"
+                                        {:name       "A Segment"
+                                         :definition (definition-fn (mt/id :users :id) 20)}))))))))
 
 ;; ## PUT /api/segment
 
