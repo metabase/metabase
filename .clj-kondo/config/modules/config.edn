@@ -118,6 +118,7 @@
            app-db
            collection-items
            collections
+           database-routing
            dependencies
            driver
            events
