@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupBillingEndpoints,
   setupPropertiesEndpoints,
@@ -11,6 +13,7 @@ import type { AddOnProductType } from "metabase-types/api/store";
 import { useTransformsBilling } from "./useTransformsBilling";
 
 type SetupOpts = {
+  isAdmin?: boolean;
   isHosted?: boolean;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
@@ -21,6 +24,7 @@ type SetupOpts = {
 };
 
 function setup({
+  isAdmin = true,
   isHosted = true,
   hasBasicTransformsAddOn = true,
   hasAdvancedTransformsAddOn = true,
@@ -34,7 +38,7 @@ function setup({
     settings: mockSettings({
       "is-hosted?": isHosted,
     }),
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
   });
 
   setupPropertiesEndpoints(settings);
@@ -77,6 +81,25 @@ describe("useTransformsBilling", () => {
 
       expect(result.current.basicTransformsAddOn).toBeUndefined();
       expect(result.current.advancedTransformsAddOn).toBeUndefined();
+    });
+  });
+
+  describe("isAdmin behavior", () => {
+    it("should skip fetching billing info when the user is not an admin", async () => {
+      const { result } = setup({ isAdmin: false });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      const billingCalls = fetchMock.callHistory
+        .calls()
+        .filter(({ url }) => url.includes("/api/ee/billing"));
+
+      expect(billingCalls).toHaveLength(0);
+      expect(result.current.error).toBeUndefined();
+      expect(result.current.hadTransforms).toBe(false);
+      expect(result.current.hadAdvancedTransforms).toBe(false);
     });
   });
 
