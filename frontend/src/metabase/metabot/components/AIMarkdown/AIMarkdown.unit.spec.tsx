@@ -181,9 +181,7 @@ describe("AIMarkdown", () => {
         conversationCharts: {
           "chart-1": {
             queries: [
-              Lib.toLegacyQuery(
-                Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
-              ),
+              Lib.createTestJsQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
             ],
             visualization_settings: { chart_type: "bar" },
           },

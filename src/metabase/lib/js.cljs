@@ -193,16 +193,6 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
-(defn ^:export legacy-query
-  "Coerce an Lib query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
-
-  > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
-  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
-  [query-map]
-  ;; existing usage -- do not use going forward
-  (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query-map)
-      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
-
 (defn ^:export xray-cell-query
   "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
   dashboard URL, or nil when the stage has no filter."

@@ -6,7 +6,6 @@ import type {
   CardType,
   DatasetQuery,
   FieldId,
-  LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
   TestNativeQuerySpec,
@@ -36,10 +35,6 @@ export function queryFromTableOrCardMetadata(
   tableOrCardMetadata: TableMetadata | CardMetadata,
 ): Query {
   return ML.query(queryOrMetadataProvider, tableOrCardMetadata);
-}
-
-export function toLegacyQuery(query: Query): LegacyDatasetQuery {
-  return ML.legacy_query(query);
 }
 
 export function xrayCellQuery(query: Query): unknown {

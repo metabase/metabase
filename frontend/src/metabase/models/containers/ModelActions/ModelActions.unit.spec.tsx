@@ -202,9 +202,9 @@ function createMockQueryAction(
   return _createMockQueryAction({
     can_write: true,
     ...opts,
-    dataset_query: Lib.toLegacyQuery(
-      Lib.createTestNativeQuery(TEST_PROVIDER, { query: TEST_QUERY }),
-    ),
+    dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, {
+      query: TEST_QUERY,
+    }),
   });
 }
 

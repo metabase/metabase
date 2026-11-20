@@ -31,7 +31,7 @@ import {
   provideMetricListTags,
   provideMetricTags,
 } from "./tags/utils";
-import { getMetricDatasetCacheKey } from "./utils/get-metric-dataset-cache-key";
+import { canonicalizeLibUuids } from "./utils/canonicalize-lib-uuids";
 
 /**
  * Curation edits change the dimensions embedded in the metric card itself,
@@ -213,8 +213,7 @@ export const metricApi = Api.injectEndpoints({
         url: "/api/metric/dataset",
         body,
       }),
-      serializeQueryArgs: ({ endpointName, queryArgs }) =>
-        `${endpointName}(${getMetricDatasetCacheKey(queryArgs)})`,
+      serializeQueryArgs: ({ queryArgs }) => canonicalizeLibUuids(queryArgs),
       providesTags: ["metric-dimension"],
       keepUnusedDataFor: 30 * 60,
     }),

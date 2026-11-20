@@ -15,6 +15,7 @@ import {
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
+import { canonicalizeLibUuids } from "./utils/canonicalize-lib-uuids";
 
 interface IgnorableError {
   ignore_error?: boolean;
@@ -62,6 +63,7 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      serializeQueryArgs: ({ queryArgs }) => canonicalizeLibUuids(queryArgs),
       providesTags: () => provideAdhocDatasetTags(),
       // Dataset results can be large and the cache key is the full
       // DatasetQuery, so cross-caller cache hits are rare. Evict
@@ -85,6 +87,7 @@ export const datasetApi = Api.injectEndpoints({
         body,
         noEvent: ignore_error,
       }),
+      serializeQueryArgs: ({ queryArgs }) => canonicalizeLibUuids(queryArgs),
       providesTags: () => provideAdhocDatasetTags(),
       keepUnusedDataFor: 0,
     }),

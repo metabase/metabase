@@ -10,7 +10,6 @@
    [metabase.lib.js :as lib.js]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
@@ -233,16 +232,12 @@
       (let [legacy-query      #js {:type  "query"
                                    :query #js {:source_table (meta/id :venues)
                                                :filter       legacy-expr}}
-            query             (lib.js/query (meta/id) meta/metadata-provider legacy-query)
-            returned          (lib.js/legacy-query query)]
+            query             (lib.js/query (meta/id) meta/metadata-provider legacy-query)]
         (is (=? {:lib/type :mbql/query
                  :stages [{:lib/type     :mbql.stage/mbql
                            :filters      [exp-form]
                            :source-table (meta/id :venues)}]}
-                query))
-        ;; TODO: Use =? JS support once it exists (metabase/hawk #24)
-        (is (=? (js->clj legacy-expr)
-                (-> returned js->clj (get "query") (get "filter"))))))))
+                query))))))
 
 (deftest ^:parallel filter-drill-details-test
   (testing ":value field on the filter drill"
@@ -665,9 +660,6 @@
       (testing "MBQL 5"
         (is (= query
                (lib.js/from-js-query (:lib/metadata query) js-query))))
-      (testing "MBQL 4 (legacy)"
-        (is (=? (lib.schema.util/remove-lib-uuids query)
-                (lib.js/from-js-query (:lib/metadata query) (lib.js/legacy-query js-query)))))
       (testing "Cache converted queries"
         (let [q1 (lib.js/from-js-query (:lib/metadata query) js-query)
               q2 (lib.js/from-js-query (:lib/metadata query) js-query)]
