@@ -29,6 +29,13 @@
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
+(mr/def ::glossary.create
+  "What creating a Glossary takes: its term, its definition and its creator."
+  [:map {:closed true}
+   [:term       ::glossary.term]
+   [:definition ::glossary.definition]
+   [:creator_id ::lib.schema.id/user]])
+
 (mr/def ::external-glossary
   "A Glossary as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

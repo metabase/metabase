@@ -822,7 +822,7 @@
    index        :- ::indexes.schema/index-structured
    t            :- (ms/InstanceOfClass Throwable)]
   (when transform-id
-    (transforms-base.db/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
+    (table-index/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
 
 (mu/defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
@@ -863,8 +863,8 @@
   [by-outcome :- [:map-of [:enum :succeeded :failed :delete-pending :delete-row] [:sequential ::indexes.schema/table-index]]]
   (doseq [[status rows] by-outcome]
     (if (= :delete-row status)
-      (transforms-base.db/delete-table-indexes! (map :id rows))
-      (transforms-base.db/update-table-indexes! (map :id rows)
+      (table-index/delete-table-indexes! (map :id rows))
+      (table-index/mark-table-indexes-executed! (map :id rows)
                                                 (cond-> {:status status}
                                                   (= status :succeeded)
                                                   (assoc :error_message nil)

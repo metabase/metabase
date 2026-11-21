@@ -2,7 +2,6 @@
   "Application database queries for the indexes REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.indexes.schema :as indexes.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,20 +16,3 @@
   "The TableIndex with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/TableIndex :id id))
-
-(mu/defn insert-table-index!
-  "Insert the TableIndex `row` and return the inserted instance."
-  [row :- ::indexes.schema/table-index.update]
-  (t2/insert-returning-instance! :model/TableIndex row))
-
-(mu/defn set-table-index-structured!
-  "Set the `structured` definition of the TableIndex with `id`."
-  [id         :- ms/PositiveInt
-   structured :- [:maybe ::indexes.schema/table-index.structured]]
-  (t2/update! :model/TableIndex :id id {:structured structured}))
-
-(mu/defn set-table-index-status!
-  "Set the `status` of the TableIndex with `id`."
-  [id     :- ms/PositiveInt
-   status :- [:or :keyword :string]]
-  (t2/update! :model/TableIndex :id id {:status status}))

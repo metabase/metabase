@@ -15,12 +15,15 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
+   [metabase.osi.db :as osi.db]
    [metabase.osi.schema :as osi.schema]
    [metabase.osi.serialization :as osi.serialization]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -66,6 +69,24 @@
 (t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
+
+;;; ----------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn upsert-osi-ai-context! :- :nil
+  "Set `ai-context` as the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`,
+  creating the row when the entity has none."
+  [entity-type     :- :string
+   entity-local-id :- ms/PositiveInt
+   ai-context      :- ::osi.schema/osi-ai-context.ai-context]
+  (osi.db/upsert-ai-context! entity-type entity-local-id ai-context)
+  nil)
+
+(mu/defn delete-osi-ai-context! :- :nil
+  "Delete the OsiAiContext of the entity with `entity-type` and `entity-local-id`."
+  [entity-type     :- :string
+   entity-local-id :- ms/PositiveInt]
+  (osi.db/delete-ai-context! entity-type entity-local-id)
+  nil)
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------
 

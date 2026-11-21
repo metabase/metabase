@@ -916,7 +916,6 @@
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/DashboardTab
                     :model/Field
                     :model/Query}}
 
@@ -3313,7 +3312,6 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/Table
-                    :model/TableIndex
                     :model/Transform
                     :model/TransformRun}
    :uses #{app-db
@@ -3390,7 +3388,6 @@
                     :model/TransformDagRun
                     :model/TransformJob
                     :model/TransformJobRun
-                    :model/TransformJobTransformTag
                     :model/TransformRun
                     :model/TransformTag}}
 

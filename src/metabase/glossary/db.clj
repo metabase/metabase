@@ -31,11 +31,10 @@
   (t2/select-one :model/Glossary :id id))
 
 (mu/defn update-glossary-entry!
-  "Set the term and definition of the Glossary entry with `id`."
-  [id         :- ms/PositiveInt
-   term       :- :string
-   definition :- :string]
-  (t2/update! :model/Glossary :id id {:term term :definition definition}))
+  "Apply `changes` to the Glossary entry with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::glossary.schema/glossary.update]
+  (t2/update! :model/Glossary :id id changes))
 
 (mu/defn delete-glossary-entry!
   "Delete the Glossary entry with `id`."

@@ -490,7 +490,7 @@
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
-  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
+  (let [new-tab-ids (dashboard-tab/create-dashboard-tabs!
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))

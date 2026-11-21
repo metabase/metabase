@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -79,6 +80,28 @@
   (mapv (fn [item]
           [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
         entities))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-glossary-entry! :- ::glossary.schema/glossary
+  "Insert the glossary entry `row` and return it."
+  [row :- ::glossary.schema/glossary.create]
+  (glossary.db/insert-glossary-entry! row))
+
+(mu/defn update-glossary-entry! :- [:maybe ::glossary.schema/glossary]
+  "Apply `changes` to the glossary entry with `id` and return the updated entry, or nil when no entry has `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::glossary.schema/glossary.update]
+  (when (glossary.db/glossary-entry id)
+    (glossary.db/update-glossary-entry! id changes)
+    (glossary.db/glossary-entry id)))
+
+(mu/defn delete-glossary-entry! :- [:maybe ::glossary.schema/glossary]
+  "Delete the glossary entry with `id`, returning the deleted entry, or nil when no entry has `id`."
+  [id :- ms/PositiveInt]
+  (when-let [entry (glossary.db/glossary-entry id)]
+    (glossary.db/delete-glossary-entry! id)
+    entry))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

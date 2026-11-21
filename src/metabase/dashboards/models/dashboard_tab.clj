@@ -96,40 +96,37 @@
     (for [{:keys [id] :as tab} tabs]
       (assoc tab :cards (get tab-id->dashcards id [])))))
 
-;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-tabs! :- [:map-of neg-int? pos-int?]
-  "Create the new tabs and returned a mapping from temporary tab ID to the new tab ID."
-  [dashboard-id :- ms/PositiveInt
-   new-tabs     :- [:sequential [:merge ::dashboards.schema/dashboard-tab.update [:map {:closed true} [:id neg-int?]]]]]
-  (let [new-tab-ids (dashboards.db/insert-dashboard-tabs! (->> new-tabs
-                                                               (map #(dissoc % :id))
-                                                               (map #(assoc % :dashboard_id dashboard-id))))]
-    (zipmap (map :id new-tabs) new-tab-ids)))
+(mu/defn create-dashboard-tabs! :- [:sequential ms/PositiveInt]
+  "Insert the DashboardTab `rows` and return their ids, in the order of the rows."
+  [rows :- [:sequential ::dashboards.schema/dashboard-tab.create]]
+  (dashboards.db/insert-dashboard-tabs! rows))
 
-(mu/defn update-tabs! :- nil?
-  "Updates tabs of a dashboard if changed."
+(mu/defn update-dashboard-tab! :- :nil
+  "Apply `changes` to the DashboardTab with `tab-id`."
+  [tab-id  :- ms/PositiveInt
+   changes :- ::dashboards.schema/dashboard-tab.update]
+  (dashboards.db/update-dashboard-tab! tab-id changes)
+  nil)
+
+(mu/defn delete-dashboard-tabs! :- :nil
+  "Delete the DashboardTabs with `tab-ids`."
+  [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (dashboards.db/delete-dashboard-tabs! tab-ids)
+  nil)
+
+(mu/defn- update-changed-tabs! :- :nil
+  "Update the name and the position of each of `new-tabs` that differ from its tab in `current-tabs`."
   [current-tabs :- [:sequential ::dashboards.schema/dashboard-tab]
    new-tabs     :- [:sequential ::dashboards.schema/dashboard-tab]]
   (let [update-ks       [:name :position]
-        id->current-tab (m/index-by :id current-tabs)
-        to-update-tabs  (filter
-                         ;; filter out tabs that haven't changed
-                         (fn [new-tab]
-                           (let [current-tab (get id->current-tab (:id new-tab))]
-                             (not= (select-keys current-tab update-ks)
-                                   (select-keys new-tab update-ks))))
-                         new-tabs)]
-    (doseq [tab to-update-tabs]
-      (dashboards.db/update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
+        id->current-tab (m/index-by :id current-tabs)]
+    (doseq [tab   new-tabs
+            :when (not= (select-keys (get id->current-tab (:id tab)) update-ks)
+                        (select-keys tab update-ks))]
+      (update-dashboard-tab! (:id tab) (select-keys tab update-ks)))
     nil))
-
-(mu/defn delete-tabs! :- nil?
-  "Delete tabs of a Dashboard"
-  [tab-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (when (seq tab-ids)
-    (dashboards.db/delete-dashboard-tabs! tab-ids))
-  nil)
 
 (defn do-update-tabs!
   "Given current tabs and new tabs, do the necessary create/update/delete to apply new tab changes.
@@ -145,15 +142,15 @@
                 to-delete]} (u/row-diff current-tabs new-tabs)
         to-delete-ids       (map :id to-delete)
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
-                              (delete-tabs! to-delete-ids))
+                              (delete-dashboard-tabs! to-delete-ids))
         old->new-tab-id     (when (seq to-create)
-                              (let [new-tab-ids (dashboards.db/insert-dashboard-tabs!
+                              (let [new-tab-ids (create-dashboard-tabs!
                                                  (->> to-create
                                                       (map #(dissoc % :id))
                                                       (map #(assoc % :dashboard_id dashboard-id))))]
                                 (zipmap (map :id to-create) new-tab-ids)))]
     (when (seq to-update)
-      (update-tabs! current-tabs to-update))
+      (update-changed-tabs! current-tabs to-update))
     {:old->new-tab-id old->new-tab-id
      :created-tab-ids (vals old->new-tab-id)
      :deleted-tab-ids to-delete-ids

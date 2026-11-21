@@ -10,6 +10,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.job-run :as transforms.job-run]
+   [metabase.transforms.models.transform-job-transform-tag :as transform-job-transform-tag]
    [metabase.transforms.models.transform-tag :as transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.schema :as transforms.schema]
@@ -157,17 +158,18 @@
             new-positions        (zipmap new-tag-ids (range))]
         ;; Delete removed associations
         (when (seq to-delete)
-          (transforms.db/delete-job-tag-links! job-id to-delete))
+          (transform-job-transform-tag/delete-transform-job-transform-tags! job-id to-delete))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-job-tag-position! job-id tag-id new-pos)))
+            (transform-job-transform-tag/update-transform-job-transform-tag! job-id tag-id {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (transforms.db/insert-job-tag-links! (for [tag-id to-insert]
-                                                 {:job_id   job-id
-                                                  :tag_id   tag-id
-                                                  :position (get new-positions tag-id)})))))
+          (transform-job-transform-tag/create-transform-job-transform-tags!
+           (for [tag-id to-insert]
+             {:job_id   job-id
+              :tag_id   tag-id
+              :position (get new-positions tag-id)})))))
     nil))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------

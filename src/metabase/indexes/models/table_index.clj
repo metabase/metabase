@@ -11,10 +11,12 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.indexes.db :as indexes.db]
    [metabase.indexes.schema :as schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -113,6 +115,49 @@
    (when transform-id
      (indexes.db/table-index-with-status-exists? transform-id rebuild-forcing-statuses))))
 
+(defn exists-for-transform?
+  "True when `transform-id` already has a request for `index-name`."
+  [transform-id index-name]
+  (indexes.db/table-index-exists-for-transform? transform-id index-name))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-table-index! :- ::schema/table-index
+  "Insert the TableIndex `row` and return it."
+  [row :- ::schema/table-index.create]
+  (indexes.db/insert-table-index! row))
+
+(mu/defn update-table-index! :- :nil
+  "Apply `changes` to the TableIndex with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::schema/table-index.update]
+  (indexes.db/update-table-index! id changes)
+  nil)
+
+(mu/defn delete-table-indexes! :- :nil
+  "Delete the TableIndexes with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (indexes.db/delete-table-indexes! ids)
+  nil)
+
+(mu/defn mark-table-index-failed! :- [:maybe :int]
+  "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`, returning
+  the number marked."
+  [transform-id  :- ::lib.schema.id/transform
+   index-name    :- :string
+   error-message :- :string]
+  (indexes.db/mark-table-index-failed! transform-id index-name error-message))
+
+(mu/defn mark-table-indexes-executed! :- :nil
+  "Apply `changes`, a status and an error message, to the TableIndexes with `ids` as the outcome of the run that just
+  executed them."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- [:map {:closed true}
+               [:status        {:optional true} [:maybe [:or :keyword :string]]]
+               [:error_message {:optional true} [:maybe :string]]]]
+  (indexes.db/mark-table-indexes-executed! ids changes)
+  nil)
+
 (defn mark-runnable-indexes-running!
   "Mark hydrated index requests that this run will apply as running.
 
@@ -136,11 +181,6 @@
   (when transform-id
     (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
       (indexes.db/mark-table-indexes-update-pending! ids))))
-
-(defn exists-for-transform?
-  "True when `transform-id` already has a request for `index-name`."
-  [transform-id index-name]
-  (indexes.db/table-index-exists-for-transform? transform-id index-name))
 
 ;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical
