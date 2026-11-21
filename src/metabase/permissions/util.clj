@@ -4,8 +4,9 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.application-permissions-revision :as application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
+   [metabase.permissions.models.permissions-revision :as permissions-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -52,8 +53,9 @@
                     :after   changes
                     :user_id api/*current-user-id*}]
       (case model
-        :model/PermissionsRevision            (permissions.db/insert-permissions-revision-returning-instance! revision)
-        :model/ApplicationPermissionsRevision (permissions.db/insert-application-permissions-revision-returning-instance! revision)))))
+        :model/PermissionsRevision            (permissions-revision/create-permissions-revision! revision)
+        :model/ApplicationPermissionsRevision (application-permissions-revision/create-application-permissions-revision!
+                                               revision)))))
 
 (mu/defn increment-implicit-perms-revision!
   "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
@@ -66,7 +68,7 @@
   (when api/*current-user-id*
     (case model
       :model/CollectionPermissionGraphRevision
-      (permissions.db/insert-collection-permission-graph-revision!
+      (collection-permission-graph-revision/create-collection-permission-graph-revision!
        {:id      (inc (collection-permission-graph-revision/latest-id))
         :before  {}
         :after   {}

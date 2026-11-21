@@ -2,10 +2,7 @@
   "Application database queries for the scim module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
-   [malli.util :as mut]
-   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -24,16 +21,6 @@
   "The SCIM ApiKey, or nil."
   []
   (t2/select-one :model/ApiKey :scope :scim))
-
-(mu/defn delete-scim-api-keys!
-  "Delete every SCIM ApiKey, returning the number deleted."
-  []
-  (t2/delete! :model/ApiKey :scope :scim))
-
-(mu/defn insert-api-key!
-  "Insert `api-key` and return the new instance."
-  [api-key :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey api-key))
 
 (defn- personal-user-expr
   [email]
@@ -135,22 +122,6 @@
   "Whether a PermissionsGroup with `group-name` (case-insensitive) exists."
   [group-name :- :string]
   (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name)))
-
-(mu/defn insert-group!
-  "Insert `group` and return the new instance."
-  [group :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (first (t2/insert-returning-instances! :model/PermissionsGroup group)))
-
-(mu/defn update-group!
-  "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
-  [group-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup :id group-id changes))
-
-(mu/defn delete-group!
-  "Delete the PermissionsGroup with `group-id`, returning the number deleted."
-  [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id group-id))
 
 (mu/defn group-member-user-ids
   "The user IDs of the members of the PermissionsGroup with `group-id`."

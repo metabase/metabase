@@ -20,6 +20,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions :as permissions]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
@@ -1824,7 +1825,7 @@
         group-ids-with-write-perms (collections.db/group-ids-with-permission-object
                                     (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
-    (collections.db/insert-permissions!
+    (permissions/create-permissions!
      (concat
       ;; insert all the new read-perms records
       (for [dest     dest-collections-or-ids

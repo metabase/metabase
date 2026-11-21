@@ -4,7 +4,8 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.db :as advanced-config.db]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
-   [metabase.api-keys.core :as api-key]
+   [metabase.api-keys.core :as-alias api-keys]
+   [metabase.api-keys.models.api-key :as api-key]
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -84,11 +85,11 @@
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key
-          (advanced-config.db/insert-api-key! {:user_id               (u/the-id user)
-                                               :name                  name
-                                               ::api-key/unhashed-key unhashed-key
-                                               :creator_id            (u/the-id creator)
-                                               :updated_by_id         (u/the-id creator)}))))))
+          (api-key/create-api-key! {:user_id               (u/the-id user)
+                                    :name                  name
+                                    ::api-keys/unhashed-key unhashed-key
+                                    :creator_id            (u/the-id creator)
+                                    :updated_by_id         (u/the-id creator)}))))))
 
 (defmethod advanced-config.file.i/initialize-section! :api-keys
   [_section-name api-keys]

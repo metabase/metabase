@@ -3,7 +3,10 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -37,6 +40,19 @@
   []
   (or (permissions.db/latest-collection-permission-graph-revision-id)
       0))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-collection-permission-graph-revision!
+  "Insert the CollectionPermissionGraphRevision `row` and return it."
+  [row :- ::permissions.schema/collection-permission-graph-revision.create]
+  (permissions.db/insert-collection-permission-graph-revision! row))
+
+(mu/defn update-collection-permission-graph-revision!
+  "Apply `changes` to the CollectionPermissionGraphRevision with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::permissions.schema/collection-permission-graph-revision.update]
+  (permissions.db/update-collection-permission-graph-revision! id changes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

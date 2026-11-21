@@ -39,17 +39,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey :id [:auto/param id]))
 
-(def ^:private ApiKeyWithGroupId
-  "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."
-  (mut/merge ::api-keys.schema/api-key
-             [:map
-              [:metabase.api-keys.core/group-id {:optional true} [:maybe ms/PositiveInt]]]))
-
-(mu/defn save-api-key!
-  "Save the changes made to the ApiKey instance `api-key` and return it."
-  [api-key :- ApiKeyWithGroupId]
-  (t2/save! api-key))
-
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
@@ -59,6 +48,16 @@
   "Delete the ApiKey with `id`."
   [id :- ms/PositiveInt]
   (t2/delete! :model/ApiKey :id id))
+
+(mu/defn api-keys-with-scope
+  "The ids and User ids of the ApiKeys with `scope`."
+  [scope :- ::api-keys.schema/scope]
+  (t2/select [:model/ApiKey :id :user_id] :scope scope))
+
+(mu/defn delete-api-keys!
+  "Delete the ApiKeys with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ApiKey :id [:in ids]))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
@@ -102,6 +101,16 @@
   [row :- ::users.schema/user.update]
   (t2/insert-returning-pk! :model/User row))
 
+(mu/defn insert-api-key-usage-logs!
+  "Insert the ApiKeyUsageLog `rows` as one batch."
+  [rows :- [:sequential ::api-keys.schema/api-key-usage-log.create]]
+  (t2/insert! :model/ApiKeyUsageLog rows))
+
+(mu/defn delete-api-key-usage-logs-occurred-before!
+  "Delete the ApiKeyUsageLogs whose `occurred_at` is before `cutoff`, returning the number deleted."
+  [cutoff :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (t2/delete! :model/ApiKeyUsageLog {:where [:< :occurred_at [:auto/param cutoff]]}))
+
 (mu/defn insert-api-key!
   "Insert the ApiKey `row` and return the inserted instance."
   [row :- ::api-keys.schema/api-key.create]
@@ -110,7 +119,7 @@
 (mu/defn update-api-key!
   "Apply `changes` to the ApiKey with `id`."
   [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
+   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:name :key :key_prefix :updated_by_id :updated_at])]
   (t2/update! :model/ApiKey :id id changes))
 
 (defn lock-available-key-ids

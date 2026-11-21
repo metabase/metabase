@@ -14,15 +14,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private PermissionsRow
-  "The writable columns of a Permissions row (excluding `:id`)."
-  [:map {:closed true}
-   [:object      {:optional true} [:maybe :string]]
-   [:group_id    {:optional true} [:maybe ms/PositiveInt]]
-   [:perm_value  {:optional true} [:maybe [:or :keyword :string]]]
-   [:perm_type   {:optional true} [:maybe [:or :keyword :string]]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
-
 ;;; ---------------------------------------------- Single Collections ----------------------------------------------
 
 (mu/defn synced-collections-clause :- [:fn vector?]
@@ -565,11 +556,6 @@
   "The set of group IDs holding a Permissions row for `object`."
   [object :- :string]
   (t2/select-fn-set :group_id :model/Permissions :object object))
-
-(mu/defn insert-permissions!
-  "Insert the Permissions `rows`, returning the number inserted."
-  [rows :- [:sequential PermissionsRow]]
-  (t2/insert! :model/Permissions rows))
 
 (mu/defn delete-permissions-for-collection!
   "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."

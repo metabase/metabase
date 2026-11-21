@@ -320,7 +320,7 @@
 
 (mu/defn insert-data-permissions!
   "Insert the DataPermissions `rows`."
-  [rows :- [:sequential (mut/select-keys ::permissions.schema/data-permissions.update [:perm_type :group_id :perm_value :db_id :table_id :schema_name])]]
+  [rows :- [:sequential ::permissions.schema/data-permissions.create]]
   (t2/insert! :model/DataPermissions rows))
 
 (mu/defn delete-data-permissions!
@@ -515,7 +515,7 @@
 
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`."
-  [rows :- [:sequential (mut/select-keys ::permissions.schema/permissions.update [:group_id :object])]]
+  [rows :- [:sequential ::permissions.schema/permissions.create]]
   (t2/insert! :model/Permissions rows))
 
 (mu/defn permission-objects-for-user
@@ -528,6 +528,27 @@
                            :where  [:= :pgm.user_id user-id]})))
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
+
+(mu/defn permissions-group
+  "The PermissionsGroup with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/PermissionsGroup :id [:auto/param id]))
+
+(mu/defn insert-permissions-group!
+  "Insert the PermissionsGroup `row` and return the inserted instance."
+  [row :- ::permissions.schema/permissions-group.create]
+  (t2/insert-returning-instance! :model/PermissionsGroup row))
+
+(mu/defn update-permissions-group!
+  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::permissions.schema/permissions-group.update]
+  (t2/update! :model/PermissionsGroup :id [:auto/param id] changes))
+
+(mu/defn delete-permissions-group!
+  "Delete the PermissionsGroup with `id`, returning the number deleted."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/PermissionsGroup :id [:auto/param id]))
 
 (mu/defn magic-group
   "The ID, name, type, and tenant flag of the magic PermissionsGroup of `magic-group-type`, or nil."
@@ -618,6 +639,12 @@
 
 ;;; ---------------------------------------- PermissionsGroupMembership ----------------------------------------
 
+(mu/defn update-group-membership!
+  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::permissions.schema/permissions-group-membership.update]
+  (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] changes))
+
 (mu/defn insert-group-memberships!
   "Insert the PermissionsGroupMemberships `memberships` through the model, returning the number of rows inserted."
   [memberships :- [:sequential [:map {:closed true}
@@ -706,49 +733,24 @@
   (:id (t2/select-one [:model/ApplicationPermissionsRevision [:%max.id :id]])))
 
 (mu/defn insert-collection-permission-graph-revision!
-  "Insert `revision` into CollectionPermissionGraphRevision."
-  [revision :- [:map {:closed true}
-                [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
-                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
-                [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe :string]]]]
-  (t2/insert! :model/CollectionPermissionGraphRevision revision))
-
-(mu/defn insert-collection-permission-graph-revision-returning-instance!
   "Insert `revision` into CollectionPermissionGraphRevision and return the new instance."
-  [revision :- [:map {:closed true}
-                [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} ::permissions.schema/collection-permission-graph-revision.before]
-                [:after   {:optional true} ::permissions.schema/collection-permission-graph-revision.after]
-                [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe :string]]]]
-  (first (t2/insert-returning-instances! :model/CollectionPermissionGraphRevision revision)))
+  [revision :- ::permissions.schema/collection-permission-graph-revision.create]
+  (t2/insert-returning-instance! :model/CollectionPermissionGraphRevision revision))
 
-(mu/defn insert-permissions-revision-returning-instance!
+(mu/defn insert-permissions-revision!
   "Insert `revision` into PermissionsRevision and return the new instance."
-  [revision :- [:map {:closed true}
-                [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe ::permissions.schema/permissions-revision.before]]
-                [:after   {:optional true} [:maybe ::permissions.schema/permissions-revision.after]]
-                [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe :string]]]]
-  (first (t2/insert-returning-instances! :model/PermissionsRevision revision)))
+  [revision :- ::permissions.schema/permissions-revision.create]
+  (t2/insert-returning-instance! :model/PermissionsRevision revision))
 
-(mu/defn insert-application-permissions-revision-returning-instance!
+(mu/defn insert-application-permissions-revision!
   "Insert `revision` into ApplicationPermissionsRevision and return the new instance."
-  [revision :- [:map {:closed true}
-                [:id      {:optional true} ms/PositiveInt]
-                [:before  {:optional true} [:maybe ::permissions.schema/application-permissions-revision.before]]
-                [:after   {:optional true} [:maybe ::permissions.schema/application-permissions-revision.after]]
-                [:user_id {:optional true} [:maybe ::lib.schema.id/user]]
-                [:remark  {:optional true} [:maybe :string]]]]
-  (first (t2/insert-returning-instances! :model/ApplicationPermissionsRevision revision)))
+  [revision :- ::permissions.schema/application-permissions-revision.create]
+  (t2/insert-returning-instance! :model/ApplicationPermissionsRevision revision))
 
-(mu/defn update-collection-graph-revision!
+(mu/defn update-collection-permission-graph-revision!
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
-   changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
+   changes     :- ::permissions.schema/collection-permission-graph-revision.update]
   (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------

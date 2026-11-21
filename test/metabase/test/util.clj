@@ -30,6 +30,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -551,6 +552,14 @@
                                                   :name      (format "Tenant Collection: %s" tenant-name)
                                                   :namespace :tenant-specific})]
       (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroup
+  "Gives a temporary PermissionsGroup the default permissions on every Database that `create-permissions-group!` gives
+  it."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes (fn [group]
+                                           (#'perms-group/set-default-permission-values! group)
+                                           (f group))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]

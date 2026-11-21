@@ -23,3 +23,12 @@
    [:device_id          {:optional true} [:maybe :string]]
    [:device_description {:optional true} [:maybe :string]]
    [:ip_address         {:optional true} [:maybe :string]]])
+
+(mr/def ::login-history.create
+  "What recording a LoginHistory takes: the User who logged in, the Session the login created, and the device."
+  [:map {:closed true}
+   [:user_id            ::lib.schema.id/user]
+   [:session_id         ms/NonBlankString]
+   [:device_id          ms/NonBlankString]
+   [:device_description ms/NonBlankString]
+   [:ip_address         ms/NonBlankString]])

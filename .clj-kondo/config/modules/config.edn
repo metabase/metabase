@@ -324,6 +324,7 @@
   {:team "Security"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
+           metabase.api-keys.models.api-key
            metabase.api-keys.schema
            metabase.api-keys.usage}
    :uses #{api
@@ -337,7 +338,7 @@
            users
            users.schema
            util}
-   :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
+   :model-exports #{:model/ApiKey}
    :model-imports #{:model/User}}
 
   api-routes
@@ -2117,6 +2118,8 @@
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
+           metabase.permissions.models.permissions
+           metabase.permissions.models.permissions-group
            metabase.permissions.schema}
    :uses #{api
            api.eid-translation
@@ -3879,8 +3882,7 @@
            request
            startup
            task
-           util}
-   :model-imports #{:model/ApiKeyUsageLog}}
+           util}}
 
   enterprise/api-routes
   {:team "UX West"
