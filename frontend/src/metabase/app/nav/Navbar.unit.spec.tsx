@@ -1,13 +1,16 @@
 import type { Store } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupGdriveGetFolderEndpoint,
   setupSearchEndpoints,
   setupSettingEndpoint,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import {
   createMockAppState,
@@ -18,10 +21,12 @@ import {
 } from "__support__/state";
 import {
   act,
+  createMockMediaQueryList,
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
@@ -40,6 +45,7 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
+import { AppBarContainer } from "./AppBar";
 import { Navbar } from "./Navbar";
 
 type SetupOpts = {
@@ -51,6 +57,8 @@ type SetupOpts = {
   collections?: Collection[];
   trashCollection?: Collection;
   dashboardState?: DashboardState;
+  /** Also renders the app bar, whose toggle opens and closes the navbar */
+  withAppBar?: boolean;
 };
 
 async function setup({
@@ -62,8 +70,11 @@ async function setup({
   collections = [],
   trashCollection,
   dashboardState,
+  withAppBar = false,
 }: SetupOpts = {}) {
   setupCollectionsEndpoints({ collections, trashCollection });
+  setupCollectionByIdEndpoint({ collections });
+  setupUserMetabotPermissionsEndpoint();
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
   setupCollectionItemsEndpoint({
@@ -90,12 +101,21 @@ async function setup({
   });
 
   const { store } = renderWithProviders(
-    <Route path={route} element={<Navbar />} />,
+    <Route
+      path={route}
+      element={
+        <>
+          {withAppBar && <AppBarContainer />}
+          <Navbar />
+        </>
+      }
+    />,
     {
       storeInitialState,
       initialRoute: pathname,
       withRouter: true,
       withDND: true,
+      withKBar: withAppBar,
     },
   );
 
@@ -265,6 +285,48 @@ describe("nav > containers > Navbar > Core App", () => {
         "aria-selected",
         "false",
       );
+    });
+  });
+
+  describe("small screens (metabase#15006)", () => {
+    const collection = createMockCollection({
+      id: 2,
+      name: "First collection",
+    });
+
+    beforeEach(() => {
+      jest
+        .spyOn(window, "matchMedia")
+        .mockReturnValue(createMockMediaQueryList({ matches: true }));
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("starts closed, toggles from the app bar, and closes when a collection is picked", async () => {
+      await setup({
+        pathname: "/collection/root",
+        route: "/collection/:slug",
+        collections: [collection],
+        withAppBar: true,
+      });
+      await expectNavbarClosed();
+
+      const toggle = screen.getByRole("button", { name: "Toggle sidebar" });
+      await userEvent.click(toggle);
+      await expectNavbarOpen();
+      await userEvent.click(toggle);
+      await expectNavbarClosed();
+
+      await userEvent.click(toggle);
+      await expectNavbarOpen();
+      await userEvent.click(
+        within(screen.getByTestId("main-navbar-root")).getByText(
+          collection.name,
+        ),
+      );
+      await expectNavbarClosed();
     });
   });
 

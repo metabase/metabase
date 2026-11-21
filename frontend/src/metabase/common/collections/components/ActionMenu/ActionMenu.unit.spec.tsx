@@ -317,14 +317,16 @@ describe("ActionMenu", () => {
   describe("x-rays", () => {
     it("should allow to x-ray a model when xrays are enabled", async () => {
       const item = createMockCollectionItem({
-        id: 1,
+        id: 7,
         model: "dataset",
       });
 
       setup({ item, isXrayEnabled: true });
 
       await userEvent.click(getIcon("ellipsis"));
-      expect(await screen.findByText("X-ray this")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("menuitem", { name: /X-ray this/ }),
+      ).toHaveAttribute("href", "/auto/dashboard/model/7");
     });
 
     it("should not allow to x-ray a model when xrays are not enabled", async () => {
