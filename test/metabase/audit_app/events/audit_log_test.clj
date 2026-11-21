@@ -9,6 +9,7 @@
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -815,3 +816,19 @@
           (t2/update! :model/Card :id (t2/select-one-pk :model/Card) {:view_count 3})
           (t2/update! :model/ApiKey :id key-id {:last_used_at (java.time.OffsetDateTime/now)})
           (is (= [] (t2/select :model/AuditLog :id [:> before] :model [:in ["User" "Pulse" "Card" "ApiKey"]]))))))))
+
+(defn- audit-statement-count!
+  "The statements that the audit log runs for a user's update of the `column` of `n` new rows of `model` in one batch."
+  [model column n]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (events.tu/consumer-statement-count! model
+                                         (repeatedly n #(mt/with-temp-defaults model))
+                                         #(t2/update! model :id [:in %] {column (str (random-uuid))})
+                                         #(mt/with-premium-features #{:audit-app} (%))
+                                         #(mt/with-premium-features #{} (%)))))
+
+(deftest batch-of-updates-records-with-fixed-statements-test
+  (testing "a user's update of 2 or 6 rows in one batch records their audit rows with the same number of statements"
+    (doseq [[model column] [[:model/Card :description] [:model/Segment :description] [:model/User :first_name]]]
+      (testing model
+        (is (= (audit-statement-count! model column 2) (audit-statement-count! model column 6)))))))

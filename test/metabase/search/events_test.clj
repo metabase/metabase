@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as queries.card]
@@ -64,6 +65,22 @@
   (search/cascading-documents [(t2/select-one :model/Card :id card-id)]))
 
 ;;; Capture wiring
+
+(defn- search-statement-count!
+  "The statements that the search consumer runs, its ingestion included, for `write`, a function of the ids of `n` new
+  Cards, in one batch."
+  [n write]
+  (events.tu/consumer-statement-count! :model/Card
+                                       (repeatedly n #(mt/with-temp-defaults :model/Card))
+                                       write
+                                       #(binding [search.ingestion/*disable-updates* false] (%))
+                                       #(binding [search.ingestion/*disable-updates* true] (%))))
+
+(deftest batch-of-updates-indexes-with-fixed-statements-test
+  (testing "an update of 2 or 6 Cards in one batch reindexes them with the same number of statements"
+    (search.tu/with-appdb-search-if-available-without-fallback
+      (let [write #(t2/update! :model/Card :id [:in %] {:name (str (random-uuid))})]
+        (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
 
 (deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
   (testing "the revisions and moderation reviews a card delete removes don't enqueue re-derivations of their own"

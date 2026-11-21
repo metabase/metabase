@@ -175,7 +175,7 @@
         (let [revision-id (t2/select-one-pk :model/Revision :model "Transform" :model_id transform-id
                                             {:order-by [[:id :asc]]})
               topics      (atom [])]
-          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics into (for [change (:changes event [event])] [topic (get-in change [:object :id])])))]
             (mt/user-http-request :crowberto :post 200 "revision/revert"
                                   {:entity "transform" :id transform-id :revision_id revision-id}))
           (is (= "Before" (t2/select-one-fn :name :model/Transform :id transform-id)))

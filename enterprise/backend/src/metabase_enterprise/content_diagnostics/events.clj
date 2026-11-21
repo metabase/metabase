@@ -39,12 +39,8 @@
   [_owner events _all-events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
-        collection-ids (into #{}
-                             (mapcat (fn [row]
-                                       (cons (:id row)
-                                             (when (:archived_directly row)
-                                               (collection/descendant-ids row)))))
-                             collections)
+        collection-ids (into (set (map :id collections))
+                             (collection/descendant-ids-of-all (filterv :archived_directly collections)))
         entity-ids     (reduce (fn [acc [k id]]
                                  (cond-> acc (not= :collection k) (update k (fnil conj #{}) id)))
                                {}

@@ -69,20 +69,20 @@
   [client-id :- :string]
   (t2/exists? :model/OAuthClient :client_id client-id))
 
-(mu/defn revoke-access-tokens-for-user!
-  "Revoke the unrevoked OAuthAccessTokens of the User with `user-id`, returning the number revoked."
-  [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/OAuthAccessToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now}))
+(mu/defn revoke-access-tokens-for-users!
+  "Revoke the unrevoked OAuthAccessTokens of the Users with `user-ids`, returning the number revoked."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (t2/update! :model/OAuthAccessToken {:user_id [:in user-ids], :revoked_at nil} {:revoked_at :%now}))
 
-(mu/defn revoke-refresh-tokens-for-user!
-  "Revoke the unrevoked OAuthRefreshTokens of the User with `user-id`, returning the number revoked."
-  [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/OAuthRefreshToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now}))
+(mu/defn revoke-refresh-tokens-for-users!
+  "Revoke the unrevoked OAuthRefreshTokens of the Users with `user-ids`, returning the number revoked."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (t2/update! :model/OAuthRefreshToken {:user_id [:in user-ids], :revoked_at nil} {:revoked_at :%now}))
 
-(mu/defn delete-authorization-codes-for-user!
-  "Delete the OAuthAuthorizationCodes of the User with `user-id`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/OAuthAuthorizationCode :user_id user-id))
+(mu/defn delete-authorization-codes-for-users!
+  "Delete the OAuthAuthorizationCodes of the Users with `user-ids`, returning the number deleted."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (t2/delete! :model/OAuthAuthorizationCode :user_id [:in user-ids]))
 
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."

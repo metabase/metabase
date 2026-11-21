@@ -252,6 +252,7 @@
   {:track          [:name :description :table_id]
    :track-redacted [:archived :caveats :creator_id :definition :points_of_interest :show_in_getting_started]
    :skip           [:entity_id]
+   :hydrate        segments.audit/hydrate
    :details        segments.audit/details})
 
 (defmethod search/spec :model/Segment

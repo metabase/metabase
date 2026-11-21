@@ -130,6 +130,14 @@
     (u/prog1 (ws.db/delete-table-remappings-of-database! database-id)
       (when (pos? <>) (invalidate! [database-id])))))
 
+(mu/defn delete-table-remappings-of-databases!
+  "Delete the TableRemappings of the Databases with `database-ids` in one statement, returning the number of rows
+  deleted."
+  [database-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (u/prog1 (ws.db/delete-table-remappings-of-databases! database-ids)
+      (when (pos? <>) (invalidate! database-ids)))))
+
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
   namespace, returning the number of rows deleted."

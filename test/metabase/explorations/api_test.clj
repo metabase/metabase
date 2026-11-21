@@ -1967,7 +1967,8 @@
       (let [published (atom [])
             original  (mt/original-fn #'events/publish-event!)]
         (with-redefs [events/publish-event! (fn [topic event]
-                                              (swap! published conj [topic (some-> event :object :id)])
+                                              (swap! published into (for [change (:changes event [event])]
+                                                                      [topic (some-> change :object :id)]))
                                               (original topic event))]
           (mt/user-http-request :crowberto :put 200 (format "exploration/%d" (:id e))
                                 {:collection_id (:id dest)})

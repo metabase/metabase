@@ -243,8 +243,8 @@
                            :model/Transform _ {:name   "Transform on products"
                                                :source {:type :query :query (lib/query mp products)}
                                                :target {:type "table" :name (mt/random-name)}}]
-              (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
-              (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
+              (events/publish-event! :event/segment-create {:changes [{:object segment}] :user-id (mt/user->id :crowberto)})
+              (events/publish-event! :event/measure-create {:changes [{:object measure}] :user-id (mt/user->id :crowberto)})
               (deps.test/synchronously-run-dependency-job!)
               (let [response   (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
                                                      :id products-id :type "table")
@@ -872,7 +872,7 @@
     (mt/with-test-user :crowberto
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"}]
-          (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/segment-create {:changes [{:object segment}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
                                                :id segment-id
@@ -897,7 +897,7 @@
                                                                                         (lib/filter (lib/> (lib.metadata/field mp price-field-id) 50))))}
                          :model/User user {:email "test@test.com"}]
             (mt/with-test-user :crowberto
-              (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)}))
+              (events/publish-event! :event/segment-create {:changes [{:object segment}] :user-id (mt/user->id :crowberto)}))
             (let [mp (mt/metadata-provider)
                   products (lib.metadata/table mp products-id)
                   query-with-segment (-> (lib/query mp products)
@@ -1001,7 +1001,7 @@
           (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
                                                                       :definition (-> (lib/query mp products)
                                                                                       (lib/aggregate (lib/sum price)))}]
-            (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
+            (events/publish-event! :event/measure-create {:changes [{:object measure}] :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
                                                  :id measure-id
@@ -1026,14 +1026,14 @@
           (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
                                                                           :definition (-> (lib/query mp products)
                                                                                           (lib/aggregate (lib/sum price)))}]
-            (events/publish-event! :event/measure-create {:object measure-a :user-id (mt/user->id :crowberto)})
+            (events/publish-event! :event/measure-create {:changes [{:object measure-a}] :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-dependency-job!)
             (let [mp' (mt/metadata-provider)]
               (mt/with-temp [:model/Measure {measure-b-id :id :as measure-b} {:name "Measure B"
                                                                               :definition (-> (lib/query mp' products)
                                                                                               (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
                                                                                                                     (lib/sum rating))))}]
-                (events/publish-event! :event/measure-create {:object measure-b :user-id (mt/user->id :crowberto)})
+                (events/publish-event! :event/measure-create {:changes [{:object measure-b}] :user-id (mt/user->id :crowberto)})
                 (deps.test/synchronously-run-dependency-job!)
                 (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
                                                      :id measure-b-id
@@ -1064,7 +1064,7 @@
                                                                                       (lib/aggregate (lib/sum price)))}
                          :model/User user {:email "test@test.com"}]
             (mt/with-test-user :crowberto
-              (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)}))
+              (events/publish-event! :event/measure-create {:changes [{:object measure}] :user-id (mt/user->id :crowberto)}))
             (let [mp' (mt/metadata-provider)
                   query-with-measure (-> (lib/query mp' products)
                                          (lib/aggregate (lib.metadata/measure mp' measure-id)))
@@ -1197,8 +1197,8 @@
                                                            :dataset_query (->> referenced-card-id
                                                                                (lib.metadata/card mp)
                                                                                (lib/query mp))}]
-          (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id referenced-card-id) :user-id (mt/user->id :crowberto)})
-          (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id unreffed-card-id) :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id referenced-card-id)}] :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id unreffed-card-id)}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=unreftest")]
             (is (=? {:data [{:id unreffed-card-id
@@ -1215,7 +1215,7 @@
                        :model/Card {card-id :id} {:name "Referencing Card"
                                                   :type :question
                                                   :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
-          (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id card-id) :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id card-id)}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")]
             (is (=? {:data [{:id unreffed-table-id
@@ -1273,7 +1273,7 @@
             (mt/with-temp [:model/Card {card-id :id} {:name "Card using snippet"
                                                       :type :question
                                                       :dataset_query native-query}]
-              (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id card-id) :user-id (mt/user->id :crowberto)})
+              (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id card-id)}] :user-id (mt/user->id :crowberto)})
               (deps.test/synchronously-run-dependency-job!)
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=unreftest")]
                 (is (=? {:data   [{:id unreffed-snippet-id
@@ -1293,7 +1293,7 @@
                                                                                          :attrs {:entityId referenced-dashboard-id
                                                                                                  :model "dashboard"}}]}]}
                                                         :content_type "application/json+vnd.prose-mirror"}]
-        (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id document-id) :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/document-create {:changes [{:object (t2/select-one :model/Document :id document-id)}] :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=unreftest")]
           (is (=? {:data [{:id unreffed-dashboard-id
@@ -1312,7 +1312,7 @@
                                                                                                   :attrs {:entityId referenced-document-id
                                                                                                           :model "document"}}]}]}
                                                                  :content_type "application/json+vnd.prose-mirror"}]
-        (events/publish-event! :event/document-create {:object (t2/select-one :model/Document :id unreffed-document-id) :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/document-create {:changes [{:object (t2/select-one :model/Document :id unreffed-document-id)}] :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=unreftest")]
           (is (=? {:data [{:id unreffed-document-id
@@ -1514,8 +1514,8 @@
       (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"}
                      :model/Segment {archived-segment-id :id :as archived-segment} {:name     "Archived Unreferenced Segment - archivedtest"
                                                                                     :archived true}]
-        (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
-        (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/segment-create {:changes [{:object unreffed-segment}] :user-id (mt/user->id :crowberto)})
+        (events/publish-event! :event/segment-create {:changes [{:object archived-segment}] :user-id (mt/user->id :crowberto)})
         (deps.test/synchronously-run-dependency-job!)
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
               segment-ids (set (map :id (:data response)))]
@@ -1595,8 +1595,8 @@
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
                                                                                       :definition measure-definition
                                                                                       :archived true}]
-          (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
-          (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/measure-create {:changes [{:object unreffed-measure}] :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/measure-create {:changes [{:object archived-measure}] :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest")
                 measure-ids (set (map :id (:data response)))]
@@ -2537,7 +2537,7 @@
                                                               :dataset_query (wrap-card-query card2)
                                                               :archived true}]
           (doseq [id [card1-id (:id card2) card3-id card4-id card5-id]]
-            (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id id) :user-id (mt/user->id :crowberto)}))
+            (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id id)}] :user-id (mt/user->id :crowberto)}))
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"
@@ -2576,7 +2576,7 @@
                                            :dataset_query {:database db-id
                                                            :type     :query
                                                            :query    {:source-table table-1-id}}}]
-            (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
+            (events/publish-event! :event/card-create {:changes [{:object card}] :user-id (:creator_id card)})
             (deps.test/synchronously-run-dependency-job!)
             (testing "after creating card that depends on table-1, only table-2 is unused"
               (is (= #{table-2-id}

@@ -10,6 +10,7 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -602,6 +603,20 @@
           (is (= (inc (:insert off)) (:insert on)))
           (is (= (inc (:update off)) (:update on)))
           (is (< (inc (:delete off)) (:delete on))))))))
+
+(defn- change-log-statement-count!
+  "The statements that the change log runs for an update of `n` new Cards in one batch."
+  [n]
+  (events.tu/consumer-statement-count! :model/Card
+                                       (repeatedly n #(mt/with-temp-defaults :model/Card))
+                                       #(t2/update! :model/Card :id [:in %] {:description (str (random-uuid))})
+                                       #(mt/with-premium-features #{:change-log} (%))
+                                       #(mt/with-premium-features #{} (%))))
+
+(deftest batch-of-updates-logs-with-fixed-statements-test
+  (when config/ee-available?
+    (testing "an update of 2 or 6 rows in one batch logs them with the same number of statements"
+      (is (= (change-log-statement-count! 2) (change-log-statement-count! 6))))))
 
 (deftest off-test
   (mt/with-temp [:model/PermissionsGroup group {}]

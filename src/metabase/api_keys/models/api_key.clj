@@ -291,6 +291,7 @@
   {:track          [:name :key_prefix :user_id]
    :track-redacted [:creator_id :key :scope :updated_by_id]
    :skip           [:last_used_at]
+   :hydrate        api-keys.audit/hydrate
    :details        api-keys.audit/details
    :topics         {:create :api-key-create
                     :update api-keys.audit/update-topic

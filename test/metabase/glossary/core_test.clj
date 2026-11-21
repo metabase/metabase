@@ -43,7 +43,7 @@
         (is (= entry (t2/select-one :model/Glossary :id (:id entry)))))
       (testing "exactly one create event is published with the new entry and the user"
         (is (= [{:topic :event/glossary-create
-                 :event {:object entry :user-id user-id}}]
+                 :event {:changes [{:object entry}] :user-id user-id}}]
                events))))))
 
 (deftest update-entry-test
@@ -58,9 +58,9 @@
         (testing "exactly one update event is published with the new and previous entries"
           (is (= 1 (count events)))
           (is (=? {:topic :event/glossary-update
-                   :event {:object          (dissoc entry :updated_at)
-                           :previous-object {:id id :term "ARR" :definition "old"}
-                           :user-id         user-id}}
+                   :event {:changes [{:object          (dissoc entry :updated_at)
+                                      :previous-object {:id id :term "ARR" :definition "old"}}]
+                           :user-id user-id}}
                   (first events))))))
     (testing "a missing id returns nil and publishes nothing"
       (is (= {:result nil :events []}
@@ -77,7 +77,7 @@
           (is (nil? (t2/select-one :model/Glossary :id id))))
         (testing "exactly one delete event is published with the deleted entry"
           (is (= [{:topic :event/glossary-delete
-                   :event {:previous-object entry :user-id user-id}}]
+                   :event {:changes [{:previous-object entry}] :user-id user-id}}]
                  events)))))
     (testing "a missing id returns nil and publishes nothing"
       (is (= {:result nil :events []}

@@ -56,8 +56,8 @@
     (into {} (t2/select-fn-vec (juxt :id parent-key) [model :id parent-key] :id [:in ids]))
     {}))
 
-(mu/defn row
-  "The row of `model` with `id`, or nil."
+(mu/defn rows
+  "The rows of `model` with `ids`."
   [model :- :keyword
-   id    :- ms/PositiveInt]
-  (t2/select-one model :id [:auto/param id]))
+   ids   :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select model :id [:in ids]))

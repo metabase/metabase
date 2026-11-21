@@ -100,15 +100,15 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/PersistedInfo :card_id card-id))
 
-(mu/defn card-for-persistence
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id [:auto/param card-id]))
+(mu/defn cards-for-persistence
+  "The Cards with `card-ids`."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select :model/Card :id [:in card-ids]))
 
-(mu/defn persisted-info-id-for-card
-  "The id of the PersistedInfo of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :id :model/PersistedInfo :card_id card-id))
+(mu/defn card-ids-with-persisted-info
+  "The ids of the Cards among `card-ids` that have a PersistedInfo."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in card-ids]))
 
 (mu/defn persisted-info-state
   "The state of the PersistedInfo with `id`, or nil."

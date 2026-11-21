@@ -1809,7 +1809,7 @@
                                     {:archived true})
               ;; Should have published document-archive event
               (is (some #(and (= :event/document-update (:topic %))
-                              (true? (:archived (:object (:event %)))))
+                              (some (comp true? :archived :object) (:changes (:event %))))
                         @events))))))
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
@@ -1821,7 +1821,7 @@
                                     {:archived false})
               ;; Should have published document-update event (not archive event)
               (is (some #(and (= :event/document-update (:topic %))
-                              (false? (:archived (:object (:event %)))))
+                              (some (comp false? :archived :object) (:changes (:event %))))
                         @events)))))))))
 
 (deftest document-archive-transaction-rollback-test
@@ -2022,7 +2022,7 @@
           ;; Should have published document-delete event
           (is (some #(= :event/document-delete (:topic %)) @events))
           (let [delete-event (first (filter #(= :event/document-delete (:topic %)) @events))]
-            (is (= "Event Test Document" (get-in delete-event [:event :previous-object :name])))
+            (is (= "Event Test Document" (get-in delete-event [:event :changes 0 :previous-object :name])))
             (is (= (mt/user->id :crowberto) (get-in delete-event [:event :user-id])))))))))
 
 (deftest document-position-reconciliation-on-create-test
@@ -2738,7 +2738,8 @@
               original  (mt/original-fn #'events/publish-event!)]
           (with-redefs [events/publish-event! (fn [topic event]
                                                 (when (= :event/document-update topic)
-                                                  (swap! published conj [topic (some-> event :object :id)]))
+                                                  (swap! published into (for [change (:changes event)]
+                                                                          [topic (some-> change :object :id)])))
                                                 (original topic event))]
             (mt/user-http-request :crowberto :post 200 (format "document/%d/public-link" (:id document)))
             (is (= [[:event/document-update (:id document)]] @published))
@@ -2756,7 +2757,7 @@
             original  (mt/original-fn #'events/publish-event!)]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/document-update topic)
-                                                (swap! published conj (some-> event :object :id)))
+                                                (swap! published into (map (comp :id :object) (:changes event))))
                                               (original topic event))]
           (mt/user-http-request :crowberto :put 200 (str "collection/" collection-id) {:archived true})
           (is (= [document-id] @published))

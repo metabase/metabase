@@ -14,8 +14,8 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- owner
-  "The id of the Dashboard whose subscriptions the `event` calls to sync, or nil."
+(defn- dashboard-of
+  "The id of the Dashboard whose subscriptions the row `event` calls to sync, or nil."
   [{:keys [model operation object previous-object] :as event}]
   (case model
     :model/Dashboard     (when (and (= :update operation)
@@ -26,31 +26,60 @@
                            (:dashboard_id (or object previous-object)))
     nil))
 
+(defn- owner
+  "The one owner of the row events of a batch that call to sync the subscriptions of a Dashboard, nil for the others."
+  [event]
+  (when (dashboard-of event)
+    ::subscriptions))
+
+(defn- new-pulse-cards
+  "The PulseCards to add so that the `subscriptions` of each Dashboard, rows of
+  [[pulse.db/subscriptions-for-dashboards]], show the Cards of its `dashcards`, by Dashboard id, each Pulse taking them
+  after its last position, from `max-positions`, by Pulse id."
+  [subscriptions dashcards max-positions]
+  (for [[dashboard-id rows] (group-by :dashboard-id subscriptions)
+        :let  [card-id->dashcard-id (into {} (map (juxt :card_id :id)) (get dashcards dashboard-id))
+               cards-to-add         (set/difference (set (keys card-id->dashcard-id)) (set (keep :card-id rows)))
+               to-add               (filter (comp cards-to-add key) card-id->dashcard-id)]
+        pulse-id                         (distinct (map :pulse-id rows))
+        [[card-id dashcard-id] position] (map vector
+                                              to-add
+                                              (drop (or (some-> (get max-positions pulse-id) inc) 0) (range)))]
+    {:pulse_id          pulse-id
+     :card_id           card-id
+     :dashboard_card_id dashcard-id
+     :position          position}))
+
 (defn- sync-subscriptions!
-  "Update the names and Collection ids of the Pulses of the Dashboard `dashboard-id`, and sync their PulseCards with
-  the dashcards the Dashboard has."
-  [dashboard-id _events _all-events]
-  (let [affected (pulse.db/pulse-card-pairs-for-dashboard dashboard-id)]
-    (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
-      (when-let [dashboard (pulse.db/dashboard dashboard-id)]
-        (let [correct-card-ids     (set (pulse.db/dashboard-card-ids-for-dashboard dashboard-id))
-              stale-card-ids       (set (keep :card-id affected))
-              cards-to-add         (set/difference correct-card-ids stale-card-ids)
-              card-id->dashcard-id (when (seq cards-to-add)
-                                     (pulse.db/dashcard-ids-by-card dashboard-id cards-to-add))
-              positions-for        (fn [pulse-id] (drop (pulse-card/next-position-for pulse-id) (range)))
-              new-pulse-cards      (for [pulse-id                         pulse-ids
-                                         [[card-id dashcard-id] position] (map vector
-                                                                               card-id->dashcard-id
-                                                                               (positions-for pulse-id))]
-                                     {:pulse_id          pulse-id
-                                      :card_id           card-id
-                                      :dashboard_card_id dashcard-id
-                                      :position          position})]
+  "Update the names and Collection ids of the Pulses of the Dashboards that the row `events` change, and sync their
+  PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the Dashboards."
+  [_owner events _all-events]
+  (when-let [dashboard-ids (not-empty (into [] (comp (keep dashboard-of) (distinct)) events))]
+    (when-let [subscriptions (not-empty (pulse.db/subscriptions-for-dashboards dashboard-ids))]
+      (let [dashboards    (into {} (map (juxt :id identity))
+                                (pulse.db/dashboards-by-id (vec (distinct (map :dashboard-id subscriptions)))))
+            subscriptions (filter #(contains? dashboards (:dashboard-id %)) subscriptions)
+            dashcards     (when (seq subscriptions)
+                            (group-by :dashboard_id (pulse.db/dashcards-with-cards-for-dashboards (vec (keys dashboards)))))
+            pulse-ids     (vec (distinct (map :pulse-id subscriptions)))
+            max-positions (when (seq pulse-ids) (pulse.db/max-pulse-card-positions pulse-ids))
+            stale         (into []
+                                (comp (filter (fn [{:keys [dashboard-id name collection-id]}]
+                                                (let [dashboard (get dashboards dashboard-id)]
+                                                  (or (not= name (:name dashboard))
+                                                      (not= collection-id (:collection_id dashboard))))))
+                                      (map :dashboard-id)
+                                      (distinct))
+                                subscriptions)
+            new-cards     (new-pulse-cards subscriptions dashcards max-positions)]
+        (when (or (seq stale) (seq new-cards))
           (t2/with-transaction [_conn]
             (binding [api/*current-user-id* nil]
-              (models.pulse/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
-                                                                       :collection_id (:collection_id dashboard)})
-              (pulse-card/append-pulse-cards! new-pulse-cards))))))))
+              (doseq [dashboard-id stale
+                      :let [dashboard (get dashboards dashboard-id)]]
+                (models.pulse/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
+                                                                         :collection_id (:collection_id dashboard)}))
+              (when (seq new-cards)
+                (pulse-card/append-pulse-cards! new-cards)))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)

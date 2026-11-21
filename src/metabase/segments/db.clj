@@ -60,6 +60,11 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (into {} (t2/select-fn->fn :id :db_id [:model/Table :id :db_id] :id [:in table-ids])))
+
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
