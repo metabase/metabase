@@ -8,6 +8,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
@@ -196,8 +197,8 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (perms/set-database-permission! (:id other-group) (mt/id) :perms/view-data :unrestricted)
           (group-access/add-groups! app [(:id group)])
-          (perms/add-user-to-group! (mt/user->id :rasta) (:id group))
-          (perms/add-user-to-group! (mt/user->id :rasta) (:id other-group))
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id group))
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) (:id other-group))
           (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
                   (group-access/permission-warnings app))))))))
 

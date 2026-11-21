@@ -18,6 +18,7 @@
    [metabase.measures.test-util :as measures.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.revisions.test-util :as revisions.tu]
@@ -492,7 +493,7 @@
   (mt/with-premium-features #{:sandboxes :advanced-permissions}
     (mt/with-temp [:model/PermissionsGroup {group-id :id}   {}
                    :model/User             {analyst-id :id} {:is_data_analyst true}]
-      (perms/add-user-to-group! analyst-id group-id)
+      (perms-group-membership/add-user-to-group! analyst-id group-id)
       (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
       (mt/with-current-user analyst-id
         (thunk)))))

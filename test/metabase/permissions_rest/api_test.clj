@@ -11,6 +11,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -75,7 +76,7 @@
   "Add `user-id` to the Data Analysts group, temporarily enabling `advanced-permissions` to get past the addition gate."
   [user-id]
   (mt/with-premium-features #{:advanced-permissions}
-    (perms/add-user-to-group! user-id (data-analyst-group-id))))
+    (perms-group-membership/add-user-to-group! user-id (data-analyst-group-id))))
 
 (defn- data-analyst-group-listed? []
   (contains? (set (map :id (fetch-groups))) (data-analyst-group-id)))
@@ -109,7 +110,7 @@
        (add-to-data-analyst-group-with-feature! user-id)
        (mt/with-premium-features #{}
          (is (data-analyst-group-listed?))
-         (perms/remove-user-from-group! user-id (data-analyst-group-id))
+         (perms-group-membership/remove-user-from-group! user-id (data-analyst-group-id))
          (is (not (data-analyst-group-listed?))))))))
 
 (mt/when-ee-evailable
@@ -674,7 +675,7 @@
                      :model/Database         {db-id :id}  {}
                      :model/Table            {table-id :id} {:db_id db-id, :schema "PUBLIC"}]
         (mt/with-no-data-perms-for-all-users!
-          (perms/add-user-to-group! (mt/user->id :rasta) group)
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
           ;; First set both permissions to unrestricted/full
           (mt/user-http-request
            :crowberto :put 200 "permissions/graph"
@@ -958,7 +959,7 @@
      (let [group-id (u/the-id (perms-group/data-analyst))]
        (mt/with-temp [:model/User {user-id :id} {}]
          (mt/with-premium-features #{:advanced-permissions}
-           (perms/add-user-to-group! user-id group-id))
+           (perms-group-membership/add-user-to-group! user-id group-id))
          (mt/with-premium-features #{}
            (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
            (is (not (t2/exists? :model/PermissionsGroupMembership :user_id user-id :group_id group-id)))

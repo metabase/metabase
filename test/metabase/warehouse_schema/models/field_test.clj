@@ -3,8 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -66,7 +66,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) pg)
       (t2/delete! :model/DataPermissions :db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
@@ -84,7 +84,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) pg)
       (t2/delete! :model/DataPermissions :db_id db-id)
       ;; Start with blocked permissions
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
@@ -103,7 +103,7 @@
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
                    :model/PermissionsGroup pg {}]
-      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (perms-group-membership/add-user-to-group! (mt/user->id :rasta) pg)
       (t2/delete! :model/DataPermissions :db_id db-id)
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)

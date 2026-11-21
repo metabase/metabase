@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.sso.db :as sso.db]
    [metabase.sso.ldap :as ldap]
    [metabase.sso.ldap.default-implementation :as ldap.impl]
@@ -24,10 +25,10 @@
   (when (seq to-remove)
     (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
     (try
-      (perms/remove-user-from-groups! user-or-id to-remove)
+      (perms-group-membership/remove-user-from-groups! user-or-id to-remove)
       (catch clojure.lang.ExceptionInfo e
-        ;; in case sync attempts to delete the last admin, the pre-delete hooks of
-        ;; [[metabase.permissions.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
+        ;; in case sync attempts to delete the last admin,
+        ;; [[metabase.permissions.models.permissions-group-membership/remove-user-from-groups!]] will throw an exception.
         ;; but we don't want to block user from logging-in, so catch this exception and log a warning
         (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
           (log/warn "Attempted to remove the last admin during group sync!"
@@ -39,7 +40,7 @@
   (doseq [group-or-id to-add]
     (log/debugf "Adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))
     (try
-      (perms/add-user-to-group! user-or-id group-or-id)
+      (perms-group-membership/add-user-to-group! user-or-id group-or-id)
       (catch Throwable e
         ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
         ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),

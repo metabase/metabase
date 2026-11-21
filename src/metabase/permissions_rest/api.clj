@@ -288,7 +288,7 @@
     (perms/check-tenant-groups-visible [group_id])
     (when is_group_manager
       (perms/check-advanced-permissions-enabled :group-manager))
-    (perms/add-user-to-group! user_id group_id is_group_manager)
+    (permissions-group-membership/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (:members (t2/hydrate (t2/instance :model/PermissionsGroup {:id group_id}) :members))))
@@ -319,7 +319,7 @@
   (api/write-check (permissions-rest.db/permissions-group group-id))
   (api/check-400 (not= group-id (u/the-id (perms/admin-group))))
   (perms/check-tenant-groups-visible [group-id])
-  (perms/remove-all-users-from-group! group-id)
+  (permissions-group-membership/remove-all-users-from-group! group-id)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :delete "/membership/:id" :- ::api/generic-204-no-content
@@ -330,5 +330,5 @@
     (api/check-404 membership)
     (perms/check-tenant-groups-visible [(:group_id membership)])
     (api/write-check membership)
-    (perms/remove-user-from-group! (:user_id membership) (:group_id membership))
+    (permissions-group-membership/remove-user-from-group! (:user_id membership) (:group_id membership))
     api/generic-204-no-content))

@@ -21,6 +21,7 @@
    [metabase.mcp.v2.tools.definitions :as tools.definitions]
    [metabase.measures.api :as measures.api]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.segments.rest.api :as segments.api]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -674,7 +675,7 @@
                      :model/User {plain-id :id} {}
                      :model/User {blind-analyst-id :id} {:is_data_analyst true}]
         (doseq [user-id [analyst-id plain-id]]
-          (perms/add-user-to-group! user-id group-id))
+          (perms-group-membership/add-user-to-group! user-id group-id))
         (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
         (let [segment-args {:method "create" :table_id (mt/id :venues)
@@ -724,7 +725,7 @@
          (mt/with-model-cleanup [:model/Segment :model/Measure :model/Revision]
            (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                           :model/User {analyst-id :id} {:is_data_analyst true}]
-             (perms/add-user-to-group! analyst-id group-id)
+             (perms-group-membership/add-user-to-group! analyst-id group-id)
              ;; Block the database for this group first, then grant venues back. `with-no-data-perms-for-all-users!`
              ;; only resets the All Users group, so a freshly created group's default on `checkins` is ambient
              ;; state — and this test is only meaningful while the analyst cannot author there.

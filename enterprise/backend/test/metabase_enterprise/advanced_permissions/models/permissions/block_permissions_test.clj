@@ -10,6 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -165,7 +166,7 @@
                      :model/Card                       {card-id :id} {:collection_id collection-id
                                                                       :dataset_query query}
                      :model/Permissions                _ {:group_id group-id :object (perms/collection-read-path collection-id)}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-user-to-group! user-id group-id)
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -223,7 +224,7 @@
                             :limit        1}}]
       (mt/with-temp [:model/User                       {user-id :id} {}
                      :model/PermissionsGroup           {group-id :id} {}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-user-to-group! user-id group-id)
         (mt/with-premium-features #{:advanced-permissions}
           (mt/with-no-data-perms-for-all-users!
             (testing "legacy-no-self-service does not override block perms for a table"

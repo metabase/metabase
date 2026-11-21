@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
@@ -46,7 +47,7 @@
           (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app)))
         (testing "a member can open a data app"
           (group-access/add-groups! app [group-id])
-          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
           (is (str/includes? (str (mt/user-real-request :rasta :get 200 (data-apps.tu/app-url app "bundle")))
                              "BUNDLE")))
         (testing "a non-superuser is still forbidden from managing data apps"
@@ -116,7 +117,7 @@
                                                                                                       :kind      "row/update"
                                                                                                       :table_id  (mt/id :venues)}]
             (group-access/add-groups! app [group-id])
-            (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+            (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
             (testing "the group with access reads the action copied into the app collection"
               (is (=? {:id copied-id}
                       (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
@@ -133,7 +134,7 @@
       (mt/with-temp [:model/DataApp          old            {:version 1}
                      :model/DataApp          current        {:bundle app-bundle :version 2}
                      :model/PermissionsGroup {group-id :id} {}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group-id)
         (doseq [app [old current]]
           (group-access/add-groups! app [group-id]))
         (with-redefs [data-app.config/supported-app-version 2]

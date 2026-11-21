@@ -9,8 +9,8 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
@@ -246,11 +246,11 @@
 
 (defn- do-with-group! [group-properties group-members f]
   (mt/with-temp [:model/PermissionsGroup group group-properties]
-    (perms/add-users-to-groups! (for [member group-members]
-                                  {:user (if (keyword? member)
-                                           (mt/user->id member)
-                                           (u/the-id member))
-                                   :group group}))
+    (perms-group-membership/add-users-to-groups! (for [member group-members]
+                                                   {:user (if (keyword? member)
+                                                            (mt/user->id member)
+                                                            (u/the-id member))
+                                                    :group group}))
     (f group)))
 
 (defmacro ^:private with-groups! [[group-binding group-properties members & more-groups] & body]

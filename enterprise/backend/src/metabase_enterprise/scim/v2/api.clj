@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -466,9 +467,9 @@
                  group-id (count user-entity-ids))
       (do
         (doseq [user-id (set/difference current-ids desired-ids)]
-          (perms/remove-user-from-group! user-id group-id))
-        (perms/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
-                                      {:group group-id :user user-id}))))))
+          (perms-group-membership/remove-user-from-group! user-id group-id))
+        (perms-group-membership/add-users-to-groups! (for [user-id (set/difference desired-ids current-ids)]
+                                                       {:group group-id :user user-id}))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

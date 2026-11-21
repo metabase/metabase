@@ -6,8 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -175,7 +175,7 @@
                      :model/Segment segment {:name "Test Segment"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (price-definition)}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -214,7 +214,7 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable

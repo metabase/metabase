@@ -11,6 +11,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
@@ -160,11 +161,11 @@
     (cond
       (and superuser? (not in-admin-group?))
       (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms/add-user-to-group! user-id (u/the-id (perms/admin-group))))
+       (perms-group-membership/add-user-to-group! user-id (u/the-id (perms/admin-group))))
 
       (and (not superuser?) in-admin-group?)
       (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms/remove-user-from-group! user-id (u/the-id (perms/admin-group)))))))
+       (perms-group-membership/remove-user-from-group! user-id (u/the-id (perms/admin-group)))))))
 
 (defn- validate-last-admin-not-archived!
   "Prevent archiving the last admin user by throwing an exception."
@@ -221,7 +222,7 @@
       (perms/allow-changing-all-users-group-members
         (perms/allow-changing-all-external-users-group-members
          (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms/add-user-to-groups! user-id (map u/the-id groups))))))
+          (perms-group-membership/add-user-to-groups! user-id (map u/the-id groups))))))
     <>))
 
 (t2/define-before-update :model/User
@@ -463,8 +464,8 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-        (perms/remove-user-from-groups! user-id to-remove)
-        (perms/add-user-to-groups! user-id to-add)))
+        (perms-group-membership/remove-user-from-groups! user-id to-remove)
+        (perms-group-membership/add-user-to-groups! user-id to-add)))
     true))
 
 (mu/defn add-attributes

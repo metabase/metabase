@@ -4,8 +4,8 @@
    [clojure.set :refer [subset?]]
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
@@ -310,7 +310,7 @@
                   (remove-user-from-group! [req-user status group-to-remove]
                     (u/ignore-exceptions
                       ;; ensure `user-to-update` is in `group-to-remove`
-                      (perms/add-user-to-group! user-to-update group-to-remove))
+                      (perms-group-membership/add-user-to-group! user-to-update group-to-remove))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
                                                                                 (:id %))
@@ -440,9 +440,9 @@
                  :model/User             plain         {}
                  :model/User             member        {}
                  :model/User             newcomer      {}]
-    (perms/add-user-to-group! manager group true)
-    (perms/add-user-to-group! other-manager other-group true)
-    (perms/add-user-to-group! member group)
+    (perms-group-membership/add-user-to-group! manager group true)
+    (perms-group-membership/add-user-to-group! other-manager other-group true)
+    (perms-group-membership/add-user-to-group! member group)
     (f {:group         group
         :manager       manager
         :other-manager other-manager

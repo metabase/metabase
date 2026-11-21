@@ -13,8 +13,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.pulse.db :as pulse.db]
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
@@ -177,7 +177,7 @@
           (testing "without `log-rows!`, a write that bypasses the model is not logged"
             (is (= [] (logged-by #(t2/update! :permissions_group :id (:id group) {:name "raw"})))))
           (testing "a group membership added"
-            (let [rows (logged-by #(perms/add-user-to-group! user group))]
+            (let [rows (logged-by #(perms-group-membership/add-user-to-group! user group))]
               (is (= [["permissions_group_membership"
                        (t2/select-one-pk :model/PermissionsGroupMembership :user_id (:id user) :group_id (:id group))
                        "insert"]]
