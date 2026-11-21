@@ -774,7 +774,11 @@ describe("View Header | Saved GUI question", () => {
 
     it("keeps custom columns that use aggregations when removing a filter from the previous stage (metabase#13857, metabase#14193)", async () => {
       const { updateQuestion } = setup({
-        card: getSavedGUIQuestionCard(FILTERED_MULTI_STAGE_GUI_QUESTION),
+        card: getSavedGUIQuestionCard(
+          FILTERED_MULTI_STAGE_GUI_QUESTION as Partial<
+            Card<StructuredDatasetQuery>
+          >,
+        ),
         queryBuilderMode: "view",
       });
 
