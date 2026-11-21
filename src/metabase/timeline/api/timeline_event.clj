@@ -54,7 +54,7 @@
                                        :collection_id (:collection_id timeline)}
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
-      (timeline-event/create-timeline-event! tl-event))))
+      (u/prog1 (timeline.db/insert-timeline-event! tl-event)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

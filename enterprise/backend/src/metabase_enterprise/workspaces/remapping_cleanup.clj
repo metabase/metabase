@@ -10,6 +10,7 @@
    has no workspace deps beyond the model registration."
   (:require
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.table-remapping]
    [metabase.driver.sql :as driver.sql]))
 
@@ -39,4 +40,4 @@
    Returns the count of rows deleted."
   [database database-id output-namespace]
   (long
-   (ws.db/delete-table-remappings-into! database-id (iso-db-slot database) (or output-namespace ""))))
+   (table-remapping/delete-table-remappings-into! database-id (iso-db-slot database) (or output-namespace ""))))

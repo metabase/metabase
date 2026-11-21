@@ -138,17 +138,6 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn insert-tag!
-  "Insert a TransformTag named `name` and return the inserted instance."
-  [name :- :string]
-  (t2/insert-returning-instance! :model/TransformTag {:name name}))
-
-(mu/defn update-tag-name!
-  "Set the name of the TransformTag with `tag-id`."
-  [tag-id :- ms/PositiveInt
-   name   :- :string]
-  (t2/update! :model/TransformTag :id tag-id {:name name}))
-
 (mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
   "The id of the TransformTag named `tag-name`, or nil."
   [tag-name :- :string]

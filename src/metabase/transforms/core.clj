@@ -68,9 +68,6 @@
   existing-trigger]
  [metabase.transforms.models.transform
   update-transform-tags!]
- [metabase.transforms.models.transform-tag
-  create-transform-tag!
-  update-transform-tag!]
  [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs
