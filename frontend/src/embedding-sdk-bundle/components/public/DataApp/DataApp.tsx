@@ -2,6 +2,7 @@ import { type CSSProperties, useId, useMemo } from "react";
 
 import { PublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper/SdkError";
+import { useDataAppPath } from "embedding-sdk-bundle/hooks/private/data-apps/use-data-app-path";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { useSdkStore } from "embedding-sdk-bundle/store";
@@ -16,14 +17,49 @@ import { DataAppFrame } from "./DataAppFrame";
 
 /** @category DataApp */
 export interface DataAppProps {
-  // TODO(DAT-115): add `onPathChange` so the host can navigate back after the user navigates inside the app.
   /**
-   * App slug and optional route/query, such as `my-store/orders?active=true`.
+   * The page the app opens first: the app slug and optional route/query, such as `my-store/orders?active=true`.
+   *
+   * Later changes are ignored, including a new app slug. To show another app, change the component's `key`.
+   *
+   * Use {@link DataAppProps.path | path} instead to navigate the app from the host.
+   **/
+  initialPath?: string;
+
+  /**
+   * Controlled path: the app slug and optional route/query, such as `my-store/orders?active=true`.
    *
    * Changing only the route or query navigates within the app.
    * Changing the app slug remounts the iframe.
+   * The user can still navigate inside the app, for example with a `DataAppLink`.
+   *
+   * Pair with {@link DataAppProps.onPathChange | onPathChange} to stay in sync with that navigation,
+   * so the host can always navigate, including back to an earlier page.
    **/
-  path: string;
+  path?: string;
+
+  /**
+   * Called with the new path whenever the app's page changes, for example
+   * when the user clicks a `DataAppLink`.
+   *
+   * The path has the same format as `path`, such as `my-store/orders/42?tab=items`.
+   *
+   * It is not called when the host changes the `path` prop.
+   *
+   * With `path`, pass each reported path back to it unchanged, directly or through your router. A reported path
+   * that comes back later is treated as that report, not as a request to navigate.
+   *
+   * @example
+   * ```tsx
+   * const [path, setPath] = useState("my-store/orders");
+   *
+   * <>
+   *   <button onClick={() => setPath("my-store/orders")}>Orders</button>
+   *   <DataApp path={path} onPathChange={setPath} />
+   * </>
+   * ```
+   **/
+  onPathChange?: (path: string) => void;
 
   className?: string;
   style?: CSSProperties;
@@ -39,7 +75,13 @@ export const DataApp = (props: DataAppProps) => (
   </PublicComponentWrapper>
 );
 
-function DataAppInner({ path, ...props }: DataAppProps) {
+function DataAppInner({
+  initialPath,
+  path: controlledPath,
+  ...props
+}: DataAppProps) {
+  const path = useDataAppPath({ initialPath, path: controlledPath });
+
   const {
     state: { props: providerProps },
   } = useMetabaseProviderPropsStore();
@@ -106,6 +148,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
       {...props}
       path={route.path}
       slug={route.slug}
+      isPathControlled={controlledPath !== undefined}
       origin={route.origin}
       initialSrc={route.initialSrc}
       authConfig={authConfig}

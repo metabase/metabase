@@ -9,7 +9,8 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import type { ReactElement, ReactNode } from "react";
+import userEvent from "@testing-library/user-event";
+import { type ReactElement, type ReactNode, useState } from "react";
 
 import { renderWithProviders } from "__support__/ui";
 import { trackSdkSimpleEvent } from "embedding-sdk-bundle/analytics/event";
@@ -77,29 +78,71 @@ const settingsMessage = (path: string) => ({
   },
 });
 
-const message = (
+const navigateMessage = (
+  path: string,
+  navigationId: unknown = expect.any(Number),
+) => ({
+  type: "metabase.embed.navigateToDataAppPath",
+  data: { path, navigationId },
+});
+
+const messageEvent = (
   iframe: HTMLIFrameElement,
   type: string,
   overrides: Partial<MessageEventInit> = {},
 ) =>
-  act(() =>
-    window.dispatchEvent(
-      new MessageEvent("message", {
-        source: iframe.contentWindow,
-        origin: ORIGIN,
-        data: { type },
-        ...overrides,
-      }),
-    ),
-  );
+  new MessageEvent("message", {
+    source: iframe.contentWindow,
+    origin: ORIGIN,
+    data: { type },
+    ...overrides,
+  });
 
-function setup(props: DataAppProps = { path: "boba-hq" }) {
-  const view = render(<DataApp {...props} />);
+const message = (...args: Parameters<typeof messageEvent>) =>
+  act(() => window.dispatchEvent(messageEvent(...args)));
+
+const pathChangeMessage = (
+  iframe: HTMLIFrameElement,
+  path: unknown,
+  navigationId?: number,
+) =>
+  message(iframe, "metabase.embed.dataAppPathChange", {
+    data: {
+      type: "metabase.embed.dataAppPathChange",
+      data: { path, navigationId },
+    },
+  });
+
+const getNavigationId = (postMessage: jest.SpyInstance) => {
+  const [lastMessage] = postMessage.mock.lastCall ?? [];
+  return lastMessage?.data?.navigationId;
+};
+
+function HostWithPathState() {
+  const [path, setPath] = useState("boba-hq");
+
+  return (
+    <>
+      <p data-testid="host-path">{path}</p>
+      <button onClick={() => setPath("boba-hq")}>Home</button>
+      <button onClick={() => setPath("boba-hq/orders/42")}>Orders</button>
+      <DataApp path={path} onPathChange={setPath} />
+    </>
+  );
+}
+
+function renderFrame(ui: ReactElement) {
+  const view = render(ui);
   const iframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
   const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
 
   return { ...view, iframe, postMessage };
 }
+
+const setup = (props: DataAppProps = { path: "boba-hq" }) =>
+  renderFrame(<DataApp {...props} />);
+
+const setupHost = () => renderFrame(<HostWithPathState />);
 
 describe("DataApp", () => {
   beforeEach(() => {
@@ -268,14 +311,79 @@ describe("DataApp", () => {
 
     expect(screen.getByTestId("data-app-frame")).toBe(iframe);
     expect(iframe.src).toBe(initialSrc);
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith(
-      settingsMessage("boba-hq/orders?active=true"),
-      ORIGIN,
-    );
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq/orders?active=true"), ORIGIN],
+    ]);
   });
 
-  it("sends the latest path once the iframe is ready after a route change", () => {
+  it("ignores later changes to initialPath, including a new app slug", () => {
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    for (const initialPath of ["boba-hq/orders", "milk-tea-hq/orders"]) {
+      rerender(<DataApp initialPath={initialPath} />);
+      expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    }
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("calls onPathChange with initialPath and never navigates the app", () => {
+    const onPathChange = jest.fn<void, [string]>();
+    const { iframe, postMessage } = setup({
+      initialPath: "boba-hq",
+      onPathChange,
+    });
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/orders/42?tab=items");
+    // a page that `path` rejects is not reported, and the app stays on it
+    pathChangeMessage(iframe, "boba-hq/customers/acme%2Feu");
+
+    expect(onPathChange.mock.calls).toEqual([["boba-hq/orders/42?tab=items"]]);
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it("stays on the last path when path is removed", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    rerender(<DataApp initialPath="boba-hq" path="boba-hq/orders/42" />);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      navigateMessage("boba-hq/orders/42"),
+      ORIGIN,
+    );
+    postMessage.mockClear();
+
+    rerender(<DataApp initialPath="boba-hq" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+  });
+
+  it("uses path and warns when initialPath is also set", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const { iframe } = setup({ initialPath: "milk-tea-hq", path: "boba-hq" });
+
+    expect(new URL(iframe.src).pathname).toBe(
+      "/mb/embed/embedded-apps/boba-hq",
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "`initialPath` is ignored when `path` is set. Pass only one.",
+    );
+
+    warn.mockRestore();
+  });
+
+  it("navigates to the latest path once the iframe is ready after a route change", () => {
     const { iframe, postMessage, rerender } = setup();
 
     rerender(<DataApp path="boba-hq/orders" />);
@@ -283,12 +391,195 @@ describe("DataApp", () => {
 
     message(iframe, "metabase.embed.iframeReady");
 
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith(
-      settingsMessage("boba-hq/orders"),
-      ORIGIN,
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq"), ORIGIN],
+      [navigateMessage("boba-hq/orders"), ORIGIN],
+    ]);
+  });
+
+  it("resends the settings without moving the app when the locale changes", () => {
+    const { iframe, postMessage, rerender } = setup();
+
+    message(iframe, "metabase.embed.iframeReady");
+    rerender(<DataApp path="boba-hq/orders" />);
+    postMessage.mockClear();
+
+    act(() =>
+      ensureMetabaseProviderPropsStore().setProps({
+        authConfig: CONFIG,
+        locale: "de",
+      }),
+    );
+
+    expect(postMessage.mock.calls).toEqual([
+      [
+        {
+          ...settingsMessage("boba-hq"),
+          data: { ...settingsMessage("boba-hq").data, locale: "de" },
+        },
+        ORIGIN,
+      ],
+    ]);
+  });
+
+  it("lets the host navigate back after the user navigates inside the app", async () => {
+    const { iframe, postMessage } = setupHost();
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders/42?tab=items");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/42?tab=items",
+    );
+
+    postMessage.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Home" }));
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
+
+  it("sends the app back to the host's path when it reports a page that `path` rejects", () => {
+    const { iframe, postMessage } = setupHost();
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/customers/acme%2Feu");
+
+    expect(screen.getByTestId("host-path")).toHaveTextContent(/^boba-hq$/);
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
+
+  it("does not send echoes back when the host applies reported paths later", () => {
+    const reportedPaths: string[] = [];
+    let setHostPath: (path: string) => void = () => {};
+
+    function HostWithLatePathUpdates() {
+      const [path, setPath] = useState("boba-hq");
+      setHostPath = setPath;
+
+      return (
+        <DataApp
+          path={path}
+          onPathChange={(path) => reportedPaths.push(path)}
+        />
+      );
+    }
+
+    const { iframe, postMessage } = renderFrame(<HostWithLatePathUpdates />);
+
+    message(iframe, "metabase.embed.iframeReady");
+    postMessage.mockClear();
+
+    pathChangeMessage(iframe, "boba-hq/orders");
+    pathChangeMessage(iframe, "boba-hq/orders/latest");
+
+    // e.g. a router that applies each navigation a moment later
+    for (const path of reportedPaths) {
+      act(() => setHostPath(path));
+    }
+
+    expect(postMessage).not.toHaveBeenCalled();
+
+    // the host can still navigate to an earlier page afterwards
+    act(() => setHostPath("boba-hq/orders"));
+
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq/orders"), ORIGIN],
+    ]);
+  });
+
+  it("navigates to a page the app left before the host rendered its reports", async () => {
+    const { iframe, postMessage } = setupHost();
+
+    message(iframe, "metabase.embed.iframeReady");
+
+    // e.g. a page that redirects straight back, with both reports rendered together
+    act(() => {
+      for (const path of ["boba-hq/orders/42", "boba-hq"]) {
+        window.dispatchEvent(
+          messageEvent(iframe, "metabase.embed.dataAppPathChange", {
+            data: { type: "metabase.embed.dataAppPathChange", data: { path } },
+          }),
+        );
+      }
+    });
+
+    postMessage.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Orders" }));
+
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq/orders/42"), ORIGIN],
+    ]);
+  });
+
+  it("navigates to path when the host starts passing it after the user navigated", () => {
+    const { iframe, postMessage, rerender } = setup({
+      initialPath: "boba-hq",
+    });
+
+    message(iframe, "metabase.embed.iframeReady");
+    pathChangeMessage(iframe, "boba-hq/orders");
+    postMessage.mockClear();
+
+    rerender(<DataApp path="boba-hq" />);
+
+    expect(screen.getByTestId("data-app-frame")).toBe(iframe);
+    expect(postMessage.mock.calls).toEqual([
+      [navigateMessage("boba-hq"), ORIGIN],
+    ]);
+  });
+
+  it("ignores a report sent before the iframe handled the host's latest navigation", async () => {
+    const { iframe, postMessage } = setupHost();
+
+    message(iframe, "metabase.embed.iframeReady");
+    await userEvent.click(screen.getByRole("button", { name: "Orders" }));
+    const navigationId = getNavigationId(postMessage);
+
+    // the user clicked an in-app link before the iframe handled the host's navigation
+    pathChangeMessage(iframe, "boba-hq/products");
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/orders/42",
+    );
+
+    // a click after the iframe handled it is reported
+    pathChangeMessage(iframe, "boba-hq/customers", navigationId);
+    expect(screen.getByTestId("host-path")).toHaveTextContent(
+      "boba-hq/customers",
     );
   });
+
+  it.each([
+    { name: "with onPathChange", onPathChange: jest.fn<void, [string]>() },
+    { name: "without onPathChange", onPathChange: undefined },
+  ])(
+    "sends a page the app reported when the host goes back to it after navigating elsewhere ($name)",
+    ({ onPathChange }) => {
+      const { iframe, postMessage, rerender } = setup({
+        path: "boba-hq",
+        onPathChange,
+      });
+
+      message(iframe, "metabase.embed.iframeReady");
+      pathChangeMessage(iframe, "boba-hq/orders");
+      rerender(<DataApp path="boba-hq/products" onPathChange={onPathChange} />);
+      postMessage.mockClear();
+
+      rerender(<DataApp path="boba-hq/orders" onPathChange={onPathChange} />);
+
+      expect(postMessage).toHaveBeenCalledWith(
+        navigateMessage("boba-hq/orders"),
+        ORIGIN,
+      );
+    },
+  );
 
   it("keeps the same iframe when a leading slash is added", () => {
     const { iframe, rerender } = setup();
@@ -453,11 +744,83 @@ describe("DataApp", () => {
     await waitFor(() =>
       expect(postMessage).toHaveBeenCalledWith(sessionMessage(), ORIGIN),
     );
+  });
 
-    // going back to the route that failed keeps the working iframe
+  it("keeps the new iframe when going back to the route that failed before it authenticates", async () => {
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    const { iframe, rerender } = setup({ path: "boba-hq/orders" });
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    rerender(<DataApp path="boba-hq/products" />);
+    const nextIframe =
+      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
+
     rerender(<DataApp path="boba-hq/orders" />);
+
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByTestId("data-app-frame")).toBe(nextIframe);
+  });
+
+  it("opens the host's path in the iframe loaded after an error", async () => {
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    const { iframe, rerender } = setup({ path: "boba-hq" });
+    message(iframe, "metabase.embed.iframeReady");
+
+    // the user navigates inside the app, and this host does not mirror it in `path`
+    pathChangeMessage(iframe, "boba-hq/orders");
+
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    rerender(<DataApp path="boba-hq/orders" />);
+    const nextIframe =
+      await screen.findByTestId<HTMLIFrameElement>("data-app-frame");
+    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
+    message(nextIframe, "metabase.embed.iframeReady");
+
+    expect(postMessage.mock.calls).toEqual([
+      [settingsMessage("boba-hq"), ORIGIN],
+      [navigateMessage("boba-hq/orders"), ORIGIN],
+    ]);
+  });
+
+  it("loads a new iframe when authentication fails before a route change renders", async () => {
+    let setHostPath: (path: string) => void = () => {};
+
+    function HostWithPathSetter() {
+      const [path, setPath] = useState("boba-hq");
+      setHostPath = setPath;
+
+      return <DataApp path={path} />;
+    }
+
+    const { iframe } = renderFrame(<HostWithPathSetter />);
+    message(iframe, "metabase.embed.iframeReady");
+
+    requestSession.mockRejectedValueOnce({ message: "SSO is unavailable" });
+
+    // the route change has not rendered when authentication fails
+    await act(async () => {
+      window.dispatchEvent(
+        messageEvent(iframe, "metabase.embed.requestSessionToken"),
+      );
+      setHostPath("boba-hq/orders/42");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const nextIframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+    expect(nextIframe).not.toBe(iframe);
+
+    const postMessage = jest.spyOn(nextIframe.contentWindow!, "postMessage");
+    message(nextIframe, "metabase.embed.iframeReady");
+
+    expect(postMessage).toHaveBeenCalledWith(
+      navigateMessage("boba-hq/orders/42"),
+      ORIGIN,
+    );
   });
 
   it("shows an error when the provider cannot refresh the session", async () => {

@@ -4,7 +4,10 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
-import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type {
+  SdkIframeEmbedSettings,
+  SdkIframeEmbedTagMessage,
+} from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 
 import { useDataAppBundle } from "../../../lib/use-data-app-bundle";
@@ -43,8 +46,10 @@ export function setupSettings(
   overrides: Partial<Settings> = {},
   parentOrigin: string | null = "https://host.example.com",
 ) {
+  const sendMessage = jest.fn<void, [SdkIframeEmbedTagMessage]>();
+
   mockUseSdkIframeEmbedEventBus.mockReturnValue({
-    sendMessage: jest.fn(),
+    sendMessage,
     dataAppPathNavigationRequest: null,
     parentOrigin,
     embedSettings: {
@@ -54,6 +59,8 @@ export function setupSettings(
       ...overrides,
     },
   });
+
+  return { sendMessage };
 }
 
 export function setup() {
