@@ -357,6 +357,45 @@
       (finally
         (t2/delete! :model/User :email email)))))
 
+(deftest after-rollback-callback-test
+  (let [run (fn [body]
+              (let [calls (atom [])
+                    note! (fn [k] (mdb.connection/do-after-rollback
+                                   #(swap! calls conj [k (mdb.connection/in-transaction?)])))]
+                (try (body note!) (catch clojure.lang.ExceptionInfo _))
+                @calls))]
+    (testing "an outermost rollback runs the callback outside the transaction"
+      (is (= [[:a false]]
+             (run (fn [note!] (t2/with-transaction [_conn] (note! :a) (throw (ex-info "roll back" {}))))))))
+    (testing "a rollback-only scope runs it"
+      (is (= [[:a false]]
+             (run (fn [note!] (t2/with-transaction [_conn nil {:rollback-only true}] (note! :a)))))))
+    (testing "a commit does not"
+      (is (= [] (run (fn [note!] (t2/with-transaction [_conn] (note! :a)))))))
+    (testing "outside a transaction it never runs"
+      (is (= [] (run (fn [note!] (note! :a))))))
+    (testing "a nested rollback runs the nested scope's callbacks at once, inside the enclosing transaction"
+      (is (= [[:nested true]]
+             (run (fn [note!]
+                    (t2/with-transaction [_conn]
+                      (note! :outer)
+                      (t2/with-transaction [_conn nil {:rollback-only true}]
+                        (note! :nested))))))))
+    (testing "an enclosing rollback runs the callbacks of a nested scope that succeeded"
+      (is (= [[:outer false] [:nested false]]
+             (run (fn [note!]
+                    (t2/with-transaction [_conn]
+                      (note! :outer)
+                      (t2/with-transaction [_conn]
+                        (note! :nested))
+                      (throw (ex-info "roll back" {}))))))))
+    (testing "a callback registered after the rollback, by a thread started inside the transaction, runs at once"
+      (let [register-late (t2/with-transaction [_conn nil {:rollback-only true}]
+                            (bound-fn [f] (mdb.connection/do-after-rollback f)))
+            ran?          (atom false)]
+        (register-late #(reset! ran? true))
+        (is @ran?)))))
+
 (deftest with-temp-rollback-boundary-discards-after-commit-callback-test
   (let [calls (atom [])]
     (mt/with-temp [:model/User _user]

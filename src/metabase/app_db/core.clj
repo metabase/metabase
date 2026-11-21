@@ -46,6 +46,7 @@
   with-application-db
   do-before-commit
   do-after-commit
+  do-after-rollback
   in-transaction?
   mariadb?
   quartz-data-source

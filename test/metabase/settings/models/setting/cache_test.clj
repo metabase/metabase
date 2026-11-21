@@ -171,13 +171,35 @@
             (is (neg? (compare marker cached-marker)) "premise: the other instance's marker sorts lower")
             (is (= "another instance" (force-check-and-read-test-setting-1!)))))))))
 
-(deftest uncommitted-write-is-read-inside-its-transaction-test
-  (testing "inside the transaction that writes a setting, reads see the write"
+(deftest rolled-back-write-is-undone-in-the-cache-test
+  (testing "a write rolled back by its caller's transaction is gone from the cache after the next check"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "committed")
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"roll back"
+                            (t2/with-transaction [_conn]
+                              (setting-test/test-setting-1! "rolled back")
+                              (testing "inside the transaction, the write's reload of the cache sees the write"
+                                (is (= "rolled back" (setting-test/test-setting-1))))
+                              (throw (ex-info "roll back" {})))))
+      (is (= "committed" (force-check-and-read-test-setting-1!))))))
+
+(deftest nested-rolled-back-write-is-undone-in-the-cache-test
+  (testing "a write rolled back by a nested scope is gone from the cache while the enclosing transaction goes on"
     (mt/discard-setting-changes [test-setting-1]
       (setting-test/test-setting-1! "committed")
       (t2/with-transaction [_conn]
-        (setting-test/test-setting-1! "uncommitted")
-        (is (= "uncommitted" (force-check-and-read-test-setting-1!)))))))
+        (setting-test/test-setting-1! "outer")
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (setting-test/test-setting-1! "nested"))
+        (is (= "outer" (setting-test/test-setting-1)))))))
+
+(deftest write-in-with-temp-is-undone-in-the-cache-test
+  (testing "a write inside `mt/with-temp`, which rolls back, is gone from the cache after the next check"
+    (mt/discard-setting-changes [test-setting-1]
+      (setting-test/test-setting-1! "committed")
+      (mt/with-temp [:model/Card _ {}]
+        (setting-test/test-setting-1! "in with-temp"))
+      (is (= "committed" (setting-test/test-setting-1))))))
 
 (deftest cache-out-of-date-test
   (testing "If there is no cache, it should be considered out of date!"

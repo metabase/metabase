@@ -232,6 +232,10 @@
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
+;; Thunks to run when the scope that registered them rolls back, in registration order. Shared by the tree like
+;; [[*after-commit-callbacks*]], and holds `::committed` or `::rolled-back` once the outermost transaction ends.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *after-rollback-callbacks* nil)
 
 (defn- pending-callbacks
   "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
@@ -347,6 +351,7 @@
   (binding [t2.conn/*current-connectable* nil
             *transaction-depth*           0
             *after-commit-callbacks*      nil
+            *after-rollback-callbacks*    nil
             *before-commit-callbacks*     nil
             *transaction-state*           nil
             *rollback-required*           nil
@@ -398,6 +403,40 @@
 (defn- run-after-commit-callbacks! [callbacks]
   (run! run-after-commit-callback! (first (reset-vals! callbacks ::committed))))
 
+(defn do-after-rollback
+  "Run `thunk` when the transaction scope that registers it rolls back, or an enclosing scope does: by an exception,
+  as a `:rollback-only` scope, or because the tree may not commit. Never runs on commit; outside a transaction, never
+  runs.
+  A nested scope's rollback runs `thunk` inside the enclosing transaction, on its connection. The outermost
+  transaction's rollback runs it outside the transaction, under the same rule as a [[do-after-commit]] thunk: no
+  synchronous DB I/O.
+  A thread started inside the transaction can call this after the rollback, and `thunk` then runs immediately.
+  An exception from `thunk` is logged, not thrown."
+  [thunk]
+  (when-let [callbacks *after-rollback-callbacks*]
+    (let [[before] (swap-vals! callbacks #(cond-> % (pending-callbacks %) (conj thunk)))]
+      (when (= ::rolled-back before)
+        (run-after-commit-callback! thunk))))
+  nil)
+
+(defn- run-rollback-callbacks-after!
+  "Remove the after-rollback callbacks registered after the first `n`, and run them inside the transaction."
+  [n]
+  (when-let [callbacks *after-rollback-callbacks*]
+    (let [[cbs] (swap-vals! callbacks #(if (pending-callbacks %) (into [] (take n) %) %))]
+      (doseq [thunk (drop n (pending-callbacks cbs))]
+        (try
+          (thunk)
+          (catch Throwable t
+            (log/errorf "after-rollback callback failed: %s" (ex-message t))))))))
+
+(defn- end-rollback-callbacks!
+  "Mark the outermost transaction's after-rollback `callbacks` as ended, running the remaining ones if it rolled back."
+  [callbacks committed?]
+  (let [[cbs] (reset-vals! callbacks (if committed? ::committed ::rolled-back))]
+    (when-not committed?
+      (run! run-after-commit-callback! (pending-callbacks cbs)))))
+
 (defn- discard-callbacks-after!
   "Truncate the `callbacks` atom back to its first `n` entries, dropping any that a now-rolling-back
   nested transaction registered after its savepoint so they never fire at outer-commit time."
@@ -433,6 +472,7 @@
               (let [savepoint      (set-savepoint! connection)
                     before-count   (some-> *before-commit-callbacks* deref count)
                     after-count    (some-> *after-commit-callbacks* deref pending-callbacks count)
+                    rollback-count (some-> *after-rollback-callbacks* deref pending-callbacks count)
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
                                      @*transaction-state*)]
                 (letfn [(rollback! []
@@ -452,7 +492,10 @@
                               (throw rollback-e))
                             (finally
                               (when state-snapshot
-                                (reset! *transaction-state* state-snapshot)))))
+                                (reset! *transaction-state* state-snapshot))
+                              ;; The outermost transaction runs its own once it has ended.
+                              (when (and rollback-count (> *transaction-depth* 1))
+                                (run-rollback-callbacks-after! rollback-count)))))
                         (rollback-after-error! [txn-e]
                           (try
                             (rollback!)
@@ -617,27 +660,31 @@
                       {:options options}))
 
       :else
-      (let [outermost? (zero? depth)
-            callbacks  (if outermost? (atom []) *after-commit-callbacks*)
+      (let [outermost?         (zero? depth)
+            callbacks          (if outermost? (atom []) *after-commit-callbacks*)
+            rollback-callbacks (if outermost? (atom []) *after-rollback-callbacks*)
             [result committed?]
             (try
-              (binding [*transaction-depth*       (inc depth)
+              (binding [*transaction-depth*        (inc depth)
                         ;; Create one set of callback accumulators and transaction state for the entire tree.
-                        *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
-                        *transaction-state*       (if outermost? (atom {}) *transaction-state*)
-                        *rollback-required*       (if outermost? (atom false) *rollback-required*)
-                        *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
-                        *after-commit-callbacks*  callbacks]
+                        *before-commit-callbacks*  (if outermost? (atom []) *before-commit-callbacks*)
+                        *transaction-state*        (if outermost? (atom {}) *transaction-state*)
+                        *rollback-required*        (if outermost? (atom false) *rollback-required*)
+                        *open-savepoints*          (if outermost? (atom []) *open-savepoints*)
+                        *after-commit-callbacks*   callbacks
+                        *after-rollback-callbacks* rollback-callbacks]
                 (do-transaction connection rollback-only f))
               (catch Throwable e
                 (when outermost?
-                  (reset! callbacks ::rolled-back))
+                  (reset! callbacks ::rolled-back)
+                  (end-rollback-callbacks! rollback-callbacks false))
                 (throw e)))]
         ;; Mark the end either way, so a thread that inherited this transaction can tell it is over.
         (when outermost?
           (if committed?
             (run-after-commit-callbacks! callbacks)
-            (reset! callbacks ::rolled-back)))
+            (reset! callbacks ::rolled-back))
+          (end-rollback-callbacks! rollback-callbacks committed?))
         result))))
 
 ;;;; Unshared connections

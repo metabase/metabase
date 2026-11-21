@@ -84,7 +84,7 @@
 ;;
 ;; The cache is shared by every thread, so it never takes a marker from inside a transaction: another thread's check
 ;; would read the committed marker, see that it differs, and reload the committed values, firing their `:on-change`
-;; handlers. Once the transaction commits, the next check reloads.
+;; handlers. Once the transaction commits, or rolls back, the next check reloads.
 
 (def ^String settings-last-updated-key
   "Internal key used to store the last updated timestamp for Settings."
@@ -133,7 +133,16 @@
     (restore-cache! state)
     ;; Inside a transaction the cache kept its committed marker, so make the next check due once the new one commits.
     (when (mdb/in-transaction?)
-      (mdb/do-after-commit #(.set ^AtomicLong (:last-update-check state) 0)))))
+      (mdb/do-after-commit #(.set ^AtomicLong (:last-update-check state) 0))
+      ;; A rollback leaves the cache holding values that were never committed.
+      (mdb/do-after-rollback
+       #(if (mdb/in-transaction?)
+          ;; A nested scope rolled back: reload what the enclosing transaction sees.
+          (restore-cache! state)
+          ;; The transaction rolled back, and this thunk may not query the app DB: drop the marker, so that the next
+          ;; check, due now, reloads.
+          (do (swap! (cache* state) (fn [cache] (some-> cache (dissoc settings-last-updated-key))))
+              (.set ^AtomicLong (:last-update-check state) 0)))))))
 
 (defn cached-marker
   "The `settings-last-updated` marker that the cache in `state` (by default, the state for the application DB this
