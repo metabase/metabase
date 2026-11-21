@@ -81,28 +81,6 @@
                 [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
   (t2/update! :model/Table :id table-id changes))
 
-(mu/defn mark-table-index-failed!
-  "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
-  [transform-id  :- ::lib.schema.id/transform
-   index-name    :- :string
-   error-message :- :string]
-  (t2/update! :model/TableIndex
-              :transform_id transform-id :index_name index-name
-              {:status :failed :error_message error-message :last_executed_at :%now}))
-
-(mu/defn delete-table-indexes!
-  "Delete the TableIndexes with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TableIndex :id [:in ids]))
-
-(mu/defn update-table-indexes!
-  "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
-  [ids     :- [:sequential ms/PositiveInt]
-   changes :- [:map {:closed true}
-               [:status        {:optional true} [:maybe [:or :keyword :string]]]
-               [:error_message {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
-
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]

@@ -61,12 +61,6 @@
   [job-data :- ::transforms.schema/transform-job.update]
   (t2/insert-returning-instance! :model/TransformJob job-data))
 
-(mu/defn insert-job-tags!
-  "Insert the TransformJobTransformTag `rows`."
-  [rows :- [:sequential
-            (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
-  (t2/insert! :model/TransformJobTransformTag rows))
-
 (mu/defn jobs-with-active-flag
   "The TransformJobs whose `:active` flag is `active`."
   [active :- :boolean]

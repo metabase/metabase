@@ -1,12 +1,15 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -26,6 +29,20 @@
     (when (contains? changes :dashboardcard_id)
       (throw (ex-info (tru "You cannot move a series to another dashboard card.") {:status-code 400})))
     series))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-dashboard-card-series! :- :nil
+  "Insert the DashboardCardSeries `rows`."
+  [rows :- [:sequential ::dashboards.schema/dashboard-card-series.create]]
+  (dashboards.db/insert-dashcard-series! rows)
+  nil)
+
+(mu/defn delete-dashboard-card-series-for-dashcards! :- :nil
+  "Delete every DashboardCardSeries of the DashboardCards with `dashcard-ids`."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (dashboards.db/delete-series-for-dashcards! dashcard-ids)
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

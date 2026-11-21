@@ -107,7 +107,7 @@
     ;; (transform_id, index_name) is unique; reject a duplicate cleanly instead of hitting the constraint.
     (api/check-400 (not (table-index/exists-for-transform? transform_id idx-name)) duplicate)
     (try
-      (indexes-rest.db/insert-table-index!
+      (table-index/create-table-index!
        {:transform_id transform_id
         :index_name   idx-name
         :structured   structured
@@ -137,7 +137,7 @@
     (assert-stable-key! existing structured)
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
-      (indexes-rest.db/set-table-index-structured! id structured)
+      (table-index/update-table-index! id {:structured structured})
       (indexes-rest.db/table-index id))))
 
 (api.macros/defendpoint :delete "/request/:id" :- ::api/generic-204-no-content
@@ -146,5 +146,5 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
-    (indexes-rest.db/set-table-index-status! id :delete-pending))
+    (table-index/update-table-index! id {:status :delete-pending}))
   api/generic-204-no-content)

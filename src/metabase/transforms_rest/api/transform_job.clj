@@ -10,6 +10,7 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform-job-transform-tag :as transform-job-transform-tag]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
@@ -128,7 +129,7 @@
         _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
         job      (transforms-rest.db/insert-job! job-data)]
     (when (seq tag_ids)
-      (transforms-rest.db/insert-job-tags!
+      (transform-job-transform-tag/create-transform-job-transform-tags!
        (map-indexed (fn [idx tag-id]
                       {:job_id (:id job)
                        :tag_id tag-id
