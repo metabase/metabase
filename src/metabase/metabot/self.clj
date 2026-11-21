@@ -411,6 +411,85 @@
     (or (some-> status (>= 500)) (provider-unavailable-error-types error-type))
     :unavailable))
 
+(defn- error-object
+  "The provider's `error` object in the body of an error response."
+  [body]
+  ;; Mistral puts its error at the top level, not under `error`.
+  (or (:error body) body))
+
+(def ^:private more-provider-failures
+  "The kind of provider failure for each HTTP status, and each error type or code that Anthropic, OpenAI and Bedrock
+  send, that [[provider-failure]] does not classify.
+
+  [[provider-failure]] has only the rules whose failure gets a user-facing message from [[provider-error]]. A rule
+  here gives a kind and no message: a 403 is `:auth`, but its cause can be a blocked region, which the `:auth` message
+  does not describe."
+  {403                    :auth
+   404                    :not-found
+   408                    :unavailable
+   "rate_limit_error"     :rate-limit
+   "rate_limit_exceeded"  :rate-limit
+   "authentication_error" :auth
+   "invalid_api_key"      :auth
+   "not_found_error"      :not-found
+   "model_not_found"      :not-found
+   "server_error"         :unavailable
+   ;; The exception types that Bedrock's `InvokeModelWithResponseStream` streams after its 200.
+   ;; https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_ResponseStream.html
+   "throttlingException"         :rate-limit
+   "serviceUnavailableException" :unavailable
+   "internalServerException"     :unavailable
+   "modelTimeoutException"       :unavailable
+   "modelStreamErrorException"   :unavailable})
+
+(defn- streamed-status
+  "The HTTP status of a failure that the provider streamed after its 200, or nil.
+
+  OpenRouter and Gemini stream the HTTP status as an integer `error.code`. Other providers send their own integer
+  codes there, such as Z.AI's 1261 and 1113, so only a code in the HTTP status range is a status."
+  [{error-code :code}]
+  (when (and (int? error-code) (<= 100 error-code 599))
+    error-code))
+
+(defn- moderation-flag?
+  "True when the `error` is OpenRouter's 403 for input that its moderation flagged. The prompt is at fault, not the
+  credentials. https://openrouter.ai/docs/api_reference/errors-and-debugging#moderation-errors"
+  [{{:keys [reasons flagged_input]} :metadata}]
+  (boolean (or (seq reasons) flagged_input)))
+
+(defn- provider-failure-kind
+  "Classify a provider failure as `:billing`, `:rate-limit`, `:auth`, `:not-found` or `:unavailable`, or nil when
+  the provider rejected a request that Metabot made, such as a malformed, too long or flagged one.
+
+  Reads the same `status` and `error` as [[provider-failure]], and the [[streamed-status]] when `status` is nil."
+  [status {error-type :type error-code :code :as error}]
+  (let [status (or status (streamed-status error))]
+    (when-not (and (= 403 status) (moderation-flag? error))
+      (or (provider-failure status error)
+          (some more-provider-failures [status error-type error-code])))))
+
+(def ^:private not-configured-error-codes
+  "The `:error-code` of each exception that Metabot throws before it sends a request, because the provider connection
+  has no value that the call can use for a setting: a credential, a base URL, a model, a project, or a proxy that
+  the provider supports. A code for a value in a wrong format, such as `:invalid-region`, is not in this set."
+  #{:llm-not-configured :api-key-missing :proxy-not-configured :proxy-unsupported :base-url-missing :model-missing
+    :project-id-required})
+
+(defn call-failure
+  "The kind of provider failure that made the LLM call throw `e`, or nil when the provider is not at fault.
+
+  The kinds of [[provider-failure-kind]], and two kinds for a call that got no response from the provider:
+  `:not-configured` for the [[not-configured-error-codes]] (no API key, a stale `llm-metabot-provider`), and
+  `:request-failed` for all others, such as a provider that is unreachable or timed out. Unlike [[provider-error]],
+  this is the same on the managed provider: it says whose the failure is, not what to tell the user."
+  [e]
+  (let [{:keys [api-error status body error-code]} (ex-data e)]
+    (when api-error
+      (cond
+        status                                  (provider-failure-kind status (error-object body))
+        (not-configured-error-codes error-code) :not-configured
+        :else                                   :request-failed))))
+
 (def ^:private context-overflow-message
   "The overflow 400 text of providers that send no structured code for it.
 
@@ -447,8 +526,7 @@
   "True when a provider API error's ex-data is a 400 for a prompt that does not fit the model's context window."
   [{:keys [status body]}]
   (and (= status 400)
-       ;; Mistral puts its error at the top level, not under `error`.
-       (context-overflow-object? (or (:error body) body))))
+       (context-overflow-object? (error-object body))))
 
 (defn- context-full-error
   "The user-facing `{:message :error-code}` for a conversation too long for the model's context window."
@@ -475,7 +553,7 @@
   ([e]
    (let [{:keys [api-error provider status body]} (ex-data e)]
      (when (and api-error provider)
-       (provider-error provider status (:error body)))))
+       (provider-error provider status (error-object body)))))
   ([provider status error]
    (when-let [failure (provider-failure status error)]
      (let [managed?      (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
@@ -503,13 +581,13 @@
 (defn- streamed-error
   "The user-facing `{:message :error-code}` for an `error` object streamed after a 200, or nil.
 
-  A context overflow gets [[context-full-error]]; there is no status to check. OpenRouter sends every failure after
-  its 200 inside the stream, with a typed `error.metadata.error_type`
-  (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
+  A context overflow gets [[context-full-error]], whatever the status. Other failures are classified with the
+  [[streamed-status]], as [[provider-failure-kind]] does. OpenRouter sends every failure after its 200 inside the
+  stream, with a typed `error.metadata.error_type` (https://openrouter.ai/docs/api_reference/errors-and-debugging)."
   [provider error]
   (if (context-overflow-object? error)
     (context-full-error)
-    (provider-error provider nil error)))
+    (provider-error provider (streamed-status error) error)))
 
 (defn- provider-error-xf
   "Transducer that replaces the error on a streamed `:error` part with [[streamed-error]]'s, when it has one."
@@ -518,6 +596,16 @@
          (if-let [error (when (= :error (:type part))
                           (streamed-error provider (:error part)))]
            (assoc part :error error)
+           part))))
+
+(def ^:private streamed-failure-xf
+  "Transducer that puts the [[provider-failure-kind]] of a streamed `:error` part on the part as `:provider-failure`.
+
+  It reads the provider's own error object, so it runs before [[provider-error-xf]] replaces that object."
+  (map (fn [part]
+         (if-let [kind (when (= :error (:type part))
+                         (provider-failure-kind nil (:error part)))]
+           (assoc part :provider-failure kind)
            part))))
 
 (defn- missing-required-permission
@@ -654,6 +742,7 @@
                                                 (core/lite-aisdk-xf)
                                                 (core/stamp-tool-titles-xf tools)
                                                 (report-aisdk-errors-xf tracking-opts)
+                                                streamed-failure-xf
                                                 (provider-error-xf provider)
                                                 (report-token-usage-xf tracking-opts)
                                                 (report-tool-usage-xf tracking-opts tools))
