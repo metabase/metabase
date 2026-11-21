@@ -15,6 +15,7 @@ import {
   setupRevisionsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUserEndpoints,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -37,7 +38,12 @@ import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/Dashboa
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
-import type { Dashboard, DashboardId, User } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardId,
+  Revision,
+  User,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -53,6 +59,7 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
+import { createMockRevision } from "metabase-types/api/mocks/revision";
 import { isObject } from "metabase-types/guards";
 
 const TEST_COLLECTION = createMockCollection();
@@ -744,5 +751,157 @@ describe("DashboardApp", () => {
     await userEvent.paste("A".repeat(256));
 
     expect(input).toHaveValue("A".repeat(254));
+  });
+
+  describe("revision history", () => {
+    const DASHBOARD_ID = 10;
+    const CREATION_REVISION = createMockRevision({
+      id: 1,
+      description: "created this",
+      is_creation: true,
+    });
+    const RENAME_REVISION = createMockRevision({
+      id: 2,
+      description: "renamed this Dashboard",
+      is_creation: false,
+      timestamp: "2023-05-17T13:33:30.198622-07:00",
+      user: {
+        id: 2,
+        first_name: "Robert",
+        last_name: "Tableton",
+        common_name: "Robert Tableton",
+      },
+    });
+
+    interface RevisionHistorySetupOpts {
+      canWrite?: boolean;
+      revisions: Revision[];
+    }
+
+    // Mirrors the backend: only a PUT that reaches the server records a revision.
+    async function setupRevisionHistory({
+      canWrite = true,
+      revisions,
+    }: RevisionHistorySetupOpts) {
+      let currentRevisions = revisions;
+      fetchMock.get("path:/api/revision", () => currentRevisions, {
+        query: { entity: "dashboard", id: String(DASHBOARD_ID) },
+      });
+      fetchMock.put(`path:/api/dashboard/${DASHBOARD_ID}`, async (call) => {
+        const body: unknown = JSON.parse(String(call.options.body));
+        currentRevisions = [RENAME_REVISION, ...currentRevisions];
+        return createMockDashboard({
+          ...(typeof body === "object" ? body : {}),
+          id: DASHBOARD_ID,
+        });
+      });
+      setupUserEndpoints(createMockUser({ id: 1 }));
+
+      return setup({ dashboard: { id: DASHBOARD_ID, can_write: canWrite } });
+    }
+
+    const dashboardPutCalls = () =>
+      fetchMock.callHistory.calls(`path:/api/dashboard/${DASHBOARD_ID}`, {
+        method: "PUT",
+      });
+
+    const openRevisionHistory = async () => {
+      await userEvent.click(
+        within(screen.getByTestId("dashboard-header")).getByLabelText(
+          "More info",
+        ),
+      );
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "History" }),
+      );
+      return screen.findByTestId("dashboard-history-list");
+    };
+
+    const saveWithoutChanges = async () => {
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(
+        await screen.findByLabelText("Edit dashboard"),
+      ).toBeInTheDocument();
+    };
+
+    it("should not save or add a revision when the dashboard is saved without changes (metabase#1926)", async () => {
+      await setupRevisionHistory({ revisions: [CREATION_REVISION] });
+
+      await saveWithoutChanges();
+      await saveWithoutChanges();
+
+      expect(dashboardPutCalls()).toHaveLength(0);
+      const history = await openRevisionHistory();
+      const events = await within(history).findAllByTestId(
+        "revision-history-event",
+      );
+      expect(events).toHaveLength(1);
+      expect(events[0]).toHaveTextContent("You created this");
+      expect(
+        within(history).queryByTestId("question-revert-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should save and add a revision when the dashboard has changes", async () => {
+      await setupRevisionHistory({ revisions: [CREATION_REVISION] });
+
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      const heading = screen.getByTestId("dashboard-name-heading");
+      await userEvent.clear(heading);
+      await userEvent.type(heading, "Renamed dashboard");
+      await userEvent.tab();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await screen.findByLabelText("Edit dashboard");
+
+      expect(dashboardPutCalls()).toHaveLength(1);
+      const body: unknown = JSON.parse(
+        String(dashboardPutCalls()[0].options.body),
+      );
+      expect(body).toMatchObject({ name: "Renamed dashboard" });
+      const history = await openRevisionHistory();
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+    });
+
+    it("should not show revert buttons to a user who cannot write to the dashboard (metabase#13229)", async () => {
+      await setupRevisionHistory({
+        canWrite: false,
+        revisions: [RENAME_REVISION, CREATION_REVISION],
+      });
+
+      const history = await openRevisionHistory();
+
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+      expect(
+        within(history).getByText("Robert Tableton renamed this Dashboard"),
+      ).toBeInTheDocument();
+      expect(
+        within(history).queryByTestId("question-revert-button"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show revert buttons for earlier versions to a user who can write to the dashboard", async () => {
+      await setupRevisionHistory({
+        revisions: [RENAME_REVISION, CREATION_REVISION],
+      });
+
+      const history = await openRevisionHistory();
+
+      expect(
+        await within(history).findAllByTestId("revision-history-event"),
+      ).toHaveLength(2);
+      expect(
+        within(history).getAllByTestId("question-revert-button"),
+      ).toHaveLength(1);
+      expect(
+        within(history).getByRole("button", {
+          name: "revert to You created this",
+        }),
+      ).toBeInTheDocument();
+    });
   });
 });
