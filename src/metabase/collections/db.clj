@@ -231,12 +231,6 @@
                      :archive_operation_id [:= archive-operation-id]
                      :archived [:= true]))
 
-(mu/defn collection-ids-of-type
-  "The IDs of the Collections among `collection-ids` of `type`."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   type           :- :string]
-  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
-
 (mu/defn personal-collection-ids
   "The IDs of every personal ::collections.schema/collection."
   []
@@ -312,19 +306,23 @@
    remote-synced? :- :boolean]
   (t2/update! :model/Collection :id [:in collection-ids] {:is_remote_synced remote-synced?}))
 
-(mu/defn archive-collections!
-  "Archive, through their model, the Collections with `ids` as followers of an archive operation with
-  `archive-operation-id`, returning the number updated."
-  [ids                  :- [:sequential ::lib.schema.id/collection]
+(mu/defn archive-collections-at-location!
+  "Archive, through their model, the unarchived Collections directly at `location` as followers of an archive operation
+  with `archive-operation-id`, returning the number updated."
+  [location             :- :string
    archive-operation-id :- :string]
-  (t2/update! :model/Collection :id [:in ids]
+  (t2/update! :model/Collection :location [:auto/param location] :archived false
               {:archived true, :archive_operation_id archive-operation-id}))
 
-(mu/defn restore-collections!
-  "Restore, through their model, the Collections with `ids`, which an archive of an ancestor took down, returning the
-  number updated."
-  [ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! :model/Collection :id [:in ids]
+(mu/defn restore-collections-at-location!
+  "Restore, through their model, the Collections directly at `location` that the archive operation with
+  `archive-operation-id` took down, returning the number updated."
+  [location             :- :string
+   archive-operation-id :- :string]
+  (t2/update! :model/Collection
+              :location [:auto/param location]
+              :archive_operation_id [:auto/param archive-operation-id]
+              :archived true
               {:archived false, :archive_operation_id nil}))
 
 (mu/defn move-descendant-collections!

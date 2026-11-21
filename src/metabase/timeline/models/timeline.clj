@@ -35,16 +35,13 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defmethod mi/after-archived-change :model/Timeline
-  [_model rows changes]
-  (let [archive? (boolean (:archived changes))
-        direct   (if archive?
-                   (timeline.db/directly-archived-timeline-ids (mapv :id rows))
-                   (into #{} (comp (filter :archived_directly) (map :id)) rows))]
-    (doseq [{:keys [id]} rows
-            :when        (contains? direct id)]
-      (events/with-event-context {:archived-with [:model/Timeline id]}
-        (timeline.db/set-timeline-events-archived! id archive?)))))
+(defn- archive-or-restore-events!
+  "Archives the TimelineEvents of `timeline`, archived on its own, along with it, or restores them when it was archived on
+  its own and `original`, its stored row, says so; a Timeline that follows its Collection leaves its events alone."
+  [{:keys [id archived archived_directly]} original]
+  (when (if archived archived_directly (:archived_directly original))
+    (events/with-event-context {:archived-with [:model/Timeline id]}
+      (timeline.db/set-timeline-events-archived! id (boolean archived)))))
 
 (t2/define-before-insert :model/Timeline
   [row]
@@ -57,9 +54,9 @@
     (when (contains? changes :collection_id)
       (collection/check-collection-for :model/Timeline row))
     (cond-> row
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row)))))))
+      (contains? changes :archived) (-> (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row))))
+                                        (doto (archive-or-restore-events! (t2/original row)))))))
 
-(mi/define-update-in-transaction :model/Timeline)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

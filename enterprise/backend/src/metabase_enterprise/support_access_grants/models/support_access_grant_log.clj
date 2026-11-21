@@ -74,7 +74,6 @@
         (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))
     grant))
 
-(mi/define-update-in-transaction :model/SupportAccessGrantLog)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

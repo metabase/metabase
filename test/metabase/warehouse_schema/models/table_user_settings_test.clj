@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -160,3 +161,19 @@
                             (t2/update! :model/TableUserSettings :table_id table-id {:data_source :ingested})))
       (is (nil? (t2/select-one-fn :data_source :model/TableUserSettings :table_id table-id)))
       (is (= :metabase-transform (:data_source (user-table table-id)))))))
+
+(deftest refused-settings-update-leaves-tables-unchanged-test
+  (testing "settings update over two rows whose second Table refuses it writes neither Table"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp [:model/Database          {db-id :id}     {}
+                     :model/Table             {accepted :id}  {:db_id db-id :display_name "Accepted"}
+                     :model/Table             {refused :id}   {:db_id db-id :display_name "Refused"
+                                                               :data_authority :authoritative}
+                     :model/TableUserSettings {first-id :id}  {:table_id accepted :display_name "Accepted"}
+                     :model/TableUserSettings {second-id :id} {:table_id refused :display_name "Refused"}]
+        (is (nil? (mdb/transaction-state)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set data_authority back to unconfigured"
+                              (t2/update! :model/TableUserSettings :id [:in [first-id second-id]]
+                                          {:display_name "Renamed" :data_authority :unconfigured})))
+        (is (= {accepted "Accepted" refused "Refused"}
+               (t2/select-pk->fn :display_name :model/Table :id [:in [accepted refused]])))))))

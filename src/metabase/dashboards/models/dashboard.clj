@@ -85,13 +85,13 @@
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
     (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
-(defmethod mi/after-archived-change :model/Dashboard
-  [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Dashboard id]}
-      (if (:archived changes)
-        (dashboards.db/archive-dashboard-questions! id)
-        (dashboards.db/unarchive-dashboard-questions! id)))))
+(defn- archive-or-restore-questions!
+  "Archives the questions of the Dashboard with `id` along with it when `archived`, else restores those archived with it."
+  [id archived]
+  (events/with-event-context {:archived-with [:model/Dashboard id]}
+    (if archived
+      (dashboards.db/archive-dashboard-questions! id)
+      (dashboards.db/unarchive-dashboard-questions! id))))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]
@@ -124,9 +124,10 @@
         (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
       (when (:parameters changes)
         (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (when (contains? changes :archived)
+        (archive-or-restore-questions! (:id dashboard) (:archived dashboard)))
       dashboard)))
 
-(mi/define-update-in-transaction :model/Dashboard)
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p

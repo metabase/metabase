@@ -56,13 +56,13 @@
   (boolean (or (collection/archived? collection_id)
                (and exploration_id (documents.db/exploration-archived? exploration_id)))))
 
-(defmethod mi/after-archived-change :model/Document
-  [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Document id]}
-      (if (:archived changes)
-        (documents.db/archive-document-cards! id)
-        (documents.db/restore-document-cards! id)))))
+(defn- archive-or-restore-cards!
+  "Archives the Cards of the Document with `id` along with it when `archived`, else restores those archived with it."
+  [id archived]
+  (events/with-event-context {:archived-with [:model/Document id]}
+    (if archived
+      (documents.db/archive-document-cards! id)
+      (documents.db/restore-document-cards! id))))
 
 (t2/define-before-insert :model/Document
   [document]
@@ -80,10 +80,11 @@
                       {:status-code 400})))
     (when (contains? changes :collection_id)
       (documents.db/update-cards-for-document! id {:collection_id (:collection_id document)}))
+    (when (contains? changes :archived)
+      (archive-or-restore-cards! id (:archived document)))
     (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document #(document-parent-archived? document))))))
 
-(mi/define-update-in-transaction :model/Document)
 (t2/define-after-select :model/Document
   [document]
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))

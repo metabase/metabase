@@ -59,7 +59,6 @@
       (tenants.db/reactivate-tenant-users! id))
     tenant))
 
-(mi/define-update-in-transaction :model/Tenant)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

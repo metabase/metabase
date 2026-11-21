@@ -2002,49 +2002,30 @@
     :else
     row))
 
-(defn- archive-subtree!
-  "Archives the Collections under `row` and the items in them, along with `row`, and unpublishes the tables of its
-  library Data collections."
-  [row]
-  (let [operation-id (:archive_operation_id row)
-        descendants  (collections.db/unarchived-collection-ids-with-location-like (str (children-location row) "%"))
-        ids          (vec (cons (:id row) descendants))]
-    (when (seq descendants)
-      (collections.db/archive-collections! (vec descendants) operation-id))
-    (run! #(collections.db/archive-items-in-collections! % ids) archivable-item-models)
-    (collections.db/archive-pulses-in-collections! ids)
-    (collections.db/archive-items-in-collections! :model/Action ids)
-    (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
-      (when (seq library-data-ids)
-        (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-          (collections.db/unpublish-tables-in-collections! library-data-ids)
-          (unpublish-downstream-fk-tables! published-table-ids))))))
+(defn- archive-layer!
+  "Archives the child Collections of `row`, a Collection being archived with an archive operation, and the items in it,
+  as followers of that operation; each child archives its own layer in turn."
+  [{:keys [id type archive_operation_id] :as row}]
+  (events/with-event-context {:archived-with [:model/Collection id]}
+    (collections.db/archive-collections-at-location! (children-location row) archive_operation_id)
+    (run! #(collections.db/archive-items-in-collections! % [id]) archivable-item-models)
+    (collections.db/archive-pulses-in-collections! [id])
+    (collections.db/archive-items-in-collections! :model/Action [id])
+    (when (= type library-data-collection-type)
+      (let [published-table-ids (collections.db/published-table-ids-in-collections [id])]
+        (collections.db/unpublish-tables-in-collections! [id])
+        (unpublish-downstream-fk-tables! published-table-ids)))))
 
-(defn- restore-subtree!
-  "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
-  them, along with `row`."
-  [row]
-  (let [descendants (when-let [operation-id (:archive_operation_id row)]
-                      (collections.db/archived-collection-ids-in-operation-with-location-like
-                       (str (children-location row) "%")
-                       operation-id))
-        ids         (vec (cons (:id row) descendants))]
-    (when (seq descendants)
-      (collections.db/restore-collections! (vec descendants)))
-    (run! #(collections.db/restore-items-in-collections! % ids) restorable-item-models)
-    (collections.db/restore-pulses-in-collections! ids)
-    (collections.db/restore-actions-in-collections! ids)))
-
-(defmethod mi/after-archived-change :model/Collection
-  [_model rows changes]
-  (doseq [before rows]
-    (events/with-event-context {:archived-with [:model/Collection (:id before)]}
-      (if (:archived changes)
-        (let [row (collections.db/collection (:id before))]
-          (when (:archived_directly row)
-            (archive-subtree! row)))
-        (when (or (:archived_directly before) (not (contains? changes :archive_operation_id)))
-          (restore-subtree! before))))))
+(defn- restore-layer!
+  "Restores the child Collections of `row`, a Collection being restored, that the archive operation `operation-id` took
+  down, and the items in it that were archived along with it; each child restores its own layer in turn."
+  [{:keys [id] :as row} operation-id]
+  (events/with-event-context {:archived-with [:model/Collection id]}
+    (when operation-id
+      (collections.db/restore-collections-at-location! (children-location row) operation-id))
+    (run! #(collections.db/restore-items-in-collections! % [id]) restorable-item-models)
+    (collections.db/restore-pulses-in-collections! [id])
+    (collections.db/restore-actions-in-collections! [id])))
 
 (defn- archived-columns
   "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that
@@ -2089,9 +2070,14 @@
     (when moved?
       (update-perms-when-moving-across-personal-boundry! collection-before-updates changes)
       (update-perms-for-tenant-specific-namespace-change! collection-before-updates changes))
-    (cond-> (remote-synced-after-update row changes parent)
-      (:name changes)                     (assoc :slug (slugify (:name changes)))
-      (contains? changes :archived)       archived-columns)))
+    (let [row (cond-> (remote-synced-after-update row changes parent)
+                (:name changes)               (assoc :slug (slugify (:name changes)))
+                (contains? changes :archived) archived-columns)]
+      (when (contains? changes :archived)
+        (cond
+          (not (:archived row))         (restore-layer! row (:archive_operation_id collection-before-updates))
+          (:archive_operation_id row)   (archive-layer! row)))
+      row)))
 
 (defn- remote-synced-type->flag-on-update
   "`row`, an update, with the `remote-synced` type turned into the `is_remote_synced` flag."
@@ -2114,7 +2100,6 @@
       (check-single-library row))
     (before-update-row row ancestors)))
 
-(mi/define-update-in-transaction :model/Collection)
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 

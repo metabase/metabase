@@ -20,7 +20,7 @@ the user-facing ones. Put a rule every writer must obey in a hook and a rule onl
 | Computes a column from other columns of the row | hooks; the caller does not supply it |
 | Reads another entity's column that cannot change | hooks of the referring model |
 | Reads another entity's column that can change | not a hook, unless the other entity cascades so the rule holds from both sides; otherwise the write function in `<module>/write.clj` (below) |
-| Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `mi/after-archived-change` for `archived`, else `before-update` / `before-delete` |
+| Keeps other rows in step (cascade, cleanup) | the model whose change causes it: `before-update` / `before-delete` |
 | Reads a property of a Database, Table or Field the row refers to, on a model SerDes can import | the write function in `<module>/write.clj`; never a hook (the SerDes rule, below) |
 | Needs the warehouse, SQL parsing, the network, or is best-effort | the write function in `<module>/write.clj`; never a hook |
 | Sends mail | an explicit call from the entry point or the write function; never a hook or a lifecycle consumer |
@@ -90,9 +90,10 @@ that needs the row as stored.
   duplicates (" (2)", " (3)"); decide what a NULL parent means, since an index treats NULLs as distinct. A hook check
   may add the 400 message; the index is the enforcement.
 - **Cascade.** The model whose change causes it writes the followers through their models, so their hooks run and may
-  refuse: in `mi/after-archived-change` when it follows `archived` (see Archiving), else in `before-update` or
-  `before-delete`, only when the causing column is in `(t2/changes row)`. `before-update` runs before Toucan opens its
-  transaction, so a model whose update writes other rows declares `(mi/define-update-in-transaction :model/X)`.
+  refuse: in `before-update` or `before-delete`, only when the causing column is in `(t2/changes row)` (for `archived`,
+  see Archiving). An UPDATE of a model with a `before-update`, and any write of a model deriving `:hook/events`, runs
+  in one transaction with its hooks, its event batch and its consumers (`mi/write-in-transaction?`); nothing to
+  declare.
 - **Rule on another entity's mutable data.** A hook that reads a column of another entity that can change is a smell:
   the rule holds only at the moment of the write, nothing re-checks it when the other row changes, and a sanctioned
   writer (an import, sync, a task) meets the hook while the other row is rightly in another state. In this order:
@@ -281,12 +282,15 @@ What the shared keys mean, wherever they appear:
   `(assoc row :archived_directly (mi/archived-directly row parent-archived?))`; `parent-archived?` is a function of no
   arguments returning whether the parent is archived (its Collection, `collection/archived?`; for a Card also its
   Dashboard or Document, for a Document also its Exploration). A cause given in the changes is kept; a restore is false.
-- The parent is written first and the followers after it, in the same transaction and one event batch: a model with
-  followers declares `(mi/define-update-in-transaction :model/X)` and a
-  `(defmethod mi/after-archived-change :model/X [model rows changes])` that writes them through their models, one
-  statement per kind. The followers find their parent archived and derive their cause from it.
-- Collection archives its subtree in a fixed number of statements and does not cascade again when it inherits an
-  archive. Dashboard carries its dashboard questions, Document its cards, Timeline its events (only on its own archive).
+- A model with followers archives or restores them in its `before-update`, when `archived` is in the changes, through
+  their models, one statement per kind, inside `events/with-event-context {:archived-with [:model/X id]}`; the
+  parent row is written after its followers, in the same transaction and event batch. A write that `:archived-with`
+  carries derives `archived_directly` false in `mi/archived-directly` without reading the parent, which is not written
+  yet; nothing in a follower's hook may read the parent's `archived`.
+- Collection archives one layer: its unarchived child Collections, with its `archive_operation_id`, and its items; each
+  child does the same for its own layer. A restore brings back the child Collections of the operation of the stored
+  row and the items archived along with it. Dashboard carries its dashboard questions, Document its cards, Exploration
+  its Summary Documents, Timeline its events (only on its own archive), Card deletes its Actions.
 - A live row cannot be inserted or moved into an archived parent (`collection/check-collection-not-archived`).
 - A user-facing writer asks `api/update-check` on the parent with `{:archived x}`: its `mi/can-update?` covers every row
   the cascade writes, each kind loaded and answered once (`mi/can-update-followers?`, by default `can-update-each?`).

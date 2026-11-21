@@ -54,13 +54,14 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod mi/after-archived-change :model/Exploration
-  [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Exploration id]}
-      (if (:archived changes)
-        (explorations.db/archive-summary-documents! id)
-        (explorations.db/unarchive-summary-documents! id)))))
+(defn- archive-or-restore-summary-documents!
+  "Archives the Summary Documents of the Exploration with `id` along with it when `archived`, else restores those
+  archived with it."
+  [id archived]
+  (events/with-event-context {:archived-with [:model/Exploration id]}
+    (if archived
+      (explorations.db/archive-summary-documents! id)
+      (explorations.db/unarchive-summary-documents! id))))
 
 (t2/define-before-insert :model/Exploration
   [{:keys [archived collection_id] :as exploration}]
@@ -73,10 +74,11 @@
     (when (contains? changes :collection_id)
       (collection/check-collection-not-archived archived collection_id)
       (explorations.db/move-summary-documents! id collection_id))
+    (when (contains? changes :archived)
+      (archive-or-restore-summary-documents! id archived))
     (cond-> exploration
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
 
-(mi/define-update-in-transaction :model/Exploration)
 
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
   "Whether the current user reads each of `explorations`, as the content of its Collection."

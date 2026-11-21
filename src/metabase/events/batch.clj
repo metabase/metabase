@@ -362,8 +362,9 @@
 
 (defn- run-batch
   "Run `thunk` in the batch there already is, or else in a new batch that delivers its events when `thunk` returns, in
-  the transaction there already is when `join-transaction?` and in a nested one otherwise, a joined `thunk` that throws
-  keeping its events, which follow its rows when a savepoint or transaction rolls back."
+  the transaction there already is when `join-transaction?` (the write override of `metabase.models.interface` opens
+  it) and in a nested one otherwise, a joined `thunk` that throws keeping its events, which follow its rows when a
+  savepoint or transaction rolls back."
   [join-transaction? thunk]
   (let [run (fn []
               (let [state (or (mdb/transaction-state)
@@ -376,8 +377,7 @@
                     (swap! state dissoc ::batch)))))]
     (cond
       (batch-state)     (thunk)
-      join-transaction? (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
-                          (run))
+      join-transaction? (run)
       :else             (t2.conn/with-transaction [_conn]
                           (run)))))
 
@@ -389,7 +389,8 @@
   (run-batch false thunk))
 
 (defn do-with-write-batch
-  "Run `thunk`, the write of one statement, as [[do-with-batched-events]] does, but in the transaction there already is."
+  "Run `thunk`, the write of one statement, as [[do-with-batched-events]] does, but in the transaction the write already
+  runs in, which it does not open itself."
   [thunk]
   (run-batch true thunk))
 

@@ -144,7 +144,6 @@
   (mirror-to-table! settings (mirrored-columns settings user-settings/user-settable-table-columns))
   (delete-when-empty! settings))
 
-(mi/define-update-in-transaction :model/TableUserSettings)
 
 (t2/define-before-update :model/TableUserSettings
   [settings]

@@ -554,7 +554,7 @@
 
 (defn- update-parameters-using-card-as-values-source
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of `card`
-  that its new `result_metadata` in `changes` no longer has; [[after-archived-change]] resets those of archived cards."
+  that its new `result_metadata` in `changes` no longer has; [[archive-followers!]] resets those of archived cards."
   [{:keys [id database_id]} changes]
   (when (and (contains? changes :result_metadata) (not (:archived changes)))
     (let [metadata-columns (when-let [result-metadata (:result_metadata changes)]
@@ -1368,7 +1368,13 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
-(mi/define-update-in-transaction :model/Card)
+
+(defn- archive-followers!
+  "Deletes the Actions of `card`, which is being archived, and resets the parameters that take their values from it."
+  [{:keys [id]}]
+  (queries.db/delete-actions-of-models! [id])
+  (reset-values-sources! (queries.db/parameter-cards-for-cards [id])
+                         (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -1387,6 +1393,7 @@
     (-> card
         (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card (parent (:collection_id card))))))
         (doto (delete-alerts-if-archived-directly changes))
+        (cond-> (true? (:archived changes)) (doto archive-followers!))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
@@ -1403,14 +1410,6 @@
         (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
-
-(defmethod mi/after-archived-change :model/Card
-  [_model rows changes]
-  (when (:archived changes)
-    (let [ids (mapv :id rows)]
-      (queries.db/delete-actions-of-models! ids)
-      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
-                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (t2/define-after-update :model/Card
   [card]
