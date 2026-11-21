@@ -15,6 +15,9 @@ describe("time-dayjs", () => {
       ["2015-01-01T00:00:00+0900", true],
       ["2015-01-01T00:00:00-08:00", true],
       ["2015-01-01T00:00:00-0800", true],
+      ["1937-01-01T00:00:00+03:06:52", true],
+      ["1937-01-01T00:00:00+030652", true],
+      ["1883-11-18T00:00:00-04:56:02", true],
       ["2015-01-01", false],
       ["2015-01-01 00:00:00", false],
       ["2015-01-01T00:00:00", false],
@@ -68,6 +71,21 @@ describe("time-dayjs", () => {
         },
       );
     });
+
+    // See https://github.com/metabase/metabase/issues/67652
+    it.each([
+      ["1937-01-01T00:00:00+03:06:52", "1937-01-01T00:00:00"],
+      ["1937-01-01T00:00:00+030652", "1937-01-01T00:00:00"],
+      ["1883-11-18T00:00:00-04:56:02", "1883-11-18T00:00:00"],
+    ])(
+      "%s should keep its wall-clock date when the offset has seconds",
+      (str, expectedWallClock) => {
+        const result = parseTimestamp(str);
+
+        expect(result.isValid()).toBe(true);
+        expect(result.format("YYYY-MM-DDTHH:mm:ss")).toBe(expectedWallClock);
+      },
+    );
 
     // See https://github.com/metabase/metabase/issues/11615
     it("parse sqlite date with unit=year correctly", () => {

@@ -63,8 +63,9 @@ const NUMERIC_UNIT_FORMATS: Record<string, (value: number) => Dayjs> = {
   year: (value: number) => dayjs().year(value).startOf("year"),
 };
 
-// either Z or ±hh:mm or ±hhmm
-const EXPLICIT_TIMEZONE_PATTERN = /(Z|[+-]\d\d:?\d\d)$/;
+// either Z or ±hh:mm or ±hhmm, optionally with seconds (±hh:mm:ss): the
+// backend emits those for dates before a zone adopted standard time (#67652)
+const EXPLICIT_TIMEZONE_PATTERN = /(Z|[+-]\d\d:?\d\d(:?\d\d)?)$/;
 
 export function hasExplicitTimezone(value: string): boolean {
   return EXPLICIT_TIMEZONE_PATTERN.test(value);
