@@ -1,0 +1,5 @@
+/* Low-fidelity look: monospace everywhere, including the chart's SVG text. */
+.lofi,
+.lofi * {
+  font-family: var(--mb-default-monospace-font-family), monospace !important;
+}
