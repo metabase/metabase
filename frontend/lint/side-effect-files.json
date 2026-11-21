@@ -72,7 +72,6 @@
     "enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/whitelabel/lib/whitelabel.ts": "global",
     "enterprise/frontend/src/metabase-enterprise/whitelabel/overrides.ts": "global",
-    "frontend/src/embedding-sdk-bundle/components/private/PublicComponentStylesWrapper.tsx": "self",
     "frontend/src/embedding-sdk-bundle/components/private/SdkBreadcrumbs/setup.spec.tsx": "self",
     "frontend/src/embedding-sdk-bundle/components/private/SdkGlobalFontsStyles.tsx": "global",
     "frontend/src/embedding-sdk-bundle/embedding-sdk-bootstrap.ts": "entry",

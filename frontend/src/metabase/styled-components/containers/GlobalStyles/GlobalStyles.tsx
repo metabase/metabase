@@ -1,5 +1,3 @@
-// eslint-disable-next-line eslint-js/no-restricted-imports
-import { Global, css } from "@emotion/react";
 import { type JSX, useMemo } from "react";
 
 import "metabase/css/core/base.css";
@@ -11,9 +9,13 @@ import {
 } from "metabase/embedding/config";
 import { useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import { GlobalStyleSheet } from "metabase/styled-components/components/GlobalStyleSheet";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
-import { getFontFamilyValue } from "metabase/utils/fonts";
+import {
+  getCustomFontFaceStyles,
+  getFontFamilyValue,
+} from "metabase/utils/fonts";
 import { getSaveDomImageStyles } from "metabase/viz-core";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -32,32 +34,26 @@ export const GlobalStyles = (): JSX.Element => {
   }, [theme, whitelabelColors]);
 
   const styles = useMemo(() => {
-    return css`
+    const fontFaces = getCustomFontFaceStyles(fontFiles);
+
+    return `
       ${cssVariables}
       :root {
         --mb-default-font-family: ${getFontFamilyValue(font)};
       }
 
-      ${fontFiles?.map(
-        (file) => css`
-          @font-face {
-            font-family: "Custom";
-            src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
-            font-weight: ${file.fontWeight};
-            font-style: normal;
-            font-display: swap;
-          }
-        `,
-      )}
+      ${fontFaces}
       ${getSaveDomImageStyles(isEmbeddingSdk())}
-    body {
+      body {
         font-size: 0.875em;
-        ${isStaticEmbedding() || isPublicEmbedding()
-          ? ""
-          : `color-scheme: ${colorScheme};`}
+        ${
+          isStaticEmbedding() || isPublicEmbedding()
+            ? ""
+            : `color-scheme: ${colorScheme};`
+        }
       }
     `;
   }, [cssVariables, font, fontFiles, colorScheme]);
 
-  return <Global styles={styles} />;
+  return <GlobalStyleSheet styles={styles} />;
 };

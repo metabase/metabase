@@ -66,7 +66,7 @@ const SdkCssVariablesTester = ({
   const theme = useMantineTheme();
 
   useEffect(() => {
-    onChange(getMetabaseSdkCssVariables({ theme, font: DEFAULT_FONT }).styles);
+    onChange(getMetabaseSdkCssVariables({ theme, font: DEFAULT_FONT }));
   }, [onChange, theme]);
 
   return null;
