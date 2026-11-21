@@ -57,28 +57,6 @@
   (derive :hook/entity-id)
   (derive :hook/events))
 
-(defmethod mi/after-archived-change :model/Exploration
-  [_model rows changes]
-  (let [archived? (boolean (:archived changes))
-        ids       (mapv :id (explorations.db/summary-documents-following-explorations (mapv :id rows) archived?))]
-    (events/with-event-context {:archived-with [:model/Exploration (:id (first rows))]}
-      (document/update-documents! (mapv (fn [id] {:id id :archived archived?}) ids)))))
-
-(t2/define-before-insert :model/Exploration
-  [{:keys [archived collection_id] :as exploration}]
-  (collection/check-collection-not-archived archived collection_id)
-  exploration)
-
-(t2/define-before-update :model/Exploration
-  [{:keys [archived collection_id] :as exploration}]
-  (let [changes (t2/changes exploration)]
-    (when (contains? changes :collection_id)
-      (collection/check-collection-not-archived archived collection_id))
-    (cond-> exploration
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
-
-(mi/define-update-in-transaction :model/Exploration)
-
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
   "Whether the current user reads each of `explorations`, as the content of its Collection."
   [_model _k explorations]
@@ -138,21 +116,117 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- check-collections-not-archived!
+  "Throws a 400 unless each of `rows`, with its `archived` state, may be in its Collection, which is not archived unless
+  the row is, reading the Collections once."
+  [rows]
+  (let [archived-ids (collection/archived-collection-ids (map :collection_id rows))]
+    (doseq [{:keys [archived collection_id]} rows]
+      (collection/check-collection-not-archived
+       archived (when collection_id {:archived (contains? archived-ids collection_id)})))))
+
+(mu/defn create-explorations! :- [:sequential :map]
+  "Insert the Exploration `rows` and return the inserted instances, in one transaction and one batch of events. An
+  Exploration in an archived Collection throws unless it is archived."
+  [rows :- [:sequential ::explorations.schema/exploration.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-collections-not-archived! rows)
+      (vec (explorations.db/insert-explorations! rows)))))
+
 (mu/defn create-exploration! :- :map
-  "Insert the Exploration `exploration` and return it."
+  "Insert the Exploration `exploration` and return it, as [[create-explorations!]] does."
   [exploration :- ::explorations.schema/exploration.create]
-  (explorations.db/insert-exploration! exploration))
+  (first (create-explorations! [exploration])))
+
+(defn- with-archived-directly
+  "`row`, an update of the Exploration `stored`, with the `archived_directly` that a change of `archived` gives unless the
+  row gives one: true when the Exploration is archived by itself, which is when its Collection is not archived,
+  `archived-ids` holding the archived Collections."
+  [stored row archived-ids]
+  (if (and (contains? row :archived) (not= (boolean (:archived row)) (boolean (:archived stored))))
+    (cond-> row
+      (not (contains? row :archived_directly))
+      (assoc :archived_directly
+             (boolean (and (:archived row)
+                           (not (contains? archived-ids (if (contains? row :collection_id)
+                                                          (:collection_id row)
+                                                          (:collection_id stored))))))))
+    row))
+
+(defn- changed?
+  "Whether `row`, the columns to write, changes the column `k` of `stored`."
+  [stored row k]
+  (and (contains? row k) (not= (get row k) (get stored k))))
+
+(defn- set-summary-documents-archived!
+  "Archives the Summary Documents of the Explorations of `rows`, update rows that change `archived`, that their archive
+  takes along, and restores those that its archive took down."
+  [rows]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)
+          :let [ids          (mapv :id group)
+                document-ids (mapv :id (explorations.db/summary-documents-following-explorations ids archived?))]
+          :when (seq document-ids)]
+    (events/with-event-context {:archived-with [:model/Exploration (first ids)]}
+      (document/update-documents! (mapv (fn [id] {:id id :archived archived?}) document-ids)))))
+
+(mu/defn update-explorations! :- [:sequential ::explorations.schema/exploration.update-row]
+  "Apply the columns of each of `rows` to the Exploration with its `:id` and return the rows of Explorations that exist,
+  in one transaction and one batch of events, with one statement per distinct set of changes. An Exploration moved into
+  an archived Collection throws unless it is archived, a change of `archived` gives its `archived_directly` and
+  archives or restores its Summary Documents."
+  [rows :- [:sequential ::explorations.schema/exploration.update-row]]
+  (let [stored (u/index-by :id (explorations.db/rows :model/Exploration (mapv :id rows)))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (if (empty? rows)
+      rows
+      (events/with-batched-events
+        (let [archiving    (filterv #(contains? % :archived) rows)
+              archived-ids (collection/archived-collection-ids
+                            (map #(if (contains? % :collection_id) (:collection_id %) (:collection_id (get stored (:id %))))
+                                 archiving))
+              rows*        (mapv #(with-archived-directly (get stored (:id %)) % archived-ids) rows)
+              moved        (filterv #(changed? (get stored (:id %)) % :collection_id) rows*)]
+          (check-collections-not-archived!
+           (for [row moved]
+             {:collection_id (:collection_id row)
+              :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))}))
+          (doseq [[changes group] (group-by #(dissoc % :id) rows*)
+                  :when           (seq changes)]
+            (explorations.db/update-explorations! (mapv :id group) changes))
+          (set-summary-documents-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows*))
+          rows)))))
 
 (mu/defn update-exploration!
-  "Apply `changes` to the Exploration with `exploration-id`."
+  "Apply `changes` to the Exploration with `exploration-id`, as [[update-explorations!]] does."
   [exploration-id :- ms/PositiveInt
    changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
-  (explorations.db/update-exploration! exploration-id changes))
+  (update-explorations! [(assoc changes :id exploration-id)])
+  nil)
+
+(mu/defn delete-explorations! :- :nil
+  "Delete the Explorations with `exploration-ids` in one batch of events."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (when (seq exploration-ids)
+    (events/with-batched-events
+      (explorations.db/delete-explorations! exploration-ids)))
+  nil)
 
 (mu/defn delete-exploration!
-  "Delete the Exploration with `exploration-id`."
+  "Delete the Exploration with `exploration-id`, as [[delete-explorations!]] does."
   [exploration-id :- ms/PositiveInt]
-  (explorations.db/delete-exploration! exploration-id))
+  (delete-explorations! [exploration-id]))
+
+(defmethod collection/archive-in-collections! :model/Exploration
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-explorations! (mapv (fn [id] {:id id :archived true}) ids))))
+
+(defmethod collection/restore-in-collections! :model/Exploration
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-explorations! (mapv (fn [id] {:id id :archived false}) ids))))
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------
 

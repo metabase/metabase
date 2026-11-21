@@ -16,7 +16,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
-   [metabase.events.batch :as events.batch]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    ;; stored card queries/refs are still legacy MBQL; validated against the legacy schema on read/write
@@ -36,13 +35,9 @@
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
-   [toucan2.realize :as t2.realize]
-   [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -573,59 +568,6 @@
         (throw (ex-info (format "Error doing after-select for model %s: %s" model (ex-message e))
                         {:model model}
                         e))))))
-
-(defmulti after-archived-change
-  "Writes what an UPDATE of a `model` row that changed `:archived` takes to the rows that follow it, called by
-  [[define-update-in-transaction]] after the UPDATE with the rows as they were before it, so the parent is written first."
-  {:arglists '([model rows changes])}
-  (fn [model _rows _changes] model))
-
-(defmethod after-archived-change :default
-  [_model _rows _changes]
-  nil)
-
-(defn rows-changing-archived
-  "The rows of `model` that the UPDATE given by `parsed-args` and `resolved-query` selects and whose `:archived` differs
-  from the one in `changes`."
-  [model parsed-args resolved-query changes]
-  (filterv #(not= (boolean (:archived %)) (boolean (:archived changes)))
-           (t2.pipeline/transduce-query ((map t2.realize/realize) conj)
-                                        :toucan.query-type/select.instances.from-update
-                                        model parsed-args resolved-query)))
-
-(defn runs-statement?
-  "Whether the UPDATE of `model` as `query-type` runs its statement here, rather than handing it to Toucan's after-update
-  tool, which runs it again as a query returning instances."
-  [query-type model]
-  (or (isa? query-type :toucan.result-type/instances)
-      (methodical/is-default-primary-method? t2.after/each-row-fn [query-type model])))
-
-(defmacro define-update-in-transaction
-  "Runs every UPDATE of `model`, with its before-update hooks, in one transaction, and calls [[after-archived-change]]
-  after it for the rows whose `:archived` it changed, with the events of the UPDATE and of the cascade delivered as one
-  batch."
-  [model]
-  `(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* ~model :default]
-     [rf# query-type# model# parsed-args# resolved-query#]
-     (t2.conn/with-transaction [_conn# nil {:nested-transaction-rule :ignore}]
-       (let [changes# (:changes parsed-args#)
-             rows#    (when (and (contains? changes# :archived)
-                                 (contains? (methods after-archived-change) model#)
-                                 (runs-statement? query-type# model#))
-                        (rows-changing-archived model# parsed-args# resolved-query# changes#))]
-         (if (seq rows#)
-           (events.batch/do-with-write-batch
-            #(u/prog1 (~'next-method rf# query-type# model# parsed-args# resolved-query#)
-               (after-archived-change model# rows# changes#)))
-           (~'next-method rf# query-type# model# parsed-args# resolved-query#))))))
-
-(defn archived-directly
-  "The `archived_directly` of `row`, an update that changes `:archived`: the one the write gives, else true when `row` is
-  archived by itself, which is when `parent-archived?`, a function of no arguments, says that its parent is not."
-  [row parent-archived?]
-  (if (contains? (t2/changes row) :archived_directly)
-    (:archived_directly row)
-    (boolean (and (:archived row) (not (parent-archived?))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

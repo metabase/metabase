@@ -705,8 +705,8 @@
                                                         :archived          true
                                                         :archived_directly true}
                    :model/Dashboard  {official :id}    {:name "Finance overview", :collection_id official-id}]
-      (t2/update! :model/Collection :id (:id emea) {:archived true})
-      (t2/update! :model/Collection :id (:id ops) {:archived true})
+      (collection/update-collections! [{:id (:id emea) :archived true}])
+      (collection/update-collections! [{:id (:id ops) :archived true}])
       (let [read-dashboard #(:output (read-uris {:uris [(str "metabase://dashboard/" %)]}))]
         (testing "a dashboard in a trashed collection has its path through the Trash, and both are archived"
           (let [output (read-dashboard trashed-id)]
@@ -2190,10 +2190,9 @@
 (deftest pagination-copied-xml-uri-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Paging" :location "/"}]
-      (t2/insert! :model/Collection
-                  (for [i (range 60)]
-                    {:name     (format "Child-%02d" i)
-                     :location (str "/" parent-id "/")}))
+      (collection/create-collections! [(for [i (range 60)]
+                                         {:name     (format "Child-%02d" i)
+                                          :location (str "/" parent-id "/")})])
       (let [read-page     (fn [uri] (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
             page-1        (read-page "metabase://collections?tree=true")
             next-page-uri (second (re-find #"Fetch (\S+) for the next page" (:output page-1)))

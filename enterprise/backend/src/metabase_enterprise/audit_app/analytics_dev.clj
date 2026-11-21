@@ -17,6 +17,7 @@
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.plugins.core :as plugins]
    [metabase.serialization.core :as serialization]
    [metabase.setup.core :as setup]
@@ -288,7 +289,7 @@
 
 (defn- cleanup-real-analytics []
   (database/delete-databases! (audit-app.db/audit-database-ids))
-  (audit-app.db/delete-analytics-collections!))
+  (collection/delete-collections! (audit-app.db/analytics-collection-ids)))
 
 (defn- analytics-dev-mode-setup []
   (when (audit/analytics-dev-mode)

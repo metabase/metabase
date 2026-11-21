@@ -270,7 +270,7 @@
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
     (with-collection-hierarchy! [a b c d e f g]
-      (collection/move-collection! a (collection/children-location personal-collection))
+      (collection/update-collections! [{:id (u/the-id a) :location (collection/children-location personal-collection)}])
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
             response-lucky      (mt/user-http-request :lucky :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -1472,9 +1472,9 @@
       (mt/user-http-request :crowberto :put 400 (str "collection/" folder-id) {:name "Renamed" :archived true})
       (is (= "Folder" (t2/select-one-fn :name :model/Collection :id folder-id))))
     (testing "an already archived transforms folder can still be unarchived"
-      (t2/update! :model/Collection :id folder-id {:archived             true
-                                                   :archived_directly    true
-                                                   :archive_operation_id (str (random-uuid))})
+      (collection/update-collections! [{:id folder-id :archived             true
+                                        :archived_directly    true
+                                        :archive_operation_id (str (random-uuid))}])
       (mt/user-http-request :crowberto :put 200 (str "collection/" folder-id) {:archived false})
       (is (false? (t2/select-one-fn :archived :model/Collection :id folder-id))))))
 
@@ -3584,10 +3584,9 @@
 
 (deftest move-collection-into-own-descendant-rejected-test
   (testing "PUT /api/collection/:id rejects moving a collection into its own descendant, without actually moving it"
-    ;; Pinning current (dubious) behavior: this returns a 500 today; a 4xx status would be the correct response.
     (with-collection-hierarchy! [a b]
       (let [location-before (t2/select-one-fn :location :model/Collection :id (u/the-id a))]
-        (mt/user-http-request :crowberto :put 500 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
+        (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id a)) {:parent_id (u/the-id b)})
         (is (= location-before
                (t2/select-one-fn :location :model/Collection :id (u/the-id a))))))))
 

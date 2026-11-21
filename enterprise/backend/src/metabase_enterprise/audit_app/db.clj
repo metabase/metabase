@@ -131,10 +131,10 @@
   [entity-id :- :string]
   (t2/select-one :model/Collection :entity_id entity-id))
 
-(mu/defn delete-analytics-collections!
-  "Delete the Collections of the analytics namespace."
+(mu/defn analytics-collection-ids
+  "The IDs of the Collections of the analytics namespace."
   []
-  (t2/delete! :model/Collection :namespace "analytics"))
+  (vec (t2/select-pks-set :model/Collection :namespace "analytics")))
 
 (mu/defn delete-pulse-channel-recipients-of-user!
   "Delete the PulseChannelRecipients of the User with `user-id`."

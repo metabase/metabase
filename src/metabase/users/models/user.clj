@@ -493,11 +493,18 @@
                :when   (contains? admin-ids user-id)]
          (perms-group-membership/remove-user-from-group! user-id admin-group-id))))))
 
+(defmulti delete-for-users!
+  "Deletes the rows of `model` that belong to the deactivated Users with `user-ids`, which a model that follows its
+  Users implements with its own write function."
+  {:arglists '([model user-ids])}
+  (fn [model _user-ids] model))
+
 (defn- delete-subscriptions!
   "Delete the dashboard subscription recipients of the deactivated Users with `user-ids`."
   [user-ids]
   (binding [api/*current-user-id* nil]
-    (run! users.db/delete-pulse-channel-recipients-for-user! user-ids)))
+    (t2/resolve-model :model/PulseChannelRecipient)
+    (delete-for-users! :model/PulseChannelRecipient user-ids)))
 
 (mu/defn update-users! :- :int
   "Apply `changes` to the Users matching `conditions` and return the number updated. Deactivating or demoting the last

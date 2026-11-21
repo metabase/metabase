@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.actions.models :as actions.models]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -171,7 +172,7 @@
           :metrics-id (id-of collections/library-metrics-collection-type)})
       (finally
         (when-not existing
-          (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
+          (collection/delete-collections! (vec (cons (:id library) (map :id children)))))))))
 
 (defn do-with-sources!
   "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and an implicit action

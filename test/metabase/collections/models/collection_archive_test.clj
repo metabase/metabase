@@ -3,6 +3,9 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
+   [metabase.explorations.models.exploration :as exploration]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -12,8 +15,17 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
-(defn- archive! [model id archived?]
-  (t2/update! model :id id {:archived archived?}))
+(defn- archive!
+  "Archives or restores the `model` row with `id` through the write function of the model."
+  [model id archived?]
+  (let [rows [{:id id :archived archived?}]]
+    (case model
+      :model/Card               (card/update-cards! rows)
+      :model/Collection         (collection/update-collections! rows)
+      :model/Dashboard          (dashboard/update-dashboards! rows)
+      :model/Document           (document/update-documents! rows)
+      :model/Exploration        (exploration/update-explorations! rows)
+      :model/NativeQuerySnippet (native-query-snippet/update-snippets! rows))))
 
 (defn- row [model id]
   (t2/select-one model :id id))
@@ -96,7 +108,7 @@
     (is (=? {:archived false :archived_directly false} (row :model/NativeQuerySnippet (u/the-id snippet))))
     (is (=? {:archived true :archived_directly true} (row :model/NativeQuerySnippet (u/the-id direct))))))
 
-(deftest archive-of-collection-reads-one-parent-per-item-test
+(deftest archive-of-collection-statements-do-not-grow-with-items-test
   (letfn [(calls [n]
             (mt/with-temp [:model/Collection collection {:namespace "snippets"}]
               (dotimes [_ n]
@@ -108,7 +120,7 @@
                 (archive! :model/Collection (u/the-id collection) true)
                 (archive! :model/Collection (u/the-id collection) false)
                 (call-count))))]
-    (is (= 18 (- (calls 20) (calls 2))))))
+    (is (= (calls 2) (calls 20)))))
 
 (deftest archive-and-restore-follow-model-parents-test
   (testing "a dashboard archives and restores the questions it holds, but not those archived on their own"
@@ -154,7 +166,7 @@
       (is (false? (:archived_directly (row :model/Card (u/the-id card)))))))
   (testing "a write that gives a cause keeps it"
     (mt/with-temp [:model/Card card {}]
-      (t2/update! :model/Card :id (u/the-id card) {:archived true :archived_directly false})
+      (card/update-cards! [{:id (u/the-id card) :archived true :archived_directly false}])
       (is (=? {:archived true :archived_directly true} (row :model/Card (u/the-id card)))))))
 
 (deftest rows-do-not-go-into-archived-parents-test
@@ -176,8 +188,8 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (t2/update! :model/Collection :id (u/the-id live)
-                                        {:location (collection/children-location archived)}))))
+                            (collection/update-collections! [{:id       (u/the-id live)
+                                                              :location (collection/children-location archived)}]))))
     (testing "a row that is archived can be moved into an archived collection"
       (archive! :model/Card (u/the-id card) true)
       (is (= 1 (count (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))))
@@ -187,3 +199,40 @@
                             (first (#'card/create-cards* [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
                                                               (dissoc :id :entity_id :created_at :updated_at)
                                                               (assoc :archived false))])))))))
+
+(defn- fill-collection!
+  "Puts one item of each kind a Collection archives, restores and deletes with it into the Collection with
+  `collection-id`."
+  [collection-id]
+  (doseq [model [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration]]
+    (t2/insert! model (assoc (mt/with-temp-defaults model) :collection_id collection-id))))
+
+(defn- subtree-statement-counts!
+  "The number of statements that archiving, restoring, moving and deleting a Collection with `n` Collections under it
+  take, each Collection holding one item of each kind."
+  [n]
+  (mt/with-temp [:model/Collection root   {}
+                 :model/Collection target {}]
+    (fill-collection! (u/the-id root))
+    (dotimes [_ n]
+      (let [child (first (collection/create-collections! [{:name     (mt/random-name)
+                                                           :location (collection/children-location root)}]))]
+        (fill-collection! (u/the-id child))))
+    (let [id      (u/the-id root)
+          counted (fn [f]
+                    (t2/with-call-count [call-count]
+                      (f)
+                      (call-count)))]
+      {:archive (counted #(collection/update-collections! [{:id id :archived true}]))
+       :restore (counted #(collection/update-collections! [{:id id :archived false}]))
+       :move    (counted #(collection/update-collections! [{:id id :location (collection/children-location target)}]))
+       :delete  (counted #(collection/delete-collections! [id]))})))
+
+(deftest collection-statements-do-not-grow-with-subtree-test
+  (mt/with-model-cleanup [:model/Card :model/Dashboard :model/Document :model/Timeline :model/Pulse :model/Exploration
+                          :model/Collection]
+    (let [small (subtree-statement-counts! 2)
+          large (subtree-statement-counts! 6)]
+      (doseq [k [:archive :restore :move :delete]]
+        (testing (name k)
+          (is (= (get small k) (get large k))))))))

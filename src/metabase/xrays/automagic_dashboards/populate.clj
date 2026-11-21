@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
@@ -36,8 +37,8 @@
   "Get or create container collection for automagic dashboards in a given location."
   [location]
   (or (xrays.db/automagic-dashboards-collection location)
-      (xrays.db/insert-collection! {:name "Automatically Generated Dashboards"
-                                    :location location})))
+      (first (collection/create-collections! [{:name     "Automatically Generated Dashboards"
+                                               :location location}]))))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."

@@ -5,6 +5,7 @@
    [better-cond.core :as b]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
@@ -30,6 +31,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
+   [metabase.notification.models :as notification.models]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
@@ -568,16 +570,20 @@
                               card-ids)]
       (when (seq card-updates)
         (update-cards! card-updates))
-      (doseq [id    dashboard-ids
-              :let  [parameters     (get dash-params id)
-                     new-parameters (new-params parameters (get by-object [:dashboard id]))]
-              :when (not= parameters new-parameters)]
-        (queries.db/update-dashboard! id {:parameters new-parameters})))))
+      (when-let [dashboard-updates (not-empty
+                                    (into []
+                                          (keep (fn [id]
+                                                  (let [parameters     (get dash-params id)
+                                                        new-parameters (new-params parameters (get by-object [:dashboard id]))]
+                                                    (when (not= parameters new-parameters)
+                                                      {:id id :parameters new-parameters}))))
+                                          dashboard-ids))]
+        (@(requiring-resolve 'metabase.dashboards.models.dashboard/update-dashboards!) dashboard-updates)))))
 
 (defn- reset-values-sources-of-changed-cards!
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of one of
   the `cards` that its new `result_metadata` in its changes, `[card changes]` pairs, no longer has;
-  [[after-archived-change]] resets those of archived cards."
+  [[update-cards!]] resets those of archived cards."
   [cards+changes]
   (let [targets (into {}
                       (keep (fn [[{:keys [id database_id]} changes]]
@@ -1330,8 +1336,6 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
-(mi/define-update-in-transaction :model/Card)
-
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
   (let [changes  (some-> card t2/changes normalize-card)
@@ -1342,8 +1346,6 @@
     (when (contains? changes :visualization_settings)
       (check-timeline-settings card))
     (-> card
-        (cond-> (and (contains? changes :archived) (not (:archived card)) (not (contains? changes :archived_directly)))
-          (assoc :archived_directly false))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (m/update-existing :dataset_query lib-be/normalize-query)
@@ -1358,40 +1360,11 @@
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
-(defn- directly-archived-card-ids
-  "The ids of the Cards among `rows`, which an update that gives `changes` archived, that are archived on their own,
-  as `{:all ids, :derived ids}`, `:derived` being those whose cause the update did not give: a Card whose cause is
-  given as other than it was gets that cause, any other is archived on its own when it is not in an archived
-  Collection, Dashboard or Document."
-  [rows changes]
-  (let [given?  (fn [row]
-                  (and (contains? changes :archived_directly)
-                       (not= (boolean (:archived_directly row)) (boolean (:archived_directly changes)))))
-        grouped (group-by (comp boolean given?) rows)
-        carried (when-let [derived (seq (get grouped false))]
-                  (archived-container-ids (vec derived)))
-        derived (into [] (comp (map :id) (remove (set carried))) (get grouped false))]
-    {:all     (into (if (:archived_directly changes) (mapv :id (get grouped true)) []) derived)
-     :derived derived}))
-
 (defn- delete-notifications-of-cards!
   "Deletes the alerts of the Cards with `card-ids`, which are found before any is deleted."
   [card-ids]
   (when-let [notification-ids (seq (queries.db/card-notification-ids-for-cards card-ids))]
-    (queries.db/delete-notifications! notification-ids)))
-
-(defmethod mi/after-archived-change :model/Card
-  [_model rows changes]
-  (when (:archived changes)
-    (let [ids                 (mapv :id rows)
-          {:keys [all derived]} (directly-archived-card-ids rows changes)]
-      (when (seq derived)
-        (queries.db/update-cards! derived {:archived_directly true}))
-      (when (seq all)
-        (delete-notifications-of-cards! all))
-      (queries.db/delete-actions-of-models! ids)
-      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
-                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
+    (notification.models/delete-notifications! (vec notification-ids))))
 
 (defenterprise delete-card-tests!
   "Delete the tests of the cards with `card-ids`. No-op in OSS."
@@ -1634,9 +1607,9 @@
                                   (when (turned-into-question? before changes) (:id before))))
                        updates)]
     (when-let [action-ids (seq (queries.db/implicit-action-ids-for-models implicit))]
-      (queries.db/delete-actions! (set action-ids)))
+      (actions.models/delete-actions! (vec action-ids)))
     (when (seq all)
-      (queries.db/delete-actions-of-models! all))))
+      (actions.models/delete-actions-of-models! all))))
 
 (defn- delete-alerts-of-changed-cards!
   "Deletes the alerts of the Cards among `updates` that their change from `before` to `after` invalidates."
@@ -1658,7 +1631,7 @@
                                         (into [] (comp (filter #(contains? (:changes %) :collection_id))
                                                        (map (comp :id :before)))
                                               updates))]
-    (queries.db/move-actions-of-models! ids collection-id)))
+    (actions.models/move-actions-of-models! ids collection-id)))
 
 (defn- group-in-order
   "The entries of `xs`, which `f` gives the key of, as `[key entries]` in the order the keys first appear."
@@ -1666,6 +1639,49 @@
   (let [order   (distinct (map f xs))
         grouped (group-by f xs)]
     (mapv (fn [k] [k (get grouped k)]) order)))
+
+(defn- with-archived-directly
+  "`entries`, update entries, with the `archived_directly` that a change of `archived` gives each unless the update gives
+  one: true when the Card is archived on its own, which is when its Collection, Dashboard and Document are not archived,
+  and false for a restore."
+  [entries]
+  (let [changing (filterv #(and (contains? (:changes %) :archived) (not (contains? (:changes %) :archived_directly))) entries)
+        carried  (when-let [archiving (not-empty (into [] (comp (filter #(:archived (:changes %)))
+                                                                (map #(merge (:before %) (:changes %))))
+                                                       changing))]
+                   (archived-container-ids archiving))
+        derived  (into {}
+                       (map (fn [{:keys [before changes]}]
+                              [(:id before) (boolean (and (:archived changes) (not (contains? carried (:id before)))))]))
+                       changing)]
+    (mapv (fn [{:keys [before] :as entry}]
+            (let [directly (get derived (:id before))]
+              (if (and (some? directly) (not= directly (boolean (:archived_directly before))))
+                (-> entry
+                    (assoc-in [:update :archived_directly] directly)
+                    (assoc-in [:changes :archived_directly] directly))
+                entry)))
+          entries)))
+
+(defn- archived-entries
+  "The entries of `entries`, update entries, that archive their Card."
+  [entries]
+  (filterv #(and (contains? (:changes %) :archived) (:archived (:changes %))) entries))
+
+(defn- archive-effects!
+  "Deletes the Actions of the Cards that the update `entries` archive, the alerts of those archived on their own, and
+  resets the parameters that take their values from them."
+  [entries]
+  (when-let [archiving (not-empty (archived-entries entries))]
+    (let [ids      (mapv (comp :id :before) archiving)
+          directly (into [] (comp (filter #(boolean (get-in % [:changes :archived_directly] (:archived_directly (:before %)))))
+                                  (map (comp :id :before)))
+                         archiving)]
+      (when (seq directly)
+        (delete-notifications-of-cards! directly))
+      (actions.models/delete-actions-of-models! ids)
+      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
+                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (defn- update-cards*
   "[[update-cards!]] without checking `updates` against their schema, which the hooks of the model check."
@@ -1693,6 +1709,7 @@
                                         :before  card
                                         :changes (changing-values card update)}))
                                    updates)
+              entries        (with-archived-directly entries)
               checked        (filterv (comp placement-needed? :changes) entries)
               placement      (when (seq checked)
                                (load-placement
@@ -1719,6 +1736,7 @@
                         (u/index-by :id (queries.db/cards (mapv (comp :id :before) entries))))]
             (delete-alerts-of-changed-cards! entries after)
             (move-actions-of-cards! entries after)
+            (archive-effects! entries)
             (when-let [objects (seq (into []
                                           (keep (fn [{:keys [before changes]}]
                                                   (when (some? (:parameters changes))
@@ -1749,7 +1767,7 @@
     (when (seq card-ids)
       (events/with-batched-events
         (delete-card-tests! card-ids)
-        (queries.db/delete-actions-of-models! card-ids)
+        (actions.models/delete-actions-of-models! card-ids)
         (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
         (queries.db/delete-card-moderation-reviews-of-cards! card-ids)
         (revision/delete-revisions-for-entities! "Card" card-ids)
@@ -1773,14 +1791,21 @@
                         cards-on-first-tab size_x size_y autoplace/default-grid-width)
                        (autoplace/get-position-for-new-dashcard
                         cards-on-first-tab (:display card)))]
-        (queries.db/insert-dashcard! (assoc new-spot
-                                            :dashboard_tab_id (some-> first-tab :id)
-                                            :card_id (:id card)
-                                            :dashboard_id dashboard-id))))))
+        (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/create-dashboard-cards!)
+         [(assoc new-spot
+                 :dashboard_tab_id (some-> first-tab :id)
+                 :card_id (:id card)
+                 :dashboard_id dashboard-id)])))))
+
+(defn- delete-dashcards!
+  "Deletes the DashboardCards with `dashcard-ids` through their model, whose namespace requires this one."
+  [dashcard-ids]
+  (when (seq dashcard-ids)
+    (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!) (vec dashcard-ids))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
-  (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
+  (delete-dashcards! (queries.db/dashcard-ids-for-card-on-dashboard card-id dashboard-id))
   (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
     (queries.db/delete-dashcard-series! (set dashcard-ids))))
 
@@ -1835,7 +1860,7 @@
                delete-old-dashcards?)
       ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
       ;; removed from the dashboard" since you can't restore to the previous state...
-      (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
+      (delete-dashcards! (queries.db/dashcard-ids-for-card-off-dashboard card-id new-dashboard-id))
       (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
         (queries.db/delete-dashcard-series! ids)))))
 
@@ -2030,7 +2055,8 @@
         (when (seq updates)
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
-              (queries.db/update-dashcard! id update))))))))
+              (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/update-dashboard-card-rows!)
+               [(assoc update :id id)]))))))))
 
 (deftype SourceCardDependentsGraph []
   graph/Graph
@@ -2139,6 +2165,21 @@
                       rows)]
     (update-cards* updates)
     rows))
+
+(defmethod collection/archive-in-collections! :model/Card
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-cards! (mapv (fn [id] {:id id :archived true}) ids))))
+
+(defmethod collection/restore-in-collections! :model/Card
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-cards! (mapv (fn [id] {:id id :archived false}) ids))))
+
+(defmethod collection/delete-in-collections! :model/Card
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
+    (delete-cards! ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

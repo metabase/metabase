@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.search.test-util :as search.tu]
@@ -162,7 +163,7 @@
    (fn [_card-id _collection-id]
      (mt/with-temp [:model/DataApp app             {:slug "wasps"}
                     :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
-       (t2/delete! :model/Collection :id (:resource_collection_id app))
+       (collection/delete-collections! [(:resource_collection_id app)])
        (testing "an app without a collection can use no card, not even one in the root collection"
          (is (= (error-message :cards elsewhere-id)
                 (run-query 400 (card-query elsewhere-id) (as-app "wasps")))))))))
@@ -260,7 +261,7 @@
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
        (testing "an app without a collection runs no card, not even one in the root collection"
          (mt/with-temp [:model/DataApp app {:slug "wasps"}]
-           (t2/delete! :model/Collection :id (:resource_collection_id app))
+           (collection/delete-collections! [(:resource_collection_id app)])
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
        (testing "a dev preview runs no saved card"
@@ -421,7 +422,7 @@
          (do-with-rename-action!
           elsewhere-collection-id
           (fn [elsewhere-id]
-            (t2/delete! :model/Collection :id (:resource_collection_id app))
+            (collection/delete-collections! [(:resource_collection_id app)])
             (testing "an app without a collection runs no action"
               (is (= (action-error elsewhere-id)
                      (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) (as-app "wasps")

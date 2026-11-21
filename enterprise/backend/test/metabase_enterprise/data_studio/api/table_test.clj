@@ -451,7 +451,7 @@
     (testing "deleting a Library collection unpublishes its tables and their FK-linked tables in other collections"
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
-          (t2/delete! :model/Collection :id coll-a)
+          (collection/delete-collections! [coll-a])
           (testing "Table X (in the deleted collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"
@@ -463,7 +463,7 @@
       (with-fk-linked-published-tables
         (fn [{:keys [coll-a x-id y-id]}]
           (mt/with-current-user (mt/user->id :crowberto)
-            (t2/update! :model/Collection :id coll-a {:archived true}))
+            (collection/update-collections! [{:id coll-a :archived true}]))
           (testing "Table X (in the archived collection) is unpublished"
             (is (=? {:is_published false :collection_id nil} (user-table x-id))))
           (testing "Table Y (FK-linked, in another collection) is also unpublished"

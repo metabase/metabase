@@ -779,7 +779,8 @@
                     (archive-collection! coll)
                     (is (true? (archived? coll))))
                   (testing "and deleted"
-                    (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))
+                    (collection/delete-collections! [(:id coll)])
+                    (is (not (t2/exists? :model/Collection :id (:id coll)))))))))))
       (testing "an admin may archive and then delete all of them"
         (with-mixed-policies!
           (fn [colls]
@@ -790,4 +791,5 @@
                   (is (true? (archived? coll)))))
               (doseq [coll (vals colls)]
                 (testing (:name coll)
-                  (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))))
+                  (collection/delete-collections! [(:id coll)])
+                  (is (not (t2/exists? :model/Collection :id (:id coll)))))))))))))

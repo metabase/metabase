@@ -315,12 +315,18 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
+(defn- update-transform!
+  "Applies `changes` to the Transform with `transform-id` through the write function of its model, whose namespace
+  requires this one."
+  [transform-id changes]
+  ((requiring-resolve 'metabase.transforms.models.transform/update-transforms!) {transform-id changes}))
+
 (mu/defn save-watermark! :- :nil
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [hi-value (:value (:hi source-range-params))]
-    (transforms-base.db/update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+    (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -943,7 +949,7 @@
         table (sync-target! (canonical-sync-target db-id transform) database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
-      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
+      (update-transform! (:id transform) {:target_table_id (:id table)})
       (table/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.

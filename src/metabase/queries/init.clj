@@ -3,5 +3,6 @@
    [metabase.queries.events.backfill-model-metadata-on-sync]
    [metabase.queries.events.cards-notification-deleted-on-card-save]
    [metabase.queries.events.schema]
+   [metabase.queries.models.card]
    ;; for Malli-registered schemas
    [metabase.queries.schema]))

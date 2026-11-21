@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table
   (:require
    [medley.core :as m]
+   [metabase.actions.models :as actions.models]
    [metabase.activity-feed.recent-views.spec :as recent-views]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -643,13 +644,18 @@
   (when (seq ids)
     (events/with-batched-events
       (field/delete-fields-for-tables! (vec ids))
-      (warehouse-schema.db/delete-implicit-actions-for-tables! (vec ids))
+      (actions.models/delete-implicit-actions-of-tables! (vec ids))
       (warehouse-schema.db/delete-tables! (vec ids)))))
 
 (mu/defn delete-table!
   "Delete the Table with `table-id`, as [[delete-tables!]] does."
   [table-id :- ::lib.schema.id/table]
   (delete-tables! [table-id]))
+
+(defmethod collection/archive-in-collections! :model/Table
+  [_model collection-ids]
+  (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
+    (update-tables-with-changes! (set table-ids) {:collection_id nil :is_published false})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

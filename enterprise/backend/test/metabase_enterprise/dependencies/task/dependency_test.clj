@@ -17,6 +17,7 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -1340,7 +1341,7 @@
                         :model/Collection collection {:namespace "data-apps"}
                         :model/Card       card       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
                                                       :collection_id (:id collection)}]
-           (t2/delete! :model/Collection :id (:resource_collection_id app))
+           (collection/delete-collections! [(:resource_collection_id app)])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (data-app-deps (:id app))))
            (t2/update! :model/DataApp :id (:id app) {:resource_collection_id (:id collection)})

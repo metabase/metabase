@@ -1429,7 +1429,7 @@
                  :location    "/"
                  :description nil}
                 resp))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (collection/delete-collections! [(:id resp)]))))
   (testing "Creates a nested collection under a parent"
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Agent Parent Coll"}]
       (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/collection"
@@ -1443,7 +1443,7 @@
                 resp))
         ;; location should encode the parent's id in the materialized path
         (is (= (str "/" parent-id "/") (:location resp)))
-        (t2/delete! :model/Collection :id (:id resp)))))
+        (collection/delete-collections! [(:id resp)]))))
   (testing "Returns 404 when parent_collection_id does not exist"
     (mt/user-http-request :crowberto :post 404 "agent/v1/collection"
                           {:name                 "Bad Parent Coll"

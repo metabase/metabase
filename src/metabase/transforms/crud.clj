@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -257,5 +258,5 @@
     (t2/with-transaction [_]
       ;; Each Transform publishes its delete events. The Collection `before-delete` hook deletes the subfolders.
       (transform.model/delete-transforms! (mapv :id transforms))
-      (transforms.db/delete-collection! (:id collection)))
+      (collection/delete-collections! [(:id collection)]))
     nil))

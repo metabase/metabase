@@ -25,6 +25,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
+   [metabase.channel.models.channel :as channel.models]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.eid-translation.spec :as eid-translation]
@@ -634,13 +635,14 @@
 
 (defn- archived-directly
   "The `archived_directly` of `pulse`, an update of `changes` that changes its `:archived`: the one `changes` gives, else
-  true when it is archived by itself, which is when its Collection is not archived."
-  [pulse changes]
+  true when it is archived by itself, which is when its Collection is not archived, `archived-ids` holding the
+  archived ones."
+  [pulse changes archived-ids]
   (if (and (contains? changes :archived_directly)
            (not= (:archived_directly pulse) (:archived_directly changes)))
     (:archived_directly changes)
     (boolean (and (:archived changes)
-                  (not (collection/archived? (:collection_id (merge pulse changes))))))))
+                  (not (contains? archived-ids (:collection_id (merge pulse changes))))))))
 
 (mu/defn- insert-pulse! :- (ms/InstanceOf :model/Pulse)
   "Insert the Pulse `pulse`, filing a dashboard subscription in the Collection of its Dashboard, and return it."
@@ -660,7 +662,10 @@
   (if (and (seq pulse-ids) (seq changes))
     (let [pulses           (pulse.db/pulses-with-ids pulse-ids)
           archive-changed? (fn [pulse] (and (contains? changes :archived) (not= (:archived pulse) (:archived changes))))
-          groups           (group-by #(when (archive-changed? %) (archived-directly % changes)) pulses)]
+          archived-ids     (collection/archived-collection-ids
+                            (when (contains? changes :archived)
+                              (map #(:collection_id (merge % changes)) (filter archive-changed? pulses))))
+          groups           (group-by #(when (archive-changed? %) (archived-directly % changes archived-ids)) pulses)]
       (check-collections! pulses changes)
       (doseq [[directly group] groups]
         (pulse.db/update-pulses! (mapv :id group) (cond-> changes (some? directly) (assoc :archived_directly directly))))
@@ -859,6 +864,25 @@
   (events/with-batched-events
     (update-notification! (alert->notification alert)))
   (retrieve-alert (u/the-id alert)))
+
+(defmethod collection/archive-in-collections! :model/Pulse
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-pulses! ids {:archived true})))
+
+(defmethod collection/restore-in-collections! :model/Pulse
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-pulses! ids {:archived false})))
+
+(defmethod collection/delete-in-collections! :model/Pulse
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
+    (delete-pulses! ids)))
+
+(defmethod channel.models/delete-for-channels! :model/PulseChannel
+  [_model channel-ids]
+  (remove-pulse-channels! (pulse.db/pulse-channel-ids-for-channels channel-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

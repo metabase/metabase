@@ -12,6 +12,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -183,9 +184,9 @@
                                                                 :collection_id new-collection-id))
                                                      @api/*current-user*)]
                 (when (or (:archived card) (:archived_directly card))
-                  (documents.db/update-card! (:id new-card)
-                                             {:archived          (boolean (:archived card))
-                                              :archived_directly (boolean (:archived_directly card))}))
+                  (queries.card/update-cards! [{:id                (:id new-card)
+                                                :archived          (boolean (:archived card))
+                                                :archived_directly (boolean (:archived_directly card))}]))
                 (assoc accum (:id card) (:id new-card))))
             {}
             (t2/hydrate cards-to-copy :can_read))))

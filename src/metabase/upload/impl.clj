@@ -911,7 +911,8 @@
     ;; 2. A MBQL question or model that depends on such a model as their first or only data source.
     ;; Note that this does not include cases where we join to this table, or even native queries which depend .
     (when archive-cards?
-      (upload.db/archive-cards-for-table! (:id table)))
+      (queries.card/update-cards! (mapv (fn [id] {:id id :archived true})
+                                        (upload.db/unarchived-card-ids-for-table (:id table)))))
     :done))
 
 (def update-action-schema

@@ -115,11 +115,6 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :settings [:model/User :settings] :id user-id))
 
-(mu/defn delete-pulse-channel-recipients-for-user!
-  "Delete every PulseChannelRecipient of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  ((requiring-resolve 'metabase.pulse.models.pulse-channel-recipient/delete-pulse-channel-recipients-for-user!) user-id))
-
 (mu/defn group-member-ids
   "The ids of those of the Users with `user-ids` who are members of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt

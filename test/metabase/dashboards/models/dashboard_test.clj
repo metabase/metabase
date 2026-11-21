@@ -144,14 +144,14 @@
    (fn [{:keys [coll-id dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
        (mt/with-current-user (mt/user->id :crowberto)
-         (t2/update! :model/Collection :id coll-id {:archived true})
+         (collection/update-collections! [{:id coll-id :archived true}])
          (testing "archiving the parent Collection leaves the subscription and its trigger as they were"
            ;; the trashed Dashboard is what stops the trigger from sending
            (is (=? {:archived true} (t2/select-one :model/Dashboard :id dash-id)))
            (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
            (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
            (is (= pc-ids-before (trigger-pc-ids pulse-id))))
-         (t2/update! :model/Collection :id coll-id {:archived false})
+         (collection/update-collections! [{:id coll-id :archived false}])
          (testing "restoring the Collection leaves the subscription and its trigger as they were"
            (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
            (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
@@ -163,8 +163,8 @@
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
        (models.pulse/update-pulses! [pulse-id] {:archived true})
        (mt/with-current-user (mt/user->id :crowberto)
-         (t2/update! :model/Collection :id coll-id {:archived true})
-         (t2/update! :model/Collection :id coll-id {:archived false}))
+         (collection/update-collections! [{:id coll-id :archived true}])
+         (collection/update-collections! [{:id coll-id :archived false}]))
        (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
        (is (=? {:enabled false} (t2/select-one :model/PulseChannel :id pc-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
@@ -185,7 +185,7 @@
     (do-with-dashboard-subscription!
      (fn [{:keys [coll-id dash-id pulse-id]}]
        (t2/update! :model/Dashboard :id dash-id {:archived true})
-       (t2/delete! :model/Collection :id coll-id)
+       (collection/delete-collections! [coll-id])
        (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 

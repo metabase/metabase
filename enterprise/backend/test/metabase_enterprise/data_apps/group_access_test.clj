@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.data-apps.core :as data-apps]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -145,7 +146,7 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp app {}
                    :model/PermissionsGroup group {}]
-      (t2/delete! :model/Collection :id (:resource_collection_id app))
+      (collection/delete-collections! [(:resource_collection_id app)])
       (testing "an app without a collection lists no groups, and grants none without creating one"
         (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "groups"))))
         (mt/user-http-request :crowberto :post 404 (data-apps.tu/app-url app "groups") {:group_ids [(:id group)]})
@@ -170,7 +171,7 @@
       (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-dynamic-fn-redefs [perms/data-app-collection? (constantly false)]
-            (t2/update! :model/Collection :id collection-id {:archived true})))
+            (collection/update-collections! [{:id collection-id :archived true}])))
         (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))
         (is (empty? (access-group-ids app)))
         (is (empty? (t2/select :model/Permissions :group_id (:id group)
