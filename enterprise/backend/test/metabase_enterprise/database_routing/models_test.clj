@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.models-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.database-routing.models :as database-routing.models]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
@@ -29,6 +30,6 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot make a destination database a router database"
-           (t2/insert! :model/DatabaseRouter {:database_id dest-id :user_attribute "tenant"})))
-      (is (pos? (t2/insert! :model/DatabaseRouter {:database_id router-db-id :user_attribute "tenant"})))
+           (database-routing.models/create-router! dest-id "tenant")))
+      (is (pos? (database-routing.models/create-router! router-db-id "tenant")))
       (t2/delete! :model/DatabaseRouter :database_id router-db-id))))

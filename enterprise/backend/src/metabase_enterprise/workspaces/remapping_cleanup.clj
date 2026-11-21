@@ -9,12 +9,8 @@
    derivation goes through [[metabase.driver.sql/db-slot-value]] so this ns
    has no workspace deps beyond the model registration."
   (:require
-   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
-   [metabase-enterprise.workspaces.models.table-remapping]
    [metabase.driver.sql :as driver.sql]))
-
-(comment metabase-enterprise.workspaces.models.table-remapping/keep-me)
 
 (defn- iso-db-slot
   "Value of the `:db` AST slot a `TableRemapping.to_db` carries for `database`'s
