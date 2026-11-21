@@ -2190,9 +2190,9 @@
 (deftest pagination-copied-xml-uri-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Paging" :location "/"}]
-      (collection/create-collections! [(for [i (range 60)]
-                                         {:name     (format "Child-%02d" i)
-                                          :location (str "/" parent-id "/")})])
+      (collection/create-collections! (vec (for [i (range 60)]
+                                             {:name     (format "Child-%02d" i)
+                                              :location (str "/" parent-id "/")})))
       (let [read-page     (fn [uri] (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
             page-1        (read-page "metabase://collections?tree=true")
             next-page-uri (second (re-find #"Fetch (\S+) for the next page" (:output page-1)))
