@@ -556,12 +556,12 @@
               (mt/user-http-request :crowberto :post 502 endpoint (request-body))))))))
 
 (deftest generate-provider-overloaded-test
-  (testing "generate returns a 503 without the provider's message when the provider is overloaded"
+  (testing "generate returns a 502 without the provider's message when the provider is overloaded"
     (do-with-llm
      (provider-api-error 529)
      (fn [_calls]
        (is (= "The AI provider is having problems right now. Please try again in a few minutes."
-              (mt/user-http-request :rasta :post 503 endpoint (request-body))))))))
+              (mt/user-http-request :rasta :post 502 endpoint (request-body))))))))
 
 (deftest generate-provider-request-failed-test
   (testing "generate returns a 502 with a generic message when the provider request fails"
@@ -910,7 +910,7 @@
     (do-with-llm
      (provider-api-error 529)
      (fn [_calls]
-       (check-metrics! 503 1 "llm-error" {})))))
+       (check-metrics! 502 1 "llm-error" {})))))
 
 (deftest generate-no-match-metrics-test
   (testing "generate counts an LLM answer with no expression as a no-match error"

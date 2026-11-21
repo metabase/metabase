@@ -285,10 +285,7 @@
 (defn- provider-status->response-code
   "Map a provider's HTTP `status` to the response status."
   [status]
-  (cond
-    (= status 429)           429
-    (some-> status (>= 500)) 503
-    :else                    502))
+  (if (= status 429) 429 502))
 
 (defn- llm-call-error
   "Return an HTTP exception for the exception `e` of the LLM call to `model`."
