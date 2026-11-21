@@ -12,6 +12,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
@@ -158,7 +159,7 @@
       (sample-data.db/update-database! (:id old-sample-db)
                                        (cond-> {:engine engine, :details details}
                                          settings (assoc :settings settings)))
-      (sample-data.db/set-database-tables-schema! (:id old-sample-db) (table-schema-for-engine engine))
+      (table/update-tables-where! {:db_id (:id old-sample-db)} {:schema (table-schema-for-engine engine)})
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.

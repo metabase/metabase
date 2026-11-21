@@ -11,11 +11,19 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
+
+(declare sync-tables-clause)
+
+(mu/defn synced-table-ids-query :- :map
+  "The query of the ids of the Tables of the Database with `database-id` that take part in sync."
+  [database-id :- ::lib.schema.id/database]
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Table)]
+                    :where  [:and (sync-tables-clause :metabase_table) [:= :db_id database-id]]})
 
 (mu/defn- sync-tables-clause
   "Honey SQL clause matching the Tables aliased `table-alias` that take part in sync: active, with no
@@ -221,47 +229,10 @@
                         :where     [:and (sync-tables-clause :t) [:= :t.db_id database-id]]
                         :order-by  [[:sub.earliest_last_analyzed :asc]]}))
 
-(mu/defn insert-table!
-  "Insert `table` and return the new instance."
-  [table :- ::warehouse-schema.schema/table.update]
-  (t2/insert-returning-instance! :model/Table table))
-
 (mu/defn table-user-settings :- [:maybe ::warehouse-schema.schema/table-user-settings]
   "The TableUserSettings of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/TableUserSettings :table_id table-id))
-
-(mu/defn update-table!
-  "Apply `changes` to the Table with `table-id`, returning the number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id table-id changes))
-
-(mu/defn update-tables!
-  "Apply `changes` to the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:sequential ::lib.schema.id/table]
-   changes   :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id [:in table-ids] changes))
-
-(mu/defn deactivate-tables!
-  "Mark the active Tables among `table-ids` inactive, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false}))
-
-(mu/defn rename-table-schema!
-  "Move the Tables of the Database with `database-id` from `schema` to `new-schema`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]
-   new-schema  :- [:maybe :string]]
-  (t2/update! :model/Table :db_id database-id :schema schema {:schema new-schema}))
-
-(mu/defn archive-inactive-table!
-  "Archive the inactive Table with `table-id` now under `new-name`, returning the number of rows updated."
-  [table-id :- ::lib.schema.id/table
-   new-name :- :string]
-  (t2/update! :model/Table {:id table-id :active false} {:archived_at :%now :name new-name}))
-
-;;; ------------------------------------------------- Field -------------------------------------------------
 
 (mu/defn fields
   "The Fields with `field-ids`, which `our-metadata` diffs against the warehouse."
@@ -349,7 +320,7 @@
               :database_partitioned :json_unfolding :position :preview_display]
              :table_id table-id
              :active true
-             {:order-by table/field-order-rule}))
+             {:order-by [[:position :asc] [:%lower.name :asc]]}))
 
 (mu/defn normal-fields-for-table
   "Up to `limit` active, normal-visibility Fields of the Table with `table-id`, ordered by ID."
@@ -473,77 +444,16 @@
                      :parent_id nil
                      :database_indexed true))
 
-(mu/defn insert-fields!
-  "Insert the Field `rows` and return their IDs."
-  [rows :- [:sequential ::warehouse-schema.schema/field.update]]
-  (t2/insert-returning-pks! :model/Field rows))
-
 (mu/defn field-user-settings :- [:maybe ::warehouse-schema.schema/field-user-settings]
   "The FieldUserSettings of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/FieldUserSettings :field_id field-id))
-
-(mu/defn update-field!
-  "Apply `changes` to the Field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field :id field-id changes))
 
 (mu/defn field-id-by-name :- [:maybe ::lib.schema.id/field]
   "The ID of the Field named `field-name` of the Table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
   (t2/select-one-pk :model/Field :name field-name :table_id table-id))
-
-(mu/defn reactivate-fields!
-  "Mark the Fields with `field-ids` active, returning the number updated."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field {:id [:in field-ids]} {:active true}))
-
-(mu/defn set-fields-fingerprint-version!
-  "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`, returning the number updated."
-  [field-ids           :- [:sequential ::lib.schema.id/field]
-   fingerprint-version :- :int]
-  (t2/update! :model/Field :id [:in field-ids] {:fingerprint_version fingerprint-version}))
-
-(mu/defn set-table-fields-indexed!
-  "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
-  Fields as not indexed, returning the number updated."
-  [table-id          :- ::lib.schema.id/table
-   indexed-field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
-  (t2/update! :model/Field {:table_id table-id}
-              {:database_indexed (if (seq indexed-field-ids)
-                                   [:case [:in :id indexed-field-ids] true :else false]
-                                   false)}))
-
-(mu/defn set-top-level-fields-indexed!
-  "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`, returning the number updated."
-  [field-ids :- [:sequential ::lib.schema.id/field]
-   indexed?  :- :boolean]
-  (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed indexed?}))
-
-(mu/defn mark-incomplete-fields-analyzed-for-table!
-  "Stamp `last_analyzed` on the Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not
-  yet analyzed, returning the number updated."
-  [table-id            :- ::lib.schema.id/table
-   fingerprint-version :- :int]
-  (t2/update! :model/Field
-              {:table_id table-id, :fingerprint_version fingerprint-version, :last_analyzed nil}
-              {:last_analyzed :%now}))
-
-(mu/defn mark-incomplete-fields-analyzed-for-database!
-  "Stamp `last_analyzed` on the Fields of the synced Tables of the Database with `database-id` fingerprinted at
-  `fingerprint-version` but not yet analyzed, returning the number updated."
-  [database-id         :- ::lib.schema.id/database
-   fingerprint-version :- :int]
-  (t2/update! :model/Field
-              {:fingerprint_version fingerprint-version
-               :last_analyzed       nil
-               :table_id            [:in ^:allow-subquery
-                                     {:select [:id]
-                                      :from   [(t2/table-name :model/Table)]
-                                      :where  [:and (sync-tables-clause :metabase_table) [:= :db_id database-id]]}]}
-              {:last_analyzed :%now}))
 
 (defn- fk-field-id-subquery
   "Subquery selecting the (lowest) id of the Field named `column-name` on the Table `[table-schema table-name]` in
@@ -570,10 +480,10 @@
                [:= :t.active true]
                [:= :t.visibility_type nil]]})
 
-(mu/defn mark-fk!
-  "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
-  `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
-  Returns 1 if a Field was updated, 0 otherwise."
+(mu/defn fk-target-changes :- [:maybe [:tuple ::lib.schema.id/field ::warehouse-schema.schema/field.update]]
+  "The id of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with `db-id` and the
+  changes that point it at the Field at `[pk-table-schema pk-table-name pk-column-name]`, or nil when either is
+  missing, it already points there, or a user set its target."
   [db-id            :- ::lib.schema.id/database
    fk-table-schema  :- [:maybe :string]
    fk-table-name    :- :string
@@ -583,17 +493,14 @@
    pk-column-name   :- :string]
   (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name true)))
         pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name false)))]
-    (if (and fk-id pk-id)
+    (when (and fk-id pk-id)
       (let [field    (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id)
             user-set (warehouse-schema.user-settings/user-set-field-columns (field-user-settings fk-id))]
-        (if (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
-          (update-field!
-           fk-id (apply dissoc
+        (when (and (not (user-set :fk_target_field_id)) (not= pk-id (:fk_target_field_id field)))
+          [fk-id (apply dissoc
                         (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
                           (= :auto-list (:has_field_values field)) (assoc :has_field_values nil))
-                        user-set))
-          0))
-      0)))
+                        user-set)])))))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
@@ -702,11 +609,3 @@
    max-age-days :- :int]
   (t2/count :model/FieldValues :field_id field-id :type [:in types]
             :created_at (before-max-age-value max-age-days)))
-
-(mu/defn delete-advanced-field-values-before!
-  "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
-  [field-id     :- ::lib.schema.id/field
-   types        :- [:set :keyword]
-   max-age-days :- :int]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
-              :created_at (before-max-age-value max-age-days)))

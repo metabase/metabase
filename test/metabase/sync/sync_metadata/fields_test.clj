@@ -7,15 +7,15 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -433,8 +433,8 @@
                 ;; 3. sync the metadata for each table
                 (if (= "for entire DB" message)
                   (let [tables-updated (atom nil)
-                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync-util/set-initial-table-sync-complete-for-db!)]
-                    (mt/with-dynamic-fn-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                        original-set-initial-table-sync-complete-for-db! (mt/original-fn #'sync.updates/set-initial-table-sync-complete-for-db!)]
+                    (mt/with-dynamic-fn-redefs [sync.updates/set-initial-table-sync-complete-for-db!
                                                 (fn [& args]
                                                   (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
                                                     (reset! tables-updated r)
@@ -604,7 +604,8 @@
                    :model/Field    {fk-id :id :as fk-field} {:table_id fk-table :name "pk_id" :has_field_values :auto-list}]
       (field-user-settings/upsert-field-user-settings! {:id pk-id} {:semantic_type :type/PK})
       (field-user-settings/upsert-field-user-settings! fk-field {:has_field_values :auto-list})
-      (is (= 1 (sync.db/mark-fk! db-id "s" "fk_table" "pk_id" "s" "pk_table" "id")))
+      (is (= 1 (#'sync-fks/mark-fk! (driver.u/lib-database db-id) {:fk-table-schema "s" :fk-table-name "fk_table" :fk-column-name "pk_id"
+                                                                   :pk-table-schema "s" :pk-table-name "pk_table" :pk-column-name "id"})))
       (is (=? {:fk_target_field_id pk-id :semantic_type :type/FK :has_field_values :auto-list}
               (t2/select-one :model/Field :id fk-id))))))
 

@@ -46,8 +46,8 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api :as api.database]
-   [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
@@ -1810,7 +1810,7 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
                                                 (swap! deleted conj (:id (:previous-object event)))))]
-          (warehouses-rest.db/delete-field-values-for-database! db-id))
+          (field-values/delete-field-values-for-database! db-id))
         (is (contains? @deleted fv-id))))))
 
 (deftest discard-db-fieldvalues-audit-log-test

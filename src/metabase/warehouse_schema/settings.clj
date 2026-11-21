@@ -6,7 +6,9 @@
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.warehouse-schema.humanization :as humanization]))
+   [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +28,7 @@
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
       (log/infof "Changing Table & Field names humanization strategy from '%s' to '%s'"
                  (name old-strategy) (name new-strategy))
-      (humanization/re-humanize-table-and-field-names! old-strategy))))
+      (humanization/re-humanize-table-and-field-names! old-strategy table/set-display-name! field/set-display-name!))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (deferred-tru

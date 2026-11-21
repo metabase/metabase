@@ -47,6 +47,21 @@
    [:updated_at              {:optional true} [:maybe ms/TemporalInstant]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::dimension.create
+  "What a caller gives to create a Dimension: its Field, its type and any other column of `:dimension` except `id`."
+  [:merge
+   ::dimension.update
+   [:map {:closed true}
+    [:field_id ::lib.schema.id/field]
+    [:type     ::dimension.type]]])
+
+(mr/def ::dimension.update-row
+  "The id of a Dimension and the columns a bulk update changes in it."
+  [:merge
+   ::dimension.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/dimension]]])
+
 (mr/def ::field.settings
   "The `:settings` column of a Field, decoded."
   ::lib.schema.visualization/visualization-settings)
@@ -106,6 +121,21 @@
    [:dimension_interestingness  {:optional true} [:maybe number?]]
    [:data_sensitivity           {:optional true} [:maybe ::lib.schema.common/keyword]]])
 
+(mr/def ::field.create
+  "What a caller gives to create a Field: its Table, its name and any other column of `:metabase_field` except `id`."
+  [:merge
+   ::field.update
+   [:map {:closed true}
+    [:table_id ::lib.schema.id/table]
+    [:name     :string]]])
+
+(mr/def ::field.update-row
+  "The id of a Field and the columns a bulk update changes in it."
+  [:merge
+   ::field.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/field]]])
+
 (mr/def ::field-user-settings.settings
   "The `:settings` column of a FieldUserSettings, decoded."
   ::lib.schema.visualization/visualization-settings)
@@ -142,6 +172,13 @@
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
    [:fk_target_field_id_set {:optional true} :boolean]])
+
+(mr/def ::field-user-settings.update-row
+  "The id of a FieldUserSettings and the columns a bulk update changes in it."
+  [:merge
+   ::field-user-settings.update
+   [:map {:closed true}
+    [:id pos-int?]]])
 
 (mr/def ::field-values.human-readable-values
   [:sequential [:maybe ms/NonBlankString]])
@@ -192,6 +229,20 @@
    [:hash_key              {:optional true} [:maybe :string]]
    [:last_used_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::field-values.create
+  "What a caller gives to create a FieldValues: its Field and any other column of `:metabase_fieldvalues` except `id`."
+  [:merge
+   ::field-values.update
+   [:map {:closed true}
+    [:field_id ::lib.schema.id/field]]])
+
+(mr/def ::field-values.update-row
+  "The id of a FieldValues and the columns a bulk update changes in it."
+  [:merge
+   ::field-values.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::table-user-settings
   "A TableUserSettings as selected from the app DB: every column of `:metabase_table_user_settings`."
   [:merge
@@ -229,6 +280,13 @@
    [:points_of_interest_set  {:optional true} :boolean]
    [:data_layer_set          {:optional true} :boolean]
    [:data_source_set         {:optional true} :boolean]])
+
+(mr/def ::table-user-settings.update-row
+  "The id of a TableUserSettings and the columns a bulk update changes in it."
+  [:merge
+   ::table-user-settings.update
+   [:map {:closed true}
+    [:id pos-int?]]])
 
 (mr/def ::table
   "A Table as selected from the app DB: every column of `:metabase_table`."
@@ -284,6 +342,34 @@
    [:is_published            {:optional true} [:maybe :boolean]]
    [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
+
+(mr/def ::table.create
+  "What a caller gives to create a Table: its Database, its name and any other column of `:metabase_table` except `id`."
+  [:merge
+   ::table.update
+   [:map {:closed true}
+    [:db_id ::lib.schema.id/database]
+    [:name  :string]]])
+
+(mr/def ::table.update-row
+  "The id of a Table and the columns a bulk update changes in it."
+  [:merge
+   ::table.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/table]]])
+
+(mr/def ::sql-value
+  "A column value of a bulk write of Fields or Tables: a plain value or a HoneySQL expression."
+  [:or :nil :boolean number? :string :keyword [:fn {:description "HoneySQL expression"} vector?]])
+
+(mr/def ::conditions
+  "The rows a bulk write of a Field or a Table changes, as a map of column to the value or HoneySQL clause it must
+  match."
+  [:map-of {:min 1} :keyword ::sql-value])
+
+(mr/def ::sql-changes
+  "The columns a bulk write of Fields or Tables sets, each to a value or a HoneySQL expression over the row."
+  [:map-of {:min 1} :keyword ::sql-value])
 
 (mr/def ::external-dimension
   "A Dimension as serialization writes it, with portable references in place of ids."

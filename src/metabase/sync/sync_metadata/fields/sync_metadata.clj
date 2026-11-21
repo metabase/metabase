@@ -7,6 +7,7 @@
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -235,7 +236,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (sync-util/update-field-unless-user-set! (u/the-id metabase-field) updates)))
+             (pos? (sync.updates/update-field-unless-user-set! (u/the-id metabase-field) updates)))
       1
       0)))
 

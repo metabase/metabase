@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.user-settings :as user-settings]
    [toucan2.core :as t2]))
 
 (def field-order-rule
@@ -109,12 +110,13 @@
     :database     [[:database_position :asc]]
     :alphabetical [[:%lower.name :asc]]))
 
-(mu/defn field-ids-for-table-ordered
-  "The ids of the Fields of the ::warehouse-schema.schema/table with `table-id`, ordered per `field-order` (`:custom`, `:smart`, `:database`,
-  or `:alphabetical`)."
-  [table-id    :- ::lib.schema.id/table
+(mu/defn field-ids-for-tables-ordered
+  "The id and Table id of the Fields of the Tables with `table-ids`, by Table and then per `field-order` (`:custom`,
+  `:smart`, `:database`, or `:alphabetical`)."
+  [table-ids   :- [:set ::lib.schema.id/table]
    field-order :- [:enum :custom :smart :database :alphabetical]]
-  (t2/select [:model/Field :id] :table_id table-id {:order-by (field-order-order-by field-order)}))
+  (t2/select [:model/Field :id :table_id] :table_id [:in table-ids]
+             {:order-by (into [[:table_id :asc]] (field-order-order-by field-order))}))
 
 (mu/defn active-fields-for-tables
   "The active, unretired Fields of the Tables with `table-ids`, in field order."
@@ -134,11 +136,55 @@
                     :visibility_type [:not-in ["sensitive" "retired"]]
                     {:from [[(t2/table-name :model/Field) :f]]}))
 
+(mu/defn insert-fields!
+  "Insert the Field `rows` and return their ids."
+  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
+  (t2/insert-returning-pks! :model/Field rows))
+
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
   (t2/update! :model/Field :id field-id changes))
+
+(mu/defn update-fields!
+  "Apply `changes` to the Fields with `field-ids`, returning the number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   changes   :- ::warehouse-schema.schema/field.update]
+  (t2/update! :model/Field :id [:in field-ids] changes))
+
+(mu/defn field-ids-where :- [:set ::lib.schema.id/field]
+  "The ids of the Fields matching `conditions`."
+  [conditions :- ::warehouse-schema.schema/conditions]
+  (set (apply t2/select-pks-set :model/Field (mapcat identity conditions))))
+
+(mu/defn update-fields-where!
+  "Apply `changes` to the Fields matching `conditions`, returning the number updated."
+  [conditions :- ::warehouse-schema.schema/conditions
+   changes    :- ::warehouse-schema.schema/sql-changes]
+  (apply t2/update! :model/Field (concat (mapcat identity conditions) [changes])))
+
+(mu/defn delete-fields!
+  "Delete the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/Field :id [:in field-ids]))
+
+(mu/defn child-field-ids :- [:set ::lib.schema.id/field]
+  "The ids of the Fields nested directly under the Fields with `parent-ids`."
+  [parent-ids :- [:set ::lib.schema.id/field]]
+  (set (t2/select-pks-set :model/Field :parent_id [:in parent-ids])))
+
+(mu/defn field-parent-ids-for-tables
+  "The id and parent id of every Field of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Field :id :parent_id] :table_id [:in table-ids]))
+
+(mu/defn table-database-ids :- [:map-of ::lib.schema.id/table ::lib.schema.id/database]
+  "The Database id of each of the Tables with `table-ids`, by Table id."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (if (seq table-ids)
+    (t2/select-pk->fn :db_id :model/Table :id [:in table-ids])
+    {}))
 
 (mu/defn update-field-custom-positions!
   "Set the `custom_position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number
@@ -147,12 +193,18 @@
   (t2/update! :model/Field :id [:in (keys field-id->position)]
               {:custom_position (into [:case] (mapcat (fn [[id position]] [[:= :id id] position])) field-id->position)}))
 
-(mu/defn clear-fk-targets-to-field!
-  "Clear the target, and an FK semantic type, of every ::warehouse-schema.schema/field targeting the
-  ::warehouse-schema.schema/field with `field-id`, returning the number updated."
-  [field-id :- ::lib.schema.id/field]
-  (t2/update! :model/Field {:fk_target_field_id field-id :semantic_type :type/FK} {:semantic_type nil})
-  (t2/update! :model/Field {:fk_target_field_id field-id} {:fk_target_field_id nil}))
+(mu/defn update-field-positions!
+  "Set the `position` of each ::warehouse-schema.schema/field in `field-id->position`, returning the number updated."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (t2/update! :model/Field :id [:in (keys field-id->position)]
+              {:position (into [:case] (mapcat (fn [[id position]] [[:= :id id] position])) field-id->position)}))
+
+(mu/defn clear-fk-targets-to-fields!
+  "Clear the target, and an FK semantic type, of every ::warehouse-schema.schema/field targeting one of the Fields
+  with `field-ids`, returning the number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/update! :model/Field {:fk_target_field_id [:in field-ids] :semantic_type :type/FK} {:semantic_type nil})
+  (t2/update! :model/Field {:fk_target_field_id [:in field-ids]} {:fk_target_field_id nil}))
 
 (mu/defn field-database-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/database]
   "The ::warehouses.schema/database ID of each ::warehouse-schema.schema/field in `field-ids`, by Field id."
@@ -174,20 +226,10 @@
    active?          :- :boolean]
   (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
 
-(mu/defn delete-child-fields!
-  "Delete the Fields nested under the ::warehouse-schema.schema/field with `parent-id`, returning the number deleted."
-  [parent-id :- ms/PositiveInt]
-  (t2/delete! :model/Field :parent_id parent-id))
-
-(mu/defn delete-fields-for-table!
-  "Delete the Fields of the ::warehouse-schema.schema/table with `table-id`, returning the number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/Field :table_id table-id))
-
-(mu/defn delete-implicit-actions-for-table!
-  "Delete the implicit Actions that write to the Table with `table-id`, returning the number deleted."
-  [table-id :- ::lib.schema.id/table]
-  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/ImplicitAction :table_id table-id))]
+(mu/defn delete-implicit-actions-for-tables!
+  "Delete the implicit Actions that write to the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/ImplicitAction :table_id [:in table-ids]))]
     (t2/delete! :model/Action :id [:in action-ids])
     0))
 
@@ -215,12 +257,6 @@
    {:select    [:f.id :f.name :f.display_name [:u.display_name :user_display_name]]
     :from      [[(t2/table-name :model/Field) :f]]
     :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]}))
-
-(mu/defn set-field-display-name!
-  "Set the display name of the ::warehouse-schema.schema/field with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/field
-   display-name :- :string]
-  (t2/update! :model/Field :id id {:display_name display-name}))
 
 ;;; -------------------------------------------- FieldUserSettings --------------------------------------------
 
@@ -287,18 +323,66 @@
   (t2/update! :model/FieldUserSettings {:field_id field-id, :fk_target_field_id [:not= nil]}
               {:fk_target_field_id nil, :fk_target_field_id_set false}))
 
-(mu/defn clear-user-settings-fk-targets-to-field!
-  "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting the
-  ::warehouse-schema.schema/field with `field-id`, by its settings or by its own row, returning the number updated."
-  [field-id :- ::lib.schema.id/field]
+(defn- targeting-fields-clause
+  "The clause over FieldUserSettings selecting those of the Fields targeting one of the Fields with `field-ids`."
+  [field-ids]
+  [:in :field_id ^:allow-subquery {:select [:id]
+                                   :from   [(t2/table-name :model/Field)]
+                                   :where  [:in :fk_target_field_id field-ids]}])
+
+(mu/defn field-ids-with-user-settings-targeting :- [:set ::lib.schema.id/field]
+  "The ids of the Fields whose settings name one of the Fields with `field-ids` as their FK target, or that target one
+  of them with a user-set FK semantic type."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (set (t2/select-fn-set :field_id :model/FieldUserSettings
+                         {:where [:or
+                                  [:in :fk_target_field_id field-ids]
+                                  [:and [:= :semantic_type "type/FK"] (targeting-fields-clause field-ids)]]})))
+
+(mu/defn clear-user-settings-fk-targets-to-fields!
+  "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting one of the Fields
+  with `field-ids`, by its settings or by its own row, returning the number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
   (let [changes {:semantic_type nil, :semantic_type_set false, :fk_target_field_id nil, :fk_target_field_id_set false}]
-    (+ (t2/update! :model/FieldUserSettings {:fk_target_field_id field-id} changes)
+    (+ (t2/update! :model/FieldUserSettings {:fk_target_field_id [:in field-ids]} changes)
        (t2/update! :model/FieldUserSettings
                    :semantic_type :type/FK
                    :field_id [:in ^:allow-subquery {:select [:id]
                                                     :from   [(t2/table-name :model/Field)]
-                                                    :where  [:= :fk_target_field_id field-id]}]
+                                                    :where  [:in :fk_target_field_id field-ids]}]
                    changes))))
+
+(mu/defn delete-empty-field-user-settings!
+  "Delete the FieldUserSettings, among those of the Fields with `field-ids`, that hold no user value and no true flag,
+  returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/FieldUserSettings
+              {:where (into [:and [:in :field_id field-ids]]
+                            (concat (for [column user-settings/user-settable-field-columns]
+                                      [:= column nil])
+                                    (for [flag (vals user-settings/field-set-flags)]
+                                      [:or [:= flag nil] [:= flag false]])))}))
+
+(mu/defn delete-field-user-settings-by-ids!
+  "Delete the FieldUserSettings with `ids`, returning the number deleted."
+  [ids :- [:sequential pos-int?]]
+  (t2/delete! :model/FieldUserSettings :id [:in ids]))
+
+(mu/defn field-user-settings-by-ids
+  "The FieldUserSettings with `ids`."
+  [ids :- [:sequential pos-int?]]
+  (t2/select :model/FieldUserSettings :id [:in ids]))
+
+(mu/defn insert-field-user-settings-returning-instances!
+  "Insert the FieldUserSettings `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  (t2/insert-returning-instances! :model/FieldUserSettings rows))
+
+(mu/defn update-field-user-settings-by-ids!
+  "Apply `changes` to the FieldUserSettings with `ids`, returning the number updated."
+  [ids     :- [:sequential pos-int?]
+   changes :- ::warehouse-schema.schema/field-user-settings.update]
+  (t2/update! :model/FieldUserSettings :id [:in ids] changes))
 
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
 
@@ -320,11 +404,42 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])))
 
-(mu/defn update-table-user-settings-for-tables!
-  "Apply `changes` to the TableUserSettings of the Tables with `table-ids`, returning the number updated."
-  [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings :table_id [:in table-ids] changes))
+(mu/defn table-user-settings-for-tables
+  "The TableUserSettings of the Tables with `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select :model/TableUserSettings :table_id [:in table-ids]))
+
+(mu/defn table-user-settings-by-ids
+  "The TableUserSettings with `ids`."
+  [ids :- [:sequential pos-int?]]
+  (t2/select :model/TableUserSettings :id [:in ids]))
+
+(mu/defn insert-table-user-settings-returning-instances!
+  "Insert the TableUserSettings `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  (t2/insert-returning-instances! :model/TableUserSettings rows))
+
+(mu/defn update-table-user-settings-by-ids!
+  "Apply `changes` to the TableUserSettings with `ids`, returning the number updated."
+  [ids     :- [:sequential pos-int?]
+   changes :- ::warehouse-schema.schema/table-user-settings.update]
+  (t2/update! :model/TableUserSettings :id [:in ids] changes))
+
+(mu/defn delete-table-user-settings-by-ids!
+  "Delete the TableUserSettings with `ids`, returning the number deleted."
+  [ids :- [:sequential pos-int?]]
+  (t2/delete! :model/TableUserSettings :id [:in ids]))
+
+(mu/defn delete-empty-table-user-settings!
+  "Delete the TableUserSettings, among those of the Tables with `table-ids`, that hold no user value and no true flag,
+  returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/delete! :model/TableUserSettings
+              {:where (into [:and [:in :table_id table-ids]]
+                            (concat (for [column user-settings/user-settable-table-columns]
+                                      [:= column nil])
+                                    (for [flag (vals user-settings/table-set-flags)]
+                                      [:or [:= flag nil] [:= flag false]])))}))
 
 (mu/defn insert-table-user-settings!
   "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
@@ -411,11 +526,38 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Dimension :field_id field-id))
 
-(mu/defn rename-dimension-for-field!
-  "Set the name of the Dimension of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
-  [field-id       :- ::lib.schema.id/field
-   dimension-name :- :string]
-  (t2/update! :model/Dimension {:field_id field-id} {:name dimension-name}))
+(mu/defn dimensions-by-ids
+  "The Dimensions with `ids`."
+  [ids :- [:sequential ::lib.schema.id/dimension]]
+  (t2/select :model/Dimension :id [:in ids]))
+
+(mu/defn insert-dimensions!
+  "Insert the Dimension `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
+  (t2/insert-returning-instances! :model/Dimension rows))
+
+(mu/defn update-dimensions!
+  "Apply `changes` to the Dimensions with `ids`, returning the number updated."
+  [ids     :- [:sequential ::lib.schema.id/dimension]
+   changes :- ::warehouse-schema.schema/dimension.update]
+  (t2/update! :model/Dimension :id [:in ids] changes))
+
+(mu/defn delete-dimensions!
+  "Delete the Dimensions with `ids`, returning the number deleted."
+  [ids :- [:sequential ::lib.schema.id/dimension]]
+  (t2/delete! :model/Dimension :id [:in ids]))
+
+(mu/defn delete-dimensions-for-field!
+  "Delete the Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
+  [field-id :- ::lib.schema.id/field]
+  (t2/delete! :model/Dimension :field_id field-id))
+
+(mu/defn rename-dimensions-for-fields!
+  "Set the name of the Dimension of each ::warehouse-schema.schema/field in `field-id->name` to its name there,
+  returning the number updated."
+  [field-id->name :- [:map-of ::lib.schema.id/field :string]]
+  (t2/update! :model/Dimension :field_id [:in (keys field-id->name)]
+              {:name (into [:case] (mapcat (fn [[id dimension-name]] [[:= :field_id id] dimension-name])) field-id->name)}))
 
 (mu/defn delete-dimensions-of-type-for-field!
   "Delete the `dimension-type` Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number
@@ -424,33 +566,53 @@
    dimension-type :- [:enum :internal :external]]
   (t2/delete! :model/Dimension :field_id field-id :type dimension-type))
 
-(mu/defn delete-dimensions-reading-field!
-  "Delete the Dimensions whose values come from the ::warehouse-schema.schema/field with `field-id`, returning the
-  number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/Dimension :human_readable_field_id field-id))
+(mu/defn delete-dimensions-reading-fields!
+  "Delete the Dimensions whose values come from the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/Dimension :human_readable_field_id [:in field-ids]))
 
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Dimension :field_id [:in field-ids]))
 
+(mu/defn field-values-by-ids
+  "The FieldValues with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/FieldValues :id [:in ids]))
+
+(mu/defn insert-field-values!
+  "Insert the FieldValues `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
+  (t2/insert-returning-instances! :model/FieldValues rows))
+
 (mu/defn update-field-values!
-  "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."
-  [field-values-id :- ms/PositiveInt
-   changes         :- (mut/select-keys ::warehouse-schema.schema/field-values.update [:has_more_values :values :human_readable_values])]
-  (t2/update! :model/FieldValues :id field-values-id changes))
+  "Apply `changes` to the FieldValues with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
+   changes :- ::warehouse-schema.schema/field-values.update]
+  (t2/update! :model/FieldValues :id [:in ids] changes))
 
 (mu/defn find-or-insert-full-field-values!
-  "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting one with `has-more-values`, `values`, and no
-  `human_readable_values` if none exists yet."
-  [field-id       :- ::lib.schema.id/field
-   has-more-values :- :boolean
-   values          :- [:maybe ms/FieldValues]]
-  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :full}
-                            (constantly {:has_more_values       has-more-values
-                                         :values                values
-                                         :human_readable_values nil})))
+  "The full FieldValues of the ::warehouse-schema.schema/field with `field-id`, inserting the row `insert-fn` returns
+  if none exists yet."
+  [field-id  :- ::lib.schema.id/field
+   insert-fn :- fn?]
+  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :full} insert-fn))
+
+(mu/defn update-or-insert-full-field-values!
+  "Update the full FieldValues of the Field with `field-id` with what `update-fn` returns for it, or insert what it
+  returns for nil when there is none. Returns the primary key of the row."
+  [field-id  :- ::lib.schema.id/field
+   update-fn :- fn?]
+  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full} update-fn))
+
+(mu/defn find-or-insert-advanced-field-values!
+  "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
+  `insert-fn` if none exists yet."
+  [field-id  :- ::lib.schema.id/field
+   hash-key  :- :string
+   insert-fn :- fn?]
+  (app-db/select-or-insert! :model/FieldValues {:field_id field-id, :type :advanced, :hash_key hash-key} insert-fn))
 
 (mu/defn touch-field-values!
   "Stamp `last_used_at` on the FieldValues with `field-values-id`, returning the number updated."
@@ -462,16 +624,42 @@
   [field-values-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/FieldValues :id [:in field-values-ids]))
 
-(mu/defn delete-field-values-for-field!
-  "Delete every FieldValues of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/FieldValues :field_id field-id))
+(mu/defn delete-field-values-for-fields!
+  "Delete every FieldValues of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/delete! :model/FieldValues :field_id [:in field-ids]))
 
 (mu/defn delete-field-values-of-types!
-  "Delete the FieldValues of `types` of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field
-   types    :- [:set :keyword]]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]))
+  "Delete the FieldValues of `types` of the Fields with `field-ids`, returning the number deleted."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   types     :- [:set :keyword]]
+  (t2/delete! :model/FieldValues :field_id [:in field-ids] :type [:in types]))
+
+(mu/defn delete-field-values-for-tables!
+  "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/delete! :model/FieldValues
+              :field_id [:in ^:allow-subquery {:select [:id]
+                                               :from   [(t2/table-name :model/Field)]
+                                               :where  [:in :table_id table-ids]}]))
+
+(mu/defn delete-field-values-for-database!
+  "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
+  [database-id :- ::lib.schema.id/database]
+  (t2/delete! :model/FieldValues
+              :field_id [:in ^:allow-subquery {:select     [:f.id]
+                                               :from       [[:metabase_field :f]]
+                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
+
+(mu/defn delete-field-values-of-types-before!
+  "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago,
+  returning the number deleted."
+  [field-id     :- ::lib.schema.id/field
+   types        :- [:set :keyword]
+   max-age-days :- :int]
+  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
+              :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -499,6 +687,27 @@
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
   (t2/update! :model/Table :id table-id changes))
+
+(mu/defn insert-tables!
+  "Insert the Table `rows` and return the inserted instances."
+  [rows :- [:sequential ::warehouse-schema.schema/table.create]]
+  (t2/insert-returning-instances! :model/Table rows))
+
+(mu/defn table-ids-where :- [:set ::lib.schema.id/table]
+  "The ids of the Tables matching `conditions`."
+  [conditions :- ::warehouse-schema.schema/conditions]
+  (set (apply t2/select-pks-set :model/Table (mapcat identity conditions))))
+
+(mu/defn update-tables-where!
+  "Apply `changes` to the Tables matching `conditions`, returning the number updated."
+  [conditions :- ::warehouse-schema.schema/conditions
+   changes    :- ::warehouse-schema.schema/sql-changes]
+  (apply t2/update! :model/Table (concat (mapcat identity conditions) [changes])))
+
+(mu/defn delete-tables!
+  "Delete the Tables with `table-ids`, returning the number deleted."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/delete! :model/Table :id [:in table-ids]))
 
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
@@ -594,14 +803,6 @@
     :from      [[(t2/table-name :model/Table) :t]]
     :left-join [[(t2/table-name :model/TableUserSettings) :u] [:= :u.table_id :t.id]]}))
 
-(mu/defn set-table-display-name!
-  "Set the display name of the ::warehouse-schema.schema/table with `id`, returning the number updated."
-  [id           :- ::lib.schema.id/table
-   display-name :- :string]
-  (t2/update! :model/Table :id id {:display_name display-name}))
-
-;;; ------------------------------------------------ ::warehouses.schema/database ------------------------------------------------
-
 (mu/defn database
   "The ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
@@ -611,6 +812,11 @@
   "The engine of the ::warehouses.schema/database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id database-id))
+
+(mu/defn database-engines :- [:map-of ::lib.schema.id/database :keyword]
+  "The engine of each of the Databases with `database-ids`, by id."
+  [database-ids :- [:set ::lib.schema.id/database]]
+  (t2/select-pk->fn :engine :model/Database :id [:in database-ids]))
 
 (mu/defn database-name
   "The name of the ::warehouses.schema/database with `database-id`."

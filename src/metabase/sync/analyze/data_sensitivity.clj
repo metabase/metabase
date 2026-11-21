@@ -17,6 +17,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +52,7 @@
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
     (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (sync.db/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
+      (field/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
       category)))
 
 (mu/defn scan-table! :- Stats

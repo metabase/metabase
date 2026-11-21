@@ -18,7 +18,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]))
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.models.field :as field]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CREATING / REACTIVATING FIELDS                                         |
@@ -67,7 +68,7 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (sync.db/insert-fields!
+    (field/create-fields!
      (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
                    database-is-generated database-is-nullable database-default pk?
                    database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
@@ -121,7 +122,7 @@
   (let [fields-to-reactivate (matching-inactive-fields table new-field-metadatas parent-id)]
     ;; if the fields already exist but were just marked inactive then reäctivate them
     (when (seq fields-to-reactivate)
-      (sync.db/reactivate-fields! (map u/the-id fields-to-reactivate)))
+      (field/update-fields-where! {:id [:in (map u/the-id fields-to-reactivate)]} {:active true}))
     (let [reactivated?  (comp (set (map common/canonical-name fields-to-reactivate))
                               common/canonical-name)
           ;; If we reactivated the fields, no need to insert them; insert new rows for any that weren't reactivated
@@ -179,7 +180,7 @@
   [table          :- i/TableInstance
    metabase-field :- common/TableMetadataFieldWithID]
   (log/infof "Marking Field ''%s'' as inactive." (common/field-metadata-name-for-logging table metabase-field))
-  (when (pos? (sync.db/update-field! (u/the-id metabase-field) {:active false}))
+  (when (pos? (field/update-field! (u/the-id metabase-field) {:active false}))
     1))
 
 (mu/defn- retire-fields! :- ms/IntGreaterThanOrEqualToZero

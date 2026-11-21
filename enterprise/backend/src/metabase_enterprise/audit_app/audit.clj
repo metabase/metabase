@@ -20,6 +20,8 @@
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
@@ -95,10 +97,10 @@
   ;; has different syntax on different appdbs
   (let [table-ids-to-update (audit-app.db/table-ids-to-downcase audit-db-id)]
     (when (seq table-ids-to-update)
-      (audit-app.db/downcase-tables! table-ids-to-update)))
+      (table/update-tables-where! {:id [:in table-ids-to-update]} {:schema "public" :name [:lower :name]})))
   (let [field-ids-to-update (audit-app.db/field-ids-to-downcase audit-db-id)]
     (when (seq field-ids-to-update)
-      (audit-app.db/downcase-fields! field-ids-to-update)))
+      (field/update-fields-where! {:id [:in field-ids-to-update]} {:name [:lower :name]})))
   (log/info "Adjusted Audit DB for loading Analytics Content"))
 
 (defn- fix-h2-card-metadata! [audit-db-id]
@@ -124,12 +126,12 @@
     (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
     (case (mdb/db-type)
       :mysql
-      (audit-app.db/clear-table-schemas! audit-db-id)
+      (table/update-tables-where! {:db_id audit-db-id} {:schema nil})
 
       :h2
       (do
-        (audit-app.db/upcase-tables! audit-db-id)
-        (audit-app.db/upcase-fields! audit-db-id)
+        (table/update-tables-where! {:db_id audit-db-id} {:schema [:upper :schema] :name [:upper :name]})
+        (field/update-fields-where! {:table_id [:in (audit-app.db/table-ids-of-database-query audit-db-id)]} {:name [:upper :name]})
         (fix-h2-card-metadata! audit-db-id))
 
       :postgres
@@ -424,11 +426,11 @@
           ;; new (name, schema) can't collide with an orphan still sitting at that slot on idx_unique_table
           (doseq [{orphan-id :id} orphans]
             (repoint-cards-to-survivor! orphan-id (:id survivor))
-            (audit-app.db/delete-table! orphan-id))
+            (table/delete-table! orphan-id))
           ;; clear is_defective_duplicate so the survivor re-enters idx_unique_table (its unique_table_helper is
           ;; NULL — and thus excluded from the index — while the flag is set)
-          (audit-app.db/update-table! (:id survivor)
-                                      {:active true :name c-name :schema c-schema :is_defective_duplicate false})
+          (table/update-table! (:id survivor)
+                               {:active true :name c-name :schema c-schema :is_defective_duplicate false})
           (log/infof "Reconciled %d duplicate audit view row(s) onto table id %s"
                      (count orphans) (:id survivor)))))))
 

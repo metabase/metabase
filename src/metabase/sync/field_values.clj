@@ -277,7 +277,7 @@
     (let [types        field-values/advanced-field-values-types
           max-age-days (t/as field-values/advanced-field-values-max-age :days)
           rows-count   (sync.db/advanced-field-values-count-before (:id field) types max-age-days)]
-      (sync.db/delete-advanced-field-values-before! (:id field) types max-age-days)
+      (field-values/delete-field-values-of-types-before! (:id field) types max-age-days)
       rows-count)))
 
 (mu/defn delete-expired-advanced-field-values-for-table!
