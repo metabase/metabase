@@ -14,8 +14,10 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.default-fields :as t2.default-fields])
@@ -76,39 +78,17 @@
        (mu/validate-throw schema)
        with-bundle-hash))
 
-(defn- check-resource-collection
-  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
-  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
-  remote sync may sync it."
-  [collection-id app-id]
-  (let [collection (data-apps.db/resource-collection collection-id)]
-    (when-not (and collection
-                   (= "data-apps" (some-> (:namespace collection) name))
-                   (= "/" (:location collection))
-                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
-                   (not-any? collection [:archived :is_sample]))
-      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
-                      {:status-code 400, :collection-id collection-id})))
-    (when (data-apps.db/other-app-has-collection? collection-id app-id)
-      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
-                      {:status-code 400, :collection-id collection-id})))))
-
 (t2/define-before-insert :model/DataApp
   [data-app]
-  (let [row (prepare ::data-apps.schema/data-app.create data-app)]
-    (if-let [collection-id (:resource_collection_id row)]
-      (do (check-resource-collection collection-id nil)
-          row)
-      (assoc row :resource_collection_id (data-apps.db/insert-resource-collection! (:slug row))))))
+  (prepare ::data-apps.schema/data-app.create data-app))
 
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
-    (when (contains? changes :resource_collection_id)
-      (when (some? (:resource_collection_id (t2/original data-app)))
-        (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
-                        {:status-code 400, :data-app-id (:id data-app)})))
-      (check-resource-collection (:resource_collection_id changes) (:id data-app)))
+    (when (and (contains? changes :resource_collection_id)
+               (some? (:resource_collection_id (t2/original data-app))))
+      (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                      {:status-code 400, :data-app-id (:id data-app)})))
     (when (contains? changes :bundle_hash)
       (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
@@ -156,13 +136,6 @@
   (or (mi/can-write? app)
       (unsynced-change-writable? app changes)))
 
-;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
-;; it, and the collection's own hooks delete what it holds and the grants on it.
-;; The search index drops the app after the delete commits, through delete capture.
-(t2/define-before-delete :model/DataApp
-  [app]
-  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!))
-
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
   [data-app json-generator]
@@ -204,15 +177,6 @@
         entities
         files))
 
-(defn- before-load
-  "The DataApp load `items` without the bundles their local rows already hold."
-  [items]
-  (mapv (fn [{:keys [row local] :as item}]
-          (cond-> item
-            (and local (some-> ^bytes (:bundle row) bytes-hash (= (:bundle_hash local))))
-            (update :row dissoc :bundle)))
-        items))
-
 (defn- storage-paths
   "The storage path of each of the DataApp `entities`, in the apps directory by slug."
   [entities _ctx]
@@ -251,6 +215,100 @@
     (= "data-apps" (some-> (:namespace collection) name))
     (data-apps.db/data-apps-namespace-collection? collection)))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-resource-collections!
+  "Throws unless each Collection of `collection-id->app-id`, a map from a Collection id to the id of the data app that
+  gets it as its resource collection, nil for a new app, can be that: a top-level collection of data apps, not archived,
+  official, typed or the sample, that no other app has; remote sync may sync it."
+  [collection-id->app-id]
+  (when (seq collection-id->app-id)
+    (let [collection-ids (vec (keys collection-id->app-id))
+          collections    (u/index-by :id (data-apps.db/resource-collections collection-ids))
+          owners         (reduce (fn [acc {:keys [id resource_collection_id]}]
+                                   (update acc resource_collection_id (fnil conj #{}) id))
+                                 {}
+                                 (data-apps.db/data-apps-with-collections collection-ids))]
+      (doseq [[collection-id app-id] collection-id->app-id
+              :let                   [collection (collections collection-id)]]
+        (when-not (and collection
+                       (= "data-apps" (some-> (:namespace collection) name))
+                       (= "/" (:location collection))
+                       (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                       (not-any? collection [:archived :is_sample]))
+          (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                          {:status-code 400, :collection-id collection-id})))
+        (when (seq (disj (get owners collection-id #{}) app-id))
+          (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                          {:status-code 400, :collection-id collection-id})))))))
+
+(mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
+  "Insert the DataApp `rows`, which the hooks of the model normalize and validate, and return the inserted apps. A row
+  with a resource collection needs one that can be it; one without gets a collection of its own, named after its slug.
+  Throws a 400 when two rows share a collection."
+  [rows :- [:sequential :map]]
+  (if (seq rows)
+    (let [given (keep :resource_collection_id rows)]
+      (when-not (apply distinct? (or (seq given) [nil]))
+        (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                        {:status-code 400})))
+      (check-resource-collections! (zipmap given (repeat nil)))
+      (events/with-batched-events
+        (let [missing        (filterv (comp nil? :resource_collection_id) rows)
+              new-collection (zipmap (map :slug missing)
+                                     (when (seq missing)
+                                       (data-apps.db/insert-resource-collections! (mapv :slug missing))))]
+          (data-apps.db/insert-data-apps!
+           (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
+                 rows)))))
+    []))
+
+(mu/defn update-data-apps! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a DataApp to its changes, which the hooks of the model
+  normalize and validate, in one batch of events, with one statement per distinct change set. Throws unless a new
+  resource collection can be one."
+  [changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (when (seq changes-by-id)
+    (events/with-batched-events
+      (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (vec (keys changes-by-id))))]
+        (check-resource-collections!
+         (into {}
+               (keep (fn [[id changes]]
+                       (when-let [collection-id (:resource_collection_id changes)]
+                         (let [app (stored id)]
+                           (when (and app (nil? (:resource_collection_id app)))
+                             [collection-id id])))))
+               changes-by-id))
+        (doseq [[changes pairs] (group-by val changes-by-id)
+                :when           (seq changes)]
+          (data-apps.db/update-data-apps! (mapv key pairs) changes)))))
+  nil)
+
+(mu/defn delete-data-apps! :- :nil
+  "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, in one batch of
+  events. The collection's own hooks delete what it holds."
+  [data-app-ids :- [:sequential ms/PositiveInt]]
+  (when (seq data-app-ids)
+    (events/with-batched-events
+      (let [collection-ids (into [] (keep :resource_collection_id) (data-apps.db/data-apps-by-ids (vec data-app-ids)))]
+        (when (seq collection-ids)
+          (data-apps.db/delete-resource-collections! collection-ids)))
+      (data-apps.db/delete-data-apps! (vec data-app-ids))))
+  nil)
+
+(defn- update-imported-data-apps!
+  "Update the DataApps of an import with `rows`, each its id and changed columns, returning `rows`. A bundle the stored
+  app already holds is not written again."
+  [rows]
+  (let [stored (u/index-by :id (when (seq rows) (data-apps.db/data-apps-by-ids (mapv :id rows))))]
+    (update-data-apps!
+     (into {}
+           (map (fn [{:keys [id bundle] :as row}]
+                  [id (cond-> (dissoc row :id)
+                        (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle))]))
+           rows))
+    rows))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod events/spec :model/DataApp
@@ -273,7 +331,9 @@
                          :bundle                 {:as     :serdes/resources
                                                   :export export-bundles
                                                   :import import-bundles}}
-   :before-load         before-load
+   :insert!             create-data-apps!
+   :update!             update-imported-data-apps!
+   :delete!             delete-data-apps!
    :storage-paths       storage-paths
    :resource-paths      resource-paths
    :import-dependencies import-dependencies})

@@ -150,24 +150,63 @@
   [suite-id :- ms/PositiveInt]
   (t2/count :model/TestSuiteRun :suite_id suite-id))
 
-(mu/defn delete-suite-members-of-test!
-  "Remove the `test-type` test with entity id `entity-id` from every TestSuite."
-  [test-type :- ::data-testing.schema/test-type
-   entity-id :- :string]
-  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id entity-id))
-
 (mu/defn transform-test :- [:maybe ::data-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/TransformTest :id id))
 
-(mu/defn insert-transform-test! :- ::data-testing.schema/transform-test
-  "Insert the TransformTest `transform-test` and return the inserted instance."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/TransformTest transform-test))
+(def ^:private saved-test-model
+  "The models of the saved tests."
+  [:enum :model/TransformTest :model/CardTest :model/SegmentTest])
+
+(mu/defn insert-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
+  "Insert the `rows` of `model` and return the inserted instances."
+  [model :- saved-test-model
+   rows  :- [:sequential {:min 1} :map]]
+  (t2/insert-returning-instances! model rows))
+
+(mu/defn update-saved-tests! :- :nil
+  "Apply `updates` to the tests of `model` with `ids`."
+  [model   :- saved-test-model
+   ids     :- [:sequential {:min 1} ms/PositiveInt]
+   updates :- :map]
+  (t2/update! model :id [:in [:auto/param ids]] updates)
+  nil)
+
+(mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
+  "The id and entity id of the tests of `model` with `ids`."
+  [model :- saved-test-model
+   ids   :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select [model :id :entity_id] :id [:in [:auto/param ids]]))
+
+(mu/defn saved-test-keys-of-subjects :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
+  "The id and entity id of the tests of `model` whose `subject-column` holds one of `subject-ids`."
+  [model          :- saved-test-model
+   subject-column :- :keyword
+   subject-ids    :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select [model :id :entity_id] subject-column [:in [:auto/param subject-ids]]))
+
+(mu/defn delete-saved-tests! :- :nil
+  "Delete the tests of `model` with `ids`."
+  [model :- saved-test-model
+   ids   :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! model :id [:in [:auto/param ids]])
+  nil)
+
+(mu/defn delete-suite-members-of-tests! :- :nil
+  "Remove the `test-type` tests with `entity-ids` from every TestSuite."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential {:min 1} :string]]
+  (t2/delete! :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]])
+  nil)
+
+(mu/defn clear-test-ids-of-runs! :- :nil
+  "Set the test id of the runs of the `test-type` tests with `test-ids` to nil, so that no run names a test after it is
+  deleted."
+  [test-type :- ::data-testing.schema/test-type
+   test-ids  :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/DataTestRun :test_type (name test-type) :test_id [:in [:auto/param test-ids]] {:test_id nil})
+  nil)
 
 (mu/defn insert-test-run! :- ::data-testing.schema/data-test-run
   "Insert a started DataTestRun of the `test-type` test `test-id` and return it."
@@ -253,13 +292,6 @@
                                                                   [:= :newer.start_time :data_test_run.start_time]
                                                                   [:> :newer.id :data_test_run.id]]]]}]]]}))
 
-(mu/defn clear-test-id-of-runs!
-  "Set the test id of the runs of the `test-type` test `test-id` to nil, so that no run names the test after it is
-  deleted."
-  [test-type :- ::data-testing.schema/test-type
-   test-id   :- ms/PositiveInt]
-  (t2/update! :model/DataTestRun :test_type (name test-type) :test_id test-id {:test_id nil}))
-
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
@@ -273,22 +305,6 @@
               :id run-id
               :status "started"
               {:status status :end_time :%now}))
-
-(mu/defn update-transform-test!
-  "Apply `updates` to the TransformTest with `id`."
-  [id :- ms/PositiveInt
-   updates :- ::data-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest :id id updates))
-
-(mu/defn delete-transform-test!
-  "Delete the TransformTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTest :id id))
-
-(mu/defn delete-transform-tests!
-  "Delete the TransformTests of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/TransformTest :transform_id transform-id))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -329,30 +345,6 @@
                                            [:include-archived? {:optional true} [:maybe :boolean]]]]
   (tests-of-subjects :model/CardTest :card_id :model/Card card-id include-archived?))
 
-(mu/defn insert-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` and return the inserted instance."
-  [card-test :- [:merge
-                 ::data-testing.schema/card-test.create
-                 [:map {:closed true}
-                  [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/CardTest card-test))
-
-(mu/defn update-card-test!
-  "Apply `updates` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/card-test.update]
-  (t2/update! :model/CardTest :id id updates))
-
-(mu/defn delete-card-test!
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/CardTest :id id))
-
-(mu/defn delete-card-tests!
-  "Delete the CardTests of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/CardTest :card_id card-id))
-
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
@@ -377,30 +369,6 @@
                                               [:segment-id        {:optional true} [:maybe ::lib.schema.id/segment]]
                                               [:include-archived? {:optional true} [:maybe :boolean]]]]
   (tests-of-subjects :model/SegmentTest :segment_id :model/Segment segment-id include-archived?))
-
-(mu/defn insert-segment-test! :- ::data-testing.schema/segment-test
-  "Insert the SegmentTest `segment-test` and return the inserted instance."
-  [segment-test :- [:merge
-                    ::data-testing.schema/segment-test.create
-                    [:map {:closed true}
-                     [:creator_id ::lib.schema.id/user]]]]
-  (t2/insert-returning-instance! :model/SegmentTest segment-test))
-
-(mu/defn update-segment-test!
-  "Apply `updates` to the SegmentTest with `id`."
-  [id      :- ms/PositiveInt
-   updates :- ::data-testing.schema/segment-test.update]
-  (t2/update! :model/SegmentTest :id id updates))
-
-(mu/defn delete-segment-test!
-  "Delete the SegmentTest with `id`."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/SegmentTest :id id))
-
-(mu/defn delete-segment-tests!
-  "Delete the SegmentTests of the Segment with `segment-id`."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/delete! :model/SegmentTest :segment_id segment-id))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."

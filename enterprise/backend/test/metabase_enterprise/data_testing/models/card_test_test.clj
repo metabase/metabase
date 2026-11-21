@@ -69,7 +69,7 @@
                  :model/DataTestRun {other-run :id} {:test_type :transform, :test_id test-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :card test-id)]
       (data-testing.run-tracking/finish-run! run-id :passed)
-      (t2/delete! :model/CardTest :id test-id)
+      (data-testing.models.card-test/delete-card-test! test-id)
       (testing "the run stays, with no test id"
         (is (=? {:test_id nil :status :passed} (t2/select-one :model/DataTestRun :id run-id))))
       (testing "a run of a transform test with the same id keeps its test id"

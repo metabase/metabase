@@ -175,12 +175,13 @@
     (indexes.db/mark-running-table-indexes-failed! ids message)))
 
 (defn mark-for-revalidation!
-  "Flip `transform-id`'s applicable index requests to `:update-pending` and clear stale errors, so the next run
-  re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't revived."
-  [transform-id]
-  (when transform-id
-    (when-let [ids (seq (map :id (select-applicable-for-transform transform-id)))]
-      (indexes.db/mark-table-indexes-update-pending! ids))))
+  "Flip the applicable index requests of the Transforms with `transform-ids` to `:update-pending` and clear stale errors,
+  so the next run re-applies them against the current schema. Skips `:delete-pending` rows so a pending deletion isn't
+  revived."
+  [transform-ids]
+  (when-let [transform-ids (not-empty (vec (remove nil? transform-ids)))]
+    (when-let [ids (seq (indexes.db/applicable-table-index-ids-for-transforms transform-ids))]
+      (indexes.db/mark-table-indexes-update-pending! (vec ids)))))
 
 ;; Nested in its parent transform's entity (see the Transform spec's `:children`). Only the index definition
 ;; travels; lifecycle is local, so an imported index starts fresh as `:create-pending`. `:structured` holds physical

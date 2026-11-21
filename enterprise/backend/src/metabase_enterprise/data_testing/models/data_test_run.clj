@@ -47,12 +47,14 @@
    status :- ::data-testing.schema/run-status]
   (data-testing.db/finish-started-test-run! run-id status))
 
-(mu/defn clear-test-id-of-runs!
-  "Set the test id of the runs of the `test-type` test `test-id` to nil, so that no run names the test after it is
+(mu/defn clear-test-ids-of-runs!
+  "Set the test id of the runs of the `test-type` tests with `test-ids` to nil, so that no run names a test after it is
   deleted."
   [test-type :- ::data-testing.schema/test-type
-   test-id   :- ms/PositiveInt]
-  (data-testing.db/clear-test-id-of-runs! test-type test-id))
+   test-ids  :- [:sequential ms/PositiveInt]]
+  (when (seq test-ids)
+    (data-testing.db/clear-test-ids-of-runs! test-type (vec test-ids)))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

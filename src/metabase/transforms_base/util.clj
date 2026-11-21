@@ -314,7 +314,7 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
-(mu/defn save-watermark! :- :int
+(mu/defn save-watermark! :- :nil
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]

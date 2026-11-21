@@ -3179,6 +3179,7 @@
            security-center
            session
            settings
+           transforms
            users
            util
            util.config}
@@ -3191,7 +3192,6 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
-                    :model/Transform
                     :model/TransformRun}}
 
   tiles
@@ -3255,6 +3255,7 @@
            metabase.transforms.init
            metabase.transforms.instrumentation
            metabase.transforms.interface
+           metabase.transforms.models.transform
            metabase.transforms.util}
    :uses #{analytics.interface
            api
@@ -3335,6 +3336,7 @@
            premium-features
            query-processor
            sync
+           transforms
            transforms.indexes
            util
            warehouses
@@ -3386,7 +3388,6 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            events
-           lib.schema
            models
            request
            transforms
@@ -4316,6 +4317,7 @@
            models
            queries
            replacement
+           serialization
            task
            transforms
            transforms.schema

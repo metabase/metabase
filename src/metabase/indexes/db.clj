@@ -34,6 +34,13 @@
              :status [:not= :delete-pending]
              {:order-by [[:index_name :asc]]}))
 
+(mu/defn applicable-table-index-ids-for-transforms :- [:sequential ms/PositiveInt]
+  "The ids of the TableIndexes of the Transforms with `transform-ids` that are not pending deletion."
+  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
+  (vec (t2/select-pks-vec :model/TableIndex
+                          :transform_id [:in [:auto/param transform-ids]]
+                          :status [:not= :delete-pending])))
+
 (mu/defn running-table-indexes
   "The running TableIndexes among `ids` of the Transform with `transform-id`, in id order."
   [transform-id :- ::lib.schema.id/transform

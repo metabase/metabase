@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-job :as transform-job]
@@ -110,24 +111,24 @@
 
 (deftest quartz-trigger-follows-job-row-test
   (mt/with-temp-scheduler!
-    (mt/with-temp [:model/TransformJob job {:schedule "0 0 0 * * ? *"}]
-      (let [job-id           (:id job)
-            trigger-schedule #(:schedule (transforms.schedule/existing-trigger job-id))]
-        (testing "an inserted job is scheduled"
-          (is (= "0 0 0 * * ? *" (trigger-schedule))))
-        (testing "a schedule change moves the trigger"
-          (t2/update! :model/TransformJob :id job-id {:schedule "0 0 1 * * ? *"})
-          (is (= "0 0 1 * * ? *" (trigger-schedule))))
-        (testing "deactivating removes the trigger, and activating restores it"
-          (t2/update! :model/TransformJob :id job-id {:active false})
-          (is (nil? (trigger-schedule)))
-          (t2/update! :model/TransformJob :id job-id {:schedule "0 0 2 * * ? *"})
-          (is (nil? (trigger-schedule)))
-          (t2/update! :model/TransformJob :id job-id {:active true})
-          (is (= "0 0 2 * * ? *" (trigger-schedule))))
-        (testing "deleting the job removes the trigger"
-          (t2/delete! :model/TransformJob :id job-id)
-          (is (nil? (trigger-schedule))))))))
+    (let [job              (first (transform-job/create-transform-jobs! [{:name "job" :schedule "0 0 0 * * ? *"}]))
+          job-id           (:id job)
+          trigger-schedule #(:schedule (transforms.schedule/existing-trigger job-id))]
+      (testing "a created job is scheduled"
+        (is (= "0 0 0 * * ? *" (trigger-schedule))))
+      (testing "a schedule change moves the trigger"
+        (transform-job/update-transform-jobs! {job-id {:schedule "0 0 1 * * ? *"}})
+        (is (= "0 0 1 * * ? *" (trigger-schedule))))
+      (testing "deactivating removes the trigger, and activating restores it"
+        (transform-job/update-transform-jobs! {job-id {:active false}})
+        (is (nil? (trigger-schedule)))
+        (transform-job/update-transform-jobs! {job-id {:schedule "0 0 2 * * ? *"}})
+        (is (nil? (trigger-schedule)))
+        (transform-job/update-transform-jobs! {job-id {:active true}})
+        (is (= "0 0 2 * * ? *" (trigger-schedule))))
+      (testing "deleting the job removes the trigger"
+        (transform-job/delete-transform-jobs! [job-id])
+        (is (nil? (trigger-schedule)))))))
 
 (deftest job-update-check-test
   (mt/with-temp [:model/TransformTag tag {}
@@ -141,3 +142,25 @@
                               (api/update-check job {:name "renamed"})))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
                               (api/create-check :model/TransformJob {:tag_ids [(:id tag)]})))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (let [created (atom [])
+          create! (fn [n]
+                    (events.tu/statement-count! (fn [] (swap! created into
+                                                              (map :id (transform-job/create-transform-jobs!
+                                                                        (vec (repeatedly n #(hash-map :name (mt/random-name)
+                                                                                                      :schedule "0 0 0 * * ? *")))))))))]
+      (try
+        (testing "creating jobs"
+          (is (= (create! 2) (create! 6))))
+        (testing "updating jobs"
+          (let [ids @created]
+            (is (= (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (zipmap (take 2 ids) (repeat {:schedule "0 0 1 * * ? *"})))))
+                   (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (zipmap (take 6 (drop 2 ids)) (repeat {:schedule "0 0 1 * * ? *"})))))))))
+        (testing "deleting jobs"
+          (let [ids @created]
+            (is (= (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 2 ids))))
+                   (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 6 (drop 2 ids)))))))))
+        (finally
+          (t2/delete! :model/TransformJob :id [:in @created]))))))

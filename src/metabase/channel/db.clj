@@ -32,21 +32,27 @@
   [channel-name :- :string]
   (t2/exists? :model/Channel :name channel-name))
 
-(mu/defn insert-channel!
-  "Insert the Channel `row` and return the inserted instance."
-  [row :- ChannelRow]
-  (t2/insert-returning-instance! :model/Channel row))
+(mu/defn insert-channels!
+  "Insert the Channel `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ChannelRow]]
+  (t2/insert-returning-instances! :model/Channel rows))
+
+(mu/defn channels-by-ids
+  "The Channels with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/Channel :id [:in [:auto/param ids]]))
 
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/Channel :id [:auto/param id]))
 
-(mu/defn update-channel!
-  "Apply `changes` to the Channel with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn update-channels!
+  "Apply `changes` to the Channels with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    changes :- ChannelRow]
-  (t2/update! :model/Channel :id id changes))
+  (t2/update! :model/Channel :id [:in [:auto/param ids]] changes)
+  nil)
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."
@@ -84,10 +90,10 @@
                                       [:= :p.object permission-path]]}]
                  :group-by [:pgm.user_id]}))
 
-(mu/defn delete-pulse-channels-for-channel!
-  "Delete the PulseChannels of the Channel with `channel-id`, returning the number deleted."
-  [channel-id :- ms/PositiveInt]
-  (let [pulse-channel-ids (vec (t2/select-pks-vec :model/PulseChannel :channel_id channel-id))]
+(mu/defn delete-pulse-channels-for-channels!
+  "Delete the PulseChannels of the Channels with `channel-ids`, returning the number deleted."
+  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (let [pulse-channel-ids (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in [:auto/param channel-ids]]))]
     ((requiring-resolve 'metabase.pulse.models.pulse/remove-pulse-channels!) pulse-channel-ids)
     (count pulse-channel-ids)))
 

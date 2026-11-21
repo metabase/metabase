@@ -65,8 +65,6 @@
  [metabase.transforms.schedule
   delete-trigger!
   existing-trigger]
- [metabase.transforms.models.transform
-  update-transform-tags!]
  [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs
@@ -78,8 +76,4 @@
   transform-runs-for-dag-run]
  [metabase.transforms.run-listing
   paged-run-summaries
-  present-run-summaries]
- [metabase.transforms.models.transform-job
-  activate-job!
-  deactivate-job!
-  update-job-tags!])
+  present-run-summaries])
