@@ -645,8 +645,8 @@
 
    Accepts either canonical keys (`:query-type`, `:database_id`) or the keys
    produced by the SQL / notebook tool results (`:result-type`, `:database`).
-   For SQL tool results the `:query` map carries `:type :native` which we surface
-   as query-type \"sql\"."
+   A native-only `:query`, as the SQL tools return, is surfaced as query-type \"sql\",
+   and so is a legacy query whose `:type` is the keyword `:native`."
   [{:keys [query-type result-type query-id database database_id query query-content result]}]
   (let [qtype (or query-type
                   (when (or (= :native (:type query))
