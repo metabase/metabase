@@ -325,6 +325,7 @@
   {:team "Security"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
+           metabase.api-keys.init
            metabase.api-keys.models.api-key
            metabase.api-keys.schema
            metabase.api-keys.usage}
@@ -494,7 +495,7 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api metabase.bookmarks.models.bookmark}
+   :api  #{metabase.bookmarks.api metabase.bookmarks.init metabase.bookmarks.models.bookmark}
    :uses #{api
            app-db
            collections
@@ -768,7 +769,7 @@
 
   content-translation
   {:team "UX West"
-   :api  #{metabase.content-translation.models}
+   :api  #{metabase.content-translation.init metabase.content-translation.models}
    :uses #{app-db premium-features util}}
 
   content-verification
@@ -2066,7 +2067,7 @@
 
   osi
   {:team "Metabot"
-   :api  #{metabase.osi.ai-context.api}
+   :api  #{metabase.osi.ai-context.api metabase.osi.init}
    :uses #{api
            app-db
            lib.schema
@@ -3368,7 +3369,10 @@
   transforms.indexes
   {:team "Gadget"
    :ns-prefix "metabase.indexes"
-   :api #{metabase.indexes.models.table-index metabase.indexes.reconcile metabase.indexes.schema}
+   :api #{metabase.indexes.init
+          metabase.indexes.models.table-index
+          metabase.indexes.reconcile
+          metabase.indexes.schema}
    :uses #{app-db
            driver
            lib.schema
@@ -4243,7 +4247,7 @@
 
   enterprise/database-routing
   {:team "UX West"
-   :api  #{metabase-enterprise.database-routing.api}
+   :api  #{metabase-enterprise.database-routing.api metabase-enterprise.database-routing.init}
    :uses #{api
            app-db
            audit-app
@@ -4316,7 +4320,7 @@
   enterprise/dependencies.replacement
   {:team "Data Apps"
    :ns-prefix "metabase-enterprise.replacement"
-   :api #{metabase-enterprise.replacement.api}
+   :api #{metabase-enterprise.replacement.api metabase-enterprise.replacement.init}
    :uses #{analytics
            api
            app-db
@@ -4590,7 +4594,10 @@
   enterprise/permissions.sandbox
   {:team "Security"
    :ns-prefix "metabase-enterprise.sandbox"
-   :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
+   :api #{metabase-enterprise.sandbox.api.routes
+          metabase-enterprise.sandbox.api.util
+          metabase-enterprise.sandbox.init
+          metabase-enterprise.sandbox.schema}
    :uses #{analytics
            api
            api-scope
