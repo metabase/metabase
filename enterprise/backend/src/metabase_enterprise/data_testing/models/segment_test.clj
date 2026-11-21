@@ -4,7 +4,6 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
-   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
@@ -50,13 +49,6 @@
   [_model _k segment-tests]
   (data-testing.models/with-last-runs :segment segment-tests))
 
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/SegmentTest [segment-test]
-  (data-testing.models.data-test-run/clear-test-id-of-runs! :segment (:id segment-test))
-  (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
-  segment-test)
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- segment-allows?
@@ -101,32 +93,51 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
+(mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
+  "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
+  validate each row."
+  [rows :- [:sequential :map]]
+  (data-testing.models/create-saved-tests! :model/SegmentTest rows))
+
 (mu/defn create-segment-test! :- ::data-testing.schema/segment-test
   "Insert the SegmentTest `segment-test` returning the inserted test."
-  [segment-test :- [:merge
-                    ::data-testing.schema/segment-test.create
-                    [:map {:closed true}
-                     [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-segment-test! segment-test))
+  [segment-test :- [:merge ::data-testing.schema/segment-test.create data-testing.models/saved-test-row]]
+  (first (create-segment-tests! [segment-test])))
+
+(mu/defn update-segment-tests! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a SegmentTest to its changes, which the column
+  transforms of the model normalize and validate."
+  [changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (data-testing.models/update-saved-tests! :model/SegmentTest changes-by-id))
 
 (mu/defn update-segment-test! :- :nil
   "Apply `changes` to the SegmentTest with `id`."
   [id      :- ms/PositiveInt
    changes :- ::data-testing.schema/segment-test.update]
-  (data-testing.db/update-segment-test! id changes)
-  nil)
+  (update-segment-tests! {id changes}))
 
 (mu/defn delete-segment-test! :- :nil
   "Delete the SegmentTest with `id`."
   [id :- ms/PositiveInt]
-  (data-testing.db/delete-segment-test! id)
-  nil)
+  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest [id]))
 
 (defenterprise delete-segment-tests!
-  "Deletes the tests of the segment `segment-id` whatever the token says, since the rows outlive the feature."
+  "Deletes the tests of the segment `segment-id` whatever the token says, since the
+  rows outlive the feature."
   :feature :none
   [segment-id]
-  (data-testing.db/delete-segment-tests! segment-id))
+  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id [segment-id]))
+
+(defn- update-imported-segment-tests!
+  "Update the SegmentTests of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-segment-tests! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
+
+(defn- delete-segment-tests-by-id!
+  "Delete the SegmentTests with `ids`."
+  [ids]
+  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -197,6 +208,9 @@
 
 (defmethod serialization/spec :model/SegmentTest [_]
   {:schema              ::data-testing.schema/external-segment-test
+   :insert!             create-segment-tests!
+   :update!             update-imported-segment-tests!
+   :delete!             delete-segment-tests-by-id!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:segment_id (serialization/fk-transform :model/Segment)
                          :creator_id serialization/user-transform}

@@ -4,8 +4,9 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.channel.models.channel] ;; ensure known-labels are loaded
+   [metabase.channel.models.channel :as models.channel]
    [metabase.channel.schema :as channel.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -54,11 +55,11 @@
                                          :channel_type "http"
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
-      (is (pos? (t2/update! :model/Channel :id id {:name "New name"})))
-      (is (zero? (t2/update! :model/Channel :id id {:active true})))
+      (models.channel/update-channels! {id {:name "New name"}})
+      (models.channel/update-channels! {id {:active true}})
       (is (t2/exists? :model/PulseChannel :id pc-id)))
     (testing "deactivate channel"
-      (t2/update! :model/Channel :id id {:active false})
+      (models.channel/update-channels! {id {:active false}})
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
@@ -233,3 +234,21 @@
       (mt/with-test-user :crowberto
         (is (true? (api/create-check :model/Channel {})))
         (is (= (:id channel) (:id (api/write-check channel))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (let [created (atom [])
+        create! (fn [n]
+                  (events.tu/statement-count! (fn [] (swap! created into
+                                                            (map :id (models.channel/create-channels!
+                                                                      (vec (repeatedly n #(assoc notification.tu/default-can-connect-channel
+                                                                                                 :name (mt/random-name))))))))))]
+    (try
+      (testing "creating channels"
+        (is (= (create! 2) (create! 6))))
+      (testing "deactivating channels costs one statement more per channel, its new name being its own"
+        (let [ids        @created
+              statements (fn [ids]
+                           (events.tu/statement-count! (fn [] (models.channel/update-channels! (zipmap ids (repeat {:active false}))))))]
+          (is (= (+ (statements (take 2 ids)) 4) (statements (take 6 (drop 2 ids)))))))
+      (finally
+        (t2/delete! :model/Channel :id [:in @created])))))

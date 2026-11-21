@@ -30,6 +30,7 @@
    [metabase.session.api :as session.api]
    [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
+   [metabase.transforms.models.transform :as transform]
    [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
@@ -253,7 +254,7 @@
       "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
       "document"  (testing-api.db/set-document-last-viewed-at! id date)
       "transform" (do
-                    (testing-api.db/set-transform-created-at! id date)
+                    (transform/update-transforms! {id {:created_at date}})
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
                     (testing-api.db/set-transform-run-times! id date))

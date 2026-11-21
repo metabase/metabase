@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
@@ -41,22 +42,7 @@
     tag
     (merge tag (translate-name tag))))
 
-(defn- check-name-free
-  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
-  [{tag-name :name, :keys [id]}]
-  (when-let [tag-name (not-empty (str tag-name))]
-    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
-      (when (and taken-by (not= taken-by id))
-        (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
-
-(t2/define-before-insert :model/TransformTag
-  [tag]
-  (check-name-free tag)
-  tag)
-
 (t2/define-before-update :model/TransformTag [tag]
-  (when (contains? (t2/changes tag) :name)
-    (check-name-free tag))
   (if (or (nil? (:built_in_type tag))
           (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
@@ -114,6 +100,81 @@
     (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defn- check-names-free
+  "Throws a 400 when a name among `rows` is held by a TransformTag other than the row's own, or by an earlier row. A row
+  of an update holds its `:id`; a row with no name is left alone."
+  [rows]
+  (reduce (fn [taken [index {:keys [id] :as row}]]
+            (if-let [tag-name (not-empty (str (:name row)))]
+              (let [own (or id [::new index])]
+                (when-let [owner (get taken tag-name)]
+                  (when (not= owner own)
+                    (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name)
+                                    {:status-code 400}))))
+                (assoc taken tag-name own))
+              taken))
+          (transforms.db/tag-names-to-ids)
+          (map-indexed vector rows)))
+
+(defn- insert-tags!
+  "Insert the TransformTag `rows` in one batch of events, returning the inserted instances."
+  [rows]
+  (if (seq rows)
+    (events/with-batched-events
+      (transforms.db/insert-tags! rows))
+    []))
+
+(defn- update-tags!
+  "Apply the changes of each TransformTag in `changes-by-id` in one batch of events, with one statement per distinct
+  change set."
+  [changes-by-id]
+  (events/with-batched-events
+    (doseq [[changes pairs] (group-by val changes-by-id)
+            :when           (seq changes)]
+      (transforms.db/update-tags! (mapv key pairs) changes))))
+
+(mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
+  "Insert the TransformTag `rows` and return the inserted tags. Throws a 400 when a name is already taken."
+  [rows :- [:sequential ::transforms.schema/transform-tag.create]]
+  (check-names-free rows)
+  (insert-tags! rows))
+
+(mu/defn update-transform-tag! :- :nil
+  "Apply `changes` to the TransformTag with `tag-id`. Throws a 400 when its new name is already taken."
+  [tag-id  :- ::lib.schema.id/transform-tag
+   changes :- ::transforms.schema/transform-tag.update]
+  (check-names-free [(assoc changes :id tag-id)])
+  (update-tags! {tag-id changes}))
+
+(mu/defn delete-transform-tags! :- :nil
+  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs."
+  [tag-ids :- [:sequential ::lib.schema.id/transform-tag]]
+  (when (seq tag-ids)
+    (events/with-batched-events
+      (transforms.db/delete-tags! (vec tag-ids))))
+  nil)
+
+(defn- insert-imported-tags!
+  "Insert the TransformTag `rows` of an import, each name another tag holds made unique."
+  [rows]
+  (insert-tags! (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids))))
+
+(defn- update-imported-tags!
+  "Update the TransformTags of an import with `rows`, each its id and changed columns, returning `rows`. A built-in tag
+  keeps its name and every other name another tag holds is made unique."
+  [rows]
+  (let [stored  (into {} (map (juxt :id identity)) (when (seq rows) (transforms.db/tags-by-ids (mapv :id rows))))
+        kept    (mapv (fn [{:keys [id] :as row}]
+                        (cond-> row
+                          (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
+                          (dissoc :name)))
+                      rows)
+        renamed (transforms.serialization/rename-taken-tag-names kept (transforms.db/tag-names-to-ids))]
+    (update-tags! (into {} (map (fn [row] [(:id row) (dissoc row :id)])) renamed))
+    rows))
+
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
 (defmethod events/spec :model/TransformTag
@@ -129,7 +190,9 @@
   {:schema        ::transforms.schema/external-transform-tag
    :copy          [:entity_id :built_in_type]
    :transform     {:name transforms.serialization/string-transform}
-   :before-load   transforms.serialization/transform-tag-before-load
+   :insert!       insert-imported-tags!
+   :update!       update-imported-tags!
+   :delete!       delete-transform-tags!
    :storage-paths transforms.serialization/transform-tag-storage-paths})
 
 (defmethod remote-sync/spec :model/TransformTag

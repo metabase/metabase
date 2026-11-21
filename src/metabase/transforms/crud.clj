@@ -187,11 +187,12 @@
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
                                             (or (:owner_user_id body) creator-id))
-                            transform     (transforms.db/insert-transform!
-                                           (assoc (select-keys body [:name :description :source :target :run_trigger
-                                                                     :collection_id :owner_email])
-                                                  :creator_id creator-id
-                                                  :owner_user_id owner-user-id))]
+                            transform     (first
+                                           (transform.model/create-transforms!
+                                            [(assoc (select-keys body [:name :description :source :target :run_trigger
+                                                                       :collection_id :owner_email])
+                                                    :creator_id creator-id
+                                                    :owner_user_id owner-user-id)]))]
                         ;; Add tag associations if provided
                         (when (seq tag-ids)
                           (transform.model/update-transform-tags! (:id transform) tag-ids))
@@ -213,7 +214,7 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (transforms.db/update-transform! id (dissoc body :tag_ids))
+                      (transform.model/update-transforms! {id (dissoc body :tag_ids)})
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
                                  409
@@ -228,7 +229,7 @@
 (mu/defn delete-transform! :- :nil
   "Delete a transform."
   [transform :- ::transforms.schema/transform]
-  (transforms.db/delete-transform! (:id transform))
+  (transform.model/delete-transforms! [(:id transform)])
   nil)
 
 (mu/defn delete-transforms-folder! :- :nil
@@ -254,8 +255,7 @@
     (when delete-tables?
       (run! transforms-base.u/delete-target-table! transforms))
     (t2/with-transaction [_]
-      ;; One delete per Transform, so each one publishes its delete events. The Collection `before-delete` hook
-      ;; deletes the subfolders.
-      (run! delete-transform! transforms)
+      ;; Each Transform publishes its delete events. The Collection `before-delete` hook deletes the subfolders.
+      (transform.model/delete-transforms! (mapv :id transforms))
       (transforms.db/delete-collection! (:id collection)))
     nil))

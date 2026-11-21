@@ -7,6 +7,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.models.metabot :as metabot]
+   [metabase.metabot.models.metabot-prompt :as metabot-prompt]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
    [metabase.metabot.usage :as metabot.usage]
@@ -122,7 +123,7 @@
                               [:id pos-int?]
                               [:prompt-id pos-int?]]]
   (api/check-superuser)
-  (metabot.db/delete-metabot-prompt! id prompt-id)
+  (metabot-prompt/delete-metabot-prompt! id prompt-id)
   api/generic-204-no-content)
 
 (def ^{:arglists '([request respond raise])} routes

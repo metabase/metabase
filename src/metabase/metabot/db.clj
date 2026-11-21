@@ -125,10 +125,23 @@
   [metabot-id :- ms/PositiveInt]
   (t2/count :model/MetabotPrompt :metabot_id metabot-id))
 
-(mu/defn insert-prompts!
-  "Insert the MetabotPrompt `rows`."
-  [rows :- [:sequential ::metabot.schema/metabot-prompt.update]]
-  (t2/insert! :model/MetabotPrompt rows))
+(mu/defn insert-prompts! :- [:sequential ::metabot.schema/metabot-prompt]
+  "Insert the MetabotPrompt `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ::metabot.schema/metabot-prompt.update]]
+  (t2/insert-returning-instances! :model/MetabotPrompt rows))
+
+(mu/defn update-prompts! :- :nil
+  "Apply `changes` to the MetabotPrompts with `prompt-ids`."
+  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes    :- ::metabot.schema/metabot-prompt.update]
+  (t2/update! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]] changes)
+  nil)
+
+(mu/defn delete-prompts! :- :nil
+  "Delete the MetabotPrompts with `prompt-ids`."
+  [prompt-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/MetabotPrompt :id [:in [:auto/param prompt-ids]])
+  nil)
 
 (mu/defn delete-metabot-prompt!
   "Delete the MetabotPrompt with `prompt-id` belonging to the Metabot with `metabot-id`."
@@ -749,6 +762,11 @@
   [card-id :- ::lib.schema.id/card
    type :- [:enum :model :metric :question]]
   (t2/select-one :model/Card :id card-id :type type))
+
+(mu/defn card-types :- [:map-of ::lib.schema.id/card :keyword]
+  "The map from each of `card-ids` that is the ID of a Card to its type."
+  [card-ids :- [:sequential {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :type :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."

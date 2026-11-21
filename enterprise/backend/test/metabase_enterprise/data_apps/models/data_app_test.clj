@@ -4,10 +4,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.models.data-app]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -34,11 +36,15 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bundle hash is computed from its bundle"
                               (t2/update! :model/DataApp :id id {:bundle_hash "stale"})))))))
 
-(deftest insert-creates-resource-collection-test
-  (testing "an app inserted without a collection gets a top-level collection of data apps of its own"
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:slug "m"}]
-      (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
-              (t2/select-one :model/Collection :id collection-id))))))
+(deftest create-makes-resource-collection-test
+  (testing "an app created without a collection gets a top-level collection of data apps of its own"
+    (let [{:keys [id resource_collection_id]} (first (data-app/create-data-apps!
+                                                      [{:slug "m" :name "m" :bundle_path "index.js"}]))]
+      (try
+        (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
+                (t2/select-one :model/Collection :id resource_collection_id)))
+        (finally
+          (data-app/delete-data-apps! [id]))))))
 
 (deftest the-resource-collection-cannot-change-test
   (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}
@@ -60,13 +66,13 @@
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                            (t2/update! :model/DataApp :id id {:resource_collection_id taken-id}))))
-    (t2/update! :model/DataApp :id id {:resource_collection_id other-id})
+                            (data-app/update-data-apps! {id {:resource_collection_id taken-id}}))))
+    (data-app/update-data-apps! {id {:resource_collection_id other-id}})
     (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
   (mt/with-temp [:model/DataApp {id :id collection-id :resource_collection_id} {}]
-    (t2/delete! :model/DataApp :id id)
+    (data-app/delete-data-apps! [id])
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
@@ -166,10 +172,10 @@
                        :model/Collection {official-id :id} {:name "Official" :namespace :data-apps :authority_level "official"}
                        :model/Collection {synced-id :id}   {:name "Synced" :namespace :data-apps :is_remote_synced true}]
           (let [app! (fn [slug collection-id]
-                       (t2/insert-returning-pk! :model/DataApp {:slug                   slug
-                                                                :name                   slug
-                                                                :bundle_path            "index.js"
-                                                                :resource_collection_id collection-id}))]
+                       (:id (first (data-app/create-data-apps! [{:slug                   slug
+                                                                 :name                   slug
+                                                                 :bundle_path            "index.js"
+                                                                 :resource_collection_id collection-id}]))))]
             (doseq [[label collection-id] [["a default-namespace collection" default-id]
                                            ["an archived collection" archived-id]
                                            ["an official collection" official-id]]]
@@ -183,3 +189,29 @@
               (testing "but not for a second app"
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
                                       (app! "second" root-id)))))))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (let [created     (atom [])
+        app-rows    (fn [n]
+                      (vec (repeatedly n #(let [slug (u/lower-case-en (mt/random-name))]
+                                            {:slug slug :name slug :bundle_path "index.js"}))))
+        collections (fn [n]
+                      (t2/insert-returning-pks! :model/Collection
+                                                (vec (repeatedly n #(hash-map :name (mt/random-name) :namespace "data-apps")))))
+        create!     (fn [n]
+                      (let [rows (mapv #(assoc %1 :resource_collection_id %2) (app-rows n) (collections n))]
+                        (events.tu/statement-count! (fn [] (swap! created into (map :id (data-app/create-data-apps! rows)))))))]
+    (try
+      (testing "creating data apps with collections"
+        (is (= (create! 2) (create! 6))))
+      (testing "updating data apps"
+        (let [ids @created]
+          (is (= (events.tu/statement-count! (fn [] (data-app/update-data-apps! (zipmap (take 2 ids) (repeat {:description "same"})))))
+                 (events.tu/statement-count! (fn [] (data-app/update-data-apps! (zipmap (take 6 (drop 2 ids)) (repeat {:description "same"})))))))))
+      (testing "deleting data apps that have no collection"
+        (let [rows    (fn [n] (mapv #(assoc % :entity_id (u/generate-nano-id)) (app-rows n)))
+              insert! (fn [n] (mapv :id (t2/insert-returning-instances! :model/DataApp (rows n))))
+              delete! (fn [ids] (events.tu/statement-count! (fn [] (data-app/delete-data-apps! ids))))]
+          (is (= (delete! (insert! 2)) (delete! (insert! 6))))))
+      (finally
+        (data-app/delete-data-apps! @created)))))
