@@ -321,10 +321,12 @@
    :expected   {:verdict :unknown :reason "unparseable" :error "Unknown dialect 'mariadb'."}}
 
   ;; Postgres with `standard_conforming_strings` off reads a backslash in '...' as an escape, so `\'` does not end
-  ;; the literal there. A caller that executes the rebuild of a "read-only" statement is refused, as
-  ;; "backslash-quote", a rebuild that Postgres reads as more than one statement under either setting. Each refused
-  ;; case below is one statement to SQLGlot whose rebuild runs the DELETE as a second statement on such a server. The
-  ;; other statement types, and a caller that only reads the verdict, are not checked for it.
+  ;; the literal there. A caller that executes the rebuild of a "read-only" statement is refused a rebuild that
+  ;; Postgres reads as more than one statement: "rebuild-differs" with the setting on, "backslash-quote" with it off
+  ;; only. Each refused case below is one statement to SQLGlot. A caller that only reads the verdict, and the other
+  ;; statement types, are not checked for it.
+
+  ;; This case pins the "read" verdict that impersonation executes; it changes if "read" gets the rebuild check.
   {:name              "a read with a backslash before a quote is not checked for the setting"
    :dialect           "postgres"
    :sql               "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"
@@ -345,19 +347,26 @@
    :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
 
-  {:name              "so does a rebuild that has the backslash before a quote though the text had none"
+  {:name              "a dollar-quoted string ending in a backslash rebuilds to a literal that hides a second statement with the setting off"
    :dialect           "postgres"
    :sql               "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"
    :stmt-type         "read-only"
    :expected          {:verdict :allowed :single-stmt? true}
    :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
 
-  {:name              "so does a rebuilt E'' string, which hides a second statement whatever the setting"
+  {:name              "a rebuilt E'' string hides a second statement whatever the setting"
    :dialect           "postgres"
    :sql               "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note"
    :stmt-type         "read-only"
    :expected          {:verdict :allowed :single-stmt? true}
-   :validate-expected {:verdict :disallowed :single-stmt? true :reason "backslash-quote"}}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
+
+  {:name              "a dollar-quoted alias, which SQLGlot writes back bare, hides a second statement whatever the setting"
+   :dialect           "postgres"
+   :sql               "SELECT 1 AS $q$a;SELECT 2$q$"
+   :stmt-type         "read-only"
+   :expected          {:verdict :allowed :single-stmt? true}
+   :validate-expected {:verdict :disallowed :single-stmt? true :reason "rebuild-differs" :detail "multiple-statements"}}
 
   {:name       "a quote doubled inside a literal is one statement under either setting"
    :dialect    "postgres"
@@ -377,7 +386,7 @@
    :stmt-type  "read-only"
    :expected   {:verdict :allowed    :single-stmt? true}}
 
-  {:name       "a literal ending in a backslash is one statement, or with the setting off, text Postgres refuses whole"
+  {:name       "a literal ending in a backslash is one statement with the setting on, and unterminated with it off"
    :dialect    "postgres"
    :sql        "SELECT 'C:\\' AS note"
    :stmt-type  "read-only"

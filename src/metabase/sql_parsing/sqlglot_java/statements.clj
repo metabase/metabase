@@ -283,11 +283,8 @@
     (when (.lookingAt m)
       [(.group m) (.end m)])))
 
-(defn- python-space?
-  "Whether `c` is whitespace to Python's `str.isspace`, which also counts the no-break spaces and U+0085."
-  [c]
-  (let [c (int c)]
-    (or (Character/isWhitespace c) (Character/isSpaceChar c) (= c 0x85))))
+;; The characters Postgres reads as whitespace. It reads any other character from U+0080 up as part of a name.
+(def ^:private pg-space #{\space \tab \newline \return \formfeed (char 11)})
 
 (defn- index-after
   "The index after the first `s` in `sql` at or after `from`, or nil."
@@ -296,17 +293,18 @@
     (when-not (neg? i)
       (+ i (count s)))))
 
-(defn- pg-literal-end
-  "The index after the quote that ends the literal whose text starts at `i`, or nil when it does not end.
-  Port of `_pg_literal_end`."
-  [^String sql i backslash-escapes?]
-  (let [n (count sql)]
+(defn- pg-quoted-end
+  "The index after the `quote` that ends the literal or quoted name whose text starts at `i`, a doubled `quote`
+  standing for one, or nil when it does not end. Port of `_pg_quoted_end`."
+  [^String sql i quote backslash-escapes?]
+  (let [n       (count sql)
+        doubled (str quote quote)]
     (loop [i i]
       (when (< i n)
         (let [c (.charAt sql i)]
           (cond
             (and (= c \\) backslash-escapes?) (recur (+ i 2))
-            (= c \')                          (if (.startsWith sql "''" i) (recur (+ i 2)) (inc i))
+            (= c quote)                       (if (.startsWith sql doubled i) (recur (+ i 2)) (inc i))
             :else                             (recur (inc i))))))))
 
 (defn- pg-token-end
@@ -323,20 +321,16 @@
           word-end
           ;; E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
           ;; literal after its prefix.
-          (= prefix "e")         (pg-literal-end sql (inc word-end) true)
-          (#{"b" "x"} prefix)    (pg-literal-end sql (inc word-end) false)
-          (= prefix "u")         (pg-literal-end sql (+ word-end 2) false)
-          :else                  (pg-literal-end sql (inc word-end) (not standard-conforming-strings?))))
+          (= prefix "e")         (pg-quoted-end sql (inc word-end) \' true)
+          (#{"b" "x"} prefix)    (pg-quoted-end sql (inc word-end) \' false)
+          (= prefix "u")         (pg-quoted-end sql (+ word-end 2) \' false)
+          :else                  (pg-quoted-end sql (inc word-end) \' (not standard-conforming-strings?))))
       (cond
         (= c \')
-        (pg-literal-end sql (inc i) (not standard-conforming-strings?))
+        (pg-quoted-end sql (inc i) \' (not standard-conforming-strings?))
 
         (= c \")
-        (loop [close (.indexOf sql "\"" (int (inc i)))]
-          (cond
-            (neg? close)                     nil
-            (.startsWith sql "\"\"" close)   (recur (.indexOf sql "\"" (int (+ close 2))))
-            :else                            (inc close)))
+        (pg-quoted-end sql (inc i) \" false)
 
         :else
         (if-let [[dollar dollar-end] (looking-at pg-dollar-quote sql i)]
@@ -374,18 +368,12 @@
         (let [c (.charAt sql i)]
           (cond
             (= c \;)                 (recur (inc i) (cond-> stmt-count content? inc) false)
-            (python-space? c)        (recur (inc i) stmt-count content?)
+            (pg-space c)             (recur (inc i) stmt-count content?)
             (.startsWith sql "--" i) (recur (line-comment-end sql i) stmt-count content?)
             (.startsWith sql "/*" i) (recur (block-comment-end sql i) stmt-count content?)
             :else                    (if-let [end (pg-token-end sql i standard-conforming-strings?)]
                                        (recur (long end) stmt-count true)
                                        (inc stmt-count))))))))
-
-(defn- hidden-by-string-setting?
-  "Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. Port of
-  `_hidden_by_string_setting`."
-  [sql]
-  (boolean (some #(> (postgres-statement-count sql %) 1) [true false])))
 
 (defn- unbracketed
   "`stmt` without the brackets around the whole query: `(SELECT 1)` parses as a subquery with no alias.
@@ -432,9 +420,10 @@
   a statement holding only a comment after the last semicolon. Every mode applies the checks the statement types
   share. `:reason` (and `:reason_detail`) say why a query is refused for what it holds.
 
-  With `check-rebuild?`, the regenerated SQL must also pass the same checks and regenerate to itself (`:reason`
-  `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`), and for `\"postgres\"`, Postgres
-  must read it as one statement with `standard_conforming_strings` on and off (`:reason` `\"backslash-quote\"`).
+  With `check-rebuild?`, the regenerated SQL of a statement of the allowed type must also pass the same checks and
+  regenerate to itself (`:reason` `\"rebuild-differs\"`, with the regenerated SQL's own reason as `:reason_detail`).
+  For `\"postgres\"`, Postgres must also read it as one statement with `standard_conforming_strings` on (`:reason`
+  `\"rebuild-differs\"`, `:reason_detail` `\"multiple-statements\"`) and with it off (`:reason` `\"backslash-quote\"`).
   Port of `is_single_stmt_of_type`."
   [dialect sql stmt-type check-rebuild?]
   (let [read-only-type? (= stmt-type "read-only")
@@ -452,20 +441,22 @@
                       (when-not stmt
                         (throw (ex-info "'NoneType' object has no attribute 'sql'" {})))
                       (ast/sql stmt dialect))
-            problem (cond
-                      (or problem (not check-rebuild?) (nil? rebuilt))
+            problem (if (or problem (not check-rebuild?) (nil? rebuilt)
+                            (not (ast/instance-of-any? allowed (unbracketed stmt))))
                       problem
-
-                      (and (= dialect "postgres") (hidden-by-string-setting? rebuilt))
-                      ["backslash-quote" nil]
-
                       ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
                       ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
-                      ;; with one backslash, so its quote moves.
-                      :else
+                      ;; with one backslash, so its quote moves, and a dollar-quoted alias comes back bare.
                       (let [again (single-stmt-of-type dialect rebuilt stmt-type false)]
-                        (when (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again)))
-                          ["rebuild-differs" (:reason again)])))]
+                        (cond
+                          (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again)))
+                          ["rebuild-differs" (:reason again)]
+
+                          (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
+                          ["rebuild-differs" "multiple-statements"]
+
+                          (and (= dialect "postgres") (> (postgres-statement-count rebuilt false) 1))
+                          ["backslash-quote" nil])))]
         (when problem
           (vswap! result assoc :reason (first problem) :reason_detail (second problem)))
         (when rebuilt

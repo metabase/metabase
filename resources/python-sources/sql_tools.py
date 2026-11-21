@@ -1988,17 +1988,20 @@ def _hidden_sql(sql: str, dialect: str, select: bool):
 _PG_WORD = re.compile(r"[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9$\x80-\U0010ffff]*")
 _PG_DOLLAR_QUOTE = re.compile(r"\$(?:[A-Za-z_\x80-\U0010ffff][A-Za-z_0-9\x80-\U0010ffff]*)?\$")
 _LINE_END = re.compile(r"[\n\r]")
+# The characters Postgres reads as whitespace. It reads any other character from U+0080 up as part of a name.
+_PG_SPACE = frozenset(" \t\n\r\f\v")
 
 
-def _pg_literal_end(sql: str, i: int, backslash_escapes: bool):
-    """The index after the quote that ends the literal whose text starts at `i`, or None when it does not end."""
+def _pg_quoted_end(sql: str, i: int, quote: str, backslash_escapes: bool):
+    """The index after the `quote` that ends the literal or quoted name whose text starts at `i`, a doubled `quote`
+    standing for one, or None when it does not end."""
     n = len(sql)
     while i < n:
         c = sql[i]
         if c == "\\" and backslash_escapes:
             i += 2
-        elif c == "'":
-            if sql.startswith("''", i):
+        elif c == quote:
+            if sql.startswith(quote * 2, i):
                 i += 2
             else:
                 return i + 1
@@ -2017,7 +2020,7 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
         if c == ";":
             count, content, i = count + content, False, i + 1
             continue
-        if c.isspace():
+        if c in _PG_SPACE:
             i += 1
             continue
         if sql.startswith("--", i):
@@ -2045,20 +2048,17 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
             # E'' reads backslash escapes whatever the setting; B'', X'' and U&'' read none. N'' is an ordinary
             # literal after its prefix.
             if prefix == "e":
-                end = _pg_literal_end(sql, i + 1, True)
+                end = _pg_quoted_end(sql, i + 1, "'", True)
             elif prefix in ("b", "x"):
-                end = _pg_literal_end(sql, i + 1, False)
+                end = _pg_quoted_end(sql, i + 1, "'", False)
             elif prefix == "u":
-                end = _pg_literal_end(sql, i + 2, False)
+                end = _pg_quoted_end(sql, i + 2, "'", False)
             else:
-                end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+                end = _pg_quoted_end(sql, i + 1, "'", not standard_conforming_strings)
         elif c == "'":
-            end = _pg_literal_end(sql, i + 1, not standard_conforming_strings)
+            end = _pg_quoted_end(sql, i + 1, "'", not standard_conforming_strings)
         elif c == '"':
-            close = sql.find('"', i + 1)
-            while close != -1 and sql.startswith('""', close):
-                close = sql.find('"', close + 2)
-            end = None if close == -1 else close + 1
+            end = _pg_quoted_end(sql, i + 1, '"', False)
         elif dollar is not None:
             close = sql.find(dollar.group(), dollar.end())
             end = None if close == -1 else close + len(dollar.group())
@@ -2070,11 +2070,6 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
             break
         i = end
     return count + content
-
-
-def _hidden_by_string_setting(sql: str) -> bool:
-    """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off."""
-    return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
 def _unbracketed(stmt: exp.Expression) -> exp.Expression:
@@ -2121,9 +2116,10 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     its tree, and statements holding only a comment after the last semicolon are not counted. When the statement is
     refused for what it holds, `reason` says why, with `reason_detail` for the reasons that have one.
 
-    With `check_rebuild`, the reconstruction must also pass the same checks and reconstruct to itself (reason
-    "rebuild-differs", with the reconstruction's own reason as `reason_detail`), and for "postgres", Postgres must
-    read it as one statement with `standard_conforming_strings` on and off (reason "backslash-quote").
+    With `check_rebuild`, the reconstruction of a statement of the allowed type must also pass the same checks and
+    reconstruct to itself (reason "rebuild-differs", with the reconstruction's own reason as `reason_detail`). For
+    "postgres", Postgres must also read it as one statement with `standard_conforming_strings` on (reason
+    "rebuild-differs", detail "multiple-statements") and with it off (reason "backslash-quote").
     """
     result = {"is_single_stmt?": False, "allowed_stmt_type?": False}
     try:
@@ -2142,15 +2138,17 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         rebuilt = None
         if len(stmts) == 1:
             rebuilt = stmts[0].sql(dialect=dialect) if dialect else stmts[0].sql()
-            if problem is None and check_rebuild and dialect == "postgres" and _hidden_by_string_setting(rebuilt):
-                problem = ("backslash-quote", None)
             # The checks above read `sql`, and the caller runs `rebuilt`. SQLGlot's writer does not always produce
             # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
-            # its quote moves.
-            if problem is None and check_rebuild:
+            # its quote moves, and a dollar-quoted alias comes back bare.
+            if problem is None and check_rebuild and isinstance(_unbracketed(stmts[0]), allowed_types):
                 again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
                 if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
                     problem = ("rebuild-differs", again.get("reason"))
+                elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
+                    problem = ("rebuild-differs", "multiple-statements")
+                elif dialect == "postgres" and _postgres_statement_count(rebuilt, False) > 1:
+                    problem = ("backslash-quote", None)
         if problem is not None:
             result["reason"], result["reason_detail"] = problem
         if rebuilt is not None:

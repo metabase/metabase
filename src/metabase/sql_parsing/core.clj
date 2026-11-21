@@ -601,8 +601,8 @@
 
   For `\"read-only\"`, the `:sql` must itself pass the same checks and reconstruct to itself; otherwise the
   verdict is `:disallowed` with `:reason \"rebuild-differs\"` and the reconstruction's own reason as `:detail`.
-  On Postgres, it must also read as one statement whatever `standard_conforming_strings` is (`:reason
-  \"backslash-quote\"`)."
+  On Postgres, it must also read as one statement with `standard_conforming_strings` on (else `:reason
+  \"rebuild-differs\"` with `:detail \"multiple-statements\"`) and with it off (else `:reason \"backslash-quote\"`)."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type executable-limits))
 

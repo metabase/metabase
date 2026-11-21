@@ -258,7 +258,7 @@
             (single-select :postgres "DELETE FROM orders" nil))))
   (testing "a SELECT whose rebuild Postgres reads as two statements is refused"
     (is (= {:error-type ::errors/not-a-single-select
-            :reason     "backslash-quote"}
+            :reason     "rebuild-differs"}
            (select-keys (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
                                        [:expectation "check"])
                         [:error-type :reason]))))

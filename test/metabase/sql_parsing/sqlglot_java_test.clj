@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-parsing.graal :as graal]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.sqlglot-java :as sqlglot-java]
    [metabase.sql-parsing.sqlglot-java.ast :as sqlglot-java.ast]
@@ -18,6 +19,7 @@
    [metabase.test :as mt])
   (:import
    (com.metabase.sqlglot SqlglotInterruptedException)
+   (org.graalvm.polyglot Context)
    (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -93,12 +95,15 @@
     (let [graal (sql-parsing/parser :sqlglot)
           java  (sql-parsing/parser :sqlglot-java)]
       (doseq [[dialect stmt-type sql reason]
-              [;; A backslash before a quote ends no literal with standard_conforming_strings on, and one with it off.
+              [;; With standard_conforming_strings on, a quote after a backslash ends the literal; with it off, the
+               ;; backslash escapes the quote.
                ["postgres" "read-only" "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files"          "backslash-quote"]
                ["postgres" "read-only" "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
                ["postgres" "read-only" "SELECT $q$a\\$q$ || $q$; DELETE FROM orders; --$q$ AS note"           "backslash-quote"]
-               ["postgres" "read-only" "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note" "backslash-quote"]
                ["postgres" "read"      "SELECT 'a\\''; DELETE FROM orders; --' AS note"                       "backslash-quote"]
+               ;; The rebuild reads as more than one statement whatever the setting.
+               ["postgres" "read-only" "SELECT E'a\\\\' || $q$; RESET ROLE; DELETE FROM orders; --$q$ AS note" "rebuild-differs"]
+               ["postgres" "read-only" "SELECT 1 AS $q$a;SELECT 2$q$"                                          "rebuild-differs"]
                ;; A rebuilt `E'\\'` ends one quote later, so the rebuild fails the checks or does not rebuild to itself.
                ["postgres" "read-only" "SELECT E'\\\\' || $q$' || (SELECT setval($z$s$z$, 4242))::text --$q$ AS id" "rebuild-differs"]
                ["postgres" "read-only" "SELECT E'\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id" "rebuild-differs"]
@@ -112,12 +117,51 @@
                ["postgres" "read-only" "SELECT 'x' AS \"a\\'\" /* b\\' /* c' */ ; */"                         nil]
                ["postgres" "read-only" "SELECT X'1F' AS x, B'1' AS y, N'z\\' AS z -- ;\n"                     nil]
                ["postgres" "read-only" "SELECT 1 AS a$q$ FROM t WHERE b = 'c'"                                nil]
-               ["redshift" "read-only" "SELECT 'it\\'s' AS note"                                              nil]]]
+               ["redshift" "read-only" "SELECT 'it\\'s' AS note"                                              nil]
+               ;; A statement of another type than the one checked for is refused for its type, not its rebuild.
+               ["postgres" "read"      "DELETE FROM orders"                                                    nil]]]
         (testing (pr-str dialect stmt-type sql)
           (let [result (protocol/single-stmt-of-type java dialect sql stmt-type true)]
             (is (= reason (:reason result)))
             (is (= (protocol/single-stmt-of-type graal dialect sql stmt-type true)
                    result))))))))
+
+(defn- python-statement-count
+  "`_postgres_statement_count` of `sql` with `standard_conforming_strings` as given, run by the GraalPy parser."
+  [sql standard-conforming-strings?]
+  (#'graal/do-with-python-context
+   (fn [^Context context]
+     (.asInt (.execute (.eval context "python" "sql_tools._postgres_statement_count")
+                       (object-array [sql standard-conforming-strings?]))))))
+
+(deftest postgres-statement-count-test
+  (testing "both parsers count the statements Postgres reads, with standard_conforming_strings on and off"
+    (doseq [[rule sql on off]
+            [["`$` continues a name, so `a$q$` opens no dollar quote"
+              "SELECT a$q$; SELECT $q$"                                   2 2]
+             ["only ASCII whitespace separates: a no-break space starts a name, so `$$` after it opens no dollar quote"
+              "SELECT 1 AS \u00a0$$; SELECT 2 AS \u00a0$$"               2 2]
+             ["X'' reads no backslash escapes"
+              "SELECT X'1\\'; SELECT 2"                                  2 2]
+             ["B'' reads no backslash escapes"
+              "SELECT B'1\\'; SELECT 2"                                  2 2]
+             ["U&'' reads no backslash escapes"
+              "SELECT U&'1\\'; SELECT 2"                                 2 2]
+             ["E'' reads backslash escapes whatever the setting"
+              "SELECT E'1\\'; SELECT 2'"                                 1 1]
+             ["N'' reads backslash escapes only with the setting off"
+              "SELECT N'1\\'; SELECT 2"                                  2 1]
+             ["a quoted name reads no backslash escapes"
+              "SELECT 1 AS \"a\\\"; SELECT 2"                            2 2]]]
+      (testing rule
+        (is (= [on off]
+               [(#'sqlglot-java.statements/postgres-statement-count sql true)
+                (#'sqlglot-java.statements/postgres-statement-count sql false)])
+            (str "Java: " (pr-str sql)))
+        (is (= [on off]
+               [(python-statement-count sql true)
+                (python-statement-count sql false)])
+            (str "Python: " (pr-str sql)))))))
 
 (deftest slow-call-times-out-test
   (testing "a call that takes longer than the deadline throws a TimeoutException and interrupts the port's thread"
