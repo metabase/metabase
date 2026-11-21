@@ -17,6 +17,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
