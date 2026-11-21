@@ -610,6 +610,7 @@ interface PublicSettings {
   "development-mode?": boolean;
   "llm-metabot-configured?"?: boolean | null;
   "llm-metabot-supports-reasoning?"?: boolean | null;
+  "llm-mini-model-configured?"?: boolean | null;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "mfa-enforcement": MfaEnforcement;
