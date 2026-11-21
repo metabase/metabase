@@ -107,10 +107,7 @@
   (cluster-lock/with-cluster-lock policy-lock
     (check-writable permissions)
     (check-visible-groups permissions)
-    (t2/with-transaction [_conn]
-      (mcp-group-permission/check-one-mode (map :group_id permissions))
-      (doseq [{:keys [group_id] :as permission} permissions]
-        (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access])))))
+    (mcp-group-permission/upsert-mcp-group-permissions! permissions))
   (permissions-response))
 
 (defn- switch-mode!
@@ -122,9 +119,8 @@
     (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
       (mcp.db/delete-hidden-group-permissions! advanced?)
-      (mcp-group-permission/check-one-mode (mcp.db/seeded-group-ids advanced?))
-      (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
-        (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission)))))
+      (mcp-group-permission/create-missing-mcp-group-permissions!
+       (mapv #(assoc seeded-permission :group_id %) (mcp.db/seeded-group-ids advanced?))))))
 
 (api.macros/defendpoint :post "/advanced" :- permissions-response-schema
   "Switch to group-level MCP tool access. Removes the rows of All Users and All tenant users, so access comes only

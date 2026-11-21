@@ -55,7 +55,7 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn check-one-mode
+(defn- check-one-mode
   "Throw a 400 when rows for the groups with `group-ids` would sit beside rows of the other permission mode: All Users
   and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
   mode."
@@ -68,6 +68,29 @@
                      (if advanced?
                        (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
                        (tru "All Users can''t have an MCP policy while groups have their own"))))))
+
+(defn upsert-mcp-group-permissions!
+  "Set the McpGroupPermission of each group in `rows`, maps of `:group_id`, `:mcp_enabled` and `:tool_access`, in one
+  transaction, creating the row of a group that has none: one read, one insert, and one update per distinct policy."
+  [rows]
+  (t2/with-transaction [_conn]
+    (check-one-mode (map :group_id rows))
+    (let [rows                 (mapv #(select-keys % [:group_id :mcp_enabled :tool_access]) rows)
+          existing             (mcp.db/group-ids-with-permission (mapv :group_id rows))
+          {updates true
+           inserts false}      (group-by #(contains? existing (:group_id %)) rows)]
+      (mcp.db/insert-group-permissions! (vec inserts))
+      (doseq [[values rows] (group-by #(dissoc % :group_id) updates)]
+        (mcp.db/update-group-permissions! (mapv :group_id rows) values)))))
+
+(defn create-missing-mcp-group-permissions!
+  "Give each group in `rows`, maps as for [[upsert-mcp-group-permissions!]], that has no McpGroupPermission the one in
+  its row, in one transaction: one read and one insert."
+  [rows]
+  (t2/with-transaction [_conn]
+    (check-one-mode (map :group_id rows))
+    (let [existing (mcp.db/group-ids-with-permission (mapv :group_id rows))]
+      (mcp.db/insert-group-permissions! (vec (remove #(contains? existing (:group_id %)) rows))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

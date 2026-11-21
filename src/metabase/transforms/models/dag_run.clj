@@ -33,6 +33,18 @@
   {:status    mi/transform-keyword
    :direction mi/transform-keyword})
 
+(mu/defn running-run-for-source-transform-id :- [:maybe ::transforms.schema/transform-dag-run]
+  "Return the single active DAG run seeded from `source-transform-id`, or nil."
+  [source-transform-id :- ::lib.schema.id/transform]
+  (transforms.db/active-dag-run-for-transform source-transform-id))
+
+(mu/defn transform-runs-for-dag-run :- [:sequential ::transforms.schema/transform-run]
+  "Return the transform runs that were part of the given DAG run, ordered by start time."
+  [dag-run-id :- ms/PositiveInt]
+  (transforms.db/runs-for-dag-run dag-run-id))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (mu/defn start-dag-run! :- ::transforms.schema/transform-dag-run
   "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`
   (`:upstream`/`:downstream`). `user-id` is the user who triggered it; `transform-count` is the
@@ -52,16 +64,6 @@
                                             :is_active           true}
                                      transform (assoc :source_transform_name      (:name transform)
                                                       :source_transform_entity_id (:entity_id transform))))))
-
-(mu/defn running-run-for-source-transform-id :- [:maybe ::transforms.schema/transform-dag-run]
-  "Return the single active DAG run seeded from `source-transform-id`, or nil."
-  [source-transform-id :- ::lib.schema.id/transform]
-  (transforms.db/active-dag-run-for-transform source-transform-id))
-
-(mu/defn transform-runs-for-dag-run :- [:sequential ::transforms.schema/transform-run]
-  "Return the transform runs that were part of the given DAG run, ordered by start time."
-  [dag-run-id :- ms/PositiveInt]
-  (transforms.db/runs-for-dag-run dag-run-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
