@@ -2,8 +2,11 @@
   "The number of app-DB queries a search runs does not grow with the number of results it returns."
   (:require
    [clojure.test :refer :all]
+   [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.measures.models.measure :as measure]
    [metabase.permissions.core :as perms]
@@ -30,17 +33,25 @@
   "How many rows the batch search finds, against the single row of the solo search."
   10)
 
+(def ^:private create-rows
+  "The write function [[insert-rows]] creates the rows of each model with."
+  {:model/Card        #(#'card/create-cards* %)
+   :model/Document    document/create-documents!
+   :model/Exploration exploration/create-explorations!
+   :model/Action      action/create-actions!})
+
 (defn- insert-rows
-  "Returns a row factory, `(fn [collection names row-attrs])`, that inserts a `model` row per name. A row takes the
+  "Returns a row factory, `(fn [collection names row-attrs])`, that creates a `model` row per name. A row takes the
   `with-temp` defaults of `model`, then `(collection-attrs collection)`, then `row-attrs`, such as `{:archived true}`."
   ([model] (insert-rows model (constantly {})))
   ([model collection-attrs]
    (fn [collection names row-attrs]
-     (doseq [n names
-             :let [row (merge (mt/with-temp-defaults model) (collection-attrs collection) row-attrs {:name n})]]
-       (if (= model :model/Card)
-         (#'card/create-cards* [row])
-         (t2/insert! model row))))))
+     ((create-rows model)
+      (vec (for [n names]
+             (merge (dissoc (mt/with-temp-defaults model) :created_at :updated_at)
+                    (collection-attrs collection)
+                    row-attrs
+                    {:name n})))))))
 
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."

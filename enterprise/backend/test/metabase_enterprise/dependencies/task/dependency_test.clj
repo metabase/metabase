@@ -18,10 +18,12 @@
    [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
+   [metabase.actions.models :as action]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -612,7 +614,7 @@
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
-        (t2/update! :model/NativeQuerySnippet :id inner-id {:content "CHECKINS"})
+        (snippet/update-snippet! inner-id {:content "CHECKINS"})
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
@@ -773,14 +775,14 @@
          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Card {embedded-card-id :id} {:dataset_query (lib/query mp products)}
                         :model/Dashboard {dashboard-id :id} {}
-                        :model/Document {document-id :id :as document} {:content_type "application/json+vnd.prose-mirror"
-                                                                        :document {:type "doc"
-                                                                                   :content [{:type "paragraph"
-                                                                                              :content [{:type "smartLink"
-                                                                                                         :attrs {:entityId card-id
-                                                                                                                 :model "card"}}]}
-                                                                                             {:type "cardEmbed"
-                                                                                              :attrs {:id embedded-card-id}}]}}]
+                        :model/Document {document-id :id} {:content_type "application/json+vnd.prose-mirror"
+                                                           :document {:type "doc"
+                                                                      :content [{:type "paragraph"
+                                                                                 :content [{:type "smartLink"
+                                                                                            :attrs {:entityId card-id
+                                                                                                    :model "card"}}]}
+                                                                                {:type "cardEmbed"
+                                                                                 :attrs {:id embedded-card-id}}]}}]
            (assert-pending :document document-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :document
@@ -793,15 +795,15 @@
                       :to_entity_id embedded-card-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-           (let [updated-doc (assoc document :document {:type "doc"
-                                                        :content [{:type "paragraph"
-                                                                   :content [{:type "smartLink"
-                                                                              :attrs {:entityId dashboard-id
-                                                                                      :model "dashboard"}}
-                                                                             {:type "smartLink"
-                                                                              :attrs {:entityId products-id
-                                                                                      :model "table"}}]}]})]
-             (t2/update! :model/Document :id document-id updated-doc)
+           (let [updated-doc {:document {:type "doc"
+                                         :content [{:type "paragraph"
+                                                    :content [{:type "smartLink"
+                                                               :attrs {:entityId dashboard-id
+                                                                       :model "dashboard"}}
+                                                              {:type "smartLink"
+                                                               :attrs {:entityId products-id
+                                                                       :model "table"}}]}]}}]
+             (document/update-document! document-id updated-doc)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document
                         :from_entity_id document-id
@@ -813,7 +815,7 @@
                         :to_entity_id products-id}}
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-             (t2/delete! :model/Document :id document-id)
+             (document/delete-document! document-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document))))))))))
 
@@ -895,7 +897,7 @@
          (assert-pending :snippet snippet-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (not (pending? :snippet snippet-id)))
-         (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "SELECT 2"})
+         (snippet/update-snippet! snippet-id {:content "SELECT 2"})
          (assert-pending :snippet snippet-id))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test
@@ -1145,13 +1147,13 @@
            (is (= #{[:table (mt/id :venues)]}
                   (action-deps action-id))))
          (testing "updating an action's query recalculates its dependencies"
-           (t2/update! :model/QueryAction :action_id action-id {:dataset_query (sql-query "checkins")})
+           (action/update-query-actions! [{:action_id action-id :dataset_query (sql-query "checkins")}])
            (assert-pending :action action-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:table (mt/id :checkins)]}
                   (action-deps action-id))))
          (testing "deleting an action removes its dependencies and status"
-           (t2/delete! :model/Action :id action-id)
+           (action/delete-actions! [action-id])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (action-deps action-id)))
            (is (not (t2/exists? :model/DependencyStatus :entity_type :action :entity_id action-id)))))))))
@@ -1329,7 +1331,7 @@
                (deps.test/synchronously-run-dependency-job!)
                (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
            (testing "a deleted action stops being one"
-             (t2/delete! :model/Action :id action-id)
+             (action/delete-actions! [action-id])
              (assert-pending :data-app app-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:card card-id]} (data-app-deps app-id))))
