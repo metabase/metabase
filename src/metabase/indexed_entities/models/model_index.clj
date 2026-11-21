@@ -17,6 +17,7 @@
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -35,9 +36,7 @@
 (derive :model/ModelIndex :hook/created-at-timestamped?)
 ;; TODO disabled due to issues having an update hook causes, seemingly due to a toucan2 bug
 #_(derive :model/ModelIndex :search/indexed)
-(doto :model/ModelIndex
-  (derive :hook/events)
-  (derive :search/indexed-deletes))
+(derive :model/ModelIndex :search/indexed-deletes)
 
 (t2/deftransforms :model/ModelIndex
   ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
@@ -196,27 +195,28 @@
 (mu/defn create-model-index!
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]} :- ::indexed-entities.schema/model-index.create]
-  (indexed-entities.db/insert-model-index! {:model_id   model-id
-                                            ;; todo: sanitize these?
-                                            :pk_ref     pk-ref
-                                            :value_ref  value-ref
-                                            :schedule   (default-schedule)
-                                            :state      "initial"
-                                            :creator_id creator-id}))
+  (events/with-batched-events
+    (u/prog1 (indexed-entities.db/insert-model-index! {:model_id   model-id
+                                                       ;; todo: sanitize these?
+                                                       :pk_ref     pk-ref
+                                                       :value_ref  value-ref
+                                                       :schedule   (default-schedule)
+                                                       :state      "initial"
+                                                       :creator_id creator-id})
+      (events/publish-lifecycle! [(events/created :event/model-index-create [<>])]))))
 
 (mu/defn delete-model-index!
-  "Remove the indexing job of the model index with `id` and delete the model index."
+  "Remove the indexing job of the model index with `id` and delete the model index, publishing its delete."
   [id :- ms/PositiveInt]
-  (remove-indexing-job {:id id})
-  (indexed-entities.db/delete-model-index! id))
+  (events/with-batched-events
+    (remove-indexing-job {:id id})
+    (if-let [model-index (indexed-entities.db/model-index id)]
+      (let [event (events/deleted :event/model-index-delete :model/ModelIndex [model-index])]
+        (u/prog1 (indexed-entities.db/delete-model-index! id)
+          (events/publish-lifecycle! [event])))
+      0)))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
-
-(defmethod events/spec :model/ModelIndex
-  [_model]
-  {:create :event/model-index-create
-   :update :event/model-index-update
-   :delete :event/model-index-delete})
 
 (defmethod app-db-copy/spec :model/ModelIndex [_model]
   {:skip? false})

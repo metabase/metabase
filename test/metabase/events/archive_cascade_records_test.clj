@@ -4,6 +4,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.queries.models.card :as card]
    [metabase.revisions.db :as revisions.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -100,7 +101,7 @@
           (mt/with-dynamic-fn-redefs [revisions.db/insert-revisions! (let [f (mt/original-fn #'revisions.db/insert-revisions!)]
                                                                        (fn [rows] (swap! inserts inc) (f rows)))]
             (events/with-batched-events
-              (t2/update! :model/Card :id a {:name "A2"})
-              (t2/update! :model/Card :id b {:name "B2"})))
+              (card/update-cards! [{:id a :name "A2"}])
+              (card/update-cards! [{:id b :name "B2"}])))
           (is (= 1 @inserts))
           (is (= 2 (t2/count :model/Revision :model "Card" :model_id [:in [a b]] :is_creation false))))))))

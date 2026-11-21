@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
@@ -45,7 +46,7 @@
               before    (status-row-count)]
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(t2/update! :model/Card :id card-id {:dataset_query (table-query :orders)})))
+             #(card/update-cards! [{:id card-id :dataset_query (table-query :orders)}])))
           (is (= before (status-row-count)))
           (is (= [{:dependency-jobs true}] @submitted)))))))
 
@@ -56,7 +57,7 @@
         (let [submitted (atom [])]
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(t2/update! :model/Card :id card-id {:dataset_query (table-query :orders)})))
+             #(card/update-cards! [{:id card-id :dataset_query (table-query :orders)}])))
           (is (= [] @submitted)))))))
 
 (deftest update-marking-nothing-triggers-nothing-test
@@ -87,8 +88,8 @@
                        (deps.test/record-result-metadata-processed! card)
                        (write!)
                        (deps.test/result-metadata-pending? card))]
-          (is (not (marks? card-id #(t2/update! :model/Card :id source-id {:name "Renamed"}))))
-          (is (marks? card-id #(t2/update! :model/Card :id metric-id {:name "Renamed"})))
+          (is (not (marks? card-id #(card/update-cards! [{:id source-id :name "Renamed"}]))))
+          (is (marks? card-id #(card/update-cards! [{:id metric-id :name "Renamed"}])))
           (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
             (is (marks? source-id #(field/update-field! (mt/id :venues :price) {:position 0}))))
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}
@@ -107,7 +108,7 @@
         (let [metadata (t2/select-one-fn :result_metadata :model/Card :id source-id)
               marks?   (fn [f]
                          (deps.test/record-result-metadata-processed! card-id)
-                         (t2/update! :model/Card :id source-id {:result_metadata (mapv f metadata)})
+                         (card/update-cards! [{:id source-id :result_metadata (mapv f metadata)}])
                          (deps.test/result-metadata-pending? card-id))]
           (is (not (marks? #(assoc % :fingerprint {:global {:distinct-count 3}}))))
           (is (marks? #(cond-> % (= "NAME" (:name %)) (assoc :display_name "Renamed")))))))))
@@ -219,9 +220,9 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :products)}]
         (computed! :card card-id)
-        (t2/update! :model/Card :id card-id {:name "Renamed"})
+        (card/update-cards! [{:id card-id :name "Renamed"}])
         (is (not (pending? :card card-id)))
-        (t2/update! :model/Card :id card-id {:dataset_query (table-query :orders)})
+        (card/update-cards! [{:id card-id :dataset_query (table-query :orders)}])
         (is (pending? :card card-id))))))
 
 (deftest dashboard-parts-mark-dashboard-test
@@ -311,19 +312,19 @@
                                :pending?   (pending? :data-app app-id)})
                 one-update? {:statements [#"(?is)UPDATE\b.*"] :pending? true}]
             (testing "inserting a card"
-              (is (=? one-update? (marks #(t2/insert! :model/Card {:name                   "inserted"
-                                                                   :type                   :question
-                                                                   :display                :table
-                                                                   :dataset_query          (table-query :products)
-                                                                   :visualization_settings {}
-                                                                   :creator_id             (mt/user->id :rasta)
-                                                                   :collection_id          collection-id})))))
+              (is (=? one-update? (marks #(card/create-cards! [{:name                   "inserted"
+                                                                :type                   :question
+                                                                :display                :table
+                                                                :dataset_query          (table-query :products)
+                                                                :visualization_settings {}
+                                                                :creator_id             (mt/user->id :rasta)
+                                                                :collection_id          collection-id}])))))
             (testing "moving a card out"
-              (is (=? one-update? (marks #(t2/update! :model/Card :id (:id card) {:collection_id other-collection-id})))))
+              (is (=? one-update? (marks #(card/update-cards! [{:id (:id card) :collection_id other-collection-id}])))))
             (testing "moving a card in"
-              (is (=? one-update? (marks #(t2/update! :model/Card :id (:id card) {:collection_id collection-id})))))
+              (is (=? one-update? (marks #(card/update-cards! [{:id (:id card) :collection_id collection-id}])))))
             (testing "deleting a card"
-              (is (=? one-update? (marks #(t2/delete! :model/Card :id (:id card))))))))))))
+              (is (=? one-update? (marks #(card/delete-cards! [(:id card)])))))))))))
 
 (deftest entity-delete-test
   (testing "the dependency job drops the dependencies and status of a deleted entity"
@@ -332,7 +333,7 @@
         (t2/insert! :model/Dependency {:from_entity_type "card" :from_entity_id card-id
                                        :to_entity_type "table" :to_entity_id (mt/id :products)})
         (computed! :card card-id)
-        (t2/delete! :model/Card :id card-id)
+        (card/delete-cards! [card-id])
         (deps.test/synchronously-run-dependency-job!)
         (is (not (t2/exists? :model/Dependency :from_entity_type "card" :from_entity_id card-id)))
         (is (not (t2/exists? :model/DependencyStatus :entity_type "card" :entity_id card-id)))))))
@@ -361,11 +362,11 @@
           (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-b
                                          :to_entity_type   :card :to_entity_id   card-a})
           (let [cascade (save! #(t2/with-transaction [_conn]
-                                  (t2/update! :model/Card :id card-a {:dataset_query (table-query :orders)})
+                                  (card/update-cards! [{:id card-a :dataset_query (table-query :orders)}])
                                   (deliver a-saved true)
-                                  (t2/update! :model/Card :id card-b {:dataset_query (lib/limit (card-query card-a) 5)})))
+                                  (card/update-cards! [{:id card-b :dataset_query (lib/limit (card-query card-a) 5)}])))
                 single  (save! #(do (deref a-saved 10000 nil)
-                                    (t2/update! :model/Card :id card-b {:dataset_query (lib/limit (card-query card-a) 11)})))]
+                                    (card/update-cards! [{:id card-b :dataset_query (lib/limit (card-query card-a) 11)}])))]
             (is (= [:committed :committed]
                    [(deref cascade 30000 :timeout) (deref single 30000 :timeout)]))))))))
 
@@ -418,8 +419,7 @@
                                                    (constantly {:dataset_query (table-query :venues)})
                                                    %
                                                    (fn [ids]
-                                                     (t2/update! :model/Card :id [:in ids]
-                                                                 {:dataset_query (lib/limit (table-query :venues) 1)})))]
+                                                     (card/update-cards! (mapv (fn [id] {:id id :dataset_query (lib/limit (table-query :venues) 1)}) ids))))]
           (is (= (count! 2) (count! 6)))))
       (testing "an insert of series of dashcards, which reads the Dashboard of each dashcard"
         (let [count! #(dependency-statement-count! :model/DashboardCard

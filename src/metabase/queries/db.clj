@@ -951,6 +951,14 @@
                            :collection_position position-clause}
               {:collection_position [plus-or-minus :collection_position 1]}))
 
+(mu/defn cards-at-positions
+  "The Cards in the Collection with `collection-id` whose `collection_position` matches `position-clause`."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- [:or
+                       [:tuple [:enum :> :>=] ms/PositiveInt]
+                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]]
+  (t2/select :model/Card :collection_id collection-id :collection_position position-clause))
+
 (mu/defn set-cards-cache-invalidated-at!
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]

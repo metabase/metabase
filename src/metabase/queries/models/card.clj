@@ -66,6 +66,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -129,7 +130,7 @@
 
 ;;; ------------------------------------------------- Metric Dimension Persistence --------------------------------------------------
 
-(declare update-cards!)
+(declare update-cards! update-cards-with-events*)
 
 (defmethod metrics/save-dimensions! :metadata/metric
   [metric dimensions dimension-mappings]
@@ -159,8 +160,7 @@
 (doto :model/Card
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (defn- summary-card-snapshots
   "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
@@ -570,9 +570,10 @@
 (defn- reset-values-sources!
   "Resets to the default source the parameters among those of the Cards and Dashboards that `parameter-cards` link to
   whose ids `affected-param-ids` gives from the ParameterCards of one parameterized object, reading the parameters of
-  all the objects at once."
+  all the objects at once. Returns the events of the writes of the Cards."
   [parameter-cards affected-param-ids]
-  (when (seq parameter-cards)
+  (if (empty? parameter-cards)
+    []
     (let [by-object     (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)
           object-ids    (fn [object-type]
                           (into [] (comp (map key) (filter #(= object-type (first %))) (map second)) by-object))
@@ -595,9 +596,10 @@
                                             new-parameters (new-params parameters (get by-object [:card id]))]
                                         (when-not (= parameters new-parameters)
                                           {:id id :parameters new-parameters}))))
-                              card-ids)]
-      (when (seq card-updates)
-        (update-cards! card-updates))
+                              card-ids)
+          card-events   (if (seq card-updates)
+                          (:events (update-cards-with-events* card-updates))
+                          [])]
       (when-let [dashboard-updates (not-empty
                                     (into []
                                           (keep (fn [id]
@@ -606,12 +608,13 @@
                                                     (when (not= parameters new-parameters)
                                                       {:id id :parameters new-parameters}))))
                                           dashboard-ids))]
-        (write-followers! update-followers! :model/Dashboard dashboard-updates)))))
+        (write-followers! update-followers! :model/Dashboard dashboard-updates))
+      card-events)))
 
 (defn- reset-values-sources-of-changed-cards!
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of one of
   the `cards` that its new `result_metadata` in its changes, `[card changes]` pairs, no longer has;
-  [[update-cards!]] resets those of archived cards."
+  [[update-cards!]] resets those of archived cards. Returns the events of the writes of the Cards."
   [cards+changes]
   (let [targets (into {}
                       (keep (fn [[{:keys [id database_id]} changes]]
@@ -621,7 +624,7 @@
                                        (lib-be/application-database-metadata-provider database_id)
                                        result-metadata))])))
                       cards+changes)]
-    (when (seq targets)
+    (if (seq targets)
       (reset-values-sources!
        (queries.db/parameter-cards-for-cards (vec (keys targets)))
        (fn [param-cards parameters]
@@ -633,7 +636,8 @@
                            (get-in (param-id->parameter (:parameter_id param-card))
                                    [:values_source_config :value_field]))))
                 (map :parameter_id)
-                set)))))))
+                set))))
+      [])))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *update-baseline-select?*
@@ -1535,28 +1539,39 @@
                   [id parameters])))
         cards))
 
-(defn- create-cards*
-  "[[create-cards!]] without checking `rows` against their schema, which the hooks of the model check."
+(defn- insert-cards*
+  "[[create-cards!]] without checking `rows` against their schema, which the hooks of the model check, and without
+  publishing: returns the new Cards as `:cards` and the events of the writes as `:events`."
   [rows]
   (if (empty? rows)
-    []
-    (events/with-batched-events
-      (let [dashboards (queries.db/dashboards-for-placement (into #{} (keep :dashboard_id) rows))
-            rows       (mapv #(dashboard-question-collection % dashboards) rows)
-            placement  (load-placement rows dashboards)]
-        (run! #(check-new-card-placement % placement) rows)
-        (check-field-filter-fields-are-from-correct-database
-         (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows))
-        (let [cards (insert-in-order! rows)]
-          (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
-          (when-let [objects (seq (card-sourced-parameter-objects cards))]
-            (parameter-card/sync-parameter-cards! "card" (vec objects)))
-          cards)))))
+    {:cards [] :events []}
+    (let [dashboards (queries.db/dashboards-for-placement (into #{} (keep :dashboard_id) rows))
+          rows       (mapv #(dashboard-question-collection % dashboards) rows)
+          placement  (load-placement rows dashboards)]
+      (run! #(check-new-card-placement % placement) rows)
+      (check-field-filter-fields-are-from-correct-database
+       (into [] (keep #(when (:dataset_query %) {:dataset_query (lib-be/normalize-query (:dataset_query %))})) rows))
+      (let [cards (insert-in-order! rows)]
+        (sync-field-values! (into #{} (mapcat params/card->template-tag-field-ids) cards))
+        (when-let [objects (seq (card-sourced-parameter-objects cards))]
+          (parameter-card/sync-parameter-cards! "card" (vec objects)))
+        {:cards  cards
+         :events [(events/created :event/card-create cards)]}))))
+
+(defn- create-cards*
+  "[[create-cards!]] without checking `rows` against their schema, which the hooks of the model check: creates the Cards
+  as [[insert-cards*]] does and publishes the events of the writes, returning the Cards."
+  [rows]
+  (events/with-batched-events
+    (let [{:keys [cards events]} (insert-cards* rows)]
+      (events/publish-lifecycle! events)
+      cards)))
 
 (mu/defn create-cards!
   "Creates a Card from each of `rows` and returns the new Cards in order, after checking that each can go where it is
   put and that its Field filters are on Fields of its Database. Reads what it checks for all the Cards at once and
-  inserts them with one statement for each set of columns they give, so the statements do not grow with their number."
+  inserts them with one statement for each set of columns they give, so the statements do not grow with their number.
+  Publishes the creation of the Cards as the last step."
   [rows :- [:sequential ::queries.schema/card.create]]
   (create-cards* rows))
 
@@ -1698,9 +1713,9 @@
 
 (defn- archive-effects!
   "Deletes the Actions of the Cards that the update `entries` archive, the alerts of those archived on their own, and
-  resets the parameters that take their values from them."
+  resets the parameters that take their values from them, returning the events of the writes of the Cards."
   [entries]
-  (when-let [archiving (not-empty (archived-entries entries))]
+  (if-let [archiving (not-empty (archived-entries entries))]
     (let [ids      (mapv (comp :id :before) archiving)
           directly (into [] (comp (filter #(boolean (get-in % [:changes :archived_directly] (:archived_directly (:before %)))))
                                   (map (comp :id :before)))
@@ -1709,88 +1724,139 @@
         (delete-notifications-of-cards! directly))
       (actions.models/delete-actions-of-models! ids)
       (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
-                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
+                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))
+    []))
 
-(defn- update-cards*
-  "[[update-cards!]] without checking `updates` against their schema, which the hooks of the model check."
+(def ^:private derived-from-columns
+  "The columns of a Card whose change makes the hooks of the model derive other columns, so that the row an update leaves
+  is read again: the query gives the Database, Table, source Card and query type, the type the display, the metadata
+  and the settings the origin in a Metabot conversation, embedding the first publication, the Collection what the
+  Actions of a model follow."
+  #{:display :visualization_settings :dataset_query :collection_id :type :result_metadata :enable_embedding :public_uuid})
+
+(defn- merge-update-events
+  "The `[topic changes]` pairs `events`, the updates of one write, with the changes of one Card that appear more than once,
+  such as a Card that a write changes and its cascade changes again, merged into the change from the first
+  `:previous-object` to the last `:object`, as the batch of events merges them."
+  [events]
+  (let [[merged others] (reduce (fn [[merged others] [topic changes]]
+                                  (if (= topic :event/card-update)
+                                    [(into merged changes) others]
+                                    [merged (conj others [topic changes])]))
+                                [[] []]
+                                events)
+        by-id           (group-by #(:id (:object %)) merged)
+        order           (distinct (map #(:id (:object %)) merged))]
+    (cond-> others
+      (seq merged) (conj [:event/card-update
+                          (mapv (fn [id]
+                                  (let [changes (get by-id id)]
+                                    (cond-> {:previous-object (:previous-object (first changes))
+                                             :object          (:object (peek changes))}
+                                      (some :changed changes) (assoc :changed (into #{} (mapcat :changed) changes)))))
+                                order)]))))
+
+(defn- update-cards-with-events*
+  "[[update-cards!]] without checking `updates` against their schema, which the hooks of the model check, and without
+  publishing: returns `updates` without those of Cards that do not exist as `:cards` and the events of the writes as
+  `:events`."
   [updates]
   (let [updates (vec updates)]
     (if (empty? updates)
-      []
-      (events/with-batched-events
-        (let [before         (u/index-by :id (queries.db/cards (into #{} (map :id) updates)))
-              updates        (filterv #(contains? before (:id %)) updates)
-              question-dash  (queries.db/dashboards-for-placement
-                              (into #{}
-                                    (keep #(when-let [dashboard-id (:dashboard_id %)]
-                                             (when (not= dashboard-id (:dashboard_id (get before (:id %))))
-                                               dashboard-id)))
-                                    updates))
-              updates        (mapv (fn [{:keys [id dashboard_id] :as update}]
-                                     (cond-> update
-                                       (and dashboard_id (not= dashboard_id (:dashboard_id (get before id))))
-                                       (assoc :collection_id (:collection_id (get question-dash dashboard_id)))))
-                                   updates)
-              entries        (mapv (fn [{:keys [id] :as update}]
-                                     (let [card (get before id)]
-                                       {:update  update
-                                        :before  card
-                                        :changes (changing-values card update)}))
-                                   updates)
-              entries        (with-archived-directly entries)
-              checked        (filterv (comp placement-needed? :changes) entries)
-              placement      (when (seq checked)
-                               (load-placement
-                                (mapv #(merge (:before %) (:changes %)) checked)
-                                (queries.db/dashboards-for-placement
-                                 (into #{} (keep #(:dashboard_id (merge (:before %) (:changes %)))) checked))))]
-          (doseq [{:keys [before changes]} checked]
-            (check-card-update-placement (merge before changes) changes placement))
-          (check-field-filter-fields-are-from-correct-database
-           (into [] (keep #(when-let [query (:dataset_query (:changes %))] {:dataset_query query})) entries))
-          (doseq [{:keys [before changes]} entries
-                  :when                    (contains? changes :result_metadata)]
-            (pre-update-check-sandbox-constraints (merge before changes) changes))
-          (let [field-ids (into #{} (mapcat #(newly-referenced-field-ids (:before %) (:changes %))) entries)]
-            (delete-model-actions! entries)
-            (doseq [[changes group] (group-in-order #(dissoc (:update %) :id) entries)
-                    :when           (seq changes)]
-              (queries.db/update-cards! (mapv (comp :id :update) group) changes))
-            (sync-field-values! field-ids))
-          (let [after (when (some (fn [{:keys [changes]}]
-                                    (some #(contains? changes %) [:display :visualization_settings :dataset_query
-                                                                  :collection_id]))
-                                  entries)
-                        (u/index-by :id (queries.db/cards (mapv (comp :id :before) entries))))]
-            (delete-alerts-of-changed-cards! entries after)
-            (move-actions-of-cards! entries after)
-            (archive-effects! entries)
-            (when-let [objects (seq (into []
-                                          (keep (fn [{:keys [before changes]}]
-                                                  (when (some? (:parameters changes))
-                                                    [(:id before) (:parameters changes)])))
-                                          entries))]
-              (parameter-card/sync-parameter-cards! "card" (vec objects)))
-            (reset-values-sources-of-changed-cards!
-             (into []
-                   (keep (fn [{:keys [before changes]}]
-                           (when (contains? changes :result_metadata)
-                             [(or (get after (:id before)) before) changes])))
-                   entries))))
-        updates))))
+      {:cards [] :events []}
+      (let [before         (u/index-by :id (queries.db/cards (into #{} (map :id) updates)))
+            updates        (filterv #(contains? before (:id %)) updates)
+            question-dash  (queries.db/dashboards-for-placement
+                            (into #{}
+                                  (keep #(when-let [dashboard-id (:dashboard_id %)]
+                                           (when (not= dashboard-id (:dashboard_id (get before (:id %))))
+                                             dashboard-id)))
+                                  updates))
+            updates        (mapv (fn [{:keys [id dashboard_id] :as update}]
+                                   (cond-> update
+                                     (and dashboard_id (not= dashboard_id (:dashboard_id (get before id))))
+                                     (assoc :collection_id (:collection_id (get question-dash dashboard_id)))))
+                                 updates)
+            entries        (mapv (fn [{:keys [id] :as update}]
+                                   (let [card (get before id)]
+                                     {:update  update
+                                      :before  card
+                                      :changes (changing-values card update)}))
+                                 updates)
+            entries        (with-archived-directly entries)
+            checked        (filterv (comp placement-needed? :changes) entries)
+            placement      (when (seq checked)
+                             (load-placement
+                              (mapv #(merge (:before %) (:changes %)) checked)
+                              (queries.db/dashboards-for-placement
+                               (into #{} (keep #(:dashboard_id (merge (:before %) (:changes %)))) checked))))]
+        (doseq [{:keys [before changes]} checked]
+          (check-card-update-placement (merge before changes) changes placement))
+        (check-field-filter-fields-are-from-correct-database
+         (into [] (keep #(when-let [query (:dataset_query (:changes %))] {:dataset_query query})) entries))
+        (doseq [{:keys [before changes]} entries
+                :when                    (contains? changes :result_metadata)]
+          (pre-update-check-sandbox-constraints (merge before changes) changes))
+        (let [field-ids (into #{} (mapcat #(newly-referenced-field-ids (:before %) (:changes %))) entries)]
+          (delete-model-actions! entries)
+          (doseq [[changes group] (group-in-order #(dissoc (:update %) :id) entries)
+                  :when           (seq changes)]
+            (queries.db/update-cards! (mapv (comp :id :update) group) changes))
+          (sync-field-values! field-ids))
+        (let [after          (when (some (fn [{:keys [changes]}]
+                                           (some #(contains? changes %) derived-from-columns))
+                                         entries)
+                               (u/index-by :id (queries.db/cards (mapv (comp :id :before) entries))))
+              _              (delete-alerts-of-changed-cards! entries after)
+              _              (move-actions-of-cards! entries after)
+              archive-events (archive-effects! entries)
+              _              (when-let [objects (seq (into []
+                                                           (keep (fn [{:keys [before changes]}]
+                                                                   (when (some? (:parameters changes))
+                                                                     [(:id before) (:parameters changes)])))
+                                                           entries))]
+                               (parameter-card/sync-parameter-cards! "card" (vec objects)))
+              reset-events   (reset-values-sources-of-changed-cards!
+                              (into []
+                                    (keep (fn [{:keys [before changes]}]
+                                            (when (contains? changes :result_metadata)
+                                              [(or (get after (:id before)) before) changes])))
+                                    entries))
+              own-events     [:event/card-update
+                              (mapv (fn [{:keys [before changes update]}]
+                                      (let [object (or (when (some #(contains? changes %) derived-from-columns)
+                                                         (get after (:id before)))
+                                                       (events/updated-row before changes))]
+                                        (cond-> {:previous-object before :object object}
+                                          (= :updated_at (:updated_at update))
+                                          (assoc :changed (u.events/changed-keys {:previous-object before :object object})))))
+                                    (filterv (comp seq :changes) entries))]]
+          {:cards  updates
+           :events (merge-update-events (into [own-events] cat [archive-events reset-events]))})))))
+
+(defn- update-cards*
+  "[[update-cards!]] without checking `updates` against their schema, which the hooks of the model check: updates the
+  Cards as [[update-cards-with-events*]] does and publishes the events of the writes with `context`, returning the
+  updates of Cards that exist."
+  ([updates]
+   (update-cards* updates nil))
+  ([updates context]
+   (events/with-batched-events
+     (let [{:keys [cards events]} (update-cards-with-events* updates)]
+       (events/publish-lifecycle! events {:context context})
+       cards))))
 
 (mu/defn update-cards! :- [:sequential [:map [:id ::lib.schema.id/card]]]
   "Updates each of the Cards `updates` names by its `:id` with the columns it gives, after checking that each can go
   where it is put, and returns `updates` without those of Cards that do not exist. Keeps the rows that depend on a Card
   in step with its change, and writes the Cards that get the same changes with one statement, so the statements do not
   grow with their number. The `context`, such as `{:archived-with [:model/Dashboard 1]}` for the Cards that the archive of
-  Dashboard 1 carries, goes to the events of the writes."
+  Dashboard 1 carries, goes to the events of the writes, which are published as the last step."
   ([updates :- [:sequential [:merge ::queries.schema/card.update [:map {:closed true} [:id ::lib.schema.id/card]]]]]
    (update-cards* updates))
   ([updates :- [:sequential [:merge ::queries.schema/card.update [:map {:closed true} [:id ::lib.schema.id/card]]]]
     context :- [:maybe :metabase.events.schema/context]]
-   (events/with-event-context context
-     (update-cards* updates))))
+   (update-cards* updates context)))
 
 (mu/defn delete-cards!
   "Deletes the Cards with `card-ids` after the rows that depend on them, one statement for each kind of row, so the
@@ -1799,14 +1865,17 @@
   (let [card-ids (vec (distinct card-ids))]
     (when (seq card-ids)
       (events/with-batched-events
-        (delete-card-tests! card-ids)
-        (actions.models/delete-actions-of-models! card-ids)
-        (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
-        (moderation-review/delete-reviews-of-deleted-cards! card-ids)
-        (revision/delete-revisions-for-entities! "Card" card-ids)
-        (cache-config/delete-target-configs! "question" card-ids)
-        (delete-notifications-of-cards! card-ids)
-        (queries.db/delete-cards! card-ids)))
+        (let [cards (vec (queries.db/cards card-ids))]
+          (delete-card-tests! card-ids)
+          (actions.models/delete-actions-of-models! card-ids)
+          (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
+          (moderation-review/delete-reviews-of-deleted-cards! card-ids)
+          (revision/delete-revisions-for-entities! "Card" card-ids)
+          (cache-config/delete-target-configs! "question" card-ids)
+          (delete-notifications-of-cards! card-ids)
+          (let [event (events/deleted :event/card-delete :model/Card cards)]
+            (queries.db/delete-cards! card-ids)
+            (events/publish-lifecycle! [event])))))
     nil))
 
 (def ^:private tombstone-chunk-size
@@ -1879,11 +1948,21 @@
 (mu/defn shift-positions! :- :int
   "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Cards in the Collection with
   `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
-  position, returning the number updated."
+  position, publishing their updates and returning the number updated."
   [collection-id   :- [:maybe ::lib.schema.id/collection]
    position-clause :- vector?
    plus-or-minus   :- [:enum :+ :-]]
-  (queries.db/shift-card-positions! collection-id position-clause plus-or-minus))
+  (events/with-batched-events
+    (let [previous (vec (queries.db/cards-at-positions collection-id position-clause))
+          shifted  (u/prog1 (queries.db/shift-card-positions! collection-id position-clause plus-or-minus)
+                     (events/publish-lifecycle!
+                      [(events/updated :event/card-update
+                                       previous
+                                       (mapv (fn [card]
+                                               (events/updated-row card {:collection_position (({:+ inc :- dec} plus-or-minus)
+                                                                                               (:collection_position card))}))
+                                             previous))]))]
+      shifted)))
 
 (defmethod api/shift-collection-positions! :model/Card
   [_model collection-id position-clause plus-or-minus]
@@ -1891,10 +1970,17 @@
 
 (mu/defn invalidate-cached-results! :- :int
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, in one statement through the model, so
-  that the cached results stored before it are not served; returns the number updated."
+  that the cached results stored before it are not served, publishing their updates; returns the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]
    invalidated-at :- ms/TemporalInstant]
-  (queries.db/set-cards-cache-invalidated-at! (vec card-ids) invalidated-at))
+  (events/with-batched-events
+    (let [card-ids (vec card-ids)
+          previous (if (seq card-ids) (vec (queries.db/cards card-ids)) [])]
+      (u/prog1 (queries.db/set-cards-cache-invalidated-at! card-ids invalidated-at)
+        (events/publish-lifecycle!
+         [(events/updated :event/card-update
+                          previous
+                          (mapv #(events/updated-row % {:cache_invalidated_at invalidated-at}) previous))])))))
 
 (defmethod cache-config/invalidate-cached-results! :model/Card
   [_model card-ids invalidated-at]
@@ -2225,20 +2311,24 @@
 (defn- cascade-database-change-to-dependents!
   "When a card's `database_id` changes, update all cards that use it as a `:source-card` (transitively) so their
   `dataset_query` `:database` key stays in sync. Without this dependent cards would fail with 'Card does not exist'
-   because the metadata provider filters cards by database (#74561)."
+   because the metadata provider filters cards by database (#74561). Returns the events of the writes."
   [card-before-update card-updates]
   (let [card-id   (:id card-before-update)
         old-db-id (-> card-before-update :dataset_query :database)
         new-db-id (-> card-updates :dataset_query :database)]
-    (when (and old-db-id new-db-id (not= old-db-id new-db-id))
-      (when-let [cards-to-update (seq (dependent-cards-to-update card-id old-db-id))]
-        (update-cards! (mapv (fn [{dep-id :id, dep-query :dataset_query}]
-                               {:id            dep-id
-                                :dataset_query (assoc dep-query :database new-db-id)})
-                             cards-to-update))))))
+    (if (and old-db-id new-db-id (not= old-db-id new-db-id))
+      (if-let [cards-to-update (seq (dependent-cards-to-update card-id old-db-id))]
+        (:events (update-cards-with-events* (mapv (fn [{dep-id :id, dep-query :dataset_query}]
+                                                    {:id            dep-id
+                                                     :dataset_query (assoc dep-query :database new-db-id)})
+                                                  cards-to-update)))
+        [])
+      [])))
 
 (defn- update-card-in-db!
-  "Write `card-updates` to the Card and the rows that depend on it, in one transaction."
+  "Write `card-updates` to the Card and the rows that depend on it, in one transaction, returning the events of the
+  writes of Cards, which the caller publishes. The cache invalidation, which publishes its own update, comes before the
+  write, so that the merged event starts from the row before every write."
   [card-before-update card-updates actor delete-old-dashcards?]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
@@ -2253,19 +2343,17 @@
                                                         :result_metadata :verified-result-metadata?})]
       (assert-is-valid-dashboard-internal-update card-updates card-before-update)
       (maybe-unverify! card-before-update updated-fields actor)
-      (update-cards! [(-> updated-fields
-                          (m/update-existing :dataset_query #(lib/normalize ::queries.schema/card.dataset-query.write %))
-                          (assoc :id (:id card-before-update)))])
       (cache-config/invalidate! {:questions [(:id card-before-update)]
-                                 :with-overrides? true}))
-    ;; Update all transitively dependent cards if the database was changed (#74561)
-    (cascade-database-change-to-dependents! card-before-update card-updates)
-    ;; ok, now update dependent dashcard parameters
-    (try
-      (update-associated-parameters! card-before-update card-updates)
-      (catch Throwable e
-        (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
-    (queries.db/card (:id card-before-update))))
+                                 :with-overrides? true})
+      (let [own-events       (:events (update-cards-with-events* [(-> updated-fields
+                                                                      (m/update-existing :dataset_query #(lib/normalize ::queries.schema/card.dataset-query.write %))
+                                                                      (assoc :id (:id card-before-update)))]))
+            dependent-events (cascade-database-change-to-dependents! card-before-update card-updates)]
+        (try
+          (update-associated-parameters! card-before-update card-updates)
+          (catch Throwable e
+            (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
+        (merge-update-events (into own-events dependent-events))))))
 
 (defn update-card!
   "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
@@ -2273,7 +2361,7 @@
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   (let [notifications (pulse/alerts-of-card-being-changed card-before-update card-updates)]
     (events/with-batched-events
-      (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?))
+      (events/publish-lifecycle! (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)))
     ;; Fetch the updated Card from the DB
     (let [card (queries.db/card (:id card-before-update))]
       ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -2327,12 +2415,6 @@
     (delete-cards! ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Card
-  [_model]
-  {:create :event/card-create
-   :update :event/card-update
-   :delete :event/card-delete})
 
 (defmethod app-db-copy/spec :model/Card [_model]
   {:skip? false})

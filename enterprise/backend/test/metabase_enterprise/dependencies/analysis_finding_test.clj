@@ -15,6 +15,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.dependencies :as queries.dependencies]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
@@ -289,9 +290,9 @@
                          :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
                                               :to_entity_type :card :to_entity_id p-id}]
             (run-jobs!)
-            (t2/update! :model/Card :id gp-id {:name "Renamed"})
+            (card/update-cards! [(assoc {:name "Renamed"} :id gp-id)])
             (is (empty? (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!))))
-            (t2/update! :model/Card :id gp-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+            (card/update-cards! [(assoc {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))} :id gp-id)])
             (is (= #{gp-id p-id}
                    (set (filter #{gp-id p-id c-id} (analyzed-ids! run-jobs!)))))))))))
 
@@ -456,7 +457,7 @@
                                              :from_entity_id child-card-id
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
-           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))})
+           (card/update-cards! [(assoc {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))} :id parent-card-id)])
            (assert-has-analyses
             {:card {parent-card-id nil}})
            (is (nil? (t2/select-one-fn :analysis_version :model/AnalysisFindingStatus
@@ -477,7 +478,7 @@
                                              :to_entity_type :card
                                              :to_entity_id parent-card-id}]
            (analyzed-by-job!)
-           (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
+           (card/update-cards! [(assoc {:dataset_query (lib/query mp orders)} :id parent-card-id)])
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:card parent-card-id] [:card child-card-id]}
                   (analyzed-among! [:card parent-card-id] [:card child-card-id])))))))))
@@ -491,9 +492,9 @@
                       :model/Dependency _ {:from_entity_type :card :from_entity_id child-id
                                            :to_entity_type :card :to_entity_id parent-id}]
          (analyzed-by-job!)
-         (t2/update! :model/Card :id parent-id {:dataset_query   (lib/native-query mp "select * from orders")
-                                                :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
-                                                                         [:data :results_metadata :columns])})
+         (card/update-cards! [(assoc {:dataset_query   (lib/native-query mp "select * from orders")
+                                      :result_metadata (get-in (qp/process-query (lib/native-query mp "select * from orders"))
+                                                               [:data :results_metadata :columns])} :id parent-id)])
          (deps.test/synchronously-run-dependency-job!)
          (is (= #{[:card parent-id] [:card child-id]}
                 (analyzed-among! [:card parent-id] [:card child-id]))))))))
@@ -515,7 +516,7 @@
                                                                         :type   :table}}
                           :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
              (analyzed-by-job!)
-             (t2/update! :model/Card :id parent-card-id {:dataset_query (lib/query mp orders)})
+             (card/update-cards! [(assoc {:dataset_query (lib/query mp orders)} :id parent-card-id)])
              (is (= #{[:card parent-card-id] [:transform transform-id]}
                     (analyzed-among! [:card parent-card-id] [:transform transform-id] [:card other-card-id]))))))))))
 

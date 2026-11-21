@@ -132,14 +132,12 @@
         (mt/with-temp [:model/Database _ {}]
           (let [card    (atom nil)
                 updated (atom nil)
-                rows    (logged-by #(do (reset! card (t2/insert-returning-instance!
-                                                      :model/Card
-                                                      (-> (mt/with-temp-defaults :model/Card)
-                                                          (dissoc :entity_id)
-                                                          (assoc :updated_at #t "2023-02-02T01:00:00"))))
-                                        (t2/update! :model/Card :id (:id @card) {:name "renamed"})
+                rows    (logged-by #(do (reset! card (first (#'card/create-cards*
+                                                             [(-> (mt/with-temp-defaults :model/Card)
+                                                                  (dissoc :entity_id))])))
+                                        (card/update-cards! [{:id (:id @card) :name "renamed"}])
                                         (reset! updated (t2/select-one-fn :updated_at :model/Card :id (:id @card)))
-                                        (t2/delete! :model/Card :id (:id @card))))]
+                                        (card/delete-cards! [(:id @card)])))]
             (is (= (for [action ["insert" "update" "delete"]]
                      ["report_card" (:id @card) action])
                    rows))
@@ -271,7 +269,8 @@
     :model/TransformTag :model/DataApp :model/CustomVizPlugin :model/PythonLibrary :model/TransformTest
     :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember
     :model/Database :model/Table :model/Field :model/FieldValues :model/Dimension :model/FieldUserSettings
-    :model/TableUserSettings})
+    :model/TableUserSettings
+    :model/Card :model/CacheConfig :model/ModerationReview :model/ModelIndex})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
@@ -631,7 +630,9 @@
   [n]
   (events.tu/consumer-statement-count! :model/Card
                                        (repeatedly n #(mt/with-temp-defaults :model/Card))
-                                       #(t2/update! :model/Card :id [:in %] {:description (str (random-uuid))})
+                                       (fn [ids]
+                                         (let [description (str (random-uuid))]
+                                           (card/update-cards! (mapv (fn [id] {:id id :description description}) ids))))
                                        #(mt/with-premium-features #{:change-log} (%))
                                        #(mt/with-premium-features #{} (%))))
 

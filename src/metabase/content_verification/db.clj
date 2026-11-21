@@ -34,35 +34,47 @@
              :most_recent true
              {:order-by [[:id :desc]]}))
 
-(mu/defn delete-moderation-reviews-beyond-newest!
-  "Delete the ModerationReviews of the item with `item-id` and `item-type` beyond its newest `n`."
+(mu/defn moderation-reviews-beyond-newest
+  "The ModerationReviews of the item with `item-id` and `item-type` beyond its newest `n`."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]
    n         :- ms/PositiveInt]
-  (t2/delete! :model/ModerationReview
-              {:where [:in :id
-                       ^:allow-subquery
-                       {:select [:id]
-                        :from   [[^:allow-subquery
-                                  {:select [:id
-                                            [[:over [[:row_number]
-                                                     ^:allow-subquery {:order-by [[:id :desc]]}]]
-                                             :rn]]
-                                   :from   [:moderation_review]
-                                   :where  [:and
-                                            [:= :moderated_item_id item-id]
-                                            [:= :moderated_item_type (name item-type)]]}
-                                  :ranked]]
-                        :where  [:> :rn n]}]}))
+  (t2/select :model/ModerationReview
+             {:where [:in :id
+                      ^:allow-subquery
+                      {:select [:id]
+                       :from   [[^:allow-subquery
+                                 {:select [:id
+                                           [[:over [[:row_number]
+                                                    ^:allow-subquery {:order-by [[:id :desc]]}]]
+                                            :rn]]
+                                  :from   [:moderation_review]
+                                  :where  [:and
+                                           [:= :moderated_item_id item-id]
+                                           [:= :moderated_item_type (name item-type)]]}
+                                 :ranked]]
+                       :where  [:> :rn n]}]}))
 
-(mu/defn unmark-most-recent-moderation-reviews!
-  "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type` other than `review-id`."
+(mu/defn delete-moderation-reviews!
+  "Delete the ModerationReviews with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ModerationReview :id [:in ids]))
+
+(mu/defn most-recent-moderation-reviews-except
+  "The ModerationReviews of the item with `item-id` and `item-type` marked `most_recent` other than `review-id`."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]
    review-id :- ms/PositiveInt]
-  (t2/update! :model/ModerationReview
-              {:moderated_item_id item-id, :moderated_item_type item-type, :most_recent true, :id [:not= review-id]}
-              {:most_recent false}))
+  (t2/select :model/ModerationReview
+             :moderated_item_id item-id
+             :moderated_item_type item-type
+             :most_recent true
+             :id [:not= review-id]))
+
+(mu/defn unmark-moderation-reviews!
+  "Clear `most_recent` on the ModerationReviews with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/ModerationReview :id [:in ids] {:most_recent false}))
 
 (mu/defn insert-moderation-review!
   "Insert the ModerationReview `row` and return the inserted instance."

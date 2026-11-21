@@ -47,9 +47,10 @@
              :context   context}
       object                  (assoc :object object)
       previous-object         (assoc :previous-object previous-object)
-      (= :update operation)   (assoc :changed (timestamped-changes model
-                                                                   row
-                                                                   (u.events/changed-keys change)))
+      (= :update operation)   (assoc :changed (or (:changed change)
+                                                  (timestamped-changes model
+                                                                       row
+                                                                       (u.events/changed-keys change))))
       (seq captures)          (assoc :captures captures))))
 
 (def Events

@@ -37,7 +37,6 @@
 (doto :model/ModerationReview
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive :search/indexed))
 
 (t2/deftransforms :model/ModerationReview
@@ -82,14 +81,27 @@
 
 (mu/defn create-moderation-review! :- ::content-verification.schema/moderation-review
   "Create a new ModerationReview from `row` as the most recent of its item: the item's other reviews lose the mark, and
-  those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction and one batch of events."
+  those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, publishing the events of the three
+  writes together as the last step."
   [row :- ::content-verification.schema/moderation-review.create]
   (events/with-batched-events
     (let [{:keys [id moderated_item_id moderated_item_type] :as review}
-          (content-verification.db/insert-moderation-review! row)]
-      (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
-      (content-verification.db/delete-moderation-reviews-beyond-newest! moderated_item_id moderated_item_type
-                                                                        max-moderation-reviews)
+          (content-verification.db/insert-moderation-review! row)
+          unmarked (vec (content-verification.db/most-recent-moderation-reviews-except
+                         moderated_item_id moderated_item_type id))
+          _        (when (seq unmarked)
+                     (content-verification.db/unmark-moderation-reviews! (mapv :id unmarked)))
+          beyond   (vec (content-verification.db/moderation-reviews-beyond-newest
+                         moderated_item_id moderated_item_type max-moderation-reviews))
+          deleted  (events/deleted :event/moderation-review-delete :model/ModerationReview beyond)]
+      (when (seq beyond)
+        (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
+      (events/publish-lifecycle!
+       [(events/created :event/moderation-review-create [review])
+        (events/updated :event/moderation-review-update
+                        unmarked
+                        (mapv #(events/updated-row % {:most_recent false}) unmarked))
+        deleted])
       review)))
 
 (mu/defn delete-reviews-of-deleted-cards! :- :int
@@ -99,12 +111,6 @@
   (content-verification.db/delete-card-reviews! card-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/ModerationReview
-  [_model]
-  {:create :event/moderation-review-create
-   :update :event/moderation-review-update
-   :delete :event/moderation-review-delete})
 
 (defmethod app-db-copy/spec :model/ModerationReview [_model]
   {:skip? false})

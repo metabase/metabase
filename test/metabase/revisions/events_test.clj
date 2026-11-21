@@ -8,6 +8,9 @@
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card :as card]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -22,15 +25,15 @@
       (testing "the insert records a creation"
         (is (=? [{:is_creation true :user_id (mt/user->id :crowberto)}] (revisions-of "Card" card-id))))
       (testing "an update records a revision"
-        (t2/update! :model/Card :id card-id {:name "renamed"})
+        (card/update-cards! [{:id card-id :name "renamed"}])
         (is (=? [{:is_creation true} {:is_creation false :object {:name "renamed"}}] (revisions-of "Card" card-id))))
       (testing "an update of what revisions leave out records none"
-        (t2/update! :model/Card :id card-id {:collection_position 3})
+        (card/update-cards! [{:id card-id :collection_position 3}])
         (is (= 2 (count (revisions-of "Card" card-id))))))))
 
 (deftest no-user-records-nothing-test
   (mt/with-temp [:model/Card {card-id :id} {}]
-    (t2/update! :model/Card :id card-id {:name "renamed"})
+    (card/update-cards! [{:id card-id :name "renamed"}])
     (is (empty? (revisions-of "Card" card-id)))))
 
 (deftest dashboard-writes-are-one-revision-test
@@ -64,6 +67,16 @@
         (testing "it holds nothing of the public link"
           (is (empty? (set/intersection #{:public_uuid :made_public_by_id :enable_embedding :embedding_params}
                                         (set (keys object))))))))))
+
+(deftest card-query-update-revision-has-derived-columns-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Card {card-id :id} {:name "Card"}]
+      (let [mp (mt/metadata-provider)]
+        (card/update-cards! [{:id            card-id
+                              :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :users)))}]))
+      (testing "the revision of a change of the query holds the columns the model derives from it"
+        (is (=? {:table_id (mt/id :users) :database_id (mt/id) :query_type :query}
+                (last-object "Card" card-id)))))))
 
 (deftest dashboard-revision-object-test
   (mt/with-current-user (mt/user->id :crowberto)

@@ -625,7 +625,13 @@
    :model/FieldUserSettings     {:create :event/field-user-settings-create
                                  :delete :event/field-user-settings-delete}
    :model/TableUserSettings     {:create :event/table-user-settings-create
-                                 :delete :event/table-user-settings-delete}})
+                                 :delete :event/table-user-settings-delete}
+   :model/CacheConfig           {:create :event/cache-config-create
+                                 :delete :event/cache-config-delete}
+   :model/ModerationReview      {:create :event/moderation-review-create
+                                 :delete :event/moderation-review-delete}
+   :model/ModelIndex            {:create :event/model-index-create
+                                 :delete :event/model-index-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."
