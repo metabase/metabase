@@ -30,3 +30,12 @@
    [:moderated_item_type {:optional true} ::moderation-review.item-type]
    [:moderator_id        {:optional true} [:maybe ms/PositiveInt]]
    [:most_recent         {:optional true} [:maybe :boolean]]])
+
+(mr/def ::moderation-review.create
+  "What creating a ModerationReview takes: the item it moderates, its moderator, and optionally a status and a text."
+  [:map {:closed true}
+   [:moderated_item_id   ms/PositiveInt]
+   [:moderated_item_type ::moderation-review.item-type]
+   [:moderator_id        ms/PositiveInt]
+   [:status              {:optional true} ::moderation-review.status]
+   [:text                {:optional true} [:maybe :string]]])

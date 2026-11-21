@@ -81,3 +81,10 @@
    [:ip_address           {:optional true} [:maybe :string]]
    [:user_agent           {:optional true} [:maybe :string]]
    [:sanitized_user_agent {:optional true} [:maybe :string]]])
+
+(mr/def ::mcp-group-permission.create
+  "What setting the MCP policy of a group takes: the group, whether its members may connect, and its tool access."
+  [:map {:closed true}
+   [:group_id    ms/PositiveInt]
+   [:mcp_enabled :boolean]
+   [:tool_access :metabase.mcp.permissions/tool-access]])

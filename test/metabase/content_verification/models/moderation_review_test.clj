@@ -30,8 +30,8 @@
 (deftest create-review-keeps-single-most-recent-review-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (mt/with-model-cleanup [:model/ModerationReview]
-      (let [first-id  (:id (moderation-review/create-review! (review card-id)))
-            second-id (:id (moderation-review/create-review! (review card-id :text "newer")))]
+      (let [first-id  (:id (moderation-review/create-moderation-review! (review card-id)))
+            second-id (:id (moderation-review/create-moderation-review! (review card-id :text "newer")))]
         (is (= {first-id false, second-id true}
                (t2/select-pk->fn :most_recent :model/ModerationReview :moderated_item_id card-id)))))))
 
@@ -39,6 +39,6 @@
   (mt/with-temp [:model/Card {card-id :id} {}]
     (mt/with-model-cleanup [:model/ModerationReview]
       (let [ids (vec (for [i (range (+ 3 moderation-review/max-moderation-reviews))]
-                       (:id (moderation-review/create-review! (review card-id :text (str "review " i))))))]
+                       (:id (moderation-review/create-moderation-review! (review card-id :text (str "review " i))))))]
         (is (= (set (take-last moderation-review/max-moderation-reviews ids))
                (t2/select-pks-set :model/ModerationReview :moderated_item_id card-id)))))))
