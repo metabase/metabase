@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [malli.util :as mut]
-   [metabase.app-db.core :as app-db]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -24,17 +23,6 @@
   [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
   (t2/select :model/User :id [:in user-ids]))
 
-(mu/defn moderation-review-ids-for-item
-  "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
-  [item-id   :- ms/PositiveInt
-   item-type :- [:or :string :keyword]]
-  (app-db/query {:select   [:id]
-                 :from     [:moderation_review]
-                 :where    [:and
-                            [:= :moderated_item_id item-id]
-                            [:= :moderated_item_type item-type]]
-                 :order-by [[:id :desc]]}))
-
 (mu/defn most-recent-moderation-review-statuses
   "The item id, item type, and status of the most recent ModerationReviews of the items with `item-types` and
   `item-ids`, newest first."
@@ -46,10 +34,26 @@
              :most_recent true
              {:order-by [[:id :desc]]}))
 
-(mu/defn delete-moderation-reviews!
-  "Delete the ModerationReviews with `ids`."
-  [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/ModerationReview :id [:in ids]))
+(mu/defn delete-moderation-reviews-beyond-newest!
+  "Delete the ModerationReviews of the item with `item-id` and `item-type` beyond its newest `n`."
+  [item-id   :- ms/PositiveInt
+   item-type :- [:or :string :keyword]
+   n         :- ms/PositiveInt]
+  (t2/delete! :model/ModerationReview
+              {:where [:in :id
+                       ^:allow-subquery
+                       {:select [:id]
+                        :from   [[^:allow-subquery
+                                  {:select [:id
+                                            [[:over [[:row_number]
+                                                     ^:allow-subquery {:order-by [[:id :desc]]}]]
+                                             :rn]]
+                                   :from   [:moderation_review]
+                                   :where  [:and
+                                            [:= :moderated_item_id item-id]
+                                            [:= :moderated_item_type (name item-type)]]}
+                                  :ranked]]
+                        :where  [:> :rn n]}]}))
 
 (mu/defn unmark-most-recent-moderation-reviews!
   "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type` other than `review-id`."

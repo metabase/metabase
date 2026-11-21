@@ -9,6 +9,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
@@ -267,6 +268,30 @@
   "Whether some McpGroupPermission matches `where`, a HoneySQL condition such as `[:in :group_id ids]`."
   [where]
   (t2/exists? :model/McpGroupPermission {:where where}))
+
+(mu/defn group-ids-with-permission :- [:set ms/PositiveInt]
+  "The ids among `group-ids` of the groups that have an McpGroupPermission."
+  [group-ids :- [:sequential ms/PositiveInt]]
+  (or (when (seq group-ids)
+        (t2/select-fn-set :group_id [:model/McpGroupPermission :group_id] :group_id [:in group-ids]))
+      #{}))
+
+(mu/defn insert-group-permissions!
+  "Insert the McpGroupPermission `rows` in one statement."
+  [rows :- [:sequential [:map {:closed true}
+                         [:group_id    ms/PositiveInt]
+                         [:mcp_enabled :boolean]
+                         [:tool_access ::mcp.perms/tool-access]]]]
+  (when (seq rows)
+    (t2/insert! :model/McpGroupPermission rows)))
+
+(mu/defn update-group-permissions!
+  "Set the McpGroupPermission of the groups with `group-ids` to `values`."
+  [group-ids :- [:sequential ms/PositiveInt]
+   values    :- [:map {:closed true}
+                 [:mcp_enabled :boolean]
+                 [:tool_access ::mcp.perms/tool-access]]]
+  (t2/update! :model/McpGroupPermission {:group_id [:in group-ids]} values))
 
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the

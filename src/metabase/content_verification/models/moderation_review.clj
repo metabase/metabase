@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -45,26 +44,10 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- delete-extra-reviews!
-  "Delete the reviews of the item with `item-id` and `item-type` beyond the newest `max-moderation-reviews`."
-  [item-id item-type]
-  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
-        ;; not want to give. The offset is only 10 though so its not a huge savings.
-        ids (into #{} (comp (map :id)
-                            (drop max-moderation-reviews))
-                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
-    (when (seq ids)
-      (content-verification.db/delete-moderation-reviews! ids))))
-
 (t2/define-before-insert :model/ModerationReview
   [review]
-  (assoc review :most_recent true))
-
-(t2/define-after-insert :model/ModerationReview
-  [{:keys [id moderated_item_id moderated_item_type] :as review}]
-  (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
-  (delete-extra-reviews! moderated_item_id (name moderated_item_type))
-  review)
+  (cond-> review
+    (nil? (:most_recent review)) (assoc :most_recent true)))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -96,16 +79,17 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-review!
-  "Create a new ModerationReview, which its hooks mark as the most recent of its item."
-  [params :-
-   [:map {:closed true}
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
-    [:status              {:optional true} Statuses]
-    [:text                {:optional true} [:maybe :string]]]]
-  (content-verification.db/insert-moderation-review! params))
+(mu/defn create-moderation-review! :- ::content-verification.schema/moderation-review
+  "Create a new ModerationReview from `row` as the most recent of its item: the item's other reviews lose the mark, and
+  those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction and one batch of events."
+  [row :- ::content-verification.schema/moderation-review.create]
+  (events/with-batched-events
+    (let [{:keys [id moderated_item_id moderated_item_type] :as review}
+          (content-verification.db/insert-moderation-review! row)]
+      (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
+      (content-verification.db/delete-moderation-reviews-beyond-newest! moderated_item_id moderated_item_type
+                                                                        max-moderation-reviews)
+      review)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

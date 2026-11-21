@@ -9,7 +9,7 @@
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
-   [metabase.content-verification.core :as moderation]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
@@ -48,10 +48,10 @@
 (use-fixtures :each (fn [thunk] (mt/with-additional-premium-features curation-features (thunk))))
 
 (defn- verify-card! [card-id]
-  (moderation/create-review! {:moderated_item_id   card-id
-                              :moderated_item_type "card"
-                              :moderator_id        (mt/user->id :crowberto)
-                              :status              "verified"}))
+  (moderation-review/create-moderation-review! {:moderated_item_id   card-id
+                                                :moderated_item_type "card"
+                                                :moderator_id        (mt/user->id :crowberto)
+                                                :status              "verified"}))
 
 (defn- orders-query []
   (let [mp (mt/metadata-provider)]

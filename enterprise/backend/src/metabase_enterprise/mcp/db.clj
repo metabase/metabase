@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.permissions.core :as perms]
@@ -94,25 +93,6 @@
   "Every McpGroupPermission row, in group order."
   []
   (t2/select :model/McpGroupPermission {:order-by [[:group_id :asc]]}))
-
-(mu/defn upsert-group-permission!
-  "Set the McpGroupPermission of the group with `group-id` to `values`, creating the row when the group has none."
-  [group-id :- ms/PositiveInt
-   values   :- [:map {:closed true}
-                [:mcp_enabled :boolean]
-                [:tool_access ::mcp.perms/tool-access]]]
-  (if (t2/exists? :model/McpGroupPermission :group_id group-id)
-    (t2/update! :model/McpGroupPermission {:group_id group-id} values)
-    (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
-
-(mu/defn insert-group-permission-unless-exists!
-  "Give the group with `group-id` an McpGroupPermission with `values` when it has none."
-  [group-id :- ms/PositiveInt
-   values   :- [:map {:closed true}
-                [:mcp_enabled :boolean]
-                [:tool_access ::mcp.perms/tool-access]]]
-  (when-not (t2/exists? :model/McpGroupPermission :group_id group-id)
-    (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
 
 (mu/defn hidden-group-permissions
   "The McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
