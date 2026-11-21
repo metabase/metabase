@@ -341,6 +341,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/delete! :model/TableRemapping :database_id database-id))
 
+(mu/defn delete-table-remappings-of-databases!
+  "Delete the TableRemappings of the Databases with `database-ids`. Returns the number of rows deleted."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/delete! :model/TableRemapping :database_id [:in database-ids]))
+
 (mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
   namespace. Returns the number of rows deleted."

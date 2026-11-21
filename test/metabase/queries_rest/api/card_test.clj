@@ -2589,9 +2589,9 @@
                    :model/Action {query :id}    {:type :query :name "Rename" :model_id model-id}
                    :model/Action {archived :id} {:type :query :name "Old" :model_id model-id :archived true}]
       (let [published (atom #{})]
-        (with-redefs [events/publish-event! (fn [topic {:keys [previous-object]}]
+        (with-redefs [events/publish-event! (fn [topic {:keys [changes]}]
                                               (when (= :event/action-delete topic)
-                                                (swap! published conj (:id previous-object))))]
+                                                (swap! published into (map (comp :id :previous-object) changes))))]
           (mt/user-http-request :crowberto :delete 204 (str "card/" model-id)))
         (is (= #{query archived} @published))))))
 

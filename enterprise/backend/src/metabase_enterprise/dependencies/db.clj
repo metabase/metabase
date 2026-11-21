@@ -479,10 +479,17 @@
    id     :- ms/PositiveInt]
   (t2/select-one-fn column [model column] :id [:auto/param id]))
 
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id))
+(mu/defn column-values :- [:map-of ms/PositiveInt [:maybe ms/PositiveInt]]
+  "The `column` of each of the rows of `model` with `ids`, by id."
+  [model  :- :keyword
+   column :- :keyword
+   ids    :- [:sequential {:min 1} ms/PositiveInt]]
+  (into {} (t2/select-fn->fn :id column [model :id column] :id [:in ids])))
+
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field [:maybe ::lib.schema.id/table]]
+  "The `:table_id` of each of the Fields with `field-ids`, by Field id."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (into {} (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids])))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -826,10 +833,11 @@
                          :where [:in :dimension.human_readable_field_id field-ids]})
       #{}))
 
-(mu/defn internal-remap? :- :boolean
-  "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
-  [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
+(mu/defn internal-remap-field-ids :- [:set ::lib.schema.id/field]
+  "The ids of the Fields among `field-ids` that have an internal remap, which shows their FieldValues' human-readable
+  values."
+  [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn-set :field_id :model/Dimension :field_id [:in field-ids] :type "internal") #{}))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when

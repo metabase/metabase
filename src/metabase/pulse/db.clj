@@ -56,30 +56,31 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id :model/Dashboard, :id dashboard-id))
 
-(mu/defn dashcard-ids-by-card
-  "A map of Card id to DashboardCard id for the DashboardCards of the Dashboard with `dashboard-id` showing one of
-  `card-ids`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   card-ids     :- [:set ::lib.schema.id/card]]
-  (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id dashboard-id :card_id [:in card-ids]))
+(mu/defn dashboards-by-id
+  "The `:id`, `:name` and `:collection_id` of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (t2/select [:model/Dashboard :id :name :collection_id] :id [:in dashboard-ids]))
 
-(mu/defn pulse-card-pairs-for-dashboard
-  "Distinct `:pulse-id`/`:card-id` pairs for the Pulses (subscriptions) attached to the Dashboard with
-  `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (app-db/query {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
+(mu/defn subscriptions-for-dashboards
+  "The `:dashboard-id`, `:pulse-id`, `:name` and `:collection-id` of each Pulse (subscription) attached to one of the
+  Dashboards with `dashboard-ids`, with the `:card-id` of each of its PulseCards, nil for a Pulse that has none."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (app-db/query {:select-distinct [[:p.dashboard_id :dashboard-id] [:p.id :pulse-id] [:p.name :name]
+                                   [:p.collection_id :collection-id] [:pc.card_id :card-id]]
                  :from            [[:pulse :p]]
                  :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                 :where           [:= :p.dashboard_id dashboard-id]}))
+                 :where           [:in :p.dashboard_id dashboard-ids]}))
 
-(mu/defn dashboard-card-ids-for-dashboard
-  "The distinct, non-nil Card ids shown by the DashboardCards of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (map :card_id (app-db/query {:select-distinct [:dc.card_id]
-                               :from            [[:report_dashboardcard :dc]]
-                               :where           [:and
-                                                 [:= :dc.dashboard_id dashboard-id]
-                                                 [:not= :dc.card_id nil]]})))
+(mu/defn dashcards-with-cards-for-dashboards
+  "The `:id`, `:dashboard_id` and `:card_id` of the DashboardCards showing a Card on the Dashboards with
+  `dashboard-ids`, in id order."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (app-db/query {:select   [:dc.id :dc.dashboard_id :dc.card_id]
+                 :from     [[:report_dashboardcard :dc]]
+                 :where    [:and
+                            [:in :dc.dashboard_id dashboard-ids]
+                            [:not= :dc.card_id nil]]
+                 :order-by [[:dc.id :asc]]}))
 
 (mu/defn channel
   "The Channel with `channel-id`, or nil."
@@ -283,6 +284,16 @@
   "The `:max` position of the PulseCards of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one [:model/PulseCard [:%max.position :max]] :pulse_id pulse-id))
+
+(mu/defn max-pulse-card-positions
+  "A map of Pulse id to the largest position of its PulseCards, for the Pulses among `pulse-ids` that have any."
+  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
+  (into {}
+        (map (juxt :pulse_id :max))
+        (app-db/query {:select   [:pulse_id [:%max.position :max]]
+                       :from     [:pulse_card]
+                       :where    [:in :pulse_id pulse-ids]
+                       :group-by [:pulse_id]})))
 
 (mu/defn insert-pulse-cards!
   "Insert the PulseCard `rows`."

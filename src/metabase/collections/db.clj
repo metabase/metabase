@@ -209,6 +209,11 @@
   [pattern :- :string]
   (t2/select-pks-set :model/Collection :location [:like pattern]))
 
+(mu/defn collection-ids-with-location-like-any
+  "The IDs of the Collections whose location matches any of the SQL `patterns`."
+  [patterns :- [:sequential {:min 1} :string]]
+  (t2/select-pks-set :model/Collection {:where (into [:or] (map (fn [pattern] [:like :location pattern])) patterns)}))
+
 (mu/defn unarchived-collection-ids-with-location-like
   "The IDs of the unarchived Collections whose location matches the SQL `pattern`."
   [pattern :- :string]

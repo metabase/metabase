@@ -173,7 +173,8 @@
   (if (and (contains? conditions :id) (empty? (:id conditions)))
     0
     (session.db/end-sessions! (cond-> conditions
-                                (:id conditions) (update :id (fn [ids] [:in ids])))
+                                (:id conditions)                   (update :id (fn [ids] [:in ids]))
+                                (sequential? (:user_id conditions)) (update :user_id (fn [ids] [:in ids])))
                               reason
                               (if (= ended-by :self) :user_id ended-by))))
 

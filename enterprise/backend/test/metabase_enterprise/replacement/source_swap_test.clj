@@ -176,7 +176,7 @@
         (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                             :source {:type :query :query query}
                                                             :target {:database (mt/id) :type "table" :name "out"}}]
-          (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! topics into (for [change (:changes event [event])] [topic (get-in change [:object :id])])))]
             (replacement.source-swap/swap-source! [:transform transform-id]
                                                   [:table (mt/id :orders)]
                                                   [:table (mt/id :reviews)]))
@@ -412,7 +412,7 @@
             (replacement.field-refs/upgrade-field-refs! [:card card-id])
             (mt/with-model-cleanup [:model/Dependency]
               ;; Create a dependency: card -> orders table
-              (events/publish-event! :event/card-create {:object (t2/select-one :model/Card :id card-id)
+              (events/publish-event! :event/card-create {:changes [{:object (t2/select-one :model/Card :id card-id)}]
                                                          :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-dependency-job!)
               (is (t2/exists? :model/Dependency
@@ -442,7 +442,7 @@
           (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
             (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
             (mt/with-model-cleanup [:model/Dependency]
-              (events/publish-event! :event/segment-create {:object (t2/select-one :model/Segment :id segment-id)
+              (events/publish-event! :event/segment-create {:changes [{:object (t2/select-one :model/Segment :id segment-id)}]
                                                             :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-dependency-job!)
               (is (t2/exists? :model/Dependency
@@ -472,7 +472,7 @@
                                                           :definition query}]
             (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
             (mt/with-model-cleanup [:model/Dependency]
-              (events/publish-event! :event/measure-create {:object (t2/select-one :model/Measure :id measure-id)
+              (events/publish-event! :event/measure-create {:changes [{:object (t2/select-one :model/Measure :id measure-id)}]
                                                             :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-dependency-job!)
               (is (t2/exists? :model/Dependency
@@ -502,7 +502,7 @@
                                                               :target {:database (mt/id) :type "table" :name "out"}}]
             (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
             (mt/with-model-cleanup [:model/Dependency]
-              (events/publish-event! :event/transform-create {:object (t2/select-one :model/Transform :id transform-id)
+              (events/publish-event! :event/transform-create {:changes [{:object (t2/select-one :model/Transform :id transform-id)}]
                                                               :user-id (mt/user->id :rasta)})
               (deps.test/synchronously-run-dependency-job!)
               (is (t2/exists? :model/Dependency

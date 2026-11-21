@@ -729,8 +729,8 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
           (t2/update! :model/Document :id doc-id {:name "Updated Name"}))
-        (is (=? [[:event/document-update {:object          {:id doc-id :name "Updated Name"}
-                                          :previous-object {:id doc-id :name "Test Document"}}]]
+        (is (=? [[:event/document-update {:changes [{:object          {:id doc-id :name "Updated Name"}
+                                                     :previous-object {:id doc-id :name "Test Document"}}]}]]
                 (filterv (comp #{:event/document-update} first) @events-published)))))))
 
 (deftest never-viewed-document-reports-null-activity-anchor

@@ -224,14 +224,19 @@
   nil)
 
 (defn delete-stale-table-remappings!
-  "Delete the remap rows of `database` when its `database-workspace-schema`
-   differs from that of `previous-database`, the same row before the write, and that had one. Those rows
-   point at the old schema and would keep redirecting reads there. A database that had no schema has no
-   rows of its own, and keeps the ones an upgrade carried over."
-  [previous-database database]
-  (when (and (some? (database-workspace-schema previous-database))
-             (not= (database-workspace-schema previous-database) (database-workspace-schema database)))
-    (table-remapping/delete-table-remappings-of-database! (:id database)))
+  "Delete, in one statement, the remap rows of each Database of `changes`, `{:previous-object :object}` maps of its
+  row before and after a write, whose `database-workspace-schema` the write changed from one it had. Those rows point
+  at the old schema and would keep redirecting reads there. A database that had no schema has no rows of its own, and
+  keeps the ones an upgrade carried over."
+  [changes]
+  (when-let [database-ids (not-empty (into []
+                                           (comp (filter (fn [{:keys [previous-object object]}]
+                                                           (and (some? (database-workspace-schema previous-object))
+                                                                (not= (database-workspace-schema previous-object)
+                                                                      (database-workspace-schema object)))))
+                                                 (map (comp :id :object)))
+                                           changes))]
+    (table-remapping/delete-table-remappings-of-databases! database-ids))
   nil)
 
 (defn clear-instance-workspace!

@@ -13,6 +13,8 @@
   Together they list every column of the table but `:id`, `:created_at` and `:updated_at`, which no spec lists. All
   the other keys are optional:
 
+  - `:hydrate`, a fn of a vector of rows of the model, those before and after the writes of a batch, returning them in
+    order with what `:details` and `:state` read of the app DB loaded together, so that those query nothing.
   - `:details`, a fn of a row and the lifecycle event returning the details to store beside the tracked columns, which
     it overrides, for what the columns alone do not say; it returns nil for a row that no longer exists, and a write of
     such a row records nothing.
@@ -27,8 +29,9 @@
   - `:parent {:model parent-model :key column}`: a write of a row of this model is a write of the row of `parent-model`
     whose id its `column` holds, a parent that has a `:parent` of its own passing it on up, all the writes of a batch
     to one such row being one update of the topmost parent. With a `:topics` map from an operation to the stored topic
-    and a `:details` fn of the id of the parent and the vector of the events, a write is instead recorded under the
-    parent with that topic, once per topic and parent for a batch, none for a parent that the batch creates.
+    and a `:details` fn of a map from `[parent-id topic]` to the vector of the events, returning a map from the same keys
+    to the details, a write is instead recorded under the parent with that topic, once per topic and parent for a
+    batch, none for a parent that the batch creates.
   - `:moments`, a vector of `{:topic topic :when f}` and optionally `:details`, each a row that an update or a create
     records beside its own when the fn of the event is true, with the details that the fn of the event returns, none by
     default.
@@ -49,6 +52,7 @@
    [:track           [:sequential :keyword]]
    [:track-redacted  [:sequential :keyword]]
    [:skip            [:sequential :keyword]]
+   [:hydrate         {:optional true} fn?]
    [:details         {:optional true} fn?]
    [:state           {:optional true} fn?]
    [:same?           {:optional true} [:map-of :keyword fn?]]

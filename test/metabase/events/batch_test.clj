@@ -17,15 +17,24 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private received (atom []))
+(def ^:private received
+  "One entry per change that the captured events carry, its `:event` the change with the user and the context of its
+  event."
+  (atom []))
+
+(def ^:private published
+  "The captured events, as `[topic event]`."
+  (atom []))
 
 (events/derive! ::capture :metabase/event)
 
 (methodical/defmethod events/publish-event! ::capture
   [topic event]
-  (swap! received conj {:topic       topic
-                        :event       event
-                        :in-tx?      (mdb/in-transaction?)}))
+  (swap! published conj [topic event])
+  (swap! received into (for [change (:changes event)]
+                         {:topic  topic
+                          :event  (merge (dissoc event :changes) change)
+                          :in-tx? (mdb/in-transaction?)})))
 
 (def ^:private topic-names
   [:event/events-test-timeline-create :event/events-test-timeline-update :event/events-test-timeline-delete
@@ -37,6 +46,7 @@
 
 (defn- with-capture [thunk]
   (reset! received [])
+  (reset! published [])
   (thunk))
 
 (use-fixtures :each with-capture)
@@ -55,7 +65,7 @@
     (let [[_ update delete] (map :event @received)]
       (is (= "t" (:name (:previous-object update))))
       (is (= "u" (:name (:object update))))
-      (is (not (contains? update :changed)))
+      (is (= #{:name :updated_at} (:changed update)))
       (is (= (mt/user->id :rasta) (:user-id update)))
       (is (= "u" (:name (:previous-object delete))))
       (is (not (contains? delete :object))))))
@@ -302,13 +312,41 @@
         ids     (mapv #(t2/insert-returning-pk! ::events-test-timeline/Timeline {:name (str "w" %) :icon "cake" :creator_id creator})
                       (range 3))]
     (reset! received [])
+    (reset! published [])
     (t2/update! ::events-test-timeline/Timeline :id [:in ids] {:name "same"})
-    (testing "an update with a where clause publishes one event per changed row"
-      (is (= 3 (count (filter #(= :event/events-test-timeline-update (:topic %)) @received)))))
-    (reset! received [])
+    (testing "an update with a where clause publishes one event carrying a change per changed row"
+      (is (= [[:event/events-test-timeline-update ids]]
+             (for [[topic event] @published]
+               [topic (mapv (comp :id :object) (:changes event))]))))
+    (reset! published [])
     (t2/delete! ::events-test-timeline/Timeline :name "same" :id [:in ids])
-    (testing "a delete by column publishes one event per row"
-      (is (= 3 (count (filter #(= :event/events-test-timeline-delete (:topic %)) @received)))))))
+    (testing "a delete by column publishes one event carrying a change per row"
+      (is (= [[:event/events-test-timeline-delete (set ids)]]
+             (for [[topic event] @published]
+               [topic (set (map (comp :id :previous-object) (:changes event)))]))))))
+
+(deftest batch-publishes-one-event-per-topic-user-and-context-test
+  (testing "the writes of a batch publish one event per topic, user and context, each carrying its changes in order"
+    (with-timeline-cleanup
+      (let [rasta     (mt/user->id :rasta)
+            crowberto (mt/user->id :crowberto)]
+        (mt/with-current-user rasta
+          (events/with-batched-events
+            (t2/insert! ::events-test-timeline/Timeline (row "batch-test-1"))
+            (mt/with-current-user crowberto
+              (t2/insert! ::events-test-timeline/Timeline (row "batch-test-2")))
+            (t2/insert! ::events-test-timeline/Timeline (row "batch-test-3"))
+            (events/with-event-context {:revision-message "why"}
+              (t2/insert! ::events-test-timeline/Timeline (row "batch-test-4")))
+            (let [id (t2/select-one-pk ::events-test-timeline/Timeline :name "batch-test-1")]
+              (t2/update! ::events-test-timeline/Timeline :id id {:icon "star"}))))
+        (is (= [[:event/events-test-timeline-create rasta nil ["batch-test-1" "batch-test-3"]]
+                [:event/events-test-timeline-create crowberto nil ["batch-test-2"]]
+                [:event/events-test-timeline-create rasta {:revision-message "why"} ["batch-test-4"]]]
+               (for [[topic {:keys [user-id context changes]}] @published]
+                 [topic user-id context (mapv (comp :name :object) changes)])))
+        (testing "a create keeps only the row after the write, the update of its row merged into it"
+          (is (= #{#{:object}} (set (map (comp set keys) (mapcat (comp :changes second) @published))))))))))
 
 (defn- trait-models
   "The models deriving `:hook/events`, once the namespace of every model has loaded."

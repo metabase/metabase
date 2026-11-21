@@ -11,6 +11,10 @@
 (events/derive! :event/user-update ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [_topic {:keys [object user-id] :as event}]
-  (when (and (false? (:is_active object)) (u.events/changed? event :is_active))
-    (session/end-sessions! {:user_id (:id object)} "user-deactivated" user-id)))
+  [_topic {:keys [changes user-id]}]
+  (when-let [user-ids (not-empty (into []
+                                       (comp (filter #(and (false? (:is_active (:object %)))
+                                                           (u.events/changed? % :is_active)))
+                                             (map (comp :id :object)))
+                                       changes))]
+    (session/end-sessions! {:user_id user-ids} "user-deactivated" user-id)))

@@ -857,6 +857,14 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (collections.db/collection-ids-with-location-like (str (children-location collection) \%)))
 
+(mu/defn descendant-ids-of-all :- [:set ms/PositiveInt]
+  "The IDs of all descendant Collections of any of `collections`, in one query."
+  [collections :- [:sequential CollectionWithLocationAndIDOrRoot]]
+  (if (empty? collections)
+    #{}
+    (set (collections.db/collection-ids-with-location-like-any
+          (mapv #(str (children-location %) \%) collections)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -990,6 +998,19 @@
           (catch Throwable e
             (or (user->existing-personal-collection user-or-id)
                 (throw e)))))))
+
+(mu/defn create-personal-collections!
+  "Create the Personal Collection of each of the Users with `user-ids` that has none, but those of API keys, with a
+  number of statements that does not grow with the users."
+  [user-ids :- [:sequential ms/PositiveInt]]
+  (when-let [user-ids (not-empty (collections.db/non-api-key-user-ids (set user-ids)))]
+    (let [owned   (collections.db/personal-collection-ids-by-owner user-ids)
+          missing (vec (remove #(contains? owned %) (sort user-ids)))]
+      (when (seq missing)
+        (let [names (user->personal-collection-names missing :site)]
+          (create-collections! (for [user-id missing]
+                                 {:name              (get names user-id)
+                                  :personal_owner_id user-id})))))))
 
 (def ^:private ^{:arglists '([user-id])} user->personal-collection-id
   "Cached function to fetch the ID of the Personal Collection belonging to User with `user-id`. Since a Personal

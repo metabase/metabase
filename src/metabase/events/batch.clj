@@ -1,6 +1,7 @@
 (ns metabase.events.batch
-  "Delivery of the lifecycle events of rows: each write of a row of a model with the events trait collects an event,
-  and the events are delivered when the batch they belong to ends, inside its transaction. The batch is kept in the
+  "Delivery of the lifecycle events of rows: each write of a row of a model with the events trait collects the change
+  of the row, and when the batch they belong to ends, inside its transaction, the changes are merged per row and
+  delivered as one event per topic, user and context, which carries the list of them. The batch is kept in the
   transaction state of the app DB, which a rolled back savepoint restores, so that a write rolled back leaves no event."
   (:require
    [metabase.app-db.core :as mdb]
@@ -115,10 +116,11 @@
   nil)
 
 (mu/defn register-owned-consumer!
-  "Have `handle`, a function of an owner key, the vector of the events of that owner and the vector of all the events of
-  the batch, called once per owner per batch, where `owner` is a function of an event giving its owner key, nil when
-  the consumer ignores the event; with `{:last? true}` it is called after the other consumers, so that it sees the
-  rows they write."
+  "Have `handle`, a function of an owner key, the vector of the row events of that owner and the vector of all the row
+  events of the batch, called once per owner per batch, where `owner` is a function of a row event giving its owner
+  key, nil when the consumer ignores it; with `{:last? true}` it is called after the other consumers, so that it sees
+  the rows they write. A row event is the change of one row merged with what its event says of all of them, `:model`,
+  `:operation`, `:id`, `:user-id` and `:context`, for a consumer whose work spans the topics of a batch."
   ([consumer-key :- :keyword
     owner        :- ifn?
     handle       :- ifn?]
@@ -279,12 +281,29 @@
         by-row  (group-by (juxt :model :id) events)]
     (into [] (keep #(some-> (merge-events (vec (get by-row %))) (dissoc :statement))) order)))
 
-(defn- payload
-  [{:keys [object previous-object user-id context]}]
-  (cond-> {:user-id user-id}
+(defn- change-of
+  "The change that the compacted `event` of one row adds to the event of its topic: the row after the write, the row
+  before it, the columns an update set, and what the captures of its DELETE read."
+  [{:keys [object previous-object changed captures]}]
+  (cond-> {}
     object          (assoc :object object)
     previous-object (assoc :previous-object previous-object)
-    (seq context)   (assoc :context context)))
+    changed         (assoc :changed changed)
+    (seq captures)  (assoc :captures captures)))
+
+(defn- batched-events
+  "The events that the compacted `events` of rows amount to, as `[topic event]` in the order of the first row of each:
+  one per topic, user and context, carrying the changes of its rows in their order, so that each event names the one
+  user who made all of its changes and the one context they share."
+  [events]
+  (let [key-of  (fn [{:keys [model operation user-id context]}]
+                  [(lifecycle-topic model operation) user-id (not-empty context)])
+        order   (distinct (map key-of events))
+        by-key  (group-by key-of events)]
+    (for [[topic user-id context :as k] order]
+      [topic (cond-> {:changes (mapv change-of (get by-key k))
+                      :user-id user-id}
+               context (assoc :context context))])))
 
 (defn- statement-rows
   "The `[model id]`s of the rows that each DELETE statement deleted, by statement, from the collected `events`."
@@ -314,8 +333,8 @@
 (defn- deliver!
   [events captures]
   (let [events (attach-captures (compact events) captures (statement-rows events))]
-    (doseq [event events]
-      (@publisher (lifecycle-topic (:model event) (:operation event)) (payload event)))
+    (doseq [[topic event] (batched-events events)]
+      (@publisher topic event))
     (doseq [{:keys [owner handle]} (sort-by :last? (vals @owned-consumers))
             :let [by-owner (group-by owner events)]
             [owner-key owned] by-owner

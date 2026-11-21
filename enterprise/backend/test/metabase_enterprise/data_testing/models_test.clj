@@ -213,7 +213,7 @@
           (is (= #{test-id other-id}
                  (into #{}
                        (comp (filter (comp #{:event/transform-test-delete} first))
-                             (map (comp :id :previous-object second)))
+                             (mapcat (fn [[_topic event]] (map (comp :id :previous-object) (:changes event)))))
                        @published))))))))
 
 ;;; --------------------------------------------- Run tracking ---------------------------------------------

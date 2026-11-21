@@ -220,7 +220,7 @@
       (let [deleted (atom #{})]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
-                                                (swap! deleted conj (:id (:previous-object event)))))]
+                                                (swap! deleted into (map (comp :id :previous-object) (:changes event)))))]
           (field-values/delete-field-values-for-tables! [table-id]))
         (is (contains? @deleted fv-id))))))
 

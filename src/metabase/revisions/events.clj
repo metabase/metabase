@@ -90,26 +90,47 @@
           row
           (vals (revisions.spec/children model))))
 
-(defn- revision-row
-  "The Revision row of the entity `[model id]` as it is now, for the `events` of its writes, or nil when no user made
-  them."
-  [[model id] events]
-  (let [own        (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
-        user-id    (some :user-id events)]
+(defn- revision-info
+  "What the Revision of the entity `[model id]` says of the `events` of its writes, with its row from `loaded`, the
+  rows of the entities the events do not carry, by `[model id]`, or nil when no user made them or the row is gone."
+  [[model id] events loaded]
+  (let [own     (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
+        user-id (some :user-id events)]
     (when user-id
-      (try
-        (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
-                                      (revisions.db/entity model id))
-                                  (cond-> (and own (every? #(= model (:model %)) events))
-                                    (->> (without-children model))))]
-          (revision/revision-row {:entity       model
-                                  :id           id
-                                  :object       object
-                                  :user-id      user-id
-                                  :is-creation? (boolean own)
-                                  :message      (some #(get-in % [:context :revision-message]) events)}))
-        (catch Throwable e
-          (log/warnf "Failed to record a revision of %s %s: %s" model id (ex-message e)))))))
+      (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
+                                    (get loaded [model id]))
+                                (cond-> (and own (every? #(= model (:model %)) events))
+                                  (->> (without-children model))))]
+        {:entity       model
+         :id           id
+         :object       object
+         :user-id      user-id
+         :is-creation? (boolean own)
+         :message      (some #(get-in % [:context :revision-message]) events)}))))
+
+(defn- carried?
+  "Whether the `events` of the entity `[model id]` carry its row."
+  [[model _id] events]
+  (some #(and (= model (:model %)) (:object %)) events))
+
+(defn- revision-rows
+  "The Revision rows of the entities of `by-entity`, a map from `[model id]` to the events of its writes, as they are
+  now, loading the rows the events do not carry and taking the snapshots of each model together."
+  [by-entity]
+  (let [loaded (into {}
+                     (mapcat (fn [[model refs]]
+                               (for [row (revisions.db/entities-by-ids model (vec (distinct (map second refs))))]
+                                 [[model (:id row)] row])))
+                     (group-by first (keep (fn [[ref events]] (when-not (carried? ref events) ref)) by-entity)))
+        infos  (keep (fn [[ref events]] (revision-info ref events loaded)) by-entity)]
+    (into []
+          (mapcat (fn [[model infos]]
+                    (try
+                      (revision/revision-rows model (vec infos))
+                      (catch Throwable e
+                        (log/warnf "Failed to record the revisions of %d %s: %s" (count infos) model (ex-message e))
+                        []))))
+          (group-by :entity infos))))
 
 (defn- owner
   "The one owner of the events of a batch that call for a Revision, nil for the others, without reading the app DB."
@@ -122,8 +143,8 @@
   [_owner events _all-events]
   (when (some :user-id events)
     (let [entity    (entity-of (parent-links (into #{} (keep parent-ref) events)))
-          by-entity (group-by entity events)
-          rows      (into [] (keep #(revision-row % (get by-entity %))) (remove nil? (keys by-entity)))]
+          by-entity (dissoc (group-by entity events) nil)
+          rows      (revision-rows by-entity)]
       (when (and (seq rows)
                  (try
                    (revision/create-revisions! rows)

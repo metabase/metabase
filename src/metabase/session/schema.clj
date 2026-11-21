@@ -23,11 +23,11 @@
   (into [:enum] end-reasons))
 
 (mr/def ::end-conditions
-  "Which Sessions [[metabase.session.models.session/end-sessions!]] ends: the ones with these ids, of this user, or with this
-  hashed key."
+  "Which Sessions [[metabase.session.models.session/end-sessions!]] ends: the ones with these ids, of this user or these
+  users, or with this hashed key."
   [:map {:closed true}
    [:id         {:optional true} [:sequential :string]]
-   [:user_id    {:optional true} ::lib.schema.id/user]
+   [:user_id    {:optional true} [:or ::lib.schema.id/user [:sequential {:min 1} ::lib.schema.id/user]]]
    [:key_hashed {:optional true} :string]])
 
 (mr/def ::ended-by

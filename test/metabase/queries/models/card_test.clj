@@ -806,9 +806,10 @@
   "The set of `[topic action-id archived?]` for the action events `thunk` publishes."
   [thunk]
   (let [published (atom #{})]
-    (with-redefs [events/publish-event! (fn [topic {:keys [object previous-object]}]
+    (with-redefs [events/publish-event! (fn [topic {:keys [changes]}]
                                           (when (#{:event/action-create :event/action-update :event/action-delete} topic)
-                                            (let [action (or object previous-object)]
+                                            (doseq [{:keys [object previous-object]} changes
+                                                    :let [action (or object previous-object)]]
                                               (swap! published conj [topic (:id action) (boolean (:archived action))]))))]
       (thunk))
     @published))
