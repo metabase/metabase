@@ -30,6 +30,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.dependencies :as transforms.dependencies]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.models.transform-transform-tag :as transform-transform-tag]
    [metabase.transforms.replacement :as transforms.replacement]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.search :as transforms.search]
@@ -260,17 +261,18 @@
             new-positions        (zipmap new-tag-ids (range))]
         ;; Delete removed associations
         (when (seq to-delete)
-          (transforms.db/delete-transform-tag-links! transform-id to-delete))
+          (transform-transform-tag/delete-transform-transform-tags! transform-id to-delete))
         ;; Update positions for existing tags that moved
         (doseq [tag-id (filter current-set new-tag-ids)]
           (let [new-pos (get new-positions tag-id)]
-            (transforms.db/set-transform-tag-position! transform-id tag-id new-pos)))
+            (transform-transform-tag/update-transform-transform-tag! transform-id tag-id {:position new-pos})))
         ;; Insert new associations with correct positions
         (when (seq to-insert)
-          (transforms.db/insert-transform-tag-links! (for [tag-id to-insert]
-                                                       {:transform_id transform-id
-                                                        :tag_id       tag-id
-                                                        :position     (get new-positions tag-id)})))))
+          (transform-transform-tag/create-transform-transform-tags!
+           (for [tag-id to-insert]
+             {:transform_id transform-id
+              :tag_id       tag-id
+              :position     (get new-positions tag-id)})))))
     nil))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------

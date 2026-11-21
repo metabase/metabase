@@ -525,7 +525,7 @@
 (mu/defn update-dashboard-tab!
   "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
   [tab-id  :- ms/PositiveInt
-   changes :- (mut/select-keys ::dashboards.schema/dashboard-tab.update [:name :position])]
+   changes :- ::dashboards.schema/dashboard-tab.update]
   (t2/update! :model/DashboardTab :id tab-id changes))
 
 (mu/defn delete-dashboard-tabs!

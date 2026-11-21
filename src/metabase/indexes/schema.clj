@@ -133,6 +133,14 @@
    [:updated_at       {:optional true} [:maybe ms/TemporalInstant]]
    [:last_executed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::table-index.create
+  "What creating a TableIndex takes: its Transform, its name, its definition and the User who asks for it."
+  [:map {:closed true}
+   [:transform_id ::lib.schema.id/transform]
+   [:index_name   :string]
+   [:structured   ::table-index.structured]
+   [:created_by   [:maybe :int]]])
+
 (mr/def ::external-table-index
   "A TableIndex as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

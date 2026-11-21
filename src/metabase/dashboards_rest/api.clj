@@ -17,6 +17,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.dashboards.settings :as dashboards.settings]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.eid-translation.core :as eid-translation]
@@ -440,7 +441,7 @@
 
 (defn- duplicate-tabs
   [new-dashboard existing-tabs]
-  (let [new-tab-ids (dashboards-rest.db/insert-dashboard-tabs!
+  (let [new-tab-ids (dashboard-tab/create-dashboard-tabs!
                      (for [tab existing-tabs]
                        (-> tab
                            (assoc :dashboard_id (:id new-dashboard))

@@ -194,12 +194,12 @@
             (mut/select-keys ::transforms.schema/transform-transform-tag.update [:transform_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformTransformTag rows))
 
-(mu/defn set-transform-tag-position!
-  "Set the position of the tag link between the Transform with `transform-id` and the tag with `tag-id`."
+(mu/defn update-transform-tag-link!
+  "Apply `changes` to the tag link between the Transform with `transform-id` and the tag with `tag-id`."
   [transform-id :- ::lib.schema.id/transform
    tag-id       :- ms/PositiveInt
-   position     :- ms/IntGreaterThanOrEqualToZero]
-  (t2/update! :model/TransformTransformTag {:transform_id transform-id, :tag_id tag-id} {:position position}))
+   changes      :- ::transforms.schema/transform-transform-tag.update]
+  (t2/update! :model/TransformTransformTag {:transform_id transform-id, :tag_id tag-id} changes))
 
 (mu/defn delete-transform-tag-links!
   "Delete the links between the Transform with `transform-id` and the tags with `tag-ids`."
@@ -260,12 +260,12 @@
             (mut/select-keys ::transforms.schema/transform-job-transform-tag.update [:job_id :tag_id :entity_id :position])]]
   (t2/insert! :model/TransformJobTransformTag rows))
 
-(mu/defn set-job-tag-position!
-  "Set the position of the tag link between the TransformJob with `job-id` and the tag with `tag-id`."
-  [job-id   :- ms/PositiveInt
-   tag-id   :- ms/PositiveInt
-   position :- ms/IntGreaterThanOrEqualToZero]
-  (t2/update! :model/TransformJobTransformTag {:job_id job-id, :tag_id tag-id} {:position position}))
+(mu/defn update-job-tag-link!
+  "Apply `changes` to the tag link between the TransformJob with `job-id` and the tag with `tag-id`."
+  [job-id  :- ms/PositiveInt
+   tag-id  :- ms/PositiveInt
+   changes :- ::transforms.schema/transform-job-transform-tag.update]
+  (t2/update! :model/TransformJobTransformTag {:job_id job-id, :tag_id tag-id} changes))
 
 (mu/defn delete-job-tag-links!
   "Delete the links between the TransformJob with `job-id` and the tags with `tag-ids`."

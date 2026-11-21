@@ -13,6 +13,7 @@
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms-rest.schema :as transforms-rest.schema]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -334,7 +335,7 @@
                     [:id ms/PositiveInt]]]
   (let [transform (api/write-check :model/Transform id)
         run       (api/check-404 (transforms.core/running-run-for-transform-id id))]
-    (transforms.core/mark-cancel-started-run! (:id run))
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms-base.u/python-transform? transform)
       ;; The cancelation row was just inserted with DB `current_timestamp`; `now` is within a
       ;; few ms of that and fine for the latency histogram, and avoids the perf/complexity cost of

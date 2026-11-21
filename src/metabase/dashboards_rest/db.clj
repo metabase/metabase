@@ -2,7 +2,6 @@
   "Application database queries for the dashboards REST module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -117,11 +116,6 @@
   "Whether an unarchived Card internal to the Dashboard with `dashboard-id` exists."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
-
-(mu/defn insert-dashboard-tabs!
-  "Insert the DashboardTab `rows` and return their ids."
-  [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position])]]
-  (t2/insert-returning-pks! :model/DashboardTab rows))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

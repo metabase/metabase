@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.audit :as dashboards.audit]
    [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.models.dashboard-card-series :as dashboard-card-series]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dashboards.serialization :as dashboards.serialization]
    [metabase.dependencies.core :as dependencies]
@@ -252,12 +253,12 @@
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
     ;; first off, just delete all series on the dashboard card (we add them again below)
-    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
+    (dashboard-card-series/delete-dashboard-card-series-for-dashcards! (keys dashcard-id->card-ids))
     ;; now just insert all of the series that were given to us
     (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
                                       [i card-id]            (map-indexed vector card-ids)]
                                   {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      (dashboards.db/insert-dashcard-series! card-series))))
+      (dashboard-card-series/create-dashboard-card-series! card-series))))
 
 (def ^:private DashboardCardUpdates
   [:merge

@@ -290,6 +290,13 @@
    [:entity_id {:optional true} [:maybe :string]]
    [:position  {:optional true} [:maybe :int]]])
 
+(mr/def ::transform-job-transform-tag.create
+  "What creating a TransformJobTransformTag takes: its TransformJob, its TransformTag and its position."
+  [:map {:closed true}
+   [:job_id   ms/PositiveInt]
+   [:tag_id   ::lib.schema.id/transform-tag]
+   [:position ms/IntGreaterThanOrEqualToZero]])
+
 (mr/def ::transform-run
   "A TransformRun as selected from the app DB: every column of `:transform_run`."
   [:merge
@@ -360,6 +367,13 @@
    [:tag_id       {:optional true} [:maybe ::lib.schema.id/transform-tag]]
    [:entity_id    {:optional true} [:maybe :string]]
    [:position     {:optional true} [:maybe :int]]])
+
+(mr/def ::transform-transform-tag.create
+  "What creating a TransformTransformTag takes: its Transform, its TransformTag and its position."
+  [:map {:closed true}
+   [:transform_id ::lib.schema.id/transform]
+   [:tag_id       ::lib.schema.id/transform-tag]
+   [:position     ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::coordinated-run-model
   "A model that tracks a coordinated run."

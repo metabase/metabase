@@ -166,6 +166,13 @@
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
    [:position         {:optional true} ::dashboard-card-series.position]])
 
+(mr/def ::dashboard-card-series.create
+  "What creating a DashboardCardSeries takes: its DashboardCard, its Card and its position."
+  [:map {:closed true}
+   [:dashboardcard_id ::lib.schema.id/dashcard]
+   [:card_id          ::lib.schema.id/card]
+   [:position         ::dashboard-card-series.position]])
+
 (mr/def ::dashboard-tab
   "A DashboardTab as selected from the app DB: every column of `:dashboard_tab`."
   [:merge
@@ -195,6 +202,14 @@
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:tabs {:optional true} [:maybe [:sequential [:ref ::external-dashboard-tab]]]]
      [:dashcards {:optional true} [:maybe [:sequential [:ref ::external-dashboard-card]]]]]]])
+
+(mr/def ::dashboard-tab.create
+  "What creating a DashboardTab takes: its Dashboard, its name and its position, and an entity id to keep."
+  [:map {:closed true}
+   [:dashboard_id ::lib.schema.id/dashboard]
+   [:name         ::dashboard-tab.name]
+   [:position     ::dashboard-tab.position]
+   [:entity_id    {:optional true} [:maybe :string]]])
 
 (mr/def ::external-dashboard-tab
   "A DashboardTab as serialization writes it, with portable references in place of ids."
