@@ -84,12 +84,13 @@
 (defn- step-strategy
   "The join's strategy (`inner`, `left`, `right`, `full` or `cross`). Port of `_join_step_strategy`."
   [join]
-  (when-not (only-args? join-args join)
-    (throw (unsupported "unsupported-join")))
-  (let [side   (upper-arg join "side")
+  (let [args   (set-args join)
+        side   (upper-arg join "side")
         kind   (upper-arg join "kind")
         method (upper-arg join "method")]
-    (when-not (and (#{"" "NATURAL"} method) (#{"" "INNER" "OUTER" "CROSS"} kind))
+    (when-not (and (every? join-args args)
+                   (#{"" "NATURAL"} method)
+                   (#{"" "INNER" "OUTER" "CROSS"} kind))
       (throw (unsupported "unsupported-join")))
     (cond
       (= kind "CROSS")
@@ -98,8 +99,7 @@
       ;; `FROM a, b` parses as a join with no side, kind or condition. Its condition, if any, is in the WHERE clause,
       ;; which the step queries leave out, so they would count the whole cross product.
       (and (= "" side kind method)
-           (not (contains? (set-args join) "on"))
-           (not (contains? (set-args join) "using")))
+           (not-any? args ["on" "using"]))
       (throw (unsupported "comma-join"))
 
       :else
@@ -109,13 +109,18 @@
   (cond-> select
     with-node (ast/set-arg! "with_" (ast/copy with-node))))
 
+(defn- count-star-as-n
+  "`COUNT(*) AS n`."
+  []
+  (ast/create "Alias" {"this"  (ast/create "Count" {"this" (ast/create "Star")})
+                       "alias" (ast/to-identifier "n")}))
+
 (defn- count-select
   "`SELECT COUNT(*) AS n FROM <from-node> <joins>`, with `with-node` as its WITH clause. Port of `_count_select`."
   ([from-node joins]
    (count-select from-node joins nil))
   ([from-node joins with-node]
-   (with-clause (ast/create "Select" {"expressions" [(ast/create "Alias" {"this"  (ast/create "Count" {"this" (ast/create "Star")})
-                                                                          "alias" (ast/to-identifier "n")})]
+   (with-clause (ast/create "Select" {"expressions" [(count-star-as-n)]
                                       "from_"       (ast/copy from-node)
                                       "joins"       (mapv ast/copy joins)})
      with-node)))
@@ -156,17 +161,22 @@
       1 (first stmts)
       (throw (unsupported "multiple-statements")))))
 
+(defn- statement-refusal
+  "Why the parsed statement `stmt` cannot have its join steps rebuilt, before its sources are looked at, or nil."
+  [stmt]
+  (cond
+    (instance? Expressions$SetOperation stmt)                              "set-operation"
+    (not (instance? Expressions$Select stmt))                              "not-a-select"
+    ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on.
+    (seq (ast/find-all stmt Expressions$Placeholder Expressions$Parameter)) "parameters"
+    ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
+    (contains? (set-args stmt) "laterals")                                 "unsupported-join"))
+
 (defn- steps
   [dialect sql]
   (let [stmt (parse-statement dialect sql)]
-    (cond
-      (instance? Expressions$SetOperation stmt)       (throw (unsupported "set-operation"))
-      (not (instance? Expressions$Select stmt))       (throw (unsupported "not-a-select"))
-      ;; A placeholder is a value the step queries would have to be handed again, and nothing passes them on.
-      (seq (ast/find-all stmt Expressions$Placeholder Expressions$Parameter))
-      (throw (unsupported "parameters"))
-      ;; Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
-      (contains? (set-args stmt) "laterals")         (throw (unsupported "unsupported-join")))
+    (when-let [reason (statement-refusal stmt)]
+      (throw (unsupported reason)))
     (let [from-node (ast/arg stmt "from_")
           _         (when-not (and from-node (ast/this from-node))
                       (throw (unsupported "no-from")))
@@ -182,16 +192,16 @@
        :base_sql (ast/sql (count-select from-node [] with-node) dialect)
        :steps    (vec (map-indexed
                        (fn [i join]
-                         (let [n        (inc i)
-                               ;; The source first: a LATERAL or APPLY source looks like a comma join to the
+                         (let [;; The source first: a LATERAL or APPLY source looks like a comma join to the
                                ;; strategy check.
                                source   (step-source (ast/this join) cte-names)
                                strategy (step-strategy join)
+                               chain    (subvec joins 0 (inc i))
                                query    (if (#{"left" "right" "full"} strategy)
-                                          (two-counts (count-select from-node (subvec joins 0 n))
-                                                      (count-select from-node (conj (subvec joins 0 i) (inner-variant join)))
+                                          (two-counts (count-select from-node chain)
+                                                      (count-select from-node (conj (pop chain) (inner-variant join)))
                                                       with-node)
-                                          (count-select from-node (subvec joins 0 n) with-node))]
+                                          (count-select from-node chain with-node))]
                            (assoc source :strategy strategy :sql (ast/sql query dialect))))
                        joins))})))
 

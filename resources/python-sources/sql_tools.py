@@ -464,11 +464,16 @@ class _JoinStepsUnsupported(Exception):
         self.reason = reason
 
 
+def _set_args(node):
+    """The names of `node`'s arguments that hold a value."""
+    return {k for k, v in node.args.items() if v}
+
+
 def _join_step_source(node, cte_names):
     """The description of a FROM or JOIN source: its kind (`table`, `cte` or `derived`), its `[catalog, schema, table]`
     when it is a table, and its alias. Raises `_JoinStepsUnsupported` for a source `join_steps` cannot rebuild."""
     if isinstance(node, exp.Table):
-        if set(k for k, v in node.args.items() if v) - _JOIN_STEP_TABLE_ARGS or not isinstance(node.this, exp.Identifier):
+        if _set_args(node) - _JOIN_STEP_TABLE_ARGS or not isinstance(node.this, exp.Identifier):
             raise _JoinStepsUnsupported("unsupported-source")
         parts = table_parts(node)
         if parts is None:
@@ -477,9 +482,10 @@ def _join_step_source(node, cte_names):
             return {"source": "cte", "table": None, "alias": node.alias_or_name}
         return {"source": "table", "table": list(parts), "alias": node.alias_or_name}
     if isinstance(node, exp.Subquery):
-        if set(k for k, v in node.args.items() if v) - _JOIN_STEP_SUBQUERY_ARGS:
+        if _set_args(node) - _JOIN_STEP_SUBQUERY_ARGS:
             raise _JoinStepsUnsupported("unsupported-source")
-        # A parenthesized join tree, `JOIN (b JOIN c ON ...) ON ...`, is a Subquery around something that is not a query.
+        # A parenthesized join tree, `JOIN (b JOIN c ON ...) ON ...`, is a Subquery around something that is not a
+        # query.
         if not isinstance(node.this, exp.Query):
             raise _JoinStepsUnsupported("nested-join")
         return {"source": "derived", "table": None, "alias": node.alias_or_name}
@@ -489,7 +495,8 @@ def _join_step_source(node, cte_names):
 def _join_step_strategy(join):
     """The join's strategy (`inner`, `left`, `right`, `full` or `cross`), raising `_JoinStepsUnsupported` for a join
     `join_steps` cannot rebuild."""
-    if set(k for k, v in join.args.items() if v) - _JOIN_STEP_JOIN_ARGS:
+    args = _set_args(join)
+    if args - _JOIN_STEP_JOIN_ARGS:
         raise _JoinStepsUnsupported("unsupported-join")
     side = (join.side or "").upper()
     kind = (join.kind or "").upper()
@@ -500,7 +507,7 @@ def _join_step_strategy(join):
         return "cross"
     # `FROM a, b` parses as a join with no side, kind or condition. Its condition, if any, is in the WHERE clause,
     # which the step queries leave out, so they would count the whole cross product.
-    if not side and not kind and not method and not join.args.get("on") and not join.args.get("using"):
+    if not side and not kind and not method and not args & {"on", "using"}:
         raise _JoinStepsUnsupported("comma-join")
     return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
 
