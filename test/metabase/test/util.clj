@@ -631,7 +631,25 @@
    :model/ModerationReview      {:create :event/moderation-review-create
                                  :delete :event/moderation-review-delete}
    :model/ModelIndex            {:create :event/model-index-create
-                                 :delete :event/model-index-delete}})
+                                 :delete :event/model-index-delete}
+   :model/Document              {:create :event/document-create
+                                 :delete :event/document-delete}
+   :model/Exploration           {:create :event/exploration-create
+                                 :delete :event/exploration-delete}
+   :model/Timeline              {:create :event/timeline-create
+                                 :delete :event/timeline-delete}
+   :model/TimelineEvent         {:create :event/timeline-event-create
+                                 :delete :event/timeline-event-delete}
+   :model/NativeQuerySnippet    {:create :event/snippet-create
+                                 :delete :event/snippet-delete}
+   :model/Comment               {:create :event/comment-create
+                                 :delete :event/comment-delete}
+   :model/Action                {:create :event/action-create
+                                 :delete :event/action-delete}
+   :model/QueryAction           {:create :event/query-action-create
+                                 :delete :event/query-action-delete}
+   :model/ImplicitAction        {:create :event/implicit-action-create
+                                 :delete :event/implicit-action-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."

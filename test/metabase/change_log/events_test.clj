@@ -270,7 +270,9 @@
     :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember
     :model/Database :model/Table :model/Field :model/FieldValues :model/Dimension :model/FieldUserSettings
     :model/TableUserSettings
-    :model/Card :model/CacheConfig :model/ModerationReview :model/ModelIndex})
+    :model/Card :model/CacheConfig :model/ModerationReview :model/ModelIndex
+    :model/Collection :model/Document :model/Exploration :model/Timeline :model/TimelineEvent
+    :model/NativeQuerySnippet :model/Comment :model/Action :model/QueryAction :model/ImplicitAction})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"

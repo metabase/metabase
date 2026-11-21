@@ -728,7 +728,7 @@
       (let [events-published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
-          (t2/update! :model/Document :id doc-id {:name "Updated Name"}))
+          (document/update-document! doc-id {:name "Updated Name"}))
         (is (=? [[:event/document-update {:changes [{:object          {:id doc-id :name "Updated Name"}
                                                      :previous-object {:id doc-id :name "Test Document"}}]}]]
                 (filterv (comp #{:event/document-update} first) @events-published)))))))

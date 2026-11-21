@@ -218,14 +218,15 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn-vec :action_id [:model/ImplicitAction :action_id] :table_id [:in table-ids]))
 
-(mu/defn set-archived-in-collections!
-  "Set `archived` and `archived_directly` of the Actions in the Collections with `collection-ids` that are not yet in
-  the `archived` state, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived       :- :boolean
-   directly       :- :boolean]
-  (t2/update! :model/Action :collection_id [:in collection-ids] :archived (not archived)
-              {:archived archived :archived_directly directly}))
+(mu/defn unarchived-actions-in-collections
+  "The unarchived Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived false))
+
+(mu/defn actions-in-collections
+  "The Actions in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids]))
 
 (mu/defn restorable-action-ids-in-collections
   "The ids of the Actions in the Collections with `collection-ids` that were archived along with them and whose model,

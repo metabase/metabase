@@ -58,19 +58,20 @@
   [ids :- [:sequential ::lib.schema.id/native-query-snippet]]
   (t2/delete! :model/NativeQuerySnippet :id [:in ids]))
 
-(mu/defn set-archived-in-collections!
-  "Set `archived` and `archived_directly` of the NativeQuerySnippets in the Collections with `collection-ids` that are
-  unarchived, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived       :- :boolean
-   directly       :- :boolean]
-  (t2/update! :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived (not archived)
-              {:archived archived :archived_directly directly}))
-
-(mu/defn restorable-snippet-ids-in-collections
-  "The ids of the NativeQuerySnippets in the Collections with `collection-ids` that were archived along with them."
+(mu/defn unarchived-snippets-in-collections
+  "The unarchived NativeQuerySnippets in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived true :archived_directly false))
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived false))
+
+(mu/defn restorable-snippets-in-collections
+  "The NativeQuerySnippets in the Collections with `collection-ids` that were archived along with them."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived true :archived_directly false))
+
+(mu/defn snippets-in-collections
+  "The NativeQuerySnippets in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids]))
 
 (mu/defn delete-snippets-in-collections!
   "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
