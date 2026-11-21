@@ -128,8 +128,9 @@
    ["stop the scheduler"          #(task/stop-scheduler!)]
    ["stop the web server"         #(server/stop-web-server!)]
    ["shut down tracing"           #(tracing/shutdown!)]
-   ["shut down analytics"         #(analytics.core/shutdown!)]
    ["shut down notifications"     #(notification/shutdown!)]
+   ;; after notifications, whose sends record metrics while they drain
+   ["shut down analytics"         #(analytics.core/shutdown!)]
    ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
    ["release migration locks"     #(mdb/release-migration-locks! 20)]
    ;; whatever else the global system started, such as warehouse connection pools, each before the components it uses;

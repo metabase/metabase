@@ -37,8 +37,6 @@
 
 (def ^:private default-blocking-queue-size 1000)
 
-(def ^:private default-shutdown-timeout-ms (* 30 60 1000)) ;; 30 minutes
-
 (def ^:private default-retry-config
   {:max-retries             (if config/is-dev? 1 6)
    :initial-interval-millis 500
@@ -480,7 +478,10 @@
   such as: creator_id, active status, handlers info etc.)
   - if a notification has no queue key and no id, put it into the queue regardless (used to send unsaved notifications)
 
-  Returns a map with :dispatch-fn and :shutdown-fn."
+  Returns a map of `:dispatch-fn`; `:close-fn`, which refuses new notifications and lets the workers send what is
+  queued until the deadline it takes, in [[System/nanoTime]], unless an earlier call set one;
+  and `:shutdown-fn`, which closes the dispatcher with a deadline its argument in milliseconds away, and waits for it.
+  Unless everything queued was sent by then, `:shutdown-fn` interrupts the workers and returns false."
   [pool-size queue]
   (let [executor (Executors/newFixedThreadPool
                   pool-size
@@ -488,18 +489,32 @@
                    (doto (BasicThreadFactory/builder)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
+        ;; set when the drain runs out; a send can swallow the interrupt, so workers check this before taking more
+        abandon-flag  (java.util.concurrent.atomic.AtomicBoolean. false)
+        ;; the drain's deadline in nanoTime, published before any wait, so a worker sees it pass before the flag is set
+        deadline      (java.util.concurrent.atomic.AtomicReference.)
+        ;; set when a worker drops a notification it took after the deadline, so the drain does not count as complete
+        discarded     (java.util.concurrent.atomic.AtomicBoolean. false)
+        abandoned?    (fn []
+                        (or (.get abandon-flag)
+                            (when-let [deadline-ns (.get deadline)]
+                              (>= (- (System/nanoTime) (long deadline-ns)) 0))))
         start-worker! (fn []
                         (.submit ^ThreadPoolExecutor executor
                                  ^Callable (fn []
-                                             (while (and (not (Thread/interrupted))
+                                             (while (and (not (abandoned?))
+                                                         (not (Thread/interrupted))
                                                          (or (not (.get shutdown-flag))
                                                              ;; Continue processing if shutdown flag is set but queue is not empty
                                                              (pos? (queue-size queue))))
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
-                                                   (log/with-restored-context-from-meta notification
-                                                     (task-history/with-restored-run-id notification
-                                                       (send-notification-sync! notification))))
+                                                   ;; a take that returns after the deadline must not start a send
+                                                   (if (abandoned?)
+                                                     (.set discarded true)
+                                                     (log/with-restored-context-from-meta notification
+                                                       (task-history/with-restored-run-id notification
+                                                         (send-notification-sync! notification)))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -520,20 +535,37 @@
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
                           ::shutdown)))
+        close-fn    (fn [deadline-ns]
+                      (.compareAndSet deadline nil deadline-ns)
+                      (.set shutdown-flag true)
+                      (.shutdown ^ThreadPoolExecutor executor))
         shutdown-fn (fn [timeout-ms]
                       (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
-                      (.set shutdown-flag true)
-                      (.shutdown ^ThreadPoolExecutor executor)
-                      (try
-                        (.awaitTermination ^ThreadPoolExecutor executor timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
-                        (log/info "Notification worker shut down successfully")
-                        (catch InterruptedException _
-                          (log/warn "Interrupted while waiting for notification executor to terminate")
-                          (.shutdownNow ^ThreadPoolExecutor executor))))]
+                      (close-fn (+ (System/nanoTime) (* 1000000 (long timeout-ms))))
+                      (let [terminated? (try
+                                          (.awaitTermination ^ThreadPoolExecutor executor
+                                                             timeout-ms
+                                                             java.util.concurrent.TimeUnit/MILLISECONDS)
+                                          (catch InterruptedException _
+                                            (log/warn
+                                             "Interrupted while waiting for notification executor to terminate")
+                                            false))
+                            ;; workers also stop at the deadline, so terminating is not enough to have sent everything
+                            drained?    (and terminated?
+                                             (not (.get discarded))
+                                             (zero? (queue-size queue)))]
+                        (if drained?
+                          (log/info "Notification worker shut down successfully")
+                          (do (.set abandon-flag true)
+                              (log/warnf "Abandoning %d queued notifications and interrupting the ones being sent"
+                                         (queue-size queue))
+                              (.shutdownNow ^ThreadPoolExecutor executor)))
+                        drained?))]
     (log/infof "Starting notification thread pool with %d threads" pool-size)
     (dotimes [_ pool-size]
       (start-worker!))
     {:dispatch-fn dispatch-fn
+     :close-fn    close-fn
      :shutdown-fn shutdown-fn}))
 
 (defonce ^:private dedup-priority-dispatcher
@@ -606,14 +638,25 @@
             (send-notification-async! notification)))))))
 
 (defn shutdown!
-  "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."
+  "Stop both notification dispatchers, letting each send what it has queued.
+  Waits up to [[notification.settings/notification-shutdown-timeout-seconds]] in all, then abandons what is left."
   []
-  (let [workers [dedup-priority-dispatcher simple-blocking-dispatcher]]
+  ;; a dispatcher that cannot be created takes no work, so the others still drain
+  (let [workers (into [] (keep #(try @%
+                                     (catch Exception e
+                                       (log/errorf "Could not create a notification dispatcher: %s" (ex-message e)))))
+                      [dedup-priority-dispatcher simple-blocking-dispatcher])]
     (log/with-context {:dispatcher-count (count workers)}
       (log/info "Shutting down notification dispatchers...")
       (try
-        (doseq [worker workers]
-          ((:shutdown-fn @worker) default-shutdown-timeout-ms))
-        (log/info "All notification workers shut down successfully")
+        (let [timeout-s    (notification.settings/notification-shutdown-timeout-seconds)
+              deadline     (+ (System/nanoTime) (* 1000000000 timeout-s))
+              remaining-ms #(max 0 (quot (- deadline (System/nanoTime)) 1000000))]
+          ;; all of them refuse new notifications and learn the shared deadline before any wait begins, so none takes
+          ;; work while another drains, or keeps sending past the deadline while another is waited on
+          (run! #((:close-fn %) deadline) workers)
+          ;; every dispatcher gets its wait, even after one ran out, so each one left over is interrupted
+          (when (every? true? (mapv #((:shutdown-fn %) (remaining-ms)) workers))
+            (log/info "All notification workers shut down successfully")))
         (catch Exception e
           (log/errorf "Error shutting down notification workers: %s" (ex-message e)))))))

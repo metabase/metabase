@@ -1107,9 +1107,10 @@
              (catch Exception e
                (log/warnf "Error stopping prometheus web-server: %s" (ex-message e))))))))
 
+;; Threads still working during shutdown, like notification sends, call these after [[shutdown!]] drops the registry.
 (defn observe!
   "Call iapetos.core/observe on the metric in the global registry.
-   Inits registry if it's not been initialized yet.
+   Does nothing when no registry is set up, as after [[shutdown!]].
 
   Should be used with histograms and summaries."
   ([metric] (observe! metric nil 1))
@@ -1118,22 +1119,24 @@
      (observe! metric nil labels-or-amount)
      (observe! metric labels-or-amount 1)))
   ([metric labels amount]
-   (prometheus/observe (:registry system) metric (qualified-vals labels) amount)))
+   (when-let [registry (:registry system)]
+     (prometheus/observe registry metric (qualified-vals labels) amount))))
 
 (defn inc!
   "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+   Does nothing when no registry is set up, as after [[shutdown!]]."
   ([metric] (inc! metric nil 1))
   ([metric labels-or-amount]
    (if (number? labels-or-amount)
      (inc! metric nil labels-or-amount)
      (inc! metric labels-or-amount 1)))
   ([metric labels amount]
-   (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
+   (when-let [registry (:registry system)]
+     (prometheus/inc registry metric (qualified-vals labels) amount))))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.
-   Inits registry if it's not been initialized yet.
+   Does nothing when no registry is set up, as after [[shutdown!]].
 
   Should be used for gauge metrics."
   ([metric] (dec! metric nil 1))
@@ -1142,25 +1145,28 @@
      (dec! metric nil labels-or-amount)
      (dec! metric labels-or-amount 1)))
   ([metric labels amount]
-   (prometheus/dec (:registry system) metric (qualified-vals labels) amount)))
+   (when-let [registry (:registry system)]
+     (prometheus/dec registry metric (qualified-vals labels) amount))))
 
 (defn set!
   "Call iapetos.core/set on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
+   Does nothing when no registry is set up, as after [[shutdown!]]."
   ([metric amount]
    (assert (not (seq? amount)) "Cannot only provide labels")
    ;; Escape var to avoid confusing it with the special form of the same name.
    (#'set! metric nil amount))
   ([metric labels amount]
-   (prometheus/set (:registry system) metric (qualified-vals labels) amount)))
+   (when-let [registry (:registry system)]
+     (prometheus/set registry metric (qualified-vals labels) amount))))
 
 (defn clear!
-  "Call Collector.clear() on given metric."
+  "Call Collector.clear() on given metric.
+   Does nothing when no registry is set up, as after [[shutdown!]]."
   [metric]
-  (when-not system
-    (setup!))
-  (when system
-    (.clear ^SimpleCollector (:raw (collectors/lookup (.-collectors ^iapetos.registry.IapetosRegistry (:registry system)) metric nil)))))
+  ;; never sets a registry up, which after shutdown would restart what it stopped
+  (when-let [registry (:registry system)]
+    (let [registered (.-collectors ^iapetos.registry.IapetosRegistry registry)]
+      (.clear ^SimpleCollector (:raw (collectors/lookup registered metric nil))))))
 
 (def ^:private real-reporter
   "A real analytics.interface/Reporter that reports here"

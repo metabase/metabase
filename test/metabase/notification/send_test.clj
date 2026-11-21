@@ -978,3 +978,115 @@
               (is (= ::notification.send/shutdown
                      (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
               (is (= 0 (notification.send/queue-size queue))))))))))
+
+(deftest notification-dispatcher-shutdown-timeout-test
+  (testing "a dispatcher that cannot empty its queue in time stops sending, even when a send swallows the interrupt"
+    (let [sending     (java.util.concurrent.CountDownLatch. 1)
+          interrupted (promise)
+          sent-later  (promise)
+          queue       (#'notification.send/create-dedup-priority-queue)
+          dispatcher  (#'notification.send/create-notification-dispatcher 1 queue)
+          dispatch-fn (:dispatch-fn dispatcher)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.send/send-notification-sync!
+                    (fn [{:keys [id]}]
+                      (if (= 1 id)
+                        (do (.countDown sending)
+                            ;; like `channel-send-retrying!`, which catches every Throwable and returns
+                            (try
+                              (Thread/sleep 60000)
+                              (catch InterruptedException _
+                                (deliver interrupted true))))
+                        (deliver sent-later id)))]
+        (dispatch-fn {:id 1 :payload_type :notification/testing})
+        ;; queued only once 1 is being sent, so the worker cannot take 2 first
+        (is (.await sending 5 java.util.concurrent.TimeUnit/SECONDS))
+        (dispatch-fn {:id 2 :payload_type :notification/testing})
+        (is (= {:drained?     false
+                :interrupted? true
+                :sent-later   nil
+                :refused      ::notification.send/shutdown}
+               {:drained?     ((:shutdown-fn dispatcher) 100)
+                :interrupted? (deref interrupted 5000 false)
+                :sent-later   (deref sent-later 1000 nil)
+                :refused      (dispatch-fn {:id 3 :payload_type :notification/testing})}))))))
+
+(deftest notification-dispatcher-sends-nothing-taken-after-the-deadline-test
+  (testing "a notification a worker takes after the drain deadline is not sent"
+    (let [taking     (java.util.concurrent.CountDownLatch. 1)
+          release    (promise)
+          sent       (promise)
+          ;; a take that ignores interrupts and returns only once released, after the deadline
+          queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _]
+                         (.countDown taking)
+                         (while (not (realized? release))
+                           (Thread/onSpinWait))
+                         {:id 1, :payload_type :notification/testing})
+                       (queue-size [_] 0))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.send/send-notification-sync! (fn [{:keys [id]}] (deliver sent id))]
+        ;; the worker must be inside its take before the deadline, or it never takes anything
+        (is (.await taking 5 java.util.concurrent.TimeUnit/SECONDS))
+        (let [drained? ((:shutdown-fn dispatcher) 100)]
+          (deliver release true)
+          (is (= {:drained? false, :sent nil}
+                 {:drained? drained?, :sent (deref sent 1000 nil)})))))))
+
+(deftest notification-dispatcher-counts-work-left-at-the-deadline-test
+  (testing "workers that stop at a deadline with notifications still queued do not count as a drain"
+    (let [queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _] (Thread/sleep 10) nil)
+                       (queue-size [_] 1))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; a deadline already passed, as a later dispatcher gets one in shutdown!, so the workers stop at once
+      ((:close-fn dispatcher) (System/nanoTime))
+      (is (false? ((:shutdown-fn dispatcher) 2000))))))
+
+(deftest notification-dispatcher-counts-a-notification-dropped-at-the-deadline-test
+  (testing "a notification taken after the deadline and dropped means no drain, even once the queue is empty"
+    (let [taking     (java.util.concurrent.CountDownLatch. 1)
+          release    (promise)
+          sent       (promise)
+          queue      (reify notification.send/NotificationQueueProtocol
+                       (put-notification! [_ _] nil)
+                       (take-notification-with-timeout! [_ _]
+                         (.countDown taking)
+                         @release
+                         {:id 1, :payload_type :notification/testing})
+                       (queue-size [_] 0))
+          dispatcher (#'notification.send/create-notification-dispatcher 1 queue)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [notification.send/send-notification-sync! (fn [{:keys [id]}] (deliver sent id))]
+        (is (.await taking 5 java.util.concurrent.TimeUnit/SECONDS))
+        ;; the deadline passes 100 ms in, the take returns at 300 ms, and the wait allows 5 seconds
+        ((:close-fn dispatcher) (+ (System/nanoTime) (* 100 1000000)))
+        (future (Thread/sleep 300) (deliver release true))
+        (is (= {:drained? false, :sent nil}
+               {:drained? ((:shutdown-fn dispatcher) 5000)
+                :sent     (deref sent 100 nil)}))))))
+
+(deftest shutdown-closes-dispatchers-when-another-cannot-be-created-test
+  (testing "a dispatcher that cannot be created does not keep the other from closing"
+    (let [dispatcher (#'notification.send/create-notification-dispatcher 1 (#'notification.send/create-blocking-queue))]
+      (with-redefs-fn {#'notification.send/dedup-priority-dispatcher  (delay dispatcher)
+                       #'notification.send/simple-blocking-dispatcher (delay (throw (ex-info "No pool" {})))}
+        (fn []
+          (notification.send/shutdown!)
+          (is (= ::notification.send/shutdown
+                 ((:dispatch-fn dispatcher) {:id 1 :payload_type :notification/testing}))))))))
+
+(deftest shutdown-timeout-setting-test
+  (testing "a shutdown timeout that does not parse, or is out of range, still gives a deadline shutdown can use"
+    (is (= {"30s"         20
+            "-5"          0
+            "99999999999" 86400}
+           (into {} (for [value ["30s" "-5" "99999999999"]]
+                      (mt/with-temp-env-var-value! ["MB_NOTIFICATION_SHUTDOWN_TIMEOUT_SECONDS" value]
+                        [value (notification.settings/notification-shutdown-timeout-seconds)])))))))
