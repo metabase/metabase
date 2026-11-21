@@ -163,6 +163,7 @@ export function DatasetsList({
         )
         .map((card) => ({
           ...createDataSource("card", card.id, card.name),
+          model: card.model,
           display: card.display,
           result_metadata: card.result_metadata,
           notRecommended: false,
@@ -200,6 +201,7 @@ export function DatasetsList({
       )
       .map((card) => ({
         ...createDataSource("card", +card.id, card.name),
+        model: card.model,
         display: card.display,
         result_metadata: card.result_metadata,
       }))
