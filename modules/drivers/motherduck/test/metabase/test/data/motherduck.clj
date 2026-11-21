@@ -294,6 +294,21 @@
        (with-open [rset (.executeQuery stmt)]
          (.next rset))))))
 
+(defn- has-first-table?
+  "Does the database of `dbdef` hold the first table of its definition? Throws if the database can't be reached."
+  [driver dbdef]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (spec/dbdef->spec driver :db dbdef)
+   {:write? false}
+   (fn [^Connection conn]
+     (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
+                                                   "WHERE database_name = current_database() AND table_name = ? "
+                                                   "LIMIT 1"))]
+       (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
+       (with-open [rset (.executeQuery stmt)]
+         (.next rset))))))
+
 (defonce ^{:private true
            :doc "Names of the private test databases created or reused by this run, for after-run to drop. Shared
                  static datasets are never registered: other jobs are using them."}
@@ -347,8 +362,9 @@
   "Load a static dataset into a private staging database, then publish it under its shared name with a single
   zero-copy clone. Other jobs therefore see the shared database complete or not at all, never half-loaded.
 
-  Two jobs that miss the same dataset at the same time both load it, and the second clone is a no-op. Loading twice
-  is the price of not needing a lock between jobs."
+  Two jobs that miss the same dataset at the same time both load it. Loading twice is the price of not needing a lock
+  between jobs. Their clones can race and leave the shared database empty, so an empty one is replaced, and a clone
+  that comes out empty fails the load, so that the next attempt replaces it."
   [driver dbdef options]
   (let [shared  (qualified-db-name dbdef)
         staging (sql.tu.unique-prefix/unique-prefix (str "staging_" (:database-name dbdef)))]
@@ -360,7 +376,15 @@
                     (assoc :database-name staging)
                     (update :options dissoc :static))
                 options)
+      ;; No test can use an empty shared database, so dropping it can't break a job that shares it.
+      (when (and (database-exists? shared)
+                 (not (has-first-table? driver dbdef)))
+        (log/warnf "Replacing empty shared database %s" shared)
+        (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" shared)))
       (execute-on-server! (format "CREATE DATABASE IF NOT EXISTS \"%s\" FROM \"%s\";" shared staging))
+      (when-not (has-first-table? driver dbdef)
+        (throw (ex-info (format "Shared database %s is empty after the clone" shared)
+                        {:shared shared, :staging staging})))
       (finally
         (try
           (execute-on-server! (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" staging))
@@ -389,29 +413,19 @@
   [driver dbdef]
   ;; The test harness calls this method before the first sync of every dataset.
   (remember-shared-dataset-tables! dbdef)
-  (if (static? dbdef)
-    ;; A shared database exists only once its load has finished; see create-shared-db!.
-    (database-exists? (qualified-db-name dbdef))
-    (do
-      ;; Include reused datasets in cleanup, even when create-db! does not run.
-      (swap! created-databases conj (qualified-db-name dbdef))
-      (try
-        (sql-jdbc.execute/do-with-connection-with-options
-         driver
-         (spec/dbdef->spec driver :db dbdef)
-         {:write? false}
-         (fn [^java.sql.Connection conn]
-           ;; An existing database may be left empty by an interrupted load. Check for the first
-           ;; dataset table rather than treating a successful connection as proof that data was loaded.
-           (with-open [stmt (.prepareStatement conn (str "SELECT 1 FROM duckdb_tables() "
-                                                         "WHERE database_name = current_database() AND table_name = ? "
-                                                         "LIMIT 1"))]
-             (.setString stmt 1 (:table-name (first (:table-definitions dbdef))))
-             (with-open [rset (.executeQuery stmt)]
-               (.next rset)))))
-        (catch Throwable _
-          ;; A missing database fails at connection time.
-          false)))))
+  (when-not (static? dbdef)
+    ;; Include reused datasets in cleanup, even when create-db! does not run.
+    (swap! created-databases conj (qualified-db-name dbdef)))
+  ;; An existing database may be left empty by an interrupted load, or, for a shared database, by two clones that
+  ;; raced; see create-shared-db!. Check for the first dataset table rather than treating its existence as proof that
+  ;; data was loaded.
+  (and (or (not (static? dbdef))
+           (database-exists? (qualified-db-name dbdef)))
+       (try
+         (has-first-table? driver dbdef)
+         (catch Throwable _
+           ;; A missing database fails at connection time.
+           false))))
 
 (defmethod tx/before-run :motherduck
   [_driver]
