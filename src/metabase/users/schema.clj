@@ -133,6 +133,22 @@
    [:deactivated_with_tenant {:optional true} [:maybe :boolean]]
    [:is_data_analyst         {:optional true} [:maybe :boolean]]])
 
+(mr/def ::user.create
+  "What a caller gives to create a User: its email and any other column of `:core_user` except `id`."
+  [:merge
+   ::user.update
+   [:map {:closed true}
+    [:email :string]]])
+
+(mr/def ::user.conditions
+  "The Users a bulk write changes, as a map of column to the value it must have, to `[:not= nil]`, or to `[:in ids]`."
+  [:map-of {:min 1}
+   :keyword
+   [:or
+    [:maybe [:or :boolean :int :string :keyword]]
+    [:tuple [:= :not=] :nil]
+    [:tuple [:= :in] [:sequential ::lib.schema.id/user]]]])
+
 (mr/def ::user-filters
   "Options accepted by `metabase.users.db/filter-clauses` (and, by extension, any db.clj function that filters
   Users on the caller's behalf).

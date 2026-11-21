@@ -9,6 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.session.models.session :as models.session]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -34,12 +35,12 @@
   []
   (if-let [user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
     (do
-      (support-access-grants.db/update-user! (:id user) {:is_active true :is_superuser true})
+      (user/update-user! (:id user) {:is_active true :is_superuser true})
       (assoc user :is_active true :is_superuser true))
-    (support-access-grants.db/insert-user! {:email (sag.settings/support-access-grant-email)
-                                            :first_name (sag.settings/support-access-grant-first-name)
-                                            :last_name (sag.settings/support-access-grant-last-name)
-                                            :is_superuser true})))
+    (user/create-user! {:email        (sag.settings/support-access-grant-email)
+                        :first_name   (sag.settings/support-access-grant-first-name)
+                        :last_name    (sag.settings/support-access-grant-last-name)
+                        :is_superuser true})))
 
 (methodical/defmethod t2/batched-hydrate [:model/SupportAccessGrantLog :user_info]
   [_model _k grants]
@@ -59,9 +60,9 @@
   [support-user-id ended-at ended-by]
   (let [auth-identity-ids (support-access-grants.db/auth-identity-ids-of-user support-user-id)]
     (try
-      (support-access-grants.db/update-user! support-user-id {:is_superuser false})
+      (user/update-user! support-user-id {:is_superuser false})
       (catch Exception e
-        ;; If the support user is somehow the last admin, we can't remove superuser via model hooks.
+        ;; If the support user is somehow the last admin, we can't remove superuser.
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)

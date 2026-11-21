@@ -6,17 +6,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn insert-superuser!
-  "Insert a superuser with the given email and name and return the User instance."
-  [email :- :string
-   first-name :- [:maybe :string]
-   last-name :- [:maybe :string]]
-  (t2/insert-returning-instance! :model/User
-                                 :email        email
-                                 :first_name   first-name
-                                 :last_name    last-name
-                                 :is_superuser true))
-
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]

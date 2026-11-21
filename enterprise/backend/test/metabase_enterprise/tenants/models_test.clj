@@ -5,8 +5,8 @@
    [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.db :as permissions.db]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
@@ -244,7 +244,7 @@
                  :model/User   {user-id :id}         {:tenant_id tenant-id}
                  :model/User   {inactive-id :id}     {:tenant_id tenant-id}
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
-    (t2/update! :model/User :id inactive-id {:is_active false})
+    (user/update-user! inactive-id {:is_active false})
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
       (tenants.model/update-tenant! tenant-id {:is_active false})
       (testing "active users of tenant are deactivated with it"
@@ -258,13 +258,24 @@
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
 
+(deftest deactivating-tenant-deletes-subscriptions-of-its-users-test
+  (mt/with-temp [:model/Tenant                {tenant-id :id}        {}
+                 :model/User                  {user-id :id}          {:tenant_id tenant-id}
+                 :model/User                  {other-id :id}         {}
+                 :model/Pulse                 {pulse-id :id}         {}
+                 :model/PulseChannel          {pulse-channel-id :id} {:pulse_id pulse-id}
+                 :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id user-id}
+                 :model/PulseChannelRecipient _                      {:pulse_channel_id pulse-channel-id :user_id other-id}]
+    (tenants.model/update-tenant! tenant-id {:is_active false})
+    (is (not (t2/exists? :model/PulseChannelRecipient :user_id user-id)))
+    (is (t2/exists? :model/PulseChannelRecipient :user_id other-id))))
+
 (deftest deactivating-all-tenants-deactivates-their-users-test
   (mt/with-temp [:model/Tenant {tenant-id :id} {}
                  :model/User   {user-id :id}   {:tenant_id tenant-id}]
     (let [active-ids (t2/select-pks-set :model/Tenant :is_active true)]
       (try
-        (permissions.db/deactivate-all-tenants!)
-        (permissions.db/deactivate-active-tenant-users!)
+        (tenants.model/deactivate-tenants!)
         (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))

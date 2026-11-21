@@ -5,7 +5,6 @@
    [malli.util :as mut]
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -93,17 +92,6 @@
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
-
-(mu/defn insert-user!
-  "Insert `user` and return the new instance."
-  [user :- (mut/select-keys ::users.schema/user.update [:email :first_name :last_name :is_superuser])]
-  (t2/insert-returning-instance! :model/User user))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User :id user-id changes))
 
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."

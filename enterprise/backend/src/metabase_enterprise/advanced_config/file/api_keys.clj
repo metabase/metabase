@@ -77,11 +77,11 @@
         (log/info (u/format-color :green "Creating new API key"))
         ;; Create a user for the API key
         (let [email (format "api-key-user-%s@api-key.invalid" (random-uuid))
-              user  (advanced-config.db/insert-user! {:email      email
-                                                      :first_name name
-                                                      :last_name  ""
-                                                      :type       :api-key
-                                                      :password   (str (random-uuid))})]
+              user  (user/create-user! {:email      email
+                                        :first_name name
+                                        :last_name  ""
+                                        :type       :api-key
+                                        :password   (str (random-uuid))})]
           ;; Set permissions groups for the user
           (user/set-permissions-groups! user [(perms/all-users-group) {:id group-id}])
           ;; Create the API key

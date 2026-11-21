@@ -85,9 +85,3 @@
   "Insert the AiUsageLog `row`."
   [row :- ::metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
-
-(mu/defn set-user-tenant!
-  "Set the `tenant_id` of the User with `user-id`."
-  [user-id   :- ::lib.schema.id/user
-   tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User :id user-id {:tenant_id tenant-id}))
