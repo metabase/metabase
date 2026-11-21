@@ -8,8 +8,10 @@
    [java-time.api :as t]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
+   [metabase.comments.models.comment :as comment]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.glossary.models.glossary :as glossary]
@@ -431,7 +433,7 @@
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-create (:id document)))))
        (testing :event/document-update
-         (t2/update! :model/Document :id (:id document) {:name "Updated Document"})
+         (document/update-document! (:id document) {:name "Updated Document"})
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:previous {:name "Test Document"}
@@ -440,7 +442,7 @@
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-update (:id document)))))
        (testing :event/document-delete
-         (t2/delete! :model/Document :id (:id document))
+         (document/delete-document! (:id document))
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Updated Document"
@@ -466,7 +468,7 @@
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-create (:id comment)))))
        (testing :event/comment-update
-         (t2/update! :model/Comment :id (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+         (comment/update-comment! (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
          (is (=? {:model_id (:id comment)
                   :user_id (mt/user->id :rasta)
                   :details {}
@@ -474,13 +476,11 @@
                   :model "Comment"}
                  (mt/latest-audit-log-entry :comment-update (:id comment)))))
        (testing :event/comment-delete
-         (t2/delete! :model/Comment :id (:id comment))
+         (comment/soft-delete-comment! (:id comment))
          (is (= {:model_id (:id comment)
                  :user_id (mt/user->id :rasta)
-                 :details {:target_type "document"
-                           :target_id doc-id
-                           :child_target_id nil
-                           :parent_comment_id nil}
+                 :details {:previous {}
+                           :new      {}}
                  :topic :comment-delete
                  :model "Comment"}
                 (mt/latest-audit-log-entry :comment-delete (:id comment)))))))))

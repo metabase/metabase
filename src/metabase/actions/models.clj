@@ -45,17 +45,12 @@
 (doto :model/Action
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/timestamped?))
 
 (doseq [model action-sub-models]
   (derive model :metabase/model))
 
-(doto :model/QueryAction
-  (derive :search/indexed)
-  (derive :hook/events))
-
-(derive :model/ImplicitAction :hook/events)
+(derive :model/QueryAction :search/indexed)
 
 (methodical/defmethod t2/primary-keys :model/QueryAction    [_model] [:action_id])
 (methodical/defmethod t2/primary-keys :model/ImplicitAction [_model] [:action_id])
@@ -663,24 +658,57 @@
     (or (get collections collection_id)
         (collection/content-parent collection_id))))
 
-(mu/defn create-actions! :- [:sequential (ms/InstanceOf :model/Action)]
-  "Insert the Action `rows`, without their QueryAction or ImplicitAction, and return the inserted instances, in one
-  transaction and one batch of events. An Action of a model goes in the model's Collection, and one that does not
-  fit its model or its Collection throws."
+(defn- publishing!
+  "The result of `f`, a function of no arguments that returns a map with the events of its writes as `:events`, called in
+  a transaction in which the events are published, as the last step."
+  [f]
+  (t2/with-transaction [_conn]
+    (let [result (f)]
+      (events/publish-lifecycle! (:events result))
+      result)))
+
+(defn- update-event
+  "The update event `topic` of the rows that the changes in `rows` change, `stored` holding the rows as they were by
+  `id-key`, in their order."
+  [topic id-key stored rows]
+  (let [pairs (into []
+                    (keep (fn [row]
+                            (when-let [previous (get stored (get row id-key))]
+                              (let [object (events/updated-row previous (dissoc row id-key))]
+                                (when (not= (into {} previous) (into {} object))
+                                  [previous object])))))
+                    rows)]
+    (events/updated topic (mapv first pairs) (mapv second pairs))))
+
+(def ^:private no-events {:events []})
+
+(mu/defn create-actions* :- [:map {:closed true}
+                             [:actions [:sequential (ms/InstanceOf :model/Action)]]
+                             [:events events/Events]]
+  "Insert the Action `rows`, without their QueryAction or ImplicitAction, returning the inserted instances as `:actions`
+  and the events of the write as `:events`, which the caller publishes. An Action of a model goes in the model's
+  Collection, and one that does not fit its model or its Collection throws."
   [rows :- [:sequential ::actions.schema/action.create]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
-      (let [cards       (placements-of rows)
-            rows        (mapv #(cond-> % (:model_id %) (set-model-collection (get cards (:model_id %)))) rows)
-            collections (collections-of rows)]
-        (doseq [{model-id :model_id, :as row} rows
-                :let                          [collection (collection-of collections row)]]
-          (when (and (implicit? row) model-id)
-            (check-model-card (get cards model-id)))
-          (check-collection-content row collection)
-          (check-data-app-action row (collection-namespace collection)))
-        (vec (actions.db/insert-actions! rows))))))
+    {:actions [] :events []}
+    (let [cards       (placements-of rows)
+          rows        (mapv #(cond-> % (:model_id %) (set-model-collection (get cards (:model_id %)))) rows)
+          collections (collections-of rows)]
+      (doseq [{model-id :model_id, :as row} rows
+              :let                          [collection (collection-of collections row)]]
+        (when (and (implicit? row) model-id)
+          (check-model-card (get cards model-id)))
+        (check-collection-content row collection)
+        (check-data-app-action row (collection-namespace collection)))
+      (let [actions (vec (actions.db/insert-actions! rows))]
+        {:actions actions
+         :events  [(events/created :event/action-create actions)]}))))
+
+(mu/defn create-actions! :- [:sequential (ms/InstanceOf :model/Action)]
+  "Insert the Action `rows` as [[create-actions*]] does, in one transaction, publishing the events of the write, and
+  return the inserted instances."
+  [rows :- [:sequential ::actions.schema/action.create]]
+  (:actions (publishing! #(create-actions* rows))))
 
 (defn- changes-of
   "The columns of `row`, an update of the stored Action `stored`, that differ from it."
@@ -725,37 +753,63 @@
     (and (contains? changes :archived) (not (contains? row :archived_directly)))
     (assoc :archived_directly (boolean (and (:archived action) (not (:archived collection)))))))
 
-(mu/defn update-actions! :- [:sequential ::actions.schema/action.row]
+(mu/defn update-actions* :- [:map {:closed true}
+                             [:rows   [:sequential ::actions.schema/action.row]]
+                             [:events events/Events]]
   "Apply the changes in each of `rows`, the id of an Action and the Action columns to change, with one statement per
-  distinct set of changes, in one transaction and one batch of events. A change that does not fit the model or the
-  Collection of its Action throws, and archiving an Action on its own marks it so. Returns `rows`."
+  distinct set of changes, returning `rows` and the events of the write as `:events`, which the caller publishes. A
+  change that does not fit the model or the Collection of its Action throws, and archiving an Action on its own marks
+  it so."
   [rows :- [:sequential ::actions.schema/action.row]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
-      (let [stored      (actions.db/actions-by-id (mapv :id rows))
-            contexts    (mapv #(update-context (get stored (:id %)) %) rows)
-            cards       (placements-of (map :action (filter :placement? contexts)))
-            query-ids   (into [] (comp (filter #(and (implicit? (:action %)) (contains? (:changes %) :type)))
-                                       (keep :model-id)
-                                       (distinct))
-                              contexts)
-            queries     (if (seq query-ids) (actions.db/card-queries query-ids) {})
-            collections (collections-of (map :action (filter :placed? contexts)))]
-        (run! #(check-update % cards queries collections) contexts)
-        (let [rows (mapv #(with-archived-directly % (get collections (:collection_id (:action %)))) contexts)]
-          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-            (when (seq changes)
-              (actions.db/update-actions! (mapv :id group) changes)))
-          rows)))))
+    {:rows [] :events []}
+    (let [stored      (actions.db/actions-by-id (mapv :id rows))
+          contexts    (mapv #(update-context (get stored (:id %)) %) rows)
+          cards       (placements-of (map :action (filter :placement? contexts)))
+          query-ids   (into [] (comp (filter #(and (implicit? (:action %)) (contains? (:changes %) :type)))
+                                     (keep :model-id)
+                                     (distinct))
+                            contexts)
+          queries     (if (seq query-ids) (actions.db/card-queries query-ids) {})
+          collections (collections-of (map :action (filter :placed? contexts)))]
+      (run! #(check-update % cards queries collections) contexts)
+      (let [rows (mapv #(with-archived-directly % (get collections (:collection_id (:action %)))) contexts)]
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (when (seq changes)
+            (actions.db/update-actions! (mapv :id group) changes)))
+        {:rows   rows
+         :events [(update-event :event/action-update :id stored rows)]}))))
+
+(mu/defn update-actions! :- [:sequential ::actions.schema/action.row]
+  "Apply the changes in each of `rows` as [[update-actions*]] does, in one transaction, publishing the events of the
+  write with `context`. Returns `rows`."
+  ([rows :- [:sequential ::actions.schema/action.row]]
+   (update-actions! rows nil))
+  ([rows    :- [:sequential ::actions.schema/action.row]
+    context :- [:maybe :metabase.events.schema/context]]
+   (t2/with-transaction [_conn]
+     (let [result (update-actions* rows)]
+       (events/publish-lifecycle! (:events result) {:context context})
+       (:rows result)))))
+
+(mu/defn delete-actions* :- [:map {:closed true} [:events events/Events]]
+  "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, returning the events of the write
+  as `:events`, which the caller publishes."
+  [ids :- [:sequential ::lib.schema.id/action]]
+  (if (empty? ids)
+    no-events
+    (let [rows  (vec (vals (actions.db/actions-by-id (vec ids))))
+          event (events/deleted :event/action-delete :model/Action rows)]
+      (actions.db/delete-actions! ids)
+      {:events [event]})))
 
 (mu/defn delete-actions!
-  "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, in one transaction and one
-  batch of events."
+  "Delete the Actions with `ids`, and their QueryActions and ImplicitActions with them, in one transaction, publishing
+  the events of the write."
   [ids :- [:sequential ::lib.schema.id/action]]
   (when (seq ids)
-    (events/with-batched-events
-      (actions.db/delete-actions! ids))))
+    (publishing! #(delete-actions* ids))
+    nil))
 
 (defn- check-detail-types
   "Throws unless each of the Actions with `action-ids` is of `action-type`, and returns a map of id to Action."
@@ -765,104 +819,167 @@
       (check-details-type (get actions action-id) action-type))
     actions))
 
-(mu/defn create-query-actions! :- [:sequential (ms/InstanceOf :model/QueryAction)]
-  "Insert the QueryAction `rows`, the details of Actions that are query actions, and return the inserted instances,
-  each with the database its query names, in one transaction and one batch of events."
+(mu/defn create-query-actions* :- [:map {:closed true}
+                                   [:query-actions [:sequential (ms/InstanceOf :model/QueryAction)]]
+                                   [:events events/Events]]
+  "Insert the QueryAction `rows`, the details of Actions that are query actions, returning the inserted instances,
+  each with the database its query names, as `:query-actions` and the events of the write as `:events`, which the
+  caller publishes."
   [rows :- [:sequential ::actions.schema/query-action.create]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
+    {:query-actions [] :events []}
+    (do
       (check-detail-types (map :action_id rows) :query)
-      (vec (actions.db/insert-query-actions! rows)))))
+      (let [query-actions (vec (actions.db/insert-query-actions! rows))]
+        {:query-actions query-actions
+         :events        [(events/created :event/query-action-create query-actions)]}))))
 
-(mu/defn update-query-actions! :- [:sequential ::actions.schema/query-action.row]
+(mu/defn create-query-actions! :- [:sequential (ms/InstanceOf :model/QueryAction)]
+  "Insert the QueryAction `rows` as [[create-query-actions*]] does, in one transaction, publishing the events of the
+  write."
+  [rows :- [:sequential ::actions.schema/query-action.create]]
+  (:query-actions (publishing! #(create-query-actions* rows))))
+
+(mu/defn update-query-actions* :- [:map {:closed true}
+                                   [:rows   [:sequential ::actions.schema/query-action.row]]
+                                   [:events events/Events]]
   "Apply the changes in each of `rows`, the id of a query Action and the columns to change, with one statement per
-  distinct set of changes, in one transaction and one batch of events. Returns `rows`."
+  distinct set of changes, returning `rows` and the events of the write as `:events`, which the caller publishes."
   [rows :- [:sequential ::actions.schema/query-action.row]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
+    {:rows [] :events []}
+    (let [stored (m/index-by :action_id (actions.db/query-actions (mapv :action_id rows)))]
       (doseq [[changes group] (group-by #(dissoc % :action_id) rows)]
         (when (seq changes)
           (actions.db/update-query-actions! (mapv :action_id group) changes)))
-      (vec rows))))
+      {:rows   (vec rows)
+       :events [(update-event :event/query-action-update :action_id stored rows)]})))
+
+(mu/defn update-query-actions! :- [:sequential ::actions.schema/query-action.row]
+  "Apply the changes in each of `rows` as [[update-query-actions*]] does, in one transaction, publishing the events of
+  the write. Returns `rows`."
+  [rows :- [:sequential ::actions.schema/query-action.row]]
+  (:rows (publishing! #(update-query-actions* rows))))
+
+(mu/defn delete-query-actions* :- [:map {:closed true} [:events events/Events]]
+  "Delete the QueryActions of the Actions with `action-ids`, returning the events of the write as `:events`, which the
+  caller publishes."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (if (empty? action-ids)
+    no-events
+    (let [rows  (vec (actions.db/query-actions (vec action-ids)))
+          event (events/deleted :event/query-action-delete :model/QueryAction rows)]
+      (actions.db/delete-query-actions! action-ids)
+      {:events [event]})))
 
 (mu/defn delete-query-actions!
-  "Delete the QueryActions of the Actions with `action-ids`, in one statement."
+  "Delete the QueryActions of the Actions with `action-ids`, in one statement, publishing the events of the write."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (when (seq action-ids)
-    (events/with-batched-events
-      (actions.db/delete-query-actions! action-ids))))
+    (publishing! #(delete-query-actions* action-ids))
+    nil))
 
-(mu/defn create-implicit-actions! :- [:sequential (ms/InstanceOf :model/ImplicitAction)]
-  "Insert the ImplicitAction `rows`, the details of Actions that are implicit actions, and return the inserted
-  instances, in one transaction and one batch of events. An Action of a model takes no Table and an Action without a
-  model needs one."
+(mu/defn create-implicit-actions* :- [:map {:closed true}
+                                      [:implicit-actions [:sequential (ms/InstanceOf :model/ImplicitAction)]]
+                                      [:events events/Events]]
+  "Insert the ImplicitAction `rows`, the details of Actions that are implicit actions, returning the inserted instances
+  as `:implicit-actions` and the events of the write as `:events`, which the caller publishes. An Action of a model
+  takes no Table and an Action without a model needs one."
   [rows :- [:sequential ::actions.schema/implicit-action.create]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
+    {:implicit-actions [] :events []}
+    (do
       (let [actions (check-detail-types (map :action_id rows) :implicit)]
         (doseq [row rows]
           (check-implicit-action-table row (get actions (:action_id row)))))
-      (vec (actions.db/insert-implicit-actions! rows)))))
+      (let [implicit-actions (vec (actions.db/insert-implicit-actions! rows))]
+        {:implicit-actions implicit-actions
+         :events           [(events/created :event/implicit-action-create implicit-actions)]}))))
 
-(mu/defn update-implicit-actions! :- [:sequential ::actions.schema/implicit-action.row]
-  "Apply the changes in each of `rows`, the id of an implicit Action and the columns to change, with one statement
-  per distinct set of changes, in one transaction and one batch of events. A Table given to an Action of a model, or
-  missing for an Action without one, throws. Returns `rows`."
+(mu/defn create-implicit-actions! :- [:sequential (ms/InstanceOf :model/ImplicitAction)]
+  "Insert the ImplicitAction `rows` as [[create-implicit-actions*]] does, in one transaction, publishing the events of
+  the write."
+  [rows :- [:sequential ::actions.schema/implicit-action.create]]
+  (:implicit-actions (publishing! #(create-implicit-actions* rows))))
+
+(mu/defn update-implicit-actions* :- [:map {:closed true}
+                                      [:rows   [:sequential ::actions.schema/implicit-action.row]]
+                                      [:events events/Events]]
+  "Apply the changes in each of `rows`, the id of an implicit Action and the columns to change, with one statement per
+  distinct set of changes, returning `rows` and the events of the write as `:events`, which the caller publishes. A
+  Table given to an Action of a model, or missing for an Action without one, throws."
   [rows :- [:sequential ::actions.schema/implicit-action.row]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
-      (let [with-table (filter #(contains? % :table_id) rows)
-            actions    (when (seq with-table)
-                         (actions.db/action-types-and-models (mapv :action_id with-table)))]
-        (doseq [row with-table]
-          (check-implicit-action-table row (get actions (:action_id row)))))
+    {:rows [] :events []}
+    (let [with-table (filter #(contains? % :table_id) rows)
+          actions    (when (seq with-table)
+                       (actions.db/action-types-and-models (mapv :action_id with-table)))
+          stored     (m/index-by :action_id (actions.db/implicit-actions (mapv :action_id rows)))]
+      (doseq [row with-table]
+        (check-implicit-action-table row (get actions (:action_id row))))
       (doseq [[changes group] (group-by #(dissoc % :action_id) rows)]
         (when (seq changes)
           (actions.db/update-implicit-actions! (mapv :action_id group) changes)))
-      (vec rows))))
+      {:rows   (vec rows)
+       :events [(update-event :event/implicit-action-update :action_id stored rows)]})))
+
+(mu/defn update-implicit-actions! :- [:sequential ::actions.schema/implicit-action.row]
+  "Apply the changes in each of `rows` as [[update-implicit-actions*]] does, in one transaction, publishing the events
+  of the write. Returns `rows`."
+  [rows :- [:sequential ::actions.schema/implicit-action.row]]
+  (:rows (publishing! #(update-implicit-actions* rows))))
+
+(mu/defn delete-implicit-actions* :- [:map {:closed true} [:events events/Events]]
+  "Delete the ImplicitActions of the Actions with `action-ids`, returning the events of the write as `:events`, which
+  the caller publishes."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (if (empty? action-ids)
+    no-events
+    (let [rows  (vec (actions.db/implicit-actions (vec action-ids)))
+          event (events/deleted :event/implicit-action-delete :model/ImplicitAction rows)]
+      (actions.db/delete-implicit-actions! action-ids)
+      {:events [event]})))
 
 (mu/defn delete-implicit-actions!
-  "Delete the ImplicitActions of the Actions with `action-ids`, in one statement."
+  "Delete the ImplicitActions of the Actions with `action-ids`, in one statement, publishing the events of the write."
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (when (seq action-ids)
-    (events/with-batched-events
-      (actions.db/delete-implicit-actions! action-ids))))
+    (publishing! #(delete-implicit-actions* action-ids))
+    nil))
 
 (mu/defn create-action! :- ::actions.schema/id
-  "Insert an Action and the QueryAction or ImplicitAction of its type, in one transaction and one batch of events.
-  Returns the action id."
+  "Insert an Action and the QueryAction or ImplicitAction of its type, in one transaction, publishing the events of the
+  writes together. Returns the action id."
   [action-data :- ::actions.schema/action.for-insert]
   (let [action-data (lib/normalize ::actions.schema/action.for-insert action-data)]
-    (events/with-batched-events
-      (let [[action] (create-actions! [(select-keys action-data action-columns)])
-            row      (-> (apply dissoc action-data action-columns)
-                         (assoc :action_id (:id action))
-                         (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
-        (case (:type action)
-          :query    (create-query-actions! [row])
-          :implicit (create-implicit-actions! [row]))
+    (t2/with-transaction [_conn]
+      (let [{[action] :actions, action-events :events} (create-actions* [(select-keys action-data action-columns)])
+            row     (-> (apply dissoc action-data action-columns)
+                        (assoc :action_id (:id action))
+                        (cond-> (= (:type action) :implicit) (dissoc :database_id)))
+            details (case (:type action)
+                      :query    (create-query-actions* [row])
+                      :implicit (create-implicit-actions* [row]))]
+        (events/publish-lifecycle! (into action-events (:events details)))
         (:id action)))))
 
-(defn- update-details!
+(defn- update-details*
   "Write `type-row`, the columns of the QueryAction or ImplicitAction of the Action `id`, replacing the details row when
-  `new-type` differs from the `old-type` of the Action."
+  `new-type` differs from the `old-type` of the Action, returning the events of the writes as `:events`."
   [id type-row new-type old-type]
   (let [type-row (assoc type-row :action_id id)]
     (if (and new-type (not= new-type old-type))
-      (do
-        (case old-type
-          :query    (delete-query-actions! [id])
-          :implicit (delete-implicit-actions! [id]))
-        (case new-type
-          :query    (create-query-actions! [type-row])
-          :implicit (create-implicit-actions! [type-row])))
-      (case old-type
-        :query    (update-query-actions! [type-row])
-        :implicit (update-implicit-actions! [type-row])))))
+      (let [deleted (case old-type
+                      :query    (delete-query-actions* [id])
+                      :implicit (delete-implicit-actions* [id]))
+            created (case new-type
+                      :query    (create-query-actions* [type-row])
+                      :implicit (create-implicit-actions* [type-row]))]
+        {:events (into (:events deleted) (:events created))})
+      (select-keys (case old-type
+                     :query    (update-query-actions* [type-row])
+                     :implicit (update-implicit-actions* [type-row]))
+                   [:events]))))
 
 (defmulti delete-for-archived-actions!
   "Delete the rows of `model` that show the Actions with `action-ids`, which are being archived. The DashboardCard
@@ -880,16 +997,17 @@
         updates (assoc updates :type (or (:type updates) (:type existing-action)))]
     (when (and (contains? updates :model_id) (not= (:model_id updates) (:model_id existing-action)))
       (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
-    (events/with-batched-events
-      (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (update-actions! [(assoc action-row :id id)]))
-      (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
-                                       (= (:type updates) :implicit) (dissoc :database_id)))]
-        (update-details! id type-row (:type updates) (:type existing-action)))
-      (when (and (:archived updates) (not (:archived existing-action)))
-        (t2/resolve-model :model/DashboardCard)
-        (delete-for-archived-actions! :model/DashboardCard [id]))
-      (actions.db/action id))))
+    (t2/with-transaction [_conn]
+      (let [action-events  (when-let [action-row (not-empty (select-keys updates action-columns))]
+                             (:events (update-actions* [(assoc action-row :id id)])))
+            details-events (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
+                                                            (= (:type updates) :implicit) (dissoc :database_id)))]
+                             (:events (update-details* id type-row (:type updates) (:type existing-action))))]
+        (when (and (:archived updates) (not (:archived existing-action)))
+          (t2/resolve-model :model/DashboardCard)
+          (delete-for-archived-actions! :model/DashboardCard [id]))
+        (events/publish-lifecycle! (into (vec action-events) details-events))
+        (actions.db/action id)))))
 
 (mu/defn delete-actions-of-models!
   "Delete the Actions of the model Cards with `model-ids`, in one statement."
@@ -928,27 +1046,39 @@
 
 (mu/defn archive-actions-in-collections!
   "Archive the Actions in the Collections with `collection-ids`, which an archive of their Collection carries, in one
-  statement. They are not archived on their own."
+  statement, publishing their update event. They are not archived on their own."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (when (seq collection-ids)
-    (events/with-batched-events
-      (actions.db/set-archived-in-collections! collection-ids true false))))
+    (t2/with-transaction [_conn]
+      (when-let [rows (not-empty (actions.db/unarchived-actions-in-collections collection-ids))]
+        (actions.db/update-actions! (mapv :id rows) {:archived true :archived_directly false})
+        (events/publish-lifecycle!
+         [(update-event :event/action-update :id (m/index-by :id rows)
+                        (mapv (fn [row] {:id (:id row) :archived true :archived_directly false}) rows))])))))
 
 (mu/defn restore-actions-in-collections!
   "Restore the Actions in the Collections with `collection-ids` that an archive of their Collection carried and whose
-  model, if any, is not archived, in one statement."
+  model, if any, is not archived, in one statement, publishing their update event."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (when (seq collection-ids)
     (when-let [ids (not-empty (actions.db/restorable-action-ids-in-collections collection-ids))]
-      (events/with-batched-events
-        (actions.db/update-actions! ids {:archived false :archived_directly false})))))
+      (t2/with-transaction [_conn]
+        (let [stored (actions.db/actions-by-id (vec ids))]
+          (actions.db/update-actions! ids {:archived false :archived_directly false})
+          (events/publish-lifecycle!
+           [(update-event :event/action-update :id stored
+                          (mapv (fn [id] {:id id :archived false :archived_directly false}) ids))]))))))
 
 (mu/defn delete-actions-in-collections!
-  "Delete the Actions in the Collections with `collection-ids`, in one statement."
+  "Delete the Actions in the Collections with `collection-ids`, in one statement, publishing their delete event."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (when (seq collection-ids)
-    (events/with-batched-events
-      (actions.db/delete-actions-in-collections! collection-ids))))
+    (t2/with-transaction [_conn]
+      (let [rows (actions.db/actions-in-collections collection-ids)]
+        (when (seq rows)
+          (let [event (events/deleted :event/action-delete :model/Action rows)]
+            (actions.db/delete-actions-in-collections! collection-ids)
+            (events/publish-lifecycle! [event])))))))
 
 (defmethod collection/archive-in-collections! :model/Action
   [_model collection-ids]
@@ -963,12 +1093,6 @@
   (delete-actions-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Action
-  [_model]
-  {:create :event/action-create
-   :update :event/action-update
-   :delete :event/action-delete})
 
 (defmethod app-db-copy/spec :model/Action [_model]
   {:skip? false})
@@ -1036,12 +1160,6 @@
 (defmethod eid-translation/spec :model/Action [_model]
   {:names [:action]})
 
-(defmethod events/spec :model/QueryAction
-  [_model]
-  {:create :event/query-action-create
-   :update :event/query-action-update
-   :delete :event/query-action-delete})
-
 (defmethod app-db-copy/spec :model/QueryAction [_model]
   {:skip?    false
    :sequence false})
@@ -1065,12 +1183,6 @@
 (defmethod dependencies/spec :model/QueryAction [_model]
   {:part-of      {:type :action :key :action_id}
    :part-columns #{:dataset_query}})
-
-(defmethod events/spec :model/ImplicitAction
-  [_model]
-  {:create :event/implicit-action-create
-   :update :event/implicit-action-update
-   :delete :event/implicit-action-delete})
 
 (defmethod app-db-copy/spec :model/ImplicitAction [_model]
   {:skip?    false

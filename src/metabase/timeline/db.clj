@@ -68,25 +68,26 @@
    changes :- ::timeline.schema/timeline.update]
   (t2/update! :model/Timeline :id [:in ids] changes))
 
-(mu/defn set-archived-in-collections!
-  "Set `archived` and `archived_directly` of the Timelines in the Collections with `collection-ids` that are not yet
-  in the `archived` state, returning the number updated."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]
-   archived       :- :boolean
-   directly       :- :boolean]
-  (t2/update! :model/Timeline :collection_id [:in collection-ids] :archived (not archived)
-              {:archived archived :archived_directly directly}))
-
-(mu/defn restorable-timeline-ids-in-collections
-  "The ids of the Timelines in the Collections with `collection-ids` that were archived along with them."
+(mu/defn unarchived-timelines-in-collections
+  "The unarchived Timelines in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pks-vec :model/Timeline :collection_id [:in collection-ids] :archived true :archived_directly false))
+  (t2/select :model/Timeline :collection_id [:in collection-ids] :archived false))
 
-(mu/defn set-events-archived!
-  "Set the archived flag of the TimelineEvents of the Timelines with `timeline-ids`, returning the number updated."
+(mu/defn restorable-timelines-in-collections
+  "The Timelines in the Collections with `collection-ids` that were archived along with them."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Timeline :collection_id [:in collection-ids] :archived true :archived_directly false))
+
+(mu/defn timelines-in-collections
+  "The Timelines in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Timeline :collection_id [:in collection-ids]))
+
+(mu/defn events-of-timelines-by-archived
+  "The TimelineEvents of the Timelines with `timeline-ids` whose archived flag is `archived`."
   [timeline-ids :- [:sequential ms/PositiveInt]
    archived     :- :boolean]
-  (t2/update! :model/TimelineEvent :timeline_id [:in timeline-ids] {:archived archived}))
+  (t2/select :model/TimelineEvent :timeline_id [:in timeline-ids] :archived archived))
 
 (mu/defn delete-timelines!
   "Delete the Timelines with `ids`, returning the number deleted."
@@ -144,6 +145,11 @@
                             [:<= (h2x/->date start) (h2x/->date :timestamp)])
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
+
+(mu/defn timeline-events-by-id
+  "A map of id to TimelineEvent for the TimelineEvents with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pk->fn identity :model/TimelineEvent :id [:in ids]))
 
 (mu/defn update-timeline-events!
   "Apply `changes` to the TimelineEvents with `ids`, returning the number updated."

@@ -235,4 +235,6 @@
           large (subtree-statement-counts! 6)]
       (doseq [k [:archive :restore :move :delete]]
         (testing (name k)
-          (is (= (get small k) (get large k))))))))
+          (is (= (get small k) (get large k)))))
+      (testing "a Timeline that an archive carries is read once for its update event"
+        (is (= {:archive 59 :restore 55 :move 27 :delete 47} small))))))

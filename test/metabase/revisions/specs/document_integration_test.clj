@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.test-util :as revisions.tu]
@@ -63,7 +64,7 @@
       (let [updated-document {:name "Updated Document"
                               :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}}]
         (mt/with-current-user (mt/user->id :rasta)
-          (t2/update! :model/Document :id doc-id updated-document))
+          (document/update-document! doc-id updated-document))
         (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id :user_id (mt/user->id :rasta))]
           (is revision "Revision should be created for update")
           (is (= "Document" (:model revision)))
@@ -203,7 +204,7 @@
                 (is revision)
                 (is (:is_creation revision))))
             (testing "Update event triggers revision creation"
-              (t2/update! :model/Document :id doc-id {:name "Updated Event Document"})
+              (document/update-document! doc-id {:name "Updated Event Document"})
               (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]

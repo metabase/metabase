@@ -334,8 +334,7 @@
 
 (doto :model/Collection
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
@@ -2457,7 +2456,7 @@
   [rows]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [rows      (mapv remote-synced-type->flag rows)
             located   (filterv #(contains? % :location) rows)
             _         (run! check-valid-location located)
@@ -2466,11 +2465,12 @@
         (check-single-library-rows rows)
         (check-owners-not-api-keys rows)
         (u/prog1 (insert-in-order! (mapv #(before-insert-row % ancestors) rows))
-          (copy-parent-permissions! <>))))))
+          (copy-parent-permissions! <>)
+          (events/publish-lifecycle! [(events/created :event/collection-create <>)]))))))
 
 (mu/defn create-collections! :- [:sequential (ms/InstanceOf :model/Collection)]
   "Creates a Collection from each of `rows` and returns the new Collections in order, after checking that each can be
-  where it is put. A new Collection gets the permissions of its parent, unless it is in the Trash or a Personal
+  where it is put, publishing their create event. A new Collection gets the permissions of its parent, unless it is in the Trash or a Personal
   Collection, and the checks and the reads they take do not grow with the number of rows."
   [rows :- [:sequential ::collections.schema/collection.create]]
   (create-collections* rows))
@@ -2627,10 +2627,19 @@
          entries)
    (mapv (comp :id :before) entries)))
 
+(defn- publish-carried-updates!
+  "Publish the update event of the Collections `rows`, as the `changes` that the archive or restore of the Collection
+  `root-id` made to them."
+  [rows changes root-id]
+  (let [pairs (mapv (fn [row] [row (events/updated-row row changes)]) rows)]
+    (events/publish-lifecycle! [(events/updated :event/collection-update (mapv first pairs) (mapv second pairs))]
+                               {:context {:archived-with [:model/Collection root-id]}})))
+
 (defn- archive-subtrees!
   "Archives the Collections under the update `entries`, which archive their Collection on its own, with the archive
-  operation of the Collection above them, and what is in all of them."
-  [entries columns-by-id]
+  operation of the Collection above them, and what is in all of them, publishing the update event of those Collections
+  as carried by the archive of `carrier-id`."
+  [entries columns-by-id carrier-id]
   (let [roots     (mapv (fn [entry]
                           (assoc entry :operation-id (:archive_operation_id (get columns-by-id (:id (:before entry))))))
                         entries)
@@ -2642,23 +2651,38 @@
                          first))
         by-root   (group-by (comp :id :before nearest) below)]
     (doseq [[root-id descendants] by-root
-            :let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))]]
-      (collections.db/update-collections! (mapv :id descendants)
-                                          {:archived true, :archive_operation_id operation-id, :archived_directly false}))
+            :let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))
+                  changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]]
+      (collections.db/update-collections! (mapv :id descendants) changes)
+      (publish-carried-updates! descendants changes carrier-id))
     (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below))))
 
 (defn- restore-subtrees!
   "Restores the Collections under the update `entries`, which restore their Collection, that the archive of their
-  Collection took down, and what is in all of them."
-  [entries]
+  Collection took down, and what is in all of them, publishing the update event of those Collections as carried by the
+  restore of `carrier-id`."
+  [entries carrier-id]
   (let [below (collections.db/restorable-collections-below
                (into [] (keep (fn [{:keys [before]}]
                                 (when-let [operation-id (:archive_operation_id before)]
                                   [(children-location before) operation-id])))
                      entries))]
     (when (seq below)
-      (collections.db/update-collections! (mapv :id below) {:archived false, :archive_operation_id nil}))
+      (let [changes {:archived false, :archive_operation_id nil}]
+        (collections.db/update-collections! (mapv :id below) changes)
+        (publish-carried-updates! below changes carrier-id)))
     (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below))))
+
+(defn- update-event
+  "The update event of the Collections of `entries`, update entries, as the `columns` written for each leave them."
+  [entries columns]
+  (let [pairs (into []
+                    (keep (fn [[{:keys [before]} cols]]
+                            (let [object (events/updated-row before cols)]
+                              (when (not= (into {} before) (into {} object))
+                                [before object]))))
+                    (map vector entries columns))]
+    (events/updated :event/collection-update (mapv first pairs) (mapv second pairs))))
 
 (defn- update-collections*
   "[[update-collections!]] without checking `updates` against their schema."
@@ -2694,15 +2718,17 @@
                                                (not (contains? (:row %) :archive_operation_id))))
                                      entries)]
               (when-let [roots (seq (concat archiving restoring))]
-                (events/with-event-context {:archived-with [:model/Collection (:id (:before (first roots)))]}
-                  (when (seq archiving)
-                    (archive-subtrees! archiving by-id))
-                  (when (seq restoring)
-                    (restore-subtrees! restoring)))))
+                (let [root-id (:id (:before (first roots)))]
+                  (events/with-event-context {:archived-with [:model/Collection root-id]}
+                    (when (seq archiving)
+                      (archive-subtrees! archiving by-id root-id))
+                    (when (seq restoring)
+                      (restore-subtrees! restoring root-id))))))
             (when (seq moved)
               (move-descendants! moved by-id)
               (doseq [{:keys [before]} moved]
-                (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*}))))
+                (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
+            (events/publish-lifecycle! [(update-event entries columns)]))
           updates)))))
 
 (mu/defn update-collections! :- [:sequential ::collections.schema/collection.update-row]
@@ -2739,7 +2765,7 @@
 (mu/defn delete-collections! :- :nil
   "Deletes the Collections with `collection-ids`, the Collections under them, what is in all of them and their
   permissions, each kind with one call, so the statements do not grow with the number of Collections or what is in
-  them."
+  them, publishing the delete event of the Collections."
   [collection-ids :- [:sequential ms/PositiveInt]]
   (when (seq collection-ids)
     (events/with-batched-events
@@ -2751,16 +2777,13 @@
                           (collections.db/collections-below (mapv children-location (vals stored))))]
             (delete-followers! ids)
             (permissions/delete-permissions-of-objects! (permission-objects ids))
-            (collections.db/delete-collections! (vec ids)))))))
+            (let [event (events/deleted :event/collection-delete :model/Collection
+                                        (vec (vals (collections.db/collections-by-id (vec ids)))))]
+              (collections.db/delete-collections! (vec ids))
+              (events/publish-lifecycle! [event])))))))
   nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Collection
-  [_model]
-  {:create :event/collection-create
-   :update :event/collection-update
-   :delete :event/collection-delete})
 
 (defmethod app-db-copy/spec :model/Collection [_model]
   {:skip? false})

@@ -290,19 +290,19 @@
     []))
 
 (mu/defn unarchived-collections-below
-  "The ID and location of the unarchived Collections under any of `children-locations`, those of their parents."
+  "The unarchived Collections under any of `children-locations`, those of their parents."
   [children-locations :- [:sequential :string]]
   (if (seq children-locations)
-    (t2/select [:model/Collection :id :location]
+    (t2/select :model/Collection
                {:where [:and [:= :archived false] (into [:or] (map location-below) children-locations)]})
     []))
 
 (mu/defn restorable-collections-below
-  "The ID and location of the archived Collections of the archive operation `operation-id` under `children-location`,
-  for each `[children-location operation-id]` of `locations+operations`."
+  "The archived Collections of the archive operation `operation-id` under `children-location`, for each
+  `[children-location operation-id]` of `locations+operations`."
   [locations+operations :- [:sequential [:tuple :string :string]]]
   (if (seq locations+operations)
-    (t2/select [:model/Collection :id :location :archive_operation_id]
+    (t2/select :model/Collection
                {:where [:and
                         [:= :archived true]
                         (into [:or]

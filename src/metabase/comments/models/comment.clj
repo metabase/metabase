@@ -11,6 +11,7 @@
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -21,7 +22,6 @@
 
 (doto :model/Comment
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
 
 ;; NOTE: the `content_html` column is deprecated and no longer written to.
@@ -238,28 +238,38 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-comment! :- (ms/InstanceOf :model/Comment)
-  "Insert the Comment `row` and return the inserted instance."
+  "Insert the Comment `row` and return the inserted instance, publishing its create event."
   [row :- ::comments.schema/comment.create]
-  (comments.db/insert-comment! row))
+  (t2/with-transaction [_conn]
+    (u/prog1 (comments.db/insert-comment! row)
+      (events/publish-lifecycle! [(events/created :event/comment-create [<>])]))))
+
+(defn- publish-update!
+  "Publish the update event of the Comment `previous`, as the stored row `object` leaves it, when it differs."
+  [previous object]
+  (when (and previous (not= (into {} previous) (into {} object)))
+    (events/publish-lifecycle! [(events/updated :event/comment-update [previous] [object])])))
 
 (mu/defn update-comment! :- :int
-  "Apply `changes` to the Comment with `id`, returning the number updated."
+  "Apply `changes` to the Comment with `id`, returning the number updated, publishing its update event."
   [id      :- ms/PositiveInt
    changes :- ::comments.schema/comment.update]
-  (comments.db/update-comment! id changes))
+  (t2/with-transaction [_conn]
+    (let [previous (comments.db/comment-by-id id)]
+      (u/prog1 (comments.db/update-comment! id changes)
+        (when previous
+          (publish-update! previous (events/updated-row previous changes)))))))
 
 (mu/defn soft-delete-comment! :- :int
-  "Mark the Comment with `id` deleted now, returning the number updated."
+  "Mark the Comment with `id` deleted now, returning the number updated, publishing its update event."
   [id :- ms/PositiveInt]
-  (comments.db/soft-delete-comment! id))
+  (t2/with-transaction [_conn]
+    (let [previous (comments.db/comment-by-id id)]
+      (u/prog1 (comments.db/soft-delete-comment! id)
+        (when previous
+          (publish-update! previous (comments.db/comment-by-id id)))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Comment
-  [_model]
-  {:create :event/comment-create
-   :update :event/comment-update
-   :delete :event/comment-delete})
 
 (defmethod app-db-copy/spec :model/Comment [_model]
   {:skip? false})
