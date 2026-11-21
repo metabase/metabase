@@ -1,12 +1,11 @@
 (ns metabase-enterprise.data-testing.security-repros-test
-  "Repros: data tests send author SQL to the warehouse without the statement checks of the query path.
+  "Data tests send the warehouse only single SELECTs that pass the statement check, and refuse impersonated users.
 
   No test opens a warehouse connection. Each runs against a Database row with the `:postgres` engine whose details
   point at a closed port, and replaces three driver methods with a recorder: `driver/do-with-test-connection` calls its
   body with a `java.sql.Connection` that implements no method, and `driver/execute-on-connection!` and
   `driver/query-on-connection` record the SQL they are given and return a stand-in result. The QP control replaces
-  `driver/execute-reducible-query` the same way. Each test asserts the safe behavior, so it fails while the defect
-  exists, and its failure shows the recorded SQL."
+  `driver/execute-reducible-query` the same way. A failure shows the recorded SQL."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -217,8 +216,8 @@
 
 (def ^:private hidden-set-config-sql
   "An `empty` expectation of the same form as [[hidden-setval-sql]], whose rebuild calls `set_config`. The rewrite of
-  `{{output}}` is itself a rebuild, so the string holds two backslashes: the rewrite leaves one, and the rebuild that
-  the run executes leaves none before the quote."
+  `{{output}}` is itself a rebuild, so the string is written `E'\\\\\\\\'`: the rewrite turns it into `e'\\\\'`, and
+  the rebuild the run executes into `e'\\'`, which Postgres ends one quote later."
   (str "SELECT E'\\\\\\\\' || $q$' || set_config($z$role$z$, $z$postgres$z$, false) --$q$ AS id"
        " FROM {{output}} WHERE 1 = 0"))
 

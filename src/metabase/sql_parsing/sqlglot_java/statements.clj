@@ -310,8 +310,9 @@
             :else                             (recur (inc i))))))))
 
 (defn- pg-token-end
-  "The index after the token that starts at index `i` of `sql`, whose character there is neither whitespace, `;` nor
-  the start of a comment. Nil when the token is a literal, quoted name or dollar quote that does not end."
+  "The index at which to resume scanning after index `i` of `sql`: the end of the word, literal, quoted name or dollar
+  quote that starts at `i`, else `i + 1`. The character at `i` is not whitespace, `;` or the start of a comment. Nil
+  when a literal, quoted name or dollar quote starting at `i` does not end."
   [^String sql i standard-conforming-strings?]
   (let [c (.charAt sql i)]
     (if-let [[word word-end] (looking-at pg-word sql i)]
@@ -381,9 +382,8 @@
                                        (inc stmt-count))))))))
 
 (defn- hidden-by-string-setting?
-  "Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot reads
-  it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a rebuilt
-  E'' literal can run past its end under either setting. Port of `_hidden_by_string_setting`."
+  "Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. Port of
+  `_hidden_by_string_setting`."
   [sql]
   (boolean (some #(> (postgres-statement-count sql %) 1) [true false])))
 

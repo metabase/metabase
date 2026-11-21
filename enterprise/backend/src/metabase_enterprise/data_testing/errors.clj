@@ -14,7 +14,7 @@
   "Every `:error-type` a test run can throw, and the HTTP status it carries.
 
   400 — the test is wrong, and its author can fix it.
-  403 — the current user may not save or run this test.
+  403 — the current user may not create, change or run this test.
   422 — the test is fine; the subject or its database prevents a run here.
   501 — the test asks for something not built yet."
   {;; 400 — authoring

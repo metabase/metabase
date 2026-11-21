@@ -231,8 +231,8 @@
         (throw e)))))
 
 (mu/defn- input-query :- ::data-testing.compile/compiled-query
-  "The query that fills the temp table of `input`. The SQL of an input of SQL is as
-  [[data-testing.validator/ensure-single-select]] returns it."
+  "The query that fills the temp table of `input`. For an input of format `:sql`, its `:query` is what
+  [[data-testing.validator/ensure-single-select]] returns."
   [driver :- :keyword
    input  :- ::data-testing.schema/input]
   (cond-> (data-testing.compile/compile-input driver input)
@@ -310,13 +310,15 @@
           expectations)))
 
 (mu/defn- check-not-impersonated :- :nil
-  "Refuse the current user when their connection to `database` is impersonated. A run executes each statement on one
-  connection, outside the query processor that holds an impersonated user to a single SELECT."
+  "Throw `::data-testing.errors/impersonated-user` when the current user's connection to `database` is impersonated.
+  Throws a 403 when no current user is bound."
   [database :- ::lib.schema.metadata/database]
+  ;; A run executes its statements on a connection of its own, outside the query processor, which checks an
+  ;; impersonated user's native SQL statement by statement.
   (when (perms/impersonation-enforced-for-db? (:id database))
     (throw (data-testing.errors/ex
             ::data-testing.errors/impersonated-user
-            (tru "Data tests can''t be saved or run by a user whose connection is impersonated on this database.")
+            (tru "A user whose connection to this database is impersonated can''t create or run data tests, or change what they test.")
             {}))))
 
 (def definition-keys

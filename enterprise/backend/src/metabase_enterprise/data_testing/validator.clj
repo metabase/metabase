@@ -13,8 +13,8 @@
     could not match), and running it would hit the real table or error at execution. This covers the query under test
     and every expectation that carries the author's own SQL.
 
-  [[ensure-single-select]] is the statement check that every SQL an author wrote passes before a run executes it, and
-  returns the string the run executes.
+  [[ensure-single-select]] checks each SQL statement a run executes (the query under test, each SQL input and each
+  expectation's SQL) and returns the text the run executes.
 
   [[table-label]] is here too, and is not validation: it is the one way this module renders a table in a message."
   (:require
@@ -164,10 +164,11 @@
     :expectation (tru "expectation {0}" (pr-str x))))
 
 (mu/defn ensure-single-select :- :string
-  "`sql` as the run executes it, when it is one SELECT statement that the read-only statement check passes in
-  `driver`'s dialect: `sql` as SQLGlot rebuilt it. The check refuses a SELECT that writes or locks anywhere in it, such
-  as a data-modifying CTE, `SELECT ... INTO` or `FOR UPDATE`. For a driver with no SQLGlot dialect, the check reads `sql` in SQLGlot's
-  generic dialect, and the run executes `sql` as written.
+  "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect, or, for a driver with
+  no SQLGlot dialect, `sql` as written (checked in SQLGlot's generic dialect). `sql` must be one SELECT that passes the
+  read-only statement check, which refuses anything that writes or locks (a data-modifying CTE, `SELECT ... INTO`,
+  `FOR UPDATE`). With a dialect, the rebuild must pass the check too and rebuild to itself, and on Postgres read as
+  one statement whatever `standard_conforming_strings` is.
 
   Throws `::data-testing.errors/not-a-single-select` when `sql` is not such a statement,
   `::data-testing.errors/unparseable-source` when it does not parse, and `::data-testing.errors/uncheckable-sql` when

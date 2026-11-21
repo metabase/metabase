@@ -2073,9 +2073,7 @@ def _postgres_statement_count(sql: str, standard_conforming_strings: bool) -> in
 
 
 def _hidden_by_string_setting(sql: str) -> bool:
-    """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off. sqlglot
-    reads it as one, lexing as the setting's default (on) does, and writes an E'' literal's backslash undoubled, so a
-    rebuilt E'' literal can run past its end under either setting."""
+    """Whether Postgres reads `sql` as more than one statement with `standard_conforming_strings` on or off."""
     return any(_postgres_statement_count(sql, scs) > 1 for scs in (True, False))
 
 
