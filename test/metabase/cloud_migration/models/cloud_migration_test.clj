@@ -69,8 +69,8 @@
     ;; the docstring of `with-dynamic-fn-redefs`.
     (mt/with-dynamic-fn-redefs [cloud-migration/cluster?     (constantly false)
                                 cloud-migration/set-cloud-migration-progress! (fn [id state n]
-                                                               (swap! progress-calls update state conj n)
-                                                               (orig-set-progress id state n))]
+                                                                                (swap! progress-calls update state conj n)
+                                                                                (orig-set-progress id state n))]
       (http-fake/with-fake-routes-in-isolation (fake-upload-route-handler migration)
         (testing "works"
           (try
