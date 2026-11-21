@@ -141,6 +141,17 @@ describe("ChartTypeOption", () => {
       expect(onOpenSettings).toHaveBeenCalled();
     });
 
+    it("should give the gear button an accessible name (metabase#85003)", () => {
+      setup({
+        visualizationType: "bar",
+        selectedVisualization: "bar",
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Open visualization settings" }),
+      ).toBeInTheDocument();
+    });
+
     it("should not display a gear icon when the type is not selected and the user is hovering over it", async () => {
       setup({
         visualizationType: "bar",
