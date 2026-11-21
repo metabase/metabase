@@ -57,29 +57,102 @@ if (!process.env.CI) {
   );
 }
 
+const BACKGROUND_STATE_FILE = path.resolve(
+  __dirname,
+  "../../target/e2e-backend.json",
+);
+const BACKGROUND_LOG_FILE = path.resolve(
+  __dirname,
+  "../../target/e2e-backend.log",
+);
+
+function spawnJar(jarPath, { stdio }) {
+  if (!fs.existsSync(jarPath)) {
+    console.log("Build the JAR with ./bin/build.sh\n");
+    throw new Error(`JAR ${jarPath} does not exist!`);
+  }
+  process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
+  return spawn("java", ["-jar", jarPath], {
+    env: process.env,
+    stdio,
+    detached: true,
+  });
+}
+
+/** `processOrPid` is a `ChildProcess` of this process, or the PID of a process started by another one. */
+function isRunning(processOrPid) {
+  if (typeof processOrPid !== "number") {
+    return processOrPid.exitCode === null && processOrPid.signalCode === null;
+  }
+  try {
+    process.kill(processOrPid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM";
+  }
+}
+
+function tailOfFile(file, lineCount) {
+  try {
+    return fs
+      .readFileSync(file, "utf8")
+      .split("\n")
+      .slice(-lineCount)
+      .join("\n");
+  } catch (error) {
+    return `(could not read it: ${error.message})`;
+  }
+}
+
 const CypressBackend = {
   server: {
     dbFile: process.env.MB_DB_FILE,
     host: `http://localhost:${process.env.MB_JETTY_PORT}`,
   },
   async runFromJar(jarPath = "target/uberjar/metabase.jar") {
-    if (!fs.existsSync(jarPath)) {
-      console.log("Build the JAR with ./bin/build.sh\n");
-      throw new Error(`JAR ${jarPath} does not exist!`);
-    }
     if (!this.server.process) {
-      process.env.JDK_JAVA_OPTIONS = getJvmOptsFromDepsEdn();
-      this.server.process = spawn("java", ["-jar", jarPath], {
-        env: process.env,
+      this.server.process = spawnJar(jarPath, {
         stdio: process.env.CI ? "ignore" : "inherit",
-        detached: true,
       });
-      await waitUntilReady(this.server);
+      const child = this.server.process;
+      await waitUntilReady(this.server, { isAlive: () => isRunning(child) });
       if (process.env.CI) {
         this.server.process.unref(); // detach console
       }
     }
   },
+
+  /**
+   * Start the JAR in the background and return without waiting for it, so CI can prepare the rest of the job while
+   * Metabase starts. Wait for it with `waitForBackgroundJar`, which can run in another process: the backend's PID
+   * and address go to `BACKGROUND_STATE_FILE`, and its output to `BACKGROUND_LOG_FILE`.
+   */
+  startJarInBackground(jarPath = "target/uberjar/metabase.jar") {
+    const log = fs.openSync(BACKGROUND_LOG_FILE, "a");
+    const child = spawnJar(jarPath, { stdio: ["ignore", log, log] });
+    child.unref();
+    fs.writeFileSync(
+      BACKGROUND_STATE_FILE,
+      JSON.stringify({ pid: child.pid, ...this.server }),
+    );
+    console.log(
+      `Started backend in the background (pid=${child.pid}, host=${this.server.host}, log=${BACKGROUND_LOG_FILE})`,
+    );
+  },
+
+  async waitForBackgroundJar() {
+    const { pid, ...server } = JSON.parse(
+      fs.readFileSync(BACKGROUND_STATE_FILE, "utf8"),
+    );
+    try {
+      await waitUntilReady(server, { isAlive: () => isRunning(pid) });
+    } catch (error) {
+      console.log(`\nLast lines of ${BACKGROUND_LOG_FILE}:`);
+      console.log(tailOfFile(BACKGROUND_LOG_FILE, 100));
+      throw error;
+    }
+  },
+
   async runFromSource() {
     if (!this.server.process) {
       const edition = process.env.MB_EDITION || "ee";
