@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-testing.test-util
   "Helpers shared by the data-testing tests."
   (:require
+   [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -80,6 +81,13 @@
               :schema   "PUBLIC"
               :name     (str (u/upper-case-en (name table)) "_SUMMARY")
               :database (mt/id)}}))
+
+(defn run-as-admin!
+  "Runs `saved-test` of `subject`, a subject of `subject-type`, as an admin. A run checks whether the current user's
+  connection is impersonated, so it needs a current user, as every API call has."
+  [subject-type subject saved-test]
+  (mt/with-test-user :crowberto
+    (data-testing.runner/run-test! subject-type subject saved-test)))
 
 (defn refusal-type
   "The `:error-type` of the typed refusal `thunk` throws, or nil when it does not throw. Rethrows any other exception."

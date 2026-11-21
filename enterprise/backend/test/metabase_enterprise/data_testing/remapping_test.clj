@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.compile :as data-testing.compile]
-   [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -343,8 +343,7 @@
             ;; lower case. Refusing the run is a fine answer. Reporting :failed is not — it means
             ;; the fixture was ignored and the expectation was measured against real rows.
             (let [outcome (try
-                            (mt/with-current-user (mt/user->id :crowberto)
-                              (data-testing.runner/run-test! :transform transform transform-test))
+                            (data-testing.test-util/run-as-admin! :transform transform transform-test)
                             (catch Exception e
                               {:refused (ex-message e)}))]
               (is (not= {:status :failed} outcome)
@@ -371,6 +370,5 @@
                         :expectations [{:type :empty
                                         :name "the output holds only the fixture row"
                                         :sql  (str "SELECT * FROM " schema "." target " WHERE id <> -1")}]}]
-          (is (= :passed (:status (mt/with-current-user (mt/user->id :crowberto)
-                                    (data-testing.runner/run-test! :transform transform transform-test)))))
+          (is (= :passed (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
           (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:schema schema :name target}))))))))

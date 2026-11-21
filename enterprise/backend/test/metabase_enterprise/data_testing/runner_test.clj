@@ -4,7 +4,9 @@
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase-enterprise.data-testing.validator :as data-testing.validator]
    [metabase.api.common :as api]
+   [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -37,13 +39,6 @@
                              :database (mt/id)}}]
       (f schema table transform))))
 
-(defn- run-as-admin!
-  "Run `transform-test` of `transform` as an admin. A run asks whether the current user is impersonated, so it needs a
-  current user, as every API call has."
-  [transform transform-test]
-  (mt/with-current-user (mt/user->id :crowberto)
-    (data-testing.runner/run-test! :transform transform transform-test)))
-
 (defn- run-test!
   "Run a transform test over `transform` with one SQL input standing in for `schema`.`table`."
   [schema table transform input-sql expectations]
@@ -53,7 +48,7 @@
                                   :format :sql
                                   :sql    input-sql}]
                   :expectations expectations}]
-    (run-as-admin! transform transform-test)))
+    (data-testing.test-util/run-as-admin! :transform transform transform-test)))
 
 (defn- drivers-resolving-bare-tables
   "The test drivers that resolve an unqualified table reference to the schema the test data lives in. Redshift reports
@@ -81,7 +76,7 @@
                                                                                {:name name-name :cast_type text-type}]
                                                                      :rows    rows}]
                                                      :expectations [{:type :empty :name "check" :sql sql}]}]
-                                       (:status (run-as-admin! transform transform-test))))
+                                       (:status (data-testing.test-util/run-as-admin! :transform transform transform-test))))
               two-rows             [{id-name 1 name-name "abc"} {id-name 2 name-name "def"}]]
           (testing "the transform reads the literal rows"
             (is (= :passed (run two-rows (str "SELECT * FROM " output " WHERE id NOT IN (1, 2) OR name IS NULL"))))
@@ -116,6 +111,26 @@
           (check-empty-expectation! schema table transform "input test data" "id <> 1" :passed))
         (testing "fails when the query returns rows"
           (check-empty-expectation! schema table transform "rows returned" "name = 'abc'" :failed))))))
+
+(deftest run-transform-test-input-the-check-rewrites-test
+  (testing "an input whose SQL the statement check rewrites fills its table with the rows that SQL returns"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
+      (with-people-transform
+        (fn [schema table transform]
+          (let [input  "select 1 as id, 'abc' as name -- the fixture row"
+                status (fn [where]
+                         (:status (run-test! schema table transform input
+                                             [{:type :empty :name "check"
+                                               :sql  (str "SELECT * FROM " schema ".people_summary WHERE " where)}])))]
+            (testing "premise: the run executes the check's rewrite, which differs from the input, except on H2"
+              (let [executed (data-testing.validator/ensure-single-select driver/*driver* input nil)]
+                (if (= :h2 driver/*driver*)
+                  (is (= input executed))
+                  (is (not= input executed)))))
+            (testing "the output holds the input's row"
+              (is (= :passed (status "NOT (id = 1 AND name = 'abc')"))))
+            (testing "control: an expectation that the input's row violates fails"
+              (is (= :failed (status "id = 1"))))))))))
 
 (deftest run-transform-test-equals-sql-expectation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
@@ -187,7 +202,7 @@
                                         :name "never reached"
                                         :sql  (str "SELECT * FROM " schema ".people_summary")}]}]
           (is (thrown? ExceptionInfo
-                       (run-as-admin! transform transform-test)))
+                       (data-testing.test-util/run-as-admin! :transform transform transform-test)))
           (let [run (t2/select-one :model/DataTestRun :test_type :transform :test_id transform-test-id)]
             (is (= :error (:status run)))
             (is (some? (:end_time run)))))))))
@@ -277,7 +292,7 @@
                        {:transform_id (:id transform)
                         :inputs       []
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
-          (let [ex (try (run-as-admin! transform transform-test)
+          (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
             (testing "throws"
@@ -309,7 +324,7 @@
                         :inputs       [{:table {:schema oschema :name orders} :format :sql
                                         :sql "SELECT 1 AS id, 1 AS user_id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " oschema ".order_owners")}]}]
-          (let [ex (try (run-as-admin! transform transform-test)
+          (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
             (is (= ::data-testing.errors/missing-inputs (:error-type (ex-data ex))))
@@ -335,7 +350,7 @@
                                        {:table (table-ref :orders) :format :sql
                                         :sql "SELECT 1 AS id"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
-          (let [ex (try (run-as-admin! transform transform-test)
+          (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
             (is (= ::data-testing.errors/unused-inputs (:error-type (ex-data ex))))
@@ -359,7 +374,7 @@
                         :inputs       [{:table (table-ref :people) :format :sql :sql "SELECT 1 AS id, 'a' AS name"}
                                        {:table (table-ref :people) :format :sql :sql "SELECT 2 AS id, 'b' AS name"}]
                         :expectations [{:type :empty :name "all" :sql (str "SELECT * FROM " schema ".people_summary")}]}]
-          (let [ex (try (run-as-admin! transform transform-test)
+          (let [ex (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                         nil
                         (catch ExceptionInfo e e))]
             (is (= ::data-testing.errors/duplicate-input-table (:error-type (ex-data ex))))
@@ -376,7 +391,7 @@
                           :target {:type "table" :schema "public" :name "parse_test" :database (mt/id)}}
                          :model/TransformTest transform-test
                          {:transform_id (:id transform) :inputs [] :expectations []}]
-            (let [e (try (run-as-admin! transform transform-test)
+            (let [e (try (data-testing.test-util/run-as-admin! :transform transform transform-test)
                          (catch ExceptionInfo e e))]
               (is (= ::data-testing.errors/unparseable-source (:error-type (ex-data e))))
               (testing "and the refusal reads as the parser's own diagnostic, less its internals"
@@ -402,7 +417,7 @@
                         :expectations [{:type :empty :name "only the input row"
                                         :sql (str "SELECT * FROM " schema ".people_qualified WHERE id <> 1")}]}]
           (is (=? {:status :passed}
-                  (run-as-admin! transform transform-test))))))))
+                  (data-testing.test-util/run-as-admin! :transform transform transform-test))))))))
 
 (deftest transform-with-a-repeated-column-name-is-refused-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)

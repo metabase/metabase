@@ -10,14 +10,17 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
+   [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
-   [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -83,10 +86,9 @@
                   :model/CardTest {test-id :id} {:card_id      card-id
                                                  :inputs       [{:table orders :format :sql :sql input-sql}]
                                                  :expectations [{:type :empty :name "check" :sql expectation-sql}]}]
-     (binding [api/*current-user-id* (mt/user->id :crowberto)]
-       (data-testing.runner/run-test! :card
-                                      (t2/select-one :model/Card :id card-id)
-                                      (t2/select-one :model/CardTest :id test-id))))))
+     (data-testing.test-util/run-as-admin! :card
+                                           (t2/select-one :model/Card :id card-id)
+                                           (t2/select-one :model/CardTest :id test-id)))))
 
 (deftest data-test-sends-only-single-statements-to-the-warehouse-test
   (mt/with-premium-features #{:transforms-testing :transforms-basic}
@@ -98,15 +100,19 @@
            (is (= :passed (:status result)) (pr-str result))
            (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id$" %) sent) (pr-str sent))
            (is (= [] (more-than-one-statement sent)))))
-       (testing "input SQL of more than one statement is refused or never sent"
-         (is (= [] (more-than-one-statement
-                    (:sent (with-recorder! #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
-                                                            "SELECT * FROM {{output}} WHERE 1 = 0")))))))
-       (testing "`empty` expectation SQL of more than one statement is refused or never sent"
-         (is (= [] (more-than-one-statement
-                    (:sent (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
-                                                            (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
-                                                                 "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$"))))))))))))
+       (testing "input SQL of more than one statement is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id; COMMIT; DELETE FROM public.orders"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+               (pr-str result))
+           (is (= [] sent))))
+       (testing "`empty` expectation SQL of more than one statement is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id"
+                                                                      (str "SELECT * FROM {{output}} WHERE 1 = 0; COMMIT; "
+                                                                           "DO $$ BEGIN EXECUTE 'DELETE FROM public.orders'; END $$")))]
+           (is (re-find #"^The SQL of expectation \"check\" must be one SELECT statement" (str (:thrown result)))
+               (pr-str result))
+           (is (= [] sent))))))))
 
 (def ^:private escape-sql
   "Native SQL that leaves the impersonated role, then reads."
@@ -230,10 +236,23 @@
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
            (is (= :passed (:status result)) (pr-str result))
            (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id /\* one \*/$" %) sent) (pr-str sent))))
-       (testing "input SQL whose rebuild Postgres reads as more than one statement is refused or never sent"
-         (is (= [] (more-than-one-statement
-                    (:sent (with-recorder! #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-                                                            "SELECT * FROM {{output}} WHERE 1 = 0")))))))
+       (testing "input SQL whose rebuild Postgres reads as more than one statement is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+               (pr-str result))
+           (is (= [] sent))))
+       (testing "a trailing `;` is dropped from the statement sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id;"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (= :passed (:status result)) (pr-str result))
+           (is (some #(re-find #"^CREATE TEMPORARY TABLE \S+ AS SELECT 1 AS id$" %) sent) (pr-str sent))))
+       (testing "input SQL calling `nextval`, whose effect survives the run's rollback, is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT nextval('orders_id_seq') AS id"
+                                                                      "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"^The SQL of input public.orders must be one SELECT statement" (str (:thrown result)))
+               (pr-str result))
+           (is (= [] sent))))
        (testing "input SQL whose CTE writes is refused before anything is sent"
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "WITH d AS (DELETE FROM public.orders RETURNING id) SELECT id FROM d"
                                                                       "SELECT * FROM {{output}} WHERE 1 = 0"))]
@@ -248,7 +267,150 @@
          (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT 1 AS id" hidden-set-config-sql))]
            (is (re-find #"must be one SELECT statement" (str (:thrown result))) (pr-str result))
            (is (= [] sent))))
-       (testing "the card's own SQL of more than one statement is refused or never sent"
-         (is (= [] (more-than-one-statement
-                    (:sent (with-recorder! #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
-                                                            "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0")))))))))))
+       (testing "the card's own SQL of more than one statement is refused before anything is sent"
+         (let [{:keys [result sent]} (with-recorder! #(run-card-test! db-id "SELECT id FROM public.orders; COMMIT; SELECT 1"
+                                                                      "SELECT 1 AS id" "SELECT * FROM {{output}} WHERE 1 = 0"))]
+           (is (re-find #"^The SQL of the query under test must be one SELECT statement" (str (:thrown result)))
+               (pr-str result))
+           (is (= [] sent))))))))
+
+(def ^:private output-expectation
+  "An `empty` expectation of a card or segment test, which reads the output as `{{output}}`."
+  {:type "empty" :name "check" :sql "SELECT * FROM {{output}} WHERE 1 = 0"})
+
+(def ^:private transform-expectation
+  "An `empty` expectation of a transform test, which reads the transform's target, `public.orders_summary`."
+  {:type "empty" :name "check" :sql "SELECT * FROM public.orders_summary WHERE 1 = 0"})
+
+(def ^:private sql-input
+  "An input standing in for `public.orders`."
+  {:table orders :format "sql" :sql "SELECT 1 AS id"})
+
+(deftest impersonated-user-cannot-save-or-run-a-test-of-any-subject-test
+  (data-testing.test-util/with-transforms-enabled #{:advanced-permissions :transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (let [mp       (lib-be/application-database-metadata-provider db-id)
+             table-id (t2/select-one-pk :model/Table :db_id db-id)
+             field-id (t2/select-one-pk :model/Field :table_id table-id)]
+         (mt/with-temp [:model/Card          {card-id :id}           {:dataset_query (lib/native-query mp card-sql)}
+                        :model/CardTest      {card-test-id :id}      {:card_id      card-id
+                                                                      :inputs       [sql-input]
+                                                                      :expectations [output-expectation]}
+                        :model/Transform     {transform-id :id}      {:name   "orders summary"
+                                                                      :source {:type :query :query (lib/native-query mp card-sql)}
+                                                                      :target {:type "table" :schema "public" :name "orders_summary"
+                                                                               :database db-id}}
+                        :model/TransformTest {transform-test-id :id} {:transform_id transform-id
+                                                                      :inputs       [sql-input]
+                                                                      :expectations [transform-expectation]}
+                        :model/Segment       {segment-id :id}        {:name       "positive ids"
+                                                                      :table_id   table-id
+                                                                      :definition (lib/filter (lib/query mp (lib.metadata/table mp table-id))
+                                                                                              (lib/> (lib.metadata/field mp field-id) 0))}
+                        :model/SegmentTest   {segment-test-id :id}   {:segment_id   segment-id
+                                                                      :inputs       [sql-input]
+                                                                      :expectations [output-expectation]}]
+           (mt/with-db (t2/select-one :model/Database :id db-id)
+             ;; As in `impersonated-user-cannot-save-or-run-a-data-test-test`, rasta's group is impersonated on the
+             ;; Database, with unrestricted view-data and native query permission; here it may also write transforms.
+             (impersonation.util-test/with-impersonations! {:impersonations [{:db-id db-id :attribute "role_attr"}]
+                                                            :attributes     {"role_attr" "limited_role"}}
+               (perms/set-database-permission! &group db-id :perms/transforms :yes)
+               (mt/with-data-analyst-role! (mt/user->id :rasta)
+                 (let [created  (atom [])
+                       requests [["transform-test" :model/TransformTest
+                                  [[:post "ee/transform-test" {:transform_id transform-id :name "t" :inputs [sql-input]
+                                                               :expectations [transform-expectation]}]
+                                   [:put (str "ee/transform-test/" transform-test-id)
+                                    {:expectations [(assoc transform-expectation :name "changed")]}]
+                                   [:post (str "ee/transform-test/" transform-test-id "/run")]]]
+                                 ["segment-test" :model/SegmentTest
+                                  [[:post "ee/segment-test" {:segment_id segment-id :name "t" :inputs [sql-input]
+                                                             :expectations [output-expectation]}]
+                                   [:put (str "ee/segment-test/" segment-test-id)
+                                    {:expectations [(assoc output-expectation :name "changed")]}]
+                                   [:post (str "ee/segment-test/" segment-test-id "/run")]]]
+                                 ["card-test" :model/CardTest
+                                  [[:put (str "ee/card-test/" card-test-id)
+                                    {:expectations [(assoc output-expectation :name "changed")]}]]]]
+                       ;; Sends the request with the warehouse replaced by a recorder, and keeps the id of a test it
+                       ;; creates, to delete it after.
+                       request! (fn [model user method path body]
+                                  (let [recorded (with-recorder! #(apply mt/user-http-request user method path
+                                                                         (when body [body])))]
+                                    (when-let [id (and (= :post method) (not (str/ends-with? path "/run"))
+                                                       (:id (:result recorded)))]
+                                      (swap! created conj [model id]))
+                                    recorded))]
+                   (try
+                     (doseq [[prefix model prefix-requests] requests
+                             [method path body]             prefix-requests]
+                       (testing (str (u/upper-case-en (name method)) " " path)
+                         (testing "rasta is refused, and nothing reaches the warehouse"
+                           (let [{:keys [result sent roles]} (request! model :rasta method path body)]
+                             (is (= (str prefix ".impersonated-user") (:error-code result)) (pr-str result))
+                             (is (= [] sent))
+                             (is (= [] roles))))
+                         (testing "control: an admin's same request succeeds"
+                           (let [{:keys [result sent]} (request! model :crowberto method path body)]
+                             (if (str/ends-with? path "/run")
+                               (do (is (= "passed" (:status result)) (pr-str result))
+                                   (is (seq sent)))
+                               (is (pos-int? (:id result)) (pr-str result)))))))
+                     (finally
+                       (doseq [[model id] @created]
+                         (t2/delete! model :id id))
+                       (t2/delete! :model/DataTestRun :test_id [:in [card-test-id transform-test-id segment-test-id]])))))))))))))
+
+(deftest data-test-run-with-no-current-user-is-refused-test
+  (mt/with-premium-features #{:transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
+                                                                     (lib-be/application-database-metadata-provider db-id)
+                                                                     card-sql)}
+                      :model/CardTest {test-id :id} {:card_id      card-id
+                                                     :inputs       [sql-input]
+                                                     :expectations [output-expectation]}]
+         (let [card      (t2/select-one :model/Card :id card-id)
+               card-test (t2/select-one :model/CardTest :id test-id)]
+           (testing "a run with no current user is refused with a 403, sends nothing and records no run"
+             (let [{:keys [result sent roles]}
+                   (with-recorder! #(try (data-testing.runner/run-test! :card card card-test)
+                                         (catch clojure.lang.ExceptionInfo e
+                                           {:status-code (:status-code (ex-data e))})))]
+               (is (= {:status-code 403} result))
+               (is (= [] sent))
+               (is (= [] roles))
+               (is (zero? (t2/count :model/DataTestRun :test_id test-id)))))
+           (testing "control: the same run as an admin passes"
+             (try
+               (is (= :passed (:status (:result (with-recorder! #(data-testing.test-util/run-as-admin! :card card card-test))))))
+               (finally
+                 (t2/delete! :model/DataTestRun :test_id test-id))))))))))
+
+(deftest data-test-of-more-than-one-statement-is-refused-over-http-test
+  (mt/with-premium-features #{:transforms-testing :transforms-basic}
+    (do-with-unreachable-postgres
+     (fn [db-id]
+       (mt/with-temp [:model/Card     {card-id :id} {:dataset_query (lib/native-query
+                                                                     (lib-be/application-database-metadata-provider db-id)
+                                                                     card-sql)}
+                      :model/CardTest {test-id :id} {:card_id      card-id
+                                                     :inputs       [(assoc sql-input :sql "SELECT 1 AS id; DELETE FROM public.orders")]
+                                                     :expectations [output-expectation]}]
+         (testing "saving such a test is a 400 that names the refusal, sends nothing and saves no test"
+           (let [{:keys [result sent]}
+                 (with-recorder! #(mt/user-http-request :crowberto :post 400 "ee/card-test"
+                                                        (card-test-body card-id "SELECT 1 AS id; DELETE FROM public.orders"
+                                                                        "SELECT * FROM {{output}} WHERE 1 = 0")))]
+             (is (= "card-test.not-a-single-select" (:error-code result)) (pr-str result))
+             (is (= [] sent))
+             (is (= #{test-id} (t2/select-pks-set :model/CardTest :card_id card-id)))))
+         (testing "running such a saved test is a 400 that names the refusal, sends nothing and records no run"
+           (let [{:keys [result sent]}
+                 (with-recorder! #(mt/user-http-request :crowberto :post 400 (str "ee/card-test/" test-id "/run")))]
+             (is (= "card-test.not-a-single-select" (:error-code result)) (pr-str result))
+             (is (= [] sent))
+             (is (zero? (t2/count :model/DataTestRun :test_id test-id))))))))))
