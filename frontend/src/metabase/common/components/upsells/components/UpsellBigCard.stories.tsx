@@ -102,6 +102,7 @@ export default {
 
 export const Default = {
   render: DefaultTemplate,
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -109,6 +110,7 @@ export const Default = {
 
 export const Secondary = {
   render: SecondaryTemplate,
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },
@@ -116,6 +118,7 @@ export const Secondary = {
 
 export const ModalStory = {
   render: ModalTemplate,
+  tags: ["no-visual"],
   parameters: {
     loki: { skip: true },
   },

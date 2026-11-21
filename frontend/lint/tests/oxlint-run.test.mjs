@@ -9,7 +9,13 @@ const flags = [
   "0",
   "--report-unused-disable-directives",
 ];
-const defaultPaths = ["enterprise/frontend", "frontend", "e2e", "metaplow"];
+const defaultPaths = [
+  "enterprise/frontend",
+  "frontend",
+  "e2e",
+  "e2e-visual",
+  "metaplow",
+];
 const file = "frontend/src/metabase/dev.ts";
 const pathExists = (arg) => arg === file;
 

@@ -9,7 +9,13 @@ const FLAGS = [
   "0",
   "--report-unused-disable-directives",
 ];
-const DEFAULT_PATHS = ["enterprise/frontend", "frontend", "e2e", "metaplow"];
+const DEFAULT_PATHS = [
+  "enterprise/frontend",
+  "frontend",
+  "e2e",
+  "e2e-visual",
+  "metaplow",
+];
 
 export function getOxlintArgs(args, pathExists) {
   const hasPath = args.some(

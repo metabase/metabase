@@ -57,6 +57,7 @@
     "frontend/test/**/*",
     "enterprise/frontend/test/**/*",
     ".github/scripts/**/*",
+    "e2e-visual/**/*",
     "bin/verify-doc-links/**/*"
   ],
   "exclude": [
