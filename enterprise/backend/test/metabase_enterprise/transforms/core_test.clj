@@ -7,7 +7,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.transforms.write :as transforms.write]
+   [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -57,8 +57,8 @@
                                    :name     (str "test_python_" (random-uuid))
                                    :database (mt/id)}}]
             (let [run! (fn [transform-id end-time]
-                         (let [{id :id} (transforms.write/start-run! transform-id {:run_method "manual"})]
-                           (transforms.write/succeed-started-run! id)
+                         (let [{id :id} (transform-run/start-run! transform-id {:run_method "manual"})]
+                           (transform-run/succeed-started-run! id)
                            (t2/update! :model/TransformRun :id id {:end_time end-time})))]
               (testing "with no premium features, mbql runs are not metered"
                 (mt/with-premium-features #{}

@@ -2,6 +2,7 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.util :as transforms.models.u]
    [metabase.transforms.schema :as transforms.schema]
@@ -34,6 +35,25 @@
   (when (seq job-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
           (transforms.db/latest-job-runs-reducible job-ids))))
+
+(mu/defn start-run! :- ::transforms.schema/transform-job-run
+  "Start a run, storing the job's name and entity_id with it so that the run stays displayable after the job is deleted,
+  since `transform_job_run.job_id` has no FK."
+  ([job-id     :- ms/PositiveInt
+    run-method :- [:enum :manual :cron]]
+   (let [job (transforms.db/job-snapshot job-id)]
+     (transforms.db/insert-job-run! (cond-> {:job_id     job-id
+                                             :run_method run-method
+                                             :status     :started
+                                             :is_active  true}
+                                      job (assoc :job_name      (some-> (:name job) str)
+                                                 :job_entity_id (:entity_id job)))))))
+
+(mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
+  "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator
+  process is presumed dead). Returns the rows that were timed out so callers can notify."
+  [stale-minutes :- ms/PositiveInt]
+  (coordinated-run/reap-orphaned-runs! :model/TransformJobRun "job" stale-minutes))
 
 (mu/defn running-run-for-job-id :- [:maybe ::transforms.schema/transform-job-run]
   "Return a single active job run or nil."

@@ -5,7 +5,7 @@
    [metabase.transforms.coordinated-run :as coordinated-run]
    [metabase.transforms.dag :as dag]
    [metabase.transforms.models.dag-run :as dag-run]
-   [metabase.transforms.write :as transforms.write]
+   [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -40,7 +40,7 @@
     (let [start-promise (promise)
           planned?      (atom false)]
       (mt/with-dynamic-fn-redefs [dag-run/running-run-for-source-transform-id (constantly {:id 1})
-                                  transforms.write/start-dag-run!                       (fn [& _] (reset! planned? true) {:id 2})]
+                                  dag-run/start-dag-run!                       (fn [& _] (reset! planned? true) {:id 2})]
         (is (nil? (dag/run-dag! 42 {:direction :upstream :start-promise start-promise})))
         (is (false? @planned?) "should not create a DAG run row when one is already running")
         (is (nil? (deref start-promise 100 :timed-out))
@@ -52,12 +52,12 @@
   (testing "the (source_transform_id, is_active) unique constraint allows at most one active run per seed"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
-        (let [{run-id :id} (transforms.write/start-dag-run! tid :upstream nil 1)]
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
           (try
-            (is (thrown? Exception (transforms.write/start-dag-run! tid :downstream nil 1)))
+            (is (thrown? Exception (dag-run/start-dag-run! tid :downstream nil 1)))
             (testing "a terminal run doesn't collide, so a new run can start"
               (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
-              (let [{run-id-2 :id} (transforms.write/start-dag-run! tid :downstream nil 1)]
+              (let [{run-id-2 :id} (dag-run/start-dag-run! tid :downstream nil 1)]
                 (is (pos-int? run-id-2))))
             (finally
               (t2/delete! :model/TransformDagRun :source_transform_id tid))))))))
@@ -66,7 +66,7 @@
   (testing "run-dag! treats losing the unique-active-run insert race as already-running"
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/Transform {tid :id} {:name "seed" :table_dependencies []}]
-        (let [{run-id :id} (transforms.write/start-dag-run! tid :upstream nil 1)
+        (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)
               start-promise (promise)]
           (try
             ;; bypass the fast pre-check to simulate two triggers racing past it together; the loser's
@@ -83,7 +83,7 @@
 (deftest dag-run-lifecycle-test
   (mt/with-temp [:model/Transform {tid :id} {:name "seed"}]
     (testing "start-dag-run! creates a started, active run for the seed transform"
-      (let [{run-id :id :as run} (transforms.write/start-dag-run! tid :upstream (mt/user->id :rasta) 3)]
+      (let [{run-id :id :as run} (dag-run/start-dag-run! tid :upstream (mt/user->id :rasta) 3)]
         (try
           (is (= :started (:status run)))
           (is (true? (:is_active run)))
@@ -104,7 +104,7 @@
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
     (testing "cancel-started-run! cancels an active run but is a no-op once terminal"
-      (let [{run-id :id} (transforms.write/start-dag-run! tid :downstream nil 1)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :downstream nil 1)]
         (try
           (is (= 1 (coordinated-run/cancel-started-run! :model/TransformDagRun run-id)))
           (is (= :canceled (:status (t2/select-one :model/TransformDagRun :id run-id))))
@@ -113,7 +113,7 @@
           (finally
             (t2/delete! :model/TransformDagRun :id run-id)))))
     (testing "fail-started-run! records the failure message"
-      (let [{run-id :id} (transforms.write/start-dag-run! tid :upstream nil 1)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/fail-started-run! :model/TransformDagRun run-id {:message "boom"})
           (let [row (t2/select-one :model/TransformDagRun :id run-id)]
@@ -125,7 +125,7 @@
 (deftest dag-run-survives-transform-deletion-test
   (testing "deleting the seed transform nulls source_transform_id but preserves the DAG run and its snapshot"
     (mt/with-temp [:model/Transform {tid :id} {:name "doomed seed"}]
-      (let [{run-id :id} (transforms.write/start-dag-run! tid :upstream nil 1)]
+      (let [{run-id :id} (dag-run/start-dag-run! tid :upstream nil 1)]
         (try
           (coordinated-run/succeed-started-run! :model/TransformDagRun run-id)
           (t2/delete! :model/Transform :id tid)
@@ -141,11 +141,11 @@
   (mt/with-temp [:model/Transform {seed :id} {:name "seed"}
                  :model/Transform {tid-a :id} {:name "member-a"}
                  :model/Transform {tid-b :id} {:name "member-b"}]
-    (let [{run-id :id} (transforms.write/start-dag-run! seed :upstream nil 2)]
+    (let [{run-id :id} (dag-run/start-dag-run! seed :upstream nil 2)]
       (try
-        (let [{active-run :id} (transforms.write/start-run! tid-a {:dag_run_id run-id :run_method :manual})
-              {done-run :id}   (transforms.write/start-run! tid-b {:dag_run_id run-id :run_method :manual})]
-          (transforms.write/succeed-started-run! done-run)
+        (let [{active-run :id} (transform-run/start-run! tid-a {:dag_run_id run-id :run_method :manual})
+              {done-run :id}   (transform-run/start-run! tid-b {:dag_run_id run-id :run_method :manual})]
+          (transform-run/succeed-started-run! done-run)
           (testing "transform-runs-for-dag-run returns all member runs"
             (is (= #{active-run done-run}
                    (set (map :id (dag-run/transform-runs-for-dag-run run-id))))))

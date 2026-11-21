@@ -33,6 +33,26 @@
   {:status    mi/transform-keyword
    :direction mi/transform-keyword})
 
+(mu/defn start-dag-run! :- ::transforms.schema/transform-dag-run
+  "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`
+  (`:upstream`/`:downstream`). `user-id` is the user who triggered it; `transform-count` is the
+  number of transforms the run's plan selected to run, stored for display in run listings.
+  Stores the seed transform's name and entity_id with the run so it stays displayable after the transform is
+  deleted (its FK is SET NULL, as for `transform_run.transform_id`)."
+  [source-transform-id :- ::lib.schema.id/transform
+   direction           :- [:enum :upstream :downstream]
+   user-id             :- [:maybe ::lib.schema.id/user]
+   transform-count     :- :int]
+  (let [transform (transforms.db/transform-snapshot source-transform-id)]
+    (transforms.db/insert-dag-run! (cond-> {:source_transform_id source-transform-id
+                                            :direction           direction
+                                            :transform_count     transform-count
+                                            :user_id             user-id
+                                            :status              :started
+                                            :is_active           true}
+                                     transform (assoc :source_transform_name      (:name transform)
+                                                      :source_transform_entity_id (:entity_id transform))))))
+
 (mu/defn running-run-for-source-transform-id :- [:maybe ::transforms.schema/transform-dag-run]
   "Return the single active DAG run seeded from `source-transform-id`, or nil."
   [source-transform-id :- ::lib.schema.id/transform]

@@ -8,10 +8,11 @@
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.dag-run :as transforms.dag-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
-   [metabase.transforms.write :as transforms.write]
+   [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2]))
 
 ;; Use the default test fixture which sets up the test database
@@ -281,7 +282,7 @@
       (mt/with-temp [:model/Transform {transform-id :id
                                        transform-name :name
                                        entity-id :entity_id} {}]
-        (let [run (transforms.write/start-run! transform-id {:run_method "manual"})]
+        (let [run (transform-run/start-run! transform-id {:run_method "manual"})]
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
@@ -359,8 +360,8 @@
                                                               :start_time #t "2025-09-01T10:00:00Z"
                                                               :is_active  true}
                      :model/Transform {transform-id :id} {}]
-        (let [run (transforms.write/start-run! transform-id {:run_method "cron"
-                                                             :job_run_id job-run-id})]
+        (let [run (transform-run/start-run! transform-id {:run_method "cron"
+                                                          :job_run_id job-run-id})]
           (is (= job-run-id (:job_run_id run))))))))
 
 (deftest paged-job-runs-test
@@ -423,9 +424,9 @@
                  :model/TransformJob {job-id :id job-name :name job-entity-id :entity_id} {:name "Snapshot Job"}]
     (mt/with-model-cleanup [:model/TransformJobRun :model/TransformDagRun]
       (is (=? {:job_name job-name, :job_entity_id job-entity-id}
-              (transforms.write/start-job-run! job-id :manual)))
+              (transforms.job-run/start-run! job-id :manual)))
       (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
-              (transforms.write/start-dag-run! transform-id :downstream nil 1))))))
+              (transforms.dag-run/start-dag-run! transform-id :downstream nil 1))))))
 
 (deftest runs-get-end-time-when-they-end-test
   (mt/with-temp [:model/Transform    {transform-id :id} {}

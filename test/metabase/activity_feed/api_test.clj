@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.content-verification.models.moderation-review :as moderation-review]
-   [metabase.content-verification.write :as content-verification.write]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
@@ -446,7 +445,7 @@
       (clear-recent-views-for-user :crowberto)
       (mt/with-model-cleanup [:model/RecentViews :model/ModerationReview]
         (mt/with-temp [:model/Card card {:name "verified card"}]
-          (content-verification.write/create-review! {:moderated_item_id   (:id card)
+          (moderation-review/create-review! {:moderated_item_id   (:id card)
                                              :moderated_item_type "card"
                                              :moderator_id        (mt/user->id :crowberto)
                                              :status              "verified"})

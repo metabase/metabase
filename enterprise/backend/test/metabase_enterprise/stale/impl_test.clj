@@ -6,7 +6,6 @@
    [metabase-enterprise.test :as met]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
-   [metabase.content-verification.write :as content-verification.write]
    [metabase.stale-test :refer [with-stale-items
                                 stale-dashboard
                                 stale-card
@@ -366,20 +365,20 @@
                  :model/Card {id1 :id} (stale-card {:name "A" :collection_id col-id})
                  :model/Card {id2 :id} (stale-card {:name "B" :collection_id col-id})]
     ;; card 1 is verified, then unverified - it should be included
-    (content-verification.write/create-review! {:moderated_item_id   id1
+    (moderation-review/create-review! {:moderated_item_id   id1
                                        :moderator_id        user-id
                                        :moderated_item_type "card"
                                        :status              "verified"})
-    (content-verification.write/create-review! {:moderated_item_id   id1
+    (moderation-review/create-review! {:moderated_item_id   id1
                                        :moderator_id        user-id
                                        :moderated_item_type "card"
                                        :status              nil})
     ;; card 2 is unverified, then verified - it should NOT be included.
-    (content-verification.write/create-review! {:moderated_item_id   id2
+    (moderation-review/create-review! {:moderated_item_id   id2
                                        :moderator_id        user-id
                                        :moderated_item_type "card"
                                        :status              nil})
-    (content-verification.write/create-review! {:moderated_item_id   id2
+    (moderation-review/create-review! {:moderated_item_id   id2
                                        :moderator_id        user-id
                                        :moderated_item_type "card"
                                        :status              "verified"})
