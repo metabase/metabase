@@ -2142,8 +2142,9 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
             # text that reads back as the tree it wrote: an E'' string holding `\\` comes back with one backslash, so
             # its quote moves, and a dollar-quoted alias comes back bare.
             if problem is None and check_rebuild and isinstance(_unbracketed(stmts[0]), allowed_types):
-                again = json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
-                if not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt:
+                # A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+                again = None if rebuilt == sql else json.loads(is_single_stmt_of_type(rebuilt, stmt_type, dialect))
+                if again is not None and (not again.get("allowed_stmt_type?") or again.get("sql") != rebuilt):
                     problem = ("rebuild-differs", again.get("reason"))
                 elif dialect == "postgres" and _postgres_statement_count(rebuilt, True) > 1:
                     problem = ("rebuild-differs", "multiple-statements")

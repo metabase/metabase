@@ -447,9 +447,10 @@
                       ;; The checks above read `sql`, and the caller runs `rebuilt`. sqlglot's generator does not
                       ;; always produce text that reads back as the tree it wrote: an E'' string holding `\\` comes back
                       ;; with one backslash, so its quote moves, and a dollar-quoted alias comes back bare.
-                      (let [again (single-stmt-of-type dialect rebuilt stmt-type false)]
+                      ;; A rebuild equal to `sql` reads as `sql` did, so it is not parsed again.
+                      (let [again (when (not= rebuilt sql) (single-stmt-of-type dialect rebuilt stmt-type false))]
                         (cond
-                          (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again)))
+                          (and again (or (not (:allowed_stmt_type? again)) (not= rebuilt (:sql again))))
                           ["rebuild-differs" (:reason again)]
 
                           (and (= dialect "postgres") (> (postgres-statement-count rebuilt true) 1))
