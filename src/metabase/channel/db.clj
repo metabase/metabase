@@ -13,6 +13,10 @@
   "A whole Channel row for insert or update."
   ::channel.schema/channel.update)
 
+(def ^:private ChannelTemplateRow
+  "A whole ChannelTemplate row for insert."
+  ::channel.schema/channel-template.update)
+
 (mu/defn channels
   "Every Channel."
   []
@@ -83,7 +87,9 @@
 (mu/defn delete-pulse-channels-for-channel!
   "Delete the PulseChannels of the Channel with `channel-id`, returning the number deleted."
   [channel-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannel :channel_id channel-id))
+  (let [pulse-channel-ids (vec (t2/select-pks-vec :model/PulseChannel :channel_id channel-id))]
+    ((requiring-resolve 'metabase.pulse.models.pulse/remove-pulse-channels!) pulse-channel-ids)
+    (count pulse-channel-ids)))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -109,3 +115,13 @@
   "Some User, or nil."
   []
   (t2/select-one :model/User))
+
+(mu/defn insert-channel-template!
+  "Insert `template` and return its ID."
+  [template :- ChannelTemplateRow]
+  (t2/insert-returning-pk! :model/ChannelTemplate template))
+
+(mu/defn delete-channel-templates!
+  "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
+  [template-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ChannelTemplate :id [:in template-ids]))

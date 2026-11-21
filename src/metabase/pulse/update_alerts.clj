@@ -4,7 +4,6 @@
    [metabase.lib.core :as lib]
    [metabase.notification.card :as notification.card]
    [metabase.notification.models :as models.notification]
-   [metabase.pulse.db :as pulse.db]
    [metabase.util.malli :as mu]))
 
 (defn- card-archived? [old-card new-card]
@@ -91,4 +90,4 @@
   (when (and (not (card-archived? old-card new-card))
              (card-change-broke-alert? old-card new-card))
     (when-let [notification-ids (seq (map :id (models.notification/notifications-for-card (:id new-card))))]
-      (pulse.db/delete-notifications! notification-ids))))
+      (models.notification/delete-notifications! (vec notification-ids)))))

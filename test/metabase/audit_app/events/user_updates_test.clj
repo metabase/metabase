@@ -291,7 +291,7 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [before (max-id)]
         (testing "deactivating a user runs a fixed number of queries, the session write included"
-          (is (= 14 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id)))))
+          (is (= 13 (user-request-call-count! :crowberto :delete 200 (str "user/" user-id)))))
         (is (= [[:user-deactivated "User" user-id]] (topics-since before)))))))
 
 (defn- update-segment-entity-id-call-count!

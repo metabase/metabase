@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.serialization.core :as serialization]
@@ -131,7 +132,7 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id]}]
      (testing "a subscription the user deleted before the Dashboard was trashed stays deleted after restore"
-       (t2/update! :model/Pulse :id pulse-id {:archived true})
+       (models.pulse/update-pulses! [pulse-id] {:archived true})
        (t2/update! :model/Dashboard :id dash-id {:archived true})
        (t2/update! :model/Dashboard :id dash-id {:archived false})
        (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
@@ -159,7 +160,7 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [coll-id pulse-id pc-id]}]
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
-       (t2/update! :model/Pulse :id pulse-id {:archived true})
+       (models.pulse/update-pulses! [pulse-id] {:archived true})
        (mt/with-current-user (mt/user->id :crowberto)
          (t2/update! :model/Collection :id coll-id {:archived true})
          (t2/update! :model/Collection :id coll-id {:archived false}))

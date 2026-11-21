@@ -5,6 +5,7 @@
    [metabase.change-log.core :as change-log]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
@@ -44,11 +45,18 @@
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
-(mu/defn bulk-create!
+;;; ------------------------------------------------------ Writes --------------------------------------------------------
+
+(mu/defn create-pulse-cards!
+  "Insert the PulseCard `rows`."
+  [rows :- [:sequential ::pulse.schema/pulse-card.create]]
+  (pulse.db/insert-pulse-cards! rows))
+
+(mu/defn append-pulse-cards!
   "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (pulse.db/insert-pulse-cards!
+  (create-pulse-cards!
    (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
      {:card_id           card_id
       :pulse_id          pulse_id
@@ -58,6 +66,16 @@
       :include_xls       (boolean include_xls)
       :format_rows       (boolean format_rows)
       :pivot_results     (boolean pivot_results)})))
+
+(mu/defn delete-pulse-cards-for-pulse!
+  "Delete the PulseCards of the Pulse with `pulse-id`."
+  [pulse-id :- ::lib.schema.id/pulse]
+  (pulse.db/delete-pulse-cards-for-pulse! pulse-id))
+
+(mu/defn delete-pulse-cards-for-dashcards!
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

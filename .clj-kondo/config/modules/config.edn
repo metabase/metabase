@@ -588,6 +588,7 @@
            parameters
            permissions
            premium-features
+           pulse
            query-processor
            query-processor.pivot
            request
@@ -689,6 +690,7 @@
            notification
            permissions
            premium-features
+           pulse
            remote-sync
            search
            serialization
@@ -705,7 +707,6 @@
                     :model/Exploration
                     :model/ModerationReview
                     :model/NativeQuerySnippet
-                    :model/Notification
                     :model/Permissions
                     :model/Pulse
                     :model/Table
@@ -760,8 +761,7 @@
   content-translation
   {:team "UX West"
    :api  #{metabase.content-translation.models}
-   :uses #{app-db premium-features util}
-   :model-exports #{:model/ContentTranslation}}
+   :uses #{app-db premium-features util}}
 
   content-verification
   {:team "UX West"
@@ -884,7 +884,6 @@
                     :model/ModerationReview
                     :model/ParameterCard
                     :model/Pulse
-                    :model/PulseCard
                     :model/Revision}}
 
   dashboards.rest
@@ -2268,7 +2267,10 @@
    :api  #{metabase.pulse.api
            metabase.pulse.broken-subscriptions
            metabase.pulse.core
-           metabase.pulse.init}
+           metabase.pulse.init
+           metabase.pulse.models.pulse
+           metabase.pulse.models.pulse-card
+           metabase.pulse.models.pulse-channel-recipient}
    :uses #{api
            api.eid-translation
            app-db
@@ -2294,16 +2296,12 @@
            tracing
            util
            util.config}
-   :model-exports #{:model/Pulse
-                    :model/PulseCard
-                    :model/PulseChannel
-                    :model/PulseChannelRecipient}
+   :model-exports #{:model/Pulse :model/PulseCard :model/PulseChannel}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/Collection
                     :model/Dashboard
                     :model/DashboardCard
-                    :model/Notification
                     :model/User}}
 
   queries
@@ -2344,6 +2342,7 @@
            lib.source-swap
            metrics
            models
+           notification
            parameters
            parameters.schema
            permissions
@@ -3492,6 +3491,7 @@
            notification
            permissions
            premium-features
+           pulse
            settings
            setup
            sso.auth-identity
@@ -3504,7 +3504,6 @@
    :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
-                    :model/PulseChannelRecipient
                     :model/Tenant}}
 
   users.rest
@@ -3901,9 +3900,11 @@
            lib.metadata
            lib.schema
            models
+           notification
            permissions
            plugins
            premium-features
+           pulse
            queries
            query-permissions
            query-processor
@@ -3926,10 +3927,8 @@
                     :model/Database
                     :model/Field
                     :model/Notification
-                    :model/NotificationRecipient
                     :model/Permissions
                     :model/Pulse
-                    :model/PulseChannelRecipient
                     :model/QueryExecution
                     :model/Table
                     :model/User
@@ -4075,8 +4074,7 @@
            embedding
            premium-features
            util
-           enterprise/api}
-   :model-imports #{:model/ContentTranslation}}
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "UX West"

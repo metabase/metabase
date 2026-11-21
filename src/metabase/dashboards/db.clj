@@ -99,7 +99,8 @@
 (mu/defn delete-pulses-for-dashboard!
   "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Pulse :dashboard_id dashboard-id))
+  ((requiring-resolve 'metabase.pulse.models.pulse/delete-pulses!)
+   (vec (t2/select-pks-vec :model/Pulse :dashboard_id dashboard-id))))
 
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
@@ -321,7 +322,7 @@
 (mu/defn delete-pulse-cards-for-dashcards!
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+  ((requiring-resolve 'metabase.pulse.models.pulse-card/delete-pulse-cards-for-dashcards!) dashcard-ids))
 
 (mu/defn delete-series-for-dashcards!
   "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."

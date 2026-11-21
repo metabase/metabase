@@ -12,6 +12,7 @@
    [metabase.channel.models.channel :as models.channel]
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
@@ -127,21 +128,6 @@
       (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
                       {:status-code 400
                        :changes     changes}))))
-  (when (contains? (t2/changes instance) :active)
-    (let [subscriptions (notification.db/cron-subscriptions-for-notification (:id instance))]
-      (doseq [subscription subscriptions]
-        (if (:active instance)
-          (notification.task.send-trigger/update-subscription-trigger! subscription)
-          (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription))))))
-  instance)
-
-(t2/define-before-delete :model/Notification
-  [instance]
-  (doseq [subscription-id (notification.db/cron-subscription-ids-for-notification (:id instance))]
-    (notification.task.send-trigger/delete-trigger-for-subscription! subscription-id))
-  (when-let [payload-id (:payload_id instance)]
-    (case (:payload_type instance)
-      :notification/card (notification.db/delete-notification-card! payload-id)))
   instance)
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
@@ -340,20 +326,9 @@
   (validate-subscription instance)
   instance)
 
-(t2/define-after-insert :model/NotificationSubscription
-  [instance]
-  (notification.task.send-trigger/update-subscription-trigger! instance)
-  instance)
-
 (t2/define-before-update :model/NotificationSubscription
   [instance]
   (validate-subscription instance)
-  (notification.task.send-trigger/update-subscription-trigger! instance)
-  instance)
-
-(t2/define-before-delete :model/NotificationSubscription
-  [instance]
-  (notification.task.send-trigger/delete-trigger-for-subscription! (:id instance))
   instance)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -362,17 +337,6 @@
 
 (t2/deftransforms :model/NotificationHandler
   {:channel_type (mi/transform-validator mi/transform-keyword (partial mi/assert-namespaced "channel"))})
-
-(defn- cross-check-channel-type-and-template-type
-  [notification-handler]
-  (when-let [template-id (:template_id notification-handler)]
-    (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (notification.db/channel-template-channel-type template-id)]
-      (when (not= channel-type template-type)
-        (throw (ex-info "Channel type and template type mismatch"
-                        {:status-code   400
-                         :channel-type  channel-type
-                         :template-type template-type}))))))
 
 (defn- notification-handler-schema
   [{:keys [with-id?]}]
@@ -400,15 +364,12 @@
 
 (t2/define-before-insert :model/NotificationHandler
   [instance]
-  (cross-check-channel-type-and-template-type instance)
   (validate-notification-handler instance)
   instance)
 
 (t2/define-before-update :model/NotificationHandler
   [instance]
   (validate-notification-handler instance)
-  (when (some #{:channel_id :template_id :channel_type} (-> instance t2/changes keys))
-    (cross-check-channel-type-and-template-type instance))
   instance)
 
 ;;; ---------------------------------------------- Hydration ----------------------------------------------
@@ -898,44 +859,159 @@
   [event-name]
   (notification.db/active-system-event-notifications (u/qualified-name event-name)))
 
-(defn create-notification!
+;;; ---------------------------------------------- Writes ----------------------------------------------
+
+(defn- check-handler-templates!
+  "Throws a 400 unless the channel type of each of `handlers`, rows with their `:template_id` and `:channel_type`,
+  matches the type of its ChannelTemplate."
+  [handlers]
+  (when-let [template-ids (not-empty (into #{} (keep :template_id) handlers))]
+    (let [template-types (update-vals (notification.db/channel-templates-by-id (vec template-ids)) :channel_type)]
+      (doseq [{:keys [template_id channel_type]} handlers
+              :when template_id
+              :let  [channel-type  (keyword channel_type)
+                     template-type (some-> (get template-types template_id) keyword)]]
+        (when (not= channel-type template-type)
+          (throw (ex-info "Channel type and template type mismatch"
+                          {:status-code   400
+                           :channel-type  channel-type
+                           :template-type template-type})))))))
+
+(defn- update-subscription-triggers!
+  "Add, move or remove the Quartz trigger of each of the NotificationSubscriptions `subscriptions` of a Notification
+  that is `active?`: inactive Notifications have none."
+  [active? subscriptions]
+  (doseq [subscription (filter #(= :notification-subscription/cron (:type %)) subscriptions)]
+    (if active?
+      (notification.task.send-trigger/update-subscription-trigger! subscription)
+      (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))))
+
+(mu/defn create-notification-card! :- ms/PositiveInt
+  "Insert the NotificationCard `row` and return its id."
+  [row :- ::notification.schema/notification-card.create]
+  (notification.db/insert-notification-card! row))
+
+(mu/defn create-notification-subscriptions!
+  "Insert the NotificationSubscription `rows` and add the Quartz triggers of the cron ones, returning the inserted
+  subscriptions."
+  [rows :- [:sequential ::notification.schema/notification-subscription.create]]
+  (let [subscriptions (notification.db/insert-subscriptions! rows)]
+    (doseq [subscription subscriptions]
+      (notification.task.send-trigger/update-subscription-trigger! subscription))
+    subscriptions))
+
+(mu/defn create-notification-handler! :- ms/PositiveInt
+  "Insert the NotificationHandler `row`, which must have the channel type of its template, and return its id."
+  [row :- ::notification.schema/notification-handler.create]
+  (check-handler-templates! [row])
+  (notification.db/insert-handler! row))
+
+(mu/defn create-notification-recipients!
+  "Insert the NotificationRecipient `rows`."
+  [rows :- [:or ::notification.schema/notification-recipient.create
+            [:sequential ::notification.schema/notification-recipient.create]]]
+  (notification.db/insert-recipients! rows))
+
+(mu/defn create-notification!
   "Create a new notification with `subsciptions`.
   Return the created notification."
-  [notification subscriptions handlers+recipients]
+  [notification         :- ::notification.schema/notification.create
+   subscriptions        :- [:maybe [:sequential ::notification.schema/notification-subscription.create]]
+   handlers+recipients  :- [:maybe [:sequential ::notification.schema/notification-handler.create]]]
   (validate-email-handlers! handlers+recipients)
   (events/with-batched-events
     (let [payload-id      (case (:payload_type notification)
                             (:notification/system-event :notification/testing)
                             nil
                             :notification/card
-                            (notification.db/insert-notification-card! (:payload notification)))
+                            (create-notification-card! (:payload notification)))
           notification    (-> notification
                               (assoc :payload_id payload-id)
                               (dissoc :payload))
           instance        (notification.db/insert-notification! notification)
           notification-id (:id instance)]
       (when (seq subscriptions)
-        (notification.db/insert-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
+        (create-notification-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
       (doseq [{:keys [recipients template] :as handler} handlers+recipients]
         ;; assert can either template_id exists, then template but be nil, and vice versa
         (when (and template (not (map? template)))
           (throw (ex-info "Channel template must be a map" {:status-code 400})))
         (let [template-id (if template
-                            (notification.db/insert-channel-template! template)
+                            (models.channel/create-channel-template! template)
                             (:template_id handler))
               handler    (-> handler
                              (dissoc :recipients :template)
                              (assoc :notification_id notification-id
                                     :template_id template-id))
-              handler-id (notification.db/insert-handler! handler)]
-          (notification.db/insert-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
+              handler-id (create-notification-handler! handler)]
+          (create-notification-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
       instance)))
 
-(defn update-notification!
+(mu/defn update-notification!
   "Update an existing notification with `new-notification`."
-  [existing-notification new-notification]
+  [existing-notification :- ::FullyHydratedNotification
+   new-notification      :- [:map {:closed false} [:id ms/PositiveInt]]]
   (validate-email-handlers! (:handlers new-notification))
-  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+  (let [notification-id (:id existing-notification)]
+    (t2/with-transaction [_conn]
+      (let [active-before?    (:active (notification.db/notification notification-id))
+            subscriptions-old (m/index-by :id (notification.db/subscriptions-for-notifications [notification-id]))
+            handlers-old      (m/index-by :id (notification.db/handlers-for-notifications [notification-id]))]
+        (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec)
+        (let [active-after?     (:active (notification.db/notification notification-id))
+              subscriptions-new (m/index-by :id (notification.db/subscriptions-for-notifications [notification-id]))
+              handlers-new      (notification.db/handlers-for-notifications [notification-id])
+              handler-key       (juxt :channel_type :channel_id :template_id)]
+          (check-handler-templates! (remove #(= (handler-key %) (some-> (get handlers-old (:id %)) handler-key))
+                                            handlers-new))
+          (when (not= (boolean active-before?) (boolean active-after?))
+            (update-subscription-triggers! active-after? (vals subscriptions-old)))
+          (doseq [id (remove subscriptions-new (keys subscriptions-old))]
+            (notification.task.send-trigger/delete-trigger-for-subscription! id))
+          (doseq [[id subscription] subscriptions-new
+                  :when             (not= subscription (get subscriptions-old id))]
+            (notification.task.send-trigger/update-subscription-trigger! subscription)))))))
+
+(mu/defn update-notifications! :- :int
+  "Apply `changes` to the Notifications with `notification-ids`, returning the number updated. A change of `:active`
+  adds or removes the Quartz triggers of their cron subscriptions."
+  [notification-ids :- [:sequential ms/PositiveInt]
+   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
+  (if (seq notification-ids)
+    (let [notifications (notification.db/notifications-by-id notification-ids)
+          flipped       (when (contains? changes :active)
+                          (map :id (remove #(= (boolean (:active %)) (boolean (:active changes))) notifications)))]
+      (notification.db/update-notifications! notification-ids changes)
+      (when (seq flipped)
+        (update-subscription-triggers! (:active changes)
+                                       (notification.db/subscriptions-for-notifications (vec flipped))))
+      (count notifications))
+    0))
+
+(mu/defn delete-notifications! :- :int
+  "Delete the Notifications with `notification-ids` along with the NotificationCards they hold and the Quartz triggers
+  of their cron subscriptions, returning the number deleted."
+  [notification-ids :- [:sequential ms/PositiveInt]]
+  (if (seq notification-ids)
+    (let [notifications (notification.db/notifications-by-id notification-ids)]
+      (doseq [subscription (notification.db/subscriptions-for-notifications notification-ids)
+              :when        (= :notification-subscription/cron (:type subscription))]
+        (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
+      (when-let [payload-ids (not-empty (vec (keep #(when (= :notification/card (:payload_type %)) (:payload_id %))
+                                                   notifications)))]
+        (notification.db/delete-notification-cards! payload-ids))
+      (notification.db/delete-notifications! notification-ids))
+    0))
+
+(mu/defn delete-notification-recipient!
+  "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
+  [recipient-id :- ms/PositiveInt]
+  (notification.db/delete-recipient! recipient-id))
+
+(mu/defn delete-notification-recipients-for-user!
+  "Delete the NotificationRecipients of the User with `user-id`, returning the number deleted."
+  [user-id :- ::lib.schema.id/user]
+  (notification.db/delete-recipients-for-user! user-id))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."

@@ -28,11 +28,13 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.notification.models :as models.notification]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
+   [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
@@ -560,6 +562,40 @@
   (next-method model explicit-attributes (fn [group]
                                            (#'perms-group/set-default-permission-values! group)
                                            (f group))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
+  "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."
+  [model explicit-attributes f]
+  (let [attributes   (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)
+        dashboard-id (:dashboard_id attributes)]
+    (next-method model
+                 (cond-> explicit-attributes
+                   dashboard-id (assoc :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))
+                 f)))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Notification
+  "Deletes a temporary Notification through its write function when the body is done, which removes the triggers of its
+  subscriptions along with it."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes
+               (fn [notification]
+                 (try
+                   (f notification)
+                   (finally
+                     (models.notification/delete-notifications! [(:id notification)]))))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PulseChannel
+  "Adds a temporary PulseChannel to its SendPulse trigger when it is enabled, as `create-pulse-channel!` does, and
+  removes it from the trigger when the body is done."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes
+               (fn [{:keys [id pulse_id] :as pulse-channel}]
+                 (when (:enabled pulse-channel)
+                   (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :add-pc-ids #{id}))
+                 (try
+                   (f pulse-channel)
+                   (finally
+                     (task.send-pulses-trigger/update-send-pulse-trigger-if-needed! pulse_id pulse-channel :remove-pc-ids #{id}))))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
