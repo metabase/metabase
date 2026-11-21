@@ -211,15 +211,15 @@
   (testing "valid columns pass"
     (is (mr/validate ::tenants.schema/tenant.update {:name "Tenant" :slug "tenant-1" :attributes {"env" "prod"}}))))
 
-(deftest insert-checks-name-and-slug-uniqueness-test
+(deftest create-tenant-checks-name-and-slug-uniqueness-test
   (mt/with-temp [:model/Tenant _ {:name "Unique Tenant" :slug "unique-tenant"}]
     (mt/with-model-cleanup [:model/Tenant]
       (testing "name of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (t2/insert! :model/Tenant {:name "Unique Tenant" :slug "other-unique-tenant"}))))
+                              (tenants.model/create-tenant! {:name "Unique Tenant" :slug "other-unique-tenant"}))))
       (testing "slug of existing tenant"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This tenant name or slug is already taken"
-                              (t2/insert! :model/Tenant {:name "Other Unique Tenant" :slug "unique-tenant"})))))))
+                              (tenants.model/create-tenant! {:name "Other Unique Tenant" :slug "unique-tenant"})))))))
 
 (deftest update-checks-tenant-columns-test
   (mt/with-temp [:model/Tenant {id :id} {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
@@ -233,7 +233,7 @@
                               (t2/update! :model/Tenant :id id {:tenant_collection_id coll-id})))))
     (testing "name cannot be taken by another tenant"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"This name is already taken"
-                            (t2/update! :model/Tenant :id id {:name "Taken Tenant"}))))
+                            (tenants.model/update-tenant! id {:name "Taken Tenant"}))))
     (testing "nothing was written"
       (is (=? {:name "Updated Tenant" :slug "updated-tenant" :attributes {"env" "prod"}}
               (t2/select-one :model/Tenant :id id))))))
@@ -246,14 +246,14 @@
                  :model/User   {other-id :id}        {:tenant_id other-tenant-id}]
     (t2/update! :model/User :id inactive-id {:is_active false})
     (let [state (fn [id] (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id id))]
-      (t2/update! :model/Tenant :id tenant-id {:is_active false})
+      (tenants.model/update-tenant! tenant-id {:is_active false})
       (testing "active users of tenant are deactivated with it"
         (is (=? {:is_active false :deactivated_with_tenant true} (state user-id))))
       (testing "users deactivated before tenant are not marked"
         (is (=? {:is_active false :deactivated_with_tenant nil} (state inactive-id))))
       (testing "users of other tenants stay active"
         (is (=? {:is_active true} (state other-id))))
-      (t2/update! :model/Tenant :id tenant-id {:is_active true})
+      (tenants.model/update-tenant! tenant-id {:is_active true})
       (testing "reactivating tenant reactivates only users deactivated with it"
         (is (=? {:is_active true :deactivated_with_tenant nil} (state user-id)))
         (is (=? {:is_active false} (state inactive-id)))))))
@@ -264,11 +264,12 @@
     (let [active-ids (t2/select-pks-set :model/Tenant :is_active true)]
       (try
         (permissions.db/deactivate-all-tenants!)
+        (permissions.db/deactivate-active-tenant-users!)
         (is (false? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
         (is (=? {:is_active false :deactivated_with_tenant true}
                 (t2/select-one [:model/User :is_active :deactivated_with_tenant] :id user-id)))
         (finally
-          (t2/update! :model/Tenant :id [:in active-ids] {:is_active true}))))))
+          (run! #(tenants.model/update-tenant! % {:is_active true}) active-ids))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Tenant Permissions                                               |

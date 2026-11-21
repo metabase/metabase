@@ -30,36 +30,14 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-new-name-and-slug
-  "Throws a 400 when `tenant`, a row an INSERT writes, has the name or slug of an existing Tenant."
-  [{tenant-name :name :keys [slug]}]
-  (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
-    (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400}))))
-
-(t2/define-before-insert :model/Tenant
-  [tenant]
-  (check-new-name-and-slug tenant)
-  (let [tenant-collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
-                                                             :name      (format "Tenant Collection: %s" (:name tenant))
-                                                             :namespace :tenant-specific})]
-    (assoc tenant :tenant_collection_id tenant-collection-id)))
-
 (t2/define-before-update :model/Tenant
-  [{:keys [id] :as tenant}]
+  [tenant]
   (let [changes (t2/changes tenant)]
     (when (contains? changes :slug)
       (throw (ex-info (tru "You cannot change the slug of a tenant.") {:status-code 400})))
     (when (contains? changes :tenant_collection_id)
       (throw (ex-info (tru "You cannot change the collection of a tenant.") {:status-code 400})))
-    (when (and (contains? changes :name) (tenants.db/other-tenant-named? (:name changes) id))
-      (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
-    (when (false? (:is_active changes))
-      (tenants.db/deactivate-tenant-users! id))
-    (when (true? (:is_active changes))
-      (tenants.db/reactivate-tenant-users! id))
     tenant))
-
-(mi/define-update-in-transaction :model/Tenant)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -124,6 +102,36 @@
                              (let [[tenant-name _tenant-id] (collection-id->tenant-name-and-id id)]
                                (tru "Tenant collection: {0}" tenant-name))))))
           collections)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn create-tenant!
+  "Insert `tenant`, a map of `:name`, `:slug` and `:attributes`, with a new Collection of its own, and return it; the
+  name or slug of an existing Tenant is a 400."
+  [{tenant-name :name :keys [slug] :as tenant}]
+  (t2/with-transaction [_conn]
+    (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
+      (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
+    (let [collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
+                                                        :name      (format "Tenant Collection: %s" tenant-name)
+                                                        :namespace :tenant-specific})]
+      (tenants.db/insert-tenant! (assoc tenant :tenant_collection_id collection-id)))))
+
+(defn update-tenant!
+  "Apply `changes` to the Tenant with `tenant-id`. The name of another Tenant is a 400. Deactivating the Tenant
+  deactivates its active Users, and activating it reactivates the Users deactivated with it."
+  [tenant-id changes]
+  (t2/with-transaction [_conn]
+    (let [stored        (tenants.db/tenant tenant-id)
+          changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))
+          active        (:is_active changes)]
+      (when (and changes-name? (tenants.db/other-tenant-named? (:name changes) tenant-id))
+        (throw (ex-info (tru "This name is already taken.") {:status-code 400})))
+      (u/prog1 (tenants.db/update-tenant! tenant-id changes)
+        (when (and stored (some? active) (not= active (:is_active stored)))
+          (if active
+            (tenants.db/reactivate-tenant-users! tenant-id)
+            (tenants.db/deactivate-tenant-users! tenant-id)))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
