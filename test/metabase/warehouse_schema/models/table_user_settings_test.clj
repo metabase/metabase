@@ -82,7 +82,8 @@
         (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set false})
         (is (false? (t2/select-one-fn :description_set :model/TableUserSettings :table_id table-id))))
       (testing "both halves of the visibility choice move together"
-        (t2/update! :model/TableUserSettings :table_id table-id {:visibility_type :hidden})
+        (table-user-settings/update-table-user-settings-rows!
+         [{:id (t2/select-one-pk :model/TableUserSettings :table_id table-id) :visibility_type :hidden}])
         (is (=? {:visibility_type :hidden :data_layer :hidden
                  :visibility_type_set true :data_layer_set true}
                 (t2/select-one :model/TableUserSettings :table_id table-id))))

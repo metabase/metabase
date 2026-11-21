@@ -32,6 +32,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -151,23 +152,10 @@
                      :hash_key    (:hash_key changes)
                      :status-code 400}))))
 
-(defn clear-advanced-field-values-for-field!
-  "Remove all advanced FieldValues for a `field-or-id`."
-  [field-or-id]
-  (warehouse-schema.db/delete-field-values-of-types! (u/the-id field-or-id) advanced-field-values-types))
-
-(defn clear-field-values-for-field!
-  "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
-  [field-or-id]
-  (warehouse-schema.db/delete-field-values-for-field! (u/the-id field-or-id)))
-
 (t2/define-before-insert :model/FieldValues
-  [{:keys [field_id] :as field-values}]
+  [field-values]
   (u/prog1 (update field-values :type #(keyword (or % :full)))
-    (assert-valid-type-hash-combo <>)
-    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
-    (when (= :full (:type <>))
-      (clear-advanced-field-values-for-field! field_id))))
+    (assert-valid-type-hash-combo <>)))
 
 (t2/define-before-update :model/FieldValues
   [field-values]
@@ -175,10 +163,7 @@
     (u/prog1 (update field-values :type #(keyword (or % :full)))
       (assert-no-identity-changes (:id field-values) changes)
       (when (some #(contains? changes %) [:values :human_readable_values])
-        (check-human-readable-values-cover-values field-values))
-      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
-      (when (and (contains? changes :values) (= :full (:type <>)))
-        (clear-advanced-field-values-for-field! (:field_id field-values))))))
+        (check-human-readable-values-cover-values field-values)))))
 
 (defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
   (cond
@@ -373,6 +358,9 @@
 
 ;;; ------------------------------------------------------ CRUD ------------------------------------------------------
 
+(declare clear-field-values-for-field! delete-field-values! find-or-create-full-field-values! touch-field-values!
+         update-field-values!)
+
 (defn limit-values
   "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
   Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
@@ -442,7 +430,7 @@
                                      (mapcat rest)
                                      (map :id))]
     (when (seq to-delete-fv-ids)
-      (warehouse-schema.db/delete-field-values! to-delete-fv-ids))
+      (delete-field-values! to-delete-fv-ids))
     (update-vals fvs-grouped-by-field-id first)))
 
 (defn- get-latest-field-values
@@ -505,7 +493,7 @@
       (nil? existing-fv)
       (do
         (log/debugf "Storing FieldValues for Field %s..." field-name)
-        (warehouse-schema.db/find-or-insert-full-field-values! (u/the-id field) has-more-values values)
+        (find-or-create-full-field-values! (u/the-id field) has-more-values values)
         ::fv-created)
 
       ;; if existing FieldValues won't change, skip it
@@ -519,11 +507,11 @@
       :else
       (do
         (log/debugf "Storing updated FieldValues for Field %s..." field-name)
-        (warehouse-schema.db/update-field-values! (u/the-id existing-fv)
-                                                  (m/remove-vals nil?
-                                                                 {:has_more_values       has-more-values
-                                                                  :values                values
-                                                                  :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        (update-field-values! [(m/remove-vals nil?
+                                              {:id                    (u/the-id existing-fv)
+                                               :has_more_values       has-more-values
+                                               :values                values
+                                               :human_readable_values (fixup-human-readable-values existing-fv values)})])
         ::fv-updated))))
 
 (defn create-or-update-full-field-values!
@@ -700,11 +688,142 @@
 
              (do
                (when existing
-                 (warehouse-schema.db/touch-field-values! (:id existing)))
+                 (touch-field-values! (:id existing)))
                (get-latest-full-field-values field-id)))))
         (do
-          (warehouse-schema.db/touch-field-values! (:id existing))
+          (touch-field-values! (:id existing))
           existing)))))
+
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- clear-advanced-field-values-for-fields!
+  "Delete the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."
+  [field-ids]
+  (when (seq field-ids)
+    (warehouse-schema.db/delete-field-values-of-types! (vec field-ids) advanced-field-values-types)))
+
+(mu/defn create-field-values! :- [:sequential ::warehouse-schema.schema/field-values]
+  "Insert the FieldValues `rows` and return the inserted instances, deleting first the advanced FieldValues of the
+  Fields that get full ones."
+  [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (clear-advanced-field-values-for-fields!
+       (into #{} (comp (filter #(= :full (keyword (or (:type %) :full)))) (map :field_id)) rows))
+      (vec (warehouse-schema.db/insert-field-values! rows)))))
+
+(defn- without-unchanged-identity
+  "`row` without the `type` and `hash_key` that `stored`, the row it updates, already holds."
+  [row stored]
+  (cond-> row
+    (= (some-> (:type row) keyword) (:type stored)) (dissoc :type)
+    (= (:hash_key row) (:hash_key stored))         (dissoc :hash_key)))
+
+(mu/defn update-field-values! :- [:sequential [:map [:id ms/PositiveInt]]]
+  "Apply each of `rows`, the id of a FieldValues and the columns to change, and return the rows of the FieldValues that
+  exist, deleting the advanced FieldValues of the Fields whose full values change: one read, one delete and one
+  statement per distinct set of changes."
+  [rows :- [:sequential ::warehouse-schema.schema/field-values.update-row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [stored (u/index-by :id (warehouse-schema.db/field-values-by-ids (mapv :id rows)))
+            rows   (into [] (keep #(some->> (stored (:id %)) (without-unchanged-identity %))) rows)]
+        (clear-advanced-field-values-for-fields!
+         (into #{}
+               (keep (fn [{:keys [id] :as row}]
+                       (let [{:keys [type values field_id]} (stored id)]
+                         (when (and (= :full type) (contains? row :values) (not= values (:values row)))
+                           field_id))))
+               rows))
+        (doseq [[changes rows] (group-by #(dissoc % :id) rows)
+                :when (seq changes)]
+          (warehouse-schema.db/update-field-values! (mapv :id rows) changes))
+        rows))))
+
+(mu/defn find-or-create-full-field-values! :- ::warehouse-schema.schema/field-values
+  "The full FieldValues of the Field with `field-id`, creating one with `has-more-values`, `values` and no
+  human-readable values, which deletes its advanced FieldValues, when it has none."
+  [field-id        :- ::lib.schema.id/field
+   has-more-values :- :boolean
+   values          :- [:maybe ms/FieldValues]]
+  (events/with-batched-events
+    (warehouse-schema.db/find-or-insert-full-field-values!
+     field-id
+     (fn []
+       (clear-advanced-field-values-for-fields! [field-id])
+       {:has_more_values       has-more-values
+        :values                values
+        :human_readable_values nil}))))
+
+(mu/defn update-or-create-full-field-values! :- :int
+  "Set the values and human-readable values of the full FieldValues of the Field with `field-id`, creating it when it
+  has none, and return its id; new values delete the advanced FieldValues of the Field."
+  [field-id              :- ::lib.schema.id/field
+   values                :- [:maybe ms/FieldValues]
+   human-readable-values :- [:maybe ms/FieldValues]]
+  (events/with-batched-events
+    (warehouse-schema.db/update-or-insert-full-field-values!
+     field-id
+     (fn [existing]
+       (when (or (nil? existing) (not= (:values existing) values))
+         (clear-advanced-field-values-for-fields! [field-id]))
+       {:values                values
+        :human_readable_values human-readable-values}))))
+
+(mu/defn find-or-create-advanced-field-values! :- [:maybe ::warehouse-schema.schema/field-values]
+  "The advanced FieldValues of the Field with `field-id` and `hash-key`, creating the one `insert-fn` returns when it
+  has none."
+  [field-id  :- ::lib.schema.id/field
+   hash-key  :- :string
+   insert-fn :- fn?]
+  (warehouse-schema.db/find-or-insert-advanced-field-values! field-id hash-key insert-fn))
+
+(mu/defn touch-field-values!
+  "Stamp `last_used_at` on the FieldValues with `field-values-id`, so sync keeps them up to date."
+  [field-values-id :- ms/PositiveInt]
+  (warehouse-schema.db/touch-field-values! field-values-id))
+
+(mu/defn delete-field-values!
+  "Delete the FieldValues with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (warehouse-schema.db/delete-field-values! (vec ids))))
+
+(mu/defn delete-field-values-for-fields!
+  "Delete every FieldValues of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (warehouse-schema.db/delete-field-values-for-fields! (vec field-ids))))
+
+(defn clear-advanced-field-values-for-field!
+  "Delete the advanced FieldValues of `field-or-id`."
+  [field-or-id]
+  (clear-advanced-field-values-for-fields! [(u/the-id field-or-id)]))
+
+(defn clear-field-values-for-field!
+  "Delete every FieldValues of `field-or-id`, the advanced ones included."
+  [field-or-id]
+  (delete-field-values-for-fields! [(u/the-id field-or-id)]))
+
+(mu/defn delete-field-values-for-tables!
+  "Delete the FieldValues of the Fields of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (when (seq table-ids)
+    (warehouse-schema.db/delete-field-values-for-tables! (vec table-ids))))
+
+(mu/defn delete-field-values-for-database!
+  "Delete the FieldValues of every Field of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (warehouse-schema.db/delete-field-values-for-database! database-id))
+
+(mu/defn delete-field-values-of-types-before!
+  "Delete the FieldValues of `types` of the Field with `field-id` created more than `max-age-days` days ago."
+  [field-id     :- ::lib.schema.id/field
+   types        :- [:set :keyword]
+   max-age-days :- :int]
+  (warehouse-schema.db/delete-field-values-of-types-before! field-id types max-age-days))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -725,5 +844,7 @@
    :transform     {:field_id serialization/field-transform}
    :defaults      {:has_more_values false}
    :storage-paths warehouse-schema.serialization/field-values-storage-paths
-   :before-load   warehouse-schema.serialization/field-values-before-load
+   :insert!       create-field-values!
+   :update!       update-field-values!
+   :delete!       delete-field-values!
    :rows-by-refs  serialization/field-values-rows-by-refs})

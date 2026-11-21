@@ -27,6 +27,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
@@ -68,8 +69,8 @@
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (case (mi/model original-model)
-        :model/Field (sync-util/update-field-unless-user-set! (u/the-id original-model) values-to-set)
-        :model/Table (sync-util/update-table-unless-user-set! (u/the-id original-model) values-to-set))
+        :model/Field (sync.updates/update-field-unless-user-set! (u/the-id original-model) values-to-set)
+        :model/Table (sync.updates/update-table-unless-user-set! (u/the-id original-model) values-to-set))
       true)))
 
 (def ^:private ClassifyOpts

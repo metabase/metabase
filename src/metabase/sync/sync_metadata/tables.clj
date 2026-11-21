@@ -16,12 +16,14 @@
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.metabase-metadata :as metabase-metadata]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang ITransientSet)))
@@ -158,7 +160,7 @@
   [database          :- i/DatabaseInstance
    table             :- TableMetadata
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync.db/insert-table!
+  (table/create-table!
    (merge (cruft-dependent-cols table database ::create)
           {:active                  true
            :db_id                   (:id database)
@@ -193,13 +195,13 @@
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync-util/update-table-unless-user-set! (:id existing)
-                                           (cond-> (cruft-dependent-cols existing database ::reactivate)
-                                             ;; do not unhide tables w/ cruft settings
-                                             (some? (:visibility_type existing)) (dissoc :visibility_type)
-                                             true                                (assoc :active true)
-                                             sample?                             (assoc :data_authority :ingested
-                                                                                        :data_source    :ingested))))
+  (sync.updates/update-table-unless-user-set! (:id existing)
+                                              (cond-> (cruft-dependent-cols existing database ::reactivate)
+                                                ;; do not unhide tables w/ cruft settings
+                                                (some? (:visibility_type existing)) (dissoc :visibility_type)
+                                                true                                (assoc :active true)
+                                                sample?                             (assoc :data_authority :ingested
+                                                                                           :data_source    :ingested))))
 
 (mu/defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if a matching inactive one exists."
@@ -269,7 +271,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (when (seq table-ids)
     (log/info "Marking tables as inactive:" (pr-str table-ids))
-    (sync.db/deactivate-tables! table-ids)))
+    (table/update-tables-where! {:id [:in table-ids] :active true} {:active false})))
 
 (def ^:private keys-to-update
   [:description :database_require_filter :estimated_row_count :visibility_type :initial_sync_status :is_writable])
@@ -311,7 +313,7 @@
                  v))
     (boolean
      (when (seq changes)
-       (sync-util/update-table-unless-user-set! (:id metabase-table) changes)
+       (sync.updates/update-table-unless-user-set! (:id metabase-table) changes)
        true))))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int
@@ -387,7 +389,7 @@
   (when schemas-to-update
     (log/infof "Renaming schemas: %s" (pr-str schemas-to-update)))
   (doseq [[schema new-schema] schemas-to-update]
-    (sync.db/rename-table-schema! (:id database) schema new-schema)))
+    (table/update-tables-where! {:db_id (:id database) :schema schema} {:schema new-schema})))
 
 (def ^:private
   ^{:doc "threshold after which deactivated tables will be archived"}
@@ -420,7 +422,7 @@
                   ;; in the extremely unlikely case that there already exists a table with our
                   ;; archived name, we let it fail from hitting the unique constraints violation
                   ;; and just report the failure
-                  [(sync.db/archive-inactive-table! (:id table) new-name)]
+                  [(table/update-tables-where! {:id (:id table) :active false} {:archived_at :%now :name new-name})]
                   (catch Throwable t
                     [0 t]))]
             (when (zero? did-update)

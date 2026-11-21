@@ -13,6 +13,7 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -59,9 +60,9 @@
        (when-let [table-id (sync.db/active-table-id-by-name (u/the-id database) table-name)]
          (if field-name
            (when-let [field-id (sync.db/field-id-by-name table-id field-name)]
-             (sync-util/update-field-unless-user-set!
+             (sync.updates/update-field-unless-user-set!
               field-id (lib/normalize ::warehouse-schema.schema/field.update {k value})))
-           (sync-util/update-table-unless-user-set!
+           (sync.updates/update-table-unless-user-set!
             table-id (lib/normalize ::warehouse-schema.schema/table.update {k value}))))
        (sync.db/update-database! (u/the-id database) {k value})))))
 

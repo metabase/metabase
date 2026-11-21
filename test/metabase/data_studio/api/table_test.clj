@@ -10,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import (java.util.concurrent CountDownLatch Executors TimeUnit)))
 
@@ -220,7 +221,7 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/field-values-delete topic)
                                                 (swap! deleted conj (:id (:previous-object event)))))]
-          (data-studio.db/delete-field-values-for-tables! [table-id]))
+          (field-values/delete-field-values-for-tables! [table-id]))
         (is (contains? @deleted fv-id))))))
 
 (deftest bulk-discard-values-test

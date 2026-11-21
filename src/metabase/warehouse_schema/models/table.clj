@@ -11,6 +11,7 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.driver :as driver]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -22,11 +23,13 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.recent-views :as warehouse-schema.recent-views]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
@@ -164,24 +167,11 @@
   "How should we order fields."
   warehouse-schema.db/field-order-rule)
 
-(defn update-field-positions!
-  "Update `:position` of field belonging to table `table` accordingly to `:field_order`"
-  [table]
-  (doall
-   (map-indexed (fn [new-position field]
-                  (warehouse-schema.db/update-field! (u/the-id field) {:position new-position}))
-                ;; Can't use `select-field` as that returns a set while we need an ordered list
-                (warehouse-schema.db/field-ids-for-table-ordered
-                 (u/the-id table)
-                 (:field_order table)))))
-
 (defn- check-changes
   "Throws a 400 for a change in `changes` that `original`, the Table as stored, cannot take."
   [changes original]
   (when (contains? changes :db_id)
     (throw (ex-info (tru "You cannot move a Table to another Database.") {:status-code 400})))
-  (when (:collection_id changes)
-    (collection/check-allowed-content :table (:collection_id changes)))
   (when (and (not= (keyword (:data_authority original :unconfigured)) :unconfigured)
              (= (keyword (:data_authority changes)) :unconfigured))
     (throw (ex-info (tru "Cannot set data_authority back to unconfigured once it has been configured")
@@ -227,13 +217,9 @@
 (t2/define-before-insert :model/Table
   [table]
   (check-publication table)
-  (collection/check-allowed-content :table (:collection_id table))
   (merge table
          (apply dissoc
                 {:display_name   (humanization/name->human-readable-name (:name table))
-                 :field_order    (or (:field_order table)
-                                     (driver/default-field-order
-                                      (some-> (:db_id table) warehouse-schema.db/database-engine)))
                  :data_layer     :internal
                  :data_authority :unconfigured}
                 (keys table))))
@@ -245,16 +231,7 @@
     (check-changes changes original)
     (when (some #(contains? changes %) [:is_published :collection_id])
       (check-publication table))
-    (when (contains? changes :field_order)
-      (update-field-positions! table))
     (merge table (visibility-changes changes original) (activity-changes changes original))))
-
-(t2/define-before-delete :model/Table
-  [table]
-  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table))
-  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (defn- group-perm-defaults
   "Build the list of {:group-id G :perm-type PT :default-value V} triples for a new table."
@@ -304,11 +281,6 @@
                                                              non-admin-groups)])
                                    tables)]
         (perms/set-default-table-permissions-bulk! db-id tables+defaults)))))
-
-(t2/define-after-insert :model/Table
-  [table]
-  (u/prog1 table
-    (set-new-table-permissions! table)))
 
 (t2/define-after-select :model/Table
   [table]
@@ -541,6 +513,144 @@
             transform_id  (conj [:model/Transform transform_id])))
         entities))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-allowed-contents
+  "Throws unless each Collection among `collection-ids` can hold Tables, each checked once."
+  [collection-ids]
+  (run! #(collection/check-allowed-content :table %) (into #{} (remove nil?) collection-ids)))
+
+(defn- with-default-field-orders
+  "Each of the Table `rows` with the default field order of its Database's driver unless it has one, the engines of
+  the Databases read in one query."
+  [rows]
+  (let [engines (when-let [db-ids (not-empty (into #{} (comp (remove :field_order) (keep :db_id)) rows))]
+                  (warehouse-schema.db/database-engines db-ids))]
+    (mapv (fn [{:keys [db_id field_order] :as row}]
+            (cond-> row
+              (nil? field_order) (assoc :field_order (driver/default-field-order (get engines db_id)))))
+          rows)))
+
+(defn- set-new-permissions!
+  "Give the new `tables` their default permissions, those of each Database at once."
+  [tables]
+  (doseq [[db-id tables] (group-by :db_id tables)]
+    (if (= 1 (count tables))
+      (set-new-table-permissions! (first tables))
+      (set-new-tables-permissions! db-id tables))))
+
+(mu/defn create-tables! :- [:sequential ::warehouse-schema.schema/table]
+  "Insert the Table `rows` and return the inserted instances, with the default field order of their driver and the
+  default permissions of a new Table; a Collection that cannot hold Tables throws."
+  [rows :- [:sequential ::warehouse-schema.schema/table.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-allowed-contents (map :collection_id rows))
+      (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders rows)))
+        (set-new-permissions! <>)))))
+
+(mu/defn create-table! :- ::warehouse-schema.schema/table
+  "Insert the Table `row` and return it, as [[create-tables!]] does."
+  [row :- ::warehouse-schema.schema/table.create]
+  (first (create-tables! [row])))
+
+(defn- update-field-positions-for-tables!
+  "Set the `:position` of the Fields of each of `tables` to their place in its `:field_order`: one read per distinct
+  field order and one statement."
+  [tables]
+  (field/set-positions!
+   (into {}
+         (for [[field-order tables] (group-by (comp keyword :field_order) tables)
+               [_table-id fields]   (group-by :table_id (warehouse-schema.db/field-ids-for-tables-ordered
+                                                         (into #{} (map :id) tables)
+                                                         field-order))
+               [position field]     (map-indexed vector fields)]
+           [(:id field) position]))))
+
+(mu/defn update-field-positions!
+  "Set the `:position` of the Fields of `table` to their place in its `:field_order`, in one statement."
+  [table :- [:map [:id ::lib.schema.id/table] [:field_order {:optional true} [:maybe :keyword]]]]
+  (update-field-positions-for-tables! [table]))
+
+(defn- update-tables-by-change!
+  "Apply each of `rows`, the id of a Table and the columns to change, with one statement per distinct set of changes,
+  returning the number updated."
+  [rows]
+  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) rows)
+                    :when (seq changes)]
+                (warehouse-schema.db/update-tables! (into #{} (map :id) rows) changes))))
+
+(defn- apply-table-updates!
+  "Apply each of `rows`, the id of a Table and the columns to change, and the changes that follow them, returning the
+  number of Tables updated: a new field order sets the positions of the Table's Fields."
+  [rows]
+  (if (empty? rows)
+    0
+    (events/with-batched-events
+      (let [stored (when-let [ids (not-empty (into #{} (keep (fn [row] (when (some #(contains? row %) [:field_order :collection_id]) (:id row)))) rows))]
+                     (u/index-by :id (warehouse-schema.db/tables ids)))]
+        (check-allowed-contents (for [{:keys [id collection_id]} rows
+                                      :when (and collection_id (not= collection_id (:collection_id (stored id))))]
+                                  collection_id))
+        (u/prog1 (update-tables-by-change! rows)
+          (update-field-positions-for-tables!
+           (for [{:keys [id field_order] :as row} rows
+                 :when (and (contains? row :field_order)
+                            (contains? stored id)
+                            (not= (some-> field_order keyword) (:field_order (stored id))))]
+             {:id id :field_order (some-> field_order keyword)})))))))
+
+(mu/defn update-tables! :- [:sequential [:map [:id ::lib.schema.id/table]]]
+  "Apply each of `rows`, the id of a Table and the columns to change, and return them, as [[update-table!]] does."
+  [rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
+  (apply-table-updates! rows)
+  (vec rows))
+
+(mu/defn update-table! :- :int
+  "Apply `changes` to the Table with `table-id` and return the number updated; a Collection that cannot hold Tables
+  throws, and a new field order sets the positions of its Fields."
+  [table-id :- ::lib.schema.id/table
+   changes  :- ::warehouse-schema.schema/table.update]
+  (apply-table-updates! [(assoc changes :id table-id)]))
+
+(mu/defn update-tables-with-changes! :- :int
+  "Apply the same `changes` to the Tables with `table-ids` and return the number updated, as [[update-table!]] does."
+  [table-ids :- [:set ::lib.schema.id/table]
+   changes   :- ::warehouse-schema.schema/table.update]
+  (apply-table-updates! (mapv #(assoc changes :id %) table-ids)))
+
+(mu/defn update-tables-where! :- :int
+  "Apply `changes`, values or HoneySQL expressions, to the Tables matching `conditions` and return the number updated:
+  one statement, unless `changes` set a Collection or a field order, which updates the matching Tables as
+  [[update-table!]] does."
+  [conditions :- ::warehouse-schema.schema/conditions
+   changes    :- ::warehouse-schema.schema/sql-changes]
+  (if (some #(contains? changes %) [:collection_id :field_order])
+    (apply-table-updates! (mapv #(assoc changes :id %) (warehouse-schema.db/table-ids-where conditions)))
+    (events/with-batched-events
+      (warehouse-schema.db/update-tables-where! conditions changes))))
+
+(mu/defn set-display-name!
+  "Set the display name of the Table with `table-id`."
+  [table-id     :- ::lib.schema.id/table
+   display-name :- :string]
+  (update-table! table-id {:display_name display-name}))
+
+(mu/defn delete-tables!
+  "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them."
+  [ids :- [:sequential ::lib.schema.id/table]]
+  (when (seq ids)
+    (events/with-batched-events
+      (field/delete-fields-for-tables! (vec ids))
+      (warehouse-schema.db/delete-implicit-actions-for-tables! (vec ids))
+      (warehouse-schema.db/delete-tables! (vec ids)))))
+
+(mu/defn delete-table!
+  "Delete the Table with `table-id`, as [[delete-tables!]] does."
+  [table-id :- ::lib.schema.id/table]
+  (delete-tables! [table-id]))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod events/spec :model/Table
@@ -580,6 +690,9 @@
                          :show_in_getting_started false}
    :storage-paths       storage-paths
    :import-dependencies import-dependencies
+   :insert!             create-tables!
+   :update!             update-tables!
+   :delete!             delete-tables!
    :rows-by-refs        serialization/table-rows-by-refs})
 
 (defmethod audit/spec :model/Table [_model]

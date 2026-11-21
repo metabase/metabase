@@ -72,15 +72,6 @@
   (when transform-id
     (t2/select-one :model/Table :transform_id transform-id)))
 
-(mu/defn update-table!
-  "Apply `changes` to the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table
-   changes  :- [:map {:closed true}
-                [:schema       {:optional true} [:maybe :string]]
-                [:active       {:optional true} [:maybe :boolean]]
-                [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/update! :model/Table :id table-id changes))
-
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]

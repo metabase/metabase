@@ -950,7 +950,6 @@
    :model-imports #{:model/Database
                     :model/Dimension
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   database-routing
@@ -2669,8 +2668,9 @@
            settings
            sync
            util
-           warehouses}
-   :model-imports #{:model/DataPermissions :model/Database :model/Table}}
+           warehouses
+           warehouses.schema}
+   :model-imports #{:model/DataPermissions :model/Database}}
 
   search
   {:team "Metabot"
@@ -3338,6 +3338,7 @@
            transforms.indexes
            util
            warehouses
+           warehouses.schema
            workspaces}}
 
   transforms.feature-gating
@@ -3641,7 +3642,6 @@
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   warehouses.schema
@@ -3741,7 +3741,6 @@
                     :model/Database
                     :model/Dimension
                     :model/Field
-                    :model/FieldValues
                     :model/Table}}
 
   warehouses.secrets

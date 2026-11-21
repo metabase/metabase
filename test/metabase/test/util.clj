@@ -58,6 +58,9 @@
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -544,6 +547,29 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Table
+  "Gives a temporary Table the default permissions of a new Table that `create-tables!` gives it, and deletes the
+  Fields and implicit Actions left on it as `delete-tables!` does."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes (fn [temp-table]
+                                           (#'table/set-new-permissions! [temp-table])
+                                           (try
+                                             (f temp-table)
+                                             (finally
+                                               (field/delete-fields-for-tables! [(:id temp-table)])
+                                               (warehouse-schema.db/delete-implicit-actions-for-tables!
+                                                [(:id temp-table)]))))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Field
+  "Deletes the Fields left nested under a temporary Field, as `delete-fields!` does."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes (fn [temp-field]
+                                           (try
+                                             (f temp-field)
+                                             (finally
+                                               (field/delete-fields!
+                                                (vec (t2/select-pks-set :model/Field :parent_id (:id temp-field)))))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
   "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."

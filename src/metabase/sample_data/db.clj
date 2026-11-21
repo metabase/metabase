@@ -50,12 +50,6 @@
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:engine :details :settings])]
   (t2/update! :model/Database :id database-id changes))
 
-(mu/defn set-database-tables-schema!
-  "Set the `schema` of every Table of the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]]
-  (t2/update! :model/Table :db_id database-id {:schema schema}))
-
 (mu/defn set-database-table-permissions-schema-name!
   "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
   update because the model's before-update rejects all updates."

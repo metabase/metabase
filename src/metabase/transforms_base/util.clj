@@ -40,6 +40,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.table-remapping :as ws.table-remapping]
    [toucan2.core :as t2])
@@ -654,7 +655,7 @@
        ;; the driver's default schema. If so, fix the Table record before syncing.
        (let [table (if (nil? (:schema table))
                      (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
-                       (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
+                       (do (table/update-table! (:id table) {:schema actual-schema})
                            (-> (transforms-base.db/table (:id table))
                                (t2/hydrate :db)))
                        table)
@@ -672,7 +673,7 @@
                                                 :is_writable false)
                                 {:create? true})]
     (when-not (:active table)
-      (transforms-base.db/update-table! (:id table) {:active true}))
+      (table/update-table! (:id table) {:active true}))
     table))
 
 (mu/defn sync-target!
@@ -689,7 +690,7 @@
    target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database target)]
     ;; TODO this should probably be a function in the sync module
-    (transforms-base.db/update-table! (:id table) {:active false})))
+    (table/update-table! (:id table) {:active false})))
 
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
@@ -943,7 +944,7 @@
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table
       (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
-      (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
+      (table/update-table! (:id table) {:transform_id (:id transform)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try

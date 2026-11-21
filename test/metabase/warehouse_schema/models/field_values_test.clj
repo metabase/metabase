@@ -630,7 +630,7 @@
     (mt/with-temp [:model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                   :type     :sandbox
                                                   :hash_key "random-hash"}]
-      (t2/insert! :model/FieldValues (cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full)))
+      (field-values/create-field-values! [(cond-> {:field_id (mt/id :venues :id)} explicitly-full? (assoc :type :full))])
       (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))))
 
 (deftest update-full-field-values-should-remove-all-cached-field-values
@@ -639,7 +639,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
+    (field-values/update-field-values! [{:id (:id fv) :values [1 2 3]}])
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -648,8 +648,31 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
+    (field-values/update-field-values! [{:id (:id fv) :has_more_values true}])
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
+
+(defn- field-values-write-call-counts!
+  "The number of app-DB calls creating and then updating full FieldValues for `n` Fields of a new Table takes."
+  [n]
+  (mt/with-temp [:model/Table {table-id :id} {}]
+    (let [field-ids (vec (for [i (range n)]
+                           (t2/insert-returning-pk! :model/Field {:table_id      table-id
+                                                                  :name          (str "F" i)
+                                                                  :base_type     :type/Text
+                                                                  :database_type "TEXT"})))
+          ids       (mapv :id (field-values/create-field-values! (mapv #(hash-map :field_id % :values ["a"]) field-ids)))]
+      [(t2/with-call-count [call-count]
+         (field-values/create-field-values! (mapv #(hash-map :field_id % :type :sandbox :hash_key "h" :values ["a"])
+                                                  field-ids))
+         (call-count))
+       (t2/with-call-count [call-count]
+         (field-values/update-field-values! (mapv #(hash-map :id % :values ["b"]) ids))
+         (call-count))])))
+
+(deftest bulk-field-values-writes-call-count-test
+  (testing "creating and updating FieldValues takes the same number of statements for 2 and 6 rows"
+    (is (= (field-values-write-call-counts! 2)
+           (field-values-write-call-counts! 6)))))
 
 (deftest select-coherence-test
   (testing "We cannot perform queries with invalid mixes of type and hash_key, which would return nothing"
