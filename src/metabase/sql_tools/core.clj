@@ -306,6 +306,12 @@
                           [:ref ::join-step-source]
                           [:map [:strategy [:enum :inner-join :left-join :right-join :full-join :cross-join]]]]]]]])
 
+(mu/defn join-steps-supported-driver? :- :boolean
+  "Whether [[join-steps]] can generate queries in `driver`'s SQL dialect.
+  For any other driver it returns `{:unsupported :unsupported-dialect}`."
+  [driver :- :keyword]
+  (sqlglot/join-steps-dialect? driver))
+
 (mu/defn join-steps :- ::join-steps
   "The row-count queries of each join in `native-query`, a single SELECT, taken one join at a time, ready to run.
 

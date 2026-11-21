@@ -91,6 +91,13 @@
   "The drivers with no sqlglot dialect whose step queries, generated in sqlglot's default dialect, are tested to run."
   #{:h2})
 
+(defn join-steps-dialect?
+  "Whether [[join-steps]] generates queries for `driver`: it has a sqlglot dialect, or its queries in the default
+  dialect are tested to run."
+  [driver]
+  (or (some? (driver->dialect driver))
+      (contains? drivers-without-dialect driver)))
+
 (defn- source-table-ids
   "A function from a source's `[catalog schema table]` to the id of the Table it names in `query`'s database.
   It returns nil for a name that matches no Table, a transform's target not yet created included."
@@ -112,7 +119,7 @@
   See [[metabase.sql-tools.core/join-steps]]."
   [parser driver query]
   (let [dialect (driver->dialect driver)
-        result  (if (and (nil? dialect) (not (drivers-without-dialect driver)))
+        result  (if-not (join-steps-dialect? driver)
                   {:status "unsupported", :reason "unsupported-dialect"}
                   (sql-parsing/join-steps parser dialect (lib/raw-native-query query)))]
     (if-not (= "ok" (:status result))

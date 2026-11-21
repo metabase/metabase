@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -55,6 +56,13 @@
   (let [col-name (t2/select-one-fn :name :model/Field :id (mt/id table-key col-key))]
     (sql.u/quote-name driver/*driver* :field col-name)))
 
+(defn- join-steps-drivers
+  "The SQL drivers with left joins whose native join steps sql-tools can generate."
+  []
+  (mt/normal-driver-select {:+parent   :sql
+                            :+features [:left-join]
+                            :+fns      [sql-tools/join-steps-supported-driver?]}))
+
 (defn- make-native-transform
   [query]
   {:source {:type :query :query query}
@@ -63,8 +71,7 @@
 ;;; -------------------------------------------------- Native CTE / subquery tests --------------------------------------------------
 
 (deftest analyze-native-query-cte-join-source-table-is-nil-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
-                                             :+features [:left-join]})
+  (mt/test-drivers (join-steps-drivers)
     (testing "join against a CTE alias produces nil :source-table"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
@@ -77,8 +84,7 @@
                 (query-analysis/analyze-native-query transform)))))))
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
-                                             :+features [:left-join]})
+  (mt/test-drivers (join-steps-drivers)
     (testing "mix of simple table join and CTE join: only simple table has source-table"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
@@ -111,8 +117,7 @@
         (:join-structure result)))
 
 (deftest analyze-native-query-step-queries-count-the-join-chain-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
-                                             :+features [:left-join]})
+  (mt/test-drivers (join-steps-drivers)
     (testing "a LEFT JOIN with a compound condition counts the rows as written and the rows that found a match"
       (let [query     (lib/native-query
                        (mt/metadata-provider)
@@ -136,8 +141,7 @@
           (is (= [[orders widgets]] (step-counts result))))))))
 
 (deftest analyze-native-query-matched-count-is-the-inner-join-count-test
-  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
-                                             :+features [:left-join]})
+  (mt/test-drivers (join-steps-drivers)
     (testing "a condition true of every unmatched row counts no match, where COUNT(CASE WHEN <condition>) counted all"
       (let [query  (lib/native-query
                     (mt/metadata-provider)
