@@ -5,7 +5,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as ee.serialization]
-   [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.collections.core :as collections]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -200,8 +200,8 @@
                                                                    :table_id  (mt/id :venues)})
                                 action-id)
              :model-id        model-id
-             :model-action-id (actions/insert! {:name "Create venue" :type :implicit :kind :row/create
-                                                :model_id model-id})}))))))
+             :model-action-id (actions.models/create-action! {:name "Create venue" :type :implicit :kind :row/create
+                                                              :model_id model-id})}))))))
 
 (defn venues-query
   "A query of the VENUES table, which a card in a data app's collection may read once it is published."
