@@ -93,9 +93,10 @@
                  counts)))
 
 (defn- default-topic
-  "The topic of the event that `model` publishes for `operation`, as it is stored."
-  [model operation]
-  (some-> (events/spec model) (get operation) name keyword))
+  "The topic of the lifecycle `event`, as it is stored: the one a write function published it under, else the one the
+  spec of its model names."
+  [{:keys [topic model operation]}]
+  (some-> (or topic (get (events/spec model) operation)) name keyword))
 
 (defn- stored-topic
   "The topic to store for the lifecycle `event`, nil when it records nothing."
@@ -105,7 +106,7 @@
       (if (keyword? topic)
         topic
         (when topic (topic event))))
-    (default-topic model operation)))
+    (default-topic event)))
 
 (defn- state-of
   "The state that the spec of `model` stores whole for `row`, as the lifecycle `event` leaves it."

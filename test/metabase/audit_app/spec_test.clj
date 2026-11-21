@@ -56,6 +56,11 @@
     :api-key-update :api-key-regenerate
     :pulse-create :subscription-create})
 
+(def ^:private published-topics
+  "The topics that the write functions of the models without an `events/spec` publish by hand, which the audit log
+  stores under their names."
+  #{:glossary-create :glossary-update :glossary-delete})
+
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
   and the keywords in `:topics`, the `:topics` of `:parent` and `:moments`."
@@ -103,4 +108,4 @@
 (deftest stored-topics-test
   (is (= (cond-> oss-topics
            config/ee-available? (into ee-topics))
-         (set/union (data-topics (audited-models!)) function-topics))))
+         (set/union (data-topics (audited-models!)) function-topics published-topics))))

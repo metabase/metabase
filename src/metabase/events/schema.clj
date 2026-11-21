@@ -161,18 +161,23 @@
    [:object {:optional true} [:map]]
    [:previous-object {:optional true} [:map]]
    [:changed {:optional true} [:set :keyword]]
-   [:captures {:optional true} [:map-of :keyword :any]]])
+   [:captures {:optional true} [:map-of :keyword [:or :map [:fn coll?]]]]])
+
+(mr/def ::context
+  "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;
+  `:reverting?`, whether they are the writes of a revert; `:archived-with`, the `[model id]` of the entity whose archive
+  or restore carried their rows; and `:details`, a map the audit log records."
+  [:map {:closed true}
+   [:revision-message {:optional true} [:maybe :string]]
+   [:reverting? {:optional true} :boolean]
+   [:archived-with {:optional true} [:tuple :keyword pos-int?]]
+   [:details {:optional true} [:map]]])
 
 (mr/def ::lifecycle
-  "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one batch of writes
-  created, updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, and the
-  `:context` they share: `:revision-message`, `:reverting?`, `:archived-with` and `:details`."
+  "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one action created,
+  updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, and the
+  `:context` they share."
   [:map {:closed true}
    [:changes [:sequential {:min 1} ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
-   [:context {:optional true}
-    [:map {:closed true}
-     [:revision-message {:optional true} [:maybe :string]]
-     [:reverting? {:optional true} :boolean]
-     [:archived-with {:optional true} [:tuple :keyword pos-int?]]
-     [:details {:optional true} [:map]]]]])
+   [:context {:optional true} ::context]])

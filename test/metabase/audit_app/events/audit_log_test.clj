@@ -8,8 +8,11 @@
    [java-time.api :as t]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.glossary.models.glossary :as glossary]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
    [metabase.test :as mt]
@@ -97,20 +100,23 @@
 (deftest dashboard-create-event-test
   (testing :dashboard-create
     (mt/with-test-user :rasta
-      (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-        (is (partial=
-             {:topic    :dashboard-create
-              :user_id  (mt/user->id :rasta)
-              :model    "Dashboard"
-              :model_id (:id dashboard)
-              :details  {:name "My Cool Dashboard", :description nil}}
-             (mt/latest-audit-log-entry "dashboard-create" (:id dashboard))))))))
+      (let [dashboard (dashboard/create-dashboard! {:name "My Cool Dashboard" :creator_id (mt/user->id :rasta)})]
+        (try
+          (is (partial=
+               {:topic    :dashboard-create
+                :user_id  (mt/user->id :rasta)
+                :model    "Dashboard"
+                :model_id (:id dashboard)
+                :details  {:name "My Cool Dashboard", :description nil}}
+               (mt/latest-audit-log-entry "dashboard-create" (:id dashboard))))
+          (finally
+            (dashboard/delete-dashboard! (:id dashboard))))))))
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-        (t2/delete! :model/Dashboard :id (:id dashboard))
+        (dashboard/delete-dashboard! (:id dashboard))
         (is (partial=
              {:topic    :dashboard-delete
               :user_id  (mt/user->id :rasta)
@@ -133,9 +139,9 @@
     (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}
                    :model/Card      card {}]
       (mt/with-test-user :rasta
-        (let [dashcard (t2/insert-returning-instance! :model/DashboardCard {:dashboard_id (:id dashboard)
-                                                                            :card_id      (:id card)
-                                                                            :row 0 :col 0 :size_x 4 :size_y 4})]
+        (let [dashcard (first (dashboard-card/create-dashboard-cards! [{:dashboard_id (:id dashboard)
+                                                                        :card_id      (:id card)
+                                                                        :row 0 :col 0 :size_x 4 :size_y 4}]))]
           (is (partial=
                {:topic    :dashboard-add-cards
                 :user_id  (mt/user->id :rasta)
@@ -150,7 +156,7 @@
                    :model/Card          card {}
                    :model/DashboardCard dashcard  {:dashboard_id (:id dashboard), :card_id (:id card)}]
       (mt/with-test-user :rasta
-        (t2/delete! :model/DashboardCard :id (:id dashcard))
+        (dashboard-card/delete-dashboard-cards! [(:id dashcard)])
         (is (partial=
              {:topic    :dashboard-remove-cards
               :user_id  (mt/user->id :rasta)
@@ -516,31 +522,35 @@
 
 (deftest glossary-events-test
   (mt/with-current-user (mt/user->id :rasta)
-    (mt/with-temp [:model/Glossary glossary {:term "Test Term" :definition "Definition"}]
-      (testing :event/glossary-create
-        (is (= {:model_id (:id glossary)
-                :user_id (mt/user->id :rasta)
-                :details {:term "Test Term"}
-                :topic :glossary-create
-                :model "Glossary"}
-               (mt/latest-audit-log-entry :glossary-create (:id glossary)))))
-      (testing :event/glossary-update
-        (t2/update! :model/Glossary :id (:id glossary) {:term "Updated Term"})
-        (is (= {:model_id (:id glossary)
-                :user_id (mt/user->id :rasta)
-                :details {:previous {:term "Test Term"}
-                          :new {:term "Updated Term"}}
-                :topic :glossary-update
-                :model "Glossary"}
-               (mt/latest-audit-log-entry :glossary-update (:id glossary)))))
-      (testing :event/glossary-delete
-        (t2/delete! :model/Glossary :id (:id glossary))
-        (is (= {:model_id (:id glossary)
-                :user_id (mt/user->id :rasta)
-                :details {:term "Updated Term"}
-                :topic :glossary-delete
-                :model "Glossary"}
-               (mt/latest-audit-log-entry :glossary-delete (:id glossary))))))))
+    (let [glossary (glossary/create-glossary-entry! {:term "Test Term" :definition "Definition" :creator_id (mt/user->id :rasta)})
+          id       (:id glossary)]
+      (try
+        (testing :event/glossary-create
+          (is (= {:model_id id
+                  :user_id (mt/user->id :rasta)
+                  :details {:term "Test Term"}
+                  :topic :glossary-create
+                  :model "Glossary"}
+                 (mt/latest-audit-log-entry :glossary-create id))))
+        (testing :event/glossary-update
+          (glossary/update-glossary-entry! id {:term "Updated Term"})
+          (is (= {:model_id id
+                  :user_id (mt/user->id :rasta)
+                  :details {:previous {:term "Test Term"}
+                            :new {:term "Updated Term"}}
+                  :topic :glossary-update
+                  :model "Glossary"}
+                 (mt/latest-audit-log-entry :glossary-update id))))
+        (testing :event/glossary-delete
+          (glossary/delete-glossary-entry! id)
+          (is (= {:model_id id
+                  :user_id (mt/user->id :rasta)
+                  :details {:term "Updated Term"}
+                  :topic :glossary-delete
+                  :model "Glossary"}
+                 (mt/latest-audit-log-entry :glossary-delete id))))
+        (finally
+          (t2/delete! :model/Glossary :id id))))))
 
 (deftest ^:synchronized remote-sync-event-version-after-completion-test
   (testing "remote-sync audit log entries include version when event is published after task completion (#73329)"
@@ -703,15 +713,22 @@
                  :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
                 (mt/latest-audit-log-entry topic (:id table))))))))
 
+(defn- update!
+  "Apply `changes` to the Card or Dashboard `id` through the write function of its model, which publishes the event."
+  [model id changes]
+  (case model
+    :model/Card      (t2/update! :model/Card :id id changes)
+    :model/Dashboard (dashboard/update-dashboard! id changes)))
+
 (deftest public-links-are-recorded-test
   (mt/with-temp [:model/Card      {card-id :id}      {}
                  :model/Dashboard {dashboard-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[model id prefix] [[:model/Card card-id "card"] [:model/Dashboard dashboard-id "dashboard"]]]
-        (t2/update! model :id id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
+        (update! model id {:public_uuid (str (random-uuid)) :made_public_by_id (mt/user->id :rasta)})
         (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-created")) id))
             "created")
-        (t2/update! model :id id {:public_uuid nil :made_public_by_id nil})
+        (update! model id {:public_uuid nil :made_public_by_id nil})
         (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-deleted")) id))
             "deleted")))))
 

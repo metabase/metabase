@@ -8,6 +8,9 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -305,33 +308,33 @@
               dashcard-id  (atom nil)]
           (testing "a parameter change marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/update! :model/Dashboard :id dashboard-id
-                                              {:parameters [{:id "p" :name "P" :slug "p" :type :category}]})))))
+                   (marks! world #(dashboard/update-dashboard! dashboard-id
+                                                               {:parameters [{:id "p" :name "P" :slug "p" :type :category}]})))))
           (testing "a dashboard card marks the dashboard's dependency when it is created, changed or deleted"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(reset! dashcard-id (t2/insert-returning-pk! :model/DashboardCard
-                                                                               {:dashboard_id dashboard-id
-                                                                                :card_id      (id-of world :card-f)
-                                                                                :row 0 :col 0 :size_x 4 :size_y 4})))))
+                   (marks! world #(reset! dashcard-id (:id (first (dashboard-card/create-dashboard-cards!
+                                                                   [{:dashboard_id dashboard-id
+                                                                     :card_id      (id-of world :card-f)
+                                                                     :row 0 :col 0 :size_x 4 :size_y 4}])))))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/update! :model/DashboardCard :id @dashcard-id {:card_id (id-of world :card-a)}))))
+                   (marks! world #(dashboard-card/update-dashboard-card-rows! [{:id @dashcard-id :card_id (id-of world :card-a)}]))))
             (is (= (marked {:triggers? false})
-                   (marks! world #(t2/update! :model/DashboardCard :id @dashcard-id {:row 2}))))
+                   (marks! world #(dashboard-card/update-dashboard-card-rows! [{:id @dashcard-id :row 2}]))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard-id
-                                                                          :card_id          (id-of world :card-b)
-                                                                          :position         0}))))
+                   (marks! world #(dashboard-card/update-dashboard-cards-series! {@dashcard-id [(id-of world :card-b)]}))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard-id))))
+                   (marks! world #(dashboard-card/update-dashboard-cards-series! {@dashcard-id []}))))
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardCard :id @dashcard-id)))))
+                   (marks! world #(dashboard-card/delete-dashboard-cards! [@dashcard-id])))))
           (testing "a tab marks the dashboard's dependency"
             (is (= (marked {:dependency [:dashboard]})
-                   (marks! world #(t2/delete! :model/DashboardTab :id (t2/insert-returning-pk!
-                                                                       :model/DashboardTab
-                                                                       {:dashboard_id dashboard-id
-                                                                        :name         "Tab"
-                                                                        :position     0})))))))))))
+                   (marks! world #(let [tab-id (first (dashboard-tab/create-dashboard-tabs!
+                                                       [{:dashboard_id dashboard-id
+                                                         :name         "Tab"
+                                                         :position     0}]))]
+                                    (dashboard-tab/do-update-tabs! dashboard-id
+                                                                   (t2/select :model/DashboardTab :id tab-id)
+                                                                   [])))))))))))
 
 (deftest transform-and-action-writes-test
   (mt/with-premium-features #{:dependencies}

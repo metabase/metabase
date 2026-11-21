@@ -3,10 +3,13 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
+   [metabase.glossary.models.glossary :as glossary]
    [metabase.glossary.schema :as glossary.schema]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (deftest creator-hydration-test
@@ -71,3 +74,33 @@
     (testing "every user can read entries"
       (mt/with-test-user :rasta
         (is (= [true] (map mi/can-read? (t2/hydrate [entry] :can_read))))))))
+
+(def ^:private published (atom []))
+
+(doseq [topic [:event/glossary-create :event/glossary-update :event/glossary-delete]]
+  (events/derive! topic ::published))
+
+(methodical/defmethod events/publish-event! ::published
+  [topic event]
+  (swap! published conj [topic event]))
+
+(deftest write-functions-publish-events-test
+  (reset! published [])
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [{:keys [id]} (glossary/create-glossary-entry! {:term "Published" :definition "Definition" :creator_id (mt/user->id :rasta)})]
+      (try
+        (glossary/update-glossary-entry! id {:definition "Changed"})
+        (glossary/delete-glossary-entry! id)
+        (is (=? [[:event/glossary-create {:changes [{:object {:id id :term "Published"}}]
+                                          :user-id (mt/user->id :rasta)}]
+                 [:event/glossary-update {:changes [{:object          {:definition "Changed"}
+                                                     :previous-object {:definition "Definition"}}]}]
+                 [:event/glossary-delete {:changes [{:previous-object {:id id}}]}]]
+                @published))
+        (testing "a plain Toucan write publishes nothing"
+          (reset! published [])
+          (let [plain-id (t2/insert-returning-pk! :model/Glossary {:term "Plain" :definition "Definition"})]
+            (t2/delete! :model/Glossary :id plain-id))
+          (is (empty? @published)))
+        (finally
+          (t2/delete! :model/Glossary :id id))))))

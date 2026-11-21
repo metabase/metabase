@@ -5,12 +5,14 @@
    [metabase.events.hierarchy]
    [metabase.events.impl]
    [metabase.events.lifecycle]
+   [metabase.events.publish]
    [potemkin :as p]))
 
 (comment metabase.events.batch/keep-me
          metabase.events.lifecycle/keep-me
          metabase.events.hierarchy/keep-me
-         metabase.events.impl/keep-me)
+         metabase.events.impl/keep-me
+         metabase.events.publish/keep-me)
 
 (p/import-vars
  [metabase.events.batch
@@ -28,6 +30,14 @@
   descendants
   isa?
   underive!]
+ [metabase.events.publish
+  Events
+  created
+  delete-changes
+  deleted
+  publish-lifecycle!
+  updated
+  updated-row]
  [metabase.events.impl
   Topic
   event-schema

@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
@@ -56,7 +57,13 @@
                                      {:location (collection/children-location c)}
                                      row-attrs
                                      {:name n})))))
-   "dashboard"      (insert-rows :model/Dashboard (in-collection {}))
+   "dashboard"      (fn [c names row-attrs]
+                      (dashboard/create-dashboards!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Dashboard) :created_at :updated_at)
+                                     {:collection_id (:id c)}
+                                     row-attrs
+                                     {:name n})))))
    "card"           (insert-rows :model/Card (in-collection {:type :question}))
    "dataset"        (insert-rows :model/Card (in-collection {:type :model}))
    "metric"         (insert-rows :model/Card (in-collection {:type :metric}))

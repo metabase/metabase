@@ -10,6 +10,8 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.events.test-util :as events.tu]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
@@ -256,10 +258,15 @@
                        (column-types [(name (t2/table-name model)) (u/lower-case-en (name (first pks)))]))
             (str model "'s key is not an integer column"))))))
 
+(def ^:private published-by-hand
+  "The models whose write functions publish their events, in place of the events trait."
+  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries})
+
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
     (spec-test-util/load-models!)
-    (doseq [model (vals (change-log.cascade/tracked-models))]
+    (doseq [model (vals (change-log.cascade/tracked-models))
+            :when (not (published-by-hand model))]
       (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
 
 (deftest cascade-sources-derive-events-test
@@ -267,7 +274,8 @@
     (let [models  (spec-test-util/load-models!)
           fks     (change-log.cascade/foreign-keys)
           sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
-      (doseq [model sources]
+      (doseq [model sources
+              :when (not (published-by-hand model))]
         (is (isa? model :hook/events) (str model " does not derive :hook/events"))))))
 
 (defn- startup-namespaces
@@ -557,7 +565,7 @@
         (testing "deleting a dashboard card, which is not logged, logs the subscription card deleted with it"
           (is (= [["pulse_card" (:id pc) "delete"]
                   ["pulse" (:id pulse) "update"]]
-                 (logged-by #(t2/delete! :model/DashboardCard :id (:id dc))))
+                 (logged-by #(dashboard-card/delete-dashboard-cards! [(:id dc)])))
               "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
@@ -574,7 +582,7 @@
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
           (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(t2/delete! :model/DashboardTab :id (:id tab)))))
+                 (logged-by #(dashboard-tab/do-update-tabs! (:id dash) [tab] []))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (defn- call-counts

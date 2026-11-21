@@ -1783,9 +1783,14 @@
   "Updates each of the Cards `updates` names by its `:id` with the columns it gives, after checking that each can go
   where it is put, and returns `updates` without those of Cards that do not exist. Keeps the rows that depend on a Card
   in step with its change, and writes the Cards that get the same changes with one statement, so the statements do not
-  grow with their number."
-  [updates :- [:sequential [:merge ::queries.schema/card.update [:map {:closed true} [:id ::lib.schema.id/card]]]]]
-  (update-cards* updates))
+  grow with their number. The `context`, such as `{:archived-with [:model/Dashboard 1]}` for the Cards that the archive of
+  Dashboard 1 carries, goes to the events of the writes."
+  ([updates :- [:sequential [:merge ::queries.schema/card.update [:map {:closed true} [:id ::lib.schema.id/card]]]]]
+   (update-cards* updates))
+  ([updates :- [:sequential [:merge ::queries.schema/card.update [:map {:closed true} [:id ::lib.schema.id/card]]]]
+    context :- [:maybe :metabase.events.schema/context]]
+   (events/with-event-context context
+     (update-cards* updates))))
 
 (mu/defn delete-cards!
   "Deletes the Cards with `card-ids` after the rows that depend on them, one statement for each kind of row, so the

@@ -18,6 +18,8 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -677,46 +679,46 @@
                     :to_entity_id param-source-card-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-         (t2/delete! :model/DashboardCard :id basic-dashcard-id)
-         (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
+         (dashboard-card/delete-dashboard-cards! [basic-dashcard-id])
+         (dashboard/update-dashboard! dashboard-id {:parameters []})
          (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                              (lib/aggregate (lib/count)))
                                                           :display :scalar}
                         :model/Card {scalar-click-target-card-id :id} {:dataset_query (lib/query mp products)}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id scalar-card-id
-                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                          :linkType "question"
-                                                                                          :targetId scalar-click-target-card-id}}}
                         :model/Card {scalar-card-2-id :id} {:dataset_query (-> (lib/query mp orders)
                                                                                (lib/aggregate (lib/count)))
                                                             :display :scalar}
                         :model/Dashboard {scalar-click-target-dashboard-id :id} {}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id scalar-card-2-id
-                                                :visualization_settings {:click_behavior {:type "link"
-                                                                                          :linkType "dashboard"
-                                                                                          :targetId scalar-click-target-dashboard-id}}}
                         :model/Card {table-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                             (lib/breakout category-field)
                                                                             (lib/aggregate (lib/count)))
                                                          :display :table}
                         :model/Card {column-click-target-card-id :id} {:dataset_query (lib/query mp products)}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id table-card-id
-                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                       :linkType "question"
-                                                                                                                                       :targetId column-click-target-card-id}}}}}
                         :model/Dashboard {column-click-target-dashboard-id :id} {}
                         :model/Card {table-card-2-id :id} {:dataset_query (-> (lib/query mp orders)
                                                                               (lib/breakout category-field)
                                                                               (lib/aggregate (lib/count)))
-                                                           :display :table}
-                        :model/DashboardCard _ {:dashboard_id dashboard-id
-                                                :card_id table-card-2-id
-                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
-                                                                                                                                       :linkType "dashboard"
-                                                                                                                                       :targetId column-click-target-dashboard-id}}}}}]
+                                                           :display :table}]
+           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                                :card_id scalar-card-id
+                                                                                                :visualization_settings {:click_behavior {:type "link"
+                                                                                                                                          :linkType "question"
+                                                                                                                                          :targetId scalar-click-target-card-id}}})])
+           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                                :card_id scalar-card-2-id
+                                                                                                :visualization_settings {:click_behavior {:type "link"
+                                                                                                                                          :linkType "dashboard"
+                                                                                                                                          :targetId scalar-click-target-dashboard-id}}})])
+           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                                :card_id table-card-id
+                                                                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                                       :linkType "question"
+                                                                                                                                                                                       :targetId column-click-target-card-id}}}}})])
+           (dashboard-card/create-dashboard-cards! [(merge {:row 0 :col 0 :size_x 4 :size_y 4} {:dashboard_id dashboard-id
+                                                                                                :card_id table-card-2-id
+                                                                                                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:click_behavior {:type "link"
+                                                                                                                                                                                       :linkType "dashboard"
+                                                                                                                                                                                       :targetId column-click-target-dashboard-id}}}}})])
            (deps.test/synchronously-run-dependency-job!)
            (is (=? #{{:from_entity_type :dashboard
                       :from_entity_id dashboard-id
@@ -752,7 +754,7 @@
                       :to_entity_id column-click-target-dashboard-id}}
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-           (t2/delete! :model/Dashboard :id dashboard-id)
+           (dashboard/delete-dashboard! dashboard-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))))))
 

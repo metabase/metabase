@@ -9,6 +9,8 @@
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
@@ -228,24 +230,25 @@
                            (pending? :dashboard dashboard-id))
                 dashcard (atom nil)]
             (testing "inserting a dashboard card"
-              (is (changes? #(reset! dashcard (t2/insert-returning-pk! :model/DashboardCard
-                                                                       {:dashboard_id dashboard-id :card_id card-id
-                                                                        :row 0 :col 0 :size_x 4 :size_y 4})))))
+              (is (changes? #(reset! dashcard (:id (first (dashboard-card/create-dashboard-cards!
+                                                           [{:dashboard_id dashboard-id :card_id card-id
+                                                             :row 0 :col 0 :size_x 4 :size_y 4}])))))))
             (testing "pointing a dashboard card at another card"
-              (is (changes? #(t2/update! :model/DashboardCard :id @dashcard {:card_id other-id}))))
+              (is (changes? #(dashboard-card/update-dashboard-card-rows! [{:id @dashcard :card_id other-id}]))))
             (testing "adding a series"
-              (is (changes? #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id @dashcard :card_id card-id
-                                                                     :position 0}))))
+              (is (changes? #(dashboard-card/update-dashboard-cards-series! {@dashcard [card-id]}))))
             (testing "removing a series"
-              (is (changes? #(t2/delete! :model/DashboardCardSeries :dashboardcard_id @dashcard))))
+              (is (changes? #(dashboard-card/update-dashboard-cards-series! {@dashcard []}))))
             (testing "adding and removing a tab"
               (let [tab-id (atom nil)]
-                (is (changes? #(reset! tab-id (t2/insert-returning-pk! :model/DashboardTab
-                                                                       {:dashboard_id dashboard-id :name "Tab"
-                                                                        :position 0}))))
-                (is (changes? #(t2/delete! :model/DashboardTab :id @tab-id)))))
+                (is (changes? #(reset! tab-id (first (dashboard-tab/create-dashboard-tabs!
+                                                      [{:dashboard_id dashboard-id :name "Tab"
+                                                        :position 0}])))))
+                (is (changes? #(dashboard-tab/do-update-tabs! dashboard-id
+                                                              (t2/select :model/DashboardTab :id @tab-id)
+                                                              [])))))
             (testing "removing a dashboard card"
-              (is (changes? #(t2/delete! :model/DashboardCard :id @dashcard))))
+              (is (changes? #(dashboard-card/delete-dashboard-cards! [@dashcard]))))
             (testing "nothing else"
               (computed! :dashboard dashboard-id)
               (is (not (pending? :dashboard dashboard-id))))))))))
