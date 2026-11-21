@@ -25,8 +25,7 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser)
-  (derive :hook/timestamped?)
-  (derive :hook/no-statements))
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/McpGroupPermission
   {:tool_access mi/transform-json-no-keywordization})

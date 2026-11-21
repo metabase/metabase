@@ -38,7 +38,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events)
-  (derive :hook/no-statements)
   (derive :search/indexed))
 
 (t2/deftransforms :model/ModerationReview

@@ -29,9 +29,7 @@
 
 (methodical/defmethod t2/table-name :model/TransformRun [_model] :transform_run)
 
-(doto :model/TransformRun
-  (derive :metabase/model)
-  (derive :hook/no-statements))
+(derive :model/TransformRun :metabase/model)
 
 (t2/define-before-update :model/TransformRun
   [run]
