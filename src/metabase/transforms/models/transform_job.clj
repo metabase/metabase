@@ -76,15 +76,13 @@
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn- sync-triggers! :- :nil
-  "Make the Quartz trigger of each of the jobs with `job-ids` match its row: scheduled while the job is active, removed
-  otherwise."
-  [job-ids :- [:sequential ms/PositiveInt]]
-  (when (seq job-ids)
-    (doseq [{:keys [id active schedule] :as job} (transforms.db/jobs-by-ids (vec job-ids))]
-      (if active
-        (when-not (= schedule (:schedule (transforms.schedule/existing-trigger id)))
-          (transforms.schedule/initialize-job! job))
-        (transforms.schedule/delete-trigger! id))))
+  "Make the Quartz trigger of each of the `jobs` match its row: scheduled while the job is active, removed otherwise."
+  [jobs :- [:sequential :map]]
+  (doseq [{:keys [id active schedule] :as job} jobs]
+    (if active
+      (when-not (= schedule (:schedule (transforms.schedule/existing-trigger id)))
+        (transforms.schedule/initialize-job! job))
+      (transforms.schedule/delete-trigger! id)))
   nil)
 
 (mu/defn create-transform-jobs! :- [:sequential ::transforms.schema/transform-job]
@@ -94,7 +92,7 @@
   (if (seq rows)
     (t2/with-transaction [_conn]
       (let [jobs (transforms.db/insert-jobs! rows)]
-        (sync-triggers! (mapv :id jobs))
+        (sync-triggers! jobs)
         (events/publish-lifecycle! [(events/created :event/transform-job-create jobs)])
         jobs))
     []))
@@ -135,7 +133,7 @@
         (doseq [[changes pairs] (group-by val changes-by-id)
                 :when           (seq changes)]
           (transforms.db/update-jobs! (mapv key pairs) changes))
-        (sync-triggers! (vec (keys changes-by-id)))
+        (sync-triggers! (transforms.db/jobs-by-ids (vec (keys changes-by-id))))
         (events/publish-lifecycle! [(update-event stored changes-by-id)]))))
   nil)
 
@@ -173,7 +171,7 @@
   (t2/with-transaction [_conn]
     (when-let [previous (transforms.db/job job-id)]
       (when (pos? (flip! job-id))
-        (sync-triggers! [job-id])
+        (sync-triggers! [(assoc previous :active (not (:active previous)))])
         (events/publish-lifecycle!
          [(events/updated :event/transform-job-update
                           [previous]

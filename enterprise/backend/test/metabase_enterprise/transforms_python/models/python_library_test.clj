@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.models.python-library :as python-library]
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
+   [metabase.events.test-util :as events.tu]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -99,3 +100,10 @@
       (is (= "shared.py" (t2/select-one-fn :path :model/PythonLibrary :id id)))
       (t2/update! :model/PythonLibrary :id id {:source "def helper(): pass"})
       (is (= "def helper(): pass" (t2/select-one-fn :source :model/PythonLibrary :id id))))))
+
+(deftest update-python-library-source-statement-counts-test
+  (t2/delete! :model/PythonLibrary)
+  (testing "an insert"
+    (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 1")))))
+  (testing "an update"
+    (is (= 4 (events.tu/statement-count! #(python-library/update-python-library-source! "common" "a = 2"))))))
