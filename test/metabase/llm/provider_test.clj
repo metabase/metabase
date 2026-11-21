@@ -288,6 +288,7 @@
       (doseq [[type config] [["anthropic" {:api-key "sk-ant-valid"}]
                              ["openai"    {:api-key "sk-valid"}]
                              ["vllm"      {}]
+                             ["litellm"   {}]
                              ["azure"     {:api-key "azure-key" :deployment-name "gpt-4.1-mini"}]]]
         (testing type
           (is (=? {:status-code 400 :field :base-url}
@@ -792,7 +793,7 @@
                 "without updating them ships a provider that silently falls back to the generic icon. Update "
                 "both, then this list.")
     (is (= #{"anthropic" "openai" "openrouter" "mistral" "zai" "moonshot" "deepseek" "xai" "google" "azure"
-             "bedrock" "vllm" "ollama" "openai-compatible" "metabase"}
+             "bedrock" "vllm" "ollama" "openai-compatible" "litellm" "metabase"}
            (into #{} (map :type) (llm.provider/provider-types))))))
 
 (deftest ^:parallel provider-types-test
@@ -810,6 +811,7 @@
     (is (= #{:api-key} (llm.provider/secret-field-keys "azure")))
     (is (= #{:access-key-id :secret-access-key :session-token} (llm.provider/secret-field-keys "bedrock")))
     (is (= #{:api-key} (llm.provider/secret-field-keys "vllm")))
+    (is (= #{:api-key} (llm.provider/secret-field-keys "litellm")))
     (testing "google's service account key is a file field, but it is the whole credential"
       (is (= #{:service-account-key :oauth-access-token} (llm.provider/secret-field-keys "google"))))
     (is (= #{} (llm.provider/secret-field-keys "metabase"))))
@@ -836,6 +838,7 @@
             "vllm"       nil
             "ollama"     nil
             "openai-compatible" nil
+            "litellm"    nil
             "metabase"   "anthropic/claude-sonnet-4-6"}
            (into {} (map (juxt :type #(llm.provider/default-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/default-model "evilai"))))
@@ -858,6 +861,7 @@
             "vllm"       nil
             "ollama"     nil
             "openai-compatible" nil
+            "litellm"    nil
             "metabase"   nil}
            (into {} (map (juxt :type #(llm.provider/mini-model (:type %)))) (llm.provider/provider-types))))
     (is (nil? (llm.provider/mini-model "evilai")))))

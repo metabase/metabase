@@ -48,6 +48,7 @@ export type LlmProviderTypeName =
   | "vllm"
   | "ollama"
   | "openai-compatible"
+  | "litellm"
   | "metabase";
 
 export type LlmProviderFieldType =
