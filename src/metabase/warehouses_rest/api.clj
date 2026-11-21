@@ -959,10 +959,9 @@
             (setting/validate-settable-for-db setting-kw pending-db driver-supports?)
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
-        (events/with-batched-events
-          (database/update-database! id updates)
-          (when (premium-features/enable-cache-granular-controls?)
-            (database/update-database! id {:cache_ttl cache_ttl})))
+        (database/update-database! existing-database
+                                   (cond-> updates
+                                     (premium-features/enable-cache-granular-controls?) (assoc :cache_ttl cache_ttl)))
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db

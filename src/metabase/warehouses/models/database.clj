@@ -27,6 +27,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.task.sync-databases-trigger :as sync-databases-trigger]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -76,7 +77,6 @@
 (doto :model/Database
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -744,23 +744,53 @@
       (throw (ex-info (tru "A destination database cannot be the router of another destination database.")
                       {:status-code 400})))))
 
+(def ^:private uploads-disabled
+  "The changes that disable uploads on a Database."
+  {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil})
+
+(defn- disable-uploads-changes!
+  "Disable uploads on every Database that has them enabled, returning the change of each as `{id change}`, the change
+  a `{:previous-object :object}` map."
+  []
+  (let [enabled (warehouses.db/databases-with-uploads-enabled)]
+    (when (seq enabled)
+      (warehouses.db/disable-uploads-for-databases! (mapv :id enabled)))
+    (into {}
+          (map (fn [database]
+                 [(:id database) {:previous-object database
+                                  :object          (events/updated-row database uploads-disabled)}]))
+          enabled)))
+
+(defn- database-updated
+  "The `:event/database-update` event of `changes`, `{id change}`, leaving out the changes that change nothing."
+  [changes]
+  [:event/database-update (into []
+                                (comp (map val) (filter #(seq (u.events/changed-keys %))))
+                                changes)])
+
 (mu/defn create-databases! :- [:sequential ::warehouses.schema/database]
-  "Insert the Database `rows` and return the inserted instances, in one batch of events: their client secrets stored as
-  Secrets, uploads disabled on every other Database when one of them enables them, the groups given the default
-  permissions of each, and their sync triggers scheduled."
-  [rows :- [:sequential ::warehouses.schema/database.create]]
-  (if (empty? rows)
-    []
-    (events/with-batched-events
-      (check-routers-not-destinations rows)
-      (let [rows (mapv #(models.secret/handle-incoming-client-secrets! % nil) rows)]
-        (when (some :uploads_enabled rows)
-          (warehouses.db/disable-uploads-for-all-databases!))
-        (u/prog1 (vec (warehouses.db/insert-databases! rows))
-          (set-new-databases-permissions! <>)
-          ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
-          ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
-          (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) <>))))))
+  "Insert the Database `rows` and return the inserted instances: their client secrets stored as Secrets, uploads
+  disabled on every other Database when one of them enables them, the groups given the default permissions of each,
+  and their sync triggers scheduled. `context` goes into the events."
+  ([rows :- [:sequential ::warehouses.schema/database.create]]
+   (create-databases! rows nil))
+  ([rows    :- [:sequential ::warehouses.schema/database.create]
+    context :- [:maybe :metabase.events.schema/context]]
+   (if (empty? rows)
+     []
+     (t2/with-transaction [_conn]
+       (check-routers-not-destinations rows)
+       (let [rows     (mapv #(models.secret/handle-incoming-client-secrets! % nil) rows)
+             disabled (when (some :uploads_enabled rows)
+                        (disable-uploads-changes!))]
+         (u/prog1 (vec (warehouses.db/insert-databases! rows))
+           (set-new-databases-permissions! <>)
+           ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
+           ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
+           (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) <>)
+           (events/publish-lifecycle! (cond-> [(events/created :event/database-create <>)]
+                                        (seq disabled) (conj (database-updated disabled)))
+                                      {:context context})))))))
 
 (mu/defn create-database! :- ::warehouses.schema/database
   "Insert the Database `row` and return it, as [[create-databases!]] does."
@@ -800,59 +830,102 @@
                     :when (seq changes)]
                 (warehouses.db/update-databases! (into #{} (map :id) rows) changes))))
 
+(defn- with-update
+  "`changes`, `{id change}`, with the update of the Database `previous` to `object` added, a Database changed twice
+  keeping the row it had before the first change."
+  [changes previous object]
+  (update changes (:id object) (fn [change]
+                                 {:previous-object (or (:previous-object change) previous)
+                                  :object          object})))
+
 (defn- apply-database-updates!
-  "Apply each of `rows`, the id of a Database and the columns to change, in one batch of events, returning the number
-  updated. Changes of connection details store their client secrets as Secrets, enabling uploads disables them on
-  every other Database, and the sync triggers of the Databases whose schedules can have moved are rescheduled; the
-  stored rows are read once for those, and plain changes are one statement."
+  "Apply each of `rows`, the id of a Database and the columns to change, returning the number updated, and publish
+  their events. The stored rows are read once; changes of connection details store their client secrets as Secrets,
+  enabling uploads disables them on every other Database, and the sync triggers of the Databases whose schedules can
+  have moved are rescheduled, those rows read again, once, for the triggers and the events."
   [rows]
-  (let [{plain true, full false} (group-by #(plain-update? (dissoc % :id)) rows)]
-    (events/with-batched-events
-      (+ (update-by-change! plain)
-         (if (empty? full)
-           0
-           (let [stored (u/index-by :id (warehouses.db/databases (into [] (comp (map :id) (distinct)) full)))
-                 rows   (into []
-                              (keep (fn [{:keys [id] :as row}]
-                                      (when-let [database (stored id)]
-                                        (assoc (with-client-secrets database (dissoc row :id)) :id id))))
-                              full)]
-             (when (some (fn [{:keys [id uploads_enabled]}]
-                           (and uploads_enabled (not (:uploads_enabled (stored id)))))
+  (t2/with-transaction [_conn]
+    (let [stored   (u/index-by :id (warehouses.db/databases (into [] (comp (map :id) (distinct)) rows)))
+          rows     (into []
+                         (keep (fn [{:keys [id] :as row}]
+                                 (when-let [database (stored id)]
+                                   (assoc (with-client-secrets database (dissoc row :id)) :id id))))
                          rows)
-               (warehouses.db/disable-uploads-for-all-databases!))
-             (u/prog1 (update-by-change! rows)
-               (when-let [ids (not-empty (into []
-                                               (comp (filter (fn [row] (some #(contains? row %) trigger-columns)))
-                                                     (map :id)
-                                                     (distinct))
-                                               rows))]
-                 ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since
-                 ;; the scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
-                 ;; self-heals.
-                 (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) (warehouses.db/databases ids))))))))))
+          disabled (when (some (fn [{:keys [id uploads_enabled]}]
+                                 (and uploads_enabled (not (:uploads_enabled (stored id)))))
+                               rows)
+                     (disable-uploads-changes!))]
+      (u/prog1 (update-by-change! rows)
+        (let [trigger-ids (into []
+                                (comp (filter (fn [row] (some #(contains? row %) trigger-columns)))
+                                      (map :id)
+                                      (distinct))
+                                rows)
+              reread      (when (seq trigger-ids)
+                            (u/index-by :id (warehouses.db/databases trigger-ids)))
+              changes     (reduce (fn [changes {:keys [id] :as row}]
+                                    (let [previous (or (get-in changes [id :object]) (stored id))]
+                                      (with-update changes (stored id) (or (get reread id)
+                                                                           (events/updated-row previous (dissoc row :id))))))
+                                  (or disabled {})
+                                  rows)]
+          ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
+          ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
+          (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) (vals reread))
+          (events/publish-lifecycle! [(database-updated changes)]))))))
 
 (mu/defn update-databases! :- [:sequential [:map [:id ::lib.schema.id/database]]]
   "Apply each of `rows`, the id of a Database and the columns to change, and return them, as [[update-database!]]
-  does."
+  does for changes that are not plain."
   [rows :- [:sequential ::warehouses.schema/database.update-row]]
-  (apply-database-updates! rows)
+  (when (seq rows)
+    (apply-database-updates! rows))
   (vec rows))
 
+(def ^:private previous-columns
+  "The columns whose change the consumers of a Database update compare with the stored row: the driver's connection and
+  the workspace schema read the settings."
+  #{:settings})
+
+(defn- plain-update-previous
+  "The Database `database`, or its id, as a plain update of `changes` publishes it as the row before the update: the
+  stored row the caller gave, else the stored row read once when a user makes the change, whose audit row records it,
+  or when a consumer compares a changed column with it, and else the id alone, as sync's small updates leave it."
+  [database changes]
+  (cond
+    (t2/instance-of? :model/Database database)
+    database
+
+    (or (some? (mi/current-user-id)) (some #(contains? changes %) previous-columns))
+    (warehouses.db/database database)
+
+    :else
+    (t2/instance :model/Database {:id database})))
+
 (mu/defn update-database! :- :int
-  "Apply `changes` to the Database with `database-id` and return the number updated: in one statement unless they
-  change connection details, a column its sync triggers follow, or enable uploads, which [[apply-database-updates!]]
-  does more for."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (if (plain-update? changes)
-    (warehouses.db/update-database! database-id changes)
-    (apply-database-updates! [(assoc changes :id database-id)])))
+  "Apply `changes` to `database`, the Database or its id, and return the number updated. Changes that need nothing but
+  their statement are one statement, and publish the stored row the caller gave as the row before them; others are
+  applied as [[update-databases!]] applies them."
+  [database :- [:or ::lib.schema.id/database [:fn {:error/message "a Database"} #(t2/instance-of? :model/Database %)]]
+   changes  :- ::warehouses.schema/database.update]
+  (let [database-id (u/the-id database)]
+    (if (plain-update? changes)
+      (t2/with-transaction [_conn]
+        (let [previous (plain-update-previous database changes)]
+          (u/prog1 (warehouses.db/update-database! database-id changes)
+            (when (and previous (pos? <>))
+              (events/publish-lifecycle!
+               [(database-updated {database-id {:previous-object previous
+                                                :object          (events/updated-row previous changes)}})])))))
+      (apply-database-updates! [(assoc changes :id database-id)]))))
 
 (mu/defn disable-uploads! :- :int
   "Disable uploads on every Database that has them enabled, returning the number updated."
   []
-  (warehouses.db/disable-uploads-for-all-databases!))
+  (t2/with-transaction [_conn]
+    (let [changes (disable-uploads-changes!)]
+      (events/publish-lifecycle! [(database-updated changes)])
+      (count changes))))
 
 (defmulti delete-for-databases!
   "Delete the rows of `model` that belong to the Database rows `databases`, through the write functions of `model`, as
@@ -878,9 +951,9 @@
     (delete-for-databases! model databases)))
 
 (mu/defn delete-databases! :- :nil
-  "Delete the Databases with `database-ids` in one batch of events, after their Secrets and what else belongs to them
-  (see [[delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the delete
-  have accepted it."
+  "Delete the Databases with `database-ids`, after their Secrets and what else belongs to them (see
+  [[delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the delete have
+  accepted it."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (when (seq database-ids)
     (events/with-batched-events
@@ -889,7 +962,9 @@
         (run! unschedule-tasks! databases)
         (models.secret/delete-orphaned-secrets! databases)
         (delete-followers! follower-models databases)
-        (warehouses.db/delete-databases! (mapv :id databases)))))
+        (let [event (events/deleted :event/database-delete :model/Database databases)]
+          (warehouses.db/delete-databases! (mapv :id databases))
+          (events/publish-lifecycle! [event])))))
   nil)
 
 (mu/defn delete-database! :- :nil
@@ -914,12 +989,6 @@
     (update-databases! (mapv warehouses.serialization/sanitized-row rows))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Database
-  [_model]
-  {:create :event/database-create
-   :update :event/database-update
-   :delete :event/database-delete})
 
 (defmethod app-db-copy/spec :model/Database [_model]
   {:skip?     false
@@ -962,6 +1031,7 @@
    :before-load   warehouses.serialization/before-load
    :insert!       create-imported-databases!
    :update!       update-imported-databases!
+   :delete!       delete-databases!
    :rows-by-refs  serialization/database-rows-by-refs})
 
 (defmethod audit/spec :model/Database [_model]

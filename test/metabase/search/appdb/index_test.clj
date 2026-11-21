@@ -23,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -118,7 +119,7 @@
             db-name-fn     (comp :database_name legacy-input)
             alternate-name (str (random-uuid))]
         (is (= "Indexed Database" (db-name-fn)))
-        (t2/update! :model/Database :id db-id {:name alternate-name})
+        (database/update-database! db-id {:name alternate-name})
         (is (= alternate-name (db-name-fn)))))))
 
 (deftest partial-word-test

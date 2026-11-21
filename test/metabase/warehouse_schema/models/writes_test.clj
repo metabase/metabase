@@ -3,12 +3,14 @@
   of rows."
   (:require
    [clojure.test :refer :all]
+   [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -119,3 +121,60 @@
             [leaf-id]   (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "L" :parent_id child-id)])]
         (field/delete-fields! [parent-id])
         (is (empty? (t2/select :model/Field :id [:in [parent-id child-id leaf-id]])))))))
+
+(defn- where-write-counts!
+  "The calls updating `n` Tables and their Fields by conditions, with values and with expressions, and setting the
+  Fields' positions take."
+  [n]
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (let [tables    (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
+          field-ids (into [] (mapcat #(field/create-fields! (field-rows (:id %) 1))) tables)]
+      (try
+        [(call-count! #(table/update-tables-where! {:db_id db-id} {:schema "S"}))
+         (call-count! #(table/update-tables-where! {:db_id db-id} {:name [:lower :name]}))
+         (call-count! #(field/update-fields-where! {:id [:in field-ids]} {:database_indexed true}))
+         (call-count! #(field/update-fields-where! {:id [:in field-ids]} {:last_analyzed :%now}))
+         (call-count! #(field/set-positions! (zipmap field-ids (range))))]
+        (finally
+          (table/delete-tables! (mapv :id tables)))))))
+
+(deftest where-writes-call-count-test
+  (testing "updating Tables and Fields by conditions and setting positions takes as many statements for 2 rows as for 6"
+    (is (= (where-write-counts! 2)
+           (where-write-counts! 6)))))
+
+(def ^:private published (atom []))
+
+(doseq [topic [:event/table-update :event/field-update :event/field-delete]]
+  (events/derive! topic ::published))
+
+(methodical/defmethod events/publish-event! ::published
+  [topic event]
+  (swap! published conj [topic event]))
+
+(deftest bulk-writes-publish-one-event-per-topic-test
+  (testing "a bulk write publishes one event per topic, with a change for each row it changes"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}]
+      (let [ids (field/create-fields! (field-rows table-id 3))]
+        (reset! published [])
+        (field/update-fields! (mapv (fn [id] {:id id :description "D"}) ids))
+        (is (=? [[:event/field-update {:changes [{:object {:description "D"} :previous-object {:description nil}}
+                                                 {:object {:description "D"}}
+                                                 {:object {:description "D"}}]}]]
+                @published))
+        (testing "an update that changes nothing publishes no change"
+          (reset! published [])
+          (field/update-fields! (mapv (fn [id] {:id id :description "D"}) ids))
+          (is (empty? @published)))
+        (testing "the deactivation of a Table publishes one event"
+          (reset! published [])
+          (table/update-tables-where! {:id table-id} {:active false})
+          (is (=? [[:event/table-update {:changes [{:object {:active false :deactivated_at some?}
+                                                    :previous-object {:active true}}]}]]
+                  @published)))
+        (testing "deleting the Fields publishes one delete event"
+          (reset! published [])
+          (field/delete-fields! ids)
+          (is (= [:event/field-delete] (map first @published)))
+          (is (= (set ids) (set (map (comp :id :previous-object) (:changes (second (first @published))))))))))))

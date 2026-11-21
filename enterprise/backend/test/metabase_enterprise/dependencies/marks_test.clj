@@ -13,6 +13,12 @@
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.dimension :as dimension]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (comment
@@ -223,39 +229,42 @@
           (testing "a table rename marks its direct dependents"
             (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:display_name "Venues"}
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(t2/update! :model/Table :id (mt/id :venues) {:display_name "Places"}))))))
+                     (marks! world #(table/update-table! (mt/id :venues) {:display_name "Places"}))))))
           (testing "a table description change marks nothing"
             (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:description "Venues"}
               (is (= (marked {:triggers? false})
-                     (marks! world #(t2/update! :model/Table :id (mt/id :venues) {:description "Places"}))))))
+                     (marks! world #(table/update-table! (mt/id :venues) {:description "Places"}))))))
           (testing "a field rename marks its table's direct dependents"
             (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:display_name "Price"}
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(t2/update! :model/Field :id (mt/id :venues :price) {:display_name "Cost"}))))))
+                     (marks! world #(field/update-field! (mt/id :venues :price) {:display_name "Cost"}))))))
           (testing "a field fingerprint marks nothing"
             (is (= (marked {:triggers? false})
-                   (marks! world #(t2/update! :model/Field :id (mt/id :venues :price)
-                                              {:last_analyzed (t/offset-date-time)})))))
+                   (marks! world #(field/update-field! (mt/id :venues :price)
+                                                       {:last_analyzed (t/offset-date-time)})))))
           (testing "creating and deleting a field marks its table's direct dependents"
             (let [field-id (atom nil)]
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(reset! field-id (t2/insert-returning-pk! :model/Field {:table_id      (mt/id :venues)
-                                                                                            :name          "marks"
-                                                                                            :base_type     :type/Text
-                                                                                            :database_type "TEXT"})))))
+                     (marks! world #(reset! field-id (field/create-field! {:table_id      (mt/id :venues)
+                                                                           :name          "marks"
+                                                                           :base_type     :type/Text
+                                                                           :database_type "TEXT"})))))
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(t2/delete! :model/Field :id @field-id))))))
+                     (marks! world #(field/delete-fields! [@field-id]))))))
           (testing "table user settings mark its table's direct dependents"
-            (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                   (marks! world #(t2/insert! :model/TableUserSettings {:table_id (mt/id :venues) :display_name "Places"}))))
-            (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                   (marks! world #(t2/delete! :model/TableUserSettings :table_id (mt/id :venues))))))
+            (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:display_name "Venues"}
+              (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
+                     (marks! world #(table-user-settings/create-table-user-settings! [{:table_id     (mt/id :venues)
+                                                                                       :display_name "Places"}]))))
+              (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
+                     (marks! world #(table-user-settings/delete-table-user-settings! [(mt/id :venues)]))))))
           (testing "field user settings mark the field's table's direct dependents"
-            (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                   (marks! world #(t2/insert! :model/FieldUserSettings {:field_id     (mt/id :venues :price)
-                                                                        :display_name "Cost"}))))
-            (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                   (marks! world #(t2/delete! :model/FieldUserSettings :field_id (mt/id :venues :price)))))))))))
+            (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:display_name "Price"}
+              (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
+                     (marks! world #(field-user-settings/create-field-user-settings! [{:field_id     (mt/id :venues :price)
+                                                                                       :display_name "Cost"}]))))
+              (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
+                     (marks! world #(field-user-settings/delete-field-user-settings! [(mt/id :venues :price)])))))))))))
 
 (deftest remap-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -266,28 +275,28 @@
           (testing "an external remap marks the transitive dependents of the remapped field's table"
             (let [dimension-id (atom nil)]
               (is (= (marked {:analysis orders-transitive :result-metadata orders-transitive})
-                     (marks! world #(reset! dimension-id (t2/insert-returning-pk!
-                                                          :model/Dimension
-                                                          {:field_id                (mt/id :orders :product_id)
-                                                           :type                    :external
-                                                           :name                    "Product"
-                                                           :human_readable_field_id (mt/id :products :title)})))))
+                     (marks! world #(reset! dimension-id (:id (dimension/create-dimension!
+                                                               {:field_id                (mt/id :orders :product_id)
+                                                                :type                    :external
+                                                                :name                    "Product"
+                                                                :human_readable_field_id (mt/id :products :title)}))))))
               (testing "and a change of its human-readable field marks them, and the field's own table's direct
                       dependents"
                 (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
                   (is (= (marked {:analysis        (conj orders-transitive :card-f)
                                   :result-metadata (conj orders-transitive :card-f)})
-                         (marks! world #(t2/update! :model/Field :id (mt/id :products :title)
-                                                    {:display_name "Name"}))))))
+                         (marks! world #(field/update-field! (mt/id :products :title)
+                                                             {:display_name "Name"}))))))
               (testing "and a user setting of its human-readable field"
-                (is (= (marked {:analysis        (conj orders-transitive :card-f)
-                                :result-metadata (conj orders-transitive :card-f)})
-                       (marks! world #(t2/insert! :model/FieldUserSettings {:field_id     (mt/id :products :title)
-                                                                            :display_name "Item"}))))
-                (t2/delete! :model/FieldUserSettings :field_id (mt/id :products :title)))
+                (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
+                  (is (= (marked {:analysis        (conj orders-transitive :card-f)
+                                  :result-metadata (conj orders-transitive :card-f)})
+                         (marks! world #(field-user-settings/create-field-user-settings! [{:field_id     (mt/id :products :title)
+                                                                                           :display_name "Item"}]))))
+                  (field-user-settings/delete-field-user-settings! [(mt/id :products :title)])))
               (testing "and deleting it"
                 (is (= (marked {:analysis orders-transitive :result-metadata orders-transitive})
-                       (marks! world #(t2/delete! :model/Dimension :id @dimension-id)))))))
+                       (marks! world #(dimension/delete-dimensions! [@dimension-id])))))))
           (testing "the FieldValues of an internal remap mark the transitive dependents when they gain human-readable
                   values, and nothing when only their values change"
             (mt/with-temp [:model/Dimension   _  {:field_id (mt/id :venues :price) :type :internal :name "Price"}
@@ -295,10 +304,11 @@
                                                   :values                [1 2 3 4]
                                                   :human_readable_values []}]
               (is (= (marked {:triggers? false})
-                     (marks! world #(t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3 4 5]}))))
+                     (marks! world #(field-values/update-field-values! [{:id (:id fv) :values [1 2 3 4 5]}]))))
               (is (= (marked {:analysis venues-transitive :result-metadata venues-transitive})
-                     (marks! world #(t2/update! :model/FieldValues :id (:id fv)
-                                                {:human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]})))))))))))
+                     (marks! world #(field-values/update-field-values!
+                                     [{:id                    (:id fv)
+                                       :human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]}])))))))))))
 
 (deftest dashboard-writes-test
   (mt/with-premium-features #{:dependencies}

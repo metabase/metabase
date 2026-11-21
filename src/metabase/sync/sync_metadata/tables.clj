@@ -196,7 +196,7 @@
   [database          :- i/DatabaseInstance
    existing          :- (ms/InstanceOf :model/Table)
    {:keys [sample?]} :- [:map {:closed true} [:sample? :boolean]]]
-  (sync.updates/update-table-unless-user-set! (:id existing)
+  (sync.updates/update-table-unless-user-set! existing
                                               (cond-> (cruft-dependent-cols existing database ::reactivate)
                                                 ;; do not unhide tables w/ cruft settings
                                                 (some? (:visibility_type existing)) (dissoc :visibility_type)
@@ -314,7 +314,7 @@
                  v))
     (boolean
      (when (seq changes)
-       (sync.updates/update-table-unless-user-set! (:id metabase-table) changes)
+       (sync.updates/update-table-unless-user-set! metabase-table changes)
        true))))
 
 (mu/defn- update-tables-metadata-if-needed! :- :int

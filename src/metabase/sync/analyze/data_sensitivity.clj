@@ -52,7 +52,7 @@
    table :- i/TableInstance]
   (sync-util/with-error-handling (format "Error classifying data sensitivity for %s" (sync-util/name-for-logging field))
     (let [category (analyze/infer-data-sensitivity field {:name (:name table) :entity_type (:entity_type table)})]
-      (field/update-field! (u/the-id field) {:data_sensitivity (or category :PUBLIC)})
+      (field/update-field! field {:data_sensitivity (or category :PUBLIC)})
       category)))
 
 (mu/defn scan-table! :- Stats

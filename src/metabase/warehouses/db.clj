@@ -45,6 +45,11 @@
   [database-name :- :string]
   (t2/select-one :model/Database :name database-name))
 
+(mu/defn databases-with-uploads-enabled
+  "The Databases that have uploads enabled."
+  []
+  (t2/select :model/Database :uploads_enabled true))
+
 (mu/defn insert-databases!
   "Insert the Database `rows` and return the inserted instances."
   [rows :- [:sequential ::warehouses.schema/database.create]]
@@ -79,10 +84,11 @@
                         [:= :router_database_id nil]]
              :group-by [:engine]}))
 
-(mu/defn disable-uploads-for-all-databases!
-  "Disable uploads on every Database that has them enabled, returning the number updated."
-  []
-  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
+(mu/defn disable-uploads-for-databases!
+  "Disable uploads on the Databases with `database-ids`, returning the number updated."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/update! :model/Database :id [:in database-ids]
+              {:uploads_enabled false :uploads_table_prefix nil :uploads_schema_name nil}))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."

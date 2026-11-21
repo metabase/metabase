@@ -18,6 +18,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -303,7 +304,8 @@
                                               :to_entity_type :table :to_entity_id (mt/id :products)}]
             (run-jobs!)
             (is (not (deps.test/analysis-finding-pending? :card card-id)))
-            (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description "Changed"}
+            (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:description nil}
+              (field/update-field! (mt/id :products :title) {:description "Changed"})
               (is (deps.test/analysis-finding-pending? :table (mt/id :products)))
               (is (some #{card-id} (analyzed-ids! run-jobs!))))))))))
 

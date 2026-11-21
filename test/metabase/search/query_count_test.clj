@@ -14,6 +14,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -71,7 +72,13 @@
    "exploration"    (insert-rows :model/Exploration)
    "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
    "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
-   "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
+   "table"          (fn [_collection names row-attrs]
+                      (table/create-tables!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at)
+                                     {:db_id (mt/id)}
+                                     row-attrs
+                                     {:name n})))))
    "database"       (fn [_collection names row-attrs]
                       (database/create-databases!
                        (vec (for [n names]

@@ -8,7 +8,6 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -60,21 +59,21 @@
                                        seq)]
       {:status 400
        :body (into {} invalid-destinations)}
-      (events/with-event-context {:details {:primary_db_name (:name router-db)
-                                            :primary_db_id   (:id router-db)}}
-        (u/prog1 (database/create-databases!
-                  (mapv (fn [{:keys [name details]}]
-                          {:name               name
-                           :engine             engine
-                           :details            details
-                           :auto_run_queries   auto_run_queries
-                           :is_full_sync       false
-                           :is_on_demand       is_on_demand
-                           :cache_ttl          nil
-                           :router_database_id router_database_id
-                           :creator_id         api/*current-user-id*})
-                        destinations))
-          (run! #(sync/start-initial-sync! % nil) <>))))))
+      (u/prog1 (database/create-databases!
+                (mapv (fn [{:keys [name details]}]
+                        {:name               name
+                         :engine             engine
+                         :details            details
+                         :auto_run_queries   auto_run_queries
+                         :is_full_sync       false
+                         :is_on_demand       is_on_demand
+                         :cache_ttl          nil
+                         :router_database_id router_database_id
+                         :creator_id         api/*current-user-id*})
+                      destinations)
+                {:details {:primary_db_name (:name router-db)
+                           :primary_db_id   (:id router-db)}})
+        (run! #(sync/start-initial-sync! % nil) <>)))))
 
 (defn- delete-router!
   [db-id]

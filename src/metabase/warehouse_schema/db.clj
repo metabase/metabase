@@ -137,9 +137,14 @@
                     {:from [[(t2/table-name :model/Field) :f]]}))
 
 (mu/defn insert-fields!
-  "Insert the Field `rows` and return their ids."
+  "Insert the Field `rows` and return the inserted instances."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (t2/insert-returning-pks! :model/Field rows))
+  (t2/insert-returning-instances! :model/Field rows))
+
+(mu/defn fields-where
+  "The Fields matching `conditions`."
+  [conditions :- ::warehouse-schema.schema/conditions]
+  (apply t2/select :model/Field (mapcat identity conditions)))
 
 (mu/defn update-field!
   "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
@@ -153,16 +158,11 @@
    changes   :- ::warehouse-schema.schema/field.update]
   (t2/update! :model/Field :id [:in field-ids] changes))
 
-(mu/defn field-ids-where :- [:set ::lib.schema.id/field]
-  "The ids of the Fields matching `conditions`."
-  [conditions :- ::warehouse-schema.schema/conditions]
-  (set (apply t2/select-pks-set :model/Field (mapcat identity conditions))))
-
-(mu/defn update-fields-where!
-  "Apply `changes` to the Fields matching `conditions`, returning the number updated."
-  [conditions :- ::warehouse-schema.schema/conditions
-   changes    :- ::warehouse-schema.schema/sql-changes]
-  (apply t2/update! :model/Field (concat (mapcat identity conditions) [changes])))
+(mu/defn update-fields-to-sql-changes!
+  "Apply `changes`, values or HoneySQL expressions, to the Fields with `field-ids`, returning the number updated."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   changes   :- ::warehouse-schema.schema/sql-changes]
+  (t2/update! :model/Field :id [:in field-ids] changes))
 
 (mu/defn delete-fields!
   "Delete the Fields with `field-ids`, returning the number deleted."
@@ -271,11 +271,6 @@
                           :join  [[(t2/table-name :model/Field) :f] [:= :f.id :u.field_id]]
                           :where [:= :f.table_id table-id]})))
 
-(mu/defn insert-field-user-settings!
-  "Insert one FieldUserSettings map or a sequence of them, returning the number inserted."
-  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]]
-  (t2/insert! :model/FieldUserSettings rows))
-
 (mu/defn update-field-user-settings!
   "Apply `changes` to the FieldUserSettings of the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
@@ -289,11 +284,6 @@
    update-fn :- [:=> [:cat [:maybe ::warehouse-schema.schema/field-user-settings]]
                  (mut/select-keys ::warehouse-schema.schema/field-user-settings.update field-user-settings-update-keys)]]
   (app-db/update-or-insert! :model/FieldUserSettings {:field_id field-id} update-fn))
-
-(mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
-  "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (set (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in field-ids])))
 
 (mu/defn update-field-user-settings-custom-positions!
   "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
@@ -323,14 +313,14 @@
                                    :from   [(t2/table-name :model/Field)]
                                    :where  [:in :fk_target_field_id field-ids]}])
 
-(mu/defn field-ids-with-user-settings-targeting :- [:set ::lib.schema.id/field]
-  "The ids of the Fields whose settings name one of the Fields with `field-ids` as their FK target, or that target one
+(mu/defn field-user-settings-targeting
+  "The FieldUserSettings that name one of the Fields with `field-ids` as their FK target, or whose Field targets one
   of them with a user-set FK semantic type."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (set (t2/select-fn-set :field_id :model/FieldUserSettings
-                         {:where [:or
-                                  [:in :fk_target_field_id field-ids]
-                                  [:and [:= :semantic_type "type/FK"] (targeting-fields-clause field-ids)]]})))
+  (t2/select :model/FieldUserSettings
+             {:where [:or
+                      [:in :fk_target_field_id field-ids]
+                      [:and [:= :semantic_type "type/FK"] (targeting-fields-clause field-ids)]]}))
 
 (mu/defn clear-user-settings-fk-targets-to-fields!
   "Unset the user-set FK semantic type and target of every ::warehouse-schema.schema/field targeting one of the Fields
@@ -345,16 +335,31 @@
                                                     :where  [:in :fk_target_field_id field-ids]}]
                    changes))))
 
+(defn- empty-field-user-settings-clause
+  "The clause over FieldUserSettings selecting those, among those of the Fields with `field-ids`, that hold no user
+  value and no true flag."
+  [field-ids]
+  (into [:and [:in :field_id field-ids]]
+        (concat (for [column user-settings/user-settable-field-columns]
+                  [:= column nil])
+                (for [flag (vals user-settings/field-set-flags)]
+                  [:or [:= flag nil] [:= flag false]]))))
+
+(mu/defn empty-field-user-settings
+  "The FieldUserSettings, among those of the Fields with `field-ids`, that hold no user value and no true flag."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select :model/FieldUserSettings {:where (empty-field-user-settings-clause field-ids)}))
+
 (mu/defn delete-empty-field-user-settings!
   "Delete the FieldUserSettings, among those of the Fields with `field-ids`, that hold no user value and no true flag,
   returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldUserSettings
-              {:where (into [:and [:in :field_id field-ids]]
-                            (concat (for [column user-settings/user-settable-field-columns]
-                                      [:= column nil])
-                                    (for [flag (vals user-settings/field-set-flags)]
-                                      [:or [:= flag nil] [:= flag false]])))}))
+  (t2/delete! :model/FieldUserSettings {:where (empty-field-user-settings-clause field-ids)}))
+
+(mu/defn field-user-settings-for-fields
+  "The FieldUserSettings of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
 
 (mu/defn delete-field-user-settings-by-ids!
   "Delete the FieldUserSettings with `ids`, returning the number deleted."
@@ -423,21 +428,26 @@
   [ids :- [:sequential pos-int?]]
   (t2/delete! :model/TableUserSettings :id [:in ids]))
 
+(defn- empty-table-user-settings-clause
+  "The clause over TableUserSettings selecting those, among those of the Tables with `table-ids`, that hold no user
+  value and no true flag."
+  [table-ids]
+  (into [:and [:in :table_id table-ids]]
+        (concat (for [column user-settings/user-settable-table-columns]
+                  [:= column nil])
+                (for [flag (vals user-settings/table-set-flags)]
+                  [:or [:= flag nil] [:= flag false]]))))
+
+(mu/defn empty-table-user-settings
+  "The TableUserSettings, among those of the Tables with `table-ids`, that hold no user value and no true flag."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/TableUserSettings {:where (empty-table-user-settings-clause table-ids)}))
+
 (mu/defn delete-empty-table-user-settings!
   "Delete the TableUserSettings, among those of the Tables with `table-ids`, that hold no user value and no true flag,
   returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/TableUserSettings
-              {:where (into [:and [:in :table_id table-ids]]
-                            (concat (for [column user-settings/user-settable-table-columns]
-                                      [:= column nil])
-                                    (for [flag (vals user-settings/table-set-flags)]
-                                      [:or [:= flag nil] [:= flag false]])))}))
-
-(mu/defn insert-table-user-settings!
-  "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
-  [rows :- [:or (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys) [:sequential (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]]]
-  (t2/insert! :model/TableUserSettings rows))
+  (t2/delete! :model/TableUserSettings {:where (empty-table-user-settings-clause table-ids)}))
 
 (mu/defn update-or-insert-table-user-settings!
   "Update the TableUserSettings of the ::warehouse-schema.schema/table with `table-id` with what `update-fn` returns
@@ -524,6 +534,11 @@
   [ids :- [:sequential ::lib.schema.id/dimension]]
   (t2/select :model/Dimension :id [:in ids]))
 
+(mu/defn dimensions-where
+  "The Dimensions matching `conditions`."
+  [conditions :- ::warehouse-schema.schema/conditions]
+  (apply t2/select :model/Dimension (mapcat identity conditions)))
+
 (mu/defn insert-dimensions!
   "Insert the Dimension `rows` and return the inserted instances."
   [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
@@ -540,29 +555,12 @@
   [ids :- [:sequential ::lib.schema.id/dimension]]
   (t2/delete! :model/Dimension :id [:in ids]))
 
-(mu/defn delete-dimensions-for-field!
-  "Delete the Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
-  [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/Dimension :field_id field-id))
-
 (mu/defn rename-dimensions-for-fields!
   "Set the name of the Dimension of each ::warehouse-schema.schema/field in `field-id->name` to its name there,
   returning the number updated."
   [field-id->name :- [:map-of ::lib.schema.id/field :string]]
   (t2/update! :model/Dimension :field_id [:in (keys field-id->name)]
               {:name (into [:case] (mapcat (fn [[id dimension-name]] [[:= :field_id id] dimension-name])) field-id->name)}))
-
-(mu/defn delete-dimensions-of-type-for-field!
-  "Delete the `dimension-type` Dimensions of the ::warehouse-schema.schema/field with `field-id`, returning the number
-  deleted."
-  [field-id       :- ::lib.schema.id/field
-   dimension-type :- [:enum :internal :external]]
-  (t2/delete! :model/Dimension :field_id field-id :type dimension-type))
-
-(mu/defn delete-dimensions-reading-fields!
-  "Delete the Dimensions whose values come from the Fields with `field-ids`, returning the number deleted."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/Dimension :human_readable_field_id [:in field-ids]))
 
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
@@ -617,33 +615,85 @@
   [field-values-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/FieldValues :id [:in field-values-ids]))
 
+(defn- field-values-of-fields-kvs
+  "The conditions on FieldValues of the Fields with `field-ids`."
+  [field-ids]
+  [:field_id [:in field-ids]])
+
+(defn- field-values-of-types-kvs
+  "The conditions on FieldValues of `types` of the Fields with `field-ids`."
+  [field-ids types]
+  [:field_id [:in field-ids] :type [:in types]])
+
+(defn- field-values-of-tables-kvs
+  "The conditions on FieldValues of the Fields of the Tables with `table-ids`."
+  [table-ids]
+  [:field_id [:in ^:allow-subquery {:select [:id]
+                                    :from   [(t2/table-name :model/Field)]
+                                    :where  [:in :table_id table-ids]}]])
+
+(defn- field-values-of-database-kvs
+  "The conditions on FieldValues of every Field of the Database with `database-id`."
+  [database-id]
+  [:field_id [:in ^:allow-subquery {:select     [:f.id]
+                                    :from       [[:metabase_field :f]]
+                                    :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                                    :where      [:= :t.db_id [:auto/param database-id]]}]])
+
+(defn- field-values-of-types-before-kvs
+  "The conditions on FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
+  [field-id types max-age-days]
+  [:field_id field-id :type [:in types]
+   :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]])
+
+(mu/defn field-values-of-fields
+  "Every FieldValues of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (apply t2/select :model/FieldValues (field-values-of-fields-kvs field-ids)))
+
 (mu/defn delete-field-values-for-fields!
   "Delete every FieldValues of the Fields with `field-ids`, returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/delete! :model/FieldValues :field_id [:in field-ids]))
+  (apply t2/delete! :model/FieldValues (field-values-of-fields-kvs field-ids)))
+
+(mu/defn field-values-of-types
+  "The FieldValues of `types` of the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]
+   types     :- [:set :keyword]]
+  (apply t2/select :model/FieldValues (field-values-of-types-kvs field-ids types)))
 
 (mu/defn delete-field-values-of-types!
   "Delete the FieldValues of `types` of the Fields with `field-ids`, returning the number deleted."
   [field-ids :- [:sequential ::lib.schema.id/field]
    types     :- [:set :keyword]]
-  (t2/delete! :model/FieldValues :field_id [:in field-ids] :type [:in types]))
+  (apply t2/delete! :model/FieldValues (field-values-of-types-kvs field-ids types)))
+
+(mu/defn field-values-of-tables
+  "The FieldValues of the Fields of the Tables with `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (apply t2/select :model/FieldValues (field-values-of-tables-kvs table-ids)))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/delete! :model/FieldValues
-              :field_id [:in ^:allow-subquery {:select [:id]
-                                               :from   [(t2/table-name :model/Field)]
-                                               :where  [:in :table_id table-ids]}]))
+  (apply t2/delete! :model/FieldValues (field-values-of-tables-kvs table-ids)))
+
+(mu/defn field-values-of-database
+  "The FieldValues of every Field of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (apply t2/select :model/FieldValues (field-values-of-database-kvs database-id)))
 
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/FieldValues
-              :field_id [:in ^:allow-subquery {:select     [:f.id]
-                                               :from       [[:metabase_field :f]]
-                                               :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                               :where      [:= :t.db_id [:auto/param database-id]]}]))
+  (apply t2/delete! :model/FieldValues (field-values-of-database-kvs database-id)))
+
+(mu/defn field-values-of-types-before
+  "The FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago."
+  [field-id     :- ::lib.schema.id/field
+   types        :- [:set :keyword]
+   max-age-days :- :int]
+  (apply t2/select :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
 
 (mu/defn delete-field-values-of-types-before!
   "Delete the FieldValues of `types` for the Field with `field-id` created more than `max-age-days` days ago,
@@ -651,8 +701,7 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (t2/delete! :model/FieldValues :field_id field-id :type [:in types]
-              :created_at [:< (h2x/add-interval-honeysql-form (app-db/db-type) :%now (- max-age-days) :day)]))
+  (apply t2/delete! :model/FieldValues (field-values-of-types-before-kvs field-id types max-age-days)))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -675,27 +724,21 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id))
 
-(mu/defn update-table!
-  "Apply `changes` to the ::warehouse-schema.schema/table with `table-id`, returning the number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id table-id changes))
-
 (mu/defn insert-tables!
   "Insert the Table `rows` and return the inserted instances."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (t2/insert-returning-instances! :model/Table rows))
 
-(mu/defn table-ids-where :- [:set ::lib.schema.id/table]
-  "The ids of the Tables matching `conditions`."
-  [conditions :- ::warehouse-schema.schema/conditions]
-  (set (apply t2/select-pks-set :model/Table (mapcat identity conditions))))
+(mu/defn update-tables-to-sql-changes!
+  "Apply `changes`, values or HoneySQL expressions, to the Tables with `table-ids`, returning the number updated."
+  [table-ids :- [:set ::lib.schema.id/table]
+   changes   :- ::warehouse-schema.schema/sql-changes]
+  (t2/update! :model/Table :id [:in table-ids] changes))
 
-(mu/defn update-tables-where!
-  "Apply `changes` to the Tables matching `conditions`, returning the number updated."
-  [conditions :- ::warehouse-schema.schema/conditions
-   changes    :- ::warehouse-schema.schema/sql-changes]
-  (apply t2/update! :model/Table (concat (mapcat identity conditions) [changes])))
+(mu/defn tables-where
+  "The Tables matching `conditions`."
+  [conditions :- ::warehouse-schema.schema/conditions]
+  (apply t2/select :model/Table (mapcat identity conditions)))
 
 (mu/defn delete-tables!
   "Delete the Tables with `table-ids`, returning the number deleted."
