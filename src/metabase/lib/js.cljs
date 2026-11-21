@@ -193,16 +193,6 @@
     (sequential? x)        (map fix-namespaced-values x)
     :else                  x))
 
-(defn ^:export legacy-query
-  "Coerce an Lib query (MBQL 5 in CLJS data structures) into a legacy MLv1 query in vanilla JSON form.
-
-  > **Code health:** Legacy. This has many legitimate uses (as of March 2024), but we should aim to reduce the places
-  where a legacy query is still needed. Consider if it's practical to port the consumer of this legacy query to MBQL 5."
-  [query-map]
-  ;; existing usage -- do not use going forward
-  (-> #_{:clj-kondo/ignore [:deprecated-var]} (lib.convert/->legacy-MBQL query-map)
-      fix-namespaced-values (clj->js :keyword-fn u/qualified-name)))
-
 (defn ^:export xray-cell-query
   "Returns the filter of the last stage of `a-query` as a legacy clause in vanilla JSON form, the cell query of an automatic
   dashboard URL, or nil when the stage has no filter."
@@ -1549,7 +1539,7 @@
 ;; ## Legacy refs
 (defn- normalize-legacy-ref
   [a-ref]
-  (if (#{:aggregation :metric :segment} (first a-ref))
+  (if (= (first a-ref) :aggregation)
     (subvec a-ref 0 2)
     (update a-ref 2 update-vals #(if (qualified-keyword? %)
                                    (u/qualified-name %)
@@ -1568,11 +1558,7 @@
 (defn- ref->legacy-ref
   [a-ref]
   (-> a-ref
-      ;; TODO (Cam 2026-11-16) check whether we can change this to [[lib.convert/->legacy-MBQL-ref]] -- I have no idea
-      ;; why we'd ever be calling [[legacy-ref]] with a Metric/Segment/Measure in the first place, I don't think their
-      ;; legacy refs are used anywhere.
-      #_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
-      lib.convert/->legacy-MBQL
+      lib.convert/->legacy-MBQL-ref
       normalize-legacy-ref))
 
 (defn ^:export column-unique-key
@@ -1584,16 +1570,15 @@
   (lib.metadata.column/column-unique-key column))
 
 (defn ^:export legacy-ref
-  "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],
-  return it as a legacy JSON field ref.
+  "Given a column metadata from eg. [[fieldable-columns]], return it as a legacy JSON field ref.
 
-  For compatibility reasons, segment and metric references are always returned without options.
+  Aggregation references are always returned without options.
 
   > **Code health:** Legacy. New calls strongly discouraged; refs are a bad leak in the abstraction and we should aim
   to refactor the existing ones."
-  [a-query stage-number referenceable]
+  [a-query stage-number a-column]
   (lib.convert/with-aggregation-list (:aggregation (lib.util/query-stage a-query stage-number))
-    (-> referenceable
+    (-> a-column
         lib.core/ref
         ref->legacy-ref
         clj->js)))
@@ -2821,6 +2806,56 @@
     (or (.get cache js-query)
         (u/prog1 (from-js-query* mp js-query)
           (.set cache js-query <>)))))
+
+(defn- lib-uuids
+  "The `lib/uuid` values in the plain JS value `x`, in the order a walk of `x` meets them. Object keys are walked in
+  sorted order, so the order does not depend on the order the keys were inserted in."
+  [x]
+  (cond
+    (array? x)
+    (mapcat lib-uuids x)
+
+    (object? x)
+    (mapcat (fn [k]
+              (let [v (gobject/get x k)]
+                (if (and (= k "lib/uuid") (string? v))
+                  [v]
+                  (lib-uuids v))))
+            (sort (js-keys x)))))
+
+(defn- replace-lib-uuids
+  "A copy of the plain JS value `x` with every string that is a key of `uuid->canonical` replaced by its value."
+  [x uuid->canonical]
+  (cond
+    (string? x) (get uuid->canonical x x)
+    (array? x)  (.map ^js x (fn [v] (replace-lib-uuids v uuid->canonical)))
+    (object? x) (gobject/map x (fn [v _k _obj] (replace-lib-uuids v uuid->canonical)))
+    :else       x))
+
+(def ^:private ^js/WeakMap canonicalize-lib-uuids-cache
+  (js/WeakMap.))
+
+(defn ^:export canonicalize-lib-uuids
+  "A copy of the plain JS object `query-args` with every Lib clause UUID replaced by its position (`uuid-0`,
+  `uuid-1`...), for use as an RTK Query endpoint's `serializeQueryArgs`.
+
+  Lib generates new UUIDs whenever a query or metric definition is rebuilt, so without this an otherwise unchanged
+  request gets a new cache key and refetches after an unrelated metadata update. A UUID keeps one positional value
+  wherever it appears, including in a reference to the clause that owns it, so two requests that reference different
+  clauses still get different keys.
+
+  The same `query-args` object returns the same copy, which lets RTK Query reuse its own serialization cache.
+
+  > **Code health:** Special use"
+  [query-args]
+  (or (.get canonicalize-lib-uuids-cache query-args)
+      (let [uuid->canonical (into {}
+                                  (comp (distinct)
+                                        (map-indexed (fn [i lib-uuid]
+                                                       [lib-uuid (str "uuid-" i)])))
+                                  (lib-uuids query-args))]
+        (u/prog1 (replace-lib-uuids query-args uuid->canonical)
+          (.set canonicalize-lib-uuids-cache query-args <>)))))
 
 (defn ^:export validate-template-tags
   "Validates if the template tags in `query` are all valid and well-formed."

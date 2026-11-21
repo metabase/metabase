@@ -202,9 +202,9 @@ function createMockQueryAction(
   return _createMockQueryAction({
     can_write: true,
     ...opts,
-    dataset_query: Lib.toLegacyQuery(
-      Lib.createTestNativeQuery(TEST_PROVIDER, { query: TEST_QUERY }),
-    ),
+    dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, {
+      query: TEST_QUERY,
+    }),
   });
 }
 
@@ -851,9 +851,9 @@ describe("ModelActions", () => {
         description: "Set orders quantity to the same value",
         model_id: modelCard.id,
         can_write: true,
-        dataset_query: Lib.toLegacyQuery(
-          Lib.createTestNativeQuery(TEST_PROVIDER, { query: updateQuery }),
-        ),
+        dataset_query: Lib.createTestJsNativeQuery(TEST_PROVIDER, {
+          query: updateQuery,
+        }),
       });
       await setupActions({
         model: modelCard,
