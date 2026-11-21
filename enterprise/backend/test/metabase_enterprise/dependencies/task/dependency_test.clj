@@ -25,6 +25,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.native-query-snippets.models.native-query-snippet :as snippet]
+   [metabase.queries.models.card :as card]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -853,7 +854,7 @@
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
                            :to_entity_type :table :to_entity_id (mt/id :products)))
            (is (not (pending? :card card-id)))
-           (t2/update! :model/Card :id card-id {:dataset_query (lib/query mp orders)})
+           (card/update-cards! [(assoc {:dataset_query (lib/query mp orders)} :id card-id)])
            (assert-pending :card card-id)))))))
 
 (deftest metric-dimensions-update-marks-stale-and-includes-mapped-table-test
@@ -867,11 +868,10 @@
            ;; uncurated, so the after-insert dimension auto-sync would seed dimensions from the query and
            ;; overwrite mappings passed to with-temp. A plain update sticks — the after-update hook only
            ;; re-syncs when `:dataset_query` changes.
-           (t2/update! :model/Card :id card-id
-                       {:dimension_mappings [{:type         :table
-                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
-                                              :table-id     (mt/id :categories)
-                                              :target       [:field {} (mt/id :categories :name)]}]})
+           (#'card/update-cards* [(assoc {:dimension_mappings [{:type         :table
+                                                              :dimension-id "550e8400-e29b-41d4-a716-446655440000"
+                                                              :table-id     (mt/id :categories)
+                                                              :target       [:field {} (mt/id :categories :name)]}]} :id card-id)])
            (assert-pending :card card-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id card-id
@@ -1175,7 +1175,7 @@
          (is (= {:dependencies #{implicit-id query-id}, :statuses #{implicit-id query-id}}
                 (action-dependency-rows [implicit-id query-id]))))
        (testing "deleting the model removes the dependency rows of its actions"
-         (t2/delete! :model/Card :id model-id)
+         (card/delete-cards! [model-id])
          (deps.test/synchronously-run-dependency-job!)
          (is (= {:dependencies #{}, :statuses #{}}
                 (action-dependency-rows [implicit-id query-id]))))))))
@@ -1269,7 +1269,7 @@
          (mt/with-temp [:model/Card {card-id :id}  {:dataset_query (query :products)}
                         :model/Card {other-id :id} {:dataset_query (query :products)}]
            (let [exported (ts/extract-one "Card" card-id)]
-             (t2/update! :model/Card :id card-id {:dataset_query (query :orders)})
+             (card/update-cards! [(assoc {:dataset_query (query :orders)} :id card-id)])
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:table (mt/id :orders)]} (card-deps card-id)))
              (load! [exported])
@@ -1287,7 +1287,7 @@
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (deps.test/table-query :orders)}
                        :model/Card {card-id :id}   {:dataset_query (deps.test/table-query :venues)}]
           (deps.test/synchronously-run-dependency-job!)
-          (t2/update! :model/Card :id card-id {:dataset_query (deps.test/card-query source-id)})
+          (card/update-cards! [(assoc {:dataset_query (deps.test/card-query source-id)} :id card-id)])
           (deps.test/record-analysis-finding-processed! :card card-id)
           (deps.test/synchronously-run-dependency-job!)
           (is (deps.test/analysis-finding-pending? :card card-id)))))))
@@ -1319,7 +1319,7 @@
                (deps.test/synchronously-run-dependency-job!)
                (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
              (testing "a card moved out of the collection stops being one"
-               (t2/update! :model/Card :id added-id {:collection_id other-collection-id})
+               (card/update-cards! [(assoc {:collection_id other-collection-id} :id added-id)])
                (assert-pending :data-app app-id)
                (deps.test/synchronously-run-dependency-job!)
                (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
@@ -1379,13 +1379,13 @@
                (let [card (assoc (mt/with-temp-defaults :model/Card)
                                  :collection_id collection-id
                                  :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
-                 (is (= [] (deps.test/data-app-bundle-reads #(t2/insert! :model/Card card))))))
+                 (is (= [] (deps.test/data-app-bundle-reads #(#'card/create-cards* [card]))))))
              (let [card-id (t2/select-one-pk :model/Card :collection_id collection-id)]
                (testing "moving a card out"
                  (is (= [] (deps.test/data-app-bundle-reads
-                            #(t2/update! :model/Card :id card-id {:collection_id other-collection-id})))))
+                            #(card/update-cards! [(assoc {:collection_id other-collection-id} :id card-id)])))))
                (testing "moving a card in"
                  (is (= [] (deps.test/data-app-bundle-reads
-                            #(t2/update! :model/Card :id card-id {:collection_id collection-id})))))
+                            #(card/update-cards! [(assoc {:collection_id collection-id} :id card-id)])))))
                (testing "deleting a card"
-                 (is (= [] (deps.test/data-app-bundle-reads #(t2/delete! :model/Card :id card-id)))))))))))))
+                 (is (= [] (deps.test/data-app-bundle-reads #(card/delete-cards! [card-id])))))))))))))

@@ -34,7 +34,6 @@
 
 (doto :model/CacheConfig
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (methodical/defmethod t2/table-name :model/CacheConfig [_model] :cache_config)
@@ -246,27 +245,44 @@
 ;;; ---------------------------------------------------- Writes -----------------------------------------------------
 
 (defn save-cache-config!
-  "Store the cache configuration `config` in the app DB, replacing the one for the same target."
+  "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id."
   [_user-id {:keys [model model_id] :as config}]
-  (t2/with-transaction [_tx]
+  (events/with-batched-events
     (let [data    (config->row config)
-          current (cache.db/lock-cache-config model model_id)]
-      (events/with-event-context {:details (caching-change current data)}
-        (cache.db/upsert-cache-config! model model_id data)))))
+          current (cache.db/lock-cache-config model model_id)
+          context {:details (caching-change current data)}]
+      (if current
+        (let [changes (into {} (remove (fn [[k v]] (= v (get current k)))) data)]
+          (when (seq changes)
+            (cache.db/update-cache-config-strategy! (:id current) (select-keys changes [:strategy :config :refresh_automatically]))
+            (events/publish-lifecycle! [(events/updated :event/cache-config-update
+                                                        [current]
+                                                        [(events/updated-row current changes)])]
+                                       {:context context}))
+          (:id current))
+        (let [row (cache.db/insert-cache-config! data)]
+          (events/publish-lifecycle! [(events/created :event/cache-config-create [row])] {:context context})
+          (:id row))))))
 
 (defn delete-cache-configs!
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
   [_user-id model model-ids]
-  (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
-    (doseq [item current]
-      (events/with-event-context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}
-        (cache.db/delete-cache-configs! model [(:model_id item)])))))
+  (events/with-batched-events
+    (doseq [item (cache.db/cache-configs-for model model-ids)]
+      (let [event (events/deleted :event/cache-config-delete :model/CacheConfig [item])]
+        (cache.db/delete-cache-configs! model [(:model_id item)])
+        (events/publish-lifecycle! [event]
+                                   {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}})))))
 
 (defn delete-target-configs!
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
   [model model-ids]
   (when (seq model-ids)
-    (cache.db/delete-cache-configs! model (vec model-ids))))
+    (events/with-batched-events
+      (let [items (cache.db/cache-configs-for model (vec model-ids))
+            event (events/deleted :event/cache-config-delete :model/CacheConfig items)]
+        (cache.db/delete-cache-configs! model (vec model-ids))
+        (events/publish-lifecycle! [event])))))
 
 (defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]
@@ -316,12 +332,6 @@
     (invalidate-cache-configs databases dashboards questions)))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/CacheConfig
-  [_model]
-  {:create :event/cache-config-create
-   :update :event/cache-config-update
-   :delete :event/cache-config-delete})
 
 (defmethod app-db-copy/spec :model/CacheConfig [_model]
   {:skip? true})

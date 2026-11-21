@@ -6,6 +6,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -32,15 +33,18 @@
   ([model] (insert-rows model (constantly {})))
   ([model collection-attrs]
    (fn [collection names row-attrs]
-     (doseq [n names]
-       (t2/insert! model (merge (mt/with-temp-defaults model) (collection-attrs collection) row-attrs {:name n}))))))
+     (doseq [n names
+             :let [row (merge (mt/with-temp-defaults model) (collection-attrs collection) row-attrs {:name n})]]
+       (if (= model :model/Card)
+         (#'card/create-cards* [row])
+         (t2/insert! model row))))))
 
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."
   [collection]
-  (t2/insert-returning-instance! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                    :collection_id (:id collection)
-                                                    :type :model)))
+  (first (#'card/create-cards* [(assoc (mt/with-temp-defaults :model/Card)
+                                       :collection_id (:id collection)
+                                       :type :model)])))
 
 (defn- in-collection
   "A `collection-attrs` function for [[insert-rows]] that puts the rows in the collection, on top of `attrs`."

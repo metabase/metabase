@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.models.card :as queries.card]
@@ -64,6 +65,32 @@
   [card-id]
   (search/cascading-documents [(t2/select-one :model/Card :id card-id)]))
 
+(defn- update-by-hand!
+  "Applies `changes` to the row of `model` with `id` with one plain statement, publishing its update event `topic` as a
+  write function does."
+  [model topic id changes]
+  (let [previous (t2/select-one model :id id)]
+    (t2/update! model :id id changes)
+    (events/publish-lifecycle! [(events/updated topic [previous] [(events/updated-row previous changes)])])))
+
+(defn- delete-reviews-by-hand!
+  "Deletes the ModerationReviews with `ids` with one plain statement, publishing their delete event as a write function
+  does."
+  [ids]
+  (let [rows  (t2/select :model/ModerationReview :id [:in ids])
+        event (events/deleted :event/moderation-review-delete :model/ModerationReview rows)]
+    (t2/delete! :model/ModerationReview :id [:in ids])
+    (events/publish-lifecycle! [event])))
+
+(defn- delete-cards-by-hand!
+  "Deletes the Cards with `ids` with one plain statement, publishing their delete event as a write function does, so that
+  the rows the database cascades to are left for the search capture."
+  [ids]
+  (let [rows  (t2/select :model/Card :id [:in ids])
+        event (events/deleted :event/card-delete :model/Card rows)]
+    (t2/delete! :model/Card :id [:in ids])
+    (events/publish-lifecycle! [event])))
+
 ;;; Capture wiring
 
 (defn- search-statement-count!
@@ -79,7 +106,9 @@
 (deftest batch-of-updates-indexes-with-fixed-statements-test
   (testing "an update of 2 or 6 Cards in one batch reindexes them with the same number of statements"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (let [write #(t2/update! :model/Card :id [:in %] {:name (str (random-uuid))})]
+      (let [write (fn [ids]
+                    (let [new-name (str (random-uuid))]
+                      (queries.card/update-cards! (mapv (fn [id] {:id id :name new-name}) ids))))]
         (is (= (search-statement-count! 2 write) (search-statement-count! 6 write)))))))
 
 (deftest card-children-deleted-with-the-card-enqueue-nothing-extra-test
@@ -97,7 +126,7 @@
                                                        :moderator_id        (mt/user->id :crowberto)
                                                        :status              "verified"
                                                        :most_recent         true}]
-        (is (= 1 (count (capture-enqueues! #(t2/delete! :model/Card :id id)))))))))
+        (is (= 1 (count (capture-enqueues! #(delete-cards-by-hand! [id])))))))))
 
 (def ^:private card-delete
   {:operation :delete, :model :model/Card, :previous-object {:id 1}})
@@ -133,7 +162,7 @@
                                                 (t2/with-call-count [call-count]
                                                   (u/prog1 (orig instances)
                                                     (swap! calls conj [(count instances) (call-count)]))))]
-                    (t2/delete! :model/Card :collection_id coll-id))
+                    (delete-cards-by-hand! (t2/select-pks-vec :model/Card :collection_id coll-id)))
                   @calls)))]
       (let [[[one-rows one-queries] :as one] (capture-queries 1)
             [[three-rows three-queries] :as three] (capture-queries 3)]
@@ -143,7 +172,6 @@
 
 (deftest model-index-feeds-index-on-delete-only-test
   (testing "a ModelIndex feeds the index on delete, and its inserts and updates do not"
-    (is (isa? :model/ModelIndex :hook/events))
     (is (isa? :model/ModelIndex :search/indexed-deletes))
     (is (false? (isa? :model/ModelIndex :search/indexed)))
     (is (true? (#'search.events/feeds-index? :model/ModelIndex :delete)))
@@ -162,9 +190,9 @@
                                   ;; Stubbed, so the post-commit ingestion this delete queues is not counted.
                                   (capture-enqueues! thunk)
                                   (call-count)))
-              with-capture    (statements #(t2/delete! :model/Card :id captured))
+              with-capture    (statements #(delete-cards-by-hand! [captured]))
               without-capture (binding [search.ingestion/*disable-updates* true]
-                                (statements #(t2/delete! :model/Card :id uncaptured)))]
+                                (statements #(delete-cards-by-hand! [uncaptured])))]
           ;; The action and indexed-entity cascade scans.
           ;; A delete by literal primary key builds the card's snapshot without a select, and the Revision and
           ;; ModerationReview deletes in its `before-delete` bypass capture.
@@ -179,7 +207,7 @@
                   ["dataset" [:= id :this.id]]
                   ["indexed-entity" [:= id :model_index.model_id]]
                   ["metric" [:= id :this.id]]}]
-               (capture-enqueues! #(t2/delete! :model/Card :id id))))))))
+               (capture-enqueues! #(delete-cards-by-hand! [id]))))))))
 
 (deftest delete-of-a-joined-model-enqueues-the-fed-models-test
   (testing "deleting a row that only feeds other models' documents enqueues re-derivation for each of them"
@@ -192,7 +220,7 @@
                                                             :most_recent         true}]
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
-                 (capture-enqueues! #(t2/delete! :model/ModerationReview :id mr-id)))))))))
+                 (capture-enqueues! #(delete-reviews-by-hand! [mr-id])))))))))
 
 ;; Updates share the boolean fold with deletes. Without it, a superseded review's selector names its card beside a
 ;; false comparison, and ingestion would purge the card.
@@ -210,10 +238,10 @@
                                                             :moderator_id        (mt/user->id :crowberto)
                                                             :status              "verified"
                                                             :most_recent         true}]
-        (is (= [] (capture-enqueues! #(t2/update! :model/ModerationReview :id old-id {:status nil}))))
+        (is (= [] (capture-enqueues! #(update-by-hand! :model/ModerationReview :event/moderation-review-update old-id {:status nil}))))
         (let [where [:and [:= "card" "card"] [:= card-id :this.id] [:= true true]]]
           (is (= [#{["card" where] ["dataset" where] ["metric" where]}]
-                 (capture-enqueues! #(t2/update! :model/ModerationReview :id new-id {:status nil})))))))))
+                 (capture-enqueues! #(update-by-hand! :model/ModerationReview :event/moderation-review-update new-id {:status nil})))))))))
 
 (deftest update-of-unindexed-column-reindexes-test
   (testing "an edit that changes no indexed column still refreshes the indexed last editor and update time"
@@ -245,7 +273,7 @@
       (mt/with-temp [:model/Card {card-id :id} {}]
         ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
         (is (= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :result_metadata [] :updated_at :updated_at}]))))
-        (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
+        (is (not= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :name "renamed"}]))))))))
 
 (deftest revision-writes-enqueue-nothing-test
   (testing "a Revision written or deleted by Toucan publishes no event: the prune of old Revisions costs no read"
@@ -322,7 +350,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Temp Purge Card"}]
         (is (= 1 (indexed-count "card" id)))
-        (t2/delete! :model/Card :id id)
+        (delete-cards-by-hand! [id])
         (is (= 0 (indexed-count "card" id)))))))
 
 (deftest purge-bulk-on-delete-test
@@ -334,7 +362,7 @@
         (is (= 2 (indexed-count "card" c1 c2)))
         (is (= 1 (indexed-count "collection" coll-id)))
         ;; cards must go first: a collection with contents refuses deletion.
-        (t2/delete! :model/Card :collection_id coll-id)
+        (delete-cards-by-hand! (t2/select-pks-vec :model/Card :collection_id coll-id))
         (collection/delete-collections! [coll-id])
         (is (= 0 (indexed-count "card" c1 c2)))
         (is (= 0 (indexed-count "collection" coll-id)))))))
@@ -352,7 +380,7 @@
                                                             :moderator_id        (mt/user->id :crowberto)
                                                             :status              "verified"}]
         (is (= 1 (indexed-count "card" card-id)))
-        (t2/delete! :model/ModerationReview :id mr-id)
+        (delete-reviews-by-hand! [mr-id])
         (is (= 1 (indexed-count "card" card-id)))))))
 
 ;;; Database cascades
@@ -364,7 +392,7 @@
                      :model/Action {action-id :id} {:name "Temp Cascaded Action", :model_id card-id, :type :query}]
         (is (= 1 (indexed-count "action" action-id)))
         ;; action.model_id carries ON DELETE CASCADE, so this removes the action with no toucan statement.
-        (t2/delete! :model/Card :id card-id)
+        (delete-cards-by-hand! [card-id])
         (is (false? (t2/exists? :model/Action :id action-id)))
         (is (= 0 (indexed-count "action" action-id)))))))
 
@@ -459,7 +487,7 @@
                      :model/Card   {drop-card :id}   {:name "Dropped Action Model", :type :model}
                      :model/Action {keep-action :id} {:name "Surviving Action", :model_id keep-card, :type :query}
                      :model/Action {drop-action :id} {:name "Doomed Action", :model_id drop-card, :type :query}]
-        (t2/delete! :model/Card :id drop-card)
+        (delete-cards-by-hand! [drop-card])
         (is (= 0 (indexed-count "action" drop-action)))
         (is (= 1 (indexed-count "action" keep-action)))))))
 
@@ -639,7 +667,7 @@
           (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
           (is (= 2 (indexed)))
           ;; model_index_value.model_index_id carries ON DELETE CASCADE, so the values go with no toucan statement.
-          (t2/delete! :model/ModelIndex :id mi-id)
+          (model-index/delete-model-index! mi-id)
           (is (zero? (t2/count :model/ModelIndexValue :model_index_id mi-id)))
           (is (zero? (indexed))))))))
 
@@ -652,7 +680,7 @@
         (is (empty? (capture-enqueues!
                      #(is (thrown? clojure.lang.ExceptionInfo
                                    (t2/with-transaction [_conn]
-                                     (t2/delete! :model/Card :id id)
+                                     (delete-cards-by-hand! [id])
                                      (throw (ex-info "boom" {}))))))))
         (is (t2/exists? :model/Card :id id))))))
 
@@ -671,7 +699,7 @@
           (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
           (is (= 1 (indexed)))
           (mt/with-dynamic-fn-redefs [search/bulk-update! (fn [_instances] (throw (ex-info "reindex failed" {})))]
-            (t2/delete! :model/Card :id card-id))
+            (delete-cards-by-hand! [card-id]))
           (is (= 0 (indexed))))))))
 
 (deftest cascade-enumeration-failure-keeps-the-delete-test
@@ -679,7 +707,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {:name "Enumeration Failure Model", :type :model}]
         (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
-          (is (= 1 (t2/delete! :model/Card :id card-id))))
+          (delete-cards-by-hand! [card-id]))
         (is (false? (t2/exists? :model/Card :id card-id))))))
   (testing "a database error inside the enumeration query leaves the delete able to run and commit"
     (search.tu/with-appdb-search-if-available-without-fallback
@@ -689,7 +717,7 @@
         (mt/with-dynamic-fn-redefs [search.db/spec-index-doc-ids-reducible
                                     (fn [& _]
                                       (mdb/streaming-reducible-query ["SELECT no_such_column FROM report_card"]))]
-          (is (= 1 (t2/delete! :model/Card :id card-id))))
+          (delete-cards-by-hand! [card-id]))
         (is (false? (t2/exists? :model/Card :id card-id)))))))
 
 (defn- outcome-and-interrupt
@@ -740,7 +768,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {id :id} {:name "Capture Failure Card"}]
         (mt/with-dynamic-fn-redefs [search/cascading-documents (fn [_instances] (throw (ex-info "spec bug" {})))]
-          (is (= 1 (t2/delete! :model/Card :id id))))
+          (delete-cards-by-hand! [id]))
         (is (false? (t2/exists? :model/Card :id id)))))))
 
 (deftest one-search-model-failure-keeps-the-others-test
@@ -778,11 +806,11 @@
             calls (capture-enqueues!
                    #(events/with-batched-events
                       (dotimes [_ 3]
-                        (swap! ids conj (t2/insert-returning-pk! :model/Card (mt/with-temp-defaults :model/Card))))))]
+                        (swap! ids conj (:id (first (#'queries.card/create-cards* [(mt/with-temp-defaults :model/Card)])))))))]
         (try
           (is (= 1 (count calls)))
           (finally
-            (t2/delete! :model/Card :id [:in @ids])))))))
+            (delete-cards-by-hand! @ids)))))))
 
 (defn- indexed-editor [search-model id]
   (t2/select-one-fn :last_editor_id (search.index/active-table) :model search-model :model_id (str id)))

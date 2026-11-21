@@ -15,6 +15,7 @@
    [metabase.glossary.models.glossary :as glossary]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -69,7 +70,7 @@
       (testing card-type
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card card {:name "Old Name", :type :question}]
-            (t2/update! :model/Card :id (:id card) {:name "My Cool Card", :type card-type})
+            (card/update-cards! [{:id (:id card) :name "My Cool Card" :type card-type}])
             (is (partial=
                  {:topic    :card-update
                   :user_id  (mt/user->id :rasta)
@@ -87,7 +88,7 @@
       (testing card-type
         (mt/with-test-user :rasta
           (mt/with-temp [:model/Card card {:name "My Cool Card", :type card-type}]
-            (t2/delete! :model/Card :id (:id card))
+            (card/delete-cards! [(:id card)])
             (is (partial=
                  {:topic    :card-delete
                   :user_id  (mt/user->id :rasta)
@@ -680,9 +681,9 @@
                                                                       (fn [rows] (swap! inserts inc) (f rows)))]
           (mt/with-current-user (mt/user->id :rasta)
             (events/with-batched-events
-              (t2/update! :model/Card :id b {:name "B2"})
-              (t2/update! :model/Card :id c {:name "C2"})
-              (t2/update! :model/Card :id a {:name "A2"}))))
+              (card/update-cards! [{:id b :name "B2"}])
+              (card/update-cards! [{:id c :name "C2"}])
+              (card/update-cards! [{:id a :name "A2"}]))))
         (is (= 1 @inserts))
         (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
                (mapv (juxt :topic :model_id)
@@ -717,7 +718,7 @@
   "Apply `changes` to the Card or Dashboard `id` through the write function of its model, which publishes the event."
   [model id changes]
   (case model
-    :model/Card      (t2/update! :model/Card :id id changes)
+    :model/Card      (card/update-cards! [(assoc changes :id id)])
     :model/Dashboard (dashboard/update-dashboard! id changes)))
 
 (deftest public-links-are-recorded-test
@@ -840,7 +841,10 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (events.tu/consumer-statement-count! model
                                          (repeatedly n #(mt/with-temp-defaults model))
-                                         #(t2/update! model :id [:in %] {column (str (random-uuid))})
+                                         (fn [ids]
+                                           (if (= model :model/Card)
+                                             (card/update-cards! (mapv (fn [id] {:id id column (str (random-uuid))}) ids))
+                                             (t2/update! model :id [:in ids] {column (str (random-uuid))})))
                                          #(mt/with-premium-features #{:audit-app} (%))
                                          #(mt/with-premium-features #{} (%)))))
 

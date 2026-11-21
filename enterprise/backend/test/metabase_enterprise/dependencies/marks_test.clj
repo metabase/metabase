@@ -12,6 +12,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -143,43 +144,40 @@
         (testing "a query change marks the card's own dependency and analysis, and through the result metadata it
                 derives, what reads it"
           (is (= (marked {:dependency [:card-a] :analysis [:card-a :card-b] :result-metadata [:card-b]})
-                 (marks! world #(t2/update! :model/Card :id (id-of world :card-a)
-                                            {:dataset_query (deps.test/table-query :orders)})))))
+                 (marks! world #(card/update-cards! [(assoc {:dataset_query (deps.test/table-query :orders)} :id (id-of world :card-a))])))))
         (testing "a question rename marks nothing and triggers nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(t2/update! :model/Card :id (id-of world :card-b) {:name "Renamed"})))))
+                 (marks! world #(card/update-cards! [(assoc {:name "Renamed"} :id (id-of world :card-b))])))))
         (testing "a metric rename marks the result metadata and analysis of its direct dependents"
           (is (= (marked {:analysis [:card-c] :result-metadata [:card-c]})
-                 (marks! world #(t2/update! :model/Card :id (id-of world :metric) {:name "Renamed metric"})))))
+                 (marks! world #(card/update-cards! [(assoc {:name "Renamed metric"} :id (id-of world :metric))])))))
         (testing "a result metadata change dependents see marks them"
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:analysis [:card-b] :result-metadata [:card-b]})
-                   (marks! world #(t2/update! :model/Card :id (id-of world :card-a)
-                                              {:result_metadata (mapv (fn [col] (assoc col :display_name "Renamed"))
-                                                                      metadata)}))))))
+                   (marks! world #(card/update-cards! [(assoc {:result_metadata (mapv (fn [col] (assoc col :display_name "Renamed"))
+                                                                                      metadata)} :id (id-of world :card-a))]))))))
         (testing "a result metadata change dependents don't see marks nothing"
           (let [metadata (t2/select-one-fn :result_metadata :model/Card :id (id-of world :card-a))]
             (is (= (marked {:triggers? false})
-                   (marks! world #(t2/update! :model/Card :id (id-of world :card-a)
-                                              {:result_metadata (mapv (fn [col]
-                                                                        (assoc col :fingerprint
-                                                                               {:global {:distinct-count 3}}))
-                                                                      metadata)}))))))
+                   (marks! world #(card/update-cards! [(assoc {:result_metadata (mapv (fn [col]
+                                                                                        (assoc col :fingerprint
+                                                                                               {:global {:distinct-count 3}}))
+                                                                                      metadata)} :id (id-of world :card-a))]))))))
         (testing "a card type change marks its own dependency and analysis, and what reads it"
           (is (= (marked {:dependency [:card-a] :analysis [:card-a :card-b] :result-metadata [:card-b]})
-                 (marks! world #(t2/update! :model/Card :id (id-of world :card-a) {:type :model})))))
+                 (marks! world #(card/update-cards! [(assoc {:type :model} :id (id-of world :card-a))])))))
         (testing "creating a card marks nothing but triggers the jobs"
           (is (= (marked {})
-                 (marks! world #(t2/delete! :model/Card :id (t2/insert-returning-pk!
-                                                             :model/Card
-                                                             {:name                   "created"
-                                                              :display                :table
-                                                              :visualization_settings {}
-                                                              :creator_id             (mt/user->id :rasta)
-                                                              :dataset_query          (deps.test/table-query :venues)}))))))
+                 (marks! world #(card/delete-cards! [(t2/insert-returning-pk!
+                                                      :model/Card
+                                                      {:name                   "created"
+                                                       :display                :table
+                                                       :visualization_settings {}
+                                                       :creator_id             (mt/user->id :rasta)
+                                                       :dataset_query          (deps.test/table-query :venues)})])))))
         (testing "deleting a card marks the result metadata and analysis of its direct dependents"
           (is (= (marked {:analysis [:card-e] :result-metadata [:card-e]})
-                 (marks! world #(t2/delete! :model/Card :id (id-of world :card-d))))))))))
+                 (marks! world #(card/delete-cards! [(id-of world :card-d)])))))))))
 
 (deftest snippet-and-measure-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -376,9 +374,9 @@
                   card-id (id-of world :card-f)]
               (testing "moving a card into and out of an app's resource collection marks the app's dependency"
                 (is (= (marked {:dependency [:data-app]})
-                       (marks! world #(t2/update! :model/Card :id card-id {:collection_id collection-id}))))
+                       (marks! world #(card/update-cards! [(assoc {:collection_id collection-id} :id card-id)]))))
                 (is (= (marked {:dependency [:data-app]})
-                       (marks! world #(t2/update! :model/Card :id card-id {:collection_id other-id})))))
+                       (marks! world #(card/update-cards! [(assoc {:collection_id other-id} :id card-id)])))))
               (testing "moving a card between other collections marks nothing, but triggers the jobs"
                 (is (= (marked {})
-                       (marks! world #(t2/update! :model/Card :id card-id {:collection_id nil}))))))))))))
+                       (marks! world #(card/update-cards! [(assoc {:collection_id nil} :id card-id)]))))))))))))

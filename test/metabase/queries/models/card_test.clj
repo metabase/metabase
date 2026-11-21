@@ -2473,6 +2473,29 @@
             (archive 2)
             (is (= (archive 2) (archive 6)))))))))
 
+(deftest published-update-statement-count-test
+  (testing "updating Cards as a user takes as many statements for many Cards as for few, for each kind of change"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (let [update (fn [changes n]
+                     (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
+                       (mt/with-current-user (mt/user->id :crowberto)
+                         (statement-count #(card/update-cards! (mapv (fn [id] (assoc changes :id id)) ids))))))]
+        (doseq [changes [{:name "Renamed"} {:display :bar} {:description "described"}]]
+          (testing (pr-str (keys changes))
+            (update changes 2)
+            (is (= (update changes 2) (update changes 6)))))))))
+
+(deftest published-delete-statement-count-test
+  (testing "deleting Cards as a user takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (let [delete (fn [n]
+                     (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
+                       (mt/with-current-user (mt/user->id :crowberto)
+                         (mt/with-dynamic-fn-redefs [card/delete-card-tests! (fn [_card-id] nil)]
+                           (statement-count #(card/delete-cards! ids))))))]
+        (delete 2)
+        (is (= (delete 2) (delete 6)))))))
+
 (deftest delete-cards-statement-count-test
   (testing "deleting Cards takes as many statements for many Cards as for few"
     (mt/with-temp [:model/Collection {collection-id :id} {}]

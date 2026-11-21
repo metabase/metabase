@@ -552,7 +552,13 @@
    :model/DashboardTab          {:create :event/dashboard-tab-create
                                  :delete :event/dashboard-tab-delete}
    :model/DashboardCardSeries   {:create :event/dashboard-card-series-create
-                                 :delete :event/dashboard-card-series-delete}})
+                                 :delete :event/dashboard-card-series-delete}
+   :model/CacheConfig           {:create :event/cache-config-create
+                                 :delete :event/cache-config-delete}
+   :model/ModerationReview      {:create :event/moderation-review-create
+                                 :delete :event/moderation-review-delete}
+   :model/ModelIndex            {:create :event/model-index-create
+                                 :delete :event/model-index-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."

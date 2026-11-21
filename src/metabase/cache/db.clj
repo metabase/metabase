@@ -155,13 +155,16 @@
    model-id :- ms/IntGreaterThanOrEqualToZero]
   (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
 
-(mu/defn upsert-cache-config!
-  "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
-  [model    :- :string
-   model-id :- ms/IntGreaterThanOrEqualToZero
-   data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
-  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
-                            (constantly data)))
+(mu/defn insert-cache-config!
+  "Insert the CacheConfig `data` and return the inserted instance."
+  [data :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
+  (t2/insert-returning-instance! :model/CacheConfig data))
+
+(mu/defn update-cache-config-strategy!
+  "Apply `changes` of the strategy columns to the CacheConfig with `cache-config-id`, returning the number updated."
+  [cache-config-id :- ms/PositiveInt
+   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:strategy :config :refresh_automatically])]
+  (t2/update! :model/CacheConfig :id cache-config-id changes))
 
 (mu/defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."
