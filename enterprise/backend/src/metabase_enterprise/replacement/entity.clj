@@ -54,10 +54,10 @@
     row))
 
 (mu/defn apply-writes!
-  "Apply `writes`, each an update of the row of a model with an id, in order, by the `:update!` of the serialization spec
-  of the model when it has one, which is its write function."
+  "Apply `writes`, each an update of the row of a model with an id, in order, by the `:update!` of the replacement spec
+  of the model when it has one."
   [writes :- replacement.spec/Writes]
   (doseq [[model id changes] writes]
-    (if-let [update! (:update! (serialization/spec model))]
-      (update! [(assoc changes :id id)])
+    (if-let [update! (:update! (replacement.spec/spec model))]
+      (update! id changes)
       (replacement.db/update-row! model id changes))))

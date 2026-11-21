@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.cache.schema :as cache.schema]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -82,7 +83,7 @@
 (deftest delete-dashboard-deletes-its-cache-config-test
   (mt/with-temp [:model/Dashboard   {dashboard-id :id} {}
                  :model/CacheConfig {config-id :id}    {:model "dashboard" :model_id dashboard-id}]
-    (t2/delete! :model/Dashboard :id dashboard-id)
+    (dashboard/delete-dashboard! dashboard-id)
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-database-deletes-cache-configs-of-database-and-its-cards-test

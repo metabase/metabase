@@ -12,6 +12,8 @@
   - `:upgrade-field-refs`, a pure fn of a hydrated row returning the writes that upgrade its field refs.
   - `:swap-source`, a pure fn of a hydrated row, the old source and the new source, each as `[entity-type id]`,
     returning the writes that swap the old source for the new one, or nil when the row has no query to swap.
+  - `:update!`, a fn of the id of a row and its changes, which applies a write to a row of the model by its write
+    function, by default a plain update.
 
   The writes are a vector of `[model id changes]`, each applied as an update of the row of `model` with `id`, in
   order, and empty when nothing changes."
@@ -26,7 +28,8 @@
    [:source-database-id {:optional true} ifn?]
    [:hydrate            {:optional true} ifn?]
    [:upgrade-field-refs {:optional true} ifn?]
-   [:swap-source        {:optional true} ifn?]])
+   [:swap-source        {:optional true} ifn?]
+   [:update!            {:optional true} ifn?]])
 
 (def Writes
   "The schema of the writes that `:upgrade-field-refs` and `:swap-source` return."

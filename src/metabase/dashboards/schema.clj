@@ -109,6 +109,39 @@
    [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
    [:public_uuid_prefix      {:optional true} [:maybe :string]]])
 
+(mr/def ::dashboard.create
+  "What creating a Dashboard takes: its name, and the columns a caller gives; the columns that follow from the others, as
+  the public uuid prefix, are not accepted."
+  [:map {:closed true}
+   [:name                    ::dashboard.name]
+   [:description             {:optional true} [:maybe :string]]
+   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
+   [:parameters              {:optional true} [:maybe [:sequential ::dashboard.parameter]]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:public_uuid             {:optional true} [:maybe :string]]
+   [:made_public_by_id       {:optional true} [:maybe ::lib.schema.id/user]]
+   [:enable_embedding        {:optional true} [:maybe :boolean]]
+   [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:archived_directly       {:optional true} [:maybe :boolean]]
+   [:position                {:optional true} [:maybe :int]]
+   [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:collection_position     {:optional true} [:maybe :int]]
+   [:cache_ttl               {:optional true} [:maybe :int]]
+   [:entity_id               {:optional true} [:maybe :string]]
+   [:auto_apply_filters      {:optional true} :boolean]
+   [:width                   {:optional true} ::dashboard.width]
+   [:embedding_type          {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+
+(mr/def ::dashboard.update-row
+  "A row of a bulk update of Dashboards: the id of the Dashboard and the columns to change."
+  [:merge
+   ::dashboard.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/dashboard]]])
+
 (mr/def ::dashboard-card.parameter-mapping
   "One entry of the `:parameter_mappings` column of a DashboardCard, decoded."
   ::parameters.schema/parameter-mapping)

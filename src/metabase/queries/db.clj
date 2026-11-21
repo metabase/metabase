@@ -306,7 +306,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard/update-dashboard!) dashboard-id changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
@@ -314,29 +314,31 @@
   (t2/select :model/DashboardCard :card_id card-id))
 
 (mu/defn insert-dashcard!
-  "Insert `dashcard`, returning the number inserted."
+  "Insert `dashcard` through the DashboardCard model."
   [dashcard :- ::dashboards.schema/dashboard-card.update]
-  (t2/insert! :model/DashboardCard dashcard))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/create-dashboard-cards!) [dashcard]))
 
 (mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
+  "Apply `changes` to the DashboardCard with `dashcard-id` through the DashboardCard model."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/update-dashboard-card-rows!) [(assoc changes :id dashcard-id)]))
 
 (mu/defn delete-dashcards-for-card-on-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`, returning the
-  number deleted."
+  "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id` through the
+  DashboardCard model."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!)
+   (vec (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))))
 
 (mu/defn delete-dashcards-for-card-off-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`, returning
-  the number deleted."
+  "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id` through the
+  DashboardCard model."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!)
+   (vec (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))))
 
 (mu/defn dashcard-series-for-card-on-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
@@ -464,6 +466,30 @@
   [parameter-card :- ::queries.schema/parameter-card.update]
   (t2/insert! :model/ParameterCard parameter-card))
 
+(mu/defn parameter-cards-for-objects
+  "The ParameterCards of the parameterized objects of `object-type` with `object-ids`."
+  [object-type :- [:or :keyword :string]
+   object-ids  :- [:sequential ms/PositiveInt]]
+  (t2/select :model/ParameterCard
+             :parameterized_object_type object-type
+             :parameterized_object_id [:in object-ids]))
+
+(mu/defn insert-parameter-cards!
+  "Insert the ParameterCard `rows` in one statement, returning the number inserted."
+  [rows :- [:sequential ::queries.schema/parameter-card.update]]
+  (t2/insert! :model/ParameterCard rows))
+
+(mu/defn set-parameter-cards-card-id!
+  "Point the ParameterCards with `parameter-card-ids` at `card-id`, returning the number updated."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]
+   card-id            :- ::lib.schema.id/card]
+  (t2/update! :model/ParameterCard :id [:in parameter-card-ids] {:card_id card-id}))
+
+(mu/defn delete-parameter-cards-by-ids!
+  "Delete the ParameterCards with `parameter-card-ids`, returning the number deleted."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ParameterCard :id [:in parameter-card-ids]))
+
 (mu/defn delete-parameter-cards-for-card!
   "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
@@ -476,6 +502,15 @@
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
               :parameterized_object_id object-id))
+
+(mu/defn delete-parameter-cards-for-objects!
+  "Delete every ParameterCard of the parameterized objects of `object-type` with `object-ids`, returning the number
+  deleted."
+  [object-type :- [:or :keyword :string]
+   object-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ParameterCard
+              :parameterized_object_type object-type
+              :parameterized_object_id [:in object-ids]))
 
 (mu/defn delete-parameter-cards-for-object-except!
   "Delete the ParameterCards of the given parameterized object whose parameter is not one of `parameter-ids`,

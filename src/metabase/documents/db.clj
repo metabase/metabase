@@ -61,21 +61,28 @@
                                       [:= :archived false]
                                       [:= :exploration_id nil]]}))
 
-(mu/defn insert-document!
-  "Insert the Document `row` and return its id."
-  [row :- ::documents.schema/document.update]
-  (t2/insert-returning-pk! :model/Document row))
+(mu/defn documents
+  "The Documents with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (t2/select :model/Document :id [:in ids])
+    []))
 
-(mu/defn update-document!
-  "Apply `changes` to the Document with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
+(mu/defn insert-documents!
+  "Insert the Document `rows` and return the inserted instances, in the order of the rows."
+  [rows :- [:sequential ::documents.schema/document.create]]
+  (t2/insert-returning-instances! :model/Document rows))
+
+(mu/defn update-documents!
+  "Apply `changes` to the Documents with `ids`, returning the number updated."
+  [ids     :- [:sequential ms/PositiveInt]
    changes :- ::documents.schema/document.update]
-  (t2/update! :model/Document :id id changes))
+  (t2/update! :model/Document :id [:in ids] changes))
 
-(mu/defn delete-document!
-  "Delete the Document with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/Document :id id))
+(mu/defn delete-documents!
+  "Delete the Documents with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Document :id [:in ids]))
 
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."
@@ -127,41 +134,34 @@
    changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
   (t2/update! :model/Card :id card-id changes))
 
-(defn- archivable-card-conditions
-  "The key-value conditions of the Cards in the Document with `document-id` that archiving it archives."
-  [document-id]
-  [:document_id document-id :archived false])
-
-(defn- restorable-card-conditions
-  "The key-value conditions of the Cards in the Document with `document-id` that restoring it restores."
-  [document-id]
-  [:document_id document-id :archived true :archived_directly false])
-
 (mu/defn cards-archived-with-document
   "The unarchived Cards in the Document with `document-id`, which archiving it archives along with it."
   [document-id :- ms/PositiveInt]
-  (apply t2/select :model/Card (archivable-card-conditions document-id)))
+  (t2/select :model/Card :document_id document-id :archived false))
 
 (mu/defn cards-restored-with-document
   "The Cards in the Document with `document-id` that were archived along with it, which restoring it restores."
   [document-id :- ms/PositiveInt]
-  (apply t2/select :model/Card (restorable-card-conditions document-id)))
+  (t2/select :model/Card :document_id document-id :archived true :archived_directly false))
 
 (mu/defn archive-document-cards!
-  "Archive, through their model, the rows of [[cards-archived-with-document]], returning the number updated."
-  [document-id :- ms/PositiveInt]
-  (apply t2/update! :model/Card (concat (archivable-card-conditions document-id) [{:archived true}])))
+  "Archive, through their model, the rows of [[cards-archived-with-document]] of the Documents with `document-ids`,
+  returning the number updated."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/Card :document_id [:in document-ids] :archived false {:archived true}))
 
 (mu/defn restore-document-cards!
-  "Restore, through their model, the rows of [[cards-restored-with-document]], returning the number updated."
-  [document-id :- ms/PositiveInt]
-  (apply t2/update! :model/Card (concat (restorable-card-conditions document-id) [{:archived false}])))
+  "Restore, through their model, the rows of [[cards-restored-with-document]] of the Documents with `document-ids`,
+  returning the number updated."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/update! :model/Card :document_id [:in document-ids] :archived true :archived_directly false {:archived false}))
 
-(mu/defn update-cards-for-document!
-  "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."
-  [document-id :- ms/PositiveInt
-   changes     :- (mut/select-keys ::queries.schema/card.update [:collection_id :archived :archived_directly])]
-  (t2/update! :model/Card :document_id document-id changes))
+(mu/defn move-document-cards!
+  "Move the Cards of the Documents with `document-ids` to the Collection with `collection-id`, returning the number
+  updated."
+  [document-ids  :- [:sequential ms/PositiveInt]
+   collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/update! :model/Card :document_id [:in document-ids] {:collection_id collection-id}))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."

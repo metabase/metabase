@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
@@ -69,13 +70,14 @@
   "Propagate an Exploration's new `collection_id` to its Summary document.
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
-  (explorations.db/move-summary-documents! exploration-id new-coll-id))
+  (document/update-documents! (mapv (fn [id] {:id id :collection_id new-coll-id})
+                                    (explorations.db/summary-document-ids exploration-id))))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
   must not call this — there is one Summary per exploration."
   [exploration-id coll-id]
-  (explorations.db/insert-document!
+  (document/create-document!
    {:name            summary-document-name
     :document        {:type "doc" :content []}
     :content_type    documents/prose-mirror-content-type

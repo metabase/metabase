@@ -23,14 +23,14 @@
    (dashboards.db/dashboard dashboard-id) current-cards reverted-cards))
 
 (defn- revert-dashcards
-  [dashboard-id serialized-cards]
+  [delete-dashcards! dashboard-id serialized-cards]
   (let [current-cards    (->> (t2/hydrate (dashboards.db/dashcards dashboard-id) :series)
                               (mapv #(revisions/snapshot :model/DashboardCard %)))
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
     (when (seq to-delete)
-      (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
+      (delete-dashcards! (mapv :id to-delete)))
     (when (seq to-create)
       (dashboard-card/create-dashboard-cards! (map #(assoc % :dashboard_id dashboard-id) to-create)))
     (when (seq to-update)
@@ -66,14 +66,15 @@
 
 (defn revert-dashboard!
   "Return the Dashboard `dashboard-id` to the `serialized-dashboard` that a Revision recorded: its columns, its tabs and
-  its dashcards."
-  [dashboard-id _user-id serialized-dashboard]
+  its dashcards. `update-dashboard!` and `delete-dashcards!` are the write functions of the Dashboard, which this
+  namespace cannot require."
+  [{:keys [update-dashboard! delete-dashcards!]} dashboard-id _user-id serialized-dashboard]
   ;; Clean invalid parameter card references before reverting (cards may have been deleted since the revision)
   (let [cleaned-parameters   (clean-invalid-parameter-card-references (or (:parameters serialized-dashboard) []))
         serialized-dashboard (assoc serialized-dashboard :parameters cleaned-parameters)]
     (queries/check-new-parameter-source-card-permissions "dashboard" dashboard-id cleaned-parameters)
     ;; Update the dashboard description / name / permissions
-    (revisions/revert-columns! :model/Dashboard dashboard-id serialized-dashboard)
+    (update-dashboard! dashboard-id (select-keys serialized-dashboard (:track (revisions/spec :model/Dashboard))))
     ;; Now update the tabs and cards as needed
     (let [serialized-dashcards      (:cards serialized-dashboard)
           current-tabs              (mapv #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
@@ -90,7 +91,7 @@
                                              (if-let [new-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                (assoc card :dashboard_tab_id new-tab-id)
                                                card))))]
-      (revert-dashcards dashboard-id serialized-dashcards))
+      (revert-dashcards delete-dashcards! dashboard-id serialized-dashcards))
     serialized-dashboard))
 
 (defn describe-change
