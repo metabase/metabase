@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.events.core :as events]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
@@ -87,37 +88,57 @@
       (finally
         (.. lock readLock unlock)))))
 
+(defn- publish-field-updates!
+  "Publish the updates of Fields that test data makes with plain statements, `{field-id [field changes]}` with `field`
+  the row before them, as one event, as the write functions of Field publish theirs."
+  [updates]
+  (when (seq updates)
+    (events/publish-lifecycle!
+     [(events/updated :event/field-update
+                      (mapv first (vals updates))
+                      (mapv (fn [[field changes]] (events/updated-row field changes)) (vals updates)))])))
+
+(defn- with-field-update
+  "`updates`, as [[publish-field-updates!]] takes them, with `changes` to `field` added."
+  [updates field changes]
+  (update updates (:id field) (fn [[before so-far]] [(or before field) (merge so-far changes)])))
+
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
    db                                                    :- :metabase.warehouses.schema/database]
-  (doseq [{:keys [table-name], :as table-definition} table-definitions]
-    (let [table (delay (or (tx/metabase-instance table-definition db)
-                           (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
-                                                      table-name
-                                                      (u/pprint-to-str (dissoc table-definition :rows))
-                                                      (u/pprint-to-str (t2/select [:model/Table :schema :name], :db_id (:id db))))))))]
-      (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
-        (let [field (delay (or (tx/metabase-instance field-definition @table)
-                               (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
-                                                          field-name
-                                                          (u/pprint-to-str field-definition))))))]
-          (doseq [property [:visibility-type :semantic-type]]
-            (when-let [v (get field-definition property)]
-              (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
-              (t2/update! :model/Field :id (:id @field) {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)})))
-          ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
-          ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
-          ;; sequence that sets effective_type alone first would be reverted before
-          ;; coercion_strategy lands.
-          (let [eff-type (:effective-type field-definition)
-                coerce   (:coercion-strategy field-definition)
-                upd      (cond-> {}
-                           eff-type (assoc :effective_type (u/qualified-name eff-type))
-                           coerce   (assoc :coercion_strategy (u/qualified-name coerce)))]
-            (when (seq upd)
-              (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
-              (t2/update! :model/Field :id (:id @field) upd))))))))
+  (let [updates (atom {})]
+    (doseq [{:keys [table-name], :as table-definition} table-definitions]
+      (let [table (delay (or (tx/metabase-instance table-definition db)
+                             (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
+                                                        table-name
+                                                        (u/pprint-to-str (dissoc table-definition :rows))
+                                                        (u/pprint-to-str (t2/select [:model/Table :schema :name], :db_id (:id db))))))))]
+        (doseq [{:keys [field-name], :as field-definition} (:field-definitions table-definition)]
+          (let [field (delay (or (tx/metabase-instance field-definition @table)
+                                 (throw (Exception. (format "Field '%s' not loaded from definition:\n%s"
+                                                            field-name
+                                                            (u/pprint-to-str field-definition))))))]
+            (doseq [property [:visibility-type :semantic-type]]
+              (when-let [v (get field-definition property)]
+                (log/debugf "SET %s %s.%s -> %s" property table-name field-name v)
+                (let [changes {(keyword (str/replace (name property) #"-" "_")) (u/qualified-name v)}]
+                  (t2/update! :model/Field :id (:id @field) changes)
+                  (swap! updates with-field-update @field changes))))
+            ;; effective-type and coercion-strategy must be set atomically — the GHY-3388 model
+            ;; invariant requires effective_type=base_type when coercion_strategy is nil, so a
+            ;; sequence that sets effective_type alone first would be reverted before
+            ;; coercion_strategy lands.
+            (let [eff-type (:effective-type field-definition)
+                  coerce   (:coercion-strategy field-definition)
+                  upd      (cond-> {}
+                             eff-type (assoc :effective_type (u/qualified-name eff-type))
+                             coerce   (assoc :coercion_strategy (u/qualified-name coerce)))]
+              (when (seq upd)
+                (log/debugf "SET effective-type/coercion-strategy %s.%s -> %s" table-name field-name upd)
+                (t2/update! :model/Field :id (:id @field) upd)
+                (swap! updates with-field-update @field upd)))))))
+    (publish-field-updates! @updates)))
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -236,32 +257,44 @@
   "Insert pre-computed table and field rows into the app DB.
    Returns map of table-name -> inserted table for FK resolution."
   [rows]
-  (into {}
-        (for [{:keys [table-name table-row field-rows]} rows]
-          (let [table (first (t2/insert-returning-instances! :model/Table table-row))]
-            (doseq [field-row field-rows]
-              (t2/insert-returning-instances! :model/Field (assoc field-row :table_id (:id table))))
-            [table-name table]))))
+  (let [inserted (for [{:keys [table-name table-row field-rows]} rows]
+                   (let [table (first (t2/insert-returning-instances! :model/Table table-row))]
+                     {:table-name table-name
+                      :table      table
+                      :fields     (vec (for [field-row field-rows]
+                                         (first (t2/insert-returning-instances! :model/Field
+                                                                                (assoc field-row :table_id (:id table))))))}))
+        inserted (vec inserted)]
+    (events/publish-lifecycle! [(events/created :event/table-create (mapv :table inserted))
+                                (events/created :event/field-create (into [] (mapcat :fields) inserted))])
+    (into {} (map (juxt :table-name :table)) inserted)))
 
 (defn- resolve-fk-relationships!
   "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
   [table-name->table {:keys [table-definitions]}]
-  (doseq [{:keys [table-name field-definitions]} table-definitions
-          :let [table (get table-name->table table-name)]
+  (publish-field-updates!
+   (reduce
+    (fn [updates [table-name field-name fk]]
+      (let [table             (get table-name->table table-name)
+            target-table-name (if (keyword? fk) (name fk) fk)
+            target-table      (get table-name->table target-table-name)
+            target-pk-field   (when target-table
+                                (t2/select-one :model/Field
+                                               :table_id (:id target-table)
+                                               :semantic_type :type/PK))
+            source-field      (t2/select-one :model/Field
+                                             :table_id (:id table)
+                                             :%lower.name (u/lower-case-en field-name))]
+        (if (and source-field target-pk-field)
+          (let [changes {:fk_target_field_id (:id target-pk-field)}]
+            (t2/update! :model/Field :id (:id source-field) changes)
+            (with-field-update updates source-field changes))
+          updates)))
+    {}
+    (for [{:keys [table-name field-definitions]} table-definitions
           {:keys [field-name fk]} field-definitions
           :when fk]
-    (let [target-table-name (if (keyword? fk) (name fk) fk)
-          target-table      (get table-name->table target-table-name)
-          target-pk-field   (when target-table
-                              (t2/select-one :model/Field
-                                             :table_id (:id target-table)
-                                             :semantic_type :type/PK))
-          source-field      (t2/select-one :model/Field
-                                           :table_id (:id table)
-                                           :%lower.name (u/lower-case-en field-name))]
-      (when (and source-field target-pk-field)
-        (t2/update! :model/Field :id (:id source-field)
-                    {:fk_target_field_id (:id target-pk-field)})))))
+      [table-name field-name fk]))))
 
 ;; ---------------------- Main Entry Point ----------------------
 
@@ -392,10 +425,17 @@
   This function simulates those user added fks, based on dataset definition. Therefore, it enables tests for eg.
   implicit joins to work."
   [driver dbdef db]
-  (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
-    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
-      (t2/update! :model/Field :id id {:semantic_type :type/FK
-                                       :fk_target_field_id fk-target-field-id}))))
+  (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)
+        fields         (when-let [ids (seq (keep :id fk-field-infos))]
+                         (m/index-by :id (t2/select :model/Field :id [:in (set ids)])))]
+    (publish-field-updates!
+     (reduce (fn [updates {:keys [id fk-target-field-id]}]
+               (let [changes {:semantic_type :type/FK :fk_target_field_id fk-target-field-id}]
+                 (t2/update! :model/Field :id id changes)
+                 (cond-> updates
+                   (get fields id) (with-field-update (get fields id) changes))))
+             {}
+             fk-field-infos))))
 
 (defn- load-dataset-data-if-needed!
   "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
@@ -501,7 +541,7 @@
             (load-dataset-data-if-needed! driver dbdef)
             ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
             ;; need to go thru this again.
-            (t2/update! :model/Database :id (u/the-id existing-database) {:created_at (t/offset-date-time)})))
+            (database/update-database! (u/the-id existing-database) {:created_at (t/offset-date-time)})))
         (finally
           (.. lock writeLock unlock))))))
 

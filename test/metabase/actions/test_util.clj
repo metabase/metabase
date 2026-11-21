@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
@@ -86,7 +87,7 @@
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
 
-(defn do-with-dataset-definition
+(defn do-with-dataset-definition!
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
   [dataset-definition thunk]
   ;; use a unique DB name each time so this is thread-safe
@@ -102,20 +103,23 @@
         (finally
           (when-let [{driver :engine, db-id :id} @db]
             (tx/destroy-db! driver dataset-definition)
-            (t2/delete! :model/Database :id db-id)))))))
+            (when-let [database (t2/select-one :model/Database :id db-id)]
+              (let [event (events/deleted :event/database-delete :model/Database [database])]
+                (t2/delete! :model/Database :id db-id)
+                (events/publish-lifecycle! [event])))))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table
   that gets destroyed at the conclusion of `body`. Use this to test destructive actions that may modify the data."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+  `(do-with-dataset-definition! actions-test-data (fn [] ~@body)))
 
 (defmacro with-actions-temp-db
   "Sets the current dataset to a freshly-loaded [[dataset-definition]] that gets destroyed at the conclusion of `body`."
   {:style/indent 1}
   [dataset-definition & body]
-  `(do-with-dataset-definition ~dataset-definition (fn [] ~@body)))
+  `(do-with-dataset-definition! ~dataset-definition (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created table-definitions that gets destroyed at the conclusion of `body`.
@@ -129,9 +133,9 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
-                                                      ~table-definitions)
-                               (fn [] ~@body)))
+  `(do-with-dataset-definition! (tx/dataset-definition (str "temp-test-data" (u.random/random-name))
+                                                       ~table-definitions)
+                                (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -140,7 +144,7 @@
    reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
+  `(do-with-dataset-definition! (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql

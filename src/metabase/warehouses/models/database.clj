@@ -882,36 +882,24 @@
     (apply-database-updates! rows))
   (vec rows))
 
-(def ^:private previous-columns
-  "The columns whose change the consumers of a Database update compare with the stored row: the driver's connection and
-  the workspace schema read the settings."
-  #{:settings})
-
 (defn- plain-update-previous
-  "The Database `database`, or its id, as a plain update of `changes` publishes it as the row before the update: the
-  stored row the caller gave, else the stored row read once when a user makes the change, whose audit row records it,
-  or when a consumer compares a changed column with it, and else the id alone, as sync's small updates leave it."
-  [database changes]
-  (cond
-    (t2/instance-of? :model/Database database)
+  "The stored row of `database`, the Database or its id, that a plain update publishes as the row before it: the row
+  the caller gave, read in the same request, else the row read once."
+  [database]
+  (if (t2/instance-of? :model/Database database)
     database
-
-    (or (some? (mi/current-user-id)) (some #(contains? changes %) previous-columns))
-    (warehouses.db/database database)
-
-    :else
-    (t2/instance :model/Database {:id database})))
+    (warehouses.db/database database)))
 
 (mu/defn update-database! :- :int
   "Apply `changes` to `database`, the Database or its id, and return the number updated. Changes that need nothing but
-  their statement are one statement, and publish the stored row the caller gave as the row before them; others are
+  their statement are one statement after the read of the stored row, which the caller may give instead; others are
   applied as [[update-databases!]] applies them."
   [database :- [:or ::lib.schema.id/database [:fn {:error/message "a Database"} #(t2/instance-of? :model/Database %)]]
    changes  :- ::warehouses.schema/database.update]
   (let [database-id (u/the-id database)]
     (if (plain-update? changes)
       (t2/with-transaction [_conn]
-        (let [previous (plain-update-previous database changes)]
+        (let [previous (plain-update-previous database)]
           (u/prog1 (warehouses.db/update-database! database-id changes)
             (when (and previous (pos? <>))
               (events/publish-lifecycle!

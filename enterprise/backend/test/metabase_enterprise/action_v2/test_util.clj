@@ -8,6 +8,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -69,7 +71,7 @@
 
 (defn toggle-data-editing-enabled! [db-id on-or-off]
   (let [current-settings (t2/select-one-fn :settings :model/Database :id db-id)]
-    (t2/update! :model/Database :id db-id {:settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))})))
+    (database/update-database! db-id {:settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))})))
 
 (defmacro with-data-editing-enabled! [on-or-off & body]
   `(mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing ~on-or-off}}
@@ -92,7 +94,7 @@
         table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
         cleanup       (fn []
                         (driver/drop-table! driver (mt/id) table-name)
-                        (t2/delete! :model/Table :name table-name))]
+                        (table/delete-tables! (vec (t2/select-pks-set :model/Table :name table-name))))]
     (try
       (thunk (create-test-table! db table-name column-map create-table-opts))
       (catch Exception e
@@ -122,8 +124,8 @@
       ...)"
   [[table-binding table-spec & more] & body]
   `(mt/with-empty-db
-     (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true
-                                                     :database-enable-actions       true}})
+     (database/update-database! (mt/id) {:settings {:database-enable-table-editing true
+                                                    :database-enable-actions       true}})
      (do-with-test-tables!
       ~table-spec
       (fn [~table-binding]
@@ -144,6 +146,6 @@
   "Like [[actions.tu/with-actions-temp-db]] but with table editing enabled"
   [dataset-definition & body]
   `(actions.tu/with-actions-temp-db ~dataset-definition
-     (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true
-                                                     :database-enable-actions       true}})
+     (database/update-database! (mt/id) {:settings {:database-enable-table-editing true
+                                                    :database-enable-actions       true}})
      ~@body))
