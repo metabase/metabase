@@ -714,3 +714,26 @@
 (deftest ^:parallel read-only-select?-druid-test
   (testing "a Druid SELECT is read in the dialect sqlglot registers for Druid"
     (is (true? (sql-tools/read-only-select? :druid-jdbc "SELECT __time, COUNT(*) FROM wikipedia GROUP BY 1")))))
+
+;;; -------------------------------------------------- join-steps --------------------------------------------------
+
+(deftest ^:parallel join-steps-resolves-sources-test
+  (test-parser-backends
+   (mt/test-driver :h2
+     (testing "an unqualified table resolves in the default schema, and a table that matches none has no id"
+       (let [query (lib/native-query (mt/metadata-provider)
+                                     (str "select o.id from orders o "
+                                          "left join people p on p.id = o.user_id "
+                                          "join no_such_table n on n.id = o.id"))]
+         (is (=? {:from  {:source :table, :table-id (mt/id :orders), :alias "O"}
+                  :steps [{:source :table, :table-id (mt/id :people), :alias "P", :strategy :left-join}
+                          {:source :table, :table-id nil, :alias "N", :strategy :inner-join}]}
+                 (sql-tools/join-steps driver/*driver* query))))))))
+
+(deftest ^:parallel join-steps-unsupported-dialect-test
+  (mt/test-driver :h2
+    (testing "a driver with no sqlglot dialect, other than H2, is refused rather than parsed in the default dialect"
+      (let [query (lib/native-query (mt/metadata-provider)
+                                    "select o.id from orders o join people p on p.id = o.user_id")]
+        (is (= {:unsupported :unsupported-dialect}
+               (sql-tools/join-steps :vertica query)))))))

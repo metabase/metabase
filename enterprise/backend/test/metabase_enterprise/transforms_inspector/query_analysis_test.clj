@@ -72,12 +72,9 @@
                             "SELECT p.*, cte." (qf :orders :user_id) " "
                             "FROM " (qt :people) " p "
                             "LEFT JOIN cte ON p." (qf :people :id) " = cte." (qf :orders :user_id)))
-            transform (make-native-transform query)
-            result    (query-analysis/analyze-native-query transform)]
-        (is (some? result))
-        (is (= 1 (count (:join-structure result))))
-        (is (nil? (:source-table (first (:join-structure result))))
-            "CTE alias should not resolve to a real table ID")))))
+            transform (make-native-transform query)]
+        (is (=? {:join-structure [{:strategy :left-join, :source-table nil}]}
+                (query-analysis/analyze-native-query transform)))))))
 
 (deftest analyze-native-query-mixed-simple-and-cte-joins-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql
@@ -90,17 +87,12 @@
                             "FROM " (qt :orders) " o "
                             "JOIN " (qt :products) " pr ON o." (qf :orders :product_id) " = pr." (qf :products :id) " "
                             "LEFT JOIN cte ON o." (qf :orders :id) " = cte." (qf :reviews :id)))
-            transform (make-native-transform query)
-            result    (query-analysis/analyze-native-query transform)]
-        (is (some? result))
-        (is (= 2 (count (:join-structure result))))
-        (let [[products-join cte-join] (:join-structure result)]
-          (is (= (mt/id :products) (:source-table products-join))
-              "simple table join should resolve to a real table ID")
-          (is (nil? (:source-table cte-join))
-              "CTE join should not resolve to a real table ID"))))))
+            transform (make-native-transform query)]
+        (is (=? {:join-structure [{:strategy :inner-join, :source-table (mt/id :products)}
+                                  {:strategy :left-join, :source-table nil}]}
+                (query-analysis/analyze-native-query transform)))))))
 
-;;; -------------------------------------------------- Native step queries --------------------------------------------------
+;;; ------------------------------------------- Native step queries -------------------------------------------
 
 (defn- run-sql
   "The rows of `sql`, run on the test database."
@@ -133,14 +125,17 @@
             result    (query-analysis/analyze-native-query (make-native-transform query))
             orders    (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
             widgets   (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
-                                     "JOIN " (qt :products) " pr ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                                     "JOIN " (qt :products) " pr "
+                                     "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
                                      "WHERE pr." (qf :products :category) " = 'Widget'"))]
         (is (=? {:from-table-id  (mt/id :orders)
-                 :join-structure [{:strategy :left-join :source-table (mt/id :products)}]}
+                 :join-structure [{:strategy :left-join, :source-table (mt/id :products)}]}
                 result))
         (testing "the WHERE clause is left out of every count"
           (is (= orders (count-of (:from-count-sql result))))
-          (is (= [[orders widgets]] (step-counts result)))))))
+          (is (= [[orders widgets]] (step-counts result))))))))
+
+(deftest analyze-native-query-matched-count-is-the-inner-join-count-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql
                                              :+features [:left-join]})
     (testing "a condition true of every unmatched row counts no match, where COUNT(CASE WHEN <condition>) counted all"

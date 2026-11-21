@@ -189,6 +189,22 @@
    :dialect "postgres",
    :sql "SELECT * FROM a TABLESAMPLE BERNOULLI (10)",
    :expected {:status "unsupported", :reason "unsupported-source"}}
+  {:name "a Hive LATERAL VIEW is refused",
+   :dialect "spark",
+   :sql "SELECT * FROM a LATERAL VIEW EXPLODE(a.xs) t AS x",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "an ASOF join is refused",
+   :dialect "duckdb",
+   :sql "SELECT * FROM a ASOF JOIN b ON a.id = b.id AND a.t >= b.t",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a join with an argument a step cannot carry, Snowflake's MATCH_CONDITION, is refused",
+   :dialect "snowflake",
+   :sql "SELECT * FROM a ASOF JOIN b MATCH_CONDITION (a.t >= b.t) ON a.id = b.id",
+   :expected {:status "unsupported", :reason "unsupported-join"}}
+  {:name "a pivoted derived table is refused",
+   :dialect "postgres",
+   :sql "SELECT * FROM (SELECT 1 AS x) d PIVOT (SUM(x) FOR y IN (1))",
+   :expected {:status "unsupported", :reason "unsupported-source"}}
   {:name "a parenthesized join tree is refused",
    :dialect "postgres",
    :sql "SELECT * FROM a JOIN (b JOIN c ON b.x = c.x) ON a.x = b.x",

@@ -96,9 +96,9 @@
   It returns nil for a name that matches no Table, a transform's target not yet created included."
   [driver query sources]
   (let [database  (lib.metadata/database query)
+        ;; An unqualified name resolves in the database's default schema, which `find-table-or-transform` supplies.
         spec      (fn [[_catalog table-schema table]]
-                    (sql-tools.common/normalize-table-spec
-                     driver {:table table, :schema (or table-schema (:default-schema database))}))
+                    (sql-tools.common/normalize-table-spec driver {:table table, :schema table-schema}))
         specs     (into {} (keep (fn [{:keys [table]}] (when table [table (spec table)]))) sources)
         table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table (vals specs)))
         tables    (lib.metadata/bulk-metadata query :metadata/table table-ids)]
