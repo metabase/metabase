@@ -723,7 +723,7 @@
            (testing "creating a router is recorded as an update of its database"
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "enabled" :routing_attribute "tenant"}
+                     :details  {:db_routing "enabled" :routing_attribute "tenant" :anonymous_access_granted false}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))
@@ -737,11 +737,21 @@
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))
+           (testing "changing only the anonymous access grant of a router is recorded with the previous and new values"
+             (t2/update! :model/DatabaseRouter :id router-id {:anonymous_access_granted true})
+             (is (= {:model_id db-id
+                     :user_id  (mt/user->id :crowberto)
+                     :details  {:db_routing "enabled"
+                                :previous   {:anonymous_access_granted false}
+                                :new        {:anonymous_access_granted true}}
+                     :topic    :database-update
+                     :model    "Database"}
+                    (mt/latest-audit-log-entry :database-update db-id))))
            (testing "deleting a router is recorded as an update of its database"
              (t2/delete! :model/DatabaseRouter :id router-id)
              (is (= {:model_id db-id
                      :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "disabled"}
+                     :details  {:db_routing "disabled" :anonymous_access_granted true}
                      :topic    :database-update
                      :model    "Database"}
                     (mt/latest-audit-log-entry :database-update db-id))))))))))

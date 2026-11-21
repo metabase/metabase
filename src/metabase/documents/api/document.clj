@@ -255,6 +255,7 @@
     (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
       {:uuid existing-uuid}
       (do
+        (public-sharing.validation/check-public-link-allowed! :model/Document document-id)
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})

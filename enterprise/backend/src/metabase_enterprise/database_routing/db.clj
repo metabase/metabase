@@ -66,17 +66,28 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- ::database-routing.schema/database-router.user-attribute]
-  (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+(mu/defn router-anonymous-access-grants-by-database
+  "A map of Database ID to anonymous-access grant for `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :database_id :anonymous_access_granted :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn update-router-user-attribute!
-  "Set the routing user attribute of the router of the Database with `database-id`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- ::database-routing.schema/database-router.user-attribute]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
+(mu/defn router-anonymous-access-granted?
+  "Whether the router of the Database with `database-id` has been granted anonymous access. False when `database-id`
+  is not a router database."
+  [database-id :- ::lib.schema.id/database]
+  (boolean (t2/select-one-fn :anonymous_access_granted :model/DatabaseRouter :database_id database-id)))
+
+(mu/defn insert-router!
+  "Insert a DatabaseRouter for the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   router      :- ::database-routing.schema/database-router.update]
+  (t2/insert! :model/DatabaseRouter (assoc router :database_id database-id)))
+
+(mu/defn update-router!
+  "Update the DatabaseRouter of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   router      :- ::database-routing.schema/database-router.update]
+  (t2/update! :model/DatabaseRouter :database_id database-id router))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

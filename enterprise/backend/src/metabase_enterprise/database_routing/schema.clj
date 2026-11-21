@@ -14,10 +14,11 @@
   [:merge
    ::database-router.update
    [:map {:closed true}
-    [:id             ms/PositiveInt]]])
+    [:id ms/PositiveInt]]])
 
 (mr/def ::database-router.update
   "What an update (or insert) of a DatabaseRouter accepts: every column of `:db_router` except `id`, all optional."
   [:map {:closed true}
-   [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
-   [:user_attribute {:optional true} ::database-router.user-attribute]])
+   [:database_id              {:optional true} ::lib.schema.id/database]
+   [:user_attribute           {:optional true} ::database-router.user-attribute]
+   [:anonymous_access_granted {:optional true} :boolean]])

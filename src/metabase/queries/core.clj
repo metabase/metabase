@@ -72,6 +72,7 @@
  [metabase.queries.models.parameter-card
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions
+  values-source-card-id
   values-source-card-ids]
  [metabase.queries.models.query
   average-execution-time-ms
