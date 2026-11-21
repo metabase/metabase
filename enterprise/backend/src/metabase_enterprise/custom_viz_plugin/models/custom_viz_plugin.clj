@@ -53,7 +53,6 @@
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (def non-blob-columns
@@ -81,21 +80,71 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(mu/defn create-custom-viz-plugins!
+  "Insert the CustomVizPlugin `rows`, publishing their create event, and return the inserted plugins."
+  [rows :- [:sequential ::custom-viz-plugin.schema/custom-viz-plugin.update]]
+  (if (seq rows)
+    (t2/with-transaction [_conn]
+      (let [plugins (custom-viz-plugin.db/insert-plugins! rows)]
+        (events/publish-lifecycle! [(events/created :event/custom-viz-plugin-create plugins)])
+        plugins))
+    []))
+
 (mu/defn create-custom-viz-plugin!
   "Insert the CustomVizPlugin `row` and return it."
   [row :- ::custom-viz-plugin.schema/custom-viz-plugin.create]
-  (custom-viz-plugin.db/insert-plugin! row))
+  (first (create-custom-viz-plugins! [row])))
+
+(mu/defn update-custom-viz-plugins!
+  "Apply the changes in `changes-by-id`, a map from the id of a CustomVizPlugin to its changes, with one statement per
+  distinct change set, publishing their update event."
+  [changes-by-id :- [:map-of ms/PositiveInt ::custom-viz-plugin.schema/custom-viz-plugin.update]]
+  (when (seq changes-by-id)
+    (t2/with-transaction [_conn]
+      (let [stored (into {} (map (juxt :id identity)) (custom-viz-plugin.db/non-blob-plugins-by-ids (vec (keys changes-by-id))))]
+        (doseq [[changes pairs] (group-by val changes-by-id)
+                :when           (seq changes)]
+          (custom-viz-plugin.db/update-plugins! (mapv key pairs) changes))
+        (let [pairs (into []
+                          (keep (fn [[id changes]]
+                                  (when-let [previous (stored id)]
+                                    (let [object (events/updated-row previous (with-bundle-hash changes))]
+                                      (when (not= (into {} previous) (into {} object))
+                                        [previous object])))))
+                          changes-by-id)]
+          (events/publish-lifecycle! [(events/updated :event/custom-viz-plugin-update
+                                                      (mapv first pairs)
+                                                      (mapv second pairs))])))))
+  nil)
 
 (mu/defn update-custom-viz-plugin!
-  "Apply `changes` to the CustomVizPlugin with `id`, returning the number of rows updated."
+  "Apply `changes` to the CustomVizPlugin with `id`, publishing its update event."
   [id      :- ms/PositiveInt
    changes :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (custom-viz-plugin.db/update-plugin! id changes))
+  (update-custom-viz-plugins! {id changes}))
+
+(mu/defn delete-custom-viz-plugins!
+  "Delete the CustomVizPlugins with `ids`, publishing their delete event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (let [event (events/deleted :event/custom-viz-plugin-delete
+                                  :model/CustomVizPlugin
+                                  (custom-viz-plugin.db/non-blob-plugins-by-ids (vec ids)))]
+        (custom-viz-plugin.db/delete-plugins! (vec ids))
+        (events/publish-lifecycle! [event]))))
+  nil)
 
 (mu/defn delete-custom-viz-plugin!
-  "Delete the CustomVizPlugin with `id`, returning the number of rows deleted."
+  "Delete the CustomVizPlugin with `id`, publishing its delete event."
   [id :- ms/PositiveInt]
-  (custom-viz-plugin.db/delete-plugin! id))
+  (delete-custom-viz-plugins! [id]))
+
+(defn- update-imported-custom-viz-plugins!
+  "Update the CustomVizPlugins of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-custom-viz-plugins! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
 
 (mu/defn insert-bundle!
   "Create an enabled CustomVizPlugin with `identifier` from the validated bundle `validated` and return it."
@@ -125,12 +174,6 @@
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(defmethod events/spec :model/CustomVizPlugin
-  [_model]
-  {:create :event/custom-viz-plugin-create
-   :update :event/custom-viz-plugin-update
-   :delete :event/custom-viz-plugin-delete})
-
 (defmethod app-db-copy/spec :model/CustomVizPlugin [_model]
   {:skip? false})
 
@@ -141,6 +184,9 @@
    :skip          [:status :error_message :dev_bundle_url :bundle_hash]
    :defaults      {:enabled true}
    :transform     {:bundle custom-viz-plugin.serialization/bundle-transform}
+   :insert!       create-custom-viz-plugins!
+   :update!       update-imported-custom-viz-plugins!
+   :delete!       delete-custom-viz-plugins!
    :rows-by-refs  custom-viz-plugin.serialization/rows-by-refs
    :storage-paths custom-viz-plugin.serialization/storage-paths
    :before-load   custom-viz-plugin.serialization/before-load

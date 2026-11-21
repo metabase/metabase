@@ -56,18 +56,23 @@
   [plugin-id :- ms/PositiveInt]
   (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
 
-(mu/defn insert-plugin!
-  "Insert `plugin` and return the new instance."
-  [plugin :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/insert-returning-instance! :model/CustomVizPlugin plugin))
+(mu/defn insert-plugins!
+  "Insert the `plugins` and return the new instances."
+  [plugins :- [:sequential {:min 1} ::custom-viz-plugin.schema/custom-viz-plugin.update]]
+  (t2/insert-returning-instances! :model/CustomVizPlugin plugins))
 
-(mu/defn update-plugin!
-  "Apply `changes` to the CustomVizPlugin with `plugin-id`, returning the number updated."
-  [plugin-id :- ms/PositiveInt
-   changes   :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin :id plugin-id changes))
+(mu/defn update-plugins!
+  "Apply `changes` to the CustomVizPlugins with `plugin-ids`, returning the number updated."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes    :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
+  (t2/update! :model/CustomVizPlugin :id [:in [:auto/param plugin-ids]] changes))
 
-(mu/defn delete-plugin!
-  "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."
-  [plugin-id :- ms/PositiveInt]
-  (t2/delete! :model/CustomVizPlugin :id plugin-id))
+(mu/defn non-blob-plugins-by-ids
+  "The CustomVizPlugins with `plugin-ids`, without their bundles."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select non-blob-columns :id [:in [:auto/param plugin-ids]]))
+
+(mu/defn delete-plugins!
+  "Delete the CustomVizPlugins with `plugin-ids`, returning the number deleted."
+  [plugin-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/CustomVizPlugin :id [:in [:auto/param plugin-ids]]))

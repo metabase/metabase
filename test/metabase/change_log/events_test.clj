@@ -260,7 +260,10 @@
 
 (def ^:private published-by-hand
   "The models whose write functions publish their events, in place of the events trait."
-  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries})
+  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries
+    :model/Segment :model/Measure :model/MetabotConversation :model/Transform :model/TransformJob
+    :model/TransformTag :model/DataApp :model/CustomVizPlugin :model/PythonLibrary :model/TransformTest
+    :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"

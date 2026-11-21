@@ -2803,7 +2803,6 @@
   {:team "UX West"
    :api  #{metabase.segments.rest.api}
    :uses #{api
-           events
            lib.be
            models
            segments

@@ -28,7 +28,6 @@
 
 (doto :model/TransformJob
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
@@ -89,34 +88,67 @@
   nil)
 
 (mu/defn create-transform-jobs! :- [:sequential ::transforms.schema/transform-job]
-  "Insert the TransformJob `rows`, schedule the Quartz trigger of each active one, and return the inserted jobs."
+  "Insert the TransformJob `rows`, schedule the Quartz trigger of each active one, and return the inserted jobs,
+  publishing their create event."
   [rows :- [:sequential ::transforms.schema/transform-job.create]]
   (if (seq rows)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [jobs (transforms.db/insert-jobs! rows)]
         (sync-triggers! (mapv :id jobs))
+        (events/publish-lifecycle! [(events/created :event/transform-job-create jobs)])
         jobs))
     []))
 
+(defn- updated-job
+  "The TransformJob `stored` as the update `changes` leaves it: a built-in job becomes a custom one that keeps its
+  name and description, as the update hook makes it."
+  [stored changes]
+  (let [object (events/updated-row stored changes)]
+    (if (nil? (:built_in_type stored))
+      object
+      (-> (merge object
+                 (translated-name-and-description stored)
+                 {:built_in_type nil}
+                 changes)
+          (update :name str)
+          (update :description str)))))
+
+(defn- update-event
+  "The update event of the jobs `stored` that apply `changes-by-id`, without those the changes leave as they are."
+  [stored changes-by-id]
+  (let [pairs (into []
+                    (keep (fn [[id changes]]
+                            (when-let [previous (stored id)]
+                              (let [object (updated-job previous changes)]
+                                (when (not= (into {} previous) (into {} object))
+                                  [previous object])))))
+                    changes-by-id)]
+    (events/updated :event/transform-job-update (mapv first pairs) (mapv second pairs))))
+
 (mu/defn update-transform-jobs! :- :nil
   "Apply the changes in `changes-by-id`, a map from the id of a TransformJob to its changes, with one statement per
-  distinct change set, then make the Quartz trigger of each job match its row."
+  distinct change set, then make the Quartz trigger of each job match its row, publishing their update event."
   [changes-by-id :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.update]]
   (when (seq changes-by-id)
-    (events/with-batched-events
-      (doseq [[changes pairs] (group-by val changes-by-id)
-              :when           (seq changes)]
-        (transforms.db/update-jobs! (mapv key pairs) changes))
-      (sync-triggers! (vec (keys changes-by-id)))))
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (transforms.db/jobs-by-ids (vec (keys changes-by-id))))]
+        (doseq [[changes pairs] (group-by val changes-by-id)
+                :when           (seq changes)]
+          (transforms.db/update-jobs! (mapv key pairs) changes))
+        (sync-triggers! (vec (keys changes-by-id)))
+        (events/publish-lifecycle! [(update-event stored changes-by-id)]))))
   nil)
 
 (mu/defn delete-transform-jobs! :- :nil
-  "Delete the Quartz jobs and then the TransformJobs with `job-ids`."
+  "Delete the Quartz jobs and then the TransformJobs with `job-ids`, publishing their delete event."
   [job-ids :- [:sequential ms/PositiveInt]]
   (when (seq job-ids)
-    (events/with-batched-events
-      (run! transforms.schedule/delete-job! job-ids)
-      (transforms.db/delete-jobs! (vec job-ids))))
+    (t2/with-transaction [_conn]
+      (let [jobs (transforms.db/jobs-by-ids (vec job-ids))
+            event (events/deleted :event/transform-job-delete :model/TransformJob jobs)]
+        (run! transforms.schedule/delete-job! job-ids)
+        (transforms.db/delete-jobs! (vec job-ids))
+        (events/publish-lifecycle! [event]))))
   nil)
 
 (defn- update-imported-jobs!
@@ -135,12 +167,17 @@
 
 (mu/defn- flip-active! :- :nil
   "Run `flip!`, one of the db functions that mark a job active or inactive, for the job with `job-id`, and make its Quartz
-  trigger match when it changed the row."
+  trigger match when it changed the row, publishing its update event."
   [flip!  :- fn?
    job-id :- ms/PositiveInt]
-  (events/with-batched-events
-    (when (pos? (flip! job-id))
-      (sync-triggers! [job-id])))
+  (t2/with-transaction [_conn]
+    (when-let [previous (transforms.db/job job-id)]
+      (when (pos? (flip! job-id))
+        (sync-triggers! [job-id])
+        (events/publish-lifecycle!
+         [(events/updated :event/transform-job-update
+                          [previous]
+                          [(updated-job previous {:active (not (:active previous))})])]))))
   nil)
 
 (mu/defn- active-flip-lock-name :- :keyword
@@ -291,12 +328,6 @@
         (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/TransformJob
-  [_model]
-  {:create :event/transform-job-create
-   :update :event/transform-job-update
-   :delete :event/transform-job-delete})
 
 (defmethod app-db-copy/spec :model/TransformJob [_model]
   {:skip? false})

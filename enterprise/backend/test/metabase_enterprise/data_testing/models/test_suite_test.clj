@@ -78,7 +78,7 @@
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-create suite-id))))
         (testing "update names the acting user, and the changed columns"
-          (t2/update! :model/TestSuite :id suite-id {:name "Renamed"})
+          (test-suite/update-test-suite! suite-id {:name "Renamed"})
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
@@ -97,7 +97,7 @@
                     :model    "TestSuite"}
                    (first (updates))))))
         (testing "delete names the acting user"
-          (t2/delete! :model/TestSuite :id suite-id)
+          (test-suite/delete-test-suite! suite-id)
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:name "Renamed" :description "abc"}

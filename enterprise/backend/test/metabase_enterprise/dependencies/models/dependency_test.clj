@@ -11,6 +11,7 @@
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform.model]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -207,7 +208,7 @@
             (mt/with-temp [:model/Transform transform]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
               (computed! :transform (:id transform))
-              (t2/update! :model/Transform :id (:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}})
+              (transform.model/update-transforms! {(:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}})
               (is (pending? :transform (:id transform)))))
           (testing "snippets"
             (mt/with-temp [:model/NativeQuerySnippet snippet]

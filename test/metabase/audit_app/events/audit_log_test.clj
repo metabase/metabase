@@ -15,7 +15,9 @@
    [metabase.glossary.models.glossary :as glossary]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -261,8 +263,7 @@
   (testing :segment-update
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
-        (events/with-event-context {:revision-message "update this mofo"}
-          (t2/update! :model/Segment :id (:id segment) {:name "Renamed segment"}))
+        (segment/update-segment! (:id segment) {:name "Renamed segment"} {:revision-message "update this mofo"})
         (is (= {:topic       :segment-update
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -277,7 +278,7 @@
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
         (events/with-event-context {:revision-message "deleted"}
-          (t2/delete! :model/Segment :id (:id segment)))
+          (segment/delete-segments! [(:id segment)]))
         (is (= {:topic       :segment-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -500,7 +501,7 @@
                :model "Transform"}
               (mt/latest-audit-log-entry :transform-create (:id transform)))))
        (testing :event/transform-update
-         (t2/update! :model/Transform :id (:id transform) {:name "Updated Transform"})
+         (transform/update-transforms! {(:id transform) {:name "Updated Transform"}})
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)
@@ -510,7 +511,7 @@
                :model "Transform"}
               (mt/latest-audit-log-entry :update-transform (:id transform)))))
        (testing :event/transform-delete
-         (t2/delete! :model/Transform :id (:id transform))
+         (transform/delete-transforms! [(:id transform)])
          (is (partial=
               {:model_id (:id transform)
                :user_id (mt/user->id :rasta)

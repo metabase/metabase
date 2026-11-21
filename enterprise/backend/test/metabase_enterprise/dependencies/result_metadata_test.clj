@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.queries.core :as queries]
    [metabase.queries.models.card :as queries.card]
    [metabase.query-processor :as qp]
@@ -240,10 +241,9 @@
         (run-jobs!)
         (let [column-name #(:name (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
           (is (= "count" (column-name)))
-          (t2/update! :model/Measure :id measure-id
-                      {:definition (-> (table-query :orders)
-                                       (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                   (mt/id :orders :total)))))})
+          (measure/update-measure! measure-id {:definition (-> (table-query :orders)
+                                                               (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                           (mt/id :orders :total)))))})
           (run-jobs!)
           (is (= "avg" (column-name))))))))
 
@@ -260,10 +260,9 @@
           (run-jobs!)
           (let [base-type #(:base_type (first (t2/select-one-fn :result_metadata :model/Card :id card-id)))]
             (is (isa? (base-type) :type/Integer))
-            (t2/update! :model/Measure :id inner-id
-                        {:definition (-> (table-query :orders)
-                                         (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
-                                                                                     (mt/id :orders :total)))))})
+            (measure/update-measure! inner-id {:definition (-> (table-query :orders)
+                                                               (lib/aggregate (lib/avg (lib.metadata/field (mt/metadata-provider)
+                                                                                                           (mt/id :orders :total)))))})
             (run-jobs!)
             (is (isa? (base-type) :type/Float))))))))
 

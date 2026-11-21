@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-apps.config]
+   [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.search.appdb.index :as search.index]
@@ -212,12 +213,12 @@
 (deftest deleting-a-data-app-removes-it-from-the-index-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp]
-      (let [app-id   (t2/insert-returning-pk! :model/DataApp (assoc (mt/with-temp-defaults :model/DataApp)
-                                                                    :slug "sandpiper-sightings"
-                                                                    :name "Shorebirds"))
+      (let [app-id   (:id (first (data-app/create-data-apps! [(assoc (mt/with-temp-defaults :model/DataApp)
+                                                                     :slug "sandpiper-sightings"
+                                                                     :name "Shorebirds")])))
             indexed? #(when-let [table (search.index/active-table)]
                         (t2/exists? table :model "data-app" :model_id (str app-id)))]
         (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
-        (t2/delete! :model/DataApp :id app-id)
+        (data-app/delete-data-apps! [app-id])
         (is (= {} (found-data-apps :crowberto :models "data-app")))
         (is (not (indexed?)))))))

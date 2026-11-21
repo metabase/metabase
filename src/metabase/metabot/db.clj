@@ -267,28 +267,33 @@
                      :limit    limit}))
 
 (mu/defn insert-conversation!
-  "Insert `conversation` under the client-generated `conversation-id`."
+  "Insert `conversation` under the client-generated `conversation-id`, returning the inserted row."
   [conversation-id :- :string
    conversation    :- ::metabot.schema/metabot-conversation.create]
-  (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
+  (first (t2/insert-returning-instances! :model/MetabotConversation (assoc conversation :id conversation-id))))
 
-(mu/defn upsert-conversation!
-  "Insert or update the MetabotConversation with `conversation-id`. `update-fn` receives the existing row (or nil on
-  insert) and must return the fields to write."
+(mu/defn insert-upserted-conversation!
+  "Insert the MetabotConversation with `conversation-id` and the `columns` an upsert gives it, returning the inserted
+  row."
   [conversation-id :- :string
-   update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
+   columns         :- :map]
+  (first (t2/insert-returning-instances! :model/MetabotConversation (assoc columns :id conversation-id))))
 
-(mu/defn set-conversation-title-if-missing!
-  "Set the title of the MetabotConversation with `conversation-id` if it has none."
+(mu/defn update-conversation!
+  "Apply `changes` to the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
-   title :- :string]
-  (t2/update! :model/MetabotConversation {:id conversation-id, :title nil} {:title title}))
+   changes         :- :map]
+  (t2/update! :model/MetabotConversation :id conversation-id changes))
 
-(mu/defn delete-conversations-created-before!
-  "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
+(mu/defn titleless-conversation
+  "The MetabotConversation with `conversation-id` if it has no title, or nil."
+  [conversation-id :- :string]
+  (t2/select-one :model/MetabotConversation :id conversation-id :title nil))
+
+(mu/defn conversations-created-before
+  "The MetabotConversations created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
+  (t2/select :model/MetabotConversation {:where [:< :created_at cutoff]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
@@ -1248,9 +1253,9 @@
   (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
 
 (mu/defn insert-conversation-row!
-  "Insert the MetabotConversation `row`, which carries its own id and timestamps."
+  "Insert the MetabotConversation `row`, which carries its own id and timestamps, returning the inserted row."
   [row :- ::metabot.schema/metabot-conversation]
-  (t2/insert! :model/MetabotConversation row))
+  (first (t2/insert-returning-instances! :model/MetabotConversation row)))
 
 (mu/defn insert-usage-log-row!
   "Insert the AiUsageLog `row`, timestamps and all."
@@ -1261,6 +1266,11 @@
   "Delete the AiUsageLog rows of the conversations with `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
   (t2/delete! :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+
+(mu/defn conversations-by-ids
+  "The MetabotConversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (t2/select :model/MetabotConversation :id [:in conversation-ids]))
 
 (mu/defn delete-conversations!
   "Delete the MetabotConversations with `conversation-ids`."

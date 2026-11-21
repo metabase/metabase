@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.segments.db :as segments.db]
@@ -78,9 +77,10 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (events/with-event-context {:revision-message revision_message}
-        (segment/update-segment! id (cond-> changes
-                                      (:definition changes) (update :definition lib-be/normalize-query)))))
+      (segment/update-segment! id
+                               (cond-> changes
+                                 (:definition changes) (update :definition lib-be/normalize-query))
+                               {:revision-message revision_message}))
     (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -10,6 +10,7 @@
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.serialization :as transforms.serialization]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -22,7 +23,6 @@
 
 (doto :model/TransformTag
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
@@ -119,21 +119,46 @@
           (map-indexed vector rows)))
 
 (defn- insert-tags!
-  "Insert the TransformTag `rows` in one batch of events, returning the inserted instances."
+  "Insert the TransformTag `rows` in one transaction, publishing their create event, returning the inserted instances."
   [rows]
   (if (seq rows)
-    (events/with-batched-events
-      (transforms.db/insert-tags! rows))
+    (t2/with-transaction [_conn]
+      (let [tags (transforms.db/insert-tags! rows)]
+        (events/publish-lifecycle! [(events/created :event/transform-tag-create tags)])
+        tags))
     []))
 
+(defn- updated-tag
+  "The TransformTag `stored` as the update `changes` leaves it: a built-in tag that changes becomes a custom one that keeps
+  its name, as the update hook makes it."
+  [stored changes]
+  (let [object (events/updated-row stored changes)]
+    (if (or (nil? (:built_in_type stored))
+            (empty? (dissoc (into {} (filter (fn [[k v]] (not= v (get stored k)))) changes) :updated_at)))
+      object
+      (-> (merge object (translate-name stored) {:built_in_type nil} changes)
+          (update :name str)))))
+
 (defn- update-tags!
-  "Apply the changes of each TransformTag in `changes-by-id` in one batch of events, with one statement per distinct
-  change set."
+  "Apply the changes of each TransformTag in `changes-by-id` in one transaction, with one statement per distinct change
+  set, publishing their update event."
   [changes-by-id]
-  (events/with-batched-events
-    (doseq [[changes pairs] (group-by val changes-by-id)
-            :when           (seq changes)]
-      (transforms.db/update-tags! (mapv key pairs) changes))))
+  (when (seq changes-by-id)
+    (t2/with-transaction [_conn]
+      (let [stored (u/index-by :id (transforms.db/tags-by-ids (vec (keys changes-by-id))))]
+        (doseq [[changes pairs] (group-by val changes-by-id)
+                :when           (seq changes)]
+          (transforms.db/update-tags! (mapv key pairs) changes))
+        (let [pairs (into []
+                          (keep (fn [[id changes]]
+                                  (when-let [previous (stored id)]
+                                    (let [object (updated-tag previous changes)]
+                                      (when (not= (into {} previous) (into {} object))
+                                        [previous object])))))
+                          changes-by-id)]
+          (events/publish-lifecycle! [(events/updated :event/transform-tag-update
+                                                      (mapv first pairs)
+                                                      (mapv second pairs))]))))))
 
 (mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
   "Insert the TransformTag `rows` and return the inserted tags. Throws a 400 when a name is already taken."
@@ -146,14 +171,20 @@
   [tag-id  :- ::lib.schema.id/transform-tag
    changes :- ::transforms.schema/transform-tag.update]
   (check-names-free [(assoc changes :id tag-id)])
-  (update-tags! {tag-id changes}))
+  (update-tags! {tag-id changes})
+  nil)
 
 (mu/defn delete-transform-tags! :- :nil
-  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs."
+  "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs, publishing their
+  delete event."
   [tag-ids :- [:sequential ::lib.schema.id/transform-tag]]
   (when (seq tag-ids)
-    (events/with-batched-events
-      (transforms.db/delete-tags! (vec tag-ids))))
+    (t2/with-transaction [_conn]
+      (let [event (events/deleted :event/transform-tag-delete
+                                  :model/TransformTag
+                                  (transforms.db/tags-by-ids (vec tag-ids)))]
+        (transforms.db/delete-tags! (vec tag-ids))
+        (events/publish-lifecycle! [event]))))
   nil)
 
 (defn- insert-imported-tags!
@@ -176,12 +207,6 @@
     rows))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/TransformTag
-  [_model]
-  {:create :event/transform-tag-create
-   :update :event/transform-tag-update
-   :delete :event/transform-tag-delete})
 
 (defmethod app-db-copy/spec :model/TransformTag [_model]
   {:skip? false})

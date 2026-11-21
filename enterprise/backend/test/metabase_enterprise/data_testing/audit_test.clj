@@ -4,7 +4,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
-   [metabase-enterprise.data-testing.models.segment-test]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.audit-app.events.audit-log]
@@ -68,8 +68,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform     {transform-id :id}      {}
                      :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
-        (t2/update! :model/TransformTest :id transform-test-id {:name "Renamed"})
-        (t2/delete! :model/TransformTest :id transform-test-id)
+        (data-testing.models/update-transform-test! transform-test-id {:name "Renamed"})
+        (data-testing.models/delete-transform-test! transform-test-id)
         (is (= 3 (t2/count :model/AuditLog :model "TransformTest" :model_id transform-test-id)))))))
 
 (deftest transform-test-run-audit-events-test
@@ -179,8 +179,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card     {card-id :id}      {}
                      :model/CardTest {card-test-id :id} {:card_id card-id}]
-        (t2/update! :model/CardTest :id card-test-id {:name "Renamed"})
-        (t2/delete! :model/CardTest :id card-test-id)
+        (data-testing.models.card-test/update-card-test! card-test-id {:name "Renamed"})
+        (data-testing.models.card-test/delete-card-test! card-test-id)
         (is (= 3 (t2/count :model/AuditLog :model "CardTest" :model_id card-test-id)))))))
 
 (deftest card-test-audit-events-name-the-acting-user-test
@@ -222,11 +222,11 @@
           (is (= (entry :segment-test-create (full "Original"))
                  (mt/latest-audit-log-entry :segment-test-create segment-test-id))))
         (testing "update"
-          (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+          (data-testing.models.segment-test/update-segment-test! segment-test-id {:name "Renamed"})
           (is (= (entry :segment-test-update {:previous {:name "Original"} :new {:name "Renamed"}})
                  (mt/latest-audit-log-entry :segment-test-update segment-test-id))))
         (testing "delete"
-          (t2/delete! :model/SegmentTest :id segment-test-id)
+          (data-testing.models.segment-test/delete-segment-test! segment-test-id)
           (is (= (entry :segment-test-delete (full "Renamed"))
                  (mt/latest-audit-log-entry :segment-test-delete segment-test-id))))))))
 

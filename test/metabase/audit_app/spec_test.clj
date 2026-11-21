@@ -59,7 +59,14 @@
 (def ^:private published-topics
   "The topics that the write functions of the models without an `events/spec` publish by hand, which the audit log
   stores under their names."
-  #{:glossary-create :glossary-update :glossary-delete})
+  #{:glossary-create :glossary-update :glossary-delete
+    :segment-create :segment-update :segment-delete
+    :measure-create :measure-update :measure-delete
+    :custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
+    :transform-test-create :transform-test-update :transform-test-delete
+    :card-test-create :card-test-update :card-test-delete
+    :segment-test-create :segment-test-update :segment-test-delete
+    :test-suite-create :test-suite-update :test-suite-delete})
 
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
