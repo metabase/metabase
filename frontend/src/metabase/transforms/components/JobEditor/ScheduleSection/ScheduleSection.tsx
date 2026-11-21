@@ -21,7 +21,7 @@ import { TitleSection } from "metabase/common/data-studio/components/TitleSectio
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
-import { getScheduleExplanation } from "metabase/utils/cron";
+import { getScheduleExplanation, useCronLibraries } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { ScheduleDisplayType } from "metabase-types/api";
 
@@ -94,6 +94,7 @@ const DEFAULT_SETTINGS: ScheduleBuilderValue = {
 };
 
 function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
+  useCronLibraries();
   const verb = c("A verb in the imperative mood").t`Run`;
   const systemTimezone = useSetting("system-timezone") ?? "UTC";
 

@@ -40,7 +40,31 @@ dayjs.extend(preParsePostFormat);
 
 export { dayjs };
 
-export function loadDayjsLocale(locale: string): void {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic locale loading
-  require(`dayjs/locale/${locale}.js`);
+/** Maps a Metabase language code to the name of its dayjs locale. */
+export function getDayjsLocale(language = ""): string {
+  switch (language) {
+    case "zh":
+    case "zh-Hans":
+      return "zh-cn";
+    default:
+      return language.toLowerCase();
+  }
+}
+
+/**
+ * Loads a dayjs locale on demand. Each locale is its own lazy chunk, so the main
+ * bundle doesn't carry all of them, and a new app locale needs no list update here.
+ */
+export async function loadDayjsLocale(locale: string): Promise<void> {
+  if (isDayjsLocaleLoaded(locale)) {
+    return;
+  }
+  await import(
+    /* webpackChunkName: "dayjs-locale-[request]" */
+    `dayjs/locale/${locale}.js`
+  );
+}
+
+export function isDayjsLocaleLoaded(locale: string): boolean {
+  return locale in dayjs.Ls;
 }

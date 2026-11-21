@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return -- FIXME: any-typed values */
+import { getDayjsLocale, loadDayjsLocale } from "metabase/dayjs";
 import {
   type LocaleDataWithLanguage,
   setLocalization,
@@ -32,10 +33,28 @@ export function loadLocaleCatalog(
     return Promise.resolve(ENGLISH_CATALOG);
   }
 
+  // The dayjs locale loads alongside the catalogue, so `setLocalization` can
+  // switch to it synchronously.
+  const dayjsLocale = loadDayjsLocaleSafely(locale);
+  return Promise.all([importLocaleCatalog(locale), dayjsLocale]).then(
+    async ([translations]) => {
+      // The catalogue's language decides the dayjs locale; load it too if it differs.
+      await loadDayjsLocaleSafely(translations.headers.language);
+      return translations;
+    },
+  );
+}
+
+function importLocaleCatalog(locale: string): Promise<LocaleDataWithLanguage> {
   return import(
     /* webpackChunkName: "locale-[request]" */
     `locales/${locale.replace(/-/g, "_")}.json`
   ).then((module) => module.default);
+}
+
+// dayjs has no locale for some languages; those fall back to English.
+function loadDayjsLocaleSafely(language: string): Promise<void> {
+  return loadDayjsLocale(getDayjsLocale(language)).catch(() => undefined);
 }
 
 // note this won't refresh strings that are evaluated at load time

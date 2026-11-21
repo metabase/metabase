@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
+import { loadDayjsLocale } from "metabase/dayjs";
 import { setLocalization } from "metabase/utils/i18n";
 
 import { DateRangePickerBody } from "./DateRangePickerBody";
@@ -102,7 +103,9 @@ describe("DateRangePickerBody", () => {
       },
     ])(
       "should display localized start/end date inputs for $locale",
-      ({ locale, expectedStart, expectedEnd }) => {
+      async ({ locale, expectedStart, expectedEnd }) => {
+        // In the app, `loadLocaleCatalog` loads the dayjs locale before `setLocalization` runs.
+        await loadDayjsLocale(locale);
         setLocalization({
           headers: {
             language: locale,
