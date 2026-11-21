@@ -261,6 +261,13 @@
       (is (not (re-find #"(?<!tmp_)orders\b" query)) query)
       (is (= [] params)))))
 
+(deftest equals-sql-temp-table-refuses-sql-of-more-than-one-statement-test
+  (testing "the query the run executes is the statement check's, so SQL of two statements is refused at run time too"
+    (is (= ::data-testing.errors/not-a-single-select
+           (:error-type (ex-data (caught #(expectations.protocol/temp-tables
+                                           (equals-sql "SELECT id FROM orders; DROP TABLE orders")
+                                           sql-context))))))))
+
 (deftest equals-sql-probes-test
   (let [probes (expectations.protocol/probes (equals-sql "SELECT name, id FROM orders") sql-context)]
     (testing "both sides of the comparison list the columns in the expected table's order"

@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.expectations.empty]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
    [metabase-enterprise.data-testing.expectations.report :as expectations.report]
@@ -98,6 +99,20 @@
                                  :output-table   "TMP_OUT"
                                  :output-columns ["ID"]
                                  :replacements   replacements}))
+
+(deftest probes-refuse-sql-of-more-than-one-statement-test
+  (testing "the query the run executes is the statement check's, so SQL of two statements is refused at run time too"
+    (is (= ::data-testing.errors/not-a-single-select
+           (try
+             (expectations.protocol/probes (empty-expectation {:type :empty :name "two"
+                                                               :sql  "SELECT * FROM PEOPLE; DROP TABLE PEOPLE"})
+                                           {:driver         :h2
+                                            :output-table   "TMP_OUT"
+                                            :output-columns ["ID"]
+                                            :replacements   replacements})
+             nil
+             (catch clojure.lang.ExceptionInfo e
+               (:error-type (ex-data e))))))))
 
 (deftest probes-shape-test
   (let [ps (probes)]
