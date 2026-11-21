@@ -323,7 +323,8 @@
    Otherwise components come in the reverse of their first-start order, as far as those paths allow."
   [graph]
   (let [running     @started-components
-        position    (zipmap @start-order (range))
+        ;; where each running component stands in the start order
+        position    (zipmap (filter running @start-order) (range))
         ;; the running components and what they use, directly or not; a user that is not running holds nothing back
         relevant    (into (set (keys running)) (dep/transitive-dependencies-set graph (keys running)))
         ;; an object no component key can equal, used by every relevant component, so each is a node even when it
@@ -334,11 +335,14 @@
                                       (dep/depend g k placeholder)
                                       (dep/immediate-dependencies graph k)))
                             (dep/graph)
-                            relevant)]
+                            relevant)
+        ;; a running component ranks by its start position, standing in for the dependencies nobody declared; anything
+        ;; else has nothing to stop, so it ranks above them all and clears as soon as its users have
+        rank        #(position % Long/MAX_VALUE)]
     ;; topo-sort lists users after what they use, and among components it is free to order, puts the one with the
-    ;; greatest position last
+    ;; greatest rank last
     (keep #(get-in running [% :handle])
-          (reverse (dep/topo-sort #(compare (position %1 -1) (position %2 -1)) sortable)))))
+          (reverse (dep/topo-sort #(compare (rank %1) (rank %2)) sortable)))))
 
 (defn- close-admission!
   "Refuse every later start."
