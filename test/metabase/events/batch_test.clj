@@ -318,6 +318,11 @@
     (t2/resolve-model model))
   (filterv #(and (keyword? %) (= "model" (namespace %))) (descendants :hook/events)))
 
+;; A Revision publishes its create by [[events/collect!]], because the trait would hook every prune of Revisions, which
+;; selects and deserializes the rows it deletes.
+(def ^:private publishes-without-trait
+  #{:model/Revision})
+
 (deftest every-trait-model-has-spec-test
   (let [models (trait-models)
         specs  (dissoc (methods events/spec) :default)]
@@ -326,8 +331,11 @@
         (is (seq (when-let [f (get specs model)] (f model)))
             (str model " derives :hook/events but has no events/spec method"))))
     (testing "every model with an events/spec method derives :hook/events"
-      (doseq [model (keys specs)]
+      (doseq [model (remove publishes-without-trait (keys specs))]
         (is (isa? model :hook/events) (str model " has an events/spec method but does not derive :hook/events"))))
+    (testing "a model that publishes without the trait does not derive it"
+      (doseq [model publishes-without-trait]
+        (is (not (isa? model :hook/events)) (str model " derives :hook/events, so it needs no exemption"))))
     (testing "no two models share a topic"
       (let [topics (mapcat (fn [[model f]] (vals (f model))) specs)]
         (is (= [] (keep (fn [[topic n]] (when (< 1 n) topic)) (frequencies topics))))))))

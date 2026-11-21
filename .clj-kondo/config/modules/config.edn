@@ -2713,13 +2713,12 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
                     :model/DataApp
                     :model/Database
                     :model/Document
                     :model/Exploration
                     :model/Measure
+                    :model/Revision
                     :model/Segment
                     :model/Table
                     :model/Transform
