@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -162,13 +163,13 @@
                  :model/Card       in-dash   {:dashboard_id (u/the-id dashboard) :collection_id (u/the-id live)}]
     (testing "a row that is not archived cannot be inserted into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (t2/insert! :model/Dashboard {:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)})))
+                            (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (t2/insert! :model/Timeline {:name "t" :icon "balloons" :creator_id (mt/user->id :rasta)
                                                          :collection_id (u/the-id archived)}))))
     (testing "an archived row can be inserted into an archived collection"
-      (is (some? (t2/insert-returning-pk! :model/Dashboard {:name "d" :creator_id (mt/user->id :rasta) :archived true
-                                                            :archived_directly false :collection_id (u/the-id archived)}))))
+      (is (some? (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :archived true
+                                               :archived_directly false :collection_id (u/the-id archived)}))))
     (testing "a row that is not archived cannot be moved into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (t2/update! :model/Card :id (u/the-id card) {:collection_id (u/the-id archived)})))

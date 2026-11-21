@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [metabase.app-db.core :as app-db]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -39,22 +38,6 @@
   "The name and id of the unarchived Dashboards with embedding enabled."
   []
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
-
-(mu/defn insert-dashboard!
-  "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
-  (t2/insert-returning-instance! :model/Dashboard row))
-
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
-
-(mu/defn delete-dashboard!
-  "Delete the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-item-cards
   "The card items of the Dashboard with `dashboard-id`, for the `/:id/items` endpoint: id, name, description, entity

@@ -80,27 +80,38 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select [:model/Dashboard :id :collection_id] :id [:in dashboard-ids]))
 
-(mu/defn insert-dashboard!
-  "Insert the Dashboard `row` and return the inserted instance."
-  [row :- ::dashboards.schema/dashboard.update]
-  (t2/insert-returning-instance! :model/Dashboard row))
+(mu/defn dashboards
+  "The Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (t2/select :model/Dashboard :id [:in dashboard-ids])
+    []))
 
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated.
+(mu/defn insert-dashboards!
+  "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
+  [rows :- [:sequential ::dashboards.schema/dashboard.create]]
+  (t2/insert-returning-instances! :model/Dashboard rows))
 
-  Takes the whole `::dashboard.update` — \"what an update (or insert) of a Dashboard accepts\" — the same
-  schema [[insert-dashboard!]] takes. It was narrowed to `[:parameters]` when the only caller wrote nothing
-  else; `metabase.dashboards.write/update-dashboard!` writes the full attribute set (`:name`, `:description`,
-  `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+(mu/defn update-dashboards!
+  "Apply `changes` to the Dashboards with `dashboard-ids`, returning the number updated."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
+   changes       :- ::dashboards.schema/dashboard.update]
+  (t2/update! :model/Dashboard :id [:in dashboard-ids] changes))
 
-(mu/defn delete-pulses-for-dashboard!
-  "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  ((requiring-resolve 'metabase.pulse.models.pulse/delete-pulses!)
-   (vec (t2/select-pks-vec :model/Pulse :dashboard_id dashboard-id))))
+(mu/defn delete-dashboards!
+  "Delete the Dashboards with `dashboard-ids`, returning the number deleted."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/delete! :model/Dashboard :id [:in dashboard-ids]))
+
+(mu/defn pulse-ids-for-dashboards
+  "The ids of the Pulses of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (vec (t2/select-pks-vec :model/Pulse :dashboard_id [:in dashboard-ids])))
+
+(mu/defn delete-pulses!
+  "Delete the Pulses with `pulse-ids` through their model, returning the number deleted."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  ((requiring-resolve 'metabase.pulse.models.pulse/delete-pulses!) pulse-ids))
 
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
@@ -157,43 +168,35 @@
    archived? :- :boolean]
   (t2/update! :model/Card :id [:in card-ids] :archived (not archived?) {:archived archived?}))
 
-(defn- archivable-question-conditions
-  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that archiving it archives."
-  [dashboard-id]
-  [:dashboard_id dashboard-id :archived false])
-
-(defn- restorable-question-conditions
-  "The key-value conditions of the Cards internal to the Dashboard with `dashboard-id` that restoring it restores."
-  [dashboard-id]
-  [:dashboard_id dashboard-id :archived true :archived_directly false])
-
 (mu/defn questions-archived-with-dashboard
   "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (apply t2/select :model/Card (archivable-question-conditions dashboard-id)))
+  (t2/select :model/Card :dashboard_id dashboard-id :archived false))
 
 (mu/defn questions-restored-with-dashboard
   "The Cards internal to the Dashboard with `dashboard-id` that were archived along with it, which restoring it
   restores."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (apply t2/select :model/Card (restorable-question-conditions dashboard-id)))
+  (t2/select :model/Card :dashboard_id dashboard-id :archived true :archived_directly false))
 
 (mu/defn archive-dashboard-questions!
-  "Archive, through their model, the rows of [[questions-archived-with-dashboard]], returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (apply t2/update! :model/Card (concat (archivable-question-conditions dashboard-id) [{:archived true}])))
+  "Archive, through their model, the rows of [[questions-archived-with-dashboard]] of the Dashboards with
+  `dashboard-ids`, returning the number updated."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] :archived false {:archived true}))
 
 (mu/defn unarchive-dashboard-questions!
-  "Restore, through their model, the rows of [[questions-restored-with-dashboard]], returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (apply t2/update! :model/Card (concat (restorable-question-conditions dashboard-id) [{:archived false}])))
+  "Restore, through their model, the rows of [[questions-restored-with-dashboard]] of the Dashboards with
+  `dashboard-ids`, returning the number updated."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] :archived true :archived_directly false {:archived false}))
 
 (mu/defn move-dashboard-questions!
-  "Move the Cards internal to the Dashboard with `dashboard-id` to the Collection with `collection-id`, returning
-  the number updated."
-  [dashboard-id  :- ::lib.schema.id/dashboard
+  "Move the Cards internal to the Dashboards with `dashboard-ids` to the Collection with `collection-id`, returning the
+  number updated."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
+  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] {:collection_id collection-id}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -303,16 +306,16 @@
   (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids]))
 
 (mu/defn insert-dashcards!
-  "Insert the DashboardCard `rows` and return their ids."
+  "Insert the DashboardCard `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
             ::dashboards.schema/dashboard-card.update]]
-  (t2/insert-returning-pks! :model/DashboardCard rows))
+  (t2/insert-returning-instances! :model/DashboardCard rows))
 
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+(mu/defn update-dashcards!
+  "Apply `changes` to the DashboardCards with `dashcard-ids`, returning the number updated."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]
+   changes      :- ::dashboards.schema/dashboard-card.update]
+  (t2/update! :model/DashboardCard :id [:in dashcard-ids] changes))
 
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -507,10 +510,10 @@
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
 
-(mu/defn dashboard-tab
-  "The DashboardTab with `tab-id`, or nil."
-  [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab :id tab-id))
+(mu/defn dashboard-tabs-by-ids
+  "The DashboardTabs with `tab-ids`."
+  [tab-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/DashboardTab :id [:in tab-ids]))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."

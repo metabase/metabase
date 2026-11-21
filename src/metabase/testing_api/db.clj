@@ -16,13 +16,13 @@
   (t2/update! :model/Card :id card-id {:last_used_at last-used-at}))
 
 (mu/defn set-dashboard-last-viewed-at!
-  "Set `last_viewed_at` of the Dashboard with `dashboard-id`."
+  "Set `last_viewed_at` of the Dashboard with `dashboard-id`, a direct write of that one column."
   [dashboard-id    :- ::lib.schema.id/dashboard
    last-viewed-at  :- ms/TemporalInstant]
   (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
 
 (mu/defn set-document-last-viewed-at!
-  "Set `last_viewed_at` of the Document with `document-id`."
+  "Set `last_viewed_at` of the Document with `document-id`, a direct write of that one column."
   [document-id    :- ms/PositiveInt
    last-viewed-at :- ms/TemporalInstant]
   (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))

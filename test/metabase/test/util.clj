@@ -25,6 +25,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -36,6 +37,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
@@ -585,6 +587,19 @@
   (next-method model explicit-attributes (fn [temp-user]
                                            (#'user/add-to-default-groups! [temp-user])
                                            (f temp-user))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Dashboard
+  "Gives a temporary Dashboard the ParameterCards of its parameters that `create-dashboard!` gives it, and deletes it
+  through `delete-dashboard!` when the body is done."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes
+               (fn [{:keys [id] :as dashboard}]
+                 (parameter-card/upsert-or-delete-from-parameters-for-objects!
+                  "dashboard" [[id (or (t2/select-one-fn :parameters :model/Dashboard :id id) [])]])
+                 (try
+                   (f dashboard)
+                   (finally
+                     (dashboard/delete-dashboard! id))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
   "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."

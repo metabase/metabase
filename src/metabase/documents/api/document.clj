@@ -64,7 +64,7 @@
                         updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
                         updates  (cond-> (select-keys updated [:document])
                                    (:is_placeholder document) (assoc :is_placeholder false))]
-                    (documents.db/update-document! document-id updates)
+                    (m.document/update-document! document-id updates)
                     (merge document updates)))]
     updated))
 
@@ -114,7 +114,7 @@
    _query-params
    {:keys [collection_id] :as body} :- DocumentCreateOptions]
   (api/create-check :model/Document {:collection_id collection_id})
-  (m.document/create-document! body))
+  (m.document/create-document-with-cards! body))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -142,7 +142,7 @@
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
     (api/update-check existing-document (select-keys body [:collection_id :archived]))
-    (m.document/update-document! existing-document body)))
+    (m.document/update-document-with-cards! existing-document body)))
 
 (api.macros/defendpoint :delete "/:document-id" :- ::api/generic-204-no-content
   "Permanently deletes an archived Document."
@@ -152,7 +152,7 @@
     (when-not (:archived document)
       (let [msg (tru "Document must be archived before it can be deleted.")]
         (throw (ex-info msg {:status-code 400, :errors {:archived msg}}))))
-    (documents.db/delete-document! document-id)
+    (m.document/delete-document! document-id)
     api/generic-204-no-content))
 
 ;;; ---------------------------------------------------- Copy --------------------------------------------------------
@@ -208,14 +208,14 @@
         new-document (events/with-batched-events
                        (when collection_position
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
-                       (let [new-document-id (documents.db/insert-document! document-data)
+                       (let [new-document-id (:id (m.document/create-document! document-data))
                              card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
-                           (documents.db/update-document! new-document-id
-                                                          (m.document/update-cards-in-ast
-                                                           {:document (:document existing-document)
-                                                            :content_type (:content_type existing-document)}
-                                                           card-id-map)))
+                           (m.document/update-document! new-document-id
+                                                        (m.document/update-cards-in-ast
+                                                         {:document (:document existing-document)
+                                                          :content_type (:content_type existing-document)}
+                                                         card-id-map)))
                          (m.document/get-document new-document-id)))]
     new-document))
 
@@ -255,9 +255,9 @@
     (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
       {:uuid existing-uuid}
       (do
-        (documents.db/update-document! document-id
-                                       {:public_uuid       (str (random-uuid))
-                                        :made_public_by_id api/*current-user-id*})
+        (m.document/update-document! document-id
+                                     {:public_uuid       (str (random-uuid))
+                                      :made_public_by_id api/*current-user-id*})
         {:uuid (documents.db/document-public-uuid document-id)}))))
 
 (api.macros/defendpoint :delete "/:document-id/public-link" :- ::api/generic-204-no-content
@@ -275,9 +275,9 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
-  (documents.db/update-document! document-id
-                                 {:public_uuid       nil
-                                  :made_public_by_id nil})
+  (m.document/update-document! document-id
+                               {:public_uuid       nil
+                                :made_public_by_id nil})
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public" :- [:sequential [:map

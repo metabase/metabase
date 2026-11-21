@@ -21,6 +21,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.dashboards.autoplace :as autoplace]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
@@ -1275,9 +1276,9 @@
                       (reduce (fn [placed card]
                                 (let [display  (or (:display card) :table)
                                       position (autoplaced-position placed display nil)]
-                                  (agent-api.db/insert-dashcard!
-                                   (merge position {:dashboard_id (:id dash)
-                                                    :card_id      (:id card)}))
+                                  (dashboard-card/create-dashboard-cards!
+                                   [(merge position {:dashboard_id (:id dash)
+                                                     :card_id      (:id card)})])
                                   (conj placed position)))
                               []
                               cards)))})]
@@ -1469,13 +1470,13 @@
                                 (string? (:text vs))))
                        [400 "Only heading and text cards support update_text."])
             ;; In-place: position and size stay put, unlike a remove + add_* round-trip.
-            (agent-api.db/update-dashcard! dashcard_id {:visualization_settings (assoc vs :text text)}))
+            (dashboard-card/update-dashboard-card-rows! [{:id dashcard_id :visualization_settings (assoc vs :text text)}]))
 
           "remove"
           (let [existing (api/check-404
                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
-            (dashboard-card/delete-dashboard-cards! [dashcard_id])
+            (dashboard/delete-dashcards! [dashcard_id])
             (swap! state #(-> %
                               (update :placed (fn [cards] (vec (remove (comp #{dashcard_id} :id) cards))))
                               (update :removed conj existing))))
@@ -1504,9 +1505,10 @@
             ;; moved card's height or we get overlapping dashcards (review finding #2).
             (when (= position "top")
               (let [shift (:size_y existing)]
-                (doseq [{:keys [id row]} tab-placed]
-                  (agent-api.db/update-dashcard! id {:row (+ row shift)}))))
-            (agent-api.db/update-dashcard! dashcard_id (select-keys new-pos [:row :col]))
+                (dashboard-card/update-dashboard-card-rows!
+                 (for [{:keys [id row]} tab-placed]
+                   {:id id :row (+ row shift)}))))
+            (dashboard-card/update-dashboard-card-rows! [(assoc (select-keys new-pos [:row :col]) :id dashcard_id)])
             (swap! state #(-> %
                               (assoc :placed
                                      (conj (mapv (fn [c]
@@ -1592,7 +1594,7 @@
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
         _            (events/with-batched-events
                        (when (seq updates)
-                         (agent-api.db/update-dashboard! id updates)
+                         (dashboard/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the
                          ;; activity feed records the right collection. Note: the dashboards-rest
                          ;; PUT-dashboard endpoint passes the dashboard id here instead, which

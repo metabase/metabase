@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
-   [metabase.documents.schema :as documents.schema]
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -723,20 +722,6 @@
   [document-id :- ms/PositiveInt]
   (t2/select-one-fn :exploration_id :model/Document :id document-id))
 
-(mu/defn insert-document!
-  "Insert `document`."
-  [document :- ::documents.schema/document.update]
-  (t2/insert! :model/Document document))
-
-(defn- update-summary-documents!
-  "Apply `changes` to the Summary Documents of the Exploration with `exploration-id` that match `conditions`, and return
-  them as updated."
-  [exploration-id conditions changes]
-  (let [ids (apply t2/select-pks-vec :model/Document :exploration_id exploration-id conditions)]
-    (when (seq ids)
-      (t2/update! :model/Document :id [:in ids] changes)
-      (t2/select :model/Document :id [:in ids]))))
-
 (defn- summary-document-conditions
   "The conditions of the Summary Documents of an Exploration that an archive of it, when `archive?`, or a restore of it
   archives or restores along with it."
@@ -752,24 +737,17 @@
    archive?       :- :boolean]
   (apply t2/select :model/Document :exploration_id exploration-id (summary-document-conditions archive?)))
 
-(mu/defn move-summary-documents!
-  "Move the Summary Documents of the Exploration with `exploration-id` to the Collection with `collection-id`,
-  returning them as updated."
-  [exploration-id :- ms/PositiveInt
-   collection-id  :- [:maybe ::lib.schema.id/collection]]
-  (update-summary-documents! exploration-id [] {:collection_id collection-id}))
+(mu/defn summary-documents-following-explorations
+  "The Summary Documents of the Explorations with `exploration-ids` that an archive of them, when `archive?`, or a
+  restore of them archives or restores along with them."
+  [exploration-ids :- [:sequential ms/PositiveInt]
+   archive?        :- :boolean]
+  (apply t2/select :model/Document :exploration_id [:in exploration-ids] (summary-document-conditions archive?)))
 
-(mu/defn archive-summary-documents!
-  "Archive the unarchived Summary Documents of the Exploration with `exploration-id` as not archived directly,
-  returning them as updated."
+(mu/defn summary-document-ids
+  "The ids of the Summary Documents of the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt]
-  (update-summary-documents! exploration-id (summary-document-conditions true) {:archived true}))
-
-(mu/defn unarchive-summary-documents!
-  "Unarchive the Summary Documents of the Exploration with `exploration-id` that were archived with it, returning them
-  as updated."
-  [exploration-id :- ms/PositiveInt]
-  (update-summary-documents! exploration-id (summary-document-conditions false) {:archived false}))
+  (t2/select-pks-vec :model/Document :exploration_id exploration-id))
 
 ;;; ------------------------------------------------ Other models ------------------------------------------------
 

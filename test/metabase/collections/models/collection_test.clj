@@ -13,6 +13,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -2040,7 +2041,7 @@
     (when config/ee-available?
       (mt/with-temp [:model/Collection {collection-id :id :as collection} {:namespace "data-apps"}
                      :model/Dashboard  {dashboard-id :id}                 {:name "Elsewhere"}]
-        (doseq [[label insert!] [["a dashboard" #(mt/with-temp [:model/Dashboard _ {:collection_id collection-id}])]
+        (doseq [[label insert!] [["a dashboard" #(dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id collection-id})]
                                  ["a collection" #(mt/with-temp [:model/Collection _ {:namespace "data-apps"
                                                                                       :location  (collection/children-location collection)}])]
                                  ["a model" #(mt/with-temp [:model/Card _ {:type :model :collection_id collection-id}])]
@@ -2049,7 +2050,7 @@
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
         (testing "a dashboard moved in"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions"
-                                (t2/update! :model/Dashboard :id dashboard-id {:collection_id collection-id})))
+                                (dashboard/update-dashboard! dashboard-id {:collection_id collection-id})))
           (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
         (testing "a bookmark is not content"
           (mt/with-temp [:model/CollectionBookmark _ {:collection_id collection-id :user_id (mt/user->id :crowberto)}]

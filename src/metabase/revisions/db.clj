@@ -329,3 +329,9 @@
   [model-name :- :string
    model-id   :- ms/PositiveInt]
   (t2/delete! :model/Revision :model model-name :model_id model-id))
+
+(mu/defn delete-revisions-for-entities!
+  "Delete the Revisions of the rows of the model named `model-name` with `model-ids`, returning the number deleted."
+  [model-name :- :string
+   model-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Revision :model model-name :model_id [:in model-ids]))

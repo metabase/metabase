@@ -419,6 +419,13 @@
    model-id   :- pos-int?]
   (revisions.db/delete-revisions-for-entity! model-name model-id))
 
+(mu/defn delete-revisions-for-entities!
+  "Delete the Revisions of the rows of the model named `model-name` (e.g. \"Dashboard\") with `model-ids`."
+  [model-name :- :string
+   model-ids  :- [:sequential pos-int?]]
+  (when (seq model-ids)
+    (revisions.db/delete-revisions-for-entities! model-name model-ids)))
+
 (mu/defn settle-revisions!
   "Clear `most_recent` on the superseded Revisions of `entities`, `[model-name model-id]` pairs, and delete their
   Revisions beyond [[max-revisions]]."

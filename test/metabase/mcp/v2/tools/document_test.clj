@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as document]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -704,7 +705,7 @@
             which made it a clean read oracle over any document the caller could write to."
     (mt/with-model-cleanup [:model/Document]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [existing (documents/create-document!
+        (let [existing (document/create-document-with-cards!
                         {:name          "someone elses doc"
                          :document      (documents/parse "PRE-EXISTING SECRET")
                          :collection_id nil})
@@ -727,7 +728,7 @@
             sentinel, and name and the body are required rather than clearable."
     (mt/with-model-cleanup [:model/Document]
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [doc   (documents/create-document!
+        (let [doc   (document/create-document-with-cards!
                      {:name                "pinned doc"
                       :document            (documents/parse "body")
                       :collection_id       nil
