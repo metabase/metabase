@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
-import type { ClickBehavior } from "metabase-types/api";
+import type { ClickBehavior, Parameter } from "metabase-types/api";
 
-import type { SourceType, TargetItem } from "./types";
+import type { SourceOption, TargetItem } from "./types";
 
 function removeParameterMapping(
   clickBehavior: ClickBehavior,
@@ -26,18 +26,24 @@ export function ClickMappingsTargetWithSource({
   target,
   targetName,
   clickBehavior,
+  parameters,
   updateSettings,
 }: {
   target: TargetItem;
   targetName: string | undefined;
   clickBehavior: ClickBehavior;
+  parameters: Parameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const { name, id } = target;
-  const source: { name?: string; type?: SourceType } =
+  const source: SourceOption =
     ("parameterMapping" in clickBehavior
       ? clickBehavior.parameterMapping?.[id]?.source
       : undefined) ?? {};
+  const sourceParameter =
+    source.type === "parameter"
+      ? parameters.find((parameter) => parameter.id === source.id)
+      : undefined;
 
   return (
     <div className={CS.mb2}>
@@ -78,7 +84,9 @@ export function ClickMappingsTargetWithSource({
         </svg>
         <div>
           <div>
-            <span className={cx(CS.textBold, CS.textDark)}>{source.name}</span>{" "}
+            <span className={cx(CS.textBold, CS.textDark)}>
+              {sourceParameter?.name ?? source.name}
+            </span>{" "}
             {source.type != null &&
               {
                 column: t`column`,
