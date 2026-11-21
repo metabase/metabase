@@ -37,9 +37,9 @@
     (mt/with-temp [:model/NativeQuerySnippet {first-id :id}  {:name "referenced first"}
                    :model/NativeQuerySnippet {second-id :id} {:name "referenced second"}]
       (mt/with-model-cleanup [:model/NativeQuerySnippet]
-        (t2/insert! :model/NativeQuerySnippet
-                    [{:name "referring a", :content "{{snippet: referenced first}}", :creator_id (mt/user->id :rasta)}
-                     {:name "referring b", :content "{{snippet: referenced second}}", :creator_id (mt/user->id :rasta)}])
+        (native-query-snippet/create-snippets!
+         [{:name "referring a", :content "{{snippet: referenced first}}", :creator_id (mt/user->id :rasta)}
+          {:name "referring b", :content "{{snippet: referenced second}}", :creator_id (mt/user->id :rasta)}])
         (is (= first-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring a")
                                 ["snippet: referenced first" :snippet-id])))
         (is (= second-id (get-in (t2/select-one-fn :template_tags :model/NativeQuerySnippet :name "referring b")
@@ -71,11 +71,11 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (t2/insert! :model/NativeQuerySnippet
-                         {:name          (mt/random-name)
-                          :content       "1 = 1"
-                          :creator_id    (mt/user->id :rasta)
-                          :collection_id collection-id})))))
+             (native-query-snippet/create-snippet!
+              {:name          (mt/random-name)
+               :content       "1 = 1"
+               :creator_id    (mt/user->id :rasta)
+               :collection_id collection-id})))))
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
@@ -83,7 +83,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
-             (t2/update! :model/NativeQuerySnippet :id snippet-id {:collection_id dest-collection-id})))))))
+             (native-query-snippet/update-snippet! snippet-id {:collection_id dest-collection-id})))))))
 
 (deftest basic-param-finding-test
   (testing "Can find params in a snippet"
@@ -97,7 +97,7 @@
   (testing "Can find params on update"
     (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
       (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
-      (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "{{id}}"})
+      (native-query-snippet/update-snippet! snippet-id {:content "{{id}}"})
       (is (=? {"id" {:type :text,
                      :name "id",
                      :display-name "ID"}}
@@ -134,11 +134,11 @@
   (testing "Template tags serialization preserves nil, empty, and populated states"
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
       (testing "nil in -> {} out"
-        (let [snippet (t2/insert-returning-instance! :model/NativeQuerySnippet
-                                                     {:name "nil-tags"
-                                                      :content "SELECT 1"
-                                                      :creator_id user-id
-                                                      :template_tags nil})
+        (let [snippet (native-query-snippet/create-snippet!
+                                  {:name "nil-tags"
+                                   :content "SELECT 1"
+                                   :creator_id user-id
+                                   :template_tags nil})
               extracted (export-one snippet)]
           ;; toucan hooks populate it:
           (is (= {} (:template_tags extracted)))
@@ -194,3 +194,35 @@
               "nil should remain nil")
           (is (contains? (first hydrated) :can_write)
               "non-nil snippet should be hydrated"))))))
+
+(deftest writes-run-fixed-statements-test
+  (letfn [(creating [n]
+            (mt/with-temp [:model/NativeQuerySnippet _ {:name "referenced for count"}]
+              (mt/with-model-cleanup [:model/NativeQuerySnippet]
+                (t2/with-call-count [call-count]
+                  (native-query-snippet/create-snippets!
+                   (for [i (range n)]
+                     {:name (str "counted " i) :content "{{snippet: referenced for count}}" :creator_id (mt/user->id :rasta)}))
+                  (call-count)))))
+          (archiving [n]
+            (let [snippets (native-query-snippet/create-snippets!
+                            (for [i (range n)]
+                              {:name (str "archived " i) :content "1 = 1" :creator_id (mt/user->id :rasta)}))
+                  ids      (mapv :id snippets)]
+              (try
+                (t2/with-call-count [call-count]
+                  (native-query-snippet/update-snippets! (mapv (fn [id] {:id id :archived true}) ids))
+                  (call-count))
+                (finally
+                  (native-query-snippet/delete-snippets! ids)))))]
+    (testing "creating snippets runs one statement count whatever their number"
+      (is (= (creating 2) (creating 6))))
+    (testing "archiving snippets runs one statement count whatever their number"
+      (is (= (archiving 2) (archiving 6))))))
+
+(deftest import-renames-taken-names-test
+  (mt/with-temp [:model/NativeQuerySnippet _ {:name "taken name" :entity_id "owner-entity-id-00000"}]
+    (mt/with-model-cleanup [:model/NativeQuerySnippet]
+      (let [[imported] (native-query-snippet/import-snippets!
+                        [{:name "taken name" :content "1 = 1" :entity_id "other-entity-id-00000" :creator_id (mt/user->id :rasta)}])]
+        (is (= "taken name (copy)" (:name imported)))))))

@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
@@ -388,10 +389,15 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (first (t2/insert-returning-instances! (:model schema-opts)
-                                                           (rsg/spec-gen-assoc-relations
-                                                            sm-db
-                                                            (assoc visit-opts :visit-val (:spec-gen attrs)))))
+                    (let [row (rsg/spec-gen-assoc-relations sm-db (assoc visit-opts :visit-val (:spec-gen attrs)))
+                          row (cond-> row
+                                (and (= :model/Action (:model schema-opts)) (:model_id row))
+                                (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id (:model_id row)))
+
+                                (= :model/NativeQuerySnippet (:model schema-opts))
+                                (assoc :template_tags (#'native-query-snippet/snippet-template-tags
+                                                       row (#'native-query-snippet/name->id [row]))))]
+                      (first (t2/insert-returning-instances! (:model schema-opts) row)))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

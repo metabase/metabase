@@ -59,7 +59,7 @@
 (deftest icon-test
   (mt/with-temp [:model/Timeline {timeline-id :id} {:icon "cake"}]
     (testing "an event without an icon gets the icon of its Timeline"
-      (let [id (t2/insert-returning-pk! :model/TimelineEvent (event-row timeline-id {}))]
+      (let [id (:id (timeline-event/create-timeline-event! (event-row timeline-id {})))]
         (is (= "cake" (t2/select-one-fn :icon :model/TimelineEvent :id id)))
         (t2/delete! :model/TimelineEvent :id id)))
     (testing "the event schema refuses an icon outside the allowed set"
@@ -108,3 +108,23 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
                               (api/create-check :model/TimelineEvent {:timeline_id to-tl})))
         (is (some? (api/create-check :model/TimelineEvent {:timeline_id from-tl})))))))
+
+(deftest create-timeline-events-takes-timeline-icon-test
+  (mt/with-temp [:model/Timeline {timeline-id :id} {:icon "cake"}]
+    (mt/with-model-cleanup [:model/TimelineEvent]
+      (let [[without with] (timeline-event/create-timeline-events!
+                            [(event-row timeline-id {:name "without"})
+                             (event-row timeline-id {:name "with" :icon "bell"})])]
+        (is (= "cake" (:icon without)))
+        (is (= "bell" (:icon with)))))))
+
+(deftest create-timeline-events-runs-fixed-statements-test
+  (letfn [(creating [n]
+            (mt/with-temp [:model/Timeline {timeline-id :id} {}]
+              (mt/with-model-cleanup [:model/TimelineEvent]
+                (t2/with-call-count [call-count]
+                  (timeline-event/create-timeline-events!
+                   (for [i (range n)]
+                     (event-row timeline-id {:name (str "event " i)})))
+                  (call-count)))))]
+    (is (= (creating 2) (creating 6)))))

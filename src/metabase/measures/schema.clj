@@ -63,6 +63,23 @@
    [:dimensions         {:optional true} [:maybe [:sequential ::measure.dimension]]]
    [:dimension_mappings {:optional true} [:maybe [:sequential ::measure.dimension-mapping]]]])
 
+(mr/def ::measure.create
+  "What a caller gives to create a Measure; its table follows its definition."
+  [:map {:closed true}
+   [:name        ::measure.name]
+   [:definition  ::measure.definition]
+   [:creator_id  {:optional true} [:maybe ::lib.schema.id/user]]
+   [:description {:optional true} [:maybe :string]]
+   [:archived    {:optional true} [:maybe :boolean]]
+   [:entity_id   {:optional true} [:maybe :string]]])
+
+(mr/def ::measure.row
+  "A Measure id and the columns to change, as an update of several Measures takes it."
+  [:merge
+   ::measure.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/measure]]])
+
 (mr/def ::external-measure
   "A Measure as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}

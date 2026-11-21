@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.timeline.models.timeline :as timeline]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -130,9 +131,9 @@
   (testing "a timeline archives and restores its events"
     (mt/with-temp [:model/Timeline      timeline {}
                    :model/TimelineEvent event    {:timeline_id (u/the-id timeline)}]
-      (archive! :model/Timeline (u/the-id timeline) true)
+      (timeline/update-timeline! (u/the-id timeline) {:archived true})
       (is (true? (:archived (row :model/TimelineEvent (u/the-id event)))))
-      (archive! :model/Timeline (u/the-id timeline) false)
+      (timeline/update-timeline! (u/the-id timeline) {:archived false})
       (is (false? (:archived (row :model/TimelineEvent (u/the-id event)))))))
   (testing "an exploration archives and restores its summary document"
     (mt/with-temp [:model/Exploration exploration {}
@@ -164,8 +165,8 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (t2/insert! :model/Dashboard {:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (t2/insert! :model/Timeline {:name "t" :icon "balloons" :creator_id (mt/user->id :rasta)
-                                                         :collection_id (u/the-id archived)}))))
+                            (timeline/create-timeline! {:name "t" :creator_id (mt/user->id :rasta)
+                                                        :collection_id (u/the-id archived)}))))
     (testing "an archived row can be inserted into an archived collection"
       (is (some? (t2/insert-returning-pk! :model/Dashboard {:name "d" :creator_id (mt/user->id :rasta) :archived true
                                                             :archived_directly false :collection_id (u/the-id archived)}))))

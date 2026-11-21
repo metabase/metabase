@@ -2,7 +2,6 @@
   "Application database queries for the measures module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,17 +24,10 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-measure!
-  "Insert a Measure and return the inserted instance."
-  [creator-id   :- ::lib.schema.id/user
-   measure-name :- :string
-   description  :- [:maybe :string]
-   definition   :- [:maybe ::measures.schema/measure.definition]]
-  (t2/insert-returning-instance! :model/Measure
-                                 :creator_id  creator-id
-                                 :name        measure-name
-                                 :description description
-                                 :definition  definition))
+(mu/defn insert-measures!
+  "Insert the Measure `rows` and return the inserted instances."
+  [rows :- [:sequential ::measures.schema/measure.create]]
+  (t2/insert-returning-instances! :model/Measure rows))
 
 (mu/defn measure
   "The Measure with `id`, or nil."
@@ -47,11 +39,21 @@
   []
   (t2/select :model/Measure, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn update-measure!
-  "Apply `changes` to the Measure with `id`."
-  [id      :- ::lib.schema.id/measure
-   changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure :id id changes))
+(mu/defn measures-by-id
+  "A map of id to Measure for the Measures with `ids`."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/select-pk->fn identity :model/Measure :id [:in ids]))
+
+(mu/defn update-measures!
+  "Apply `changes` to the Measures with `ids`, returning the number updated."
+  [ids     :- [:sequential ::lib.schema.id/measure]
+   changes :- ::measures.schema/measure.update]
+  (t2/update! :model/Measure :id [:in ids] changes))
+
+(mu/defn delete-measures!
+  "Delete the Measures with `ids`, returning the number deleted."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (t2/delete! :model/Measure :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

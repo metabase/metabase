@@ -11,6 +11,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.measures.db :as measures.db]
    [metabase.measures.dependencies :as measures.dependencies]
@@ -64,27 +65,20 @@
     (throw (ex-info (tru "Measure definition must be a full query with a source table.") {:status-code 400})))
   (mu/validate-throw ::lib.schema.measure/definition (lib-be/normalize-query definition)))
 
-(defn- check-referenced-measures-exist
-  "Throws unless every Measure that `definition`, a new Measure's, refers to exists."
-  [definition]
-  (lib/check-measure-overwrite nil (lib-be/normalize-query definition)))
-
 (t2/define-before-insert :model/Measure
   [{:keys [definition] :as measure}]
   (check-definition definition)
-  (check-referenced-measures-exist definition)
   (assoc measure :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Measure
-  [{:keys [id definition] :as measure}]
+  [{:keys [definition] :as measure}]
   (let [changes (t2/changes measure)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a Measure.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Measure follows its definition; change the definition instead.") {:status-code 400})))
     (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-measure-overwrite id (lib-be/normalize-query definition)))
+      (check-definition definition))
     (cond-> measure
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 
@@ -141,12 +135,89 @@
   (for [measure measures]
     (assoc measure :definition_description (definition-description measure))))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-definitions-of-new-measures
+  "Throws unless every Measure that the definition of each of the new Measure `rows` refers to exists."
+  [rows]
+  (run! #(lib/check-measure-overwrite nil (lib-be/normalize-query (:definition %))) rows))
+
+(mu/defn create-measures! :- [:sequential (ms/InstanceOf :model/Measure)]
+  "Insert the Measure `rows` and return the inserted instances, in one transaction and one batch of events. A
+  definition that refers to a Measure that does not exist throws."
+  [rows :- [:sequential ::measures.schema/measure.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-definitions-of-new-measures rows)
+      (vec (measures.db/insert-measures! rows)))))
+
+(mu/defn create-measure! :- (ms/InstanceOf :model/Measure)
+  "Insert the Measure `row` and return the inserted instance, as [[create-measures!]] does."
+  [row :- ::measures.schema/measure.create]
+  (first (create-measures! [row])))
+
+(defn- check-changed-definitions
+  "Throws when the new definition of one of `rows`, updates of the Measures `stored`, differs from the stored one and
+  refers to the Measure itself or to a Measure that makes a cycle."
+  [rows stored]
+  (doseq [{:keys [id definition] :as row} rows
+          :when                           (and (contains? row :definition)
+                                               (not= (lib-be/normalize-query definition)
+                                                     (some-> (get stored id) :definition lib-be/normalize-query)))]
+    (lib/check-measure-overwrite id (lib-be/normalize-query definition))))
+
+(mu/defn update-measures! :- [:sequential ::measures.schema/measure.row]
+  "Apply the changes in each of `rows`, the id of a Measure and the columns to change, with one statement per distinct
+  set of changes, in one transaction and one batch of events. A new definition that makes a cycle of Measures throws.
+  Returns `rows`."
+  [rows :- [:sequential ::measures.schema/measure.row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (when (some #(contains? % :definition) rows)
+        (check-changed-definitions rows (measures.db/measures-by-id (mapv :id rows))))
+      (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+        (when (seq changes)
+          (measures.db/update-measures! (mapv :id group) changes)))
+      (vec rows))))
+
+(mu/defn update-measure!
+  "Apply `changes` to the Measure with `id`, as [[update-measures!]] does."
+  [id      :- ::lib.schema.id/measure
+   changes :- ::measures.schema/measure.update]
+  (update-measures! [(assoc changes :id id)])
+  nil)
+
+(mu/defn set-measure-dimensions!
+  "Set the dimensions and dimension mappings of the Measure with `id`."
+  [id                 :- ::lib.schema.id/measure
+   dimensions         :- [:maybe sequential?]
+   dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
+  (measures.db/set-measure-dimensions! id dimensions dimension-mappings))
+
+(mu/defn delete-measures!
+  "Delete the Measures with `ids`, in one transaction and one batch of events."
+  [ids :- [:sequential ::lib.schema.id/measure]]
+  (when (seq ids)
+    (events/with-batched-events
+      (measures.db/delete-measures! ids))))
+
+(def ^:private revision-columns
+  "The columns of a Measure that its Revisions track and a revert restores."
+  [:name :description :definition :archived :table_id])
+
+(defn- revert-measure!
+  "Return the Measure with `id` to the tracked columns of `snapshot`."
+  [id _user-id snapshot]
+  (update-measure! id (select-keys snapshot revision-columns)))
+
 ;;; --------------------------------------------- Dimension persistence ----------------------------------------------
 
 (defmethod metrics/save-dimensions! :metadata/measure
   [measure dimensions dimension-mappings]
   (when-let [measure-id (:id measure)]
-    (measures.db/set-measure-dimensions! measure-id dimensions dimension-mappings)))
+    (set-measure-dimensions! measure-id dimensions dimension-mappings)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -167,7 +238,10 @@
                          :definition measures.serialization/definition-transform}
    :defaults            {:archived false}
    :import-dependencies measures.serialization/import-dependencies
-   :storage-paths       measures.serialization/storage-paths})
+   :storage-paths       measures.serialization/storage-paths
+   :insert!             create-measures!
+   :update!             update-measures!
+   :delete!             delete-measures!})
 
 (defmethod remote-sync/spec :model/Measure
   [_model]
@@ -175,9 +249,10 @@
    :synced-filter-clause measures.db/synced-measures-clause})
 
 (defmethod revisions/spec :model/Measure [_model]
-  {:track        [:name :description :definition :archived :table_id]
+  {:track        revision-columns
    :skip         [:entity_id :creator_id :dimensions :dimension_mappings]
    :same?        {:definition revisions/same-definition?}
+   :revert!      revert-measure!
    :diff-columns [:name :description :definition]})
 
 (defmethod audit/spec :model/Measure [_model]

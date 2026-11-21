@@ -12,6 +12,8 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest timelines-for-collection-test
   (mt/with-temp [:model/Collection collection {:name "Rasta's Collection"}]
     (let [coll-id  (u/the-id collection)
@@ -75,10 +77,10 @@
                  :model/Timeline   {timeline-id :id} {:collection_id other-id}]
     (testing "a Timeline cannot go in a Collection of another namespace on insert"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/insert! :model/Timeline {:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}))))
+                            (timeline/create-timeline! {:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}))))
     (testing "a Timeline cannot move to a Collection of another namespace"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/update! :model/Timeline :id timeline-id {:collection_id snippets-id})))
+                            (timeline/update-timeline! timeline-id {:collection_id snippets-id})))
       (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
 
 (deftest update-check-test
@@ -98,3 +100,39 @@
         (perms/grant-collection-readwrite-permissions! (perms/all-users-group) to-id)
         (testing "a move to a Collection the user can write is allowed"
           (is (some? (api/update-check timeline {:collection_id to-id}))))))))
+
+(deftest writes-run-fixed-statements-test
+  (letfn [(creating [n]
+            (mt/with-temp [:model/Collection {coll-id :id} {}]
+              (mt/with-model-cleanup [:model/Timeline]
+                (t2/with-call-count [call-count]
+                  (timeline/create-timelines! (for [i (range n)]
+                                                {:name (str "created " i) :collection_id coll-id :creator_id (mt/user->id :rasta)}))
+                  (call-count)))))
+          (archiving [n]
+            (mt/with-temp [:model/Collection {coll-id :id} {}]
+              (let [timelines (doall (for [i (range n)]
+                                       (t2/insert-returning-instance! :model/Timeline
+                                                                      {:name (str "archived " i) :collection_id coll-id
+                                                                       :creator_id (mt/user->id :rasta) :icon "star"})))]
+                (doseq [{id :id} timelines]
+                  (t2/insert! :model/TimelineEvent {:timeline_id id :name "event" :icon "star" :creator_id (mt/user->id :rasta)
+                                                    :timestamp (java.time.OffsetDateTime/now) :timezone "UTC" :time_matters true}))
+                (try
+                  (t2/with-call-count [call-count]
+                    (timeline/update-timelines! (mapv (fn [{id :id}] {:id id :archived true}) timelines))
+                    (call-count))
+                  (finally
+                    (t2/delete! :model/Timeline :id [:in (map :id timelines)]))))))]
+    (testing "creating Timelines runs one statement count whatever their number"
+      (is (= (creating 2) (creating 6))))
+    (testing "archiving Timelines runs one statement count whatever their number"
+      (is (= (archiving 2) (archiving 6))))))
+
+(deftest archiving-timeline-archives-its-events-test
+  (mt/with-temp [:model/Timeline      {timeline-id :id} {}
+                 :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
+    (timeline/update-timeline! timeline-id {:archived true})
+    (is (true? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))
+    (timeline/update-timeline! timeline-id {:archived false})
+    (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))))
