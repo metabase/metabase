@@ -91,6 +91,8 @@
                               :nested-field-columns             false
                               :regex/lookaheads-and-lookbehinds false
                               :rename                           true
+                              ;; Redshift fails when it selects a numeric aggregate again from a CTE.
+                              :stage-ctes/single-row-aggregation false
                               :test/jvm-timezone-setting        false
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.

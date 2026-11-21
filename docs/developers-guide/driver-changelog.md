@@ -7,6 +7,11 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.66.0
 
+- New driver feature `:stage-ctes/single-row-aggregation`. Drivers that use `:stage-ctes` can opt in to put an
+  aggregation with no breakouts over a previous stage in its own stage CTE. This is for databases like Postgres that
+  do not use an index for `MIN`/`MAX` when the aggregation is in a `SELECT` that has a `WITH` clause. The default is
+  `false`.
+
 - While a data test pins the clock (`metabase.query-processor.timezone/with-pinned-now`),
   `metabase.driver.sql.query-processor/current-datetime-honeysql-form` dispatches to one method for every driver. It
   calls the driver's own method to learn the type of its current-time form, and returns a literal of the pinned moment

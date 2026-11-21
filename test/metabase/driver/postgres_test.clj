@@ -51,6 +51,7 @@
    [metabase.query-processor.middleware.nest-for-pivot :as nest-for-pivot]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -636,6 +637,53 @@
                   "FROM"
                   "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
+
+(deftest ^:parallel multi-stage-join-source-stage-ctes-test
+  (testing "Stage CTEs of a multi-stage join source go in the top-level WITH, not inside the JOIN (#87571)"
+    (let [mp       (lib.tu/mock-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+                    {:cards [{:id            1
+                              :database-id   (meta/id)
+                              :dataset-query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                                                 (lib/aggregate (lib/count))
+                                                 (lib/breakout (meta/field-metadata :checkins :venue-id))
+                                                 lib/append-stage)}]})
+          card     (lib.metadata/card mp 1)
+          query    (lib/query mp (lib.metadata/table mp (meta/id :venues)))
+          card-col (m/find-first #(= (:name %) "VENUE_ID")
+                                 (lib/join-condition-rhs-columns query card nil nil))
+          query    (lib/join query (lib/join-clause card [(lib/= (lib.metadata/field mp (meta/id :venues :id))
+                                                                 card-col)]))]
+      (qp.store/with-metadata-provider mp
+        (let [hsql        (driver/with-driver :postgres
+                            (sql.qp/mbql->honeysql :postgres (qp.preprocess/preprocess query)))
+              join-source (get-in hsql [:join-by 1 0 0])]
+          (is (= ["__mb_stage_0" "__mb_stage_1"]
+                 (map first (:with hsql))))
+          (is (not (contains? join-source :with)))
+          (is (=? {:from [[[::h2x/identifier :table-alias ["__mb_stage_1"]] some?]]}
+                  join-source)))))))
+
+(deftest ^:parallel single-row-aggregation-stage-cte-test
+  (testing "A last stage that aggregates without breakouts goes in its own stage CTE, so Postgres can use its MIN/MAX
+            index optimization, which it skips in a query level with a WITH list"
+    (let [mp     (lib.tu/merged-mock-metadata-provider meta/metadata-provider {:database {:engine :postgres}})
+          query  (lib/append-stage (lib/query mp (lib.metadata/table mp (meta/id :venues))))
+          id-col (m/find-first #(= (:name %) "ID") (lib/visible-columns query))
+          query  (lib/aggregate query (lib/max id-col))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :postgres
+          (testing "without breakouts, a stage that selects the aggregation goes after it"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]}
+                     {:fields [[:field {} "max"]]}]
+                    (sql.qp/preprocess :postgres query))))
+          (testing "with a breakout, no stage goes after the aggregation"
+            (is (=? [{:source-table (meta/id :venues)}
+                     {:aggregation [[:max {} [:field {} "ID"]]]
+                      :breakout    [some?]}]
+                    (sql.qp/preprocess :postgres (lib/breakout query (m/find-first #(= (:name %) "NAME")
+                                                                                   (lib/breakoutable-columns query))))))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
   (mt/test-driver :postgres
