@@ -9,6 +9,7 @@ import {
   SAMPLE_PROVIDER,
   createMetadataProvider,
 } from "metabase-lib/test-helpers";
+import type { Field } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
@@ -129,11 +130,12 @@ describe("ExpressionWidget > completion", () => {
       dataset_query: Lib.createTestJsQuery(SAMPLE_PROVIDER, {
         stages: [{ source: { type: "table", id: ORDERS_ID } }],
       }),
+      // The API returns dataset columns here, with the `unit` that `Field` does not type.
       result_metadata: createOrdersTableDatasetColumns().map((column) =>
         column.name === "CREATED_AT"
           ? createOrdersCreatedAtDatasetColumn({ unit: "default" })
           : column,
-      ),
+      ) as unknown as Field[],
     });
     const provider = createMetadataProvider({
       metadata: createMockMetadata({
