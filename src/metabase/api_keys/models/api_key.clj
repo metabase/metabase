@@ -53,7 +53,6 @@
 
 (doto :model/ApiKey
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ApiKey
@@ -184,54 +183,91 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-api-key! :- ::api-keys.schema/api-key
-  "Insert the ApiKey `row` and return it; `::api-keys/unhashed-key` is hashed into `:key` and gives `:key_prefix`."
+  "Insert the ApiKey `row` and return it, publishing the event of the write; `::api-keys/unhashed-key` is hashed into
+  `:key` and gives `:key_prefix`."
   [row :- ::api-keys.schema/api-key.create]
-  (api-keys.db/insert-api-key! row))
-
-(mu/defn update-api-key!
-  "Apply `changes` to the ApiKey with `id`. A new `:name` renames the User created for the key, and
-  `::api-keys/group-id` moves that User to the group with that id (besides All Users)."
-  [id      :- ::api-keys.schema/id
-   changes :- ::api-keys.schema/api-key.change]
   (t2/with-transaction [_conn]
+    (u/prog1 (api-keys.db/insert-api-key! row)
+      (events/publish-lifecycle! [(events/created :event/api-key-create [<>])]))))
+
+(defn- update-api-key-and-publish!
+  "Apply `changes` to the ApiKey with `id` as [[update-api-key!]] does, publishing the events of the writes with
+  `context`."
+  [id changes context]
+  (events/with-batched-events
     (let [{user-id :user_id :as stored} (api-keys.db/api-key id)
           new-name                      (:name changes)
           new-group-id                  (::api-keys/group-id changes)]
       (when (and stored new-name (not= new-name (:name stored)))
-        (user/update-users! {:id user-id :type :api-key} {:first_name new-name :last_name ""}))
+        (user/update-users! {:id user-id :type :api-key} {:first_name new-name :last_name ""} context))
       (when (and stored new-group-id)
         (assert (= (api-keys.db/user-type user-id) :api-key)
                 "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
         (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
       (let [column-changes (cond-> (dissoc changes ::api-keys/group-id)
-                             new-group-id (assoc :updated_at (t/offset-date-time)))]
-        (if (seq column-changes)
-          (api-keys.db/update-api-key! id column-changes)
-          0)))))
+                             new-group-id (assoc :updated_at (t/offset-date-time)))
+            changed        (when stored
+                             (into {} (remove (fn [[k v]] (= v (get stored k)))) column-changes))]
+        (u/prog1 (if (seq column-changes)
+                   (api-keys.db/update-api-key! id column-changes)
+                   0)
+          (when (seq changed)
+            (events/publish-lifecycle! [(events/updated :event/api-key-update
+                                                        [stored]
+                                                        [(events/updated-row stored changed)])]
+                                       {:context context})))))))
 
-(defn- deactivate-key-user!
-  "Deactivate the api-key User with `user-id`, if any; keys without a user, such as SCIM keys, have none."
-  [user-id]
-  (when user-id
-    (user/update-users! {:id user-id :type :api-key} {:is_active false})))
+(mu/defn update-api-key!
+  "Apply `changes` to the ApiKey with `id`, publishing the events of the writes with `context`. A new `:name` renames
+  the User created for the key, and `::api-keys/group-id` moves that User to the group with that id (besides All
+  Users)."
+  ([id      :- ::api-keys.schema/id
+    changes :- ::api-keys.schema/api-key.change]
+   (update-api-key-and-publish! id changes nil))
+  ([id      :- ::api-keys.schema/id
+    changes :- ::api-keys.schema/api-key.change
+    context :- [:maybe :metabase.events.schema/context]]
+   (update-api-key-and-publish! id changes context)))
+
+(defn- deactivate-key-users*
+  "Deactivate the api-key Users with `user-ids`, returning the events of the writes as `:events`; keys without a user,
+  such as SCIM keys, have none."
+  [user-ids]
+  (if-let [user-ids (not-empty (vec (distinct (remove nil? user-ids))))]
+    (user/update-users* {:id [:in user-ids] :type :api-key} {:is_active false})
+    {:events []}))
+
+(defn- delete-api-key-and-publish!
+  "Delete the ApiKey with `id` as [[delete-api-key!]] does, publishing the events of the writes with `context`."
+  [id context]
+  (events/with-batched-events
+    (when-let [{user-id :user_id :as stored} (api-keys.db/api-key id)]
+      (let [deactivated (deactivate-key-users* [user-id])
+            event       (events/deleted :event/api-key-delete :model/ApiKey [stored])]
+        (u/prog1 (api-keys.db/delete-api-key! id)
+          (events/publish-lifecycle! (conj (vec (:events deactivated)) event) {:context context}))))))
 
 (mu/defn delete-api-key!
-  "Delete the ApiKey with `id`, deactivating the User created for it."
-  [id :- ::api-keys.schema/id]
-  (t2/with-transaction [_conn]
-    (when-let [{user-id :user_id} (api-keys.db/api-key id)]
-      (deactivate-key-user! user-id)
-      (api-keys.db/delete-api-key! id))))
+  "Delete the ApiKey with `id`, deactivating the User created for it and publishing the events of the writes with
+  `context`."
+  ([id :- ::api-keys.schema/id]
+   (delete-api-key-and-publish! id nil))
+  ([id      :- ::api-keys.schema/id
+    context :- [:maybe :metabase.events.schema/context]]
+   (delete-api-key-and-publish! id context)))
 
 (mu/defn delete-api-keys-with-scope!
-  "Delete every ApiKey with `scope`, deactivating the Users created for them, and return the number deleted."
+  "Delete every ApiKey with `scope`, deactivating the Users created for them and publishing the events of the writes,
+  and return the number deleted."
   [scope :- ::api-keys.schema/scope]
-  (t2/with-transaction [_conn]
+  (events/with-batched-events
     (let [api-keys (api-keys.db/api-keys-with-scope scope)]
-      (run! (comp deactivate-key-user! :user_id) api-keys)
-      (if (seq api-keys)
-        (api-keys.db/delete-api-keys! (map :id api-keys))
-        0))))
+      (if (empty? api-keys)
+        0
+        (let [deactivated (deactivate-key-users* (map :user_id api-keys))
+              event       (events/deleted :event/api-key-delete :model/ApiKey (vec api-keys))]
+          (u/prog1 (api-keys.db/delete-api-keys! (map :id api-keys))
+            (events/publish-lifecycle! (conj (vec (:events deactivated)) event))))))))
 
 (mu/defn create-api-key-with-new-user!
   "Create a new API key and a new user for that key at the same time, with `scope` when given."
@@ -277,12 +313,6 @@
      :prefix       new-prefix}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/ApiKey
-  [_model]
-  {:create :event/api-key-create
-   :update :event/api-key-update
-   :delete :event/api-key-delete})
 
 (defmethod app-db-copy/spec :model/ApiKey [_model]
   {:skip? false})

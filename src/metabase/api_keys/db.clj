@@ -49,9 +49,9 @@
   (t2/delete! :model/ApiKey :id id))
 
 (mu/defn api-keys-with-scope
-  "The ids and User ids of the ApiKeys with `scope`."
+  "The ApiKeys with `scope`."
   [scope :- ::api-keys.schema/scope]
-  (t2/select [:model/ApiKey :id :user_id] :scope scope))
+  (t2/select :model/ApiKey :scope scope))
 
 (mu/defn delete-api-keys!
   "Delete the ApiKeys with `ids`, returning the number deleted."

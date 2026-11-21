@@ -9,7 +9,6 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.token-check :as token-check]
@@ -511,12 +510,12 @@
   (mt/with-temp [:model/User {user-id :id} {}]
     (t2/with-call-count [call-count]
       (user/update-user! user-id {:first_name "Renamed"})
-      (is (= 2 (call-count))))
+      (is (= 3 (call-count))))
     (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
 
 (deftest update-user-refuses-last-admin-test
   (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
-    (mt/with-dynamic-fn-redefs [perms/throw-if-last-admin! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
+    (mt/with-dynamic-fn-redefs [perms-group-membership/throw-if-last-admins! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
       (testing "deactivating"
         (is (thrown-with-msg? Exception #"last admin" (user/update-user! user-id {:is_active false})))
         (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
@@ -845,3 +844,23 @@
                           (api/create-check :model/User {:email "user@example.com"}))))
   (mt/with-current-user (mt/user->id :crowberto)
     (is (api/create-check :model/User {:email "user@example.com"}))))
+
+(defn- bulk-write-counts!
+  "The number of statements that each bulk write of `n` new Users runs, but their deactivation, whose deletes of
+  subscription recipients go one User at a time."
+  [n]
+  (mt/with-model-cleanup [:model/User]
+    (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
+      (let [rows  (vec (for [_ (range n)] {:email (mt/random-email) :first_name "Bulk" :last_name "User"}))
+            count (fn [thunk] (t2/with-call-count [call-count] (thunk) (call-count)))
+            ids   (atom nil)]
+        {:create     (count #(reset! ids (mapv :id (user/create-users! rows))))
+         :rename     (count #(user/update-users! {:id [:in @ids]} {:first_name "Renamed"}))
+         :join       (count #(perms-group-membership/add-users-to-groups! (for [id @ids] {:user id :group group-id})))
+         :promote    (count #(user/update-users! {:id [:in @ids]} {:is_superuser true}))
+         :demote     (count #(user/update-users! {:id [:in @ids]} {:is_superuser false}))}))))
+
+(deftest bulk-user-writes-run-fixed-statement-counts-test
+  (testing "after a first run that fills the caches"
+    (bulk-write-counts! 1)
+    (is (= (bulk-write-counts! 2) (bulk-write-counts! 6)))))

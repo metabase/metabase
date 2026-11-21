@@ -60,10 +60,11 @@
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
 (mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
+  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`, returning the inserted
+  instances."
   [database-id    :- ::lib.schema.id/database
    user-attribute :- ::database-routing.schema/database-router.user-attribute]
-  (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+  (t2/insert-returning-instances! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
 
 (mu/defn update-router!
   "Apply `changes` to the DatabaseRouter of the Database with `database-id`."

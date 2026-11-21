@@ -41,8 +41,7 @@
 
 (doto :model/PermissionsGroup
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
@@ -250,44 +249,48 @@
                (remove (partial = group-id) val))))))
 
 (mu/defn create-permissions-group! :- ::permissions.schema/permissions-group
-  "Insert the PermissionsGroup `row` with the default permissions on every Database and return it; the name of an
-  existing group is a 400."
+  "Insert the PermissionsGroup `row` with the default permissions on every Database and return it, publishing the event
+  of the write; the name of an existing group is a 400."
   [{group-name :name :as row} :- ::permissions.schema/permissions-group.create]
   (t2/with-transaction [_conn]
     (check-name-not-already-taken group-name)
     (u/prog1 (permissions.db/insert-permissions-group! row)
-      (set-default-permission-values! <>))))
+      (set-default-permission-values! <>)
+      (events/publish-lifecycle! [(events/created :event/group-create [<>])]))))
 
 (mu/defn update-permissions-group!
-  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated; renaming a magic group, or to the
-  name of an existing group, is a 400."
+  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated and publishing the event of the
+  write; renaming a magic group, or to the name of an existing group, is a 400."
   [id      :- ms/PositiveInt
    changes :- ::permissions.schema/permissions-group.update]
   (t2/with-transaction [_conn]
-    (when-let [stored (permissions.db/permissions-group id)]
-      (when (and (contains? changes :name) (not= (:name changes) (:name stored)))
-        (check-not-magic-group stored)
-        (when-let [group-name (:name changes)]
-          (check-name-not-already-taken group-name))))
-    (permissions.db/update-permissions-group! id changes)))
+    (if-let [stored (permissions.db/permissions-group id)]
+      (do
+        (when (and (contains? changes :name) (not= (:name changes) (:name stored)))
+          (check-not-magic-group stored)
+          (when-let [group-name (:name changes)]
+            (check-name-not-already-taken group-name)))
+        (u/prog1 (permissions.db/update-permissions-group! id changes)
+          (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+            (when (seq changed)
+              (events/publish-lifecycle! [(events/updated :event/group-update
+                                                          [stored]
+                                                          [(events/updated-row stored changed)])])))))
+      0)))
 
 (mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id` and drop it from the LDAP group mappings, returning the number deleted;
-  deleting a magic group is a 400."
+  "Delete the PermissionsGroup with `id` and drop it from the LDAP group mappings, returning the number deleted and
+  publishing the event of the write; deleting a magic group is a 400."
   [id :- ms/PositiveInt]
   (t2/with-transaction [_conn]
     (when-let [stored (permissions.db/permissions-group id)]
       (check-not-magic-group stored)
       (remove-from-ldap-group-mappings! id)
-      (permissions.db/delete-permissions-group! id))))
+      (let [event (events/deleted :event/group-delete :model/PermissionsGroup [stored])]
+        (u/prog1 (permissions.db/delete-permissions-group! id)
+          (events/publish-lifecycle! [event]))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/PermissionsGroup
-  [_model]
-  {:create :event/group-create
-   :update :event/group-update
-   :delete :event/group-delete})
 
 (defmethod app-db-copy/spec :model/PermissionsGroup [_model]
   {:skip? false})

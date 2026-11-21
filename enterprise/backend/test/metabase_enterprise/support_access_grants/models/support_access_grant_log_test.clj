@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase-enterprise.support-access-grants.models.support-access-grant-log :as sag-log]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -74,6 +75,11 @@
                     "Support user session should be ended, attributed to the revoker, and its key destroyed")
                 (is (nil? (t2/select-one-fn :ended_at :model/Session :id other-session-id))
                     "Other user session should remain live")
+                (is (false? (t2/select-one-fn :is_superuser :model/User :id support-user-id))
+                    "Support user should no longer be a superuser")
+                (is (not (t2/exists? :model/PermissionsGroupMembership
+                                     :user_id support-user-id :group_id (:id (perms/admin-group))))
+                    "Support user should leave the Administrators group")
                 (is (some? (:expires_at (t2/select-one :model/AuthIdentity
                                                        :user_id support-user-id :provider "password")))
                     "Support user auth identity should have expires_at set")

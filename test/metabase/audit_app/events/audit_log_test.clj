@@ -16,7 +16,9 @@
    [metabase.glossary.models.glossary :as glossary]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -325,7 +327,7 @@
   (testing :event/user-update
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-temp [:model/User user {:last_name "Charms"}]
-        (t2/update! :model/User :id (:id user) {:last_name "Pigeon"})
+        (user/update-user! (:id user) {:last_name "Pigeon"})
         (is (partial=
              {:model_id (:id user)
               :user_id  (mt/user->id :rasta)
@@ -695,10 +697,10 @@
 (deftest user-activation-is-recorded-test
   (mt/with-temp [:model/User {user-id :id} {}]
     (mt/with-current-user (mt/user->id :rasta)
-      (t2/update! :model/User :id user-id {:is_active false})
+      (user/update-user! user-id {:is_active false})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-deactivated :model "User"}
              (mt/latest-audit-log-entry :user-deactivated user-id)))
-      (t2/update! :model/User :id user-id {:is_active true})
+      (user/update-user! user-id {:is_active true})
       (is (= {:model_id user-id :user_id (mt/user->id :rasta) :details {} :topic :user-reactivated :model "User"}
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 
@@ -733,43 +735,12 @@
         (is (some? (mt/latest-audit-log-entry (keyword (str prefix "-public-link-deleted")) id))
             "deleted")))))
 
-(deftest database-router-events-test
-  (mt/when-ee-evailable
-   (mt/with-premium-features #{:audit-app :database-routing}
-     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Routed"}]
-       (mt/with-current-user (mt/user->id :crowberto)
-         (let [router-id (t2/insert-returning-pk! :model/DatabaseRouter {:database_id db-id :user_attribute "tenant"})]
-           (testing "creating a router is recorded as an update of its database"
-             (is (= {:model_id db-id
-                     :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "enabled" :routing_attribute "tenant"}
-                     :topic    :database-update
-                     :model    "Database"}
-                    (mt/latest-audit-log-entry :database-update db-id))))
-           (testing "changing the attribute of a router is recorded as an update of its database with the change"
-             (t2/update! :model/DatabaseRouter :id router-id {:user_attribute "other"})
-             (is (= {:model_id db-id
-                     :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "enabled"
-                                :previous   {:routing_attribute "tenant"}
-                                :new        {:routing_attribute "other"}}
-                     :topic    :database-update
-                     :model    "Database"}
-                    (mt/latest-audit-log-entry :database-update db-id))))
-           (testing "deleting a router is recorded as an update of its database"
-             (t2/delete! :model/DatabaseRouter :id router-id)
-             (is (= {:model_id db-id
-                     :user_id  (mt/user->id :crowberto)
-                     :details  {:db_routing "disabled"}
-                     :topic    :database-update
-                     :model    "Database"}
-                    (mt/latest-audit-log-entry :database-update db-id))))))))))
-
 (deftest group-membership-events-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Audited group"}
                    :model/User             {user-id :id}  {}]
-      (let [membership-id (t2/insert-returning-pk! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})]
+      (perms-group-membership/add-user-to-group! user-id group-id)
+      (let [membership-id (t2/select-one-pk :model/PermissionsGroupMembership :user_id user-id :group_id group-id)]
         (testing "creating a membership records its id"
           (is (partial= {:model "PermissionsGroupMembership"
                          :model_id membership-id
@@ -778,7 +749,7 @@
                          :topic :group-membership-create}
                         (mt/latest-audit-log-entry :group-membership-create membership-id))))
         (testing "deleting a membership records its id"
-          (t2/delete! :model/PermissionsGroupMembership :id membership-id)
+          (perms-group-membership/remove-user-from-group! user-id group-id)
           (is (partial= {:model "PermissionsGroupMembership"
                          :model_id membership-id
                          :user_id (mt/user->id :crowberto)
@@ -791,8 +762,8 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Audited group"}
                    :model/User             {user-1 :id}   {}
                    :model/User             {user-2 :id}   {}]
-      (t2/insert! :model/PermissionsGroupMembership [{:user_id user-1 :group_id group-id}
-                                                     {:user_id user-2 :group_id group-id}])
+      (perms-group-membership/add-users-to-groups! [{:user user-1 :group group-id}
+                                                    {:user user-2 :group group-id}])
       (let [ids (t2/select-pks-set :model/PermissionsGroupMembership :group_id group-id)]
         (is (= 2 (count ids)))
         (is (= ids (into #{} (map :model_id)

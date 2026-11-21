@@ -573,7 +573,21 @@
    :model/NotificationHandler   {:create :event/notification-handler-create
                                  :delete :event/notification-handler-delete}
    :model/NotificationRecipient {:create :event/notification-recipient-create
-                                 :delete :event/notification-recipient-delete}})
+                                 :delete :event/notification-recipient-delete}
+   :model/User                  {:create :event/user-create
+                                 :delete :event/user-delete}
+   :model/PermissionsGroup      {:create :event/group-create
+                                 :delete :event/group-delete}
+   :model/PermissionsGroupMembership {:create :event/group-membership-create
+                                      :delete :event/group-membership-delete}
+   :model/ApiKey                {:create :event/api-key-create
+                                 :delete :event/api-key-delete}
+   :model/Tenant                {:create :event/tenant-create
+                                 :delete :event/tenant-delete}
+   :model/Sandbox               {:create :event/sandbox-create
+                                 :delete :event/sandbox-delete}
+   :model/DatabaseRouter        {:create :event/database-router-create
+                                 :delete :event/database-router-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."
@@ -718,17 +732,18 @@
     (try
       (next-method model explicit-attributes (fn [created]
                                                (vreset! membership created)
-                                               (#'perms-group-membership/set-member-flags! [created] true)
+                                               (events/publish-lifecycle!
+                                                (#'perms-group-membership/set-member-flags [created] true))
                                                (f created)))
       (finally
         (when-let [created @membership]
-          (#'perms-group-membership/set-member-flags! [created] false))))))
+          (events/publish-lifecycle! (#'perms-group-membership/set-member-flags [created] false)))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
   "Puts a temporary User in its default groups, as `create-user!` does."
   [model explicit-attributes f]
   (next-method model explicit-attributes (fn [temp-user]
-                                           (#'user/add-to-default-groups! [temp-user])
+                                           (events/publish-lifecycle! (:events (#'user/add-to-default-groups* [temp-user])))
                                            (f temp-user))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/NativeQuerySnippet

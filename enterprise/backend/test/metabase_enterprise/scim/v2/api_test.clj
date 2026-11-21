@@ -9,6 +9,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.users.access-test-util :as access.tu]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -280,6 +281,27 @@
                 response   (scim-client :patch 404 (format "ee/scim/v2/Users/%s" (random-uuid)) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "User not found" (get response :detail)))))))))
+
+(deftest scim-deactivation-revokes-access-test
+  (with-scim-setup!
+    (doseq [[how deactivate!] {"PUT"   (fn [entity-id email]
+                                         (scim-client :put 200 (format "ee/scim/v2/Users/%s" entity-id)
+                                                      {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                                                       :id       entity-id
+                                                       :userName email
+                                                       :name     {:givenName "Test" :familyName "User"}
+                                                       :emails   [{:value email}]
+                                                       :active   false}))
+                               "PATCH" (fn [entity-id _email]
+                                         (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id)
+                                                      {:schemas    ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                                                       :Operations [{:op "Replace" :value {"active" false}}]}))}]
+      (testing how
+        (mt/with-temp [:model/User {user-id :id email :email} {:first_name "Test" :last_name "User"}]
+          (mt/with-model-cleanup [:model/OAuthAccessToken]
+            (let [access (access.tu/give-access! user-id)]
+              (deactivate! (t2/select-one-fn :entity_id :model/User :id user-id) email)
+              (is (= access.tu/revoked (access.tu/access-state access))))))))))
 
 (deftest patch-user-test-without-path
   (with-scim-setup!

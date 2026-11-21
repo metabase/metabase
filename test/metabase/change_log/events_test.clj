@@ -16,6 +16,7 @@
    [metabase.events.test-util :as events.tu]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.settings :as permissions.settings]
    [metabase.pulse.db :as pulse.db]
@@ -169,7 +170,7 @@
         (testing "a write rolled back takes its log row with it"
           (is (= [] (logged-by #(try
                                   (t2/with-transaction [_conn]
-                                    (t2/update! :model/PermissionsGroup :id (:id group) {:name "rolled back"})
+                                    (perms-group/update-permissions-group! (:id group) {:name "rolled back"})
                                     (throw (ex-info "boom" {})))
                                   (catch Exception _))))))))))
 
@@ -264,7 +265,9 @@
   #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries
     :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient
     :model/Notification :model/NotificationCard :model/NotificationSubscription :model/NotificationHandler
-    :model/NotificationRecipient :model/Channel :model/ChannelTemplate})
+    :model/NotificationRecipient :model/Channel :model/ChannelTemplate
+    :model/User :model/PermissionsGroup :model/PermissionsGroupMembership :model/ApiKey :model/Tenant :model/Sandbox
+    :model/DatabaseRouter})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
@@ -589,28 +592,28 @@
                  (logged-by #(dashboard-tab/do-update-tabs! (:id dash) [tab] []))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
-(defn- call-counts
+(defn- call-counts!
   "The app-DB calls of an insert, an update and a delete of a permissions group."
   []
   (let [id (atom nil)]
     {:insert (t2/with-call-count [calls]
-               (reset! id (t2/insert-returning-pk! :model/PermissionsGroup {:name (str (random-uuid))}))
+               (reset! id (:id (perms-group/create-permissions-group! {:name (str (random-uuid))})))
                (calls))
      :update (t2/with-call-count [calls]
-               (t2/update! :model/PermissionsGroup :id @id {:name (str (random-uuid))})
+               (perms-group/update-permissions-group! @id {:name (str (random-uuid))})
                (calls))
      :delete (t2/with-call-count [calls]
-               (t2/delete! :model/PermissionsGroup :id @id)
+               (perms-group/delete-permissions-group! @id)
                (calls))}))
 
 (deftest call-count-test
   (mt/with-premium-features #{:change-log}
-    (call-counts))
+    (call-counts!))
   (let [off (mt/with-premium-features #{}
-              (call-counts))]
+              (call-counts!))]
     (when config/ee-available?
       (let [on (mt/with-premium-features #{:change-log}
-                 (call-counts))]
+                 (call-counts!))]
         (testing "while the change log is on, an insert and an update run one more query, and a delete runs more"
           (is (= (inc (:insert off)) (:insert on)))
           (is (= (inc (:update off)) (:update on)))
@@ -634,7 +637,7 @@
   (mt/with-temp [:model/PermissionsGroup group {}]
     (mt/with-premium-features #{}
       (testing "without the `:change-log` feature, nothing is logged"
-        (is (= [] (logged-by #(t2/update! :model/PermissionsGroup :id (:id group) {:name "unlicensed"})))))
+        (is (= [] (logged-by #(perms-group/update-permissions-group! (:id group) {:name "unlicensed"})))))
       (testing "while the change log is off, `log-rows!` runs no query"
         (t2/with-call-count [calls]
           (is (nil? (change-log/log-rows! :model/PermissionsGroup :update :id (:id group))))

@@ -158,10 +158,10 @@
   [rows :- [:sequential ::users.schema/user.create]]
   (t2/insert-returning-instances! :model/User rows))
 
-(mu/defn user-ids
-  "The ids of the Users matching `conditions`."
+(mu/defn users
+  "The Users matching `conditions`, with every column of `:core_user`."
   [conditions :- ::users.schema/user.conditions]
-  (apply t2/select-pks-set :model/User (mapcat identity conditions)))
+  (apply t2/select [:model/User :*] (mapcat identity conditions)))
 
 (mu/defn update-users!
   "Apply `changes` to the Users matching `conditions`, returning the number updated."

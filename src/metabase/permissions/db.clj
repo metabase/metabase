@@ -666,12 +666,12 @@
   (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] changes))
 
 (mu/defn insert-group-memberships!
-  "Insert the PermissionsGroupMemberships `memberships` through the model, returning the number of rows inserted."
+  "Insert the PermissionsGroupMemberships `memberships` through the model, returning the inserted instances."
   [memberships :- [:sequential [:map {:closed true}
                                 [:user_id          ::lib.schema.id/user]
                                 [:group_id         ms/PositiveInt]
                                 [:is_group_manager :boolean]]]]
-  (t2/insert! :model/PermissionsGroupMembership memberships))
+  (t2/insert-returning-instances! :model/PermissionsGroupMembership memberships))
 
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."
@@ -705,6 +705,12 @@
   [user-id   :- ::lib.schema.id/user
    group-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
+
+(mu/defn memberships-for-users-in-group
+  "The PermissionsGroupMemberships of the Users with `user-ids` in the PermissionsGroup with `group-id`."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
+   group-id :- ms/PositiveInt]
+  (t2/select :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
 
 (mu/defn memberships-for-group
   "The PermissionsGroupMemberships of the PermissionsGroup with `group-id`."

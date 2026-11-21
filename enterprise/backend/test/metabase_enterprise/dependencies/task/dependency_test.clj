@@ -14,6 +14,7 @@
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
    [metabase-enterprise.dependencies.task.util :as task.util]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.app-db.core :as mdb]
@@ -818,9 +819,9 @@
        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "sandbox group"}
                       :model/Card {card1-id :id} {}
                       :model/Card {card2-id :id} {}
-                      :model/Sandbox {sandbox-id :id :as sandbox} {:group_id group-id
-                                                                   :table_id (mt/id :products)
-                                                                   :card_id card1-id}]
+                      :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                       :table_id (mt/id :products)
+                                                       :card_id card1-id}]
          (assert-pending :sandbox sandbox-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
@@ -829,7 +830,7 @@
                     :to_entity_id card1-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (t2/update! :model/Sandbox :id sandbox-id (assoc sandbox :card_id card2-id))
+         (sandbox/update-sandbox! sandbox-id {:card_id card2-id})
          (deps.test/synchronously-run-dependency-job!)
          (is (=? #{{:from_entity_type :sandbox
                     :from_entity_id sandbox-id
@@ -837,7 +838,7 @@
                     :to_entity_id card2-id}}
                  (into #{} (map #(dissoc % :id)
                                 (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-         (t2/delete! :model/Sandbox :id sandbox-id)
+         (sandbox/delete-sandbox! sandbox-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))
 

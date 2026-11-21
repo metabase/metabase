@@ -96,10 +96,10 @@
    changes    :- ::sandbox.schema/sandbox.update]
   (t2/update! :model/Sandbox :id sandbox-id changes))
 
-(mu/defn delete-sandbox!
-  "Delete the Sandbox with `sandbox-id`, returning the number deleted."
-  [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/delete! :model/Sandbox :id sandbox-id))
+(mu/defn sandboxes-by-ids
+  "The Sandboxes with `sandbox-ids`."
+  [sandbox-ids :- [:set {:min 1} ::lib.schema.id/sandbox]]
+  (t2/select :model/Sandbox :id [:in sandbox-ids]))
 
 (mu/defn delete-sandboxes!
   "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."

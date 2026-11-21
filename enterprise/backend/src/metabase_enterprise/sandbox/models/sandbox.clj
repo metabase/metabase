@@ -45,8 +45,7 @@
   (derive :metabase/model)
   ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser)
-  (derive :hook/events))
+  (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/Sandbox
   {:attribute_remappings sandbox.schema/attribute-remappings-transform})
@@ -300,34 +299,46 @@
       (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
 
 (mu/defn create-sandbox! :- ::sandbox.schema/sandbox
-  "Insert `sandbox` and return it. A Card whose columns do not match the Table is a 400, and the group loses native
-  query access to the Database of the Table where it has it."
+  "Insert `sandbox` and return it, publishing the event of the write. A Card whose columns do not match the Table is a
+  400, and the group loses native query access to the Database of the Table where it has it."
   [sandbox :- ::sandbox.schema/sandbox.create]
   (t2/with-transaction [_conn]
     (check-columns-match-table sandbox)
     (remove-native-access! sandbox)
-    (sandbox.db/insert-sandbox! sandbox)))
+    (u/prog1 (sandbox.db/insert-sandbox! sandbox)
+      (events/publish-lifecycle! [(events/created :event/sandbox-create [<>])]))))
 
 (mu/defn update-sandbox! :- [:maybe ::sandbox.schema/sandbox]
-  "Apply `changes` to the Sandbox with `sandbox-id` and return it, or nil when no Sandbox has `sandbox-id`. A new Card
-  whose columns do not match the Table is a 400."
+  "Apply `changes` to the Sandbox with `sandbox-id` and return it, or nil when no Sandbox has `sandbox-id`, publishing
+  the event of the write. A new Card whose columns do not match the Table is a 400."
   [sandbox-id :- ::lib.schema.id/sandbox
    changes    :- ::sandbox.schema/sandbox.update]
-  (when-let [stored (sandbox.db/sandbox sandbox-id)]
-    (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id stored)))
-      (check-columns-match-table (merge stored changes)))
-    (sandbox.db/update-sandbox! sandbox-id changes)
-    (sandbox.db/sandbox sandbox-id)))
-
-(mu/defn delete-sandbox!
-  "Delete the Sandbox with `sandbox-id`, returning the number deleted."
-  [sandbox-id :- ::lib.schema.id/sandbox]
-  (sandbox.db/delete-sandbox! sandbox-id))
+  (t2/with-transaction [_conn]
+    (when-let [stored (sandbox.db/sandbox sandbox-id)]
+      (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id stored)))
+        (check-columns-match-table (merge stored changes)))
+      (sandbox.db/update-sandbox! sandbox-id changes)
+      (u/prog1 (sandbox.db/sandbox sandbox-id)
+        (when (some (fn [[k v]] (not= v (get stored k))) changes)
+          (events/publish-lifecycle! [(events/updated :event/sandbox-update [stored] [<>])]))))))
 
 (mu/defn delete-sandboxes!
-  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
+  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted and publishing the event of the write."
   [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
-  (sandbox.db/delete-sandboxes! sandbox-ids))
+  (if (empty? sandbox-ids)
+    0
+    (t2/with-transaction [_conn]
+      (let [sandboxes (sandbox.db/sandboxes-by-ids sandbox-ids)]
+        (if (empty? sandboxes)
+          0
+          (let [event (events/deleted :event/sandbox-delete :model/Sandbox sandboxes)]
+            (u/prog1 (sandbox.db/delete-sandboxes! (into #{} (map :id) sandboxes))
+              (events/publish-lifecycle! [event]))))))))
+
+(mu/defn delete-sandbox!
+  "Delete the Sandbox with `sandbox-id`, returning the number deleted, as [[delete-sandboxes!]] does."
+  [sandbox-id :- ::lib.schema.id/sandbox]
+  (delete-sandboxes! #{sandbox-id}))
 
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
@@ -346,12 +357,6 @@
        (create-sandbox! sandbox)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Sandbox
-  [_model]
-  {:create :event/sandbox-create
-   :update :event/sandbox-update
-   :delete :event/sandbox-delete})
 
 (defmethod app-db-copy/spec :model/Sandbox [_model]
   {:skip?    false
