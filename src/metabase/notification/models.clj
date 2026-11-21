@@ -630,7 +630,7 @@
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs [[:payload       {:model        :model/NotificationCard
-                                   :compare-cols [:send_condition :send_once]
+                                   :compare-cols [:card_id :send_condition :send_once]
                                    :extra-cols   []}]
                   [:subscriptions {:model        :model/NotificationSubscription
                                    :fk-column    :notification_id

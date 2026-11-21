@@ -121,9 +121,9 @@
   "Throws a 409 when another Channel already has the name of `channel`."
   [{channel-name :name, channel-id :id}]
   (when (channel.db/other-channel-named? channel-name channel-id)
-    (throw (ex-info "Channel with that name already exists"
+    (throw (ex-info (tru "Channel with that name already exists")
                     {:status-code 409
-                     :errors      {:name "Channel with that name already exists"}}))))
+                     :errors      {:name (tru "Channel with that name already exists")}}))))
 
 (t2/define-before-insert :model/Channel
   [channel]

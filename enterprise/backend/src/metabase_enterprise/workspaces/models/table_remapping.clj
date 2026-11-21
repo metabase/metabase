@@ -18,6 +18,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.cache.core :as cache]
+   [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -100,6 +101,8 @@
   #{:database_id :from_db :from_schema :from_table_name :to_db :to_schema :to_table_name})
 
 (t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
+(mi/define-update-in-transaction :model/TableRemapping)
+
 (t2/define-before-update :model/TableRemapping
   [row]
   (let [changes (t2/changes row)]

@@ -144,6 +144,8 @@
   (mirror-to-table! settings (mirrored-columns settings user-settings/user-settable-table-columns))
   (delete-when-empty! settings))
 
+(mi/define-update-in-transaction :model/TableUserSettings)
+
 (t2/define-before-update :model/TableUserSettings
   [settings]
   (let [settings (completed-settings settings (t2/changes settings))]
@@ -171,8 +173,8 @@
            id (fn [existing] (cond-> settings existing (with-set-flags settings settings)))))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
-  "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
-  the rows."
+  "[[upsert-table-user-settings!]] for every Table in `table-ids`, in one batch of events; the settings hooks then write
+  each Table from its settings row."
   [table-ids :- [:set ::lib.schema.id/table]
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]

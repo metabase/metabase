@@ -20,11 +20,6 @@
     (and (contains? terminal-statuses (keyword (:status changes)))
          (not (contains? changes :end_time)))))
 
-(defn ended?
-  "Whether `status` is a terminal run status."
-  [status]
-  (contains? terminal-statuses (keyword status)))
-
 (defn derive-is-active
   "Set `is_active` on `run` from its status: true while the run is not terminal, nil once it ended."
   [run]

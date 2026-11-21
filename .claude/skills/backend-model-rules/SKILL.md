@@ -55,7 +55,10 @@ that needs the row as stored.
 
 - Checks first, a flat list of `(when ...)` throwing `(ex-info (tru "...") {:status-code 400})`; then derivations;
   then cascades, which see the derived values; return the row. A key `assoc`ed onto the returned row is written. A
-  hook never checks what the incoming row alone answers (length, enum, format, agreeing columns): the schema does.
+  hook never restates what the incoming row alone answers (length, enum, format, agreeing columns): the schema defines
+  it. A plain `t2/insert!` or `t2/update!` runs no schema, so where such a rule must hold for every writer the hook
+  calls the schema's own check (CacheConfig's hooks call `cache.schema/check-target` and `check-strategy`): one
+  definition in the schema, enforced by the request, the SerDes spec and the hook.
 - `before-update` receives the stored row with the changes merged in. `(t2/changes row)` holds only columns whose
   value differs from the stored one, and `(t2/original row)` the stored row as `after-select` returned it. Run a
   check only when a column it guards is in the changes; never validate a stored combination the write does not touch.
@@ -67,8 +70,9 @@ that needs the row as stored.
 - `before-insert` fills column defaults (constants, or values derived from the row). A hook never normalizes input: a
   `t2/deftransforms` column transform may, the entry points and the SerDes schema do. A default that depends on the
   user (owner = creator) is the entry point's.
-- A hook computes derived columns and throws on an invalid combination of the caller's columns. It never silently
-  changes one caller column to fix another.
+- A hook computes derived columns and throws on an invalid combination of the caller's columns, through the schema's
+  check when the row alone answers it and with its own check when it needs the stored row or the database. It never
+  silently changes one caller column to fix another.
 - Toucan's `before-update` and `before-delete` each add a SELECT per call. That cost is normally fine.
 - Hold an invariant whatever the premium token says: a `defenterprise` function a hook calls is `:feature :none`.
 - A hook may read another row through a `<module>.db` function. It sees stored rows, not those of its own statement,

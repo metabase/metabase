@@ -85,6 +85,8 @@
   (mirror-to-field! settings (mirrored-columns settings user-settings/user-settable-field-columns))
   (delete-when-empty! settings))
 
+(mi/define-update-in-transaction :model/FieldUserSettings)
+
 (t2/define-before-update :model/FieldUserSettings
   [settings]
   (let [changes  (t2/changes settings)
