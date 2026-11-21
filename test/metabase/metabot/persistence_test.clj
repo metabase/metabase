@@ -94,6 +94,14 @@
              (select-keys part [:role :type :message])))
       (is (string? (:id part))))))
 
+(deftest ^:parallel messages->client-messages-context-part-test
+  (testing "the stored <context> block is what the model read, so the chat does not show it"
+    (is (= ["hi there"]
+           (part-messages (client-message {:role :assistant
+                                           :data [{:type "data-context"
+                                                   :data {:block "<context>\nCurrent date: x\n</context>\n" :full true}}
+                                                  {:type "text" :text "hi there"}]}))))))
+
 (deftest ^:parallel messages->client-messages-resolved-tool-part-test
   (testing "resolved tool part carries args and result"
     (let [[part] (:parts (client-message
@@ -1439,6 +1447,46 @@
                 {:role :user :content "second"}
                 {:role :assistant :content "reply two"}]
                (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))
+
+(deftest history-replays-the-context-block-test
+  (testing "a user message replays with the <context> block the agent sent before it, so the bytes do not change"
+    (with-rasta-tx
+      (let [conversation-id (str (random-uuid))
+            block           "<context>\n\nCurrent date: 2026-10-20T12:00:00Z\n</context>\n\n"
+            assistant-id    (seed-turn! conversation-id "first" [{:type :text :text "reply one"}]
+                                        :context-block block :full-context? true)]
+        (seed-turn! conversation-id "second" [{:type :text :text "reply two"}])
+        (is (= [{:type "data-context" :data {:block block :full true}}
+                {:type "text" :text "reply one" :state "done"}]
+               (:data (t2/select-one :model/MetabotMessage assistant-id)))
+            "the block is stored first in the assistant row")
+        (is (= [{:role :user :content (str block "first")}
+                {:role :assistant :content "reply one"}
+                {:role :user :content "second"}
+                {:role :assistant :content "reply two"}]
+               (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))
+            "a turn stored without a block replays its text alone")))))
+
+(deftest replays-full-context-test
+  (with-rasta-tx
+    (let [replays? (fn [& turns]
+                     (let [conversation-id (str (random-uuid))]
+                       (doseq [finalize-opts turns]
+                         (apply seed-turn! conversation-id "hi" [{:type :text :text "hello"}] finalize-opts))
+                       (metabot-persistence/replays-full-context?
+                        (metabot-persistence/live-messages conversation-id))))
+          full     [:context-block "<context>\n\nCurrent date: x\n</context>\n" :full-context? true]
+          viewing  [:context-block "<context>\n\nThe user is in the SQL editor.\n</context>\n" :full-context? false]]
+      (testing "a new conversation, and one whose turns were stored with no block, replay no full block"
+        (is (false? (replays?)))
+        (is (false? (replays? []))))
+      (testing "a turn that sent the full block replays it, whatever later turns sent"
+        (is (true? (replays? full)))
+        (is (true? (replays? full viewing))))
+      (testing "blocks of only what the user viewed are not the full block"
+        (is (false? (replays? [] viewing))))
+      (testing "a failed turn is not replayed, so its full block is not either"
+        (is (false? (replays? (into full [:error {:message "boom"}]))))))))
 
 (deftest history-tool-call-conversion-test
   (testing "text and tool parts interleave; tool calls become an assistant call + tool result pair"

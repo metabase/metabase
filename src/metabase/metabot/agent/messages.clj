@@ -6,6 +6,7 @@
   is responsible for converting these parts into its own wire format (Claude
   messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
@@ -151,17 +152,60 @@
   [steps]
   (into [] (mapcat step->parts) steps))
 
+(defn- later-turn-context
+  "The template variables of a later turn's `<context>` block: the current time and what the user is viewing."
+  [context]
+  ;; The history replays the block of each earlier turn, and that block can name an item that the user no longer
+  ;; views. So this block always says something about what the user views now, also when it cannot describe the item:
+  ;; the formatted text is blank when every item fails to format or the user cannot read it.
+  (let [viewing-text (when (seq (:user_is_viewing context))
+                       (user-context/format-viewing-context context))]
+    (assoc (user-context/time-context context)
+           :viewing_context
+           (cond
+             (empty? (:user_is_viewing context)) "The user is not looking at any item now."
+             (str/blank? viewing-text)           "The user is looking at an item that cannot be described now."
+             :else                               viewing-text))))
+
+(defn render-context-block
+  "The `<context>` block for the most recent input message, rendered from `context`, as `{:block <block> :full?
+  <whether it holds all of the context>}`, or nil when that message is not the user's. The agent renders it once per
+  turn and keeps it in memory (see [[memory/set-context-block]]).
+
+  When `full?` is true (the default), the block holds all of the context: the current time, the user and the
+  glossary, what the user is viewing, and the recent views. It reads the app DB. The result is `:full?` only when the
+  block holds the user information.
+
+  When `full?` is false, the block holds only the date lines (see [[user-context/time-context]]) and what the user is
+  viewing. When the user views no item, or no viewed item can be described, it says so.
+
+  Only the web chat stores and replays the block. It sends a full block on each turn where
+  `metabase.metabot.persistence/replays-full-context?` is false, for example on the first turn of a conversation.
+  Slack Metabot sends a full block on every turn."
+  ([context memory]
+   (render-context-block context memory true))
+  ([context memory full?]
+   (when (= :user (:role (last (memory/get-input-messages memory))))
+     ;; The history replays the full block of an earlier turn, and the rest of the context does not change
+     ;; materially from turn to turn. So a later turn sends less. A full block without the user information does not
+     ;; count as full, so that the next turn sends one again.
+     (if full?
+       (let [template-context (user-context/enrich-context-for-template context)]
+         {:block (prompts/context-injection template-context)
+          :full? (some? (:current_user_info template-context))})
+       {:block (prompts/context-injection (later-turn-context context))
+        :full? false}))))
+
 (defn- messages-with-injected-context
-  "Returns messages from memory and injects context into the most recent one."
+  "Returns messages from memory with the turn's `<context>` block put before the most recent one. The block is the
+  one memory keeps, or one rendered from `context` when memory keeps none."
   [context memory]
-  (let [all-messages (memory/get-input-messages memory)
-        [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
-    (if-not (and (= :user (-> most-recent-message :role))
-                 (< 0 (count all-messages)))
-      all-messages
-      (let [enriched-context (user-context/enrich-context-for-template context)]
-        (conj (vec input-messages)
-              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+  (let [all-messages (vec (memory/get-input-messages memory))
+        block        (if (memory/context-block-rendered? memory)
+                       (memory/context-block memory)
+                       (:block (render-context-block context memory)))]
+    (cond-> all-messages
+      block (update (dec (count all-messages)) update :content #(str block %)))))
 
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
