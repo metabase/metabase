@@ -24,6 +24,7 @@ import {
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
+  type SegmentTest,
   type Session,
   type SnippetDependencyNode,
   type SourceReplacementRun,
@@ -61,6 +62,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "session",
   "transform-test",
   "card-test",
+  "segment-test",
   "data-test-run",
 ] as const;
 
@@ -329,6 +331,18 @@ export function provideCardTestListTags(
   tests: CardTest[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("card-test"), ...tests.flatMap(provideCardTestTags)];
+}
+
+export function provideSegmentTestTags(
+  test: SegmentTest,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("segment-test", test.id)];
+}
+
+export function provideSegmentTestListTags(
+  tests: SegmentTest[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("segment-test"), ...tests.flatMap(provideSegmentTestTags)];
 }
 
 export function provideDataTestRunTags(

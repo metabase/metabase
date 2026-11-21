@@ -1,7 +1,7 @@
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { UserId, UserInfo } from "./user";
 
-export type DataTestType = "transform" | "card";
+export type DataTestType = "transform" | "card" | "segment";
 export type DataTestId = number;
 export type DataTestRunId = number;
 

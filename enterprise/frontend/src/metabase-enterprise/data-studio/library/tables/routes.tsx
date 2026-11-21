@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 /**
@@ -119,6 +119,7 @@ export function getDataStudioTableRoutes(IsAdmin: ComponentType) {
           <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
         </Route>
       )}
+      {PLUGIN_DATA_TESTING.getPublishedTableSegmentTestRoutes()}
       <Route path=":tableId/measures" lazy={tableMeasuresPage} />
       <Route path=":tableId/measures/new" element={<IsAdmin />}>
         <Route index lazy={newMeasurePage} />

@@ -12,6 +12,8 @@ type DataModelBreadcrumbsProps = {
   entityName: string | undefined;
   newEntityLabel: string;
   tableListUrl: string;
+  entityUrl?: string;
+  entityChildName?: string;
 };
 
 export function DataModelBreadcrumbs({
@@ -19,6 +21,8 @@ export function DataModelBreadcrumbs({
   entityName,
   newEntityLabel,
   tableListUrl,
+  entityUrl,
+  entityChildName,
 }: DataModelBreadcrumbsProps) {
   const { data: schemas, isLoading } = useListDatabaseSchemasQuery(
     table.db_id ? { id: table.db_id } : skipToken,
@@ -47,7 +51,12 @@ export function DataModelBreadcrumbs({
       <Link to={tableListUrl}>
         <Ellipsified>{table.display_name}</Ellipsified>
       </Link>
-      <span>{entityName ?? newEntityLabel}</span>
+      {entityUrl != null ? (
+        <Link to={entityUrl}>{entityName ?? newEntityLabel}</Link>
+      ) : (
+        <span>{entityName ?? newEntityLabel}</span>
+      )}
+      {entityChildName != null && <span>{entityChildName}</span>}
     </DataStudioBreadcrumbs>
   );
 }
