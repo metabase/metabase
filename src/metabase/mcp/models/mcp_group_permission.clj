@@ -25,7 +25,8 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser)
   (derive ::mi/create-policy.superuser)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/no-statements))
 
 (t2/deftransforms :model/McpGroupPermission
   {:tool_access mi/transform-json-no-keywordization})
@@ -41,33 +42,33 @@
     (doseq [tool-name (keys tool-access)]
       (api/check-400 (or (known tool-name) (stored tool-name)) (tru "Unknown MCP tool: {0}" tool-name)))))
 
-(defn- check-one-mode
-  "Throw a 400 when a row for the group with `group-id` would sit beside rows of the other permission mode: All Users
-  and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
-  mode."
-  [group-id]
-  (when-not (= (u/the-id (perms/admin-group)) group-id)
-    (let [advanced? (not-any? #{group-id} (usage-controls/simple-mode-group-ids))]
-      (api/check-400 (not (mcp.db/group-permission-exists?
-                           [:not (usage-controls/visible-groups-clause :group_id advanced?)]))
-                     (if advanced?
-                       (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
-                       (tru "All Users can''t have an MCP policy while groups have their own"))))))
-
 (t2/define-before-insert :model/McpGroupPermission
-  [{:keys [group_id tool_access] :as row}]
+  [{:keys [tool_access] :as row}]
   (check-tool-access tool_access #{})
-  (check-one-mode group_id)
   row)
 
 (t2/define-before-update :model/McpGroupPermission
   [row]
   (let [changes (t2/changes row)]
     (when (contains? changes :tool_access)
-      (check-tool-access (:tool_access changes) (set (keys (:tool_access (t2/original row))))))
-    (when (contains? changes :group_id)
-      (check-one-mode (:group_id changes))))
+      (check-tool-access (:tool_access changes) (set (keys (:tool_access (t2/original row)))))))
   row)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn check-one-mode
+  "Throw a 400 when rows for the groups with `group-ids` would sit beside rows of the other permission mode: All Users
+  and All tenant users have rows only in simple mode, every group but them and Administrators only in group-level
+  mode."
+  [group-ids]
+  (let [simple-ids (set (usage-controls/simple-mode-group-ids))
+        admin-id   (u/the-id (perms/admin-group))]
+    (doseq [[advanced? [group-id]] (group-by #(not (contains? simple-ids %)) (remove #{admin-id} group-ids))]
+      (api/check-400 (not (mcp.db/group-permission-exists?
+                           [:not (usage-controls/visible-groups-clause :group_id advanced?)]))
+                     (if advanced?
+                       (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
+                       (tru "All Users can''t have an MCP policy while groups have their own"))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

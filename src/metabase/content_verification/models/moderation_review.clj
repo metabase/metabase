@@ -38,6 +38,7 @@
   (derive :metabase/model)
   (derive :hook/timestamped?)
   (derive :hook/events)
+  (derive :hook/no-statements)
   (derive :search/indexed))
 
 (t2/deftransforms :model/ModerationReview
@@ -45,26 +46,10 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- delete-extra-reviews!
-  "Delete the reviews of the item with `item-id` and `item-type` beyond the newest `max-moderation-reviews`."
-  [item-id item-type]
-  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
-        ;; not want to give. The offset is only 10 though so its not a huge savings.
-        ids (into #{} (comp (map :id)
-                            (drop max-moderation-reviews))
-                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
-    (when (seq ids)
-      (content-verification.db/delete-moderation-reviews! ids))))
-
 (t2/define-before-insert :model/ModerationReview
   [review]
-  (assoc review :most_recent true))
-
-(t2/define-after-insert :model/ModerationReview
-  [{:keys [id moderated_item_id moderated_item_type] :as review}]
-  (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
-  (delete-extra-reviews! moderated_item_id (name moderated_item_type))
-  review)
+  (cond-> review
+    (nil? (:most_recent review)) (assoc :most_recent true)))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -96,8 +81,20 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(defn- delete-extra-reviews!
+  "Delete the reviews of the item with `item-id` and `item-type` beyond the newest `max-moderation-reviews`."
+  [item-id item-type]
+  (let [;; cannot put the offset in this query as mysql doesn't play nice. It requires a limit as well which we do
+        ;; not want to give. The offset is only 10 though so its not a huge savings.
+        ids (into #{} (comp (map :id)
+                            (drop max-moderation-reviews))
+                  (content-verification.db/moderation-review-ids-for-item item-id item-type))]
+    (when (seq ids)
+      (content-verification.db/delete-moderation-reviews! ids))))
+
 (mu/defn create-review!
-  "Create a new ModerationReview, which its hooks mark as the most recent of its item."
+  "Create a new ModerationReview as the most recent of its item: the item's other reviews lose the mark, and those
+  beyond the newest [[max-moderation-reviews]] are deleted."
   [params :-
    [:map {:closed true}
     [:moderated_item_id       ms/PositiveInt]
@@ -105,7 +102,12 @@
     [:moderator_id            ms/PositiveInt]
     [:status              {:optional true} Statuses]
     [:text                {:optional true} [:maybe :string]]]]
-  (content-verification.db/insert-moderation-review! params))
+  (t2/with-transaction [_conn]
+    (let [{:keys [id moderated_item_id moderated_item_type] :as review}
+          (content-verification.db/insert-moderation-review! params)]
+      (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
+      (delete-extra-reviews! moderated_item_id (name moderated_item_type))
+      review)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

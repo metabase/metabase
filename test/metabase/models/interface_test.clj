@@ -250,3 +250,26 @@
 (deftest ^:parallel ->integer-test
   (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
     (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))
+
+;;; ---------------------------------------- :hook/no-statements ----------------------------------------
+
+(derive ::statement-in-hook-review :model/ModerationReview)
+
+(t2/define-before-insert ::statement-in-hook-review
+  [review]
+  (t2/count :model/ModerationReview)
+  review)
+
+(deftest no-statements-hook-refuses-statement-test
+  (testing "hook of model deriving :hook/no-statements that runs statement throws"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"ran a statement"
+                          (t2/insert! ::statement-in-hook-review {:moderated_item_type "card"
+                                                                  :moderated_item_id   1
+                                                                  :moderator_id        (mt/user->id :crowberto)}))))
+  (testing "hook that runs none writes the row"
+    (mt/with-temp [:model/Card card {}]
+      (mt/with-model-cleanup [:model/ModerationReview]
+        (is (=? {:most_recent true}
+                (t2/insert-returning-instance! :model/ModerationReview {:moderated_item_type "card"
+                                                                        :moderated_item_id   (:id card)
+                                                                        :moderator_id        (mt/user->id :crowberto)})))))))

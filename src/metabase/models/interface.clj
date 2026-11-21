@@ -16,6 +16,7 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.events.batch :as events.batch]
    ;; Toucan out-transforms normalize stored legacy MBQL on read; needed until the app db is MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -43,6 +44,7 @@
    [toucan2.protocols :as t2.protocols]
    [toucan2.realize :as t2.realize]
    [toucan2.tools.after :as t2.after]
+   [toucan2.tools.before-delete :as t2.before-delete]
    [toucan2.tools.before-insert :as t2.before-insert]
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.tools.hydrate :as t2.hydrate]
@@ -553,6 +555,45 @@
     (methodical/prefer-method! #'t2.before-insert/before-insert hook trait))
   (doseq [hook [:hook/timestamped? :hook/updated-at-timestamped?]]
     (methodical/prefer-method! #'t2.before-update/before-update hook trait)))
+
+;;; `:hook/no-statements`: the hooks of a model that derives it run no app-DB statement.
+
+;; the hook and the statement it must not run share only the call stack
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *no-statements-hook-model*
+  "The model deriving `:hook/no-statements` whose hook is running, or nil."
+  nil)
+
+(methodical/defmethod t2.before-insert/before-insert :around :hook/no-statements
+  [model row]
+  (binding [*no-statements-hook-model* model]
+    (next-method model row)))
+
+(methodical/defmethod t2.before-update/before-update :around :hook/no-statements
+  [model row]
+  (binding [*no-statements-hook-model* model]
+    (next-method model row)))
+
+(methodical/defmethod t2.before-delete/before-delete :around :hook/no-statements
+  [model row]
+  (binding [*no-statements-hook-model* model]
+    (next-method model row)))
+
+(methodical/defmethod t2.after/each-row-fn :around [:default :hook/no-statements]
+  [query-type model]
+  (let [row-fn (next-method query-type model)]
+    (fn [row]
+      (binding [*no-statements-hook-model* model]
+        (row-fn row)))))
+
+(when-not config/is-prod?
+  (methodical/defmethod t2.pipeline/transduce-query :around [:default :default :default]
+    [rf query-type model parsed-args resolved-query]
+    (when-let [hook-model *no-statements-hook-model*]
+      (throw (ex-info (format "A hook of %s ran a statement on %s. Its hooks may run none: move it to the function that writes the model."
+                              hook-model (or model "the app DB"))
+                      {:hook-model hook-model, :query-type query-type, :model model})))
+    (next-method rf query-type model parsed-args resolved-query)))
 
 ;; --- helper fns
 (defn changes-with-pk

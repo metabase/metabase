@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.dag-run :as transforms.dag-run]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
@@ -400,44 +401,32 @@
             (is (= 2 (:total result)))))))))
 
 (defn- started-run-attributes
-  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`, with
-  snapshot values the insert hooks replace."
+  "The attributes of a started run of each run model, linked to the Transform `transform-id` and the job `job-id`."
   [transform-id job-id]
   {:model/TransformRun    {:transform_id        transform-id
-                           :transform_name      "ignored"
-                           :transform_entity_id "ignored"
                            :status              "started"
                            :run_method          "manual"
                            :is_active           true}
    :model/TransformJobRun {:job_id        job-id
-                           :job_name      "ignored"
-                           :job_entity_id "ignored"
                            :status        "started"
                            :run_method    "cron"
                            :start_time    #t "2025-09-01T10:00:00Z"
                            :is_active     true}
    :model/TransformDagRun {:source_transform_id        transform-id
-                           :source_transform_name      "ignored"
-                           :source_transform_entity_id "ignored"
                            :direction                  :downstream
                            :transform_count            1
                            :status                     :started
                            :start_time                 #t "2025-09-01T10:00:00Z"
                            :is_active                  true}})
 
-(deftest run-snapshot-columns-are-derived-on-insert-test
+(deftest started-runs-store-snapshot-columns-test
   (mt/with-temp [:model/Transform    {transform-id :id transform-name :name transform-entity-id :entity_id} {}
                  :model/TransformJob {job-id :id job-name :name job-entity-id :entity_id} {:name "Snapshot Job"}]
-    (let [attributes (started-run-attributes transform-id job-id)]
-      (mt/with-temp [:model/TransformRun    run     (:model/TransformRun attributes)
-                     :model/TransformJobRun job-run (:model/TransformJobRun attributes)
-                     :model/TransformDagRun dag-run (:model/TransformDagRun attributes)]
-        (is (=? {:transform_name transform-name, :transform_entity_id transform-entity-id}
-                (t2/select-one :model/TransformRun :id (:id run))))
-        (is (=? {:job_name job-name, :job_entity_id job-entity-id}
-                (t2/select-one :model/TransformJobRun :id (:id job-run))))
-        (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
-                (t2/select-one :model/TransformDagRun :id (:id dag-run))))))))
+    (mt/with-model-cleanup [:model/TransformJobRun :model/TransformDagRun]
+      (is (=? {:job_name job-name, :job_entity_id job-entity-id}
+              (transforms.job-run/start-run! job-id :manual)))
+      (is (=? {:source_transform_name transform-name, :source_transform_entity_id transform-entity-id}
+              (transforms.dag-run/start-dag-run! transform-id :downstream nil 1))))))
 
 (deftest runs-get-end-time-when-they-end-test
   (mt/with-temp [:model/Transform    {transform-id :id} {}

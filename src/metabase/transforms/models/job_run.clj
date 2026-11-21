@@ -18,7 +18,8 @@
 
 (doto :model/TransformJobRun
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/no-statements))
 
 (t2/define-before-update :model/TransformJobRun
   [run]
@@ -29,12 +30,6 @@
   {:status mi/transform-keyword
    :run_method mi/transform-keyword})
 
-(t2/define-before-insert :model/TransformJobRun
-  [{:keys [job_id] :as run}]
-  (if-let [job (some-> job_id transforms.db/job-snapshot)]
-    (assoc run :job_name (some-> (:name job) str) :job_entity_id (:entity_id job))
-    run))
-
 (mu/defn latest-runs :- [:maybe [:vector ::transforms.schema/transform-job-run]]
   "Return the latest runs for `job-ids`."
   [job-ids :- [:set ms/PositiveInt]]
@@ -43,14 +38,17 @@
           (transforms.db/latest-job-runs-reducible job-ids))))
 
 (mu/defn start-run! :- ::transforms.schema/transform-job-run
-  "Start a run, whose insert hook snapshots the job's name and entity_id so that the run stays displayable after the job
-  is deleted, since `transform_job_run.job_id` has no FK."
+  "Start a run, storing the job's name and entity_id with it so that the run stays displayable after the job is deleted,
+  since `transform_job_run.job_id` has no FK."
   ([job-id     :- ms/PositiveInt
     run-method :- [:enum :manual :cron]]
-   (transforms.db/insert-job-run! {:job_id     job-id
-                                   :run_method run-method
-                                   :status     :started
-                                   :is_active  true})))
+   (let [job (transforms.db/job-snapshot job-id)]
+     (transforms.db/insert-job-run! (cond-> {:job_id     job-id
+                                             :run_method run-method
+                                             :status     :started
+                                             :is_active  true}
+                                      job (assoc :job_name      (some-> (:name job) str)
+                                                 :job_entity_id (:entity_id job)))))))
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
   "Time out active job runs whose `last_heartbeat` is older than `stale-minutes` (their coordinator

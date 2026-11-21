@@ -27,18 +27,18 @@
     (is (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type :card}))
     (is (not (mr/validate ::content-verification.schema/moderation-review.update {:moderated_item_type "table"})))))
 
-(deftest insert-keeps-single-most-recent-review-test
+(deftest create-review-keeps-single-most-recent-review-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (mt/with-model-cleanup [:model/ModerationReview]
-      (let [first-id  (t2/insert-returning-pk! :model/ModerationReview (review card-id :most_recent false))
-            second-id (t2/insert-returning-pk! :model/ModerationReview (review card-id :text "newer"))]
+      (let [first-id  (:id (moderation-review/create-review! (review card-id)))
+            second-id (:id (moderation-review/create-review! (review card-id :text "newer")))]
         (is (= {first-id false, second-id true}
                (t2/select-pk->fn :most_recent :model/ModerationReview :moderated_item_id card-id)))))))
 
-(deftest insert-keeps-newest-reviews-only-test
+(deftest create-review-keeps-newest-reviews-only-test
   (mt/with-temp [:model/Card {card-id :id} {}]
     (mt/with-model-cleanup [:model/ModerationReview]
       (let [ids (vec (for [i (range (+ 3 moderation-review/max-moderation-reviews))]
-                       (t2/insert-returning-pk! :model/ModerationReview (review card-id :text (str "review " i)))))]
+                       (:id (moderation-review/create-review! (review card-id :text (str "review " i))))))]
         (is (= (set (take-last moderation-review/max-moderation-reviews ids))
                (t2/select-pks-set :model/ModerationReview :moderated_item_id card-id)))))))

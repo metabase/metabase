@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.mcp.models.mcp-group-permission :as mcp-group-permission]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.v2.api :as mcp.v2.api]
    [metabase.models.interface :as mi]
@@ -107,6 +108,7 @@
     (check-writable permissions)
     (check-visible-groups permissions)
     (t2/with-transaction [_conn]
+      (mcp-group-permission/check-one-mode (map :group_id permissions))
       (doseq [{:keys [group_id] :as permission} permissions]
         (mcp.db/upsert-group-permission! group_id (select-keys permission [:mcp_enabled :tool_access])))))
   (permissions-response))
@@ -120,6 +122,7 @@
     (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
       (mcp.db/delete-hidden-group-permissions! advanced?)
+      (mcp-group-permission/check-one-mode (mcp.db/seeded-group-ids advanced?))
       (doseq [group-id (mcp.db/seeded-group-ids advanced?)]
         (mcp.db/insert-group-permission-unless-exists! group-id seeded-permission)))))
 
