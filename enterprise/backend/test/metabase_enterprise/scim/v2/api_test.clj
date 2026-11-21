@@ -5,6 +5,7 @@
    [metabase-enterprise.scim.v2.api :as scim-api]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -479,7 +480,7 @@
     (mt/with-temp [:model/User {existing-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
                    :model/User {new-id :id}      {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-user-to-group! existing-id (:id (perms-group/data-analyst))))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (let [before   (data-analyst-group-member-ids)
@@ -496,8 +497,8 @@
     (mt/with-temp [:model/User {keep-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}
                    :model/User {drop-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
-        (perms/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-user-to-group! keep-id (:id (perms-group/data-analyst)))
+        (perms-group-membership/add-user-to-group! drop-id (:id (perms-group/data-analyst))))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (put-data-analyst-group! 200 [keep-id])
@@ -511,7 +512,7 @@
   (testing "PUT /Groups/:id with an unchanged member list succeeds without :advanced-permissions"
     (mt/with-temp [:model/User {user-id :id} {:email (format "scim-analyst-%s@metabase.com" (random-uuid))}]
       (mt/with-premium-features #{:advanced-permissions}
-        (perms/add-user-to-group! user-id (:id (perms-group/data-analyst))))
+        (perms-group-membership/add-user-to-group! user-id (:id (perms-group/data-analyst))))
       (mt/with-premium-features #{}
         (with-scim-setup!
           (let [before (data-analyst-group-member-ids)]
@@ -536,8 +537,8 @@
                      :model/User {keep-id :id} {}
                      :model/User {drop-id :id} {}]
         (mt/with-premium-features #{:advanced-permissions}
-          (perms/add-user-to-group! keep-id (:id group))
-          (perms/add-user-to-group! drop-id (:id group)))
+          (perms-group-membership/add-user-to-group! keep-id (:id group))
+          (perms-group-membership/add-user-to-group! drop-id (:id group)))
         (let [membership-id #(t2/select-one-pk :model/PermissionsGroupMembership
                                                :group_id (:id group) :user_id keep-id)
               original-id   (membership-id)

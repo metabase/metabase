@@ -4,8 +4,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
@@ -212,7 +212,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable
@@ -256,7 +256,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-user-to-group! user-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
         (session/with-current-user user-id
@@ -270,7 +270,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-user-to-group! user-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/manage-table-metadata :yes)
         (session/with-current-user user-id
           (is (true? (mi/can-read? (t2/hydrate measure :can_read)))))))))
@@ -293,7 +293,7 @@
                      :model/Measure measure {:name "Test Measure"
                                              :creator_id (mt/user->id :rasta)
                                              :definition (measure-definition (lib/count))}]
-        (perms/add-user-to-group! user-id group-id)
+        (perms-group-membership/add-user-to-group! user-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user user-id
           (is (false? (mi/can-read? (t2/hydrate measure :can_read)))))))))
@@ -309,7 +309,7 @@
     (mt/with-no-data-perms-for-all-users!
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/User {analyst-id :id} {:is_data_analyst true}]
-        (perms/add-user-to-group! analyst-id group-id)
+        (perms-group-membership/add-user-to-group! analyst-id group-id)
         (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
         (session/with-current-user analyst-id
           (mt/when-ee-evailable

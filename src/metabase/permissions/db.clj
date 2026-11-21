@@ -670,6 +670,11 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
 
+(mu/defn group-membership
+  "The PermissionsGroupMembership with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/PermissionsGroupMembership :id [:auto/param id]))
+
 (mu/defn memberships-for-user
   "The PermissionsGroupMemberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
@@ -699,21 +704,10 @@
                        :user_id  [:in (map first pairs)]
                        :group_id [:in (map second pairs)])))))
 
-(mu/defn delete-memberships-for-user!
-  "Delete the PermissionsGroupMemberships of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn delete-memberships-for-user-in-groups!
-  "Delete the PermissionsGroupMemberships of the User with `user-id` in the groups with `group-ids`."
-  [user-id   :- ::lib.schema.id/user
-   group-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
-
-(mu/defn delete-memberships-for-group!
-  "Delete the PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
-  [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+(mu/defn delete-group-memberships!
+  "Delete the PermissionsGroupMemberships with `ids` through the model, returning the number deleted."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/PermissionsGroupMembership :id [:in ids]))
 
 ;;; ------------------------------------------------ Revisions ------------------------------------------------
 
@@ -1152,11 +1146,11 @@
   []
   (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id user-id changes))
+(mu/defn update-users!
+  "Apply `changes` to the Users with `user-ids` through the model, returning the number updated."
+  [user-ids :- [:set {:min 1} ::lib.schema.id/user]
+   changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
+  (t2/update! :model/User :id [:in user-ids] changes))
 
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."

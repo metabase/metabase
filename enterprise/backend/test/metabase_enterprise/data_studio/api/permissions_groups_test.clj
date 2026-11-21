@@ -1,8 +1,8 @@
 (ns metabase-enterprise.data-studio.api.permissions-groups-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -26,7 +26,7 @@
   [user-id]
   ;; additions are gated on the feature, so grant it for the setup
   (mt/with-premium-features #{:advanced-permissions}
-    (perms/add-user-to-group! user-id (:id (perms-group/data-analyst)))))
+    (perms-group-membership/add-user-to-group! user-id (:id (perms-group/data-analyst)))))
 
 (def ^:private no-permissions-message "You don't have permissions to do that.")
 
@@ -93,7 +93,7 @@
                    :model/Table    {table-id :id}   {:db_id db-id}]
       (add-data-analyst! analyst-id)
       (mt/with-premium-features #{}
-        (perms/remove-user-from-group! analyst-id (:id (perms-group/data-analyst)))
+        (perms-group-membership/remove-user-from-group! analyst-id (:id (perms-group/data-analyst)))
         (is (not (t2/exists? :model/PermissionsGroupMembership
                              :user_id analyst-id :group_id (:id (perms-group/data-analyst)))))
         (is (= no-permissions-message

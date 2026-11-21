@@ -13,6 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -491,11 +492,11 @@
   [user-id tenant-id]
   (perms/allow-changing-all-users-group-members
     (perms/allow-changing-all-external-users-group-members
-     (perms/remove-user-from-all-groups! user-id)
+     (perms-group-membership/remove-user-from-all-groups! user-id)
      (when tenant-id
-       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+       (perms-group-membership/add-user-to-group! user-id (perms/all-external-users-group)))
      (when (nil? tenant-id)
-       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+       (perms-group-membership/add-user-to-group! user-id (perms/all-users-group))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -555,8 +556,8 @@
         (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
           (let [data-analyst-group-id (:id (perms/data-analyst-group))]
             (if is_data_analyst
-              (perms/add-user-to-group! id data-analyst-group-id)
-              (perms/remove-user-from-group! id data-analyst-group-id))))
+              (perms-group-membership/add-user-to-group! id data-analyst-group-id)
+              (perms-group-membership/remove-user-from-group! id data-analyst-group-id))))
         (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))

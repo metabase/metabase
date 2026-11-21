@@ -5,6 +5,7 @@
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.query-processor.test :as qp]
@@ -22,7 +23,7 @@
                        :model/PermissionsGroup           group {}
                        :model/Sandbox     _ {:group_id (u/the-id group)
                                              :table_id (u/the-id table)}]
-          (perms/add-user-to-group! (mt/user->id :rasta) group)
+          (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
               (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -44,7 +45,7 @@
                                                              :collection_id (u/the-id collection)}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -68,7 +69,7 @@
                                                              :collection_id (u/the-id collection)}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -90,7 +91,7 @@
                      :model/PermissionsGroup           group {}
                      :model/Sandbox     _    {:group_id (u/the-id group)
                                               :table_id (u/the-id table)}]
-        (perms/add-user-to-group! (mt/user->id :rasta) group)
+        (perms-group-membership/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
             (data-perms/set-database-permission! group db :perms/view-data :unrestricted)
@@ -110,7 +111,7 @@
                                                                                                       :type :query,
                                                                                                       :query {:source-table (mt/id :venues)
                                                                                                               :limit 1}}}]
-      (perms/add-user-to-group! user-id group)
+      (perms-group-membership/add-user-to-group! user-id group)
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
                    [:unrestricted           :no                       true]

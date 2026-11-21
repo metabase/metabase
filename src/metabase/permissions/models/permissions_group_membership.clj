@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
@@ -16,8 +15,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,6 +72,39 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
+(t2/define-before-update :model/PermissionsGroupMembership
+  [membership]
+  (let [changes (t2/changes membership)]
+    (when (contains? changes :user_id)
+      (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
+    membership))
+
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroupMembership :can_read]
+  "Whether the current user can read each of `memberships`, which they can when they manage its group."
+  [_model k memberships]
+  (let [manages? (perms-group/manageable-group-id-fn)]
+    (for [membership memberships]
+      (when membership
+        (vary-meta membership assoc k (manages? (:group_id membership)))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroupMembership :can_write]
+  "Whether the current user can write each of `memberships`, which they can when they manage its group."
+  [_model k memberships]
+  (let [manages? (perms-group/manageable-group-id-fn)]
+    (for [membership memberships]
+      (when membership
+        (assoc membership k (manages? (:group_id membership)))))))
+
+(defmethod mi/can-create? :model/PermissionsGroupMembership
+  [_model {:keys [group_id]}]
+  ((perms-group/manageable-group-id-fn) group_id))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (defn- check-not-all-users-group
   "Throw an Exception if we're trying to add or remove a user to the All Users group."
   [group-id]
@@ -90,19 +121,25 @@
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
 
+(defn- check-magic-group-members-unchanged
+  "Throws a 400 when `group-ids` hold All Users or All tenant users outside the scope that allows changing their
+  members."
+  [group-ids]
+  (doseq [group-id (distinct group-ids)]
+    (check-not-all-users-group group-id)
+    (check-not-all-external-users-group group-id)))
+
 (defn- check-can-add-to-data-analyst-group
   "Throw a 402 if we're trying to *add* a user to the Data Analysts group without the `:advanced-permissions` premium
   feature. Removals are never gated."
-  [group-id]
-  (when (and (= group-id (:id (perms-group/data-analyst)))
+  [group-ids]
+  (when (and (some #{(:id (perms-group/data-analyst))} group-ids)
              (not (premium-features/enable-advanced-permissions?)))
     (throw (ex-info (str fail-to-add-data-analyst-msg)
                     {:status-code 402}))))
 
 (defn- check-admins-remain
-  "Throws a 400 when no active superuser member of the Admin group is left besides the Users with `user-ids`; the
-  delete hook unsets the superuser flag of each membership it removes, so a statement removing several sees the flags
-  its earlier rows unset."
+  "Throws a 400 when no active superuser member of the Admin group is left besides the Users with `user-ids`."
   [user-ids]
   (when (zero? (permissions.db/other-active-member-count (u/the-id (perms-group/admin)) (set user-ids)))
     (throw (ex-info (str fail-to-remove-last-admin-msg)
@@ -113,11 +150,6 @@
   archived or have their admin status removed."
   [user-id]
   (check-admins-remain #{user-id}))
-
-(defn- member
-  "The tenant id and superuser flag of the User of `membership`."
-  [{:keys [user_id]}]
-  (first (permissions.db/member-flags #{user_id})))
 
 (defn- check-group-manager-member
   "Throws a 400 when `membership` makes `member`, its User, a tenant user or an admin a group manager."
@@ -157,88 +189,34 @@
         (check-group-manager-member membership member)
         (check-tenancy-matches membership member group-id->tenant?)))))
 
-(t2/define-before-insert :model/PermissionsGroupMembership
-  [{:keys [group_id] :as membership}]
-  (check-not-all-users-group group_id)
-  (check-not-all-external-users-group group_id)
-  (check-can-add-to-data-analyst-group group_id)
-  membership)
+(defn- set-member-flags!
+  "Set the `is_superuser` flag of the Users of `memberships` in the Administrators group, and the `is_data_analyst` flag
+  of those in the Data Analysts group, to `value`."
+  [memberships value]
+  (doseq [[group-id flag] [[(:id (perms-group/admin)) :is_superuser]
+                           [(:id (perms-group/data-analyst)) :is_data_analyst]]
+          :let            [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id)) memberships)]
+          :when           (seq user-ids)]
+    (permissions.db/update-users! user-ids {flag value})))
 
-(defn- unchecked-rows
-  "The `rows` of an INSERT that no build of it in this transaction has checked yet, remembering them by identity, as
-  MySQL and MariaDB build the INSERT of each row again to read its key."
-  [rows]
-  (if-let [state (mdb/transaction-state)]
-    (let [checked (::checked-rows (swap! state update ::checked-rows #(or % (java.util.Collections/newSetFromMap
-                                                                             (java.util.IdentityHashMap.)))))]
-      (locking checked
-        (into [] (filter #(.add ^java.util.Set checked %)) rows)))
-    rows))
-
-(methodical/defmethod t2.pipeline/build :around [:toucan.query-type/insert.*
-                                                 :model/PermissionsGroupMembership
-                                                 clojure.lang.IPersistentMap]
-  "Checks the Users of every membership an INSERT writes against its group, in one read of them for the statement."
-  [query-type model parsed-args resolved-query]
-  (check-members (unchecked-rows (or (:rows parsed-args) (:rows resolved-query))))
-  (next-method query-type model parsed-args resolved-query))
-
-(t2/define-after-insert :model/PermissionsGroupMembership
-  [{:keys [user_id group_id], :as membership}]
-  (when (= group_id (:id (perms-group/admin)))
-    (permissions.db/update-user! user_id {:is_superuser true}))
-  (when (= group_id (:id (perms-group/data-analyst)))
-    (permissions.db/update-user! user_id {:is_data_analyst true}))
-  membership)
-
-(t2/define-before-update :model/PermissionsGroupMembership
-  [membership]
-  (let [changes (t2/changes membership)]
-    (when (contains? changes :user_id)
-      (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
-    (when (contains? changes :group_id)
-      (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
-    (when (:is_group_manager changes)
-      (check-group-manager-member membership (member membership)))
-    membership))
-
-(t2/define-before-delete :model/PermissionsGroupMembership
-  [{:keys [group_id user_id]}]
-  (check-not-all-users-group group_id)
-  (check-not-all-external-users-group group_id)
-  (when (= group_id (:id (perms-group/admin)))
-    (check-admins-remain #{user_id})
-    (when *update-user-when-added-to-admin-group?*
-      (permissions.db/update-user! user_id {:is_superuser false})))
-  (when (= group_id (:id (perms-group/data-analyst)))
-    (permissions.db/update-user! user_id {:is_data_analyst false})))
-
-;;; -------------------------------------------------- Permissions ---------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroupMembership :can_read]
-  "Whether the current user can read each of `memberships`, which they can when they manage its group."
-  [_model k memberships]
-  (let [manages? (perms-group/manageable-group-id-fn)]
-    (for [membership memberships]
-      (when membership
-        (vary-meta membership assoc k (manages? (:group_id membership)))))))
-
-(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroupMembership :can_write]
-  "Whether the current user can write each of `memberships`, which they can when they manage its group."
-  [_model k memberships]
-  (let [manages? (perms-group/manageable-group-id-fn)]
-    (for [membership memberships]
-      (when membership
-        (assoc membership k (manages? (:group_id membership)))))))
-
-(defmethod mi/can-create? :model/PermissionsGroupMembership
-  [_model {:keys [group_id]}]
-  ((perms-group/manageable-group-id-fn) group_id))
-
-;;; ---------------------------------------------------- Writes ------------------------------------------------------
+(defn- delete-memberships!
+  "Delete `memberships`, keeping at least one active admin, and unset the flags their Administrators and Data Analysts
+  rows set on their Users."
+  [memberships]
+  (when (seq memberships)
+    (events/with-batched-events
+      (check-magic-group-members-unchanged (map :group_id memberships))
+      (let [admin-id    (:id (perms-group/admin))
+            admin-rows? #(= admin-id (:group_id %))]
+        (when-let [admin-user-ids (not-empty (into #{} (comp (filter admin-rows?) (map :user_id)) memberships))]
+          (check-admins-remain admin-user-ids))
+        (u/prog1 (permissions.db/delete-group-memberships! (mapv :id memberships))
+          (set-member-flags! (cond->> memberships
+                               (not *update-user-when-added-to-admin-group?*) (remove admin-rows?))
+                             false))))))
 
 (mu/defn add-users-to-groups!
-  "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
+  "Creates permission group memberships from a sequence of maps of users, groups and is-group-manager?."
   [pgms :- [:sequential
             [:map {:closed true}
              [:group [:or
@@ -259,16 +237,18 @@
                                                                  (when-not (= 1 (count (distinct pgms)))
                                                                    (throw (ex-info "Conflicting permissions group memberships"
                                                                                    {:conflicts (distinct pgms)})))
-                                                                 (boolean (:is-group-manager? (first pgms))))))
-          ;; re-adding an existing member is a no-op, so everything below only ever sees genuine additions:
-          user-id-group-id->is-group-manager? (apply dissoc user-id-group-id->is-group-manager?
-                                                     (permissions.db/existing-membership-pairs
-                                                      (keys user-id-group-id->is-group-manager?)))]
-      (when (seq user-id-group-id->is-group-manager?)
-        (t2/with-transaction [_conn]
-          (permissions.db/insert-group-memberships!
-           (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
-             {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})))))))
+                                                                 (boolean (:is-group-manager? (first pgms))))))]
+      (events/with-batched-events
+        (let [existing    (permissions.db/existing-membership-pairs (keys user-id-group-id->is-group-manager?))
+              memberships (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?
+                                :when (not (contains? existing [user-id group-id]))]
+                            {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})]
+          (when (seq memberships)
+            (check-magic-group-members-unchanged (map :group_id memberships))
+            (check-can-add-to-data-analyst-group (map :group_id memberships))
+            (check-members memberships)
+            (permissions.db/insert-group-memberships! (vec memberships))
+            (set-member-flags! memberships true)))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"
@@ -288,8 +268,8 @@
   "Removes a user from groups."
   [user-id-or-user group-ids-or-groups]
   (when (seq group-ids-or-groups)
-    (permissions.db/delete-memberships-for-user-in-groups! (u/the-id user-id-or-user)
-                                                           (map u/the-id group-ids-or-groups))))
+    (delete-memberships! (permissions.db/memberships-for-user-in-groups (u/the-id user-id-or-user)
+                                                                        (map u/the-id group-ids-or-groups)))))
 
 (defn remove-user-from-group!
   "Removes a user from a group."
@@ -299,18 +279,24 @@
 (defn remove-all-users-from-group!
   "Removes all users from a group."
   [group-id]
-  (permissions.db/delete-memberships-for-group! group-id))
+  (delete-memberships! (permissions.db/memberships-for-group group-id)))
 
 (defn remove-user-from-all-groups!
   "Removes a user from all groups."
   [user-id]
-  (permissions.db/delete-memberships-for-user! user-id))
+  (delete-memberships! (permissions.db/memberships-for-user user-id)))
 
 (mu/defn update-permissions-group-membership!
-  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated."
+  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated; making a tenant user or an
+  admin a group manager is a 400."
   [id      :- ms/PositiveInt
    changes :- ::permissions.schema/permissions-group-membership.update]
-  (permissions.db/update-group-membership! id changes))
+  (events/with-batched-events
+    (when (:is_group_manager changes)
+      (when-let [stored (permissions.db/group-membership id)]
+        (check-group-manager-member (merge stored changes)
+                                    (first (permissions.db/member-flags #{(:user_id stored)})))))
+    (permissions.db/update-group-membership! id changes)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

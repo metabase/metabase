@@ -32,6 +32,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
@@ -562,6 +563,20 @@
   (next-method model explicit-attributes (fn [group]
                                            (#'perms-group/set-default-permission-values! group)
                                            (f group))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroupMembership
+  "Sets the flag an Administrators or Data Analysts membership gives its User while the temporary membership lives, as
+  `add-users-to-groups!` and the functions that remove memberships do."
+  [model explicit-attributes f]
+  (let [membership (volatile! nil)]
+    (try
+      (next-method model explicit-attributes (fn [created]
+                                               (vreset! membership created)
+                                               (#'perms-group-membership/set-member-flags! [created] true)
+                                               (f created)))
+      (finally
+        (when-let [created @membership]
+          (#'perms-group-membership/set-member-flags! [created] false))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
   "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."

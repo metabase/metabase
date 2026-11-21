@@ -2119,6 +2119,7 @@
            metabase.permissions.metric
            metabase.permissions.models.permissions
            metabase.permissions.models.permissions-group
+           metabase.permissions.models.permissions-group-membership
            metabase.permissions.schema}
    :uses #{api
            api.eid-translation

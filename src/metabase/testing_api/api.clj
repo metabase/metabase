@@ -20,8 +20,8 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as permissions-group]
+   [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
@@ -404,7 +404,7 @@
   [user-id]
   (let [group-id (e2e-usage-auditing-group-id!)]
     (when-not (testing-api.db/group-membership-exists? user-id group-id)
-      (perms/add-user-to-group! user-id group-id))))
+      (perms-group-membership/add-user-to-group! user-id group-id))))
 
 (defn- delete-seeded-usage-auditing-data!
   []
