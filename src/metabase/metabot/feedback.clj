@@ -30,18 +30,18 @@
                      :issue_type        issue_type
                      :freeform_feedback freeform_feedback}]
     (metabot-feedback/upsert-metabot-feedback! message-row-id submitter-user-id
-                                 (fn [existing]
-                                   (cond-> base-fields
-                                     existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+                                               (fn [existing]
+                                                 (cond-> base-fields
+                                                   existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
 
 (defn- upsert-source-feedback!
   "Insert or update the `metabot_source_feedback` row for one source, message, and submitter."
   [message-row-id submitter-user-id {:keys [positive source_id source_type]}]
   (let [base-fields {:positive positive}]
     (metabot-source-feedback/upsert-metabot-source-feedback! message-row-id submitter-user-id source_id source_type
-                                        (fn [existing]
-                                          (cond-> base-fields
-                                            existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
+                                                             (fn [existing]
+                                                               (cond-> base-fields
+                                                                 existing (assoc :updated_at (java.time.OffsetDateTime/now)))))))
 
 (defn persist-feedback!
   "Upsert a `metabot_feedback` row for the rated message and return the
