@@ -168,9 +168,9 @@
   "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  ;; A request naming no resource never gets here: one asking only for MCP scopes is given the MCP resource by
-  ;; [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be built without a
-  ;; Site URL, so the URL is always there.
+  ;; Only a request with a resource gets here, its own or its refresh token's. One that names none and asks only for MCP
+  ;; scopes is given the MCP resource by [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The
+  ;; provider cannot be built without a Site URL, so the URL is always there.
   (str "The requested scopes are not accepted by the requested resource. "
        "The MCP server's resource URL is " (oauth-server/mcp-resource-url) "."))
 
@@ -613,7 +613,9 @@
            (every? (set (mcp/v2-scopes)) scopes))
       ;; Some MCP clients, Microsoft Copilot Studio among them, never send `resource`. Without this, [[scope-to-grant]]
       ;; reads the request as one for a REST token and drops every MCP scope, leaving nothing to grant. A request that
-      ;; also asks for a non-MCP scope stays a REST request, so MCP and REST tokens stay separate.
+      ;; also asks for a registered non-MCP scope stays a REST request, so MCP and REST tokens stay separate. A scope
+      ;; Metabase no longer registers, such as the retired `agent:table:read`, does not count, so a request for it
+      ;; alongside MCP scopes gets the MCP resource.
       (assoc :resource [mcp-resource]))))
 
 (defn- refreshable-token
@@ -641,20 +643,34 @@
    hold are then dropped too, as RFC 6749 section 3.3 allows, so a client that always refreshes with the same `scope`
    keeps working after the user declines part of it at consent; the response's `scope` says what was granted. Throws
    `ex-info` carrying `:oauth-error` `invalid_scope` when no requested scope survives. When neither the request nor the
-   refresh token names a resource, the resource is defaulted as [[with-default-mcp-resource]] defaults it for
-   authorization, and the body names it so the new tokens carry it.
+   refresh token names a resource, the body names the one [[with-default-mcp-resource]] gives the requested scopes, or
+   the token's own scopes when the refresh has no `scope`, so the new tokens carry it.
 
    Trimmed only once [[refreshable-token]] finds the request would reach oidc-provider's scope check, so a dead token,
    another client's token, or bad client credentials still get the library's own answer. A blank `scope` is dropped,
    which RFC 6749 section 6 treats as the original grant; oidc-provider would read it as asking for no scopes and mint
    a token with none. Any other `body` is returned unchanged."
-  [provider authorization-header {:keys [grant_type scope resource] :as body}]
+  [provider authorization-header {:keys [grant_type scope resource refresh_token] :as body}]
   (cond
     (not= grant_type "refresh_token")
     body
 
     (str/blank? scope)
-    (dissoc body :scope)
+    ;; Only a token with no resource needs anything here, so [[refreshable-token]], which authenticates the client a
+    ;; second time, runs for that token alone and not on every refresh. See the `:else` arm for why naming the
+    ;; resource binds the new tokens.
+    (let [body   (dissoc body :scope)
+          stored (when (empty? resource)
+                   (some->> (not-empty refresh_token) (oidc.store/get-refresh-token (:token-store provider))))
+          ;; Every held scope, registered or not, must be an MCP scope: oidc-provider keeps them all when the refresh
+          ;; names none, while [[with-default-mcp-resource]] looks only at the registered ones.
+          target (when (and stored
+                            (empty? (:resource stored))
+                            (every? (set (mcp/v2-scopes)) (:scope stored)))
+                   (with-default-mcp-resource {:scope (str/join " " (:scope stored))}))]
+      (cond-> body
+        (and (seq (:resource target)) (refreshable-token provider authorization-header body))
+        (assoc :resource (:resource target))))
 
     :else
     (if-let [token-data (refreshable-token provider authorization-header body)]

@@ -3216,5 +3216,43 @@
               refreshed     (refresh-with-scope! client {:refresh_token refresh-token} all-v2-scopes)]
           (is (=? {:resource [(mcp-resource-uri)]} refreshed))
           (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
-          (testing "the next refresh narrows to the resource the new token carries"
-            (is (= v2-scope-set (token-scope-set (refresh-with-scope! client refreshed all-v2-scopes))))))))))
+          ;; A later refresh would bind an unbound MCP token again, so only the stored token shows what rotation kept.
+          (testing "the rotated refresh token keeps the MCP resource"
+            (is (= [(mcp-resource-uri)]
+                   (t2/select-one-fn :resource :model/OAuthRefreshToken
+                                     :token (oidc-util/hash-token (:refresh_token refreshed)))))))))))
+
+;; RFC 6749 section 6 lets a refresh leave out `scope`, and oidc-provider then keeps the token's scopes. The token must
+;; still be bound to the MCP resource, or a client that never sends `scope` keeps an unbound token for good.
+(deftest scope-less-refresh-of-a-token-without-resource-defaults-to-mcp-test
+  (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                     oauth-server-dynamic-registration-enabled true]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [client          (register-app-client! "Copilot Studio" "https://example.com/callback")
+            legacy!         (fn [scopes]
+                              (let [refresh-token (str (random-uuid))]
+                                (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) scopes
+                                               :token (oidc-util/hash-token refresh-token))
+                                {:refresh_token refresh-token}))
+            stored-resource (fn [token-response]
+                              (t2/select-one-fn :resource :model/OAuthRefreshToken
+                                                :token (oidc-util/hash-token (:refresh_token token-response))))]
+        (testing "a token holding only MCP scopes keeps them and is bound to the MCP resource"
+          (let [refreshed (refresh! client (legacy! v2-scope-set))]
+            (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+            (is (= [(mcp-resource-uri)] (stored-resource refreshed)))
+            (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
+            (testing "and the next refresh without scope keeps the binding"
+              (let [again (refresh! client refreshed)]
+                (is (=? {:resource [(mcp-resource-uri)]} again))
+                (is (= v2-scope-set (token-scope-set again)))))))
+        (testing "a token holding a non-MCP scope stays unbound, so MCP and REST tokens stay separate"
+          (let [not-mcp   (first-non-mcp-default-scope)
+                refreshed (refresh! client (legacy! #{not-mcp}))]
+            (is (nil? (:resource refreshed)))
+            (is (nil? (stored-resource refreshed)))
+            (is (= #{not-mcp} (token-scope-set refreshed)))))
+        (testing "a token holding an MCP scope and an unregistered one stays unbound, since the refresh keeps both"
+          (let [refreshed (refresh! client (legacy! #{"agent:content:read" "*"}))]
+            (is (nil? (:resource refreshed)))
+            (is (nil? (stored-resource refreshed)))))))))
