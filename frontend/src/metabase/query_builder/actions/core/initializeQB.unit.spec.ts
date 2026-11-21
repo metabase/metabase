@@ -1094,7 +1094,7 @@ describe("QB Actions > initializeQB", () => {
       const query = question.query();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),
@@ -1114,7 +1114,7 @@ describe("QB Actions > initializeQB", () => {
         .card();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),
@@ -1185,7 +1185,7 @@ describe("QB Actions > initializeQB", () => {
         .card();
 
       expect(
-        Lib.areLegacyQueriesEqual(
+        Lib.areQueriesEqual(
           result.card.dataset_query,
           expectedCard.dataset_query,
         ),
