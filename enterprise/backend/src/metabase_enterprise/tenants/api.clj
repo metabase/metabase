@@ -53,7 +53,7 @@
     (throw (ex-info "Invalid Tenant"
                     {:status-code 400
                      :errors (mr/explain CreateTenantArguments tenant)})))
-  (present-tenant (tenants.db/insert-tenant! tenant)))
+  (present-tenant (tenant/create-tenant! tenant)))
 
 (api.macros/defendpoint :post "/" :- Tenant
   "Create a new Tenant"
@@ -88,7 +88,7 @@
    {:keys [is_active] :as tenant} :- UpdateTenantArguments]
   (t2/with-transaction [_conn]
     (let [collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
-      (tenants.db/update-tenant! tenant-id tenant)
+      (tenant/update-tenant! tenant-id tenant)
       (when (and collection-id (some? is_active))
         (collection/with-allow-modifying-tenant-root-collections
           (tenants.db/set-collection-archived! collection-id (not is_active))))

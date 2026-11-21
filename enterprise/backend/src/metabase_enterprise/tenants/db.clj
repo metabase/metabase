@@ -77,7 +77,7 @@
 
 (mu/defn insert-tenant!
   "Insert `tenant` and return the new instance."
-  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes])]
+  [tenant :- (mut/select-keys ::tenants.schema/tenant.update [:name :slug :attributes :tenant_collection_id])]
   (t2/insert-returning-instance! :model/Tenant tenant))
 
 (mu/defn update-tenant!

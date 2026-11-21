@@ -540,6 +540,18 @@
   (locking dimension-lock
     (next-method model explicit-attributes f)))
 
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
+  "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."
+  [model explicit-attributes f]
+  (if (contains? explicit-attributes :tenant_collection_id)
+    (next-method model explicit-attributes f)
+    (let [tenant-name   (:name (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
+          collection-id (t2/insert-returning-pk! :model/Collection
+                                                 {:type      collection/tenant-specific-root-collection-type
+                                                  :name      (format "Tenant Collection: %s" tenant-name)
+                                                  :namespace :tenant-specific})]
+      (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
+
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
     (methodical/add-primary-method! #'t2.with-temp/with-temp-defaults
