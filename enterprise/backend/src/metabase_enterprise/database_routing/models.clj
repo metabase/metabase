@@ -3,6 +3,7 @@
    [metabase-enterprise.database-routing.audit :as database-routing.audit]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
@@ -12,6 +13,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,17 +25,6 @@
   (derive :hook/events))
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(defn- check-not-destination
-  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
-  [database-id]
-  (when (database-routing.db/destination-database? database-id)
-    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
-
-(t2/define-before-insert :model/DatabaseRouter
-  [{:keys [database_id] :as router}]
-  (check-not-destination database_id)
-  router)
 
 (t2/define-before-update :model/DatabaseRouter
   [router]
@@ -74,6 +65,20 @@
   (boolean (or (database-routing.db/router-exists? (:id db))
                (some->> (:router-database-id db)
                         database-routing.db/router-exists?))))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defn- check-not-destination
+  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
+  [database-id]
+  (when (database-routing.db/destination-database? database-id)
+    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
+
+(mu/defn create-database-router!
+  "Insert the DatabaseRouter `row`; a destination Database is a 400."
+  [{:keys [database_id user_attribute]} :- ::database-routing.schema/database-router.create]
+  (check-not-destination database_id)
+  (database-routing.db/insert-router! database_id user_attribute))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

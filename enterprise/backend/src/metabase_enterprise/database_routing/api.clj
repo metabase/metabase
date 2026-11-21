@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.models :as database-routing.models]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -85,7 +86,7 @@
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
     (if (database-routing.db/router-for-database db-id)
       (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.db/insert-router! db-id user-attribute))))
+      (database-routing.models/create-database-router! {:database_id db-id :user_attribute user-attribute}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

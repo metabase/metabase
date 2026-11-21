@@ -66,6 +66,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.models.table-remapping :as table-remapping]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
@@ -212,7 +213,7 @@
                                                 (assoc settings :database-workspace-schema schema)
                                                 (dissoc settings :database-workspace-schema)))
           ;; Rows pointing at the old schema would keep redirecting reads there.
-          (ws.db/delete-table-remappings-of-database! id))
+          (table-remapping/delete-table-remappings-of-database! id))
         (ws.settings/workspaces-enabled! true)))
     (catch Throwable e
       ;; The setter puts the flag in this process's settings cache before the commit, and a rollback does not
@@ -229,7 +230,7 @@
   [previous-database database]
   (when (and (some? (database-workspace-schema previous-database))
              (not= (database-workspace-schema previous-database) (database-workspace-schema database)))
-    (ws.db/delete-table-remappings-of-database! (:id database)))
+    (table-remapping/delete-table-remappings-of-database! (:id database)))
   nil)
 
 (defn clear-instance-workspace!
@@ -241,7 +242,7 @@
   (ws.settings/workspaces-enabled! false)
   ;; The setting's setter deletes the remap rows only when the value changes. Delete
   ;; them here too, so that rows left while the setting was already off also go.
-  (ws.db/delete-all-table-remappings!)
+  (table-remapping/delete-all-table-remappings!)
   nil)
 
 (defn translate-instance-workspace-setting!

@@ -26,16 +26,6 @@
 (derive :model/DocumentBookmark :metabase/model)
 (derive :model/ExplorationBookmark :metabase/model)
 
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(t2/define-before-insert :model/CollectionBookmark [bookmark]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
-  bookmark)
-
-(t2/define-before-update :model/CollectionBookmark [model]
-  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
-  model)
-
 ;;; ---------------------------------------------------- Bookmarks ---------------------------------------------------
 
 (defn- unqualify-key
@@ -103,6 +93,18 @@
   (bookmarks.db/insert-bookmark-orderings! (->> orderings
                                                 (map #(select-keys % [:type :item_id]))
                                                 (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-bookmark!
+  "Give the User with `user-id` a bookmark on the item of bookmark type `model` with `id` and return it, the existing
+  one when there is one; a Collection that takes no bookmarks is a 400."
+  [model   :- :string
+   id      :- ms/PositiveInt
+   user-id :- ms/PositiveInt]
+  (when (= model "collection")
+    (collection/check-allowed-content :model/CollectionBookmark id))
+  (bookmarks.db/insert-bookmark! model id user-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

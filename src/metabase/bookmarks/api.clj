@@ -53,7 +53,7 @@
   (api/read-check (item-model model) id)
   (api/check (not (bookmarks.db/bookmark-exists? model id api/*current-user-id*))
              [400 "Bookmark already exists"])
-  (bookmarks.db/insert-bookmark! model id api/*current-user-id*))
+  (bookmark/create-bookmark! model id api/*current-user-id*))
 
 (api.macros/defendpoint :delete "/:model/:id" :- ::api/generic-204-no-content
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."

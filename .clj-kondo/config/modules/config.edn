@@ -485,7 +485,7 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api metabase.bookmarks.db}
+   :api  #{metabase.bookmarks.api metabase.bookmarks.db metabase.bookmarks.models.bookmark}
    :uses #{api
            app-db
            collections
