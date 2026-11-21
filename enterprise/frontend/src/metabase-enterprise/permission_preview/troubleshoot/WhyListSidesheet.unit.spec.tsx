@@ -869,6 +869,68 @@ describe("WhyListSidesheet", () => {
     await waitFor(() => expect(getVisibleTexts("Accounts")).toHaveLength(1));
   });
 
+  it("folds two blocked tables into one closed row beside the full-access fold, with the row security table still open", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [ORDERS, REVIEWS, FEEDBACK, ACCOUNTS, INVOICES],
+      tableIds: [ORDERS_ID, REVIEWS_ID, FEEDBACK.id, ACCOUNTS_ID, INVOICES_ID],
+    });
+
+    const blocked = await findToggle("2 tables");
+    expect(blocked).toHaveAttribute("aria-expanded", "false");
+    expect(within(getToggleRow(blocked)).getByText("Blocked")).toBeVisible();
+    expect(getVisibleTexts("Reviews")).toHaveLength(0);
+    expect(getVisibleTexts("Feedback")).toHaveLength(0);
+    expect(getToggle("Orders · Sample Database")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getAllByRole("button", { name: /2 tables$/ })).toHaveLength(
+      2,
+    );
+  });
+
+  it("lists each blocked table when the fold opens, and a click on one opens its detail", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [REVIEWS, FEEDBACK],
+      tableIds: [REVIEWS_ID, FEEDBACK.id],
+    });
+
+    await screen.findByText("Data in this dashboard");
+    expect(getVisibleTexts("Reviews")).toHaveLength(0);
+    expect(getVisibleTexts("Feedback")).toHaveLength(0);
+
+    await userEvent.click(getToggle("2 tables"));
+
+    await waitFor(() => expect(getVisibleTexts("Reviews")).toHaveLength(1));
+    expect(getVisibleTexts("Feedback")).toHaveLength(1);
+    expect(getRowStatus("Feedback · Sample Database")).toHaveTextContent(
+      "Blocked",
+    );
+    await userEvent.click(getRowStatus("Reviews · Sample Database"));
+    expect(
+      screen.getByText(
+        "Sandy Sales is blocked in every group they're in. To let them see this table, give one of those groups access.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("puts the Blocked fold where the first blocked table was, before a full-access table that follows", async () => {
+    setup({
+      openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },
+      tables: [REVIEWS, FEEDBACK, ACCOUNTS],
+      tableIds: [REVIEWS_ID, FEEDBACK.id, ACCOUNTS_ID],
+    });
+
+    const accounts = await findRowStatus("Accounts · Sample Database");
+
+    expect(
+      getToggle("2 tables").compareDocumentPosition(accounts) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("shows a single full-access table as a row of its own, not a fold of one", async () => {
     setup({
       openedItem: { type: "dashboard", id: SALES_OVERVIEW_ID },

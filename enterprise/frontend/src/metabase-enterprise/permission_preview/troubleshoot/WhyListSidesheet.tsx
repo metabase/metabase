@@ -610,8 +610,8 @@ function InfoButton({ info, label }: { info: string; label: string }) {
 }
 
 /**
- * One row per table. A table under row security starts open on its attributes; a blocked table is a line of its own;
- * two or more tables with full access fold into one closed row, a single one is a line of its own. Each status opens the
+ * One row per table. A table under row security starts open on its attributes; two or more blocked tables, and two or
+ * more with full access, each fold into one closed row, a single one is a line of its own. Each status opens the
  * table's View data detail.
  */
 function DataRows({
@@ -621,65 +621,102 @@ function DataRows({
   targets: WhyTarget[];
   onOpen: (target: WhyTarget) => void;
 }) {
+  const blocked = targets.filter(isBlockedRow);
   const fullAccess = targets.filter(isFullAccess);
-  const tableCount = fullAccess.length;
-  const isFolded = tableCount > 1;
-  const hasToggle = isFolded || targets.some(hasRulesToShow);
+  const isBlockedFolded = blocked.length > 1;
+  const isFullAccessFolded = fullAccess.length > 1;
+  const hasToggle =
+    isBlockedFolded || isFullAccessFolded || targets.some(hasRulesToShow);
   return (
     <CardRows>
-      {targets
-        .filter((target) => !isFolded || !isFullAccess(target))
-        .map((target, index) =>
-          hasRulesToShow(target) ? (
-            <ToggleRow
+      {targets.map((target, index) => {
+        if (isBlockedFolded && isBlockedRow(target)) {
+          return target === blocked[0] ? (
+            <FoldedDataRows
               key={index}
-              rowKey={`filtered-table-${index}`}
-              label={<TargetName target={target} />}
-              initiallyOpen
-              status={
-                <StatusLink target={target} onClick={() => onOpen(target)} />
-              }
-            >
-              <PolicyRules target={target} />
-            </ToggleRow>
-          ) : (
-            <AccessRow
-              key={index}
-              target={target}
-              value={getDataStatusLabel(target)}
-              hasChevronSlot={hasToggle}
-              onOpen={() => onOpen(target)}
+              rowKey="blocked-tables"
+              status={t`Blocked`}
+              targets={blocked}
+              onOpen={onOpen}
             />
-          ),
-        )}
-      {isFolded && (
-        <ToggleRow
+          ) : null;
+        }
+        if (isFullAccessFolded && isFullAccess(target)) {
+          return null;
+        }
+        return hasRulesToShow(target) ? (
+          <ToggleRow
+            key={index}
+            rowKey={`filtered-table-${index}`}
+            label={<TargetName target={target} />}
+            initiallyOpen
+            status={
+              <StatusLink target={target} onClick={() => onOpen(target)} />
+            }
+          >
+            <PolicyRules target={target} />
+          </ToggleRow>
+        ) : (
+          <AccessRow
+            key={index}
+            target={target}
+            value={getDataStatusLabel(target)}
+            hasChevronSlot={hasToggle}
+            onOpen={() => onOpen(target)}
+          />
+        );
+      })}
+      {isFullAccessFolded && (
+        <FoldedDataRows
           rowKey="full-access-tables"
-          label={
-            <Text truncate="end">
-              {ngettext(
-                msgid`${tableCount} table`,
-                `${tableCount} tables`,
-                tableCount,
-              )}
-            </Text>
-          }
-          initiallyOpen={false}
-          status={<Text c="text-secondary">{t`Full access`}</Text>}
-        >
-          <Box>
-            {fullAccess.map((target, index) => (
-              <AccessRow
-                key={index}
-                target={target}
-                value={getDataStatusLabel(target)}
-                onOpen={() => onOpen(target)}
-              />
-            ))}
-          </Box>
-        </ToggleRow>
+          status={t`Full access`}
+          targets={fullAccess}
+          onOpen={onOpen}
+        />
       )}
     </CardRows>
+  );
+}
+
+/** "3 tables · Blocked": one closed row that lists its tables when opened. */
+function FoldedDataRows({
+  rowKey,
+  status,
+  targets,
+  onOpen,
+}: {
+  rowKey: string;
+  status: string;
+  targets: WhyTarget[];
+  onOpen: (target: WhyTarget) => void;
+}) {
+  const tableCount = targets.length;
+  return (
+    <ToggleRow
+      rowKey={rowKey}
+      label={
+        <Text truncate="end">
+          {ngettext(
+            msgid`${tableCount} table`,
+            `${tableCount} tables`,
+            tableCount,
+          )}
+        </Text>
+      }
+      initiallyOpen={false}
+      status={<Text c="text-secondary">{status}</Text>}
+    >
+      <Box>
+        {targets.map((target, index) => (
+          <AccessRow
+            key={index}
+            target={target}
+            value={getDataStatusLabel(target)}
+            onOpen={() => onOpen(target)}
+          />
+        ))}
+      </Box>
+    </ToggleRow>
   );
 }
 
@@ -713,6 +750,10 @@ function PolicyRules({ target }: { target: WhyTarget }) {
       ))}
     </Stack>
   );
+}
+
+function isBlockedRow(target: WhyTarget) {
+  return isBlocking(target) && !hasRulesToShow(target);
 }
 
 function isFullAccess(target: WhyTarget) {
