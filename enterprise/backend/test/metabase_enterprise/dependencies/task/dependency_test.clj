@@ -21,6 +21,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -616,7 +617,7 @@
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: window outer}}")}]
         (backfill-all-existing-entities!)
-        (t2/update! :model/NativeQuerySnippet :id outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
+        (snippet/update-snippet! outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
         (deps.test/record-analysis-finding-processed! :card card-id)
         (backfill-dependencies-single-trigger!)
         (is (deps.test/analysis-finding-pending? :card card-id))))))

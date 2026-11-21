@@ -1394,9 +1394,9 @@
                              (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (defenterprise delete-card-tests!
-  "Delete the tests of the card `card-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  "Delete the tests of the cards with `card-ids`. No-op in OSS."
   metabase-enterprise.data-testing.models.card-test
-  [_card-id]
+  [_card-ids]
   nil)
 
 (defmethod mi/non-internal-filter-clause :model/Card
@@ -1748,7 +1748,7 @@
   (let [card-ids (vec (distinct card-ids))]
     (when (seq card-ids)
       (events/with-batched-events
-        (run! delete-card-tests! card-ids)
+        (delete-card-tests! card-ids)
         (queries.db/delete-actions-of-models! card-ids)
         (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
         (queries.db/delete-card-moderation-reviews-of-cards! card-ids)

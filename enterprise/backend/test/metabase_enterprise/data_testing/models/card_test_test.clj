@@ -10,6 +10,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.tu]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -88,10 +89,10 @@
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/card-test-delete topic)
                                                 (swap! published conj (:id (:previous-object event)))))]
-          (t2/delete! :model/Card :id card-id))
+          (queries.card/delete-cards! [card-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))
-        (testing "each test was deleted through its own hook, so its runs stay with no test id"
+        (testing "runs of deleted tests stay with no test id"
           (is (= [nil nil] (mapv #(t2/select-one-fn :test_id :model/DataTestRun :id %) run-ids))))
         (testing "each test published one delete event"
           (is (= [test-id other-id] (sort @published))))

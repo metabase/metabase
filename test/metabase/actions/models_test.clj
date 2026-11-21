@@ -21,6 +21,7 @@
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -470,7 +471,7 @@
       (mt/with-model-cleanup [:model/Action]
         (let [of-table    (action/create-action! {:type :implicit :name "T" :kind :row/create :table_id table-id})
               of-database (action/create-action! {:type :implicit :name "U" :kind :row/create :table_id other-id})]
-          (t2/delete! :model/Table :id table-id)
+          (table/delete-tables! [table-id])
           (is (not (t2/exists? :model/Action :id of-table)))
           (is (t2/exists? :model/Action :id of-database))
           (t2/delete! :model/Database :id db-id)
