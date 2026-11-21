@@ -30,6 +30,6 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cannot make a destination database a router database"
-           (database-routing.models/create-router! dest-id "tenant")))
-      (is (pos? (database-routing.models/create-router! router-db-id "tenant")))
+           (database-routing.models/create-database-router! {:database_id dest-id :user_attribute "tenant"})))
+      (is (pos? (database-routing.models/create-database-router! {:database_id router-db-id :user_attribute "tenant"})))
       (t2/delete! :model/DatabaseRouter :database_id router-db-id))))

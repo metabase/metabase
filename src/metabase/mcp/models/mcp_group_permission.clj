@@ -6,12 +6,14 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.permissions :as mcp.perms]
+   [metabase.mcp.schema :as mcp.schema]
    [metabase.mcp.v2.registry :as registry]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -69,24 +71,23 @@
                        (tru "Group {0} can''t have an MCP policy while All Users has one" (str group-id))
                        (tru "All Users can''t have an MCP policy while groups have their own"))))))
 
-(defn upsert-mcp-group-permissions!
-  "Set the McpGroupPermission of each group in `rows`, maps of `:group_id`, `:mcp_enabled` and `:tool_access`, in one
-  transaction, creating the row of a group that has none: one read, one insert, and one update per distinct policy."
-  [rows]
+(mu/defn upsert-mcp-group-permissions!
+  "Set the McpGroupPermission of each group in `rows` in one transaction, creating the row of a group that has none:
+  one read, one insert, and one update per distinct policy."
+  [rows :- [:sequential ::mcp.schema/mcp-group-permission.create]]
   (t2/with-transaction [_conn]
     (check-one-mode (map :group_id rows))
-    (let [rows                 (mapv #(select-keys % [:group_id :mcp_enabled :tool_access]) rows)
-          existing             (mcp.db/group-ids-with-permission (mapv :group_id rows))
+    (let [existing             (mcp.db/group-ids-with-permission (mapv :group_id rows))
           {updates true
            inserts false}      (group-by #(contains? existing (:group_id %)) rows)]
       (mcp.db/insert-group-permissions! (vec inserts))
       (doseq [[values rows] (group-by #(dissoc % :group_id) updates)]
         (mcp.db/update-group-permissions! (mapv :group_id rows) values)))))
 
-(defn create-missing-mcp-group-permissions!
-  "Give each group in `rows`, maps as for [[upsert-mcp-group-permissions!]], that has no McpGroupPermission the one in
-  its row, in one transaction: one read and one insert."
-  [rows]
+(mu/defn create-missing-mcp-group-permissions!
+  "Give each group in `rows` that has no McpGroupPermission the one in its row, in one transaction: one read and one
+  insert."
+  [rows :- [:sequential ::mcp.schema/mcp-group-permission.create]]
   (t2/with-transaction [_conn]
     (check-one-mode (map :group_id rows))
     (let [existing (mcp.db/group-ids-with-permission (mapv :group_id rows))]

@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -80,19 +79,13 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-review!
-  "Create a new ModerationReview as the most recent of its item: the item's other reviews lose the mark, and those
-  beyond the newest [[max-moderation-reviews]] are deleted."
-  [params :-
-   [:map {:closed true}
-    [:moderated_item_id       ms/PositiveInt]
-    [:moderated_item_type     moderation/moderated-item-types]
-    [:moderator_id            ms/PositiveInt]
-    [:status              {:optional true} Statuses]
-    [:text                {:optional true} [:maybe :string]]]]
+(mu/defn create-moderation-review! :- ::content-verification.schema/moderation-review
+  "Create a new ModerationReview from `row` as the most recent of its item: the item's other reviews lose the mark, and
+  those beyond the newest [[max-moderation-reviews]] are deleted."
+  [row :- ::content-verification.schema/moderation-review.create]
   (t2/with-transaction [_conn]
     (let [{:keys [id moderated_item_id moderated_item_type] :as review}
-          (content-verification.db/insert-moderation-review! params)]
+          (content-verification.db/insert-moderation-review! row)]
       (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
       (content-verification.db/delete-moderation-reviews-beyond-newest! moderated_item_id moderated_item_type
                                                                         max-moderation-reviews)

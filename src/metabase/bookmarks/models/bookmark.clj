@@ -96,10 +96,12 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn create-bookmark!
+(mu/defn create-bookmark!
   "Give the User with `user-id` a bookmark on the item of bookmark type `model` with `id` and return it, the existing
   one when there is one; a Collection that takes no bookmarks is a 400."
-  [model id user-id]
+  [model   :- :string
+   id      :- ms/PositiveInt
+   user-id :- ms/PositiveInt]
   (when (= model "collection")
     (collection/check-allowed-content :model/CollectionBookmark id))
   (bookmarks.db/insert-bookmark! model id user-id))

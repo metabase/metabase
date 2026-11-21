@@ -445,10 +445,10 @@
       (clear-recent-views-for-user :crowberto)
       (mt/with-model-cleanup [:model/RecentViews :model/ModerationReview]
         (mt/with-temp [:model/Card card {:name "verified card"}]
-          (moderation-review/create-review! {:moderated_item_id   (:id card)
-                                             :moderated_item_type "card"
-                                             :moderator_id        (mt/user->id :crowberto)
-                                             :status              "verified"})
+          (moderation-review/create-moderation-review! {:moderated_item_id   (:id card)
+                                                        :moderated_item_type "card"
+                                                        :moderator_id        (mt/user->id :crowberto)
+                                                        :status              "verified"})
           (events/publish-event! :event/card-query {:user-id (mt/user->id :crowberto) :card-id (:id card)})
           (is (=? {:model "card" :moderated_status "verified"}
                   (->> (mt/user-http-request :crowberto :get 200 "activity/recents?context=views")
