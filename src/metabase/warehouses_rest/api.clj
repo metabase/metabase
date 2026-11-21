@@ -657,7 +657,7 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfully, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (warehouses-rest.db/insert-database!
+      (u/prog1 (api/check-500 (database/create-database!
                                (merge
                                 {:name         name
                                  :engine       engine
@@ -960,9 +960,9 @@
             (catch Exception e
               (throw (ex-info (ex-message e) (assoc (ex-data e) :status-code 400) e)))))
         (events/with-batched-events
-          (warehouses-rest.db/update-database! id updates)
+          (database/update-database! id updates)
           (when (premium-features/enable-cache-granular-controls?)
-            (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl})))
+            (database/update-database! id {:cache_ttl cache_ttl})))
         (let [db (warehouses-rest.db/database id)]
           (sync/start-initial-sync! db existing-database)
           (-> db
@@ -983,9 +983,9 @@
   (t2/with-transaction [_conn]
     (api/let-404 [db (warehouses-rest.db/database id)]
       (api/check-403 (mi/can-write? (t2/hydrate db :can_write)))
-      (warehouses-rest.db/delete-destination-databases! id)
+      (database/delete-databases! (warehouses-rest.db/destination-database-ids id))
       (database-routing/delete-associated-database-router! id)
-      (warehouses-rest.db/delete-database! id)
+      (database/delete-database! id)
       nil))
   api/generic-204-no-content)
 

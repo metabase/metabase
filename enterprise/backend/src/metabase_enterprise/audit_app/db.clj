@@ -7,7 +7,6 @@
    [metabase.pulse.models.pulse :as pulse]
    [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn audit-database
@@ -20,32 +19,10 @@
   [database-name :- :string]
   (t2/select-one :model/Database :name database-name :is_audit false))
 
-(mu/defn insert-database!
-  "Insert the Database `row` with the fixed `id`."
-  [id  :- ::lib.schema.id/database
-   row :- ::warehouses.schema/database.update]
-  (t2/insert! :model/Database (assoc row :id id)))
-
-(mu/defn insert-returning-database!
-  "Insert the Database `row` and return the new instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
-
-(mu/defn set-database-engine!
-  "Set the engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   engine      :- :string]
-  (t2/update! :model/Database :id database-id {:engine engine}))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
-
-(mu/defn delete-audit-databases!
-  "Delete every audit Database."
+(mu/defn audit-database-ids :- [:sequential ::lib.schema.id/database]
+  "The ids of the audit Databases."
   []
-  (t2/delete! :model/Database :is_audit true))
+  (vec (t2/select-pks-vec :model/Database :is_audit true)))
 
 (mu/defn tables-of-database-named
   "The Tables of the Database with `database-id` named one of `table-names`."

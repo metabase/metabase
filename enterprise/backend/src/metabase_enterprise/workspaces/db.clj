@@ -49,11 +49,6 @@
   []
   (t2/select :model/Database))
 
-(defn update-database-settings!
-  "Replace the `:settings` of the Database with `database-id`."
-  [database-id settings]
-  (t2/update! :model/Database :id database-id {:settings settings}))
-
 (mu/defn database-engine
   "The `:engine` of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -262,15 +257,19 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/WorkspaceDatabase :database_id database-id))
 
-(mu/defn database-has-active-workspace-databases?
-  "Whether the Database with `database-id` has a WorkspaceDatabase that is not `:unprovisioned`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/WorkspaceDatabase :database_id database-id :status [:not= :unprovisioned]))
+(mu/defn database-id-with-active-workspace-databases :- [:maybe ::lib.schema.id/database]
+  "The id of one of the Databases with `database-ids` that has a WorkspaceDatabase that is not `:unprovisioned`, or
+  nil."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-one-fn :database_id :model/WorkspaceDatabase
+                    :database_id [:in database-ids]
+                    :status [:not= :unprovisioned]
+                    {:order-by [[:database_id :asc]]}))
 
-(mu/defn delete-unprovisioned-workspace-databases-of-database!
-  "Delete the `:unprovisioned` WorkspaceDatabases of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/WorkspaceDatabase :database_id database-id :status :unprovisioned))
+(mu/defn delete-unprovisioned-workspace-databases-of-databases!
+  "Delete the `:unprovisioned` WorkspaceDatabases of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/delete! :model/WorkspaceDatabase :database_id [:in database-ids] :status :unprovisioned))
 
 ;;; ---------------------------------------------- TableRemapping ----------------------------------------------
 

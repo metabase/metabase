@@ -22,6 +22,7 @@
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (deftest hydrate-query-action-test
@@ -474,7 +475,7 @@
           (table/delete-tables! [table-id])
           (is (not (t2/exists? :model/Action :id of-table)))
           (is (t2/exists? :model/Action :id of-database))
-          (t2/delete! :model/Database :id db-id)
+          (database/delete-database! db-id)
           (is (not (t2/exists? :model/Action :id of-database))))))))
 
 (deftest model-less-implicit-action-fields-test

@@ -124,8 +124,8 @@
   (ws.db/delete-workspace-databases! workspace-database-ids))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
-  "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any
-   non-`:unprovisioned` workspace_database row references `db-id` — anything in a
+  "Enterprise impl of the check the `:model/Database` delete runs first. Refuses (409) when any
+   non-`:unprovisioned` workspace_database row references one of `db-ids` — anything in a
    `:provisioning`, `:provisioned`, `:deprovisioning`, or `:teardown_failed` state points
    at (or is in flight against) live warehouse schemas/users that must be torn down first, by
    deleting their workspaces. A `:never_started` row has no warehouse objects and refuses too:
@@ -135,12 +135,12 @@
    un-cleanable, and an active row must refuse the delete regardless of current
    feature state."
   :feature :none
-  [db-id]
-  (when (ws.db/database-has-active-workspace-databases? db-id)
+  [db-ids]
+  (when-let [db-id (ws.db/database-id-with-active-workspace-databases db-ids)]
     (throw (ex-info "Cannot delete a Database with active workspace_database rows; delete their workspaces first (DELETE /api/ee/workspace-manager/:id). For rows in teardown_failed, add ?force=true only when the warehouse is gone for good."
                     {:status-code 409
                      :database_id db-id})))
-  (ws.db/delete-unprovisioned-workspace-databases-of-database! db-id))
+  (ws.db/delete-unprovisioned-workspace-databases-of-databases! db-ids))
 
 ;;; ----------------------------------------------- Specs -----------------------------------------------
 

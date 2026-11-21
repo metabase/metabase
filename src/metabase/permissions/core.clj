@@ -84,6 +84,7 @@
   user-has-transforms-permission-for-database?
   set-default-group-permissions!
   set-default-database-permissions!
+  set-default-databases-permissions!
   set-default-table-permissions!
   set-default-table-permissions-bulk!
   with-global-permissions-lock

@@ -10,7 +10,6 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn active-visible-tables-for-databases
@@ -184,11 +183,6 @@
              :table_id        [:in table-ids]
              :visibility_type [:not-in ["sensitive" "retired"]]))
 
-(mu/defn insert-database!
-  "Insert the Database `row` and return the inserted instance."
-  [row :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database row))
-
 (mu/defn sample-database
   "The sample Database, or nil."
   []
@@ -199,21 +193,10 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
-
-(mu/defn delete-destination-databases!
-  "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
+(mu/defn destination-database-ids :- [:sequential ::lib.schema.id/database]
+  "The ids of the routing destination Databases of the Database with `router-database-id`."
   [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`, returning the number deleted."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
+  (vec (t2/select-pks-vec :model/Database :router_database_id router-database-id)))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."

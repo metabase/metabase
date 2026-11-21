@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defn- ws-db-attrs
@@ -223,7 +224,7 @@
                            {:name      "Linked"
                             :databases [(ws-db-attrs {:database_id db-id})]})]
           (is (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))
-          (t2/delete! :model/Database :id db-id)
+          (database/delete-database! db-id)
           (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))))))))
 
 ;;; ========================================= Permission predicates =========================================

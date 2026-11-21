@@ -13,7 +13,6 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (declare sync-tables-clause)
@@ -88,12 +87,6 @@
                                  [:= :metadata_sync_schedule old-sample-metadata-cron]]
                                 [:in :metadata_sync_schedule metadata-crons]
                                 [:in :cache_field_values_schedule cache-field-values-crons]]}))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 

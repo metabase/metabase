@@ -49,6 +49,7 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.util :as warehouses.util]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -1454,8 +1455,7 @@
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup!
     (with-test-driver-available!
-      (mt/with-temp
-        [:model/Database db {}]
+      (let [db (database/create-database! (mt/with-temp-defaults :model/Database))]
         (testing "update db setting to never scan should remove scan field values trigger"
           (testing "sanity check that it has all triggers to begin with"
             (is (= (task.sync-databases-test/all-db-sync-triggers-name db)

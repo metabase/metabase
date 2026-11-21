@@ -34,3 +34,8 @@
   "Delete every version of the Secret with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/Secret :id id))
+
+(mu/defn delete-secrets!
+  "Delete every version of the Secrets with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Secret :id [:in ids]))

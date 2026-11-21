@@ -359,31 +359,28 @@
   (secrets.db/delete-secret! id))
 
 (defn delete-orphaned-secrets!
-  "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
-  simply delete any Secret whose ID appears in the details blobs (`:details`, `:write_data_details`, and
-  `:admin_details`), since every Secret instance that is currently created is exclusively associated with a single
-  Database.
-
-  In the future, if/when we allow arbitrary association of secret instances to database instances, this will need to
-  change and become more complicated (likely by consulting a many-to-many join table)."
-  [{:keys [id details write_data_details admin_details] :as database}]
-  (when-let [possible-secret-prop-names (seq (keys (secret-conn-props-by-name (driver.u/database->driver database))))]
-    (doseq [secret-id (reduce (fn [acc prop-name]
-                                (let [id-kw (->id-kw prop-name)]
-                                  (into acc
-                                        (keep #(get % id-kw))
-                                        [details write_data_details admin_details])))
-                              #{}
-                              possible-secret-prop-names)]
-      (log/infof "Deleting secret ID %s from app DB because the owning database (%s) is being deleted" secret-id id)
-      (delete-secret! secret-id))))
+  "Delete the Secrets that `databases` own, in one statement, as they are deleted: every Secret whose id appears in
+  their `:details`, `:write_data_details` or `:admin_details`, since each Secret belongs to a single Database."
+  [databases]
+  (let [secret-ids (into #{}
+                         (mapcat (fn [{:keys [details write_data_details admin_details] :as database}]
+                                   (for [prop-name (keys (secret-conn-props-by-name (driver.u/database->driver database)))
+                                         :let      [id-kw (->id-kw prop-name)]
+                                         details   [details write_data_details admin_details]
+                                         :let      [secret-id (get details id-kw)]
+                                         :when     secret-id]
+                                     secret-id)))
+                         databases)]
+    (when (seq secret-ids)
+      (log/infof "Deleting secret IDs %s from app DB because their owning databases are being deleted" (sort secret-ids))
+      (secrets.db/delete-secrets! (vec secret-ids)))))
 
 (defn- handle-secrets-for-details-key
   "Process secret-type connection properties in `details-key` of `database`, converting raw secret
   values into Secret records and storing only the secret ID. Returns the updated database."
-  [database details-key]
+  [database original details-key]
   (if-let [details (get database details-key)]
-    (let [original-details (get (t2/original database) details-key)
+    (let [original-details (get original details-key)
           updated-details  (reduce-over-details-secret-values
                             (keyword (:engine database))
                             details
@@ -413,7 +410,7 @@
 
 (defn handle-incoming-client-secrets!
   "Converts incoming secret values in `:details`, `:write_data_details`, and `:admin_details` into Secrets.
-   This is a transformation on `:model/Database` `before-insert` and `before-update`.
+   `original` is the stored Database it updates, or nil for a new one; the Database write functions call this.
 
    Only the Secret id should be stored in the details maps. All other secret props should be cleared.
 
@@ -429,11 +426,11 @@
    In this case, we want to look for a `:private-key-id` in the `original-details` which would indicate
    that we have stored a Secret before. We upsert the secret-value (which could be `-path` or `-value`).
    We clear out all the possible secret-keys `-value`, `-options`, `-path` and store the `-id`."
-  [database]
+  [database original]
   (-> database
-      (handle-secrets-for-details-key :details)
-      (handle-secrets-for-details-key :write_data_details)
-      (handle-secrets-for-details-key :admin_details)))
+      (handle-secrets-for-details-key original :details)
+      (handle-secrets-for-details-key original :write_data_details)
+      (handle-secrets-for-details-key original :admin_details)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]))
+   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouses.models.database :as database]))
 
 (def ^:private KeypathComponents
   [:map {:closed true}
@@ -64,7 +65,7 @@
               field-id (lib/normalize ::warehouse-schema.schema/field.update {k value})))
            (sync.updates/update-table-unless-user-set!
             table-id (lib/normalize ::warehouse-schema.schema/table.update {k value}))))
-       (sync.db/update-database! (u/the-id database) {k value})))))
+       (database/update-database! (u/the-id database) {k value})))))
 
 (mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insensitive) which includes descriptions or other
