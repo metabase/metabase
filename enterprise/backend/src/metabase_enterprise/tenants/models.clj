@@ -1,6 +1,7 @@
 (ns metabase-enterprise.tenants.models
   (:require
    [metabase-enterprise.tenants.db :as tenants.db]
+   [metabase-enterprise.tenants.schema :as tenants.schema]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -11,6 +12,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -105,10 +108,9 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(defn create-tenant!
-  "Insert `tenant`, a map of `:name`, `:slug` and `:attributes`, with a new Collection of its own, and return it; the
-  name or slug of an existing Tenant is a 400."
-  [{tenant-name :name :keys [slug] :as tenant}]
+(mu/defn create-tenant! :- ::tenants.schema/tenant
+  "Insert `tenant` with a new Collection of its own and return it; the name or slug of an existing Tenant is a 400."
+  [{tenant-name :name :keys [slug] :as tenant} :- ::tenants.schema/tenant.create]
   (t2/with-transaction [_conn]
     (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
       (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
@@ -117,10 +119,11 @@
                                                         :namespace :tenant-specific})]
       (tenants.db/insert-tenant! (assoc tenant :tenant_collection_id collection-id)))))
 
-(defn update-tenant!
+(mu/defn update-tenant!
   "Apply `changes` to the Tenant with `tenant-id`. The name of another Tenant is a 400. Deactivating the Tenant
   deactivates its active Users, and activating it reactivates the Users deactivated with it."
-  [tenant-id changes]
+  [tenant-id :- ms/PositiveInt
+   changes   :- ::tenants.schema/tenant.update]
   (t2/with-transaction [_conn]
     (let [stored        (tenants.db/tenant tenant-id)
           changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))

@@ -42,3 +42,10 @@
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:attributes           {:optional true} [:maybe ::tenant.attributes]]
    [:tenant_collection_id {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mr/def ::tenant.create
+  "What creating a Tenant takes: its name and slug, and optionally its attributes."
+  [:map {:closed true}
+   [:name       ::tenant.name]
+   [:slug       ::tenant.slug]
+   [:attributes {:optional true} [:maybe ::tenant.attributes]]])
