@@ -5,7 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -113,14 +112,3 @@
   "Whether the User with `user-id` is active."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :is_active :model/User :id (long user-id)))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id [:auto/param user-id] changes))
-
-(mu/defn insert-user-returning-login-columns!
-  "Insert the User `row` and return its id, last login, active flag, and tenant id."
-  [row :- ::users.schema/user.update]
-  (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))

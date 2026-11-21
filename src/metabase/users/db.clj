@@ -120,11 +120,11 @@
   [user-id :- ::lib.schema.id/user]
   ((requiring-resolve 'metabase.pulse.models.pulse-channel-recipient/delete-pulse-channel-recipients-for-user!) user-id))
 
-(mu/defn group-membership-exists?
-  "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
+(mu/defn group-member-ids
+  "The ids of those of the Users with `user-ids` who are members of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
-   user-id  :- ::lib.schema.id/user]
-  (t2/exists? :model/PermissionsGroupMembership :group_id group-id :user_id user-id))
+   user-ids :- [:set {:min 1} ::lib.schema.id/user]]
+  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
 
 (mu/defn user-group-ids
   "The ids of the PermissionsGroups the User with `user-id` belongs to."
@@ -152,10 +152,21 @@
   [tenant-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
 
-(mu/defn insert-user!
-  "Insert the User `row` and return the inserted instance."
-  [row :- ::users.schema/user.update]
-  (t2/insert-returning-instance! :model/User row))
+(mu/defn insert-users!
+  "Insert the User `rows` and return the inserted instances."
+  [rows :- [:sequential ::users.schema/user.create]]
+  (t2/insert-returning-instances! :model/User rows))
+
+(mu/defn user-ids
+  "The ids of the Users matching `conditions`."
+  [conditions :- ::users.schema/user.conditions]
+  (apply t2/select-pks-set :model/User (mapcat identity conditions)))
+
+(mu/defn update-users!
+  "Apply `changes` to the Users matching `conditions`, returning the number updated."
+  [conditions :- ::users.schema/user.conditions
+   changes    :- ::users.schema/user.update]
+  (apply t2/update! :model/User (concat (mapcat identity conditions) [changes])))
 
 (mu/defn same-groups-user-ids
   "The `:user_id`s of the Users sharing a PermissionsGroup other than the one with `all-users-group-id` with the User

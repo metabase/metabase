@@ -66,6 +66,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -448,9 +449,9 @@
   (t2/with-transaction [_]
     (let [reactivating? (and (:is_active user-data)
                              (not (auth-identity.db/user-active? user-id)))]
-      (auth-identity.db/update-user! user-id
-                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
-                                       reactivating? (assoc :is_superuser false))))
+      (user/update-user! user-id
+                         (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                           reactivating? (assoc :is_superuser false))))
     (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
       (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                              (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
@@ -470,13 +471,12 @@
       (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
                       {:status-code 500})))
     (t2/with-transaction [_]
-      (u/prog1
-        (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
-        (auth-identity/create-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
+      (let [{user-id :id :as new-user} (user/create-user! (select-keys user-data insert-fields))]
+        (auth-identity/create-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
-                                                                     :sso_source (name provider))}))))))
+          (events/publish-event! :event/user-invited {:object (assoc new-user :sso_source (name provider))}))
+        (select-keys (auth-identity.db/user-login-columns user-id) [:id :last_login :is_active :tenant_id])))))
 
 (defn- create-or-update-user!
   [provider request]

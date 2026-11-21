@@ -30,6 +30,7 @@
    [metabase.session.api :as session.api]
    [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
+   [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
@@ -468,9 +469,9 @@
      (ensure-seeded-usage-auditing-group-membership! user-id)
      (ensure-seeded-usage-auditing-group-membership! second-user-id)
      (when tenant-id
-       (testing-api.db/set-user-tenant! user-id tenant-id))
+       (user/update-user! user-id {:tenant_id tenant-id}))
      (when second-tenant-id
-       (testing-api.db/set-user-tenant! second-user-id second-tenant-id))
+       (user/update-user! second-user-id {:tenant_id second-tenant-id}))
      (delete-seeded-usage-auditing-data!)
      (doseq [conversation [{:id                (nth e2e-usage-auditing-conversation-ids 0)
                             :user-id           user-id

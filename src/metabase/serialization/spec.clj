@@ -70,6 +70,20 @@
     (when-not (= (get-method spec model) (get-method spec :default))
       (spec model))))
 
+(defmulti insert-rows
+  "The fn of a sequence of rows of `model` that inserts them and returns the instances in their order, for a model
+  whose rows an import creates for references it cannot resolve and a plain insert does not make whole, or nil."
+  {:arglists '([model])}
+  identity)
+
+(defmethod insert-rows :default [model]
+  (when (and (qualified-keyword? model) (= "model" (namespace model)))
+    (try
+      (t2.model/resolve-model model)
+      (catch Exception _ nil))
+    (when-not (= (get-method insert-rows model) (get-method insert-rows :default))
+      (insert-rows model))))
+
 (mr/def ::transform
   "A transform of a column of a spec."
   [:map {:closed true}

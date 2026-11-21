@@ -15,6 +15,7 @@
    [metabase.permissions.models.permissions-group :as permissions-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -274,7 +275,7 @@
       (when (scim.db/user-email-exists? email)
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (scim.db/insert-user! mb-user)
+                       (user/create-user! mb-user)
                        (-> (scim.db/scim-user-by-email email)
                            mb-user->scim))]
         (scim-response new-user 201)))))
@@ -297,7 +298,7 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (scim.db/update-user! (u/the-id current-user) updates)
+            (user/update-user! (u/the-id current-user) updates)
             (let [user (-> (scim.db/scim-user-by-entity-id id)
                            mb-user->scim)]
               (scim-response user)))
@@ -360,7 +361,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (scim.db/update-user! (u/the-id user) updates)
+        (user/update-user! (u/the-id user) updates)
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))

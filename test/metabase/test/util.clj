@@ -51,6 +51,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.log]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
@@ -577,6 +578,13 @@
       (finally
         (when-let [created @membership]
           (#'perms-group-membership/set-member-flags! [created] false))))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/User
+  "Puts a temporary User in its default groups, as `create-user!` does."
+  [model explicit-attributes f]
+  (next-method model explicit-attributes (fn [temp-user]
+                                           (#'user/add-to-default-groups! [temp-user])
+                                           (f temp-user))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
   "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."

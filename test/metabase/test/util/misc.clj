@@ -8,6 +8,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.test.initialize :as initialize]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -41,9 +42,9 @@
         existing-admin-ids         (t2/select-pks-set :model/User :is_superuser true)
         _                          (when (seq existing-admin-ids)
                                      (t2/update! (t2/table-name :model/User) {:id [:in existing-admin-ids]} {:is_superuser false}))
-        temp-admin                 (first (t2/insert-returning-instances! :model/User (merge (t2.with-temp/with-temp-defaults :model/User)
-                                                                                             attributes
-                                                                                             {:is_superuser true})))]
+        temp-admin                 (user/create-user! (merge (t2.with-temp/with-temp-defaults :model/User)
+                                                             attributes
+                                                             {:is_superuser true}))]
     (try
       (thunk temp-admin)
       (finally

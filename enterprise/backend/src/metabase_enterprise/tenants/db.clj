@@ -97,17 +97,10 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn deactivate-tenant-users!
-  "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
-  number updated."
-  [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
-
-(mu/defn reactivate-tenant-users!
-  "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
-  [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
-              {:is_active true :deactivated_with_tenant nil}))
+(mu/defn deactivate-all-tenants!
+  "Deactivate every active Tenant, returning the number updated."
+  []
+  (t2/update! :model/Tenant :is_active true {:is_active false}))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."

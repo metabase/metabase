@@ -10,6 +10,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -133,8 +134,20 @@
       (u/prog1 (tenants.db/update-tenant! tenant-id changes)
         (when (and stored (some? active) (not= active (:is_active stored)))
           (if active
-            (tenants.db/reactivate-tenant-users! tenant-id)
-            (tenants.db/deactivate-tenant-users! tenant-id)))))))
+            (user/update-users! {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+                                {:is_active true :deactivated_with_tenant nil})
+            (user/update-users! {:is_active true :tenant_id tenant-id}
+                                {:is_active false :deactivated_with_tenant true})))))))
+
+(defenterprise deactivate-tenants!
+  "Deactivate every active Tenant and every active tenant User, marking those Users as deactivated with their Tenant,
+  so that reactivating a Tenant brings them back."
+  :feature :none
+  []
+  (events/with-batched-events
+    (tenants.db/deactivate-all-tenants!)
+    (user/update-users! {:tenant_id [:not= nil] :is_active true}
+                        {:is_active false :deactivated_with_tenant true})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

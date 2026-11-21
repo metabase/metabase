@@ -2148,7 +2148,6 @@
                     :model/Database
                     :model/Field
                     :model/Table
-                    :model/Tenant
                     :model/User}}
 
   permissions.rest
@@ -2964,6 +2963,7 @@
            setup
            sso.auth-identity
            system
+           users
            util}
    :model-imports #{:model/User}}
 
@@ -3031,6 +3031,7 @@
            session
            session.login-history
            settings
+           users
            users.schema
            util}
    :model-exports #{:model/AuthIdentity}
@@ -3178,6 +3179,7 @@
            security-center
            session
            settings
+           users
            util
            util.config}
    :model-imports #{:model/AiUsageLog
@@ -3190,8 +3192,7 @@
                     :model/PermissionsGroupMembership
                     :model/SecurityAdvisory
                     :model/Transform
-                    :model/TransformRun
-                    :model/User}}
+                    :model/TransformRun}}
 
   tiles
   {:team "UX West"
@@ -3493,6 +3494,7 @@
            permissions
            premium-features
            pulse
+           serialization
            settings
            setup
            sso.auth-identity
@@ -3841,7 +3843,6 @@
            sso.auth-identity
            sync
            users
-           users.schema
            util
            warehouses
            enterprise/workspaces}
@@ -4860,6 +4861,7 @@
            permissions
            settings
            system
+           users
            users.schema
            util}
    :model-imports #{:model/ApiKey
@@ -4897,7 +4899,7 @@
            sso.auth-identity
            system
            task
-           users.schema
+           users
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
@@ -4917,6 +4919,7 @@
            request
            settings
            sso.auth-identity
+           users
            util}
    :model-exports #{:model/Tenant}
    :model-imports #{:model/Collection :model/User}}

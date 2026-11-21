@@ -21,9 +21,11 @@
     (fn [row] (mapv #(comparable (get row %)) ks))))
 
 (defn insert!
-  "Inserts `rows` of `model` and returns the inserted instances, in any order, without the rows the model leaves out."
+  "Inserts `rows` of `model` and returns the inserted instances, in any order, without the rows the model leaves out:
+  by the `:insert!` of its spec, or, for a model that is not serialized but that an import creates rows of, by its
+  [[metabase.serialization.spec/insert-rows]]."
   [model rows]
-  (if-let [f (:insert! (serialization.spec/spec model))]
+  (if-let [f (or (:insert! (serialization.spec/spec model)) (serialization.spec/insert-rows model))]
     (vec (f (vec rows)))
     (into []
           (mapcat #(serialization.db/insert-rows! model (vec %)))

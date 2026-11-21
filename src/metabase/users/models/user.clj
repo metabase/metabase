@@ -9,10 +9,12 @@
    [metabase.config.core :as config]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :as premium-features]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
@@ -23,7 +25,6 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [trs tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -123,12 +124,6 @@
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale)))))
 
-(defn- validate-sso-setup!
-  "Validate that SSO users can only be created after initial setup is complete."
-  [sso-source]
-  (when (and sso-source (not (setup/has-user-setup)))
-    (throw (Exception. (trs "Metabase instance has not been initialized")))))
-
 (defn- check-superuser-has-no-tenant
   "Throws a 400 when `user` is both a superuser and a tenant user."
   [{superuser? :is_superuser tenant-id :tenant_id}]
@@ -136,14 +131,11 @@
     (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
 
 (defn- validate-user-insert!
-  "Validate all constraints for user insertion."
-  [{:keys [email locale sso_source] user-type :type :as user}]
+  "Validate the constraints the row of a new User answers alone."
+  [{:keys [email locale] :as user}]
   (validate-user-email! email)
   (check-superuser-has-no-tenant user)
-  (validate-user-locale! locale)
-  (validate-sso-setup! sso_source)
-  (when (or (nil? user-type) (= user-type :personal))
-    (premium-features/assert-airgap-allows-user-creation!)))
+  (validate-user-locale! locale))
 
 (defn- without-credential-fields
   "Remove password and reset-token fields from a User map. Login passwords live in the user's `password` AuthIdentity
@@ -153,32 +145,12 @@
   [user]
   (dissoc user :password :password_salt :reset_token :reset_triggered))
 
-(defn- handle-superuser-toggle!
-  "Add or remove user from admin group based on superuser status change.
-  Does nothing if superuser status hasn't changed."
-  [user-id superuser? in-admin-group?]
-  (when (some? superuser?)
-    (cond
-      (and superuser? (not in-admin-group?))
-      (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms-group-membership/add-user-to-group! user-id (u/the-id (perms/admin-group))))
-
-      (and (not superuser?) in-admin-group?)
-      (perms/without-is-superuser-sync-on-add-to-admin-group
-       (perms-group-membership/remove-user-from-group! user-id (u/the-id (perms/admin-group)))))))
-
-(defn- validate-last-admin-not-archived!
-  "Prevent archiving the last admin user by throwing an exception."
-  [id in-admin-group? active?]
-  (when (and in-admin-group? (false? active?))
-    (perms/throw-if-last-admin! id)))
-
-(defn- handle-user-archival!
-  "Clean up user subscriptions when user is archived."
-  [user-id active?]
-  (when (false? active?)
-    (binding [api/*current-user-id* nil]
-      (users.db/delete-pulse-channel-recipients-for-user! user-id))))
+(defn- with-acknowledged-version
+  "Set the `last-acknowledged-version` user-local setting of a new `user` to the current version."
+  [user]
+  (assoc user :settings (u/assoc-dissoc (settings-map (:settings user))
+                                        :last-acknowledged-version
+                                        (not-empty (:tag config/mb-version-info)))))
 
 (defn- prepare-archival-timestamp
   "Return a map with deactivated_at field based on is_active status.
@@ -200,30 +172,9 @@
   [user]
   (validate-user-insert! user)
   (-> (merge insert-default-values user)
+      with-acknowledged-version
       normalize-user-fields
       without-credential-fields))
-
-(t2/define-after-insert :model/User
-  [{user-id :id, superuser? :is_superuser, :as user}]
-  (u/prog1 user
-    (let [current-version (:tag config/mb-version-info)]
-      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
-      ;; Can't use mw.session/with-current-user due to circular require
-      (binding [api/*current-user-id* user-id]
-        (setting/with-user-local-values (delay (atom (user-local-settings user)))
-          (setting/set! :last-acknowledged-version current-version))))
-    ;; add the newly created user to the magic perms groups.
-    (log/infof "Adding User %s to All Users permissions group..." user-id)
-    (when superuser?
-      (log/infof "Adding User %s to All Users permissions group..." user-id))
-    (let [groups (filter some? [(when-not (:tenant_id user) (perms/all-users-group))
-                                (when (:tenant_id user) (perms/all-external-users-group))
-                                (when superuser? (perms/admin-group))])]
-      (perms/allow-changing-all-users-group-members
-        (perms/allow-changing-all-external-users-group-members
-         (perms/without-is-superuser-sync-on-add-to-admin-group
-          (perms-group-membership/add-user-to-groups! user-id (map u/the-id groups))))))
-    <>))
 
 (t2/define-before-update :model/User
   [{:keys [id] :as user}]
@@ -231,16 +182,9 @@
     (throw (ex-info (tru "Not able to modify the internal user") {:status-code 400})))
   (when (:is_superuser (t2/changes user))
     (check-superuser-has-no-tenant user))
-  (let [changes (t2/changes user)
-        {:keys [email locale]
-         superuser? :is_superuser
-         active? :is_active} changes
-        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
-    (validate-last-admin-not-archived! id in-admin-group? active?)
+  (let [{:keys [email locale] active? :is_active} (t2/changes user)]
     (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
-    (handle-superuser-toggle! id superuser? in-admin-group?)
-    (handle-user-archival! id active?)
     (-> user
         (merge (normalize-user-fields (t2/changes user))
                (prepare-archival-timestamp active?))
@@ -416,13 +360,7 @@
   (when user-or-id
     (users.db/user-group-ids (u/the-id user-or-id))))
 
-(declare form-password-reset-url)
-
-(defn serdes-synthesize-user!
-  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
-  match any existing user."
-  [new-user]
-  (users.db/insert-user! new-user))
+(declare create-user! form-password-reset-url)
 
 (mu/defn create-and-invite-user!
   "Convenience function for inviting a new `User` and sending them a welcome email.
@@ -437,7 +375,7 @@
     setup?        :- :boolean
     invite-target :- [:maybe users.schema/InviteTarget]]
    ;; create the new user
-   (u/prog1 (users.db/insert-user! new-user)
+   (u/prog1 (create-user! new-user)
      (events/publish-event! :event/user-invited
                             {:object
                              (cond-> (assoc <>
@@ -493,6 +431,110 @@
   "Honeysql clauses for filtering on users. See [[users.db/filter-clauses]] for the options."
   users.db/filter-clauses)
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-sso-setup
+  "Throws when one of `rows` is an SSO user and the initial setup is not complete."
+  [rows]
+  (when (and (some :sso_source rows) (not (setup/has-user-setup)))
+    (throw (Exception. (trs "Metabase instance has not been initialized")))))
+
+(defn- check-user-limit
+  "Throws when one of `rows` is a personal user and the plan allows no more users."
+  [rows]
+  (when (some (fn [{user-type :type}] (or (nil? user-type) (= user-type :personal))) rows)
+    (premium-features/assert-airgap-allows-user-creation!)))
+
+(defn- default-group-ids
+  "The ids of the groups a new `user` joins: All Users, or All tenant users for a tenant user, and Administrators for a
+  superuser."
+  [{superuser? :is_superuser tenant-id :tenant_id}]
+  (cond-> [(:id (if tenant-id (perms/all-external-users-group) (perms/all-users-group)))]
+    superuser? (conj (:id (perms/admin-group)))))
+
+(defn- add-to-default-groups!
+  "Add each of the new `users` to its default groups."
+  [users]
+  (perms/allow-changing-all-users-group-members
+    (perms/allow-changing-all-external-users-group-members
+     (perms/without-is-superuser-sync-on-add-to-admin-group
+      (perms-group-membership/add-users-to-groups! (for [user     users
+                                                         group-id (default-group-ids user)]
+                                                     {:user (:id user) :group group-id}))))))
+
+(mu/defn create-users! :- [:sequential ::users.schema/user]
+  "Insert the User `rows` and return them in order, each in its default groups; an SSO user before the initial setup
+  or a personal user over the plan's limit throws."
+  [rows :- [:sequential ::users.schema/user.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-sso-setup rows)
+      (check-user-limit rows)
+      (u/prog1 (vec (sort-by :id (users.db/insert-users! rows)))
+        (add-to-default-groups! <>)))))
+
+(mu/defn create-user! :- ::users.schema/user
+  "Insert the User `row` and return it, in its default groups, as [[create-users!]] does."
+  [row :- ::users.schema/user.create]
+  (first (create-users! [row])))
+
+(defn- set-admin-memberships!
+  "Add the Users with `user-ids` to Administrators when `superuser?`, else remove them, leaving their `is_superuser`
+  flag alone; `admin-ids` holds those already in it."
+  [user-ids admin-ids superuser?]
+  (let [admin-group-id (:id (perms/admin-group))]
+    (perms/without-is-superuser-sync-on-add-to-admin-group
+     (if superuser?
+       (perms-group-membership/add-users-to-groups! (for [user-id user-ids
+                                                          :when   (not (contains? admin-ids user-id))]
+                                                      {:user user-id :group admin-group-id}))
+       (doseq [user-id user-ids
+               :when   (contains? admin-ids user-id)]
+         (perms-group-membership/remove-user-from-group! user-id admin-group-id))))))
+
+(defn- delete-subscriptions!
+  "Delete the dashboard subscription recipients of the deactivated Users with `user-ids`."
+  [user-ids]
+  (binding [api/*current-user-id* nil]
+    (run! users.db/delete-pulse-channel-recipients-for-user! user-ids)))
+
+(mu/defn update-users! :- :int
+  "Apply `changes` to the Users matching `conditions` and return the number updated. Deactivating or demoting the last
+  admin throws, deactivating a User deletes its subscriptions, and a change of `is_superuser` adds or removes the
+  Administrators membership; other changes are one statement."
+  [conditions :- ::users.schema/user.conditions
+   changes    :- ::users.schema/user.update]
+  (let [superuser?   (:is_superuser changes)
+        deactivates? (false? (:is_active changes))]
+    (if-not (or (some? superuser?) deactivates?)
+      (users.db/update-users! conditions changes)
+      (events/with-batched-events
+        (let [user-ids (if (= [:id] (keys conditions))
+                         #{(:id conditions)}
+                         (users.db/user-ids conditions))]
+          (if (empty? user-ids)
+            0
+            (let [admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
+              (when (or deactivates? (false? superuser?))
+                (run! perms/throw-if-last-admin! admin-ids))
+              (u/prog1 (users.db/update-users! {:id [:in (vec user-ids)]} changes)
+                (when (some? superuser?)
+                  (set-admin-memberships! user-ids admin-ids superuser?))
+                (when deactivates?
+                  (delete-subscriptions! user-ids))))))))))
+
+(mu/defn update-user! :- :int
+  "Apply `changes` to the User with `user-id` and return the number updated, as [[update-users!]] does."
+  [user-id :- ::lib.schema.id/user
+   changes :- ::users.schema/user.update]
+  (update-users! {:id user-id} changes))
+
+(mu/defn set-last-login-now!
+  "Set the `last_login` of the User with `user-id` to now."
+  [user-id :- ::lib.schema.id/user]
+  (users.db/set-user-last-login-now! user-id))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod events/spec :model/User
@@ -509,6 +551,9 @@
            :reset_token :reset_triggered :is_qbnewb :login_attributes :sso_source :locale :is_datasetnewb :settings
            :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
    :skip  []})
+
+(defmethod serialization/insert-rows :model/User [_model]
+  create-users!)
 
 (defmethod audit/spec :model/User [_model]
   {:track          [:first_name :last_name :email :sso_source :tenant_id]

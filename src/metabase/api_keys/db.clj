@@ -7,7 +7,6 @@
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -70,21 +69,10 @@
                       :api_key [:= :api_key.user_id :pgm.user_id]]
              :where  [:in :api_key.id api-key-ids]}))
 
-(mu/defn rename-api-key-user!
-  "Set the first name (and clear the last name) of the api-key User with `user-id`."
-  [user-id    :- ::lib.schema.id/user
-   first-name :- :string]
-  (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
-
 (mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :type :model/User :id user-id))
-
-(mu/defn deactivate-api-key-user!
-  "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/User user-id, :type :api-key, {:is_active false}))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
@@ -95,11 +83,6 @@
   "Whether an ApiKey named `key-name` exists."
   [key-name :- :string]
   (t2/exists? :model/ApiKey :name key-name))
-
-(mu/defn insert-user!
-  "Insert the User `row` and return its id."
-  [row :- ::users.schema/user.update]
-  (t2/insert-returning-pk! :model/User row))
 
 (mu/defn insert-api-key-usage-logs!
   "Insert the ApiKeyUsageLog `rows` as one batch."
