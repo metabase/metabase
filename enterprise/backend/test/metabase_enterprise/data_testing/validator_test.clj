@@ -301,6 +301,26 @@
       (is (=? {:error-type ::errors/not-a-single-select}
               (single-select :h2 "SELECT 1 AS id; DROP TABLE orders" nil))))))
 
+(defn- parser-internals
+  "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."
+  [message]
+  (re-seq #"<class 'sqlglot|\u001b" message))
+
+(deftest unparseable-sql-refusal-reads-as-the-parser-diagnostic-test
+  (let [sql "SELECT a FROM t WHERE ("]
+    (testing "control: an expectation that does not parse is refused with the diagnostic cleaned of the parser's internals"
+      (driver/the-initialized-driver :postgres)
+      (let [{:keys [error-type message]}
+            (data-testing.test-util/refusal
+             #(validator/validate :postgres (assoc complete-test
+                                                   :expectations [{:type :empty :name "check" :sql sql}])))]
+        (is (= ::errors/unparseable-source error-type))
+        (is (nil? (parser-internals message)) (pr-str message))))
+    (testing "input SQL that does not parse is refused with the diagnostic cleaned of the parser's internals"
+      (let [{:keys [error-type message]} (single-select :postgres sql [:input {:schema "public" :name "orders"}])]
+        (is (= ::errors/unparseable-source error-type))
+        (is (nil? (parser-internals message)) (pr-str message))))))
+
 (deftest validate-refuses-expectation-sql-of-more-than-one-statement-test
   (testing "control: an expectation of one SELECT is accepted"
     (is (nil? (refusal (assoc complete-test :expectations [{:type :empty :name "none" :sql "SELECT * FROM PEOPLE"}])))))

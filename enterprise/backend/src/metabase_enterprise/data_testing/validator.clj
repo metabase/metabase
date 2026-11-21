@@ -201,7 +201,8 @@
       (if error
         (throw (data-testing.errors/ex
                 ::data-testing.errors/unparseable-source
-                (tru "The SQL of {0} could not be parsed: {1}" (sql-source-label source) error)
+                (tru "The SQL of {0} could not be parsed: {1}"
+                     (sql-source-label source) (sql-parsing/parse-error-message (ex-info error {})))
                 {}))
         (throw (data-testing.errors/ex
                 ::data-testing.errors/uncheckable-sql
