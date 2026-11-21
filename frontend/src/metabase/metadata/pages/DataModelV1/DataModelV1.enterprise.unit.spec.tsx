@@ -5,6 +5,7 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -220,6 +221,7 @@ async function setup({
   });
   setupDatabasesEndpoints(databases);
   setupCardDataset();
+  setupSearchEndpoints([]);
 
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({ advanced_permissions: true }),
