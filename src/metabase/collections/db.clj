@@ -430,9 +430,10 @@
   (t2/delete! :model/Card :collection_id [:in collection-ids]))
 
 (mu/defn delete-dashboards-in-collections!
-  "Delete the Dashboards in the Collections with `collection-ids`, returning the number deleted."
+  "Delete the Dashboards in the Collections with `collection-ids` through their model."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Dashboard :collection_id [:in collection-ids]))
+  ((requiring-resolve 'metabase.dashboards.models.dashboard/delete-dashboards!)
+   (vec (t2/select-pks-vec :model/Dashboard :collection_id [:in collection-ids]))))
 
 (mu/defn delete-native-query-snippets-in-collections!
   "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."

@@ -683,6 +683,7 @@
            app-db
            audit-app
            collection-items
+           dashboards
            events
            lib
            lib.schema
@@ -971,6 +972,7 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
+           metabase.documents.models.document
            metabase.documents.prose-mirror
            metabase.documents.schema}
    :uses #{activity-feed

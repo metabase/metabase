@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -13,7 +14,7 @@
         (is (some? (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id regular-collection) "/")}))))
         (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id regular-collection)}))))
         (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric, :collection_id (:id regular-collection)}))))
-        (is (some? (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id regular-collection)}))))))))
+        (is (some? (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id regular-collection)})))))))
 
 (deftest library-completely-locked-down
   (mt/with-premium-features #{:library}
@@ -26,7 +27,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id no-allowed-content)}))))))))
+                              (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id no-allowed-content)})))))))
 
 (deftest check-allowed-content-table
   (mt/with-premium-features #{:library}
@@ -40,7 +41,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-tables)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)})))))
+                              (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id allow-tables)}))))
       (testing "Can add collections iff they have the same :type"
         (let [new-coll #(merge (mt/with-temp-defaults :model/Collection)
                                {:entity_id (u/generate-nano-id)
@@ -64,7 +65,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-metrics)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)})))))
+                              (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id allow-metrics)}))))
       (testing "Can add collections iff they have the same :type"
         (let [new-coll #(merge (mt/with-temp-defaults :model/Collection)
                                {:entity_id (u/generate-nano-id)
@@ -89,7 +90,7 @@
         (doseq [card-type [:question :model :metric]]
           (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id dashboards)})))
               (name card-type)))
-        (is (some? (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id dashboards)}))))
+        (is (some? (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id dashboards)})))
         (is (some? (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection)
                                                         {:location (str "/" (:id dashboards) "/")
                                                          :type     collection/library-dashboards-collection-type})))))

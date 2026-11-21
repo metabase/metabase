@@ -4,6 +4,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -175,7 +176,7 @@
        (fn [{:keys [dash-id pulse-id]}]
          (when archived?
            (t2/update! :model/Dashboard :id dash-id {:archived true}))
-         (t2/delete! :model/Dashboard :id dash-id)
+         (dashboard/delete-dashboard! dash-id)
          (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
@@ -205,9 +206,9 @@
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
-      (t2/update! :model/Dashboard :id dashboard-id {:parameters [(merge default-parameter
-                                                                         {:values_source_type    "card"
-                                                                          :values_source_config {:card_id card-id}})]})
+      (dashboard/update-dashboard! dashboard-id {:parameters [(merge default-parameter
+                                                                     {:values_source_type    :card
+                                                                      :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -221,7 +222,7 @@
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
       ;; same setup as earlier test, we know the ParameterCard exists right now
-      (t2/delete! :model/Dashboard :id dashboard-id)
+      (dashboard/delete-dashboard! dashboard-id)
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
@@ -233,8 +234,8 @@
                                                                       :type       "category"
                                                                       :values_source_type    "card"
                                                                       :values_source_config {:card_id source-card-id}}]}]
-      (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (t2/update! :model/Dashboard :id dashboard-id {:name "new name"})))))
+      (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters-for-objects! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (dashboard/update-dashboard! dashboard-id {:name "new name"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -280,7 +281,7 @@
       (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
         (mt/with-current-user (test.users/user->id :rasta)
           (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
-                saved-dashboard (dashboard/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
+                saved-dashboard (dashboards.write/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :dashcards count)))))))))
 
@@ -292,7 +293,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-               (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
+               (dashboard/create-dashboard! {:creator_id (mt/user->id :rasta), :collection_id collection-id, :name dashboard-name})))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
@@ -300,7 +301,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Dashboard :id card-id {:collection_id collection-id})))))))
+             (dashboard/update-dashboard! card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -548,10 +549,10 @@
                    :model/Collection plain    {}
                    :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/insert! :model/Dashboard {:name "Dash" :creator_id (mt/user->id :rasta)
+                            (dashboard/create-dashboard! {:name "Dash" :creator_id (mt/user->id :rasta)
                                                           :collection_id (u/the-id snippets)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id snippets)})))
+                            (dashboard/update-dashboard! (u/the-id dash) {:collection_id (u/the-id snippets)})))
       (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
 
 (deftest move-dashboard-moves-dashboard-questions-test
@@ -560,9 +561,9 @@
                    :model/Collection target {}
                    :model/Dashboard  dash   {:collection_id (u/the-id source)}
                    :model/Card       card   {:dashboard_id (u/the-id dash) :collection_id (u/the-id source)}]
-      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id (u/the-id target)})
+      (dashboard/update-dashboard! (u/the-id dash) {:collection_id (u/the-id target)})
       (is (= (u/the-id target) (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))))
-      (t2/update! :model/Dashboard :id (u/the-id dash) {:collection_id nil})
+      (dashboard/update-dashboard! (u/the-id dash) {:collection_id nil})
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
 
 (deftest ^:parallel dashboard-columns-schema-test
@@ -623,3 +624,54 @@
         (is (t2/exists? :model/Notification :id (:id notification)))
         (t2/update! :model/Dashboard :id dashboard-id {:archived false})
         (is (t2/exists? :model/Notification :id (:id notification)))))))
+
+(deftest create-dashboards-statement-count-test
+  (testing "Creating Dashboards takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card       {card-id :id}       {}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [parameters [(merge default-parameter
+                                 {:values_source_type :card :values_source_config {:card_id card-id}})]
+              statements (fn [n]
+                           (t2/with-call-count [call-count]
+                             (doall (dashboard/create-dashboards!
+                                     (for [i (range n)]
+                                       {:name (str "Dashboard " i) :creator_id (mt/user->id :rasta) :collection_id collection-id :parameters parameters})))
+                             (call-count)))]
+          (is (= (statements 2) (statements 6)))
+          (is (= 8 (t2/count :model/ParameterCard :card_id card-id))))))))
+
+(deftest update-dashboards-statement-count-test
+  (testing "Archiving Dashboards takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Collection {from-id :id} {}]
+      (mt/with-model-cleanup [:model/Dashboard]
+        (let [statements (fn [n changes]
+                           (let [dashboards (dashboard/create-dashboards!
+                                             (for [i (range n)] {:name (str "Dashboard " i) :creator_id (mt/user->id :rasta) :collection_id from-id}))]
+                             (t2/with-call-count [call-count]
+                               (dashboard/update-dashboards! (for [{:keys [id]} dashboards] (assoc changes :id id)))
+                               (call-count))))]
+          (testing "archiving"
+            (is (= (statements 2 {:archived true}) (statements 6 {:archived true})))))))))
+
+(deftest update-dashboards-keeps-parameter-cards-test
+  (testing "Updating the parameters of Dashboards updates their ParameterCards"
+    (mt/with-temp [:model/Card      {card-id :id}   {}
+                   :model/Card      {card-2-id :id} {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
+                                                                            {:values_source_type :card :values_source_config {:card_id card-id}})]}]
+      (dashboard/update-dashboards! [{:id dashboard-id
+                                      :parameters [(merge default-parameter
+                                                          {:values_source_type :card :values_source_config {:card_id card-2-id}})]}])
+      (is (= [card-2-id] (t2/select-fn-vec :card_id :model/ParameterCard :parameterized_object_id dashboard-id)))
+      (dashboard/update-dashboards! [{:id dashboard-id :parameters [default-parameter]}])
+      (is (= [] (t2/select :model/ParameterCard :parameterized_object_id dashboard-id))))))
+
+(deftest delete-dashboards-statement-count-test
+  (testing "Deleting Dashboards takes the same number of statements for any number of them"
+    (let [statements (fn [n]
+                       (let [dashboards (dashboard/create-dashboards! (for [i (range n)] {:name (str "Dashboard " i) :creator_id (mt/user->id :rasta)}))]
+                         (t2/with-call-count [call-count]
+                           (dashboard/delete-dashboards! (mapv :id dashboards))
+                           (call-count))))]
+      (is (= (statements 2) (statements 6))))))

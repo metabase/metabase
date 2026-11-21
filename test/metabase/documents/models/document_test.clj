@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
+   [metabase.documents.models.document :as document]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -48,7 +49,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
+      (document/update-document! document-id {:collection_id new-collection-id})
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -63,7 +64,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (t2/update! :model/Document :id document-id {:collection_id nil})
+      (document/update-document! document-id {:collection_id nil})
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -87,7 +88,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (t2/update! :model/Document :id document-id {:collection_id new-collection-id})
+      (document/update-document! document-id {:collection_id new-collection-id})
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -109,14 +110,14 @@
           (testing "moving document to personal collection moves associated cards"
             (mt/with-current-user user-id
               ;; As the personal collection owner, update should succeed
-              (t2/update! :model/Document :id document-id {:collection_id personal-coll-id})
+              (document/update-document! document-id {:collection_id personal-coll-id})
               ;; Verify both document and card moved to personal collection
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
           (testing "moving document from personal collection works"
             (mt/with-current-user user-id
               ;; Move back to regular collection
-              (t2/update! :model/Document :id document-id {:collection_id regular-collection-id})
+              (document/update-document! document-id {:collection_id regular-collection-id})
               ;; Verify both document and card moved back
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
@@ -194,10 +195,10 @@
                  :model/Document   document          {}]
     (testing "moving a Document that is not archived into an archived Collection is a 400"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (t2/update! :model/Document :id (:id document) {:collection_id archived-id}))))
+                            (document/update-document! (:id document) {:collection_id archived-id}))))
     (testing "a Document that stays where it is, or goes to the root, passes"
       (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
-      (is (number? (t2/update! :model/Document :id (:id document) {:collection_id nil}))))))
+      (is (nil? (document/update-document! (:id document) {:collection_id nil}))))))
 
 (deftest document-schema-test
   (testing "the Document schema takes a non-blank name of at most 254 characters"
@@ -213,9 +214,9 @@
     (mt/with-temp [:model/Collection {snippets-id :id} {:namespace "snippets"}
                    :model/Document {doc-id :id} {}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (mt/with-temp [:model/Document _ {:collection_id snippets-id}] nil)))
+                            (document/create-document! {:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (t2/update! :model/Document :id doc-id {:collection_id snippets-id}))))))
+                            (document/update-document! doc-id {:collection_id snippets-id}))))))
 
 (deftest public-uuid-prefix-is-derived-test
   (testing "the public UUID prefix follows the public UUID and is not written alone"
@@ -236,7 +237,7 @@
       (t2/update! :model/Card :id card-id {:collection_id card-coll-id})
       (t2/update! :model/Document :id doc-id {:name "Renamed"})
       (is (= card-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
-      (t2/update! :model/Document :id doc-id {:collection_id new-coll-id})
+      (document/update-document! doc-id {:collection_id new-coll-id})
       (is (= new-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
 (deftest hydrate-document-creator-test
@@ -811,3 +812,26 @@
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
           (is (= card-id (get-in imported [:content 0 :attrs :id]))))))))
+
+(deftest document-writes-statement-count-test
+  (testing "Creating, moving, archiving and deleting Documents takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Collection {from-id :id} {}
+                   :model/Collection {to-id :id}   {}]
+      (mt/with-model-cleanup [:model/Document]
+        (let [create     (fn [n] (document/create-documents! (for [i (range n)] {:name (str "Document " i) :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id from-id})))
+              statements (fn [n f]
+                           (let [documents (create n)]
+                             (t2/with-call-count [call-count]
+                               (f documents)
+                               (call-count))))
+              updater    (fn [changes] (fn [documents] (document/update-documents! (for [{:keys [id]} documents] (assoc changes :id id)))))]
+          (testing "creating"
+            (is (= (t2/with-call-count [call-count] (create 2) (call-count))
+                   (t2/with-call-count [call-count] (create 6) (call-count)))))
+          (testing "moving"
+            (is (= (statements 2 (updater {:collection_id to-id})) (statements 6 (updater {:collection_id to-id})))))
+          (testing "archiving"
+            (is (= (statements 2 (updater {:archived true})) (statements 6 (updater {:archived true})))))
+          (testing "deleting"
+            (is (= (statements 2 #(document/delete-documents! (mapv :id %)))
+                   (statements 6 #(document/delete-documents! (mapv :id %)))))))))))

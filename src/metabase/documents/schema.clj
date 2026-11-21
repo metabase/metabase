@@ -70,6 +70,31 @@
    [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
    [:is_placeholder      {:optional true} [:maybe :boolean]]])
 
+(mr/def ::document.create
+  "What creating a Document takes: its name, and the columns a caller gives; the public uuid prefix follows from the
+  public uuid and is not accepted."
+  [:map {:closed true}
+   [:name                ::document.name]
+   [:document            {:optional true} [:maybe ::document.document]]
+   [:content_type        {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]
+   [:creator_id          {:optional true} [:maybe ::lib.schema.id/user]]
+   [:collection_id       {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived            {:optional true} [:maybe :boolean]]
+   [:archived_directly   {:optional true} [:maybe :boolean]]
+   [:entity_id           {:optional true} [:maybe :string]]
+   [:collection_position {:optional true} [:maybe :int]]
+   [:public_uuid         {:optional true} [:maybe :string]]
+   [:made_public_by_id   {:optional true} [:maybe ms/PositiveInt]]
+   [:exploration_id      {:optional true} [:maybe ms/PositiveInt]]
+   [:is_placeholder      {:optional true} [:maybe :boolean]]])
+
+(mr/def ::document.update-row
+  "A row of a bulk update of Documents: the id of the Document and the columns to change."
+  [:merge
+   ::document.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::external-path
   "An entity as a serialized document names it: its containers, outermost first, then the entity itself."
   [:sequential [:map {:closed true}

@@ -5,6 +5,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.models.document :as document]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.explorations.collection-items :as explorations.collection-items]
@@ -58,11 +59,10 @@
 
 (defmethod mi/after-archived-change :model/Exploration
   [_model rows changes]
-  (doseq [{:keys [id]} rows]
-    (events/with-event-context {:archived-with [:model/Exploration id]}
-      (if (:archived changes)
-        (explorations.db/archive-summary-documents! id)
-        (explorations.db/unarchive-summary-documents! id)))))
+  (let [archived? (boolean (:archived changes))
+        ids       (mapv :id (explorations.db/summary-documents-following-explorations (mapv :id rows) archived?))]
+    (events/with-event-context {:archived-with [:model/Exploration (:id (first rows))]}
+      (document/update-documents! (mapv (fn [id] {:id id :archived archived?}) ids)))))
 
 (t2/define-before-insert :model/Exploration
   [{:keys [archived collection_id] :as exploration}]
