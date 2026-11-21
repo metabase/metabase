@@ -81,9 +81,9 @@
 
 (mu/defn create-moderation-review! :- ::content-verification.schema/moderation-review
   "Create a new ModerationReview from `row` as the most recent of its item: the item's other reviews lose the mark, and
-  those beyond the newest [[max-moderation-reviews]] are deleted."
+  those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction and one batch of events."
   [row :- ::content-verification.schema/moderation-review.create]
-  (t2/with-transaction [_conn]
+  (events/with-batched-events
     (let [{:keys [id moderated_item_id moderated_item_type] :as review}
           (content-verification.db/insert-moderation-review! row)]
       (content-verification.db/unmark-most-recent-moderation-reviews! moderated_item_id moderated_item_type id)
