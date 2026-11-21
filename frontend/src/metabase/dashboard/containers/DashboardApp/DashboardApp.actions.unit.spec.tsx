@@ -25,8 +25,6 @@ import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/Dashboa
 import { registerDashboardVisualizations } from "metabase/dashboard/visualizations/register";
 import { Route } from "metabase/router";
 import { registerVisualizations } from "metabase/visualizations/register";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
@@ -38,6 +36,8 @@ import {
   createMockDatabase,
   createMockDataset,
   createMockFieldSettings,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockParameter,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
@@ -73,8 +73,10 @@ const QUERY_ACTION = createMockQueryAction({
   name: "Query action",
   model_id: MODEL.id,
   database_id: DATABASE.id,
-  dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-    query: "UPDATE scores SET score = 999 WHERE id = {{id}}",
+  dataset_query: createMockNativeDatasetQuery({
+    native: createMockNativeQuery({
+      query: "UPDATE scores SET score = 999 WHERE id = {{id}}",
+    }),
   }),
   parameters: [ACTION_ID_PARAMETER],
   visualization_settings: {

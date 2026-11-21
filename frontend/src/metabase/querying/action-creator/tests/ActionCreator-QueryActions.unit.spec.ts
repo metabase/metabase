@@ -10,8 +10,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockActionParameter,

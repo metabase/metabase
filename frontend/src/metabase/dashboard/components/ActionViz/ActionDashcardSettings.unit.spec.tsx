@@ -20,8 +20,6 @@ import {
   within,
 } from "__support__/ui";
 import { useSelector } from "metabase/redux";
-import * as Lib from "metabase-lib";
-import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type {
   ActionDashboardCard,
   WritebackParameter,
@@ -36,6 +34,8 @@ import {
   createMockDatabase,
   createMockFieldSettings,
   createMockImplicitCUDActions,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
   createMockParameter,
   createMockQueryAction,
   createMockUser,
@@ -637,8 +637,10 @@ describe("ActionViz > ActionDashcardSettings > inline action edit", () => {
     model_id: models[1].id,
     database_id: 1,
     can_write: true,
-    dataset_query: Lib.createTestJsNativeQuery(SAMPLE_PROVIDER, {
-      query: "UPDATE scores SET score = {{new_score}}",
+    dataset_query: createMockNativeDatasetQuery({
+      native: createMockNativeQuery({
+        query: "UPDATE scores SET score = {{new_score}}",
+      }),
     }),
     parameters: [newScoreParameter],
     visualization_settings: {
