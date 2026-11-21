@@ -3,12 +3,14 @@
   where remote sync keeps synced content read-only, no suite can be created, changed, or deleted."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.suite :as data-testing.suite]
    [metabase-enterprise.data-testing.suite-run :as data-testing.suite-run]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util.malli :as mu]
@@ -16,6 +18,20 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private CreateTestSuiteRequest
+  "What a client sends to create a test suite. The members are in the order the suite runs them."
+  [:map {:closed true}
+   [:name        ::lib.schema.common/non-blank-string]
+   [:description {:optional true} [:maybe :string]]
+   [:members     [:sequential ::data-testing.schema/test-suite.member.request]]])
+
+(def ^:private UpdateTestSuiteRequest
+  "What a client sends to update a test suite. Omitted fields are left unchanged; `:members` replaces every member."
+  [:map {:closed true}
+   [:name        {:optional true} ::lib.schema.common/non-blank-string]
+   [:description {:optional true} [:maybe :string]]
+   [:members     {:optional true} [:sequential ::data-testing.schema/test-suite.member.request]]])
 
 (mu/defn- suite-response :- ::data-testing.schema/test-suite.response
   "The TestSuite with `id` as the current user sees it. Throws a 404 when it does not exist, and a 403 when the user may
@@ -44,12 +60,11 @@
   `test_type` and either `test_id` or `test_entity_id`; a test can be in a suite at most once."
   [_route-params
    _query-params
-   {:keys [members] :as body} :- ::data-testing.schema/test-suite.create]
+   {:keys [members] :as body} :- CreateTestSuiteRequest]
   (api/create-check :model/TestSuite body)
-  (suite-response (data-testing.db/insert-test-suite! (-> body
-                                                          (dissoc :members)
-                                                          (assoc :creator_id api/*current-user-id*))
-                                                      (data-testing.suite/member-rows members #{}))))
+  (suite-response (test-suite/create-test-suite! (assoc body
+                                                        :creator_id api/*current-user-id*
+                                                        :members    (data-testing.suite/member-rows members #{})))))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/test-suite.response
   "Update a test suite. `members`, when given, replaces every member, in the order given. Each member names a test by
@@ -59,14 +74,15 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   body :- ::data-testing.schema/test-suite.update]
+   body :- UpdateTestSuiteRequest]
   (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
-  (data-testing.db/update-test-suite!
+  (test-suite/update-test-suite!
    id
-   (dissoc body :members)
-   (when (contains? body :members)
-     (data-testing.suite/member-rows (:members body)
-                                     (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id])))))
+   (cond-> body
+     (contains? body :members)
+     (assoc :members (data-testing.suite/member-rows
+                      (:members body)
+                      (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id]))))))
   (suite-response id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -74,7 +90,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check (data-testing.db/test-suite id))
-  (data-testing.db/delete-test-suite! id)
+  (test-suite/delete-test-suite! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/test-suite-run.result

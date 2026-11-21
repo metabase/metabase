@@ -4,7 +4,10 @@
   (:require
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.analysis-finding-status :as models.analysis-finding-status]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.models.dependency-status :as models.dependency-status]
+   [metabase-enterprise.dependencies.models.result-metadata-status :as models.result-metadata-status]
    [metabase-enterprise.dependencies.result-metadata :as deps.result-metadata]
    [metabase-enterprise.dependencies.task.analysis-finding :as task.analysis-finding]
    [metabase-enterprise.dependencies.task.dependency :as task.dependency]
@@ -133,11 +136,11 @@
    entity      :- [:map]]
   (case entity-type
     :measure (let [dependents (models.dependency/transitive-dependents {:measure [entity]})]
-               (dependencies.db/mark-result-metadata-statuses-stale! dependents)
-               (dependencies.db/mark-analysis-finding-statuses-stale! dependents))
+               (models.result-metadata-status/mark-result-metadata-statuses-stale! dependents)
+               (models.analysis-finding-status/mark-analysis-finding-statuses-stale! dependents))
     :snippet (let [dependents (models.dependency/transitive-dependents {:snippet [entity]})]
-               (dependencies.db/mark-dependency-statuses-stale! dependents)
-               (dependencies.db/mark-analysis-finding-statuses-stale! dependents))
+               (models.dependency-status/mark-dependency-statuses-stale! dependents)
+               (models.analysis-finding-status/mark-analysis-finding-statuses-stale! dependents))
     (mark-dependents! batched entity-type (:id entity))))
 
 (mu/defn- mark-part-owner!
@@ -148,7 +151,7 @@
   (when owner-id
     (if (= :table owner-type)
       (mark-dependents! batched :table owner-id)
-      (dependencies.db/mark-dependency-statuses-stale! {owner-type #{owner-id}}))))
+      (models.dependency-status/mark-dependency-statuses-stale! {owner-type #{owner-id}}))))
 
 (mu/defn- output-changed? :- :boolean
   "Whether the `event`, the update of a row of a model, changes what the entities directly depending on it read,
@@ -172,7 +175,7 @@
   when every one is nil."
   [collection-ids :- [:sequential [:maybe ms/PositiveInt]]]
   (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-    (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids)))
+    (models.dependency-status/mark-data-app-dependency-statuses-stale! collection-ids)))
 
 (mu/defn- mark-update! :- :boolean
   "Mark the statuses the update `event` makes stale: the entity's own, by the columns each job reads, and what reads
@@ -188,9 +191,9 @@
         part?       (u.events/changed-any? event (:part-columns spec))
         data-apps?  (data-apps-changed? event)]
     (when dependency?
-      (dependencies.db/mark-dependency-statuses-stale! own))
+      (models.dependency-status/mark-dependency-statuses-stale! own))
     (when analysis?
-      (dependencies.db/mark-analysis-finding-statuses-stale! own))
+      (models.analysis-finding-status/mark-analysis-finding-statuses-stale! own))
     (when output?
       (mark-output-changed! batched entity-type object))
     (when part?
@@ -214,15 +217,15 @@
   "Mark the dependents, the remapped Tables and the remap targets that `marks` hold."
   [{:keys [dependents remapped-tables remap-targets]}]
   (doseq [[entity-type entity-ids] dependents]
-    (dependencies.db/mark-dependents-result-metadata-statuses-stale! entity-type entity-ids)
-    (dependencies.db/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
+    (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! entity-type entity-ids)
+    (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! entity-type entity-ids))
   (let [remapped (into (set remapped-tables)
                        (when (seq remap-targets)
                          (dependencies.db/remapped-table-ids remap-targets)))]
     (when (seq remapped)
       (let [dependents (models.dependency/transitive-dependents {:table (mapv #(hash-map :id %) remapped)})]
-        (dependencies.db/mark-result-metadata-statuses-stale! dependents)
-        (dependencies.db/mark-analysis-finding-statuses-stale! dependents)))))
+        (models.result-metadata-status/mark-result-metadata-statuses-stale! dependents)
+        (models.analysis-finding-status/mark-analysis-finding-statuses-stale! dependents)))))
 
 (mu/defn- mark-insert!
   "Mark what inserting `row` of `model` changes; a new entity has no status, which has the jobs process it."

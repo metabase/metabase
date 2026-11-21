@@ -72,11 +72,11 @@
    user-attribute :- ::database-routing.schema/database-router.user-attribute]
   (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
 
-(mu/defn update-router-user-attribute!
-  "Set the routing user attribute of the router of the Database with `database-id`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- ::database-routing.schema/database-router.user-attribute]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
+(mu/defn update-router!
+  "Apply `changes` to the DatabaseRouter of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   changes     :- ::database-routing.schema/database-router.update]
+  (t2/update! :model/DatabaseRouter :database_id database-id changes))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

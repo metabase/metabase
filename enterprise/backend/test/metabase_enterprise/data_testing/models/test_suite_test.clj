@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-testing.models.test-suite-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.test :as mt]
@@ -84,7 +84,7 @@
         (testing "a change of the members alone is audited as one update of the suite"
           (let [updates #(mt/all-entries-for :test-suite-update :model/TestSuite suite-id)
                 before  (count (updates))]
-            (data-testing.db/update-test-suite! suite-id {} [{:test_type :card :test_entity_id card-test-eid}])
+            (test-suite/update-test-suite! suite-id {:members [{:test_type :card :test_entity_id card-test-eid}]})
             (is (= (inc before) (count (updates))))
             (is (= {:model_id suite-id
                     :user_id  (mt/user->id :rasta)
@@ -107,19 +107,20 @@
       (mt/with-temp [:model/Card     {card-id :id}     {}
                      :model/CardTest {eid-1 :entity_id} {:card_id card-id}
                      :model/CardTest {eid-2 :entity_id} {:card_id card-id}]
-        (let [suite-id (data-testing.db/insert-test-suite! {:name "Nightly" :creator_id (mt/user->id :rasta)}
-                                                           [{:test_type :card :test_entity_id eid-1}
-                                                            {:test_type :card :test_entity_id eid-2}])
+        (let [suite-id (test-suite/create-test-suite! {:name       "Nightly"
+                                                       :creator_id (mt/user->id :rasta)
+                                                       :members    [{:test_type :card :test_entity_id eid-1}
+                                                                    {:test_type :card :test_entity_id eid-2}]})
               topics   #(t2/select-fn-vec :topic :model/AuditLog :model "TestSuite" :model_id suite-id
                                           {:order-by [[:id :asc]]})]
           (try
             (testing "a create with members records one create"
               (is (= [:test-suite-create] (topics))))
             (testing "a replacement of the members records one update"
-              (data-testing.db/update-test-suite! suite-id {} [{:test_type :card :test_entity_id eid-2}])
+              (test-suite/update-test-suite! suite-id {:members [{:test_type :card :test_entity_id eid-2}]})
               (is (= [:test-suite-create :test-suite-update] (topics))))
             (testing "a change of the name and the members records one update"
-              (data-testing.db/update-test-suite! suite-id {:name "Renamed"} [{:test_type :card :test_entity_id eid-1}])
+              (test-suite/update-test-suite! suite-id {:name "Renamed" :members [{:test_type :card :test_entity_id eid-1}]})
               (is (= [:test-suite-create :test-suite-update :test-suite-update] (topics))))
             (finally
               (t2/delete! :model/TestSuite :id suite-id))))))))

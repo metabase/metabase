@@ -1,10 +1,15 @@
 (ns metabase-enterprise.security-center.models.security-advisory
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.security-center.db :as security-center.db]
    [metabase.analytics.core :as analytics]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.security-center.schema :as security-center.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -44,11 +49,33 @@
      (constantly id->user)
      :acknowledged_by {:default nil})))
 
-(defn acknowledge!
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn upsert-advisory!
+  "Insert or update a SecurityAdvisory by `:advisory_id`. On insert, `:match_status` starts as `:unknown` until the
+  matching engine evaluates it. On update, sets `advisory`'s columns, leaving `:match_status`, `:last_evaluated_at`,
+  and acknowledgement fields (which `advisory` doesn't include) untouched."
+  [advisory :- ::security-center.schema/security-advisory.update]
+  (security-center.db/upsert-advisory! advisory))
+
+(mu/defn record-advisory-evaluation!
+  "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number
+  updated."
+  [id      :- ms/PositiveInt
+   changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :acknowledged_by :acknowledged_at])]
+  (security-center.db/record-advisory-evaluation! id changes))
+
+(mu/defn record-advisory-notification!
+  "Set `last_notified_at` of the SecurityAdvisory with `id` to now, returning the number updated."
+  [id :- ms/PositiveInt]
+  (security-center.db/record-advisory-notification! id))
+
+(mu/defn acknowledge!
   "Acknowledge a security advisory. Sets `acknowledged_by` and `acknowledged_at`,
    and publishes an audit event. Returns the updated advisory with `:acknowledged_by` hydrated.
    Throws if already acknowledged."
-  [advisory user-id]
+  [advisory :- [:map [:id ms/PositiveInt]]
+   user-id  :- ::lib.schema.id/user]
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
   (security-center.db/update-advisory! (:id advisory) {:acknowledged_by user-id})
@@ -61,10 +88,11 @@
   (-> (security-center.db/advisory (:id advisory))
       (t2/hydrate :acknowledged_by_user)))
 
-(defn acknowledge-many!
+(mu/defn acknowledge-many!
   "Acknowledge multiple security advisories by their advisory_id strings. Skips already-acknowledged
    advisories. Returns a sequence of updated advisories with `:acknowledged_by` hydrated."
-  [advisory-ids user-id]
+  [advisory-ids :- [:or [:sequential :string] [:set :string]]
+   user-id      :- ::lib.schema.id/user]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))
 

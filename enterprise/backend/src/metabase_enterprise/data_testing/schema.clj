@@ -395,19 +395,27 @@
    [:fn {:error/message "must have exactly one of test_id and test_entity_id"}
     (fn [member] (= 1 (count (select-keys member [:test_id :test_entity_id]))))]])
 
+(mr/def ::test-suite-member.create
+  "A member of a test suite as a write gives it: its test, by type and entity id. The write positions the members in
+  their order."
+  [:map {:closed true}
+   [:test_type      ::test-type]
+   [:test_entity_id :string]])
+
 (mr/def ::test-suite.create
-  "What a client sends to create a test suite. The members are in the order the suite runs them."
+  "What creating a test suite takes: its name, description, creator, and members, in the order the suite runs them."
   [:map {:closed true}
    [:name        ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]
-   [:members     [:sequential ::test-suite.member.request]]])
+   [:creator_id  ::lib.schema.id/user]
+   [:members     [:sequential ::test-suite-member.create]]])
 
 (mr/def ::test-suite.update
-  "What a client sends to update a test suite. Omitted fields are left unchanged; `:members` replaces every member."
+  "What an update of a test suite takes. Omitted keys are left unchanged; `:members` replaces every member."
   [:map {:closed true}
    [:name        {:optional true} ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]
-   [:members     {:optional true} [:sequential ::test-suite.member.request]]])
+   [:members     {:optional true} [:sequential ::test-suite-member.create]]])
 
 (mr/def ::test-suite
   "A saved test suite, without its members."
