@@ -23,6 +23,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -333,7 +334,7 @@
     (t2/with-transaction [_conn]
       (mapv (fn [{:as card :keys [in_dashboards]}]
               (api/update-check card {:dashboard_id (-> in_dashboards first :id)})
-              (queries/update-card! {:card-before-update card
+              (queries.card/update-card! {:card-before-update card
                                      :card-updates {:dashboard_id (-> in_dashboards first :id)}
                                      :actor @api/*current-user*
                                      :delete-old-dashcards? false})

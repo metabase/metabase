@@ -19,7 +19,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -442,7 +442,7 @@
 
 (deftest undeclared-failure-test
   (testing "an unexpected failure ends the turn without reaching the model"
-    (mt/with-dynamic-fn-redefs [queries/create-card! (fn [& _] (throw (ex-info "boom" {})))]
+    (mt/with-dynamic-fn-redefs [queries.card/create-card! (fn [& _] (throw (ex-info "boom" {})))]
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= {:class :unrecoverable :code :internal}
                (failure {:target_type "collection" :collection_id nil})))))))
@@ -454,7 +454,7 @@
                      :model/Document doc {:document document-ast}]
         (testing "4xx failures during card creation reach the agent with their message"
           (doseq [status [400 403 404 409 422 499]]
-            (mt/with-dynamic-fn-redefs [queries/create-card!
+            (mt/with-dynamic-fn-redefs [queries.card/create-card!
                                         (fn [& _]
                                           (throw (ex-info "Uses content that is not remote synced."
                                                           {:status-code status})))]
@@ -475,7 +475,7 @@
 
 (deftest transaction-server-error-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-dynamic-fn-redefs [queries/create-card!
+    (mt/with-dynamic-fn-redefs [queries.card/create-card!
                                 (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
       (testing "the card may have been saved before the failure, so the turn ends and the user is told to check"
         (is (= {:output "This call failed and the user was shown the error (:unconfirmed-write). Don't retry it."

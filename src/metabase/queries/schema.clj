@@ -230,6 +230,10 @@
    [:metabot_chart_id                          {:optional true} [:maybe :string]]
    [:verified-result-metadata?                 {:optional true} :boolean]])
 
+(mr/def ::card.create
+  "What a caller gives to create Cards: the columns of `::card.update`."
+  ::card.update)
+
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
   [:merge

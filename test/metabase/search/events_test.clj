@@ -9,7 +9,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.db :as qp.db]
+   [metabase.queries.models.card :as queries.card]
    [metabase.revisions.models.revision :as revision]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
@@ -226,7 +226,7 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       (mt/with-temp [:model/Card {card-id :id} {}]
         ;; No search spec reads `result_metadata`: search reads it from the app DB at query time.
-        (is (= [] (capture-enqueues! #(qp.db/set-card-result-metadata! card-id []))))
+        (is (= [] (capture-enqueues! #(queries.card/update-cards! [{:id card-id :result_metadata [] :updated_at :updated_at}]))))
         (is (not= [] (capture-enqueues! #(t2/update! :model/Card :id card-id {:name "renamed"}))))))))
 
 (deftest revision-writes-enqueue-nothing-test

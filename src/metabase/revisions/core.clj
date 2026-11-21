@@ -22,4 +22,5 @@
   fetch-last-edited-info
   with-last-edit-info]
  [metabase.revisions.spec
-  spec])
+  spec
+  tracked-columns])

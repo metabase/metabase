@@ -692,6 +692,7 @@
            permissions
            premium-features
            pulse
+           queries
            remote-sync
            search
            serialization
@@ -2309,6 +2310,7 @@
    :api  #{metabase.queries.card-schema
            metabase.queries.core
            metabase.queries.init
+           metabase.queries.models.card
            metabase.queries.models.parameter-card
            metabase.queries.models.query
            metabase.queries.models.query-execution

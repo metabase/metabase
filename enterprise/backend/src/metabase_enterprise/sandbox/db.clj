@@ -6,7 +6,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -193,12 +192,6 @@
               :where  [:exists ^:allow-subquery {:select [[[:inline 1]]]
                                                  :from   [[(t2/table-name :model/Sandbox) :s]]
                                                  :where  [:= :s.card_id :c.id]}]}))
-
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id`, returning the number updated."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
 
 (mu/defn dependency-sandbox-items :- [:maybe :map]
   "The query of the Sandboxes the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`, both the

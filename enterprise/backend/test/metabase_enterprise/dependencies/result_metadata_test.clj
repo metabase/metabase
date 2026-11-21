@@ -12,8 +12,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.db :as qp.db]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -280,7 +280,7 @@
 (defn- store-run-metadata!
   "Store `metadata` as the result metadata of the Card with `card-id`, as a run of the card does."
   [card-id metadata]
-  (#'qp.db/set-card-result-metadata! card-id metadata))
+  (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}]))
 
 (defn- once!
   "A function running `f` the first time it is called and doing nothing after."
@@ -546,12 +546,12 @@
                      :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! failing-id other-id)
-        (let [store (mt/original-fn #'dependencies.db/set-card-result-metadata!)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
-                                      (fn [card-id metadata]
-                                        (if (= failing-id card-id)
+        (let [store (mt/original-fn #'queries.card/update-cards!)]
+          (mt/with-dynamic-fn-redefs [queries.card/update-cards!
+                                      (fn [updates]
+                                        (if (some #(= failing-id (:id %)) updates)
                                           (throw (ex-info "Store failed" {}))
-                                          (store card-id metadata)))]
+                                          (store updates)))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column other-id "NAME"))))))))
@@ -704,9 +704,9 @@
                      :model/Card {other-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [store  (mt/original-fn #'dependencies.db/set-card-result-metadata!)
+        (let [store  (mt/original-fn #'queries.card/update-cards!)
               marked (atom nil)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/set-card-result-metadata!
+          (mt/with-dynamic-fn-redefs [queries.card/update-cards!
                                       (fn [& args]
                                         (reset! marked (deref (future (t2/update! :model/ResultMetadataStatus
                                                                                   :entity_type :card

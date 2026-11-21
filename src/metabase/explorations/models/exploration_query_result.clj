@@ -7,7 +7,7 @@
    [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.models.stored-result :as stored-result]
    [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.query-permissions.core :as query-perms]
@@ -183,7 +183,7 @@
                                    ;; every non-superuser. See [[composite-data-access-token]].
                                    :data_access_token (composite-data-access-token eq-results)
                                    :resolved_source_ids (composite-resolved-source-ids dataset-query eq-results)}))
-              card-id          (:id (queries/create-card!
+              card-id          (:id (queries.card/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))
                                                                   (tru "Chart"))

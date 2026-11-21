@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.queries.models.card :as queries.card]
    [metabase.replacement.core :as replacement]
    [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
@@ -193,4 +194,4 @@
      (when-let [persisted-info (replacement.db/persisted-info-for-card card-id)]
        (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
      ;; phase 4: convert the model to a saved question
-     (replacement.db/update-card! card-id {:type :question}))))
+     (queries.card/update-cards! [{:id card-id :type :question}]))))

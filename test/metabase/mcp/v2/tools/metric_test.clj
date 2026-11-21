@@ -235,7 +235,7 @@
           (is (= 1 (count (get-in (t2/select-one-fn :dataset_query :model/Card :id (:id created))
                                   [:stages 0 :breakout])))))
         (testing "round-2 review: swapping the definition refreshes result_metadata rather than
-                  leaving it stale — `queries/update-card!` writes through Card's `before-update`
+                  leaving it stale — `queries.card/update-card!` writes through Card's `before-update`
                   hook, which recomputes result_metadata whenever `dataset_query` changes"
           (let [before-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id created))
                 _ (tool-result (call-tool! :crowberto write-scope "metric_write"

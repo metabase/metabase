@@ -16,6 +16,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -2127,9 +2128,9 @@
     (mt/with-temp [:model/Collection section {:type collection/library-data-collection-type}]
       (testing "Content a library section doesn't hold is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                             :type          :model
-                                                             :collection_id (:id section))))))
+                              (first (#'card/create-cards* [(assoc (mt/with-temp-defaults :model/Card)
+                                                                   :type          :model
+                                                                   :collection_id (:id section))])))))
       (testing "A Collection can't move into a section of another type"
         (mt/with-temp [:model/Collection other {:type collection/library-metrics-collection-type}
                        :model/Collection child {:type     collection/library-metrics-collection-type

@@ -82,6 +82,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
 
+(mu/defn cards-parameters
+  "A map of ID to `:parameters` for the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select-pk->fn :parameters [:model/Card :id :parameters] :id [:in card-ids]))
+
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -152,11 +157,49 @@
   [card :- ::queries.schema/card.update]
   (t2/insert-returning-instance! :model/Card card))
 
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
+(mu/defn insert-cards!
+  "Insert the Card `rows` in one statement and return the new instances, in the order of `rows`."
+  [rows :- [:sequential :map]]
+  (t2/insert-returning-instances! :model/Card rows))
+
+(mu/defn update-cards!
+  "Apply `changes` to the Cards with `card-ids` in one statement, returning the number updated."
+  [card-ids :- [:sequential ::lib.schema.id/card]
+   changes  :- :map]
+  (t2/update! :model/Card :id [:in card-ids] changes))
+
+(mu/defn delete-cards!
+  "Delete the Cards with `card-ids`, returning the number deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! :model/Card :id [:in card-ids]))
+
+(mu/defn collections-for-content-checks
+  "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`, by ID."
+  [collection-ids :- [:set ::lib.schema.id/collection]]
+  (if (seq collection-ids)
+    (u/index-by :id (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
+    {}))
+
+(mu/defn dashboards-for-placement
+  "The ID, `archived` flag and Collection ID of each of the Dashboards with `dashboard-ids`, by ID."
+  [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
+  (if (seq dashboard-ids)
+    (u/index-by :id (t2/select [:model/Dashboard :id :archived :collection_id] :id [:in dashboard-ids]))
+    {}))
+
+(mu/defn archived-document-ids
+  "The IDs among `document-ids` of the Documents that are archived."
+  [document-ids :- [:set ms/PositiveInt]]
+  (if (seq document-ids)
+    (t2/select-pks-set :model/Document :id [:in document-ids] :archived true)
+    #{}))
+
+(mu/defn database-names
+  "A map of ID to name for the Databases with `database-ids`."
+  [database-ids :- [:set ::lib.schema.id/database]]
+  (if (seq database-ids)
+    (t2/select-pk->fn :name :model/Database :id [:in database-ids])
+    {}))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -302,6 +345,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
 
+(mu/defn dashboards-parameters
+  "A map of ID to `:parameters` for the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select-pk->fn :parameters [:model/Dashboard :id :parameters] :id [:in dashboard-ids]))
+
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
@@ -387,6 +435,23 @@
   [model-id :- ms/PositiveInt]
   (t2/delete! :model/Action :model_id model-id))
 
+(mu/defn implicit-action-ids-for-models
+  "The IDs of the implicit Actions of the model Cards with `model-ids`."
+  [model-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq model-ids)
+    (t2/select-pks-set :model/Action {:select [:action.id]
+                                      :from   [:action]
+                                      :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
+                                      :where  [:in :action.model_id model-ids]})
+    #{}))
+
+(mu/defn move-actions-of-models!
+  "Move the Actions of the model Cards with `model-ids` to the Collection with `collection-id`, returning the number
+  updated."
+  [model-ids     :- [:sequential ::lib.schema.id/card]
+   collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+
 (mu/defn delete-actions-of-models!
   "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
   [model-ids :- [:sequential ms/PositiveInt]]
@@ -403,6 +468,23 @@
   [card-id :- ::lib.schema.id/card]
   ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
   (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
+
+(mu/defn delete-card-moderation-reviews-of-cards!
+  "Delete the ModerationReviews of the Cards with `card-ids`, returning the number deleted.
+  Bypasses delete capture like [[delete-card-moderation-reviews!]]: use it only when deleting the Cards."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id [:in card-ids]))
+
+(mu/defn card-notification-ids-for-cards
+  "The IDs of the card Notifications attached to the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (if (seq card-ids)
+    (t2/select-pks-set :model/Notification
+                       :payload_type :notification/card
+                       :payload_id [:in ^:allow-subquery {:select [:id]
+                                                          :from   [:notification_card]
+                                                          :where  [:in :card_id card-ids]}])
+    #{}))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
@@ -437,6 +519,32 @@
   (t2/select-fn-set :card_id :model/ParameterCard
                     :parameterized_object_type object-type
                     :parameterized_object_id object-id))
+
+(mu/defn parameter-cards-for-objects
+  "The ParameterCards of the parameterized objects of `object-type` with `object-ids`."
+  [object-type :- [:or :keyword :string]
+   object-ids  :- [:sequential ms/PositiveInt]]
+  (if (seq object-ids)
+    (t2/select :model/ParameterCard
+               :parameterized_object_type object-type
+               :parameterized_object_id [:in object-ids])
+    []))
+
+(mu/defn insert-parameter-cards!
+  "Insert `parameter-cards` in one statement, returning the number inserted."
+  [parameter-cards :- [:sequential ::queries.schema/parameter-card.update]]
+  (t2/insert! :model/ParameterCard parameter-cards))
+
+(mu/defn set-parameter-cards-card-id!
+  "Point the ParameterCards with `parameter-card-ids` at `card-id`, returning the number updated."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]
+   card-id            :- ::lib.schema.id/card]
+  (t2/update! :model/ParameterCard :id [:in parameter-card-ids] {:card_id card-id}))
+
+(mu/defn delete-parameter-cards-by-id!
+  "Delete the ParameterCards with `parameter-card-ids`, returning the number deleted."
+  [parameter-card-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ParameterCard :id [:in parameter-card-ids]))
 
 (mu/defn parameter-card-exists?
   "Whether the given parameter of the given parameterized object has a ParameterCard."
@@ -494,6 +602,20 @@
   "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
   (t2/delete! :model/ParameterCard :card_id card-id))
+
+(mu/defn delete-parameter-cards-for-cards!
+  "Delete the ParameterCards drawing values from the Cards with `card-ids`, returning the number deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! :model/ParameterCard :card_id [:in card-ids]))
+
+(mu/defn delete-parameter-cards-for-objects!
+  "Delete every ParameterCard of the parameterized objects of `object-type` with `object-ids`, returning the number
+  deleted."
+  [object-type :- [:or :keyword :string]
+   object-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/ParameterCard
+              :parameterized_object_type object-type
+              :parameterized_object_id [:in object-ids]))
 
 (mu/defn delete-parameter-cards-for-object!
   "Delete every ParameterCard of the given parameterized object, returning the number deleted."

@@ -84,10 +84,8 @@
       (card-change-broke-alert? old-card new-card)
       (notification.card/notify-card-notifications-deleted! :card-changed actor new-card notifications))))
 
-(defn delete-alerts-if-card-changed!
-  "Deletes the alerts of `new-card` if the change from `old-card`, other than archiving it, invalidates them."
-  [& {:keys [old-card new-card]}]
-  (when (and (not (card-archived? old-card new-card))
-             (card-change-broke-alert? old-card new-card))
-    (when-let [notification-ids (seq (map :id (models.notification/notifications-for-card (:id new-card))))]
-      (models.notification/delete-notifications! (vec notification-ids)))))
+(defn card-change-invalidates-alerts?
+  "Whether the change from `old-card` to `new-card`, other than archiving it, invalidates the alerts of the Card."
+  [old-card new-card]
+  (boolean (and (not (card-archived? old-card new-card))
+                (card-change-broke-alert? old-card new-card))))

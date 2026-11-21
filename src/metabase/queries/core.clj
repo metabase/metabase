@@ -57,18 +57,15 @@
   batch-fetch-query-metadata]
  [metabase.queries.models.card
   current-card-schema-version
-  maybe-unverify!
   model?
   sole-dashboard-id
   starting-card-schema-version
   timeline-events-supported-display?
-  update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
   infer-metadata-with-model-overrides
   maybe-async-result-metadata
-  refresh-metadata
-  save-metadata-async!]
+  refresh-metadata]
  [metabase.queries.models.parameter-card
   check-new-parameter-source-card-permissions
   check-parameter-source-card-permissions

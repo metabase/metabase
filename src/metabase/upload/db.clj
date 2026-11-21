@@ -4,7 +4,6 @@
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.core :as warehouse-schema]
@@ -87,11 +86,6 @@
   ;; dependency-free namespace that exists for exactly this.
   (t2/select-one (queries.card-schema/selection) :id card-id))
 
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id`."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::queries.schema/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata}))
 
 (mu/defn archive-cards-for-table!
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."

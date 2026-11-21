@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.search.test-util :as search.tu]
    [metabase.serialization.core :as serialization]
@@ -517,7 +518,7 @@
                                                           :database_id   (mt/id)
                                                           :dataset_query (lib/native-query (mt/metadata-provider) "select 1")})))))
         (testing "moving the model moves its actions"
-          (t2/update! :model/Card :id model-id {:collection_id other-id})
+          (queries.card/update-cards! [{:id model-id :collection_id other-id}])
           (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest model-action-has-no-table-test
@@ -578,13 +579,13 @@
           (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
             (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-            (t2/update! :model/Card :id model-id {:type :question})
+            (queries.card/update-cards! [{:id model-id :type :question}])
             (is (not (t2/exists? :model/Action :id action-id)))
             (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
           (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
-          (t2/update! :model/Card :id model-id {:type :question})
+          (queries.card/update-cards! [{:id model-id :type :question}])
           (is (false? (t2/exists? :model/Action :id action-id))))))))
 
 (deftest model-to-saved-question-test-2

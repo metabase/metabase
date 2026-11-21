@@ -133,6 +133,21 @@
       (is (= {:name "another name" :database_id (mt/id)}
              (into {} (t2/select-one [:model/Card :name :database_id] :id id)))))))
 
+(defn- update-card!
+  "Updates the Card with `id` with `changes` without checking the schema of the changes, returning the number of Cards updated."
+  [id changes]
+  (count (#'card/update-cards* [(assoc changes :id id)])))
+
+(defn- insert-card!
+  "Creates a Card from `row` without checking the schema of the row."
+  [row]
+  (first (#'card/create-cards* [row])))
+
+(defn- delete-card!
+  "Deletes the Card with `id` through `card/delete-cards!`."
+  [id]
+  (card/delete-cards! [id]))
+
 (deftest disable-implicit-actions-if-needed-test
   (mt/with-actions-enabled
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
@@ -161,13 +176,13 @@
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
                 (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))
+                (is (= 1 (update-card! model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
                 ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
                 ;; depending on the change because the query will possibly have different UUIDs
-                (is (#{0 1} (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))))))))))
+                (is (#{0 1} (update-card! model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -175,8 +190,8 @@
       (testing "should not attempt to delete if it's not a model"
         (mt/with-temp [:model/Card {id :id} {:type          :question
                                              :dataset_query (mt/mbql-query users)}]
-          (mt/with-dynamic-fn-redefs [card/disable-implicit-action-for-model! (fn [& _args]
-                                                                                (throw (ex-info "Should not be called" {})))]
+          (mt/with-dynamic-fn-redefs [queries.db/implicit-action-ids-for-models (fn [& _args]
+                                                                                  (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! :model/Card :id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
 
 (deftest disable-implicit-actions-if-needed-test-3
@@ -188,7 +203,7 @@
                           {query-id :action-id}    {:type :query}]
           ;; make sure we have thing exists to start with
           (is (= 2 (t2/count :model/Action :id [:in [implicit-id query-id]])))
-          (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (update-card! model-id {:dataset_query (mt/mbql-query users {:limit 1})})
           (is (not (t2/exists? :model/Action :id implicit-id)))
           (is (t2/exists? :model/Action :id query-id)))))))
 
@@ -217,7 +232,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Card can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-               (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
+               (insert-card! (assoc (mt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))))
 
@@ -228,7 +243,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Card can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Card :id card-id {:collection_id collection-id})))))))
+             (update-card! card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel normalize-result-metadata-test
   (testing "Should normalize result metadata keys when fetching a Card from the DB"
@@ -484,7 +499,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
-               (t2/update! :model/Card :id card-id bad-card-data))))))))
+               (update-card! card-id bad-card-data))))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Card :parameters when"
@@ -568,16 +583,16 @@
                   :parameter_id              "_CATEGORY_NAME_"}]
                 (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id)))
         (testing "update values_source_config.card_id will update ParameterCard"
-          (t2/update! :model/Card :id card-id {:parameters [(merge default-params
-                                                                   {:values_source_type    "card"
-                                                                    :values_source_config {:card_id source-card-id-2}})]})
+          (update-card! card-id {:parameters [(merge default-params
+                                                     {:values_source_type    "card"
+                                                      :values_source_config {:card_id source-card-id-2}})]})
           (is (=? [{:card_id                   source-card-id-2
                     :parameterized_object_type :card
                     :parameterized_object_id   card-id
                     :parameter_id              "_CATEGORY_NAME_"}]
                   (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))
         (testing "delete the card will delete ParameterCard"
-          (t2/delete! :model/Card :id card-id)
+          (delete-card! card-id)
           (is (= []
                  (t2/select :model/ParameterCard :parameterized_object_type "card" :parameterized_object_id card-id))))))))
 
@@ -653,10 +668,10 @@
               (t2/select :model/ParameterCard :card_id source-card-id {:order-by [[:parameter_id :asc]]})))
       ;; update card with removing the products.category
       (testing "on update result_metadata"
-        (t2/update! :model/Card :id source-card-id
-                    (mt/card-with-source-metadata-for-query
-                     (mt/mbql-query products {:fields [(mt/$ids $products.title)]
-                                              :limit 5})))
+        (update-card! source-card-id
+                      (mt/card-with-source-metadata-for-query
+                       (mt/mbql-query products {:fields [(mt/$ids $products.title)]
+                                                :limit 5})))
         (testing "ParameterCard for dashboard is removed"
           (is (=? [{:card_id                   source-card-id
                     :parameter_id              "param_1"
@@ -677,7 +692,7 @@
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
       (testing "on archive card"
-        (t2/update! :model/Card :id source-card-id {:archived true})
+        (update-card! source-card-id {:archived true})
         (testing "ParameterCard for card is removed"
           (is (=? [] (t2/select :model/ParameterCard :card_id source-card-id))))
         (testing "update the dashboard parameter and remove values_config of card"
@@ -713,11 +728,11 @@
                                                                    :values_source_config {:card_id     source-card-id
                                                                                           :value_field [:field "Categories__NAME" {:base-type "type/Text"}]}}]}]
       (testing "saving the source card with different columns that still include the value_field keeps the parameter config"
-        (t2/update! :model/Card :id source-card-id (mt/card-with-source-metadata-for-query source-query-2))
+        (update-card! source-card-id (mt/card-with-source-metadata-for-query source-query-2))
         (is (= param-card-params
                (t2/select-one-fn :parameters :model/Card :id param-card-id))))
       (testing "removing the join from the source card removes the parameter config"
-        (t2/update! :model/Card :id source-card-id (mt/card-with-source-metadata-for-query venues-query))
+        (update-card! source-card-id (mt/card-with-source-metadata-for-query venues-query))
         (is (= [{:name "Category name",
                  :slug "category_name",
                  :id "category_name_param",
@@ -889,9 +904,9 @@
         (testing "an inserted action takes its model's collection"
           (is (= coll-1 (action-collection))))
         (testing "moving the model moves its actions"
-          (t2/update! :model/Card :id model-id {:collection_id coll-2})
+          (update-card! model-id {:collection_id coll-2})
           (is (= coll-2 (action-collection)))
-          (t2/update! :model/Card :id model-id {:collection_id nil})
+          (update-card! model-id {:collection_id nil})
           (is (nil? (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-user-action-events-test
@@ -899,15 +914,15 @@
     (testing "a model becoming a question"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{nil} (action-event-users-during! #(t2/update! :model/Card :id model-id {:type :question})))))))
+         (is (= #{nil} (action-event-users-during! #(update-card! model-id {:type :question})))))))
     (testing "a model query that no longer supports implicit actions"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{nil} (action-event-users-during! #(t2/update! :model/Card :id model-id {:dataset_query (filtered-venues-query)})))))))
+         (is (= #{nil} (action-event-users-during! #(update-card! model-id {:dataset_query (filtered-venues-query)})))))))
     (testing "a deleted model"
       (do-with-model-actions!
        (fn [{:keys [model-id]}]
-         (is (= #{nil} (action-event-users-during! #(t2/delete! :model/Card :id model-id)))))))))
+         (is (= #{nil} (action-event-users-during! #(delete-card! model-id)))))))))
 
 (deftest ^:parallel extract-result-metadata-non-model-test
   (testing "non-model Card extraction drops :result_metadata entirely"
@@ -1234,12 +1249,12 @@
   (when config/ee-available?
     (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must hold a query on a database"
-                            (t2/insert! :model/Card {:name                   "Empty"
-                                                     :display                "table"
-                                                     :visualization_settings {}
-                                                     :creator_id             (mt/user->id :crowberto)
-                                                     :collection_id          collection-id
-                                                     :dataset_query          {}}))))))
+                            (insert-card! {:name                   "Empty"
+                                           :display                "table"
+                                           :visualization_settings {}
+                                           :creator_id             (mt/user->id :crowberto)
+                                           :collection_id          collection-id
+                                           :dataset_query          {}}))))))
 
 (deftest card-in-a-data-apps-collection-is-plain-question-test
   (testing "a card in a collection of the data apps namespace is a question in no dashboard or document, not archived,
@@ -1258,11 +1273,11 @@
                                    ["in a document" {:document_id document-id}]]]
             (testing label
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question, in no dashboard or document|can hold only questions"
-                                    (t2/update! :model/Card :id card-id changes)))
+                                    (update-card! card-id changes)))
               (testing "moved in from elsewhere"
                 (mt/with-temp [:model/Card {other-id :id} (merge {:dataset_query (venues-query)} changes)]
                   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a question|can hold only questions"
-                                        (t2/update! :model/Card :id other-id {:collection_id collection-id})))
+                                        (update-card! other-id {:collection_id collection-id})))
                   (is (nil? (t2/select-one-fn :collection_id :model/Card :id other-id)))))))
           (is (=? {:archived false :public_uuid nil :type :question :document_id nil}
                   (t2/select-one :model/Card :id card-id))))))))
@@ -1272,10 +1287,10 @@
     (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
                    :model/Card       {card-id :id}       {:collection_id collection-id :dataset_query (venues-query)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't have parameters"
-                            (t2/update! :model/Card :id card-id {:parameters [{:id   "venue"
-                                                                               :slug "venue"
-                                                                               :name "Venue"
-                                                                               :type :string/=}]})))
+                            (update-card! card-id {:parameters [{:id   "venue"
+                                                                 :slug "venue"
+                                                                 :name "Venue"
+                                                                 :type :string/=}]})))
       (testing "an empty list is no parameters"
         (mt/with-temp [:model/Card {other-id :id} {:collection_id collection-id :dataset_query (venues-query) :parameters []}]
           (is (= [] (t2/select-one-fn :parameters :model/Card :id other-id))))))))
@@ -1308,7 +1323,7 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo message
                                     (mt/with-temp [:model/Card _ {:collection_id collection-id :dataset_query query}])))
               (is (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                    (t2/update! :model/Card :id card-id {:dataset_query query})))
+                                    (update-card! card-id {:dataset_query query})))
               (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/Card :id card-id))))))))))
 
 (deftest card-in-a-data-apps-collection-reads-any-table-test
@@ -1396,38 +1411,38 @@
     (mt/with-model-cleanup [:model/Card]
       (testing "You can't insert a card with a collection_id different than its dashboard's collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                             :dashboard_id dash-id
-                                                             :collection_id other-coll-id))))
+                              (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                                                   :dashboard_id dash-id
+                                                   :collection_id other-coll-id))))
         (testing "including if it's `nil`"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                               :dashboard_id dash-id
-                                                               :collection_id nil)))))
+                                (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                                                     :dashboard_id dash-id
+                                                     :collection_id nil)))))
         (testing "But you can insert a card with the *same* collection_id"
-          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                         :dashboard_id dash-id
-                                         :collection_id coll-id)))
+          (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                               :dashboard_id dash-id
+                               :collection_id coll-id)))
         (testing "... or no collection_id"
-          (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                         :dashboard_id dash-id))))
+          (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                               :dashboard_id dash-id))))
       (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
         (testing "invalid"
           (doseq [invalid-type (disj queries.schema/card-types :question)]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                                  (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                                 :dashboard_id dash-id
-                                                                 :type invalid-type))))))
+                                  (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                                                       :dashboard_id dash-id
+                                                       :type invalid-type))))))
         (testing "these are valid"
           (doseq [valid-type [:question "question"]]
-            (is (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                               :dashboard_id dash-id
-                                               :type valid-type))))))
+            (is (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                                     :dashboard_id dash-id
+                                     :type valid-type))))))
       (testing "You can't insert a dashboard-internal card with a collection_position"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
-                              (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card)
-                                                             :dashboard_id dash-id
-                                                             :collection_position 5))))))))
+                              (insert-card! (assoc (mt/with-temp-defaults :model/Card)
+                                                   :dashboard_id dash-id
+                                                   :collection_position 5))))))))
 
 (deftest no-updating-dashboard-internal-cards-with-invalid-data
   (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -1615,7 +1630,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {}
                    :model/Dashboard {dash-id :id} {:collection_id coll-id}
                    :model/Card {card-id :id} {}]
-      (t2/update! :model/Card :id card-id {:dashboard_id dash-id})
+      (update-card! card-id {:dashboard_id dash-id})
       (is (= coll-id
              (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
@@ -1745,7 +1760,7 @@
                                     :field-id     "created_at"}}}})
 
 (deftest create-card!-with-malformed-dataset-query-throws-test
-  (testing "queries/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"
+  (testing "queries.card/create-card! with structurally malformed :dataset_query throws a normalization error, not a SQL constraint error (#74615)"
     (mt/with-model-cleanup [:model/Card]
       (is (thrown-with-msg?
            Throwable
@@ -2298,7 +2313,7 @@
                                                           :collection_id collection-id
                                                           :dataset_query (count-query)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics"
-                            (t2/update! :model/Card :id card-id {:type :question})))
+                            (update-card! card-id {:type :question})))
       (is (= :metric (t2/select-one-fn :type :model/Card :id card-id))))))
 
 (deftest alerts-are-deleted-when-card-change-breaks-them-test
@@ -2307,10 +2322,10 @@
       [notification {:card {:display :line}}]
       (let [card-id (-> notification :payload :card_id)]
         (testing "a change it still fits keeps the alert"
-          (t2/update! :model/Card :id card-id {:display :bar})
+          (update-card! card-id {:display :bar})
           (is (t2/exists? :model/Notification :id (:id notification))))
         (testing "a change it does not fit deletes the alert"
-          (t2/update! :model/Card :id card-id {:display :table})
+          (update-card! card-id {:display :table})
           (is (not (t2/exists? :model/Notification :id (:id notification)))))))))
 
 (deftest alerts-are-deleted-when-card-is-archived-test
@@ -2354,17 +2369,18 @@
                        :handlers [{:channel_type :channel/email
                                    :recipients  [{:type    :notification-recipient/user
                                                   :user_id (mt/user->id :rasta)}]}]}]
-        (let [card-id (-> notification :payload :card_id)
-              emails  (notification.tu/with-mock-inbox-email!
-                        (mt/with-dynamic-fn-redefs [queries.db/move-actions-of-model!
-                                                    (fn [& _] (throw (ex-info "after-update failed" {})))]
-                          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"after-update failed"
-                                                (mt/with-test-user :crowberto
-                                                  (card/update-card! {:card-before-update (t2/select-one :model/Card :id card-id)
-                                                                      :card-updates       {:display :table}}))))))]
-          (is (t2/exists? :model/Notification :id (:id notification)))
-          (is (= :line (t2/select-one-fn :display :model/Card :id card-id)))
-          (is (empty? emails)))))))
+        (mt/with-temp [:model/Collection {collection-id :id} {}]
+          (let [card-id (-> notification :payload :card_id)
+                emails  (notification.tu/with-mock-inbox-email!
+                          (mt/with-dynamic-fn-redefs [queries.db/move-actions-of-models!
+                                                      (fn [& _] (throw (ex-info "after-update failed" {})))]
+                            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"after-update failed"
+                                                  (mt/with-test-user :crowberto
+                                                    (card/update-card! {:card-before-update (t2/select-one :model/Card :id card-id)
+                                                                        :card-updates       {:display :table :collection_id collection-id}}))))))]
+            (is (t2/exists? :model/Notification :id (:id notification)))
+            (is (= :line (t2/select-one-fn :display :model/Card :id card-id)))
+            (is (empty? emails))))))))
 
 (deftest alerts-are-deleted-only-when-card-is-archived-directly-test
   (testing "the alerts of a Card that follows the archive of its Collection or Dashboard are left to that archive"
@@ -2381,3 +2397,116 @@
                         (t2/select [:model/Card :archived_directly] :id [:in [collection-card dashboard-card]])))
             (is (t2/exists? :model/Notification :id (:id in-collection)))
             (is (t2/exists? :model/Notification :id (:id in-dashboard)))))))))
+
+(defn- cards-with-metadata
+  "`n` card rows in `collection-id` with the result metadata of their query given, so that no query metadata is inferred."
+  [n collection-id & {:as extra}]
+  (let [mp       (mt/metadata-provider)
+        query    (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+        metadata (qp.preprocess/query->expected-cols query)]
+    (vec (for [i (range n)]
+           (merge {:name                   (str "Statement count card " i)
+                   :creator_id             (mt/user->id :rasta)
+                   :display                :table
+                   :collection_id          collection-id
+                   :dataset_query          query
+                   :result_metadata        metadata
+                   :visualization_settings {}}
+                  extra)))))
+
+(defn- statement-count
+  "The number of statements `f` runs."
+  [f]
+  (t2/with-call-count [call-count]
+    (f)
+    (call-count)))
+
+(deftest create-cards-statement-count-test
+  (testing "creating Cards takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Dashboard  {dashboard-id :id}  {:collection_id collection-id}
+                   :model/Card       {source-id :id}     {}]
+      (let [parameters [{:id                   "param"
+                         :type                 :category
+                         :name                 "Param"
+                         :slug                 "param"
+                         :values_source_type   :card
+                         :values_source_config {:card_id source-id}}]
+            create     (fn [n]
+                         (let [rows  (cards-with-metadata n collection-id :parameters parameters)
+                               cards (volatile! nil)
+                               calls (statement-count #(vreset! cards (card/create-cards! rows)))]
+                           (is (= n (count @cards)))
+                           (is (= n (t2/count :model/ParameterCard :card_id source-id
+                                              :parameterized_object_id [:in (map :id @cards)])))
+                           calls))]
+        (create 2)
+        (is (= (create 2) (create 6)))
+        (testing "in a Dashboard"
+          (let [in-dashboard (fn [n]
+                               (statement-count
+                                #(card/create-cards! (mapv (fn [row] (dissoc row :collection_id))
+                                                           (cards-with-metadata n nil :dashboard_id dashboard-id)))))]
+            (in-dashboard 2)
+            (is (= (in-dashboard 2) (in-dashboard 6)))))))))
+
+(deftest update-cards-statement-count-test
+  (testing "updating Cards takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {from-id :id}  {}
+                   :model/Collection {to-id :id}    {}]
+      (let [prepare (fn [n]
+                      (mapv :id (card/create-cards! (cards-with-metadata n from-id))))]
+        (testing "moving"
+          (let [move (fn [n]
+                       (let [ids (prepare n)]
+                         (statement-count #(card/update-cards! (mapv (fn [id] {:id id :collection_id to-id}) ids)))))]
+            (move 2)
+            (is (= (move 2) (move 6)))))
+        (testing "archiving"
+          (let [archive (fn [n]
+                          (let [ids (prepare n)]
+                            (statement-count #(card/update-cards! (mapv (fn [id] {:id id :archived true}) ids)))))]
+            (archive 2)
+            (archive 2)
+            (is (= (archive 2) (archive 6)))))))))
+
+(deftest delete-cards-statement-count-test
+  (testing "deleting Cards takes as many statements for many Cards as for few"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (let [delete (fn [n]
+                     (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
+                       (mt/with-dynamic-fn-redefs [card/delete-card-tests! (fn [_card-id] nil)]
+                         (statement-count #(card/delete-cards! ids)))))]
+        (delete 2)
+        (is (= (delete 2) (delete 6)))))))
+
+(deftest collection-archive-cards-statement-count-test
+  (testing "archiving a Collection takes as many statements for many Cards as for few"
+    (let [archive (fn [n]
+                    (mt/with-temp [:model/Collection {collection-id :id} {}]
+                      (card/create-cards! (cards-with-metadata n collection-id))
+                      (statement-count #(t2/update! :model/Collection :id collection-id {:archived true}))))]
+      (archive 2)
+      (is (= (archive 2) (archive 6))))))
+
+(deftest card-hooks-run-no-statement-test
+  (testing "plain writes of Cards take as many statements for many Cards as for few, since the hooks run none"
+    (mt/with-temp [:model/Collection {collection-id :id} {}]
+      (let [insert (fn [n]
+                     (statement-count #(t2/insert! :model/Card (cards-with-metadata n collection-id))))
+            update (fn [n]
+                     (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
+                       (statement-count #(t2/update! :model/Card :id [:in ids] {:name "Renamed"}))))
+            delete (fn [n]
+                     (let [ids (mapv :id (card/create-cards! (cards-with-metadata n collection-id)))]
+                       (mt/with-dynamic-fn-redefs [card/delete-card-tests! (fn [_card-id] nil)]
+                         (statement-count #(t2/delete! :model/Card :id [:in ids])))))]
+        (testing "inserting"
+          (insert 2)
+          (is (= (insert 2) (insert 6))))
+        (testing "updating"
+          (update 2)
+          (is (= (update 2) (update 6))))
+        (testing "deleting"
+          (delete 2)
+          (is (= (delete 2) (delete 6))))))))

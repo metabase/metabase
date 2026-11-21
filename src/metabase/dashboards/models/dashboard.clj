@@ -295,7 +295,7 @@
     (events/with-batched-events
       (check-collections! rows)
       (u/prog1 (dashboards.db/insert-dashboards! rows)
-        (parameter-card/upsert-or-delete-from-parameters-for-objects!
+        (parameter-card/sync-parameter-cards!
          "dashboard"
          (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) <>))))))
 
@@ -341,7 +341,7 @@
           (doseq [[collection-id moved-rows] (group-by :collection_id moved)]
             (dashboards.db/move-dashboard-questions! (mapv :id moved-rows) collection-id))
           (when (seq reparameterised)
-            (parameter-card/upsert-or-delete-from-parameters-for-objects!
+            (parameter-card/sync-parameter-cards!
              "dashboard" (mapv (juxt :id :parameters) reparameterised)))
           (doseq [[changes group] (group-by #(dissoc % :id) rows)]
             (dashboards.db/update-dashboards! (mapv :id group) changes))
