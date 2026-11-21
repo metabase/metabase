@@ -27,6 +27,8 @@ type LibraryCollectionSectionProps = {
   children?: ReactNode;
   /** Lists the links without the collapsible "Data" heading or section. */
   hideHeading?: boolean;
+  /** PROTOTYPE: leaves out Metrics, e.g. when a Browse metrics link stands in. */
+  hideMetrics?: boolean;
 };
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
@@ -96,6 +98,7 @@ export function NavbarLibrarySection({
   onItemSelect,
   children,
   hideHeading,
+  hideMetrics,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
@@ -113,12 +116,14 @@ export function NavbarLibrarySection({
       "library-data",
       t`Datasets`,
     );
-    const metricsTree = buildSectionTree(
-      libraryCollection,
-      collections,
-      "library-metrics",
-      t`Metrics`,
-    );
+    const metricsTree = hideMetrics
+      ? null
+      : buildSectionTree(
+          libraryCollection,
+          collections,
+          "library-metrics",
+          t`Metrics`,
+        );
     const dashboardsTree = buildSectionTree(
       libraryCollection,
       collections,
@@ -129,7 +134,7 @@ export function NavbarLibrarySection({
     return [dataTree, metricsTree, dashboardsTree].filter(
       (node): node is CollectionTreeItem => node != null,
     );
-  }, [collections]);
+  }, [collections, hideMetrics]);
 
   if (libraryTree.length === 0 && !children) {
     return null;

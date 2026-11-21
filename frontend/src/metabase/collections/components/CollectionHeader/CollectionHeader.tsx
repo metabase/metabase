@@ -19,10 +19,6 @@ import { CollectionCaption } from "./CollectionCaption";
 import S from "./CollectionHeader.module.css";
 import { CollectionInfoSidebarToggle } from "./CollectionInfoSidebarToggle";
 import { CollectionNewButton } from "./CollectionNewButton";
-import {
-  CollectionNewMetricButton,
-  isLibraryMetricsCollection,
-} from "./CollectionNewMetricButton";
 import { CollectionPermissions } from "./CollectionPermissions";
 import CollectionTimeline from "./CollectionTimeline";
 import { CollectionUpload } from "./CollectionUpload";
@@ -74,8 +70,6 @@ export const CollectionHeader = ({
   const showExportButton = isInstanceAnalytics && isAdmin && showUploadButton;
   const showTimelinesButton = !isInstanceAnalytics;
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
-  const showNewMetricButton =
-    !isTrash && isLibraryMetricsCollection(collection);
 
   return (
     <Flex
@@ -96,9 +90,6 @@ export const CollectionHeader = ({
           gap="sm"
           data-testid="collection-menu"
         >
-          {showNewMetricButton && (
-            <CollectionNewMetricButton collection={collection} />
-          )}
           {showNewButton && <CollectionNewButton />}
           {showUploadButton && (
             <CollectionUpload
@@ -135,13 +126,6 @@ export const CollectionHeader = ({
               onUpdateCollection={handleUpdateCollection}
             />
           )}
-        </Flex>
-      )}
-      {/* PROTOTYPE: Library collections show no actions, but the Metrics
-          collection gets a "New metric" button for everyone who can make one. */}
-      {isSemanticLayer && showNewMetricButton && (
-        <Flex className={S.actions} mt="sm" gap="sm">
-          <CollectionNewMetricButton collection={collection} />
         </Flex>
       )}
     </Flex>

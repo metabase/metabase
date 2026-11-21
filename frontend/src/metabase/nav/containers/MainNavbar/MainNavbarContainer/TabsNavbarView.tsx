@@ -39,9 +39,11 @@ import { GettingStartedSection } from "./GettingStartedSection";
 import type { MainNavbarViewProps } from "./MainNavbarView";
 import {
   DatabasesNavLink,
+  MetricsNavLink,
   ModelsNavLink,
   OfficialDataLinks,
   SyncedContentList,
+  libraryHasMetrics,
 } from "./OfficialNavSection";
 import { useNavCollections } from "./use-nav-collections";
 
@@ -119,6 +121,9 @@ export function TabsNavbarView({
   sharedTenantCollections,
   showExternalCollectionsSection,
 }: MainNavbarViewProps) {
+  // PROTOTYPE: until the Library holds a metric, Metrics links to Browse
+  // metrics.
+  const hasLibraryMetrics = libraryHasMetrics(collections);
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
   const { variant } = useNavVariant();
   const navigate = useNavigate();
@@ -299,7 +304,14 @@ export function TabsNavbarView({
             selectedId={collectionItem?.id}
             onItemSelect={onItemSelect}
             hideHeading
+            hideMetrics={!hasLibraryMetrics}
           >
+            {!hasLibraryMetrics && (
+              <MetricsNavLink
+                nonEntityItem={nonEntityItem}
+                onItemSelect={onItemSelect}
+              />
+            )}
             {hasDataAccess && (
               <DatabasesNavLink
                 nonEntityItem={nonEntityItem}

@@ -57,7 +57,11 @@ export function BrowseMetrics() {
     });
 
   const newMetricLink = Urls.newMetric({
-    collectionId: libraryMetricCollection?.id,
+    // PROTOTYPE: a read-only (e.g. git-synced) Library can't take the new
+    // metric, so the save step asks where it goes instead.
+    collectionId: libraryMetricCollection?.can_write
+      ? libraryMetricCollection.id
+      : undefined,
   });
 
   const hasDataAccess = useSelector(canUserCreateQueries);

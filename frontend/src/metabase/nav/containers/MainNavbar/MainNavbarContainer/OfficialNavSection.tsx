@@ -11,7 +11,11 @@ import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Stack, Text } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { CollectionId, CollectionType } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionType,
+} from "metabase-types/api";
 
 import { SidebarHeading, SidebarSection } from "../Sidebar";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
@@ -19,6 +23,7 @@ import type { SelectedItem } from "../types";
 
 const BROWSE_DATABASES_URL = "/browse/databases";
 const BROWSE_MODELS_URL = "/browse/models";
+const BROWSE_METRICS_URL = "/browse/metrics";
 
 /** The "Databases" browse link, shared by the Official and non-git navs. */
 export function DatabasesNavLink({
@@ -61,6 +66,46 @@ export function ModelsNavLink({
     >
       {t`Models`}
     </SidebarLink>
+  );
+}
+
+/**
+ * PROTOTYPE: the "Metrics" link to Browse metrics, which stands in for the
+ * Library's Metrics section until that section holds a metric — always, on
+ * instances without a Library (e.g. OSS). Browse metrics has the button for
+ * creating one.
+ */
+export function MetricsNavLink({
+  nonEntityItem,
+  onItemSelect,
+}: {
+  nonEntityItem?: SelectedItem;
+  onItemSelect: () => void;
+}) {
+  return (
+    <SidebarLink
+      icon="metric"
+      url={BROWSE_METRICS_URL}
+      isSelected={nonEntityItem?.url?.startsWith(BROWSE_METRICS_URL)}
+      onClick={onItemSelect}
+    >
+      {t`Metrics`}
+    </SidebarLink>
+  );
+}
+
+/**
+ * PROTOTYPE: whether the Library's Metrics section, or any folder in it, holds
+ * at least one metric. False when there's no Library.
+ */
+export function libraryHasMetrics(collections: Collection[]): boolean {
+  return collections.some(
+    (collection) =>
+      (collection.type === "library-metrics" &&
+        [...(collection.here ?? []), ...(collection.below ?? [])].includes(
+          "metric",
+        )) ||
+      libraryHasMetrics(collection.children ?? []),
   );
 }
 
@@ -179,7 +224,11 @@ export function OfficialDataLinks({
 }: Props) {
   // The Library's Metrics and Data collections, labeled by what they hold.
   // As tree rows, they expand to list their subfolders when they have any.
-  const metricsCollection = findLibrarySection(collections, "library-metrics");
+  // Until the Library holds a metric, Metrics links to Browse metrics instead.
+  const hasLibraryMetrics = libraryHasMetrics(collections);
+  const metricsCollection = hasLibraryMetrics
+    ? findLibrarySection(collections, "library-metrics")
+    : undefined;
   const tablesCollection = findLibrarySection(collections, "library-data");
   const sectionTree = useMemo(
     () =>
@@ -192,6 +241,12 @@ export function OfficialDataLinks({
 
   return (
     <>
+      {!hasLibraryMetrics && (
+        <MetricsNavLink
+          nonEntityItem={nonEntityItem}
+          onItemSelect={onItemSelect}
+        />
+      )}
       <Tree
         data={sectionTree}
         selectedId={selectedCollectionId}

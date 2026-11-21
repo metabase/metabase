@@ -40,8 +40,10 @@ import { ExternalCollectionsNavSection } from "./ExternalCollectionsNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 import {
   DatabasesNavLink,
+  MetricsNavLink,
   ModelsNavLink,
   OfficialNavSection,
+  libraryHasMetrics,
 } from "./OfficialNavSection";
 import { useNavCollections } from "./use-nav-collections";
 
@@ -88,6 +90,9 @@ export function MainNavbarView({
   canCreateSharedCollection,
   showExternalCollectionsSection,
 }: MainNavbarViewProps) {
+  // PROTOTYPE: until the Library holds a metric, Metrics links to Browse
+  // metrics.
+  const hasLibraryMetrics = libraryHasMetrics(collections);
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
@@ -344,7 +349,14 @@ export function MainNavbarView({
                   collections={collections}
                   selectedId={collectionItem?.id}
                   onItemSelect={onItemSelect}
+                  hideMetrics={!hasLibraryMetrics}
                 >
+                  {!hasLibraryMetrics && (
+                    <MetricsNavLink
+                      nonEntityItem={nonEntityItem}
+                      onItemSelect={onItemSelect}
+                    />
+                  )}
                   {hasDataAccess && (
                     <DatabasesNavLink
                       nonEntityItem={nonEntityItem}
