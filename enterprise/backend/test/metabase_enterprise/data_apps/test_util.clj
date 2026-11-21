@@ -14,6 +14,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -231,7 +232,9 @@
          (finally
            (doseq [table-id to-publish]
              (t2/update! :model/TableUserSettings :table_id table-id
-                         (get previous table-id {:collection_id nil, :is_published nil})))))))))
+                         (get previous table-id {:collection_id nil, :is_published nil})))
+           (when (seq to-publish)
+             (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

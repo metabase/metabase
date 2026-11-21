@@ -3,7 +3,6 @@
   no audit entry, Revision or change log entry, and no query of the consumers that only bookkeep."
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.events.audit-log]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.config.core :as config]
@@ -41,24 +40,17 @@
               (t2/update! model :id id changes)
               (is (= before (row-counts))))))))))
 
-(defn- card-update-statements
-  "The number of statements of an UPDATE of a Card row through the model."
-  []
-  (if (#{:mysql :mariadb} (mdb/db-type)) 7 5))
-
 (deftest counter-updates-query-only-for-write-test
-  (testing "a counter-only update runs the statements of the write itself and no consumer's query: for a Card the load
-            of the row, its UPDATE (counted twice by Toucan), the after-update read and the read of the Actions that move
-            with it, and on MySQL and MariaDB, which return no rows of an UPDATE, one more read of the row and one more
-            UPDATE; for a Dashboard or a Document the load and the UPDATE"
+  (testing "a counter-only update runs the statements of the write itself and no consumer's query: the load of the row
+            and the UPDATE"
     (mt/with-premium-features #{:audit-app :dependencies :change-log :content-diagnostics}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Card      {card-id :id} {}
                        :model/Dashboard {dash-id :id} {}
                        :model/Document  {doc-id :id}  {}]
           (search.tu/with-index-disabled
-            (doseq [[model id changes expected] [[:model/Card card-id {:view_count 7} (card-update-statements)]
-                                                 [:model/Card card-id {:last_used_at (java.time.OffsetDateTime/now)} (card-update-statements)]
+            (doseq [[model id changes expected] [[:model/Card card-id {:view_count 7} 2]
+                                                 [:model/Card card-id {:last_used_at (java.time.OffsetDateTime/now)} 2]
                                                  [:model/Dashboard dash-id {:view_count 7} 2]
                                                  [:model/Dashboard dash-id {:last_viewed_at (java.time.OffsetDateTime/now)} 2]
                                                  [:model/Document doc-id {:view_count 7} 2]
