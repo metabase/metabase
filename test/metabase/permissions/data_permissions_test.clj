@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions :as data-permissions]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -51,28 +52,15 @@
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
-(deftest destination-db-permissions-insert-throws-test
-  (testing "inserting a DataPermissions row for a destination database throws"
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
-                   :model/Database         {router-db-id :id}  {}
-                   :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
-      (is (thrown-with-msg?
-           ExceptionInfo
-           #"destination database"
-           (t2/insert! :model/DataPermissions {:db_id      destination-db-id
-                                               :group_id   group-id
-                                               :perm_type  :perms/view-data
-                                               :perm_value :unrestricted}))))))
-
 (deftest destination-db-permissions-batch-insert-throws-test
-  (testing "batch-insert-permissions! throws for a destination database row"
+  (testing "create-data-permissions! throws for a destination database row"
     (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
                    :model/Database         {router-db-id :id}  {}
                    :model/Database         {destination-db-id :id} {:router_database_id router-db-id}]
       (is (thrown-with-msg?
            ExceptionInfo
            #"destination database"
-           (data-perms/batch-insert-permissions!
+           (data-permissions/create-data-permissions!
             [{:db_id      destination-db-id
               :group_id   group-id
               :perm_type  :perms/view-data
@@ -91,16 +79,16 @@
         (is (thrown-with-msg?
              ExceptionInfo
              #"destination database"
-             (data-perms/assert-no-destination-db-permissions! [dest-row]))))
+             (data-permissions/assert-no-destination-db-permissions! [dest-row]))))
       (testing "a batch mixing a destination-db row with normal-db rows throws"
         (is (thrown-with-msg?
              ExceptionInfo
              #"destination database"
-             (data-perms/assert-no-destination-db-permissions! [normal-row dest-row]))))
+             (data-permissions/assert-no-destination-db-permissions! [normal-row dest-row]))))
       (testing "an all-normal-db batch does not throw"
-        (is (nil? (data-perms/assert-no-destination-db-permissions! [normal-row normal-row]))))
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [normal-row normal-row]))))
       (testing "an empty seq does not throw"
-        (is (nil? (data-perms/assert-no-destination-db-permissions! [])))))))
+        (is (nil? (data-permissions/assert-no-destination-db-permissions! [])))))))
 
 (deftest admin-permission-graph-excludes-destination-dbs-test
   (testing "the admin permission graph covers routers but not their destinations"
@@ -122,9 +110,9 @@
                                                   :group_id   group-id
                                                   :perm_type  :perms/view-data
                                                   :perm_value :unrestricted})))
-        (testing "via batch-insert-permissions!"
+        (testing "via create-data-permissions!"
           (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
-          (is (nil? (data-perms/batch-insert-permissions!
+          (is (nil? (data-permissions/create-data-permissions!
                      [{:db_id      normal-db-id
                        :group_id   group-id
                        :perm_type  :perms/view-data
@@ -1206,8 +1194,7 @@
   [n-groups n-tables]
   (let [db-id     (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
         group-ids (vec (for [_ (range n-groups)]
-                         (t2/insert-returning-pk! :model/PermissionsGroup
-                                                  (mt/with-temp-defaults :model/PermissionsGroup))))
+                         (:id (perms-group/create-permissions-group! {:name (mt/random-name)}))))
         table-ids (vec (for [_ (range n-tables)]
                          (t2/insert-returning-pk! :model/Table
                                                   (merge (mt/with-temp-defaults :model/Table)
@@ -1594,7 +1581,7 @@
     ;; able to obtain the lock simultaneously).
     (mt/with-model-cleanup [:model/PermissionsGroup :model/Database :model/Table]
       (let [db-id (t2/insert-returning-pk! :model/Database (mt/with-temp-defaults :model/Database))
-            group-id (t2/insert-returning-pk! :model/PermissionsGroup (mt/with-temp-defaults :model/PermissionsGroup))
+            group-id (:id (perms-group/create-permissions-group! {:name (mt/random-name)}))
             table-id (t2/insert-returning-pk! :model/Table (merge (mt/with-temp-defaults :model/Table)
                                                                   {:db_id db-id}))]
         ;; when testing locally, without a cluster lock this failed 9/10 times. Run it a few times to make sure a lock
@@ -1614,11 +1601,11 @@
             (is (not (and (perm-exists? :table_id nil)
                           (perm-exists? :table_id [:not= nil]))))))))))
 
-(defn- insert-error
+(defn- insert-error!
   "The ex-data of the error inserting the DataPermissions `rows`, or nil when the insert succeeds."
   [rows]
   (try
-    (t2/insert! :model/DataPermissions rows)
+    (data-permissions/create-data-permissions! rows)
     nil
     (catch ExceptionInfo e
       (ex-data e))))
@@ -1630,17 +1617,17 @@
     (let [row (fn [perm-type value]
                 {:group_id group-id :db_id db-id :perm_type perm-type :perm_value value})]
       (testing "transforms without native create-queries is refused"
-        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)])))
+        (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)])))
         (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
-        (is (=? {:status-code 400} (insert-error [(row :perms/transforms :yes)]))))
+        (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)]))))
       (testing "transforms after native create-queries is accepted"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
-        (is (nil? (insert-error [(row :perms/create-queries :query-builder-and-native)])))
-        (is (nil? (insert-error [(row :perms/transforms :yes)]))))
+        (is (nil? (insert-error! [(row :perms/create-queries :query-builder-and-native)])))
+        (is (nil? (insert-error! [(row :perms/transforms :yes)]))))
       (testing "database-level create-queries without native next to stored transforms is refused"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/create-queries)
         (is (=? {:status-code 400}
-                (insert-error [(row :perms/create-queries :query-builder)])))))))
+                (insert-error! [(row :perms/create-queries :query-builder)])))))))
 
 (deftest table-level-create-queries-revokes-transforms-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}

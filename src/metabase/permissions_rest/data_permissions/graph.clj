@@ -13,6 +13,7 @@
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-permissions]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -625,9 +626,9 @@
      (check-transforms-permissions! graph current-perms)
      (check-native-access-compatible-with-sandboxes! graph)
      (when (seq to-delete)
-       (perms/batch-delete-permissions! to-delete))
+       (data-permissions/delete-data-permissions! to-delete))
      (when (seq to-insert)
-       (perms/batch-insert-permissions! to-insert))))
+       (data-permissions/create-data-permissions! to-insert))))
 
   ;; The following arity is provided solely for convenience for tests/REPL usage
   ([ks        :- [:vector [:or :int :string :keyword]]

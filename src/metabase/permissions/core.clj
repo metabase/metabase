@@ -53,8 +53,6 @@
   select-tables-and-groups-granting-perm]
  [metabase.permissions.data-permissions
   at-least-as-permissive?
-  batch-delete-permissions!
-  batch-insert-permissions!
   data-app-collection-ids
   data-app-collection?
   database-permissions-for-user

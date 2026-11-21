@@ -13,8 +13,7 @@
   generate-key
   is-api-key-user?
   key-hash-salt
-  prefix
-  create-api-key-with-new-user!])
+  prefix])
 
 (p/import-vars
  [metabase.api-keys.db

@@ -40,12 +40,12 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (t2/delete! :model/PermissionsGroup :id (u/the-id group)))))
+               (perms-group/delete-permissions-group! (u/the-id group)))))
         (testing "make sure we're not allowed to edit the magic groups"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You cannot edit or delete the .* permissions group"
-               (t2/update! :model/PermissionsGroup :id (u/the-id group) {:name "Cool People"}))))))))
+               (perms-group/update-permissions-group! (u/the-id group) {:name "Cool People"}))))))))
 
 (deftest ^:parallel new-users-test
   (testing "newly created users should get added to the appropriate magic groups"

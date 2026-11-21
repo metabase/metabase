@@ -1,13 +1,18 @@
 (ns metabase.permissions.models.data-permissions
-  "The `data_permissions` model: its table, column transforms and hooks. The permissions it holds are read and written
-  through [[metabase.permissions.data-permissions]]."
+  "The `data_permissions` model: its table, column transforms, hooks and writes. The permissions it holds are read and
+  computed through [[metabase.permissions.data-permissions]]."
   (:require
+   [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.permissions.app-db-copy :as permissions.app-db-copy]
-   [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -31,6 +36,29 @@
   ;; unique_perms_helper is a generated column backing the unique constraint; it is not part of the
   ;; model and must not round-trip into inserts.
   (dissoc permissions :unique_perms_helper))
+
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(defn- assert-valid-permission
+  "Throws unless `permission` has a valid permission type and a value of that type."
+  [{:keys [perm_type perm_value] :as permission}]
+  (when-not (mr/validate ::permissions.schema/data-permission-type perm_type)
+    (throw (ex-info (str/join (mu/explain ::permissions.schema/data-permission-type perm_type)) permission)))
+  (let [values (-> permissions.schema/data-permissions perm_type :values)]
+    (when-not (contains? (set values) perm_value)
+      (throw (ex-info (tru "Invalid permission value {0} for permission type {1}" (pr-str perm_value) perm_type)
+                      {:value perm_value :perm-type perm_type :valid-values values})))))
+
+(t2/define-before-insert :model/DataPermissions
+  [permission]
+  (assert-valid-permission permission)
+  permission)
+
+(t2/define-before-update :model/DataPermissions
+  [_permission]
+  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- database-native?
   "Whether `row` gives native query access on its whole Database."
@@ -67,16 +95,45 @@
     (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
                     {:status-code 400}))))
 
-(t2/define-before-insert :model/DataPermissions
-  [permission]
-  (check-transforms-need-native permission)
-  (data-perms/assert-valid-permission permission)
-  (data-perms/assert-no-destination-db-permissions! [permission])
-  permission)
+;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
 
-(t2/define-before-update :model/DataPermissions
-  [_permission]
-  (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
+(def ^:private destination-db-id?
+  "Whether `db-id` is a destination database — one with `router_database_id` set."
+  (mdb/memoize-for-application-db
+   (fn [db-id]
+     (permissions.db/destination-database? db-id))))
+
+(defn assert-no-destination-db-permissions!
+  "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
+  set. Destinations are reachable only through their router and must never carry `data_permissions`
+  rows."
+  [perm-rows]
+  (when-let [dest-ids (seq (into #{} (comp (keep :db_id) (filter destination-db-id?)) perm-rows))]
+    (throw (ex-info (tru "Cannot grant permissions on a destination database.")
+                    {:status-code 400 :destination-db-ids dest-ids}))))
+
+(def ^:private permission-batch-size 1000)
+
+(mu/defn create-data-permissions!
+  "Insert the DataPermissions `rows` in batches that stay under the database limit on the parameters of a prepared
+  statement, the transforms rows last so that the create-queries rows they are checked against are stored. A row on a
+  destination Database, or one leaving its group with the transforms permission but no native query access on the
+  Database, is a 400."
+  [rows :- [:sequential ::permissions.schema/data-permissions.create]]
+  (let [{transforms true, others false} (group-by #(= :perms/transforms (keyword (:perm_type %))) rows)]
+    (t2/with-transaction [_conn]
+      (doseq [rows  [others transforms]
+              batch (partition-all permission-batch-size rows)]
+        (run! check-transforms-need-native batch)
+        (assert-no-destination-db-permissions! batch)
+        (permissions.db/insert-data-permissions! batch)))))
+
+(mu/defn delete-data-permissions!
+  "Delete the DataPermissions with `ids`, in batches that stay under the database limit on the parameters of a
+  prepared statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (doseq [batch (partition-all permission-batch-size ids)]
+    (permissions.db/delete-data-permissions! batch)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

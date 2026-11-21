@@ -2,7 +2,6 @@
   "Application database queries for the advanced-config module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
-   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
@@ -34,12 +33,6 @@
   "Whether an ApiKey with `prefix` exists."
   [prefix :- :string]
   (t2/exists? :model/ApiKey :key_prefix prefix))
-
-(mu/defn insert-api-key!
-  "Insert `api-key` and return the new instance. `::api-keys/unhashed-key` has a special meaning to the ApiKey
-  model's before-insert hook: it is hashed into `:key` and used to derive `:key_prefix`."
-  [api-key :- ::api-keys.schema/api-key.create]
-  (t2/insert-returning-instance! :model/ApiKey api-key))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."

@@ -165,6 +165,7 @@
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.path :as permissions.path]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -214,14 +215,6 @@
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
                     {:status-code 400, :path object}))))
-
-(defn- assert-valid
-  "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
-   path and it's not for the admin group)."
-  [permissions]
-  (doseq [f [assert-not-admin-group
-             assert-valid-object]]
-    (f permissions)))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -273,18 +266,10 @@
          (not= object (permissions.path/application-perms-path :subscription)))
     (tru "Cannot grant application permission to a tenant group.")))
 
-(defn- check-tenant-group-grant
-  "Throws a 400 when `permission` grants a tenant group what tenant groups cannot hold."
-  [{:keys [group_id object]}]
-  (when-let [error (tenant-group-grant-error object)]
-    (when (get (permissions.db/group-tenant-flags #{group_id}) group_id)
-      (throw (ex-info error {:status-code 400 :group-id group_id :object object})))))
-
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (check-tenant-group-grant permissions)
   (u/prog1 (maybe-break-out-permission-data permissions)
-    (assert-valid permissions)
+    (assert-valid-object permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
 (t2/deftransforms :model/Permissions
@@ -301,6 +286,8 @@
   (assert-not-admin-group permissions))
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
+
+(declare create-permissions!)
 
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
@@ -328,9 +315,9 @@
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
   [group-or-id path]
   (try
-    (permissions.db/insert-permissions! (map (fn [path-object]
-                                               {:group_id (u/the-id group-or-id) :object path-object})
-                                             (distinct (conj (perms.u/->v2-path path) path))))
+    (create-permissions! (map (fn [path-object]
+                                {:group_id (u/the-id group-or-id) :object path-object})
+                              (distinct (conj (perms.u/->v2-path path) path))))
     nil
     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
     (catch Throwable e
@@ -429,6 +416,25 @@
   metabase-enterprise.advanced-permissions.common
   [_instance]
   false)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-tenant-group-grants
+  "Throws a 400 when one of `rows` grants a tenant group what tenant groups cannot hold, with the groups read once."
+  [rows]
+  (when-let [refusable (seq (filter (comp tenant-group-grant-error :object) rows))]
+    (let [group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) refusable))]
+      (doseq [{:keys [group_id object]} refusable]
+        (when (get group-id->tenant? group_id)
+          (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
+
+(mu/defn create-permissions!
+  "Insert the Permissions `rows`. A row for the Admin group, or one granting a tenant group what tenant groups cannot
+  hold, is a 400."
+  [rows :- [:sequential ::permissions.schema/permissions.create]]
+  (check-tenant-group-grants rows)
+  (run! assert-not-admin-group rows)
+  (permissions.db/insert-permissions! rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

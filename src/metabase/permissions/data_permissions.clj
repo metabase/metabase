@@ -8,17 +8,16 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
-   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.models.data-permissions :as data-permissions]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.schema]
    [metabase.warehouses.schema]
@@ -131,10 +130,6 @@
 (def ^:private model-by-perm-type
   "A map from permission types directly to model identifiers (or `nil`)."
   (update-vals permissions.schema/data-permissions :model))
-
-(defn- assert-value-matches-perm-type
-  [perm-type perm-value]
-  (validate-perm-value! perm-type perm-value))
 
 (defmulti coalesce
   "Coalesce a set of permission values into a single value. This is used to determine the permission to enforce for a
@@ -595,30 +590,6 @@
 
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 
-(defn assert-valid-permission
-  "Throws unless `permission` has a valid permission type and a value of that type."
-  [{:keys [perm_type perm_value] :as permission}]
-  (when-not (mr/validate ::permissions.schema/data-permission-type perm_type)
-    (throw (ex-info (str/join (mu/explain ::permissions.schema/data-permission-type perm_type)) permission)))
-  (assert-value-matches-perm-type perm_type perm_value))
-
-;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
-
-(def ^:private destination-db-id?
-  "Whether `db-id` is a destination database — one with `router_database_id` set."
-  (mdb/memoize-for-application-db
-   (fn [db-id]
-     (permissions.db/destination-database? db-id))))
-
-(defn assert-no-destination-db-permissions!
-  "Throws if any row in `perm-rows` targets a destination database — one with `router_database_id`
-  set. Destinations are reachable only through their router and must never carry `data_permissions`
-  rows."
-  [perm-rows]
-  (when-let [dest-ids (seq (into #{} (comp (keep :db_id) (filter destination-db-id?)) perm-rows))]
-    (throw (ex-info (tru "Cannot grant permissions on a destination database.")
-                    {:status-code 400 :destination-db-ids dest-ids}))))
-
 (def ^:private TheIdable
   "An ID, or something with an ID."
   [:or pos-int?
@@ -704,28 +675,6 @@
             :to-insert [new-perm]}
            recursive-calls)))
 
-(def ^:private permission-batch-size 1000)
-
-(defn batch-insert-permissions!
-  "Inserts `new-perms` in batches that stay under the database limit on the parameters of a prepared statement, the
-  transforms rows last so that the create-queries rows the DataPermissions insert hook checks them against are stored."
-  [new-perms]
-  ;; The before-insert hook already runs this per row, so this call is dormant. Un-comment it if perms
-  ;; are ever inserted by a path that bypasses the hook (e.g. t2/query).
-  #_(assert-no-destination-db-permissions! new-perms)
-  (let [{transforms true, others false} (group-by #(= :perms/transforms (keyword (:perm_type %))) new-perms)]
-    (t2/with-transaction [_conn]
-      (doseq [rows              [others transforms]
-              batched-new-perms (partition-all permission-batch-size rows)]
-        (permissions.db/insert-data-permissions! batched-new-perms)))))
-
-(defn batch-delete-permissions!
-  "Much like on insert, sometimes we have to delete more permission models than the psql limit of MAX 16-bit parameters.
-  This batches our deletes into groups of `permission-batch-size`."
-  [to-delete-ids]
-  (doseq [batched-to-delete-ids (partition-all permission-batch-size to-delete-ids)]
-    (permissions.db/delete-data-permissions! batched-to-delete-ids)))
-
 (defn index-database-permissions
   "Given seqs of `group-ids` and `db-ids`, computes an index of all relevant permissions.
 
@@ -770,9 +719,9 @@
      (let [{:keys [to-insert to-delete]} (build-database-permission perms group-or-id db-or-id perm-type value)]
        (t2/with-transaction [_conn]
          (when (seq to-delete)
-           (batch-delete-permissions! (map :id to-delete)))
+           (data-permissions/delete-data-permissions! (map :id to-delete)))
          (when (seq to-insert)
-           (batch-insert-permissions! to-insert)))))))
+           (data-permissions/create-data-permissions! to-insert)))))))
 
 (defenterprise new-group-view-data-permission-levels
   "Returns a map of {db-id → permission-level} for multiple databases. On OSS, all are `:unrestricted`."
@@ -915,9 +864,9 @@
   (let [{:keys [to-delete to-insert]} (build-table-permissions group-or-id perm-type table-perms)]
     (t2/with-transaction [_conn]
       (when (seq to-delete)
-        (batch-delete-permissions! (map :id to-delete)))
+        (data-permissions/delete-data-permissions! (map :id to-delete)))
       (when (seq to-insert)
-        (batch-insert-permissions! to-insert)))))
+        (data-permissions/create-data-permissions! to-insert)))))
 
 (mu/defn set-table-permissions!
   "Sets table permissions to specified values for a given group. If a permission value already exists for a specified group and table,
@@ -1003,7 +952,7 @@
     (let [group-id (u/the-id group-or-id)]
       (if-not use-all-users-perms?
         ;; External/tenant groups: all least-permissive values (static, no queries needed)
-        (batch-insert-permissions!
+        (data-permissions/create-data-permissions!
          (for [db-id db-ids
                [perm-type perm-value] (least-permissive-defaults)]
            {:perm_type  perm-type
@@ -1018,7 +967,7 @@
                                {}
                                au-perms)
               view-data-levels (new-group-view-data-permission-levels db-ids)]
-          (batch-insert-permissions!
+          (data-permissions/create-data-permissions!
            (for [db-id db-ids
                  :let [view-data-level (get view-data-levels db-id :unrestricted)
                        cq-values (get-in au-by-db [db-id :perms/create-queries])
@@ -1113,7 +1062,7 @@
                                :perm_value perm-value
                                :db_id      db-id})))
                         groups)]
-      (batch-insert-permissions! perm-rows))))
+      (data-permissions/create-data-permissions! perm-rows))))
 
 (defn- mk-perm-row [group-id perm-type perm-value db-id table-id schema]
   {:perm_type perm-type :group_id group-id :perm_value perm-value
@@ -1235,8 +1184,8 @@
         ;; One transaction so a failed insert (e.g. a unique-constraint violation) can't leave the
         ;; DB-level rows deleted but the table-level expansion half-written.
         (t2/with-transaction [_conn]
-          (when (seq to-delete) (batch-delete-permissions! to-delete))
-          (when (seq to-insert) (batch-insert-permissions! to-insert)))))))
+          (when (seq to-delete) (data-permissions/delete-data-permissions! to-delete))
+          (when (seq to-insert) (data-permissions/create-data-permissions! to-insert)))))))
 
 (defn set-default-table-permissions!
   "Set default permissions for a newly-created table across all relevant

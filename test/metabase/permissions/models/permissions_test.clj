@@ -183,20 +183,20 @@
     (testing "inserting write access to collection for tenant group is refused with 400"
       (is (=? {:status-code 400}
               (try
-                (t2/insert! :model/Permissions {:group_id tenant-group-id :object (format "/collection/%d/" coll-id)})
+                (perms/create-permissions! [{:group_id tenant-group-id :object (format "/collection/%d/" coll-id)}])
                 (catch clojure.lang.ExceptionInfo e
                   (ex-data e))))))
     (testing "inserting non-subscription application permission for tenant group is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                            (t2/insert! :model/Permissions {:group_id tenant-group-id :object "/application/setting/"}))))
+                            (perms/create-permissions! [{:group_id tenant-group-id :object "/application/setting/"}]))))
     (testing "tenant group may hold subscription application permission and read access"
-      (t2/insert! :model/Permissions [{:group_id tenant-group-id :object "/application/subscription/"}
-                                      {:group_id tenant-group-id :object (format "/collection/%d/read/" coll-id)}])
+      (perms/create-permissions! [{:group_id tenant-group-id :object "/application/subscription/"}
+                                  {:group_id tenant-group-id :object (format "/collection/%d/read/" coll-id)}])
       (is (= #{"/application/subscription/" (format "/collection/%d/read/" coll-id)}
              (t2/select-fn-set :object :model/Permissions :group_id tenant-group-id))))
     (testing "other groups may hold write access and application permissions"
-      (t2/insert! :model/Permissions [{:group_id normal-group-id :object (format "/collection/%d/" coll-id)}
-                                      {:group_id normal-group-id :object "/application/setting/"}])
+      (perms/create-permissions! [{:group_id normal-group-id :object (format "/collection/%d/" coll-id)}
+                                  {:group_id normal-group-id :object "/application/setting/"}])
       (is (= #{"/application/setting/" (format "/collection/%d/" coll-id)}
              (t2/select-fn-set :object :model/Permissions :group_id normal-group-id
                                :object [:in ["/application/setting/" (format "/collection/%d/" coll-id)]]))))))

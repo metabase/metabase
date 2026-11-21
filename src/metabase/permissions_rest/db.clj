@@ -66,23 +66,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroup :id id))
 
-(mu/defn insert-permissions-group!
-  "Insert a PermissionsGroup and return the inserted instance."
-  [group-name    :- :string
-   tenant-group? :- :boolean]
-  (t2/insert-returning-instance! :model/PermissionsGroup :name group-name :is_tenant_group tenant-group?))
-
-(mu/defn rename-permissions-group!
-  "Set the name of the PermissionsGroup with `id`, returning the number updated."
-  [id         :- ms/PositiveInt
-   group-name :- :string]
-  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
-
-(mu/defn delete-permissions-group!
-  "Delete the PermissionsGroup with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id id))
-
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
   restricted to the groups `manager-user-id` manages, and excluding tenant groups when `exclude-tenant-groups?`."
@@ -103,12 +86,6 @@
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/PermissionsGroupMembership :id id))
-
-(mu/defn set-group-membership-manager!
-  "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
-  [id             :- ms/PositiveInt
-   group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
