@@ -19,3 +19,11 @@
    [:embedding    {:optional true} [:maybe :boolean]]
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::sso-relay-state.create
+  "What persisting a SAML RelayState takes: its plaintext key and the context of the login it belongs to."
+  [:map {:closed true}
+   [:id           :string]
+   [:continue-url [:maybe :string]]
+   [:origin       {:optional true} [:maybe :string]]
+   [:embedding?   {:optional true} [:maybe :boolean]]])

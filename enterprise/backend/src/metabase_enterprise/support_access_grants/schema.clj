@@ -73,3 +73,12 @@
    [:revoked_by_user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::support-access-grant-log.create
+  "What creating a SupportAccessGrantLog takes: its creator, ticket number, notes, and the window it grants access for."
+  [:map {:closed true}
+   [:user_id               ::lib.schema.id/user]
+   [:ticket_number         [:maybe :string]]
+   [:notes                 [:maybe :string]]
+   [:grant_start_timestamp ms/TemporalInstant]
+   [:grant_end_timestamp   ms/TemporalInstant]])

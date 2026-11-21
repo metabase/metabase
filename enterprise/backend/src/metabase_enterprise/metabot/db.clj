@@ -33,11 +33,11 @@
                         :where  [:= :user_id user-id]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
-(mu/defn permission-exists?
-  "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
+(mu/defn permission :- [:maybe ::metabot-ee.schema/metabot-permissions]
+  "The MetabotPermissions row of `perm-type` of the group with `group-id`, or nil."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+  (t2/select-one :model/MetabotPermissions :group_id group-id :perm_type perm-type))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."

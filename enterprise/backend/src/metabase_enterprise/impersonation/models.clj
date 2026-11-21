@@ -10,6 +10,8 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -52,6 +54,13 @@
                (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
              impersonations))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn delete-connection-impersonation!
+  "Delete the ConnectionImpersonation with `impersonation-id`."
+  [impersonation-id :- ms/PositiveInt]
+  (impersonation.db/delete-impersonation! impersonation-id))
 
 (defenterprise insert-impersonations!
   "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same

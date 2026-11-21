@@ -3739,7 +3739,7 @@
   warehouses.secrets
   {:team "UX West"
    :ns-prefix "metabase.secrets"
-   :api #{metabase.secrets.core}
+   :api #{metabase.secrets.core metabase.secrets.models.secret}
    :uses #{api
            app-db
            driver

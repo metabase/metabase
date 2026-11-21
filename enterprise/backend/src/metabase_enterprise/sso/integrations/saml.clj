@@ -115,10 +115,10 @@
         ;; Need redirect to IdP
         (= :redirect (:success? auth-result))
         (do
-          (relay-state/persist! {:id           relay-key
-                                 :continue-url continue
-                                 :origin       (when embedding? (get-in req [:headers "origin"]))
-                                 :embedding?   embedding?})
+          (relay-state/create-sso-relay-state! {:id           relay-key
+                                                :continue-url continue
+                                                :origin       (when embedding? (get-in req [:headers "origin"]))
+                                                :embedding?   embedding?})
           (if embedding?
             {:status 200
              :body {:url (:redirect-url auth-result)
@@ -211,7 +211,7 @@
           (do
             ;; Consume the single-use key only now that login succeeded — a failed or retried callback keeps
             ;; the key alive so the user can complete login. (Legacy Base64 logins have no `:relay-key`.)
-            (when relay-key (relay-state/delete! relay-key))
+            (when relay-key (relay-state/delete-sso-relay-state! relay-key))
             (if (= mode :embedding)
               (saml-utils/create-token-response (:session login-result) origin continue-url (:nonce request))
               (request/set-session-cookies request

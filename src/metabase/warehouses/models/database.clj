@@ -22,6 +22,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.core :as search]
    [metabase.secrets.core :as secret]
+   [metabase.secrets.models.secret :as models.secret]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.sync.schedules :as sync.schedules]
@@ -254,7 +255,7 @@
   ;; / fields for a Database whose deletion is about to be refused.
   (reconcile-workspace-database-refs-before-delete! id)
   (unschedule-tasks! database)
-  (secret/delete-orphaned-secrets! database)
+  (models.secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
   (warehouses.db/delete-actions-for-database! id)
   (warehouses.db/delete-transforms-for-database! id)
@@ -447,7 +448,7 @@
       (or (some? (:details changes))
           (some? (:write_data_details changes))
           (some? (:admin_details changes)))
-      secret/handle-incoming-client-secrets!
+      models.secret/handle-incoming-client-secrets!
 
       (:uploads_enabled changes)
       maybe-disable-uploads-for-all-dbs!)))
@@ -480,7 +481,7 @@
        (not details)             (assoc :details {})
        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       (assoc :provider_name (provider-name database))
-      secret/handle-incoming-client-secrets!
+      models.secret/handle-incoming-client-secrets!
       maybe-disable-uploads-for-all-dbs!
       infer-db-schedules))
 

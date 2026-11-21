@@ -1,6 +1,7 @@
 (ns metabase-enterprise.impersonation.api
   (:require
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.impersonation.models :as impersonation.models]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.util.malli.schema :as ms]))
@@ -31,5 +32,5 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (impersonation.db/impersonation id))
-  (impersonation.db/delete-impersonation! id)
+  (impersonation.models/delete-connection-impersonation! id)
   api/generic-204-no-content)

@@ -10,7 +10,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.sso.db :as sso.db]
+   [metabase-enterprise.sso.schema :as sso.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.util.malli :as mu]
    [metabase.util.random :as random]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
@@ -50,11 +52,21 @@
 (defn generate-key
   "Generate a fresh opaque RelayState key — 16 bytes (128 bits) of cryptographically secure randomness behind
   the [[key-prefix]]. The key is the unguessable proof that ties an IdP callback to a login we initiated. It
-  is generated before the SAML AuthnRequest (which embeds it) and only [[persist!]]ed once that succeeds."
+  is generated before the SAML AuthnRequest (which embeds it) and only [[create-sso-relay-state!]]ed once that succeeds."
   ^String []
   (str key-prefix (random/secure-hex 16)))
 
-(defn persist!
+(defn find-unexpired
+  "Return the stored, unexpired RelayState row for the (plaintext) `key`, or `nil`. Look-up only — it does NOT
+  delete the entry. The entry is consumed via [[delete-sso-relay-state!]] only after the login succeeds, so a failed or
+  retried callback doesn't burn the key."
+  [key]
+  (when (relay-state-key? key)
+    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-sso-relay-state! :- :string
   "Persist the SAML callback `context` under its already-generated `:id` (from [[generate-key]]). Returns the id.
 
   `context` keys:
@@ -62,7 +74,7 @@
   - `:continue-url` - where to send the user after login (redirect target, or popup fallback URL)
   - `:origin`       - postMessage target origin (embedding popup only)
   - `:embedding?`   - whether this is a modular-embedding popup login"
-  [{:keys [id continue-url origin embedding?]}]
+  [{:keys [id continue-url origin embedding?]} :- ::sso.schema/sso-relay-state.create]
   (sso.db/insert-relay-state! {:id           (hash-key id)
                                :continue_url continue-url
                                :origin       origin
@@ -70,23 +82,15 @@
                                :expires_at   (t/plus (t/offset-date-time) (t/seconds ttl-seconds))})
   id)
 
-(defn find-unexpired
-  "Return the stored, unexpired RelayState row for the (plaintext) `key`, or `nil`. Look-up only — it does NOT
-  delete the entry. The entry is consumed via [[delete!]] only after the login succeeds, so a failed or
-  retried callback doesn't burn the key."
-  [key]
-  (when (relay-state-key? key)
-    (sso.db/unexpired-relay-state (hash-key key) (t/offset-date-time))))
-
-(defn delete!
+(mu/defn delete-sso-relay-state! :- [:maybe :int]
   "Consume (delete) the RelayState entry for the (plaintext) `key`. Called after a successful login; the single
   `DELETE` is atomic and idempotent (a concurrent or replayed callback that loses the race simply deletes
   nothing)."
-  [key]
+  [key :- [:maybe :string]]
   (when (relay-state-key? key)
     (sso.db/delete-relay-state! (hash-key key))))
 
-(defn delete-expired!
+(mu/defn delete-expired-sso-relay-states! :- :int
   "Delete all expired RelayState entries (abandoned logins that never came back). Returns the number deleted."
   []
   (sso.db/delete-relay-states-expired-at! (t/offset-date-time)))

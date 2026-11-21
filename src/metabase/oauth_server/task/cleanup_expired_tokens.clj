@@ -4,7 +4,9 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
+   [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
+   [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]))
@@ -19,11 +21,11 @@
     ;; Issue expiry- and revocation-based deletes as separate statements so each can use the appropriate
     ;; index (expiry / revoked_at). A combined `OR` predicate would prevent the planner from using either
     ;; index and degrade into a table scan as these tables grow.
-    {:authorization-codes-expired (oauth-server.db/delete-authorization-codes-expired-before! now)
-     :access-tokens-expired       (oauth-server.db/delete-access-tokens-expired-before! now)
-     :access-tokens-revoked       (oauth-server.db/delete-revoked-access-tokens!)
-     :refresh-tokens-expired      (oauth-server.db/delete-refresh-tokens-expired-before! now)
-     :refresh-tokens-revoked      (oauth-server.db/delete-revoked-refresh-tokens!)}))
+    {:authorization-codes-expired (oauth-authorization-code/delete-expired-oauth-authorization-codes! now)
+     :access-tokens-expired       (oauth-access-token/delete-expired-oauth-access-tokens! now)
+     :access-tokens-revoked       (oauth-access-token/delete-revoked-oauth-access-tokens!)
+     :refresh-tokens-expired      (oauth-refresh-token/delete-expired-oauth-refresh-tokens! now)
+     :refresh-tokens-revoked      (oauth-refresh-token/delete-revoked-oauth-refresh-tokens!)}))
 
 (task/defjob CleanupExpiredOAuthTokens
   "Delete expired and revoked OAuth tokens and authorization codes."

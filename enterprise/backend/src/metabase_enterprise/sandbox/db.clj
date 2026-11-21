@@ -2,7 +2,6 @@
   "Application database queries for the sandbox module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions."
   (:require
-   [malli.util :as mut]
    [metabase-enterprise.sandbox.schema :as sandbox.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -90,18 +89,13 @@
 
 (mu/defn insert-sandbox!
   "Insert `sandbox` and return the new instance."
-  [sandbox :- [:map {:closed true}
-               [:id                   {:optional true} ms/PositiveInt]
-               [:table_id             ::lib.schema.id/table]
-               [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
-               [:group_id             ms/PositiveInt]
-               [:attribute_remappings {:optional true} [:maybe ::sandbox.schema/attribute-remappings]]]]
+  [sandbox :- ::sandbox.schema/sandbox.create]
   (first (t2/insert-returning-instances! :model/Sandbox sandbox)))
 
 (mu/defn update-sandbox!
   "Apply `changes` to the Sandbox with `sandbox-id`, returning the number updated."
   [sandbox-id :- ::lib.schema.id/sandbox
-   changes    :- (mut/select-keys ::sandbox.schema/sandbox.update [:card_id :attribute_remappings])]
+   changes    :- ::sandbox.schema/sandbox.update]
   (t2/update! :model/Sandbox :id sandbox-id changes))
 
 (mu/defn delete-sandbox!

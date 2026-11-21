@@ -3,6 +3,7 @@
   the SQL and can take seconds."
   (:require
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.config.core :as config]
    [metabase.driver.sql :as driver.sql]
@@ -29,7 +30,7 @@
   "The cached result for `input`, or nil when there is none or the cache cannot be read."
   [input :- ::impersonation.schema/impersonation-query-cache.update]
   (try
-    (let [row (impersonation.db/query-cache input)]
+    (let [row (impersonation.db/query-cache (impersonation-query-cache/lookup input))]
       (when (= (:input_query input) (:input_query row))
         row))
     (catch Throwable e
@@ -41,7 +42,7 @@
   [input  :- ::impersonation.schema/impersonation-query-cache.update
    result :- ::impersonation.schema/impersonation-query-cache.update]
   (try
-    (impersonation.db/update-or-insert-query-cache! (merge input result))
+    (impersonation-query-cache/upsert-impersonation-query-cache! (merge input result))
     (catch Throwable e
       (log/errorf "Error writing the impersonation query cache: %s" (ex-message e))))
   nil)

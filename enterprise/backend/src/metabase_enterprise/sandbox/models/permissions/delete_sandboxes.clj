@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.models.permissions.delete-sandboxes
   (:require
    [metabase-enterprise.sandbox.db :as sandbox.db]
+   [metabase-enterprise.sandbox.models.sandbox :as sandbox]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -89,7 +90,7 @@
                                   candidate-sandboxes)]
           (when (seq ids-to-delete)
             (log/debugf "Deleting %d unneeded GTAPs: %s" (count ids-to-delete) (pr-str ids-to-delete))
-            (sandbox.db/delete-sandboxes! ids-to-delete)))))
+            (sandbox/delete-sandboxes! ids-to-delete)))))
     (catch Throwable e
       (throw (ex-info (tru "Error deleting Sandboxes: {0}" (ex-message e))
                       {:changes changes}

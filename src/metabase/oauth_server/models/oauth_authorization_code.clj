@@ -1,7 +1,12 @@
 (ns metabase.oauth-server.models.oauth-authorization-code
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.schema :as oauth-server.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,6 +20,28 @@
 (t2/deftransforms :model/OAuthAuthorizationCode
   {:scope    mi/transform-json
    :resource mi/transform-json})
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-oauth-authorization-code!
+  "Insert the OAuthAuthorizationCode `row`, returning the number inserted."
+  [row :- ::oauth-server.schema/oauth-authorization-code.create]
+  (oauth-server.db/insert-authorization-code! row))
+
+(mu/defn delete-oauth-authorization-code!
+  "Delete the OAuthAuthorizationCode `code`, returning the number deleted."
+  [code :- :string]
+  (oauth-server.db/delete-authorization-code! code))
+
+(mu/defn delete-user-oauth-authorization-codes!
+  "Delete the OAuthAuthorizationCodes of the User with `user-id`, returning the number deleted."
+  [user-id :- ::lib.schema.id/user]
+  (oauth-server.db/delete-authorization-codes-for-user! user-id))
+
+(mu/defn delete-expired-oauth-authorization-codes!
+  "Delete the OAuthAuthorizationCodes that expired before `now`, in epoch milliseconds, returning the number deleted."
+  [now :- ms/PositiveInt]
+  (oauth-server.db/delete-authorization-codes-expired-before! now))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
