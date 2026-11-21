@@ -593,6 +593,7 @@
                     :jwt_attributes :locale :login_attributes :type]
    :skip           [:deactivated_at :entity_id :is_active :is_qbnewb :last_login :password :password_salt
                     :reset_token :reset_triggered :settings]
+   :hydrate        users.audit/hydrate
    :details        users.audit/details
    :topics         {:update users.audit/update-topic}
    :moments        [{:topic :user-reactivated, :when users.audit/reactivated?}

@@ -16,28 +16,33 @@
 (events/derive! :event/card-create ::event)
 (events/derive! :event/card-update ::event)
 
-(defn- turn-on-model!
-  "Turn the persistence of the model Card `card-id` on for `user-id` when its database persists models and it has no
-  PersistedInfo, even an `off` or `deletable` one, so only the model conversion of a Card does."
-  [card-id user-id]
+(defn- turn-on-models!
+  "Turn the persistence of the model Cards `card-ids` on for `user-id` for those whose database persists models and
+  that have no PersistedInfo, even an `off` or `deletable` one, so only the model conversion of a Card does."
+  [card-ids user-id]
   (try
-    (when-let [card (model-persistence.db/card-for-persistence card-id)]
-      (when (and (= (keyword (:type card)) :model)
-                 (model-persistence.settings/persisted-models-enabled)
-                 (get-in (model-persistence.db/database (:database_id card)) [:settings :persist-models-enabled])
-                 (nil? (model-persistence.db/persisted-info-id-for-card card-id)))
-        (persisted-info/turn-on-model! user-id card)))
+    (when (model-persistence.settings/persisted-models-enabled)
+      (let [cards      (filter #(= (keyword (:type %)) :model) (model-persistence.db/cards-for-persistence card-ids))
+            persisting (into #{}
+                             (comp (filter #(get-in % [:settings :persist-models-enabled]))
+                                   (map :id))
+                             (some->> (not-empty (into [] (comp (keep :database_id) (distinct)) cards))
+                                      model-persistence.db/databases))
+            cards      (filter #(contains? persisting (:database_id %)) cards)
+            persisted  (some->> (not-empty (mapv :id cards)) model-persistence.db/card-ids-with-persisted-info)]
+        (persisted-info/turn-on-models! user-id (remove #(contains? persisted (:id %)) cards))))
     (catch Throwable e
-      (log/warnf "Failed to persist model %s: %s" card-id (ex-message e)))))
+      (log/warnf "Failed to persist models %s: %s" (pr-str card-ids) (ex-message e)))))
 
 (defn- became-model?
-  "Whether the write of `event` created a model Card, or turned a Card into one."
-  [{:keys [object previous-object] :as event}]
+  "Whether the `change` created a model Card, or turned a Card into one."
+  [{:keys [object previous-object] :as change}]
   (and (= (keyword (:type object)) :model)
        (or (nil? previous-object)
-           (u.events/changed? event :type))))
+           (u.events/changed? change :type))))
 
 (methodical/defmethod events/publish-event! ::event
-  [_topic {:keys [object user-id] :as event}]
-  (when (and user-id (became-model? event))
-    (turn-on-model! (:id object) user-id)))
+  [_topic {:keys [changes user-id]}]
+  (when user-id
+    (when-let [card-ids (not-empty (into [] (comp (filter became-model?) (map (comp :id :object))) changes))]
+      (turn-on-models! card-ids user-id))))

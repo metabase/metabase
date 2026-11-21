@@ -35,19 +35,62 @@
         (merge (select-keys row track) extra))
       (select-keys row track))))
 
+(defn- columns-edit?
+  "Whether the lifecycle `event` of a model with an audit spec is a create, a delete, or an update that changes a column
+  that its spec does not skip."
+  [{:keys [model object previous-object]}]
+  (or (not (and object previous-object))
+      (let [skipped (audit.spec/skipped-columns model)]
+        (boolean (some #(and (not (skipped %)) (not (audit.spec/same? model % previous-object object)))
+                       (into (set (keys object)) (keys previous-object)))))))
+
+(defn- details-edit-possible?
+  "Whether the lifecycle `event` says through its context that details changed beside the columns, for a model whose
+  spec stores details, which [[spec-edit?]] then compares."
+  [{:keys [model context]}]
+  (boolean (and (:details context) (:details (audit.spec/spec model)))))
+
+(defn- maybe-edit?
+  "Whether the lifecycle `event` may be a write whose row should say a user made it, which [[spec-edit?]] decides once
+  its rows are hydrated, without reading the app DB."
+  [{:keys [context] :as event}]
+  (and (nil? (:archived-with context))
+       (or (columns-edit? event) (details-edit-possible? event))))
+
 (defn- spec-edit?
-  "Whether the lifecycle `event` of a model with an audit spec is a write whose row should say a user made it: not one
-  that the archive or restore of another entity carried to its row, nor an update that changes nothing but the columns
-  that its spec skips, unless the write says through its context that details changed beside them."
+  "Whether the lifecycle `event` of a model with an audit spec, its rows hydrated, is a write whose row should say a
+  user made it: not one that the archive or restore of another entity carried to its row, nor an update that changes
+  nothing but the columns that its spec skips, unless the write says through its context that details changed beside
+  them."
   [{:keys [model context object previous-object] :as event}]
   (and (nil? (:archived-with context))
-       (or (not (and object previous-object))
-           (let [skipped (audit.spec/skipped-columns model)]
-             (boolean (or (some #(and (not (skipped %)) (not (audit.spec/same? model % previous-object object)))
-                                (into (set (keys object)) (keys previous-object)))
-                          (and (:details context)
-                               (:details (audit.spec/spec model))
-                               (not= (details-of model object event) (details-of model previous-object event)))))))))
+       (or (columns-edit? event)
+           (and (details-edit-possible? event)
+                (not= (details-of model object event) (details-of model previous-object event))))))
+
+(defn- hydrated
+  "The row `events` with their rows before and after the writes as the `:hydrate` of the spec of their model leaves
+  them, which loads what its `:details` and `:state` read, one call per model."
+  [events]
+  (let [slots (for [[i {:keys [model] :as event}] (map-indexed vector events)
+                    :when (:hydrate (audit.spec/spec model))
+                    k     [:object :previous-object]
+                    :when (some? (get event k))]
+                [model i k])]
+    (reduce (fn [events [model model-slots]]
+              (let [rows ((:hydrate (audit.spec/spec model)) (mapv (fn [[_ i k]] (get-in events [i k])) model-slots))]
+                (reduce (fn [events [[_ i k] row]] (assoc-in events [i k] row))
+                        events
+                        (map vector model-slots rows))))
+            (vec events)
+            (group-by first slots))))
+
+(defn- split-by-counts
+  "`xs` cut into consecutive vectors of the sizes `counts`."
+  [counts xs]
+  (first (reduce (fn [[acc xs] n] [(conj acc (vec (take n xs))) (drop n xs)])
+                 [[] xs]
+                 counts)))
 
 (defn- default-topic
   "The topic of the event that `model` publishes for `operation`, as it is stored."
@@ -166,38 +209,49 @@
 (defn- record-own-rows!
   "Record the rows of the writes of the models that record them as their own."
   [events roots]
-  (doseq [{:keys [model user-id] :as event} events
-          :when (and user-id
-                     (nil? (audit.spec/parent model))
-                     (not (contains? roots model))
-                     (spec-edit? event))]
+  (doseq [{:keys [user-id] :as event} (hydrated (filter (fn [{:keys [model user-id] :as event}]
+                                                          (and user-id
+                                                               (nil? (audit.spec/parent model))
+                                                               (not (contains? roots model))
+                                                               (maybe-edit? event)))
+                                                        events))
+          :when (spec-edit? event)]
     (record-event! event user-id (context-details event))))
 
 (defn- record-parent-rows!
   "Record, once per parent and topic, the writes of the models that record them under a parent with a topic, none for a
-  parent that the batch creates."
+  parent that the batch creates, the details of the parents of each model loaded together."
   [events all-events]
-  (let [groups (group-by (fn [{:keys [model operation] :as event}]
-                           (let [topic (get (:topics (audit.spec/parent model)) operation)]
-                             (when topic
-                               [(parent-ref event) topic])))
-                         (filter #(:topics (audit.spec/parent (:model %))) events))]
-    (doseq [[[[parent-model parent-id :as ref] topic] group] groups
-            :when (and (some? ref)
-                       (some? parent-id)
-                       (some :user-id group)
-                       (not-any? #(and (= parent-model (:model %))
-                                       (= :create (:operation %))
-                                       (= parent-id (:id %)))
-                                 all-events))]
+  (let [created  (into #{}
+                       (keep (fn [{:keys [model operation id]}]
+                               (when (= :create operation) [model id])))
+                       all-events)
+        groups   (->> events
+                      (filter #(:topics (audit.spec/parent (:model %))))
+                      (group-by (fn [{:keys [model operation] :as event}]
+                                  (when-let [topic (get (:topics (audit.spec/parent model)) operation)]
+                                    (let [[parent-model parent-id] (parent-ref event)]
+                                      (when (and (some? parent-id) (not (contains? created [parent-model parent-id])))
+                                        [model parent-model parent-id topic])))))
+                      (filter (fn [[k group]] (and (some? k) (some :user-id group)))))
+        details  (into {}
+                       (mapcat (fn [[model model-groups]]
+                                 (let [by-parent (into {}
+                                                       (map (fn [[[_ _ parent-id topic] group]] [[parent-id topic] group]))
+                                                       model-groups)]
+                                   (for [[[parent-id topic] detail] ((:details (audit.spec/parent model)) by-parent)]
+                                     [[model parent-id topic] detail]))))
+                       (group-by (comp first key) groups))]
+    (doseq [[[model parent-model parent-id topic] group] groups]
       (record! topic {:user-id  (some :user-id group)
                       :model    parent-model
                       :model-id parent-id
-                      :details  ((:details (audit.spec/parent (:model (first group)))) parent-id group)}))))
+                      :details  (get details [model parent-id topic])}))))
 
 (defn- record-rolled-rows!
   "Record, once per topmost parent, the writes of a batch to a row and to the rows that count as parts of it, as the
-  write of the row that its own events say, an update when there are none."
+  write of the row that its own events say, an update when there are none, the rows of those without events of their
+  own loaded together."
   [events roots]
   (let [parts   (filter #(chain-parent (:model %)) events)
         links   (parent-links (into #{} (map parent-ref) parts))
@@ -205,16 +259,24 @@
                   (if (contains? roots model)
                     [model (:id (row-of event))]
                     (top-ref links (parent-ref event))))
-        groups  (group-by ref-of (filter #(or (contains? roots (:model %)) (chain-parent (:model %))) events))]
-    (doseq [[[root-model root-id] group] groups
-            :let  [user-id (some :user-id group)]
-            :when (and (some? root-id) user-id (some spec-edit? group))
-            :let  [own   (first (filter #(= root-model (:model %)) group))
-                   event (or own
-                             (when-let [row (audit-app.db/row root-model root-id)]
-                               {:model root-model :operation :update :id root-id :object row}))]
+        groups  (group-by ref-of (filter #(or (contains? roots (:model %)) (chain-parent (:model %))) events))
+        maybe    (filterv (fn [[[_ root-id] group]]
+                            (and (some? root-id) (some :user-id group) (some maybe-edit? group)))
+                          groups)
+        recorded (filter (fn [[_ group]] (some spec-edit? group))
+                         (map vector
+                              (map key maybe)
+                              (split-by-counts (map (comp count val) maybe) (hydrated (into [] (mapcat val) maybe)))))
+        own-of   (fn [[[root-model] group]] (first (filter #(= root-model (:model %)) group)))
+        loaded   (into {}
+                       (map (juxt (juxt :model :id) identity))
+                       (hydrated (for [[root-model refs] (group-by first (map first (remove own-of recorded)))
+                                       row              (audit-app.db/rows root-model (vec (distinct (map second refs))))]
+                                   {:model root-model :operation :update :id (:id row) :object row})))]
+    (doseq [[ref group :as entry] recorded
+            :let  [event (or (own-of entry) (get loaded ref))]
             :when event]
-      (record-event! event user-id {}))))
+      (record-event! event (some :user-id group) {}))))
 
 (defn- record-moments!
   "Record the rows that the spec of a model derives from a column that its writes change."
@@ -274,7 +336,11 @@
     (select-keys object (get object-columns topic))
 
     (and (t2/instance? object) (audit.spec/spec (t2/model object)))
-    (details-of (t2/model object) object {:object object :topic topic})
+    (let [model  (t2/model object)
+          object (if-let [hydrate (:hydrate (audit.spec/spec model))]
+                   (first (hydrate [object]))
+                   object)]
+      (details-of model object {:object object :topic topic}))
 
     :else
     {}))

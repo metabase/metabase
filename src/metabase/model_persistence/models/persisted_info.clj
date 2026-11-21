@@ -195,6 +195,13 @@
                            (model-persistence.db/persisted-info-for-card card-id)))]
     persisted-info))
 
+(defn turn-on-models!
+  "Insert a PersistedInfo in the default state for each of the model `cards`, which have none, for `user-id`, in one
+  statement; the PersistRefresh task persists those `creating`."
+  [user-id cards]
+  (when (seq cards)
+    (model-persistence.db/insert-persisted-infos! (mapv #(create-row user-id %) cards))))
+
 (defn ready-database!
   "Sets PersistedInfo state to the default state for models without a PeristedInfo or those in a `deletable` state.
    Will ignore explicitly set `off` models."

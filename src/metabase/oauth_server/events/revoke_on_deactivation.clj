@@ -13,9 +13,12 @@
 (events/derive! :event/user-update ::event)
 
 (methodical/defmethod events/publish-event! ::event
-  [_topic {:keys [object] :as event}]
-  (when (and (false? (:is_active object)) (u.events/changed? event :is_active))
-    (let [user-id (:id object)]
-      (oauth-access-token/revoke-user-oauth-access-tokens! user-id)
-      (oauth-refresh-token/revoke-user-oauth-refresh-tokens! user-id)
-      (oauth-authorization-code/delete-user-oauth-authorization-codes! user-id))))
+  [_topic {:keys [changes]}]
+  (when-let [user-ids (not-empty (into []
+                                       (comp (filter #(and (false? (:is_active (:object %)))
+                                                           (u.events/changed? % :is_active)))
+                                             (map (comp :id :object)))
+                                       changes))]
+    (oauth-access-token/revoke-user-oauth-access-tokens! user-ids)
+    (oauth-refresh-token/revoke-user-oauth-refresh-tokens! user-ids)
+    (oauth-authorization-code/delete-user-oauth-authorization-codes! user-ids)))

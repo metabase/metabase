@@ -3,7 +3,9 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- revisions-of [model model-id]
@@ -101,3 +103,29 @@
         (is (=? {:cards []} (last-object "Dashboard" dashboard-id)))
         (records! "removing a tab" #(t2/delete! :model/DashboardTab :id @tab-id))
         (is (=? {:tabs []} (last-object "Dashboard" dashboard-id)))))))
+
+(defn- revision-statement-count!
+  "The statements that the revisions consumer runs for a user's update of a dashcard of each of `n` new Dashboards in
+  one batch, which records a Revision of each Dashboard."
+  [card-id n]
+  (let [dashboard-ids (atom nil)]
+    (events.tu/consumer-statement-count! :model/Dashboard
+                                         (repeatedly n #(mt/with-temp-defaults :model/Dashboard))
+                                         (fn [ids]
+                                           (reset! dashboard-ids ids)
+                                           (t2/insert! :model/DashboardCard
+                                                       (for [id ids]
+                                                         (assoc (mt/with-temp-defaults :model/DashboardCard)
+                                                                :dashboard_id id :card_id card-id))))
+                                         #(mt/with-current-user (mt/user->id :crowberto)
+                                            (u/prog1 (%)
+                                              (is (= (count @dashboard-ids)
+                                                     (t2/count :model/Revision :model "Dashboard"
+                                                               :model_id [:in @dashboard-ids])))))
+                                         #(mt/with-current-user nil (%)))))
+
+(deftest batch-of-part-writes-records-with-fixed-statements-test
+  (testing "dashcard writes on 2 or 6 Dashboards in one batch record a Revision each with the same number of statements"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Card {card-id :id} {}]
+        (is (= (revision-statement-count! card-id 2) (revision-statement-count! card-id 6)))))))

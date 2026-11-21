@@ -32,9 +32,9 @@
   (oauth-server.db/revoke-refresh-token! token))
 
 (mu/defn revoke-user-oauth-refresh-tokens!
-  "Revoke the unrevoked OAuthRefreshTokens of the User with `user-id`, returning the number revoked."
-  [user-id :- ::lib.schema.id/user]
-  (oauth-server.db/revoke-refresh-tokens-for-user! user-id))
+  "Revoke the unrevoked OAuthRefreshTokens of the Users with `user-ids`, returning the number revoked."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (oauth-server.db/revoke-refresh-tokens-for-users! user-ids))
 
 (mu/defn delete-expired-oauth-refresh-tokens!
   "Delete the OAuthRefreshTokens that expired before `now`, in epoch milliseconds, returning the number deleted."

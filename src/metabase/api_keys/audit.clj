@@ -6,6 +6,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn hydrate
+  "The API Key `rows` with the Permissions Group each belongs to as `:group`, loaded together."
+  [rows]
+  (vec (t2/hydrate (vec rows) :group)))
+
 (defn details
   "The details to store for the API Key `row` beside its columns: the Permissions Group it belongs to, as the writer saw
   it before the write when the `event` is of the key before it, and its scope when it has one."
@@ -13,7 +18,7 @@
   (let [previous-group (get-in context [:details :previous-group])]
     (cond-> {:group (if (and previous-group (identical? row previous-object))
                       previous-group
-                      (:group (t2/hydrate row :group)))}
+                      (:group row))}
       (:scope row) (assoc :scope (:scope row)))))
 
 (defn update-topic

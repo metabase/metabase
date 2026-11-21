@@ -147,16 +147,28 @@
    [:object [:fn #(t2/instance-of? :model/SecurityAdvisory %)]]])
 
 (defn register-lifecycle-topic!
-  "Have the events of `topic`, one made by the write of a row, checked against the lifecycle schema."
+  "Have the events of `topic`, made by the writes of rows, checked against the lifecycle schema."
   [topic]
   (when-not (contains? @lifecycle-topics topic)
     (swap! lifecycle-topics conj topic))
   nil)
 
-(mr/def ::lifecycle
+(mr/def ::lifecycle.change
+  "The change of one row in a lifecycle event: the row after the write as `:object`, absent for a delete, the row
+  before it as `:previous-object`, absent for a create, the columns an update set as `:changed`, and, for a delete,
+  what the captures of its DELETE statement read before it ran as `:captures`, by consumer key."
   [:map {:closed true}
    [:object {:optional true} [:map]]
    [:previous-object {:optional true} [:map]]
+   [:changed {:optional true} [:set :keyword]]
+   [:captures {:optional true} [:map-of :keyword :any]]])
+
+(mr/def ::lifecycle
+  "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one batch of writes
+  created, updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, and the
+  `:context` they share: `:revision-message`, `:reverting?`, `:archived-with` and `:details`."
+  [:map {:closed true}
+   [:changes [:sequential {:min 1} ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
    [:context {:optional true}
     [:map {:closed true}

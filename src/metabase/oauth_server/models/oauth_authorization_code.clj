@@ -34,9 +34,9 @@
   (oauth-server.db/delete-authorization-code! code))
 
 (mu/defn delete-user-oauth-authorization-codes!
-  "Delete the OAuthAuthorizationCodes of the User with `user-id`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user]
-  (oauth-server.db/delete-authorization-codes-for-user! user-id))
+  "Delete the OAuthAuthorizationCodes of the Users with `user-ids`, returning the number deleted."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]]
+  (oauth-server.db/delete-authorization-codes-for-users! user-ids))
 
 (mu/defn delete-expired-oauth-authorization-codes!
   "Delete the OAuthAuthorizationCodes that expired before `now`, in epoch milliseconds, returning the number deleted."

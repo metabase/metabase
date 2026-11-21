@@ -10,6 +10,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -382,3 +383,35 @@
           (t2/update! :model/Dimension :id dim-id {:name "Cost"})
           (is (deps.test/result-metadata-pending? card-id)
               "after a Dimension rename the card's result metadata status should be stale"))))))
+
+(defn- dependency-statement-count!
+  "The statements that the dependency consumer runs for `write`, a function of the ids of `n` new rows of `model` made
+  from `row`, in one batch."
+  [model row n write]
+  (events.tu/consumer-statement-count! model
+                                       (repeatedly n #(merge (mt/with-temp-defaults model) (row)))
+                                       write
+                                       #(mt/with-premium-features #{:dependencies} (%))
+                                       #(mt/with-premium-features #{} (%))))
+
+(deftest batch-of-writes-marks-with-fixed-statements-test
+  (testing "writes of 2 or 6 rows in one batch mark what they make stale with the same number of statements"
+    (mt/with-temp [:model/Card      {card-id :id}      {:dataset_query (table-query :venues)}
+                   :model/Dashboard {dashboard-id :id} {}]
+      (testing "an update of the queries of Cards"
+        (let [count! #(dependency-statement-count! :model/Card
+                                                   (constantly {:dataset_query (table-query :venues)})
+                                                   %
+                                                   (fn [ids]
+                                                     (t2/update! :model/Card :id [:in ids]
+                                                                 {:dataset_query (lib/limit (table-query :venues) 1)})))]
+          (is (= (count! 2) (count! 6)))))
+      (testing "an insert of series of dashcards, which reads the Dashboard of each dashcard"
+        (let [count! #(dependency-statement-count! :model/DashboardCard
+                                                   (constantly {:dashboard_id dashboard-id :card_id card-id})
+                                                   %
+                                                   (fn [ids]
+                                                     (t2/insert! :model/DashboardCardSeries
+                                                                 (for [id ids]
+                                                                   {:dashboardcard_id id :card_id card-id :position 0}))))]
+          (is (= (count! 2) (count! 6))))))))

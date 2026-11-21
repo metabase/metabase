@@ -88,7 +88,7 @@
           (data-testing.run-tracking/finish-run! run-id :passed))
         (with-redefs [events/publish-event! (fn [topic event]
                                               (when (= :event/card-test-delete topic)
-                                                (swap! published conj (:id (:previous-object event)))))]
+                                                (swap! published into (map (comp :id :previous-object) (:changes event)))))]
           (queries.card/delete-cards! [card-id]))
         (testing "the tests are gone"
           (is (false? (t2/exists? :model/CardTest :card_id card-id))))

@@ -55,17 +55,31 @@
 (declare snapshots)
 
 (defn- child-rows
-  [row hydration-key]
-  (or (get row hydration-key)
-      (get (t2/hydrate row hydration-key) hydration-key)))
+  "The child rows under `hydration-key` of each of `rows`, in order, those that the rows do not carry hydrated in one
+  call."
+  [rows hydration-key]
+  (let [missing  (into [] (keep-indexed (fn [i row] (when (nil? (get row hydration-key)) i))) rows)
+        hydrated (when (seq missing)
+                   (zipmap missing (t2/hydrate (mapv rows missing) hydration-key)))]
+    (vec (map-indexed (fn [i row] (get (get hydrated i row) hydration-key)) rows))))
+
+(defn- split-by-counts
+  "`xs` cut into consecutive vectors of the sizes `counts`."
+  [counts xs]
+  (first (reduce (fn [[acc xs] n] [(conj acc (vec (take n xs))) (drop n xs)])
+                 [[] xs]
+                 counts)))
 
 (defn- nest-children
+  "The `snapshots*` of the `rows` of `model` with the snapshots of their child rows nested under the keys of the
+  `:children`, those of all the rows of one kind of child taken together."
   [model rows snapshots*]
   (reduce-kv (fn [acc k {child-model :model, hydration-key :as}]
-               (mapv (fn [row snapshot]
-                       (assoc snapshot k (snapshots child-model (child-rows row hydration-key))))
-                     rows
-                     acc))
+               (let [children (child-rows rows hydration-key)]
+                 (mapv (fn [snapshot child-snapshots]
+                         (assoc snapshot k child-snapshots))
+                       acc
+                       (split-by-counts (map count children) (snapshots child-model (into [] cat children))))))
              snapshots*
              (revisions.spec/children model)))
 
@@ -366,6 +380,13 @@
   "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[create-revisions!]]."
   [{:keys [entity object] :as info} :- PushRevisionInput]
   (row info (snapshot entity object)))
+
+(mu/defn revision-rows :- [:sequential [:map [:model :string]]]
+  "The new Revision rows of the entities of one `model` that `infos` describe, as [[revision-row]] makes each, their
+  snapshots taken together."
+  [model :- [:fn toucan-model?]
+   infos :- [:sequential PushRevisionInput]]
+  (mapv row infos (snapshots model (mapv :object infos))))
 
 (mu/defn revert!
   "Revert `entity` with `id` to a given Revision."

@@ -55,7 +55,8 @@
   User id, or `:user_id` for the session's own user), clearing its key. Returns the number ended."
   [conditions :- [:map {:closed true}
                   [:id         {:optional true} [:tuple [:= :in] [:sequential :string]]]
-                  [:user_id    {:optional true} ::lib.schema.id/user]
+                  [:user_id    {:optional true} [:or ::lib.schema.id/user
+                                                 [:tuple [:= :in] [:sequential ::lib.schema.id/user]]]]
                   [:key_hashed {:optional true} :string]]
    reason     :- ::session.schema/end-reason
    ended-by   :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
