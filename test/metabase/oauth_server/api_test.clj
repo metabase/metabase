@@ -3233,4 +3233,4 @@
               refreshed     (refresh-with-scope! client {:refresh_token refresh-token}
                                                  (str all-v2-scopes " bogus:scope"))]
           (is (=? {:resource [(mcp-resource-uri)]} refreshed))
-          (is (= v2-scope-set (token-scope-set refreshed))))))))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))
