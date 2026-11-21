@@ -9,6 +9,7 @@
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.spec :as serialization.spec]
    [metabase.serialization.util :as serialization.util]
+   [metabase.serialization.writes :as serialization.writes]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
@@ -91,24 +92,38 @@
   (into {} (remove (fn [[k v]] (same? v (get local k)))) row))
 
 (defn- write!
-  "Inserts the `items` with no row of the store, without their nil columns, and updates the others with the columns of
-  their `:row` that changed, but those their entity loads without to break a cycle, returning each with its loaded
-  `:instance`."
-  [store model items]
+  "Inserts the `items` with no row of the app DB, without their nil columns, and updates the others with the columns
+  of their `:row` that changed, but those their entity loads without to break a cycle, by the write functions of
+  `model` (see [[metabase.serialization.writes]]). Returns the items that were loaded, each with its `:instance`:
+  an item its write function left out is not among them."
+  [model items]
   (let [pk       (serialization.spec/primary-key model)
         new-idxs (into [] (keep-indexed (fn [i {:keys [local]}] (when-not local i))) items)
         inserted (when (seq new-idxs)
-                   (zipmap new-idxs (protocol/insert-rows! store model (mapv #(into {} (filter (comp some? val)) (:row (items %)))
-                                                                             new-idxs))))]
-    (vec (map-indexed (fn [i {:keys [row local entity] :as item}]
-                        (if local
-                          (let [row     (apply dissoc row (:serdes/stripped entity))
-                                changed (changes row local)]
-                            (when (seq changed)
-                              (protocol/update-row! store model (get local pk) changed))
-                            (assoc item :instance (merge local row)))
-                          (assoc item :instance (get inserted i))))
-                      items))))
+                   (zipmap new-idxs
+                           (serialization.writes/insert-matched!
+                            model (mapv #(into {} (filter (comp some? val)) (:row (items %))) new-idxs))))
+        updates  (into {}
+                       (keep (fn [{:keys [row local entity]}]
+                               (when local
+                                 (let [changed (changes (apply dissoc row (:serdes/stripped entity)) local)]
+                                   (when (seq changed)
+                                     [(get local pk) changed])))))
+                       items)
+        updated  (into #{}
+                       (map #(get % pk))
+                       (when (seq updates)
+                         (serialization.writes/update! model (mapv (fn [[id changed]] (assoc changed pk id)) updates))))]
+    (into []
+          (comp (map-indexed (fn [i {:keys [row local entity] :as item}]
+                               (cond
+                                 (not local)
+                                 (assoc item :instance (get inserted i))
+
+                                 (or (not (contains? updates (get local pk))) (contains? updated (get local pk)))
+                                 (assoc item :instance (merge local (apply dissoc row (:serdes/stripped entity)))))))
+                (filter :instance))
+          items)))
 
 (defn- prepare-items
   "The load items of `entities` of `model` (see [[before-load]]): deserialized in `store` with `opts`, each with the
@@ -124,7 +139,7 @@
   "Writes the load `items` of `model`, loads their child entities (see [[metabase.serialization.spec]]), and passes
   them to [[after-load]], in `store` with `opts`. Returns the loaded instances."
   [model store items opts]
-  (let [items (write! store model items)]
+  (let [items (write! model items)]
     (doseq [[k child-model] (serialization.spec/children model)]
       (load-children! child-model store items k opts))
     (after-load model items)
@@ -148,8 +163,7 @@
                                     #(rows-by-identity model existing %))
             kept     (into #{} (keep #(some-> (:local %) (get pk))) prepared)
             stale    (into #{} (comp (map #(get % pk)) (remove kept)) existing)]
-        (when (seq stale)
-          (protocol/delete-rows! store model stale))
+        (serialization.writes/delete! model stale)
         (load-items! model store prepared opts)))))
 
 (defn load
