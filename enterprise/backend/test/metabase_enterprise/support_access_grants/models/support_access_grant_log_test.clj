@@ -68,8 +68,7 @@
                                                                 :user_id other-user-id
                                                                 :provider "password")}]
               (let [revoked-timestamp (t/offset-date-time)]
-                (t2/update! :model/SupportAccessGrantLog :id grant-id {:revoked_at         revoked-timestamp
-                                                                       :revoked_by_user_id grant-creator-id})
+                (sag-log/revoke-support-access-grant! grant-id revoked-timestamp grant-creator-id)
                 (is (=? {:end_reason "support-grant-revoked", :ended_by_user_id grant-creator-id, :key_hashed nil}
                         (t2/select-one :model/Session :id support-session-id))
                     "Support user session should be ended, attributed to the revoker, and its key destroyed")

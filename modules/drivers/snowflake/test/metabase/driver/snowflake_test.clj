@@ -37,6 +37,7 @@
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
+   [metabase.secrets.models.secret :as models.secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.util :as sync-util]
@@ -1410,7 +1411,7 @@
                                                                 #{:private-key-id :private-key-path :private-key-value}))]]
                 ;; Looping over all-possible-details and succeeding on details-to-succeed is stateful:
                 ;;  If a password detail succeeds it will delete the secret, this resets it.
-                (let [updated-secret (secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
+                (let [updated-secret (models.secret/upsert-secret-value! secret-id (:name secret) (:kind secret) (:source secret) (:value secret))]
                   (when (not= (:id updated-secret) secret-id)
                     (t2/update! :model/Secret :id (:id updated-secret) {:id secret-id})))
                 (with-redefs [driver/can-connect? (fn [_ d] (= d (assoc details-to-succeed :engine :snowflake)))]

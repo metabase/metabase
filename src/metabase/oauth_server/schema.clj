@@ -24,6 +24,17 @@
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::oauth-access-token.create
+  "What saving an OAuthAccessToken takes: its hashed token, its user, client, scope and expiry, and the resources it
+  grants."
+  [:map {:closed true}
+   [:token     :string]
+   [:user_id   [:maybe ::lib.schema.id/user]]
+   [:client_id :string]
+   [:scope     [:sequential :string]]
+   [:expiry    :int]
+   [:resource  {:optional true} [:sequential :string]]])
+
 (mr/def ::oauth-authorization-code
   "A OAuthAuthorizationCode as selected from the app DB: every column of `:oauth_authorization_code`."
   [:merge
@@ -45,6 +56,21 @@
    [:code_challenge_method {:optional true} [:maybe [:or :keyword :string]]]
    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
    [:created_at            {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-authorization-code.create
+  "What saving an OAuthAuthorizationCode takes: its hashed code, its user, client, redirect URI, scope, nonce and
+  expiry, and the optional PKCE challenge and resources."
+  [:map {:closed true}
+   [:code                  :string]
+   [:user_id               ::lib.schema.id/user]
+   [:client_id             :string]
+   [:redirect_uri          [:maybe :string]]
+   [:scope                 [:sequential :string]]
+   [:nonce                 [:maybe :string]]
+   [:expiry                :int]
+   [:code_challenge        {:optional true} :string]
+   [:code_challenge_method {:optional true} [:or :keyword :string]]
+   [:resource              {:optional true} [:sequential :string]]])
 
 (mr/def ::oauth-client
   "A OAuthClient as selected from the app DB: every column of `:oauth_client`."
@@ -73,6 +99,26 @@
    [:registration_access_token_hash {:optional true} [:maybe :string]]
    [:created_at                     {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                     {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-client.create
+  "What registering an OAuthClient takes: its client id and registration type, and whichever of its other settings
+  the registration gives."
+  [:map {:closed true}
+   [:client_id                      :string]
+   [:registration_type              [:or :keyword :string]]
+   [:client_secret_hash             {:optional true} [:maybe :string]]
+   [:redirect_uris                  {:optional true} [:maybe [:sequential :string]]]
+   [:grant_types                    {:optional true} [:maybe [:sequential :string]]]
+   [:response_types                 {:optional true} [:maybe [:sequential :string]]]
+   [:scopes                         {:optional true} [:maybe [:sequential :string]]]
+   [:token_endpoint_auth_method     {:optional true} [:maybe [:or :keyword :string]]]
+   [:client_name                    {:optional true} [:maybe :string]]
+   [:client_uri                     {:optional true} [:maybe :string]]
+   [:logo_uri                       {:optional true} [:maybe :string]]
+   [:contacts                       {:optional true} [:maybe [:sequential :string]]]
+   [:client_type                    {:optional true} [:maybe [:or :keyword :string]]]
+   [:application_type               {:optional true} [:maybe [:or :keyword :string]]]
+   [:registration_access_token_hash {:optional true} [:maybe :string]]])
 
 (mr/def ::oauth-client-event
   "A OAuthClientEvent as selected from the app DB: every column of `:oauth_client_event`."
@@ -107,6 +153,17 @@
    [:expiry     {:optional true} [:maybe :int]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::oauth-refresh-token.create
+  "What saving an OAuthRefreshToken takes: its hashed token, its user, client and scope, and the optional expiry and
+  resources."
+  [:map {:closed true}
+   [:token     :string]
+   [:user_id   [:maybe ::lib.schema.id/user]]
+   [:client_id :string]
+   [:scope     [:sequential :string]]
+   [:expiry    {:optional true} :int]
+   [:resource  {:optional true} [:sequential :string]]])
 
 (mr/def :event/mcp-jwt-token-issued
   "The JWT bearer grant issued an MCP access token to the user with `:user-id`, granting `:scope`."

@@ -2,12 +2,16 @@
   "Model for support access grant log entries. Tracks temporary access grants for customer support."
   (:require
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
+   [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -63,12 +67,25 @@
       (support-access-grants.db/expire-auth-identities! auth-identity-ids ended-at))
     (session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
 
-(t2/define-after-update :model/SupportAccessGrantLog
-  [{revoked-at :revoked_at, revoked-by :revoked_by_user_id, :as grant}]
-  (u/prog1 grant
-    (when revoked-at
-      (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
-        (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-support-access-grant! :- ::support-access-grants.schema/support-access-grant-log
+  "Insert the support access grant `grant` and return it."
+  [grant :- ::support-access-grants.schema/support-access-grant-log.create]
+  (support-access-grants.db/insert-grant! grant))
+
+(mu/defn revoke-support-access-grant! :- :int
+  "Record the grant with `grant-id` as revoked at `revoked-at` by the User with `revoked-by`, and tear down the support
+  user's access as of then. Returns the number of grants updated."
+  [grant-id   :- ms/PositiveInt
+   revoked-at :- ms/TemporalInstant
+   revoked-by :- [:maybe ::lib.schema.id/user]]
+  (t2/with-transaction [_conn]
+    (u/prog1 (support-access-grants.db/update-grant! grant-id {:revoked_at         revoked-at
+                                                               :revoked_by_user_id revoked-by})
+      (when (pos? <>)
+        (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
+          (revoke-support-user-access! (:id support-user) revoked-at revoked-by))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

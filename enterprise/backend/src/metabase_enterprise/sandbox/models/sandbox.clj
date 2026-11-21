@@ -109,21 +109,6 @@
              :when table-col]
        (check-column-types-match col table-col)))))
 
-(defn- remove-native-access!
-  "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
-  the group has native access to that Table."
-  [{:keys [table_id group_id]}]
-  (let [db-id (database/table-id->database-id table_id)]
-    (when (= :query-builder-and-native
-             (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
-      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
-
-(t2/define-before-insert :model/Sandbox
-  [sandbox]
-  (check-columns-match-table sandbox)
-  (remove-native-access! sandbox)
-  sandbox)
-
 (t2/define-before-update :model/Sandbox
   [sandbox]
   (let [changes (t2/changes sandbox)]
@@ -133,8 +118,6 @@
     (when (contains? changes :group_id)
       (throw (ex-info (tru "You cannot change the group of a sandbox.")
                       {:id (:id sandbox), :status-code 400})))
-    (when (contains? changes :card_id)
-      (check-columns-match-table sandbox))
     sandbox))
 
 ;;; --------------------------------------------- Sandbox dependency set ---------------------------------------------
@@ -305,6 +288,47 @@
             graph
             sandboxes)))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- remove-native-access!
+  "Downgrades the native query access of the group of `sandbox` to the query builder on the Database of its Table, where
+  the group has native access to that Table."
+  [{:keys [table_id group_id]}]
+  (let [db-id (database/table-id->database-id table_id)]
+    (when (= :query-builder-and-native
+             (get (perms/table-permissions-for-groups #{group_id} :perms/create-queries {table_id db-id}) table_id))
+      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder))))
+
+(mu/defn create-sandbox! :- ::sandbox.schema/sandbox
+  "Insert `sandbox` and return it. A Card whose columns do not match the Table is a 400, and the group loses native
+  query access to the Database of the Table where it has it."
+  [sandbox :- ::sandbox.schema/sandbox.create]
+  (t2/with-transaction [_conn]
+    (check-columns-match-table sandbox)
+    (remove-native-access! sandbox)
+    (sandbox.db/insert-sandbox! sandbox)))
+
+(mu/defn update-sandbox! :- [:maybe ::sandbox.schema/sandbox]
+  "Apply `changes` to the Sandbox with `sandbox-id` and return it, or nil when no Sandbox has `sandbox-id`. A new Card
+  whose columns do not match the Table is a 400."
+  [sandbox-id :- ::lib.schema.id/sandbox
+   changes    :- ::sandbox.schema/sandbox.update]
+  (when-let [stored (sandbox.db/sandbox sandbox-id)]
+    (when (and (contains? changes :card_id) (not= (:card_id changes) (:card_id stored)))
+      (check-columns-match-table (merge stored changes)))
+    (sandbox.db/update-sandbox! sandbox-id changes)
+    (sandbox.db/sandbox sandbox-id)))
+
+(mu/defn delete-sandbox!
+  "Delete the Sandbox with `sandbox-id`, returning the number deleted."
+  [sandbox-id :- ::lib.schema.id/sandbox]
+  (sandbox.db/delete-sandbox! sandbox-id))
+
+(mu/defn delete-sandboxes!
+  "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
+  [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
+  (sandbox.db/delete-sandboxes! sandbox-ids))
+
 (defenterprise upsert-sandboxes!
   "Create new `sandboxes` or update existing ones. If a sandbox has an `:id` it will be updated, otherwise it will be
   created. New sandboxes must have a `:table_id` corresponding to a sandboxed query path in the `permissions` table;
@@ -316,11 +340,10 @@
      (if-let [id (:id sandbox)]
        ;; Only update `card_id` and/or `attribute_remappings` if the values are present in the body of the request.
        ;; This allows existing values to be "cleared" by being set to nil
-       (do
-         (when (some #(contains? sandbox %) [:card_id :attribute_remappings])
-           (sandbox.db/update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings})))
+       (if (some #(contains? sandbox %) [:card_id :attribute_remappings])
+         (update-sandbox! id (u/select-keys-when sandbox :present #{:card_id :attribute_remappings}))
          (sandbox.db/sandbox id))
-       (sandbox.db/insert-sandbox! sandbox)))))
+       (create-sandbox! sandbox)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

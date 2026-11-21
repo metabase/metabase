@@ -17,7 +17,7 @@
   {:saved-class "metabase_enterprise.sso.task.delete_expired_relay_state.DeleteExpiredSsoRelayState"
    :concurrent? false}
   [_ctx]
-  (let [deleted (relay-state/delete-expired!)]
+  (let [deleted (relay-state/delete-expired-sso-relay-states!)]
     (when (pos? deleted)
       (log/debugf "Deleted %d expired SSO RelayState entries" deleted))))
 

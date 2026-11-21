@@ -11,7 +11,7 @@
 (defn- store!
   "Generate a key and persist `context` under it, like the GET flow does. Returns the (plaintext) key."
   [context]
-  (relay-state/persist! (assoc context :id (relay-state/generate-key))))
+  (relay-state/create-sso-relay-state! (assoc context :id (relay-state/generate-key))))
 
 (defn- stored-id
   "The primary key actually written to the table for a (plaintext) `key` — i.e. its hash. Used by tests that
@@ -79,11 +79,11 @@
   (testing "delete! consumes the entry (single use); a second delete is a harmless no-op"
     (mt/with-model-cleanup [:model/SsoRelayState]
       (let [key (store! {:continue-url "http://localhost:3000/auth/sso"})]
-        (is (= 1 (relay-state/delete! key)))
+        (is (= 1 (relay-state/delete-sso-relay-state! key)))
         (is (false? (t2/exists? :model/SsoRelayState :id (stored-id key))))
-        (is (= 0 (relay-state/delete! key))))))
+        (is (= 0 (relay-state/delete-sso-relay-state! key))))))
   (testing "delete! ignores values that aren't our keys"
-    (is (nil? (relay-state/delete! "aHR0cDovL2xvY2FsaG9zdA==")))))
+    (is (nil? (relay-state/delete-sso-relay-state! "aHR0cDovL2xvY2FsaG9zdA==")))))
 
 (deftest delete-expired!-test
   (testing "delete-expired! removes only expired entries"
@@ -93,6 +93,6 @@
         (t2/update! :model/SsoRelayState :id (stored-id expired) {:expires_at (t/minus (t/offset-date-time) (t/seconds 1))})
         ;; delete-expired! operates globally, so don't assert an exact count (other tests may leave rows) —
         ;; just confirm our expired entry is purged and the live one survives.
-        (is (pos? (relay-state/delete-expired!)))
+        (is (pos? (relay-state/delete-expired-sso-relay-states!)))
         (is (true? (t2/exists? :model/SsoRelayState :id (stored-id live))))
         (is (false? (t2/exists? :model/SsoRelayState :id (stored-id expired))))))))
