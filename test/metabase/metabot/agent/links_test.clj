@@ -24,67 +24,22 @@
       u/decode-base64
       (json/decode+kw)))
 
-(deftest ^:parallel ->legacy-mbql-rehydrated-query-test
-  (testing "normalizes enum values stringified by JSON persistence before conversion"
-    (let [query      {:lib/type :mbql/query
-                      :database 1
-                      :stages   [{:lib/type    :mbql.stage/mbql
-                                  :source-table 6
-                                  :aggregation [[:count {}]]
-                                  :breakout    [[:field
-                                                 {:temporal-unit :day
-                                                  :base-type     :type/DateTime}
-                                                 31]]}]}
-          rehydrated (json/decode+kw (json/encode query))]
-      (is (= {:database 1
-              :type     :query
-              :query    {:source-table 6
-                         :aggregation [[:count]]
-                         :breakout    [[:field 31 {:temporal-unit :day
-                                                   :base-type     :type/DateTime}]]}}
-             ;; existing usage -- do not use going forward
-             #_{:clj-kondo/ignore [:deprecated-var]}
-             (links/->legacy-mbql rehydrated))))))
-
 (def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
 (def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
-(deftest ^:parallel ->legacy-mbql-lib-type-less-mbql-5-test
-  (testing "converts MBQL 5 stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
-    ;; Regression for the BOT-1604 follow-up: a query that round-trips through the
-    ;; frontend's `user_is_viewing` / `chart_configs` context comes back as MBQL 5
-    ;; without `:lib/type`. The old guard keyed only on `:lib/type`, so such a query
-    ;; fell through unchanged and the raw MBQL 5 (`:stages`, MBQL 5-order field clauses)
-    ;; leaked into the `/question#<base64>` hash — the frontend then crashed with
-    ;; "Error calculating display info for query: Stage 0 does not exist".
-    (let [fe-query (strip-lib-keys (lib.tu/venues-query))
-          ;; existing usage -- do not use going forward
-          legacy   #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql fe-query)]
-      (is (not (contains? fe-query :lib/type)))
-      (is (contains? fe-query :stages))
-      (testing "is normalized + converted to legacy MBQL, not passed through as raw MBQL 5"
-        (is (= :query (:type legacy)))
-        (is (not (contains? legacy :stages)))
-        (is (map? (:query legacy)))
-        (is (some? (:database legacy)))))))
-
-(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-test
-  (testing "points the stripped query's aggregation ref at the stage's only aggregation, then converts (BOT-2410)"
-    ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
-    ;; aggregation carries. With one aggregation the ref can only mean that one.
-    (let [stripped (stripped-aggregated-query (lib/count))
-          ;; existing usage -- do not use going forward
-          legacy     #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped)]
-      (is (not (contains? stripped :lib/type)))
-      (is (= :query (:type legacy)))
-      (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
-  (testing "falls back to the raw query instead of throwing when the ref could mean any of several aggregations"
-    ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
-    ;; producing a broken link.
-    (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
-      (is (= stripped
-             ;; existing usage -- do not use going forward
-             #_{:clj-kondo/ignore [:deprecated-var]} (links/->legacy-mbql stripped))))))
+(deftest ^:parallel ->frontend-query-json-rehydrated-query-test
+  (testing "a structured query read back from JSON, its keywords now strings, goes out as valid MBQL 5"
+    (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :checkins :date) :day)))
+          serialized (lib/prepare-for-serialization query)
+          rehydrated (-> serialized json/encode json/decode+kw)
+          sent       (links/->frontend-query rehydrated)]
+      (is (= "day" (-> rehydrated :stages first :breakout first second :temporal-unit)))
+      (is (= :mbql/query (:lib/type sent)))
+      (is (mr/validate :metabase.lib.schema/query sent))
+      (is (= (lib/aggregations serialized) (lib/aggregations sent)))
+      (is (= (lib/breakouts serialized) (lib/breakouts sent))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
   (testing "temporal filters survive JSON serialization in the /question# hash (BOT-1972)"
@@ -130,29 +85,62 @@
       (is (= (-> join-stage :aggregation first second :lib/uuid)
              (-> join-stage :order-by first (nth 2) (nth 2))))))
   (testing "goes out as the raw MBQL 5 query when the ref could mean any of several aggregations"
-    ;; Normalization gives each aggregation a new uuid, the ref resolves to none of them, and ->legacy-mbql cannot
-    ;; convert the query either.
+    ;; Normalization gives each aggregation a new uuid and the ref resolves to none of them, so the normalized query
+    ;; is not valid.
     (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
       (is (= stripped (links/->frontend-query stripped))))))
 
-(deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
-  (let [native     (lib/native-query meta/metadata-provider "SELECT * FROM CHECKINS")
+(deftest ^:parallel ->frontend-query-sends-queries-as-mbql-5-test
+  (let [sql        "SELECT * FROM CHECKINS"
+        native     (lib/native-query (mt/metadata-provider) sql)
+        serialized (-> native lib/prepare-for-serialization json/encode json/decode+kw)
+        ;; Conversation state JSON-encodes a query as a tool built it.
+        persisted  (-> native json/encode json/decode+kw)
         structured (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
                        (lib/filter (lib/between (meta/field-metadata :checkins :date)
                                                 (lib/absolute-datetime "2025-01-01" :day)
                                                 (lib/absolute-datetime "2025-12-31" :day))))]
-    (testing "the SDK receives a native query as legacy MBQL and opens it in its SQL editor"
-      (doseq [[desc sent] {"MBQL 5"                             native
-                           "MBQL 5 stripped of its :lib/* keys" (strip-lib-keys native)
-                           "MBQL 5 after a JSON round trip"     (-> native lib/prepare-for-serialization json/encode json/decode+kw)}]
+    (testing "a query JSON-encoded as it was built carries its metadata provider as null"
+      (is (= [:lib/metadata nil] (find persisted :lib/metadata))))
+    (testing "a native query goes out as normalized MBQL 5 in each form conversation state can hold it"
+      (doseq [[desc sent] {"in memory"                                      native
+                           "stripped of its :lib/* keys"                    (strip-lib-keys native)
+                           "after a JSON round trip of its serialized form" serialized
+                           "JSON-encoded as it was built"                   persisted}]
         (testing desc
-          ;; existing usage -- do not use going forward
-          (is (= #_{:clj-kondo/ignore [:deprecated-var]} (lib/->legacy-MBQL native)
-                 (links/->frontend-query sent))))))
+          (let [frontend-query (links/->frontend-query sent)]
+            (is (= :mbql/query (:lib/type frontend-query)))
+            (is (lib/native-only-query? frontend-query))
+            ;; A query without `:lib/type` that does not validate goes out as it came in, so check validity itself.
+            (is (mr/validate :metabase.lib.schema/query frontend-query))
+            (is (= sql (lib/raw-native-query frontend-query)))
+            (is (not (contains? frontend-query :lib/metadata)))))))
     (testing "a structured query with a date filter stays MBQL 5"
       (let [sent (links/->frontend-query structured)]
         (is (= :mbql/query (:lib/type sent)))
         (is (= (lib/filters structured) (-> sent :stages first :filters)))))))
+
+(deftest ^:parallel ->frontend-query-returns-legacy-queries-unchanged-test
+  (testing "a legacy query, from a conversation older than Metabot's MBQL 5 queries, goes out as it came in"
+    (doseq [legacy [{:database (meta/id) :type :native :native {:query "SELECT 1"}}
+                    {:database (meta/id) :type "native" :native {:query "SELECT 1"}}]]
+      (is (= legacy (links/->frontend-query legacy))))))
+
+(deftest ^:parallel ->frontend-query-native-query-keeps-parameters-and-template-tags-test
+  (let [sql    "SELECT * FROM CHECKINS WHERE USER_ID = {{user_id}}"
+        native (lib/native-query meta/metadata-provider sql)]
+    (testing "a native query keeps its :parameters"
+      (let [parameters [{:id     "user-id"
+                         :type   :category
+                         :target [:variable [:template-tag "user_id"]]
+                         :value  [5]}]]
+        (is (= parameters
+               (:parameters (links/->frontend-query (assoc native :parameters parameters)))))))
+    (testing "a native query keeps its template tags through a JSON round trip"
+      (let [sent (links/->frontend-query (-> native lib/prepare-for-serialization json/encode json/decode+kw))]
+        (is (= ["user_id"] (map :name (lib/template-tags sent))))
+        (is (= (lib/template-tags native) (lib/template-tags sent)))
+        (is (= sql (lib/raw-native-query sent)))))))
 
 (deftest ^:parallel ->frontend-query-keeps-parameters-test
   (testing "a structured query keeps its :parameters in the /question# link and in the chart data part"

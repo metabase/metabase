@@ -254,6 +254,22 @@
           (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
           (is (= 2 (count (dashcards dash-id)))))))))
 
+(deftest retry-reuses-native-question-test
+  (mt/with-model-cleanup [:model/Card]
+    (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}
+                   :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [sql "SELECT COUNT(*) FROM VENUES"]
+          (binding [shared/*memory-atom* (chart-memory convo-id (lib/native-query (mt/metadata-provider) sql))]
+            (dotimes [_ 2]
+              (call {:dashboard_id dash-id
+                     :ops          [{:op "add_card", :id -1, :chart_id "A", :name "Venue count"}]})))
+          (testing "a chart of a SQL query, added twice in one conversation, becomes one question on two dashcards"
+            (is (= 1 (t2/count :model/Card :dashboard_id dash-id)))
+            (is (= 2 (count (dashcards dash-id))))
+            (is (= sql (-> (t2/select-one-fn :dataset_query :model/Card :dashboard_id dash-id)
+                           lib/raw-native-query)))))))))
+
 (deftest reused-question-keeps-its-name-test
   (mt/with-model-cleanup [:model/Card]
     (mt/with-temp [:model/Dashboard           {dash-id :id}  {:name "Venues"}

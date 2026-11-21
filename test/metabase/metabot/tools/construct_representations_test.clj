@@ -16,7 +16,6 @@
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -2074,11 +2073,11 @@
                             "aggregation"  [["count" {}]]}]})))))
       (is (false? @seen)))))
 
-(defn- legacy-json-wire
+(defn- frontend-json-wire
   "Run the tool on a single-stage ORDERS query carrying `stage-kvs`, returning `[before wire]`.
 
-  `before` is the MBQL 5 query the tool built; `wire` is that query converted to legacy the way
-  `links` does for the `/question#` hash and JSON round-tripped."
+  `before` is the MBQL 5 query the tool built; `wire` is that query as [[links/->frontend-query]]
+  prepares it for the `/question#` hash, JSON round-tripped."
   [stage-kvs]
   (let [result (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
@@ -2087,8 +2086,7 @@
                                                  "source-table" ["Sample" "PUBLIC" "ORDERS"]}
                                                 stage-kvs)]}))
         before (get-in result [:structured-output :query])]
-    ;; existing usage -- do not use going forward
-    [before (-> before #_{:clj-kondo/ignore [:deprecated-var]} links/->legacy-mbql json/encode (json/decode true))]))
+    [before (-> before links/->frontend-query json/encode (json/decode true))]))
 
 (defn- stage-clause-counts
   "Per-stage counts of the clause vectors on a query, for comparing a query with its round-trip."
@@ -2101,13 +2099,15 @@
         (:stages query)))
 
 (defn- assert-survives-json-hop! [[before wire]]
-  ;; `->legacy-mbql` returns the MBQL 5 query unchanged if conversion throws, and a
-  ;; JSON-round-tripped MBQL 5 query passes `lib/query` - so without this the
-  ;; assertion below could hold while proving nothing.
-  (is (= "query" (:type wire))
-      "->legacy-mbql fell back to MBQL 5 instead of converting")
+  ;; [[links/->frontend-query]] returns a query whose normalization throws as it came in, and the
+  ;; query the tool built is MBQL 5 too. Only a query prepared for serialization has no
+  ;; `:lib/metadata`, so that check tells the two apart.
+  (is (= "mbql/query" (:lib/type wire))
+      "->frontend-query did not send the query as MBQL 5")
+  (is (not (contains? wire :lib/metadata))
+      "->frontend-query sent the query as it came in instead of preparing it for serialization")
   ;; `lib/query` silently drops invalid clauses, so reopening alone does not prove survival.
-  (let [after (lib/query mp-temporal (lib.convert/js-legacy-query->mbql5 wire))]
+  (let [after (lib/query mp-temporal (lib/normalize :metabase.lib.schema/query wire))]
     (is (map? after) "did not survive the JSON round-trip")
     (is (= (stage-clause-counts before) (stage-clause-counts after))
         "a clause was silently dropped by the round-trip")
@@ -2130,7 +2130,7 @@
                                          true (conj predicate))))
                                    [["Jan 2026" "2026-01-01" "2026-01-31"]
                                     ["Mar 2026" "2026-03-01" "2026-03-31"]])
-                [before :as hop] (legacy-json-wire
+                [before :as hop] (frontend-json-wire
                                   {"aggregation" aggregations
                                    "breakout" [["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]]
                                    "order-by" [["desc" {} ["aggregation" {} 0]]]})
@@ -2143,7 +2143,7 @@
 (deftest conditional-date-range-with-column-uuid-test
   (with-temporal-mp-and-stubs!
     (fn []
-      (let [[before :as hop] (legacy-json-wire
+      (let [[before :as hop] (frontend-json-wire
                               {"aggregation"
                                [["count-where" {}
                                  ["between" {}
@@ -2206,14 +2206,10 @@
                 (is (== filtered-distinct conditional-distinct))
                 (is (< (abs (- (double (/ filtered-count total)) (double conditional-share))) 1e-9))))))))))
 
-;; A Metabot-built question reaches the frontend as legacy MBQL inside a base64 `/question#` hash,
-;; so it makes a JSON hop that turns every keyword into a string. Legacy normalization has no
-;; `:decode/normalize` on the temporal-unit enums used by `:absolute-datetime`, `:during` or
-;; `:temporal-extract`, so a query carrying one came back un-normalized and the question page 400'd
-;; on `/api/dataset/query_metadata`. The JSON hop is what makes this reproduce - converting to
-;; legacy alone does not, which is why the plain legacy round-trip gates above never caught it
-;; (BOT-2095).
-(deftest legacy-json-round-trip-temporal-filters-test
+;; A Metabot-built question reaches the frontend as MBQL 5 JSON inside a base64 `/question#` hash,
+;; a hop that turns every keyword into a string. Each temporal clause must normalize back from that
+;; JSON, or the frontend drops it and the question answers something else (BOT-2095).
+(deftest json-round-trip-temporal-filters-test
   (with-temporal-mp-and-stubs!
     (fn []
       (let [created-at ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -2246,27 +2242,28 @@
                  "temporal-extract with the optional week-mode slot"
                  ["=" {} ["temporal-extract" {} created-at "day-of-week" "iso"] 2]}]
           (testing label
-            (assert-survives-json-hop! (legacy-json-wire {"filters"     [filter-clause]
-                                                          "aggregation" [["count" {}]]}))))
+            (assert-survives-json-hop! (frontend-json-wire {"filters"     [filter-clause]
+                                                            "aggregation" [["count" {}]]}))))
         (testing "a bucketed literal compared to a custom column"
           (assert-survives-json-hop!
-           (legacy-json-wire {"expressions" [["datetime-add" {"lib/expression-name" "Ship Date"} created-at 3 "day"]]
-                              "filters"     [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")]]
-                              "aggregation" [["count" {}]]})))
+           (frontend-json-wire {"expressions" [["datetime-add" {"lib/expression-name" "Ship Date"} created-at 3 "day"]]
+                                "filters"     [["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-01-01" "month")]]
+                                "aggregation" [["count" {}]]})))
         (testing "a bucketed literal inside a `case` under `expressions`"
           (assert-survives-json-hop!
-           (legacy-json-wire {"expressions" [["case" {"lib/expression-name" "Jan"}
-                                              [[["=" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]
-                              "aggregation" [["count" {}]]})))
+           (frontend-json-wire {"expressions" [["case" {"lib/expression-name" "Jan"}
+                                                [[["=" {} created-at (abs-dt "2025-01-01" "month")] 1]] 0]]
+                                "aggregation" [["count" {}]]})))
         (testing "a post-aggregation filter, which repair moves into a second stage"
           (assert-survives-json-hop!
-           (legacy-json-wire {"aggregation" [["max" {} created-at]]
-                              "breakout"    [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
-                              "filters"     [["<" {} ["aggregation" {} 0] (abs-dt "2025-01-01" "month")]]})))))))
+           (frontend-json-wire {"aggregation" [["max" {} created-at]]
+                                "breakout"    [["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+                                "filters"     [["<" {} ["aggregation" {} 0] (abs-dt "2025-01-01" "month")]]})))))))
 
-;; A bucketed temporal clause that Pass 2.95 cannot hoist does not survive the `/question#` hash the
-;; frontend opens: 400 in dev, and in production `lib/query`'s cleaner deletes the clause and the
-;; question silently answers something else. Pass 6 turns each into a retryable agent error (BOT-2095).
+;; A bucketed temporal clause that Pass 2.95 cannot hoist reaches the question intact, since the
+;; `/question#` hash carries MBQL 5, but the query engine runs some of them wrong by comparing the
+;; column with the start of the literal's period. Pass 6 turns each into a retryable agent error
+;; (BOT-2095).
 (deftest unencodable-temporal-clause-reaches-the-agent-test
   (with-temporal-mp-and-stubs!
     (fn []

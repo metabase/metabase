@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
@@ -31,6 +32,7 @@
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (defn- invoke-sql-tool-with-memory-atom
@@ -230,13 +232,18 @@
                                                               :checklist "- [x] checked"
                                                               :title     "Results")))))]]
                 (testing tool-name
-                  (testing "a single generated_entity part carries a legacy native query when no code-editor buffer is open"
+                  (testing "a single generated_entity part carries an MBQL 5 native query when no code-editor buffer is open"
                     (let [parts  (:data-parts (run {}))
                           entity (:data (first parts))]
                       (is (= 1 (count parts)))
                       (is (= "generated_entity" (:data-type (first parts))))
                       (is (= "card" (:type entity)))
-                      (is (= :native (get-in entity [:query :query :type])))))
+                      (is (=? {:lib/type :mbql/query
+                               :database (:id db)
+                               :stages   [{:lib/type :mbql.stage/native
+                                           :native   "SELECT id FROM t"}]}
+                              (get-in entity [:query :query])))
+                      (is (lib/native-only-query? (get-in entity [:query :query])))))
                   (testing "an open code-editor buffer receives a code_edit part"
                     (let [result (run {:user_is_viewing [{:type    "code_editor"
                                                           :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]})
@@ -484,9 +491,23 @@
               (is (= "code_edit" (:data-type part)))
               (is (= "sql-buffer" (get-in part [:data :buffer_id])))
               (is (= "SELECT 1" (get-in part [:data :value]))))
-            (do
+            (let [shown-query (get-in part [:data :query :query])
+                  shape       {:lib/type :mbql/query
+                               :database db-id
+                               :stages   [{:lib/type :mbql.stage/native :native "SELECT 1"}]}]
               (is (= "generated_entity" (:data-type part)))
-              (is (= "Birds" (get-in part [:data :title]))))))))))
+              (is (= "Birds" (get-in part [:data :title])))
+              (testing "the part carries the query as MBQL 5, native-only, without its metadata provider"
+                (is (=? shape shown-query))
+                (is (lib/native-only-query? shown-query))
+                (is (not (contains? shown-query :lib/metadata))))
+              (testing "the query the frontend decodes from the part's JSON normalizes to a valid query"
+                (let [decoded (->> (json/encode part)
+                                   json/decode+kw
+                                   :data :query :query
+                                   (lib/normalize ::lib.schema/query))]
+                  (is (=? shape decoded))
+                  (is (mr/validate ::lib.schema/query decoded)))))))))))
 
 (deftest unexpected-creation-error-test
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
@@ -501,9 +522,8 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [profile [:internal :sql]
             query [(lib/native-query (mt/metadata-provider) "SELECT 1")
-                   ;; existing usage -- do not use going forward
-                   #_{:clj-kondo/ignore [:deprecated-var]}
-                   (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "SELECT 1"))]
+                   ;; A conversation stored before Metabot's queries were MBQL 5 holds its SQL queries as legacy MBQL.
+                   {:database (mt/id) :type :native :native {:query "SELECT 1"}}]
             [tool-name args code excerpt]
             [["replace_sql_query" {:new_query ""} ::sql.common/blank-sql "would contain no SQL"]
              ["replace_sql_query" {:new_query " \n\t"} ::sql.common/blank-sql "SQL that is not blank"]
