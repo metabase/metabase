@@ -7,7 +7,6 @@
   Arabic, Hebrew, ...) rather than the ASCII-only Standard-14 fonts. `PDType0Font`s are tied to a specific
   `PDDocument`, so [[load-fonts!]] loads a registry once per render and it is bound to [[*fonts*]]."
   (:require
-   [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [medley.core :as m])
@@ -235,28 +234,18 @@
            cur               nil
            ^StringBuilder sb nil
            out               (transient [])]
-      (b/cond
-        (>= i n) (persistent! (emit out cur sb))
-
-        :let [cp   (.codePointAt s i)
+      (if (>= i n)
+        (persistent! (emit out cur sb))
+        (let [cp   (.codePointAt s i)
               phys (cp-font face cp)
-              ;; If the codepoint doesn't have a matching glyph in any font, phys is nil. In that case, default `ch`
-              ;; to `?` and search for `phys` again.
+              next-i (+ i (Character/charCount cp))
+              ;; If the codepoint doesn't have a matching glyph in any font, default `ch` to `?` and use its `phys`.
               ch   (if phys cp (int \?))
               phys (or phys (cp-font face ch))]
-        ;; At this point, `phys` is a physical font and `ch` is the codepoint to use within that font.
-        ;; `cp` itself holds the proper input codepoint, which we still need to gets its `charCount` and advance the
-        ;; right distance through the input string.
-
-        ;; No change of font, so keep appending to the current StringBuilder.
-        (identical? phys cur) (do (.appendCodePoint sb ch)
-                                  (recur (+ i (Character/charCount cp)) cur sb out))
-
-        ;; Hit a seam between fonts, so append the current run to `out` and start a new one.
-        :else (recur (+ i (Character/charCount cp))
-                     phys
-                     (doto (StringBuilder.) (.appendCodePoint ch))
-                     (emit out cur sb))))))
+          ;; If the font hasn't changed, keep appending to the current SB, otherwise feed the line and reset.
+          (if (identical? phys cur)
+            (recur next-i cur (doto sb (.appendCodePoint ch)) out)
+            (recur next-i phys (doto (StringBuilder.) (.appendCodePoint ch)) (emit out cur sb))))))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Measurement

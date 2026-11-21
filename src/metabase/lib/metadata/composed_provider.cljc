@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [empty? not-empty run! some])
   (:require
    #?(:clj [pretty.core :as pretty])
-   [better-cond.core :as b]
    [clojure.core.protocols]
    [clojure.datafy :as datafy]
    [clojure.set :as set]
@@ -69,21 +68,16 @@
      (metadata.protocols/cached-metadatas provider metadata-type unfetched-ids))))
 
 (defn- cached-value [metadata-providers k not-found]
-  (loop [[cached-provider & more] (cached-providers metadata-providers)]
-    (b/cond
-      (not cached-provider)
-      not-found
-
-      :let [v (metadata.protocols/cached-value cached-provider k not-found)]
-
-      (not= v not-found)
-      v
-
-      :else
-      (recur more))))
+  (reduce (fn [nf cached-provider]
+            (let [v (metadata.protocols/cached-value cached-provider k not-found)]
+              (if-not (= v not-found)
+                (reduced v)
+                nf)))
+          not-found
+          (cached-providers metadata-providers)))
 
 (defn- cache-value! [metadata-providers k v]
-  (when-let [cached-provider (first (cached-providers metadata-providers))]
+  (when-first [cached-provider (cached-providers metadata-providers)]
     (metadata.protocols/cache-value! cached-provider k v)))
 
 (defn- has-cache? [metadata-providers]

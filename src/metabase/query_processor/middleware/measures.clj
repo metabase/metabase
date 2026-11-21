@@ -8,7 +8,6 @@
   by tracking the path of measure IDs being expanded."
   (:refer-clojure :exclude [select-keys some])
   (:require
-   [better-cond.core :as b]
    [clojure.set :as set]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -81,18 +80,18 @@
    id->measure  :- [:map-of pos-int? ::lib.schema.metadata/measure]]
   (match/replace stage
     [:measure opts (id :guard pos-int?)]
-    (b/cond
-      :let [measure (get id->measure id)]
-      (not measure) (throw (ex-info (tru "Measure {0} not found." id)
-                                    {:type qp.error-type/missing-measure, :id id}))
-      :let [aggregation (measure-aggregation measure)]
-      (not aggregation) (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
-                                        {:type qp.error-type/invalid-measure, :measure measure}))
-      :else (do
-              (log/debugf "Expanding measure %d" id)
-              ;; Preserve :lib/uuid so that :aggregation refs pointing to the measure remain valid, and the
-              ;; caller-supplied names so the expansion keeps the column name the caller asked for.
-              (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :name :display-name]))))))
+    (let [measure (get id->measure id)
+          aggregation (some-> measure measure-aggregation)]
+      (when-not measure
+        (throw (ex-info (tru "Measure {0} not found." id)
+                        {:type qp.error-type/missing-measure, :id id})))
+      (when-not aggregation
+        (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
+                        {:type qp.error-type/invalid-measure, :measure measure})))
+      (log/debugf "Expanding measure %d" id)
+      ;; Preserve :lib/uuid so that :aggregation refs pointing to the measure remain valid, and the
+      ;; caller-supplied names so the expansion keeps the column name the caller asked for.
+      (lib.options/update-options aggregation merge (select-keys opts [:lib/uuid :name :display-name])))))
 
 (mu/defn- expand-measures-once :- ::lib.schema/query
   "Expand all :measure clauses in the query (single pass)."

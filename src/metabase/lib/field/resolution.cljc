@@ -5,7 +5,6 @@
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
-   [better-cond.core :as b]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -552,39 +551,38 @@
   [query :- ::lib.schema/query
    stage-number :- :int
    id-or-name :- ::id-or-name]
-  (b/cond
-    :let [stage (lib.util/query-stage query stage-number)
-          source-table-id (:source-table stage)]
+  (let [stage (lib.util/query-stage query stage-number)
+        source-table-id (:source-table stage)]
+    (cond
+      source-table-id
+      (when-some [col (field-metadata query source-table-id id-or-name)]
+        ;; don't return this field if it's not actually from the source table. We want some of the fallback
+        ;; resolution pathways to figure out what join this came from.
+        (when (= (:table-id col) source-table-id)
+          col))
 
-    source-table-id
-    (when-some [col (field-metadata query source-table-id id-or-name)]
-      ;; don't return this field if it's not actually from the source table. We want some of the fallback
-      ;; resolution pathways to figure out what join this came from.
-      (when (= (:table-id col) source-table-id)
-        col))
+      ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
+      ;;
+      ;; TODO (Cam 8/15/25) -- what happens if this field is marked inactive? It won't come back from
+      ;; `returned-columns`... we'd get fallback metadata, right?
+      (and source-table-id
+           (string? id-or-name))
+      (when-some [table (lib.metadata/table query source-table-id)]
+        (m/find-first #(= (:name %) id-or-name)
+                      (lib.metadata.calculation/returned-columns query table)))
 
-    ;; we maybe have incorrectly used a field name ref when we should have used a field ID ref.
-    ;;
-    ;; TODO (Cam 8/15/25) -- what happens if this field is marked inactive? It won't come back from
-    ;; `returned-columns`... we'd get fallback metadata, right?
-    (and source-table-id
-         (string? id-or-name))
-    (when-some [table (lib.metadata/table query source-table-id)]
-      (m/find-first #(= (:name %) id-or-name)
-                    (lib.metadata.calculation/returned-columns query table)))
+      (= (:lib/type stage) :mbql.stage/native)
+      (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
+        (-> col
+            (assoc :lib/source :source/native)
+            (u/assoc-default :lib/source-column-alias (:name col))))
 
-    (= (:lib/type stage) :mbql.stage/native)
-    (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
-      (-> col
-          (assoc :lib/source :source/native)
-          (u/assoc-default :lib/source-column-alias (:name col))))
+      (:source-card stage)
+      (when-some [col (resolve-in-source-card-metadata query stage-number id-or-name)]
+        (u/assoc-default col :lib/source-column-alias (:name col)))
 
-    (:source-card stage)
-    (when-some [col (resolve-in-source-card-metadata query stage-number id-or-name)]
-      (u/assoc-default col :lib/source-column-alias (:name col)))
-
-    (lib.util/previous-stage-number query stage-number)
-    (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name)))
+      (lib.util/previous-stage-number query stage-number)
+      (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name))))
 
 (mu/defn- resolve-ref-missing-join-alias :- [:maybe ::lib.metadata.calculation/visible-column]
   "Try finding a match in joins (field ref is missing `:join-alias`)."

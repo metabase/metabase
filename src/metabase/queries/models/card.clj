@@ -2,7 +2,6 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [better-cond.core :as b]
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.models :as actions.models]
@@ -712,18 +711,17 @@
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   "Run the schema upgrades over a Card row and normalize it."
   [card :- ::queries.schema/card]
-  (->> (b/cond
+  (->> (cond
          ;; Nothing an upgrade could rewrite was SELECTed, so there is nothing to do and nothing to demand.
          ;; `after-select` checks this too, to keep odd `report_card` queries out of here entirely.
          (not (schema-governed-select? card))
          card
 
          ;; Fetching some of the "hot" parts of a card but not all of them - error!
-         :let [missing (remove #(contains? card %) card-schema/schema-upgrade-triggers)]
-         (seq missing)
+         (not-every? #(contains? card %) card-schema/schema-upgrade-triggers)
          (throw (ex-info "Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
                          {:card-id (:id card)
-                          :missing missing}))
+                          :missing (remove #(contains? card %) card-schema/schema-upgrade-triggers)}))
 
          (update-baseline-select?)
          card

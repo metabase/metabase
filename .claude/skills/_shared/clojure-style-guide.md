@@ -591,12 +591,12 @@ Define a model:
 - `(methodical/defmethod t2/table-name :model/Foo [_] :foo_table)`
 - `(t2/deftransforms :model/Foo {:col mi/transform-json})` — common: `transform-json`, `transform-secret-value` (encrypts), `transform-keyword`.
 
-## Better-cond (`[better-cond.core :as b]`)
+## Metabase.util.cond (`[metabase.util.cond :as util.cond]`)
 
-`(b/cond …)` like `cond` but supports interleaved `:let [bindings]` and `:when` clauses. Lets you flatten cascading `let`/`if`/`if-let`/`let` into a linear spine.
+`(util.cond/cond …)` like `cond` but supports interleaved `:let [bindings]` clauses. Lets you flatten cascading `let`/`if`/`if-let`/`let` into a linear spine.
 
 ```clojure
-(b/cond
+(util.cond/cond
   :let [thread (load-thread id)]
   (nil? thread) :not-found
 
