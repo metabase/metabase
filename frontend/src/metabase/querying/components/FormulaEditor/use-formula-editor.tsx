@@ -23,6 +23,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     database,
     expressionMode,
     initialSource,
+    initialName,
     onEditorCreate,
     onNameChange,
     onSubmit,
@@ -46,7 +47,7 @@ export function useFormulaEditor(props: FormulaEditorProps) {
     onChange: () => setErrorMessage(null),
   });
   const hasFormula = source.trim().length > 0;
-  const formulaName = getDefaultFormulaName(source);
+  const formulaName = initialName?.trim() || getDefaultFormulaName(source);
   const nameChangeRef = useLatest(onNameChange);
   useEffect(() => {
     nameChangeRef.current?.(formulaName, source);

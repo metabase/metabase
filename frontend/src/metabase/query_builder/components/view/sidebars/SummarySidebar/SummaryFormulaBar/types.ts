@@ -12,10 +12,16 @@ export type SummaryFormulaDraft = {
   key: number;
   wellId: SummaryWellId;
   source: string;
+  name?: string;
 };
 
 export type SummaryFormulaInput = {
-  start: (source: string, input: HTMLInputElement, onReady: () => void) => void;
+  start: (
+    source: string,
+    input: HTMLInputElement,
+    onReady: () => void,
+    name?: string,
+  ) => void;
   isPending: () => boolean;
   update: (source: string) => void;
 };

@@ -13,6 +13,7 @@ import { Box, Combobox, Icon, PillsInput, useCombobox } from "metabase/ui";
 
 import { MatchedLabel } from "../MatchedLabel";
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryField,
@@ -21,6 +22,11 @@ import type {
 } from "../types";
 import { filterFieldSections } from "../utils";
 
+import {
+  GENERATE_OPTION_VALUE,
+  GenerateFormulaOption,
+  type GenerateFormulaState,
+} from "./GenerateFormulaOption";
 import { useWellFieldRef } from "./SummaryWell";
 import {
   DROPDOWN_GAP_PX,
@@ -38,6 +44,7 @@ type SummaryWellInputProps = {
   hasItems: boolean;
   autoFocus?: boolean;
   formulaInput?: SummaryFormulaInput;
+  formulaGenerator?: SummaryFormulaGenerator;
   onPick: (field: SummaryField) => void;
   onRemoveLast: () => void;
 };
@@ -49,6 +56,7 @@ export function SummaryWellInput({
   hasItems,
   autoFocus = false,
   formulaInput,
+  formulaGenerator,
   onPick,
   onRemoveLast,
 }: SummaryWellInputProps) {
@@ -64,6 +72,11 @@ export function SummaryWellInput({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
   const [searchText, setSearchText] = useState("");
+  const [generateState, setGenerateState] = useState<GenerateFormulaState>({
+    status: "idle",
+  });
+  const [isGenerateShown, setIsGenerateShown] = useState(false);
+  const isGenerating = generateState.status === "loading";
   const texts = getFieldTexts(wellId, hasItems);
 
   useEffect(() => {
@@ -82,9 +95,48 @@ export function SummaryWellInput({
     if (searchText.length > 0) {
       comboboxRef.current.selectFirstOption();
     }
-  }, [comboboxRef, matchingSections, searchText]);
+  }, [comboboxRef, matchingSections, searchText, isGenerateShown]);
+
+  const prompt = searchText.trim();
+  const canGenerate =
+    formulaGenerator != null &&
+    formulaInput != null &&
+    matchingSections.length === 0 &&
+    prompt.length > 0 &&
+    !searchText.startsWith("=");
+
+  const handleGenerate = async () => {
+    if (!formulaGenerator || isGenerating) {
+      return;
+    }
+    setGenerateState({ status: "loading" });
+    const result = await formulaGenerator.generate(wellId, prompt);
+    if (result.status === "cancelled") {
+      return;
+    }
+    if (result.status === "error") {
+      setGenerateState({ status: "error", message: result.message });
+      return;
+    }
+    setGenerateState({ status: "idle" });
+    setSearchText("");
+    combobox.closeDropdown();
+    if (result.status === "invalid" && formulaInput && inputRef.current) {
+      // the formula bar shows why it doesn't compile, so it can be fixed there
+      formulaInput.start(
+        result.source,
+        inputRef.current,
+        () => {},
+        result.name,
+      );
+    }
+  };
 
   const handleOptionSubmit = (optionValue: string) => {
+    if (optionValue === GENERATE_OPTION_VALUE) {
+      handleGenerate();
+      return;
+    }
     setSearchText("");
     combobox.closeDropdown();
     const item = matchingSections
@@ -115,6 +167,7 @@ export function SummaryWellInput({
       return;
     }
     setSearchText(text);
+    setGenerateState({ status: "idle" });
     if (text.trim().length > 0) {
       combobox.openDropdown();
     } else {
@@ -174,13 +227,18 @@ export function SummaryWellInput({
               className={S.wellFieldInput}
               placeholder={texts.placeholder}
               value={searchText}
+              readOnly={isGenerating}
               aria-label={texts.label}
               data-testid={`summary-well-input-${wellId}`}
               onChange={(event) =>
                 handleSearchChange(event.currentTarget.value)
               }
               onKeyDown={handleKeyDown}
-              onBlur={() => combobox.closeDropdown()}
+              onBlur={() => {
+                if (!isGenerating) {
+                  combobox.closeDropdown();
+                }
+              }}
             />
           </Combobox.EventsTarget>
         </Box>
@@ -190,8 +248,19 @@ export function SummaryWellInput({
           mah={DROPDOWN_MAX_HEIGHT_PX}
           style={{ overflowY: "auto" }}
         >
-          {matchingSections.length === 0 && (
-            <Combobox.Empty>{texts.noMatches}</Combobox.Empty>
+          {canGenerate ? (
+            <GenerateFormulaOption
+              wellId={wellId}
+              prompt={prompt}
+              state={generateState}
+              access={formulaGenerator.access}
+              fallback={<Combobox.Empty>{texts.noMatches}</Combobox.Empty>}
+              onShow={() => setIsGenerateShown(true)}
+            />
+          ) : (
+            matchingSections.length === 0 && (
+              <Combobox.Empty>{texts.noMatches}</Combobox.Empty>
+            )
           )}
           {matchingSections.map((section) => (
             <Combobox.Group key={section.key} label={section.name}>

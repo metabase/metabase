@@ -101,11 +101,11 @@ export function useSummaryFormulaBar({
       return undefined;
     }
     return {
-      start: (source, input, onReady) => {
+      start: (source, input, onReady, name) => {
         pendingInput.current = { wellId, source, onReady };
         inputRef.current = input;
         nextKey.current += 1;
-        setDraft({ key: nextKey.current, wellId, source });
+        setDraft({ key: nextKey.current, wellId, source, name });
         ownership.open();
       },
       isPending: () => pendingInput.current?.wellId === wellId,
@@ -131,6 +131,7 @@ export function useSummaryFormulaBar({
               draft.wellId === "values" ? "aggregation" : "expression"
             }
             initialSource={draft.source}
+            initialName={draft.name}
             submitLabel={t`Add`}
             onEditorCreate={handleEditorCreate}
             onNameChange={(name, source) =>
