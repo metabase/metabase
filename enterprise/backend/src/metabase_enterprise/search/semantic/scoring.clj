@@ -87,37 +87,37 @@
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:rrf        rrf-rank-exp
+    {:rrf               rrf-rank-exp
      ;; Keyword-only hits have no vector distance; score them 0 directly rather than feeding the ceiling
      ;; distance through the linear map.
      :semantic-distance [:coalesce (semantic-distance-score-expr :semantic_distance) [:inline 0]]
-     :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
-     :pinned     (search.scoring/truthy :pinned)
-     :recency    (search.scoring/inverse-duration
-                  :postgres
-                  [:coalesce :last_viewed_at :model_updated_at]
-                  [:now]
-                  search.config/stale-time-in-days)
-     :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model      (search.scoring/model-rank-expr search-ctx)
-     :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
-     :exact      (if search-string
-                   ;; normalize both sides in the database, in case it behaves differently to our helper
-                   (search.scoring/equal (search.scoring/normalize-text-expr :postgres :name)
-                                         (search.scoring/normalize-text-expr :postgres search-string))
-                   [:inline 0])
-     :prefix     (if search-string
-                   ;; in this case, we need to transform the string into a pattern in code, so forced to use helper
-                   (search.scoring/prefix (search.scoring/normalize-text-expr :postgres :name)
-                                          (search.scoring/normalize-text search-string))
-                   [:inline 0])
-     :library    (search.scoring/library-score-expr)
-     :data-layer (search.scoring/data-layer-score-expr search-ctx)}))
+     :view-count        (view-count-expr index-table search.config/view-count-scaling-percentile)
+     :pinned            (search.scoring/truthy :postgres :pinned)
+     :recency           (search.scoring/inverse-duration
+                         :postgres
+                         [:coalesce :last_viewed_at :model_updated_at]
+                         [:now]
+                         search.config/stale-time-in-days)
+     :dashboard         (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
+     :model             (search.scoring/model-rank-expr search-ctx)
+     :mine              (search.scoring/equal :creator_id (:current-user-id search-ctx))
+     :exact             (if search-string
+                          ;; normalize both sides in the database, in case it behaves differently to our helper
+                          (search.scoring/equal (search.scoring/normalize-text-expr :postgres :name)
+                                                (search.scoring/normalize-text-expr :postgres search-string))
+                          [:inline 0])
+     :prefix            (if search-string
+                          ;; The prefix scorer needs a LIKE pattern built from normalized text.
+                          (search.scoring/prefix (search.scoring/normalize-text-expr :postgres :name)
+                                                 (search.scoring/normalize-text search-string))
+                          [:inline 0])
+     :library           (search.scoring/library-score-expr)
+     :data-layer        (search.scoring/data-layer-score-expr search-ctx)}))
 
 (def ^:private enterprise-scorers
-  {:official-collection {:expr (search.scoring/truthy :official_collection)
+  {:official-collection {:expr (search.scoring/truthy :postgres :official_collection)
                          :pred #(premium-features/has-feature? :official-collections)}
-   :verified            {:expr (search.scoring/truthy :verified)
+   :verified            {:expr (search.scoring/truthy :postgres :verified)
                          :pred #(premium-features/has-feature? :content-verification)}})
 
 (defn- additional-scorers
@@ -187,13 +187,7 @@
   (set/difference (set search.spec/search-models) appdb-scorer-models))
 
 (defn with-appdb-scores
-  "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
-
-  Supported appdb based scorers: `:user-recency` (postgres and H2)
-
-  This will extract required info from `search-results`, make an appdb query to select additional scorers, combine
-  those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
-  combined `:score`."
+  "Add app database scores to `search-results` and sort by their combined scores."
   [search-ctx appdb-scorers weights search-results]
   ;; search-results-to-score are the search-results that have models that are relevant to the appdb-scorers.
   (let [search-results-to-score (filter (comp appdb-scorer-models :model) search-results)]

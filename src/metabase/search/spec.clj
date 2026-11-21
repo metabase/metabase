@@ -255,7 +255,10 @@
 (defn- find-fields-kw [acc kw]
   ;; Filter out SQL functions
   (if (or (str/starts-with? (name kw) "%")
-          (#{:else :integer :float} kw))
+          (#{:else
+             :float
+             :integer
+             :signed} kw))
     acc
     (conj! acc
            (if-let [table (get-table kw)]

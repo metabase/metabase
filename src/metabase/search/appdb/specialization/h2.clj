@@ -54,7 +54,7 @@
   {:search_terms        (:searchable_text entity)
    :native_search_terms (str/join " " (keep entity [:searchable_text :native_query]))})
 
-(defmethod specialization/text-score :h2 []
+(defmethod specialization/text-score :h2 [_search-ctx]
   [:inline 1])
 
 (defmethod specialization/view-count-percentile-query :h2

@@ -213,6 +213,28 @@
         :if-not-exists (append-sql! context "IF NOT EXISTS ")))
     (compile! identifier context)))
 
+(defn- charset-or-collation! [option identifier context]
+  (check-identifier-form identifier)
+  (append-sql! context (if (= option :collate) "COLLATE " "CHARACTER SET "))
+  (compile! identifier context))
+
+(defn- mysql-table-option! [option identifier context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "Table charset and collation options require MySQL" {:option option})))
+  (charset-or-collation! option identifier context))
+
+(defn- table-engine! [storage-engine context]
+  (when-not (and (= (engine context) :mysql) (= storage-engine :innodb))
+    (throw (ex-info "Table engine must be :innodb on MySQL" {:storage-engine storage-engine})))
+  (append-sql! context "ENGINE InnoDB"))
+
+(defn- analyze-table! [table context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "ANALYZE TABLE requires MySQL" {})))
+  (check-identifier-form table)
+  (append-sql! context "ANALYZE TABLE ")
+  (compile! table context))
+
 (declare simple-fn!)
 
 (defn- raw-type-name! [type-name context]
@@ -278,6 +300,12 @@
                 ;; like the options above, so it is not spelled `AUTO INCREMENT`.
                 :auto-increment
                 (append-sql! context "AUTO_INCREMENT")
+
+                (:collate :character-set)
+                (do
+                  (when-not (= 1 (count args))
+                    (throw (ex-info "Column charset and collation options require one identifier" {:option option})))
+                  (charset-or-collation! option (first args) context))
 
                 :not-null
                 (append-sql! context "NOT NULL")
@@ -359,6 +387,12 @@
 
 (defn- set-clause! [kvs context]
   (append-sql! context "SET ")
+  (kvs-map! kvs context))
+
+(defn- on-duplicate-key-update! [kvs context]
+  (when-not (= (engine context) :mysql)
+    (throw (ex-info "ON DUPLICATE KEY UPDATE requires MySQL" {})))
+  (append-sql! context "ON DUPLICATE KEY UPDATE ")
   (kvs-map! kvs context))
 
 (defn- delete-from! [identifier context]
@@ -552,6 +586,10 @@
    :with-recursive  (partial with! "WITH RECURSIVE ")
    :create-table    create-table!
    :with-columns    with-columns!
+   :engine          table-engine!
+   :character-set   (partial mysql-table-option! :character-set)
+   :collate         (partial mysql-table-option! :collate)
+   :analyze-table   analyze-table!
    :insert-into     insert-into!
    :columns         identifier-list!
    :values          values!
@@ -580,6 +618,7 @@
    :for             for!
    :on-conflict     on-conflict!
    :do-update-set   do-update-set!
+   :on-duplicate-key-update on-duplicate-key-update!
    :returning       returning!
    :nest            parens!))
 
@@ -702,6 +741,7 @@
     :not-like
     :not=
     :or
+    :regexp
     honey.sql.pg-ops/atat})
 
 (defn- unwrap-h2x-typed
@@ -1088,6 +1128,16 @@
   (append-sql! context " @@ ")
   (compile! rhs context))
 
+(defn- mysql-full-text-search-match! [[column query :as args] context]
+  (when-not (and (= (engine context) :mysql) (= 2 (count args)))
+    (throw (ex-info "MATCH AGAINST requires MySQL and two arguments" {:args args})))
+  (check-identifier-form column)
+  (append-sql! context "MATCH (")
+  (compile! column context)
+  (append-sql! context ") AGAINST (")
+  (compile! query context)
+  (append-sql! context " IN BOOLEAN MODE)"))
+
 (defn- fn-call! [[f & args] context]
   ;; This `case` has no default behavior for an unknown function on purpose: `f` can come from an attacker-derived
   ;; `:%foo` keyword (see `keyword!`), so an unrecognized function name must throw instead of being spliced into the
@@ -1109,6 +1159,7 @@
     :in                (in! f args context)
     :inline            (inline! (first args) context)
     :lift              (object! (first args) context)
+    :match-against     (mysql-full-text-search-match! args context)
     :not               (not! args context)
     :not-exists        (exists! "NOT EXISTS " (first args) context)
     :not-in            (in! f args context)
@@ -1118,7 +1169,7 @@
     :position          (position! args context)
     :timestampdiff     (timestamp-diff! args context)
 
-    (:< :<= :> :>= :like :ilike :not-like :+ :- :/ :* :% :|| :is :is-not)
+    (:< :<= :> :>= :like :ilike :not-like :regexp :+ :- :/ :* :% :|| :is :is-not)
     (binary-operator! f args context)
 
     ;; `:call` exists for Honey SQL 1 compatibility e.g. `[:call f & args]`, equivalent to `[f & args]`
@@ -1187,6 +1238,7 @@
      :to_tsvector
      :trim
      :ts_rank
+     :values
      :upper
      :year)
     (simple-fn! f args context)

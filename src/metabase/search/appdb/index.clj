@@ -10,6 +10,7 @@
    [metabase.global-system.system :as system]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
+   [metabase.search.appdb.specialization.mysql :as mysql]
    [metabase.search.appdb.specialization.postgres :as postgres]
    [metabase.search.db :as search.db]
    [metabase.search.engine :as search.engine]
@@ -28,6 +29,7 @@
 
 (comment
   h2/keep-me
+  mysql/keep-me
   postgres/keep-me)
 
 (set! *warn-on-reflection* true)
@@ -187,8 +189,6 @@
   []
   ;; Dropping a table is DDL, which h2 and mysql commit implicitly.
   ;; Postgres keeps DDL inside the transaction, where it does no harm.
-  ;; Mysql cannot reach this while the appdb engine supports postgres and h2 only, but listing it means
-  ;; adding support does not quietly bring the rollback failure back.
   (and (mdb/in-transaction?) (contains? #{:h2 :mysql} (mdb/db-type))))
 
 (defn delete-obsolete-tables!
@@ -215,7 +215,14 @@
   ;; Create with a separate transaction so that postgresql will complete the index creations before returning,
   ;; even when already running in a transaction
   (t2/with-transaction [_ (mdb/app-db)]
-    (search.db/create-search-index-table! table-name)))
+    (if (= :mysql (mdb/db-type))
+      (let [stopwords? (pos? (:stopwords (search.db/mysql-fulltext-options)))]
+        (try
+          (search.db/set-mysql-fulltext-stopwords! false)
+          (search.db/create-search-index-table! table-name)
+          (finally
+            (search.db/set-mysql-fulltext-stopwords! stopwords?))))
+      (search.db/create-search-index-table! table-name))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."
