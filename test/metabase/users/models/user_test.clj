@@ -14,8 +14,7 @@
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
-   [metabase.serialization.protocol :as protocol]
-   [metabase.serialization.protocol.app-db :as protocol.app-db]
+   [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.tenants.core :as tenants]
@@ -501,8 +500,8 @@
 (deftest import-created-users-join-all-users-test
   (let [emails [(mt/random-email) (mt/random-email)]]
     (try
-      (let [users (protocol/insert-rows! protocol.app-db/store :model/User (mapv #(hash-map :email % :is_active false) emails))]
-        (is (= emails (map :email users)))
+      (let [users (serialization/insert! :model/User (mapv #(hash-map :email % :is_active false) emails))]
+        (is (= (set emails) (set (map :email users))))
         (doseq [{user-id :id} users]
           (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
       (finally
