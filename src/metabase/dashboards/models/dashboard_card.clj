@@ -479,11 +479,11 @@
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
   (if (empty? dashboard-card-ids)
     {:events []}
-    (let [dashcards (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))]
-      (pulse-card/delete-pulse-cards-for-dashcards! dashboard-card-ids)
-      (let [event (events/deleted :event/dashboard-card-delete :model/DashboardCard dashcards)]
-        (dashboards.db/delete-dashcards! dashboard-card-ids)
-        {:events [event]}))))
+    (let [dashcards   (dashboards.db/dashcards-by-ids (vec dashboard-card-ids))
+          pulse-cards (pulse-card/delete-pulse-cards-for-dashcards* dashboard-card-ids)
+          event       (events/deleted :event/dashboard-card-delete :model/DashboardCard dashcards)]
+      (dashboards.db/delete-dashcards! dashboard-card-ids)
+      {:events (conj (vec (:events pulse-cards)) event)})))
 
 (mu/defn delete-dashboard-cards! :- :nil
   "Delete the DashboardCards with `dashboard-card-ids` as [[delete-dashboard-cards*]] does, publishing the events of the

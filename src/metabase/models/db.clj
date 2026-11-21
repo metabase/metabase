@@ -133,6 +133,11 @@
   [entity :- ::model-row]
   (t2/insert-returning-pk! (:model entity) (:row entity)))
 
+(mu/defn insert-entities-returning-instances!
+  "Insert `entities`'s `:rows` into `entities`'s `:model`, returning the inserted instances in the order of the rows."
+  [entities :- ::model-rows]
+  (t2/insert-returning-instances! (:model entities) (:rows entities)))
+
 (mu/defn insert-entities!
   "Insert `entities`'s `:rows` into `entities`'s `:model`, returning the number inserted."
   [entities :- ::model-rows]

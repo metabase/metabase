@@ -443,3 +443,54 @@
                                    (:schedule_type (t2/select-one :v_alerts :entity_id (:id notification))))]
            (testing (str schedule-type " schedule with cron " cron-schedule "result" (t2/select-one :v_alerts :entity_id (:id notification)))
              (is (= schedule-type (get-schedule-type))))))))))
+
+(defn- create-notifications!
+  "`n` system event Notifications, each with a subscription and an email handler with a recipient."
+  [n]
+  (mapv (fn [_]
+          (models.notification/create-notification!
+           default-system-event-notification
+           [default-user-invited-subscription]
+           [{:channel_type :channel/email
+             :recipients   [{:type    :notification-recipient/raw-value
+                             :details {:value "ngoc@metabase.com"}}]}]))
+        (range n)))
+
+(defn- write-statement-count!
+  "The number of statements that `write!`, a function of the ids of `n` new Notifications, makes."
+  [n write!]
+  (let [ids (mapv :id (create-notifications! n))]
+    (try
+      (t2/with-call-count [call-count]
+        (write! ids)
+        (call-count))
+      (finally
+        (models.notification/delete-notifications! ids)))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (testing "deleting Notifications makes the same number of statements for 2 and for 6 of them"
+    (let [delete! (fn [n]
+                    (let [ids (mapv :id (create-notifications! n))]
+                      (t2/with-call-count [call-count]
+                        (models.notification/delete-notifications! ids)
+                        (call-count))))]
+      (is (= (delete! 2) (delete! 6)))))
+  (testing "updating Notifications makes the same number of statements for 2 and for 6 of them"
+    (let [update! (fn [n]
+                    (write-statement-count! n #(models.notification/update-notifications! % {:active false})))]
+      (is (= (update! 2) (update! 6)))))
+  (testing "creating a Notification with several handlers makes the same number of statements for 1 and for 3"
+    (let [create! (fn [n]
+                    (let [notification (atom nil)
+                          statements   (t2/with-call-count [call-count]
+                                         (reset! notification
+                                                 (models.notification/create-notification!
+                                                  default-system-event-notification
+                                                  [default-user-invited-subscription]
+                                                  (vec (repeat n {:channel_type :channel/email
+                                                                  :recipients   [{:type    :notification-recipient/raw-value
+                                                                                  :details {:value "ngoc@metabase.com"}}]}))))
+                                         (call-count))]
+                      (models.notification/delete-notifications! [(:id @notification)])
+                      statements))]
+      (is (= (create! 1) (create! 3))))))

@@ -552,7 +552,28 @@
    :model/DashboardTab          {:create :event/dashboard-tab-create
                                  :delete :event/dashboard-tab-delete}
    :model/DashboardCardSeries   {:create :event/dashboard-card-series-create
-                                 :delete :event/dashboard-card-series-delete}})
+                                 :delete :event/dashboard-card-series-delete}
+   :model/Pulse                 {:create :event/pulse-create
+                                 :delete :event/pulse-delete}
+   :model/PulseCard             {:create :event/pulse-card-create
+                                 :delete :event/pulse-card-delete}
+   :model/PulseChannel          {:create :event/pulse-channel-create
+                                 :delete :event/pulse-channel-delete}
+   :model/PulseChannelRecipient {:create :event/pulse-channel-recipient-create
+                                 :delete :event/pulse-channel-recipient-delete}
+   :model/Channel               {:create :event/channel-create
+                                 :delete :event/channel-delete}
+   :model/ChannelTemplate       {:create :event/channel-template-create
+                                 :delete :event/channel-template-delete}
+   :model/Notification          {:create :event/notification-row-create}
+   :model/NotificationCard      {:create :event/notification-card-create
+                                 :delete :event/notification-card-delete}
+   :model/NotificationSubscription {:create :event/notification-subscription-create
+                                    :delete :event/notification-subscription-delete}
+   :model/NotificationHandler   {:create :event/notification-handler-create
+                                 :delete :event/notification-handler-delete}
+   :model/NotificationRecipient {:create :event/notification-recipient-create
+                                 :delete :event/notification-recipient-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."

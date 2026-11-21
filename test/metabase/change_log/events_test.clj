@@ -12,12 +12,14 @@
    [metabase.core.init-test :as init-test]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.settings :as permissions.settings]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.queries.models.card :as card]
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
@@ -74,12 +76,10 @@
             (is (= #{["metabase_table" (:id other) "update"]}
                    (set (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
-          (mt/with-temp [:model/Pulse     pulse {}
-                         :model/Card      card  {:database_id (:id db)}
-                         :model/PulseCard pc    {:pulse_id (:id pulse), :card_id (:id card), :include_csv false}]
-            (is (= [] (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv false}))))
-            (is (= [["pulse_card" (:id pc) "update"]]
-                   (logged-by #(t2/update! :model/PulseCard :id (:id pc) {:include_csv true}))))))
+          (mt/with-temp [:model/Pulse pulse {:name "Before"}]
+            (is (= [] (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "Before"}))))
+            (is (= [["pulse" (:id pulse) "update"]]
+                   (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "After"}))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [] (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 99}))))
@@ -104,8 +104,9 @@
         (testing "an insert that does not return the key throws in dev and test"
           (mt/with-temp [:model/Pulse pulse {}
                          :model/Card  card  {}]
-            (let [insert! #(t2/insert-returning-instance! [:model/PulseCard :include_csv]
-                                                          {:pulse_id (:id pulse), :card_id (:id card), :position 0})]
+            (let [insert! #(let [row (t2/insert-returning-instance! [:model/PulseCard :include_csv]
+                                                                    {:pulse_id (:id pulse), :card_id (:id card), :position 0})]
+                             (events/publish-lifecycle! [(events/created :event/pulse-card-create [row])]))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"row key missing" (insert!)))
               (testing "and in production it still inserts, and warns instead of logging"
                 (with-redefs [config/is-prod? true]
@@ -260,7 +261,10 @@
 
 (def ^:private published-by-hand
   "The models whose write functions publish their events, in place of the events trait."
-  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries})
+  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries
+    :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient
+    :model/Notification :model/NotificationCard :model/NotificationSubscription :model/NotificationHandler
+    :model/NotificationRecipient :model/Channel :model/ChannelTemplate})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"

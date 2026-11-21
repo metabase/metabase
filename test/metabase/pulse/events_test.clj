@@ -3,7 +3,9 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
+   [metabase.pulse.events :as pulse.events]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (deftest dashboard-writes-sync-subscriptions-test
@@ -16,3 +18,36 @@
     (testing "adding a dashcard adds its card to the subscriptions"
       (dashboard-card/create-dashboard-cards! [{:dashboard_id dashboard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}])
       (is (= [card-id] (t2/select-fn-vec :card_id :model/PulseCard :pulse_id pulse-id))))))
+
+(defn- sync-statement-count!
+  "The number of statements that the subscription sync makes after `dashboard-count` Dashboards, each with a
+  subscription, are renamed."
+  [dashboard-count]
+  (let [dashboards (t2/insert-returning-instances! :model/Dashboard
+                                                   (vec (for [i (range dashboard-count)]
+                                                          (assoc (mt/with-temp-defaults :model/Dashboard)
+                                                                 :name (str "Before " i)))))]
+    (try
+      (t2/insert! :model/Pulse
+                  (vec (for [{:keys [id name]} dashboards]
+                         (assoc (mt/with-temp-defaults :model/Pulse) :dashboard_id id :name name))))
+      (let [events (vec (for [{:keys [id] :as before} dashboards]
+                          (do
+                            (t2/update! :model/Dashboard :id id {:name (str "After " id)})
+                            {:model           :model/Dashboard
+                             :operation       :update
+                             :id              id
+                             :previous-object before
+                             :object          (t2/select-one :model/Dashboard :id id)})))]
+        (u/prog1 (t2/with-call-count [call-count]
+                   (#'pulse.events/sync-subscriptions! ::pulse.events/subscriptions events events)
+                   (call-count))
+          (is (= (sort (map #(str "After " (:id %)) dashboards))
+                 (sort (t2/select-fn-vec :name :model/Pulse :dashboard_id [:in (map :id dashboards)]))))))
+      (finally
+        (t2/delete! :model/Pulse :dashboard_id [:in (map :id dashboards)])
+        (t2/delete! :model/Dashboard :id [:in (map :id dashboards)])))))
+
+(deftest renaming-dashboards-syncs-subscriptions-in-fixed-statements-test
+  (testing "the subscription sync makes the same number of statements for 2 and for 6 renamed Dashboards"
+    (is (= (sync-statement-count! 2) (sync-statement-count! 6)))))

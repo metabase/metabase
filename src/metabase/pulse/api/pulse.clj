@@ -223,7 +223,7 @@
 (defn- maybe-add-recipients
   "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
 
-  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels*]]
   deletes any recipient not present — so every recipient hidden on the read path must be restored on
   the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
   never saw. Two read filters hide recipients, and each is compensated here:

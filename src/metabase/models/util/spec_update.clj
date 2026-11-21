@@ -57,6 +57,31 @@
                                [:nested-specs {:optional true} [:sequential [:tuple :keyword [:ref ::spec]]]]]}}
    [:ref ::spec]])
 
+(mr/def ::ops
+  "The writes the update applies, as functions of a model: `:insert-one!`, of a row, returning the primary key of the
+  inserted row; `:insert-many!`, of a vector of rows; `:update!`, of the id of the row, the stored row and the columns
+  to write; `:delete-one!`, of the id and the stored row; `:delete-many!`, of the id column and the stored rows. Each
+  defaults to a plain statement."
+  [:map {:closed true}
+   [:insert-one!  {:optional true} ifn?]
+   [:insert-many! {:optional true} ifn?]
+   [:update!      {:optional true} ifn?]
+   [:delete-one!  {:optional true} ifn?]
+   [:delete-many! {:optional true} ifn?]])
+
+(def plain-ops
+  "The writes of [[do-update!]] when it is given none: one plain statement each."
+  {:insert-one!  (fn [model row]
+                   (models.db/insert-entity-returning-pk! {:model model :row row}))
+   :insert-many! (fn [model rows]
+                   (models.db/insert-entities! {:model model :rows rows}))
+   :update!      (fn [model id _existing row]
+                   (models.db/update-entity! id {:model model :row row}))
+   :delete-one!  (fn [model id _existing]
+                   (models.db/delete-entity! model id))
+   :delete-many! (fn [model id-col existing-rows]
+                   (models.db/delete-entities-with-ids! model id-col (map id-col existing-rows)))})
+
 (defn decode-spec
   "Decode a spec with default value transformer."
   [spec]
@@ -92,13 +117,13 @@
 (declare do-update!*)
 
 (defn- handle-nested-updates!
-  [existing-row new-row nested-specs path]
+  [existing-row new-row nested-specs path ops]
   (doseq [[k spec] nested-specs]
-    (do-update!* (get existing-row k) (get new-row k) spec (conj path k))))
+    (do-update!* (get existing-row k) (get new-row k) spec (conj path k) ops)))
 
 (defn- handle-refs-in-parent!
   "Process nested models with ref-in-parent, returning a map with updated parent foreign keys."
-  [existing-row new-row nested-specs path]
+  [existing-row new-row nested-specs path ops]
   (let [ref-specs (ref-nested-models nested-specs)]
     (when (seq ref-specs)
       (reduce (fn [parent-updates [k {:keys [ref-in-parent] :as spec}]]
@@ -106,7 +131,7 @@
                       new-nested      (get new-row k)
                       path            (conj path k)]
                   (log/tracef "%s processing ref-in-parent for %s" (format-path path) ref-in-parent)
-                  (assoc parent-updates ref-in-parent (handle-map-update! existing-nested new-nested spec path))))
+                  (assoc parent-updates ref-in-parent (handle-map-update! existing-nested new-nested spec path ops))))
               {} ref-specs))))
 
 (defn- with-parent-id
@@ -130,12 +155,12 @@
 (defn- handle-rows-update!
   "Process updates for a single row, handling both parent refs and nested models.
    Returns true if any changes were made."
-  [row existing-rows {:keys [model nested-specs id-col] :as spec} path & {:keys [force-update?] :or {force-update? true}}]
+  [row existing-rows {:keys [model nested-specs id-col] :as spec} path ops & {:keys [force-update?] :or {force-update? true}}]
   (let [existing-row (m/find-first #(= (id-col row) (id-col %)) existing-rows)
         update-path (if force-update? (conj path (id-col row)) path)
         _ (when force-update? (log/debugf "%s Updating" (format-path update-path)))
         ;; Process any ref-in-parent models first
-        parent-updates (handle-refs-in-parent! existing-row row nested-specs update-path)
+        parent-updates (handle-refs-in-parent! existing-row row nested-specs update-path ops)
         row-with-refs (merge row parent-updates)
         sanitize-row (sanitize-row-fn spec)
         updates-needed? (and parent-updates
@@ -143,7 +168,7 @@
                                    (sanitize-row row)))]
     ;; Update the parent row if needed
     (when (or force-update? updates-needed?)
-      (models.db/update-entity! (id-col row) {:model model :row (sanitize-row row-with-refs)}))
+      ((:update! ops) model (id-col row) existing-row (sanitize-row row-with-refs)))
     ;; Handle non-ref nested models
     (when nested-specs
       (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -152,11 +177,12 @@
            existing-row
            (with-parent-id row-with-refs nested-without-refs (id-col row))
            nested-without-refs
-           update-path))))
+           update-path
+           ops))))
     (or force-update? updates-needed?)))
 
 (defn- handle-sequential-updates!
-  [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path]
+  [existing-rows new-rows {:keys [model nested-specs id-col] :as spec} path ops]
   (let [{:keys [to-update
                 to-create
                 to-delete
@@ -169,9 +195,9 @@
           (log/tracef "%s nested spec found, creating rows one by one" (format-path path))
           (doseq [row to-create]
             (let [;; Process any ref-in-parent models first
-                  parent-updates (handle-refs-in-parent! nil row nested-specs path)
+                  parent-updates (handle-refs-in-parent! nil row nested-specs path ops)
                   row-with-refs  (merge row parent-updates)
-                  parent-id (models.db/insert-entity-returning-pk! {:model model :row (sanitize-row row-with-refs)})]
+                  parent-id ((:insert-one! ops) model (sanitize-row row-with-refs))]
               (log/debugf "%s created a new entity %s %s" (format-path path) model parent-id)
               ;; Only process non-ref nested models
               (let [nested-without-refs (non-ref-nested-models nested-specs row)]
@@ -180,34 +206,35 @@
                    nil
                    (with-parent-id row-with-refs nested-without-refs parent-id)
                    nested-without-refs
-                   (conj path parent-id)))))))
+                   (conj path parent-id)
+                   ops))))))
         (do
           (log/tracef "%s no nested spec found, batch creating %d new rows of %s" (format-path path) (count to-create) model)
           (let [rows (map sanitize-row to-create)]
-            (models.db/insert-entities! {:model model :rows rows})))))
+            ((:insert-many! ops) model rows)))))
     (when (seq to-delete)
       ;; TODO: cascade deletes?
       (log/debugf "%s deleting %d rows with ids %s" (format-path path) (count to-delete) (str/join ", " (map id-col to-delete)))
-      (models.db/delete-entities-with-ids! model id-col (map id-col to-delete)))
+      ((:delete-many! ops) model id-col to-delete))
     (when (seq to-update)
       (log/tracef "%s Attempt updating %s rows of %s" (format-path path) (count to-update) model)
       (doseq [row to-update]
-        (handle-rows-update! row existing-rows spec path)))
+        (handle-rows-update! row existing-rows spec path ops)))
     ;; the row might not change, but the nested models might
     (when (and (seq to-skip) nested-specs)
       (log/tracef "%s nested models detected, updating unchanged nested models for %s %s"
                   (format-path path) model (id-col (first to-skip)))
       (doseq [row to-skip]
-        (handle-rows-update! row existing-rows spec path :force-update? false)))))
+        (handle-rows-update! row existing-rows spec path ops :force-update? false)))))
 
 (defn- handle-map-update!
-  [existing-data new-data {:keys [model nested-specs id-col] :as spec} path]
+  [existing-data new-data {:keys [model nested-specs id-col] :as spec} path ops]
   (let [sanitize-row            (sanitize-row-fn spec)
         compare-row             (compare-cols-fn spec)
         existing-id             (when existing-data (id-col existing-data))
         ;; Process any ref-in-parent models first
         parent-updates          (when (and nested-specs new-data)
-                                  (handle-refs-in-parent! existing-data new-data nested-specs path))
+                                  (handle-refs-in-parent! existing-data new-data nested-specs path ops))
         new-data-with-refs      (if parent-updates (merge new-data parent-updates) new-data)
         new-data-sanitized      (when new-data-with-refs (sanitize-row new-data-with-refs))
         existing-data-sanitized (when existing-data (sanitize-row existing-data))
@@ -221,19 +248,20 @@
                                          existing-data
                                          (with-parent-id new-data nested-without-refs parent-id)
                                          nested-without-refs
-                                         (conj path parent-id))))))]
+                                         (conj path parent-id)
+                                         ops)))))]
     (cond
       ;; delete
       (nil? new-data)
       (do
         (log/debugf "%s Deleting" (format-path (conj path existing-id)))
-        (models.db/delete-entity! model existing-id)
+        ((:delete-one! ops) model existing-id existing-data)
         (handle-nested! existing-data new-data existing-id)
         nil)
 
       ;; create
       (nil? existing-data)
-      (let [parent-id (models.db/insert-entity-returning-pk! {:model model :row new-data-sanitized})
+      (let [parent-id ((:insert-one! ops) model new-data-sanitized)
             path      (conj path parent-id)]
         (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
         (handle-nested! nil new-data parent-id)
@@ -244,8 +272,8 @@
       (do
         (log/debugf "%s ID changed from %s to %s - deleting and recreating"
                     (format-path path) existing-id (id-col new-data))
-        (models.db/delete-entity! model existing-id)
-        (let [parent-id (models.db/insert-entity-returning-pk! {:model model :row new-data-sanitized})
+        ((:delete-one! ops) model existing-id existing-data)
+        (let [parent-id ((:insert-one! ops) model new-data-sanitized)
               path      (conj path parent-id)]
           (log/debugf "%s Created a new entity %s %s" (format-path path) model parent-id)
           (handle-nested! nil new-data parent-id)
@@ -255,7 +283,7 @@
       (not= (compare-row new-data-sanitized) (compare-row existing-data-sanitized))
       (do
         (log/debugf "%s Updating" (format-path (conj path existing-id)))
-        (models.db/update-entity! existing-id {:model model :row new-data-sanitized})
+        ((:update! ops) model existing-id existing-data new-data-sanitized)
         (handle-nested! existing-data new-data existing-id)
         existing-id)
 
@@ -266,20 +294,30 @@
         existing-id))))
 
 (defn- do-update!*
-  [existing-data new-data spec path]
+  [existing-data new-data spec path ops]
   (if (:multi-row? spec)
     (do
       (log/tracef "%s multi-row spec found" (format-path path))
-      (handle-sequential-updates! existing-data new-data spec path))
+      (handle-sequential-updates! existing-data new-data spec path ops))
     (do
       (log/tracef "%s single row spec found" (format-path path))
-      (handle-map-update! existing-data new-data spec path))))
+      (handle-map-update! existing-data new-data spec path ops))))
+
+(defn- update-with-ops!
+  [existing-data new-data spec ops]
+  (t2/with-transaction []
+    (do-update!* existing-data new-data spec ["root"] (merge plain-ops ops))))
 
 (mu/defn do-update!
   "Update data in the database based on the diff between existing and new data.
-  `spec` defines the structure of the data and how to compare it."
-  [existing-data :- ::generic-row
-   new-data      :- ::generic-row
-   spec          :- ::Spec]
-  (t2/with-transaction []
-    (do-update!* existing-data new-data spec ["root"])))
+  `spec` defines the structure of the data and how to compare it. The writes are plain statements, but for the
+  functions of [[::ops]] that `ops` gives."
+  ([existing-data :- ::generic-row
+    new-data      :- ::generic-row
+    spec          :- ::Spec]
+   (update-with-ops! existing-data new-data spec nil))
+  ([existing-data :- ::generic-row
+    new-data      :- ::generic-row
+    spec          :- ::Spec
+    ops           :- [:maybe ::ops]]
+   (update-with-ops! existing-data new-data spec ops)))

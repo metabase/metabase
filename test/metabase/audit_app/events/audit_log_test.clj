@@ -8,6 +8,7 @@
    [java-time.api :as t]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.audit-app.events.audit-log :as events.audit-log]
+   [metabase.channel.models.channel :as models.channel]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
@@ -388,7 +389,7 @@
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))
       (testing :event/channel-update
-        (t2/update! :model/Channel :id (:id channel) {:name "New Name"})
+        (models.channel/update-channels! {(:id channel) {:name "New Name"}})
         (is (= {:model_id (:id channel)
                 :user_id  (mt/user->id :rasta)
                 :details  {:previous {:name "Test channel"}

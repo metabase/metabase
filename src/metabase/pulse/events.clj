@@ -75,11 +75,15 @@
         (when (or (seq stale) (seq new-cards))
           (t2/with-transaction [_conn]
             (binding [api/*current-user-id* nil]
-              (doseq [dashboard-id stale
-                      :let [dashboard (get dashboards dashboard-id)]]
-                (models.pulse/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
-                                                                         :collection_id (:collection_id dashboard)}))
-              (when (seq new-cards)
-                (pulse-card/append-pulse-cards! new-cards)))))))))
+              (let [renamed (models.pulse/update-pulses-for-dashboards*
+                             (into {}
+                                   (map (fn [dashboard-id]
+                                          (let [dashboard (get dashboards dashboard-id)]
+                                            [dashboard-id {:name          (:name dashboard)
+                                                           :collection_id (:collection_id dashboard)}])))
+                                   stale))
+                    created (when (seq new-cards)
+                              (pulse-card/append-pulse-cards* new-cards))]
+                (events/publish-lifecycle! (into (vec (:events renamed)) (:events created)))))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)

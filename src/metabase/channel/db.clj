@@ -116,11 +116,21 @@
   (t2/select-one :model/User))
 
 (mu/defn insert-channel-template!
-  "Insert `template` and return its ID."
+  "Insert `template` and return the inserted instance."
   [template :- ChannelTemplateRow]
-  (t2/insert-returning-pk! :model/ChannelTemplate template))
+  (t2/insert-returning-instance! :model/ChannelTemplate template))
+
+(mu/defn channel-templates-by-ids
+  "The ChannelTemplates with `template-ids`."
+  [template-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/ChannelTemplate :id [:in template-ids]))
 
 (mu/defn delete-channel-templates!
   "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
   [template-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
+
+(mu/defn delete-channels!
+  "Delete the Channels with `channel-ids`, returning the number deleted."
+  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/Channel :id [:in channel-ids]))

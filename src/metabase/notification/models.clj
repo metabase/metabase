@@ -13,6 +13,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.db :as models.db]
    [metabase.models.interface :as mi]
    [metabase.models.util.spec-update :as models.u.spec-update]
    [metabase.notification.db :as notification.db]
@@ -46,7 +47,6 @@
                :model/NotificationCard]]
   (doto model
     (derive :metabase/model)
-    (derive :hook/events)
     (derive (if (= model :model/NotificationSubscription)
               :hook/created-at-timestamped?
               :hook/timestamped?))))
@@ -886,78 +886,215 @@
       (notification.task.send-trigger/update-subscription-trigger! subscription)
       (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))))
 
-(mu/defn create-notification-card! :- ms/PositiveInt
-  "Insert the NotificationCard `row` and return its id."
+(mu/defn- create-notification-card* :- [:map {:closed true} [:id ms/PositiveInt] [:events events/Events]]
+  "Insert the NotificationCard `row`, returning its id as `:id` and its create event as `:events`."
   [row :- ::notification.schema/notification-card.create]
-  (notification.db/insert-notification-card! row))
+  (let [card (notification.db/insert-notification-card! row)]
+    {:id     (:id card)
+     :events [(events/created :event/notification-card-create [card])]}))
 
-(mu/defn create-notification-subscriptions!
+(mu/defn create-notification-subscriptions* :- [:map {:closed true}
+                                                [:subscriptions [:sequential :map]]
+                                                [:events        events/Events]]
   "Insert the NotificationSubscription `rows` and add the Quartz triggers of the cron ones, returning the inserted
-  subscriptions."
+  subscriptions as `:subscriptions` and their create event as `:events`, which the caller publishes."
   [rows :- [:sequential ::notification.schema/notification-subscription.create]]
-  (let [subscriptions (notification.db/insert-subscriptions! rows)]
-    (doseq [subscription subscriptions]
-      (notification.task.send-trigger/update-subscription-trigger! subscription))
-    subscriptions))
+  (if (seq rows)
+    (let [subscriptions (notification.db/insert-subscriptions! rows)]
+      (doseq [subscription subscriptions]
+        (notification.task.send-trigger/update-subscription-trigger! subscription))
+      {:subscriptions subscriptions
+       :events        [(events/created :event/notification-subscription-create subscriptions)]})
+    {:subscriptions [] :events []}))
+
+(mu/defn create-notification-subscriptions! :- [:sequential :map]
+  "Insert the NotificationSubscription `rows` as [[create-notification-subscriptions*]] does, publishing their events,
+  and return the inserted subscriptions."
+  [rows :- [:sequential ::notification.schema/notification-subscription.create]]
+  (t2/with-transaction [_conn]
+    (let [{:keys [subscriptions events]} (create-notification-subscriptions* rows)]
+      (events/publish-lifecycle! events)
+      subscriptions)))
+
+(defn- insert-grouped
+  "Insert `rows` with `insert`, a function of a vector of them returning the inserted instances in their order, one
+  statement for each distinct set of columns that the rows give, returning the instances in the order of `rows`."
+  [insert rows]
+  (let [indexed  (map-indexed vector rows)
+        inserted (into {}
+                       (mapcat (fn [group]
+                                 (map vector (map first group) (insert (mapv second group)))))
+                       (vals (group-by (comp set keys second) indexed)))]
+    (mapv inserted (range (count rows)))))
+
+(mu/defn- create-notification-handlers* :- [:map {:closed true}
+                                            [:handlers [:sequential :map]]
+                                            [:events   events/Events]]
+  "Insert the NotificationHandler `rows`, which must have the channel type of their templates, returning the inserted
+  instances in the order of the rows as `:handlers` and their create event as `:events`."
+  [rows :- [:sequential ::notification.schema/notification-handler.create]]
+  (if (seq rows)
+    (do
+      (check-handler-templates! rows)
+      (let [handlers (insert-grouped notification.db/insert-handlers! rows)]
+        {:handlers handlers
+         :events   [(events/created :event/notification-handler-create handlers)]}))
+    {:handlers [] :events []}))
 
 (mu/defn create-notification-handler! :- ms/PositiveInt
-  "Insert the NotificationHandler `row`, which must have the channel type of its template, and return its id."
+  "Insert the NotificationHandler `row`, which must have the channel type of its template, and return its id,
+  publishing its event."
   [row :- ::notification.schema/notification-handler.create]
-  (check-handler-templates! [row])
-  (notification.db/insert-handler! row))
+  (t2/with-transaction [_conn]
+    (let [{[handler] :handlers, :keys [events]} (create-notification-handlers* [row])]
+      (events/publish-lifecycle! events)
+      (:id handler))))
 
-(mu/defn create-notification-recipients!
-  "Insert the NotificationRecipient `rows`."
+(mu/defn- create-notification-recipients* :- [:map {:closed true} [:events events/Events]]
+  "Insert the NotificationRecipient `rows`, returning their create event as `:events`."
+  [rows :- [:sequential ::notification.schema/notification-recipient.create]]
+  (if (seq rows)
+    (let [recipients (insert-grouped notification.db/insert-recipients! rows)]
+      {:events [(events/created :event/notification-recipient-create recipients)]})
+    {:events []}))
+
+(mu/defn create-notification-recipients! :- :nil
+  "Insert the NotificationRecipient `rows`, one or a sequence of them, publishing their events."
   [rows :- [:or ::notification.schema/notification-recipient.create
             [:sequential ::notification.schema/notification-recipient.create]]]
-  (notification.db/insert-recipients! rows))
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle! (:events (create-notification-recipients* (if (map? rows) [rows] (vec rows))))))
+  nil)
 
-(mu/defn create-notification!
+(defn- check-template-maps!
+  "Throws a 400 unless the inline `:template` of each of `handlers` is a map."
+  [handlers]
+  (doseq [{:keys [template]} handlers]
+    (when (and template (not (map? template)))
+      (throw (ex-info "Channel template must be a map" {:status-code 400})))))
+
+(mu/defn create-notification* :- [:map {:closed true} [:notification :map] [:events events/Events]]
   "Create a new notification with `subsciptions`.
-  Return the created notification."
+  Returns the created notification as `:notification` and the events of the writes as `:events`, which the caller
+  publishes."
   [notification         :- ::notification.schema/notification.create
    subscriptions        :- [:maybe [:sequential ::notification.schema/notification-subscription.create]]
    handlers+recipients  :- [:maybe [:sequential ::notification.schema/notification-handler.create]]]
   (validate-email-handlers! handlers+recipients)
-  (events/with-batched-events
-    (let [payload-id      (case (:payload_type notification)
-                            (:notification/system-event :notification/testing)
-                            nil
-                            :notification/card
-                            (create-notification-card! (:payload notification)))
-          notification    (-> notification
-                              (assoc :payload_id payload-id)
-                              (dissoc :payload))
-          instance        (notification.db/insert-notification! notification)
-          notification-id (:id instance)]
-      (when (seq subscriptions)
-        (create-notification-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
-      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
-        ;; assert can either template_id exists, then template but be nil, and vice versa
-        (when (and template (not (map? template)))
-          (throw (ex-info "Channel template must be a map" {:status-code 400})))
-        (let [template-id (if template
-                            (models.channel/create-channel-template! template)
-                            (:template_id handler))
-              handler    (-> handler
-                             (dissoc :recipients :template)
-                             (assoc :notification_id notification-id
-                                    :template_id template-id))
-              handler-id (create-notification-handler! handler)]
-          (create-notification-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
-      instance)))
+  (check-template-maps! handlers+recipients)
+  (let [card            (case (:payload_type notification)
+                          (:notification/system-event :notification/testing)
+                          nil
+                          :notification/card
+                          (create-notification-card* (:payload notification)))
+        notification    (-> notification
+                            (assoc :payload_id (:id card))
+                            (dissoc :payload))
+        instance        (notification.db/insert-notification! notification)
+        notification-id (:id instance)
+        subscribed      (create-notification-subscriptions* (map #(assoc % :notification_id notification-id) subscriptions))
+        templated       (mapv (fn [{:keys [template]}]
+                                (when template (models.channel/create-channel-template* template)))
+                              handlers+recipients)
+        handler-rows    (mapv (fn [handler templated]
+                                (-> handler
+                                    (dissoc :recipients :template)
+                                    (assoc :notification_id notification-id
+                                           :template_id (if templated (:id templated) (:template_id handler)))))
+                              handlers+recipients templated)
+        handled         (create-notification-handlers* handler-rows)
+        recipients      (create-notification-recipients*
+                         (into []
+                               (mapcat (fn [[{:keys [recipients]} handler]]
+                                         (map #(assoc % :notification_handler_id (:id handler)) recipients)))
+                               (map vector handlers+recipients (:handlers handled))))]
+    {:notification instance
+     :events       (-> []
+                       (into (:events card))
+                       (conj (events/created :event/notification-row-create [instance]))
+                       (into (:events subscribed))
+                       (into (mapcat :events) (remove nil? templated))
+                       (into (:events handled))
+                       (into (:events recipients)))}))
 
-(mu/defn update-notification!
-  "Update an existing notification with `new-notification`."
+(mu/defn create-notification!
+  "Create a new notification as [[create-notification*]] does, publishing the events of the writes.
+  Return the created notification."
+  [notification         :- ::notification.schema/notification.create
+   subscriptions        :- [:maybe [:sequential ::notification.schema/notification-subscription.create]]
+   handlers+recipients  :- [:maybe [:sequential ::notification.schema/notification-handler.create]]]
+  (t2/with-transaction [_conn]
+    (let [{:keys [notification events]} (create-notification* notification subscriptions handlers+recipients)]
+      (events/publish-lifecycle! events)
+      notification)))
+
+(def ^:private topics
+  "The lifecycle topics of the models that [[update-notification!]] writes."
+  {:model/Notification             {:create :event/notification-row-create
+                                    :update :event/notification-row-update
+                                    :delete :event/notification-row-delete}
+   :model/NotificationCard         {:create :event/notification-card-create
+                                    :update :event/notification-card-update
+                                    :delete :event/notification-card-delete}
+   :model/NotificationSubscription {:create :event/notification-subscription-create
+                                    :update :event/notification-subscription-update
+                                    :delete :event/notification-subscription-delete}
+   :model/NotificationHandler      {:create :event/notification-handler-create
+                                    :update :event/notification-handler-update
+                                    :delete :event/notification-handler-delete}
+   :model/NotificationRecipient    {:create :event/notification-recipient-create
+                                    :update :event/notification-recipient-update
+                                    :delete :event/notification-recipient-delete}
+   :model/ChannelTemplate          {:create :event/channel-template-create
+                                    :update :event/channel-template-update
+                                    :delete :event/channel-template-delete}})
+
+(defn- recording-ops
+  "The writes of [[models.u.spec-update/do-update!]] that add the lifecycle events of the rows they write to `events`, a
+  volatile holding a vector of `[topic changes]` pairs."
+  [events]
+  (let [plain (fn [op] (get models.u.spec-update/plain-ops op))
+        insert! (fn [model rows]
+                  (let [instances (models.db/insert-entities-returning-instances! {:model model :rows rows})]
+                    (vswap! events conj (events/created (get-in topics [model :create]) instances))
+                    instances))
+        delete! (fn [model rows delete!]
+                  (when (seq rows)
+                    (let [rows  (mapv #(t2/instance model %) rows)
+                          event (events/deleted (get-in topics [model :delete]) model rows)]
+                      (delete! rows)
+                      (vswap! events conj event))))]
+    {:insert-one!  (fn [model row]
+                     (let [instance (first (insert! model [row]))]
+                       (get instance (first (t2/primary-keys model)))))
+     :insert-many! (fn [model rows]
+                     (insert! model (vec rows)))
+     :update!      (fn [model id existing row]
+                     (let [previous (t2/instance model existing)
+                           changes  (into {} (remove (fn [[k v]] (= v (get previous k)))) row)]
+                       ((plain :update!) model id existing row)
+                       (when (seq changes)
+                         (vswap! events conj (events/updated (get-in topics [model :update])
+                                                             [previous]
+                                                             [(events/updated-row previous changes)])))))
+     :delete-one!  (fn [model id existing]
+                     (delete! model (some-> existing vector) (fn [_rows] ((plain :delete-one!) model id existing))))
+     :delete-many! (fn [model id-col existing-rows]
+                     (delete! model existing-rows (fn [rows] ((plain :delete-many!) model id-col rows))))}))
+
+(mu/defn update-notification* :- [:map {:closed true} [:events events/Events]]
+  "Update an existing notification with `new-notification`, returning the events of the writes as `:events`, which the
+  caller publishes."
   [existing-notification :- ::FullyHydratedNotification
    new-notification      :- [:map {:closed false} [:id ms/PositiveInt]]]
   (validate-email-handlers! (:handlers new-notification))
-  (let [notification-id (:id existing-notification)]
+  (let [notification-id (:id existing-notification)
+        events          (volatile! [])]
     (t2/with-transaction [_conn]
       (let [active-before?    (:active (notification.db/notification notification-id))
             subscriptions-old (m/index-by :id (notification.db/subscriptions-for-notifications [notification-id]))
             handlers-old      (m/index-by :id (notification.db/handlers-for-notifications [notification-id]))]
-        (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec)
+        (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec (recording-ops events))
         (let [active-after?     (:active (notification.db/notification notification-id))
               subscriptions-new (m/index-by :id (notification.db/subscriptions-for-notifications [notification-id]))
               handlers-new      (notification.db/handlers-for-notifications [notification-id])
@@ -970,61 +1107,116 @@
             (notification.task.send-trigger/delete-trigger-for-subscription! id))
           (doseq [[id subscription] subscriptions-new
                   :when             (not= subscription (get subscriptions-old id))]
-            (notification.task.send-trigger/update-subscription-trigger! subscription)))))))
+            (notification.task.send-trigger/update-subscription-trigger! subscription)))))
+    {:events @events}))
 
-(mu/defn update-notifications! :- :int
-  "Apply `changes` to the Notifications with `notification-ids`, returning the number updated. A change of `:active`
-  adds or removes the Quartz triggers of their cron subscriptions."
+(mu/defn update-notification! :- :nil
+  "Update an existing notification with `new-notification` as [[update-notification*]] does, publishing the events of
+  the writes."
+  [existing-notification :- ::FullyHydratedNotification
+   new-notification      :- [:map {:closed false} [:id ms/PositiveInt]]]
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle! (:events (update-notification* existing-notification new-notification))))
+  nil)
+
+(mu/defn update-notifications* :- [:map {:closed true} [:count :int] [:events events/Events]]
+  "Apply `changes` to the Notifications with `notification-ids`, returning the number updated as `:count` and the events
+  of the writes as `:events`, which the caller publishes. A change of `:active` adds or removes the Quartz triggers of
+  their cron subscriptions."
   [notification-ids :- [:sequential ms/PositiveInt]
    changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
   (if (seq notification-ids)
     (let [notifications (notification.db/notifications-by-id notification-ids)
           flipped       (when (contains? changes :active)
-                          (map :id (remove #(= (boolean (:active %)) (boolean (:active changes))) notifications)))]
+                          (map :id (remove #(= (boolean (:active %)) (boolean (:active changes))) notifications)))
+          changed       (filterv #(seq (into {} (remove (fn [[k v]] (= v (get % k)))) changes)) notifications)]
       (notification.db/update-notifications! notification-ids changes)
       (when (seq flipped)
         (update-subscription-triggers! (:active changes)
                                        (notification.db/subscriptions-for-notifications (vec flipped))))
-      (count notifications))
-    0))
+      {:count  (count notifications)
+       :events (if (seq changed)
+                 [(events/updated :event/notification-row-update
+                                  changed
+                                  (mapv #(events/updated-row % changes) changed))]
+                 [])})
+    {:count 0 :events []}))
 
-(mu/defn delete-notifications! :- :int
+(mu/defn update-notifications! :- :int
+  "Apply `changes` to the Notifications with `notification-ids` as [[update-notifications*]] does, publishing the
+  events of the writes, and return the number updated."
+  [notification-ids :- [:sequential ms/PositiveInt]
+   changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
+  (t2/with-transaction [_conn]
+    (let [{:keys [count events]} (update-notifications* notification-ids changes)]
+      (events/publish-lifecycle! events)
+      count)))
+
+(mu/defn delete-notifications* :- [:map {:closed true} [:count :int] [:events events/Events]]
   "Delete the Notifications with `notification-ids` along with the NotificationCards they hold and the Quartz triggers
-  of their cron subscriptions, returning the number deleted."
+  of their cron subscriptions, returning the number deleted as `:count` and the events of the writes as `:events`,
+  which the caller publishes."
   [notification-ids :- [:sequential ms/PositiveInt]]
   (if (seq notification-ids)
     (let [notifications (notification.db/notifications-by-id notification-ids)]
       (doseq [subscription (notification.db/subscriptions-for-notifications notification-ids)
               :when        (= :notification-subscription/cron (:type subscription))]
         (notification.task.send-trigger/delete-trigger-for-subscription! (:id subscription)))
-      (when-let [payload-ids (not-empty (vec (keep #(when (= :notification/card (:payload_type %)) (:payload_id %))
-                                                   notifications)))]
-        (notification.db/delete-notification-cards! payload-ids))
-      (notification.db/delete-notifications! notification-ids))
-    0))
+      (let [payload-ids (not-empty (into #{} (keep #(when (= :notification/card (:payload_type %)) (:payload_id %)))
+                                         notifications))
+            cards       (when payload-ids (notification.db/notification-cards payload-ids))
+            card-event  (when (seq cards)
+                          (events/deleted :event/notification-card-delete :model/NotificationCard (vec cards)))
+            _           (when (seq cards)
+                          (notification.db/delete-notification-cards! (mapv :id cards)))
+            event       (events/deleted :event/notification-row-delete :model/Notification notifications)]
+        (notification.db/delete-notifications! notification-ids)
+        {:count  (count notifications)
+         :events (cond-> [] card-event (conj card-event) (seq notifications) (conj event))}))
+    {:count 0 :events []}))
 
-(mu/defn delete-notification-recipient!
-  "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
+(mu/defn delete-notifications! :- :int
+  "Delete the Notifications with `notification-ids` as [[delete-notifications*]] does, publishing the events of the
+  writes, and return the number deleted."
+  [notification-ids :- [:sequential ms/PositiveInt]]
+  (t2/with-transaction [_conn]
+    (let [{:keys [count events]} (delete-notifications* notification-ids)]
+      (events/publish-lifecycle! events)
+      count)))
+
+(defn- delete-recipients*
+  "Delete the NotificationRecipients `recipients`, returning their delete event as `:events`."
+  [recipients]
+  (if (seq recipients)
+    (let [event (events/deleted :event/notification-recipient-delete :model/NotificationRecipient (vec recipients))]
+      (notification.db/delete-recipients! (mapv :id recipients))
+      {:events [event]})
+    {:events []}))
+
+(mu/defn delete-notification-recipient! :- :nil
+  "Delete the NotificationRecipient with `recipient-id`, publishing its event."
   [recipient-id :- ms/PositiveInt]
-  (notification.db/delete-recipient! recipient-id))
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle!
+     (:events (delete-recipients* (some-> (notification.db/recipient recipient-id) vector)))))
+  nil)
 
-(mu/defn delete-notification-recipients-for-user!
-  "Delete the NotificationRecipients of the User with `user-id`, returning the number deleted."
+(mu/defn delete-notification-recipients-for-user! :- :nil
+  "Delete the NotificationRecipients of the User with `user-id`, publishing their events."
   [user-id :- ::lib.schema.id/user]
-  (notification.db/delete-recipients-for-user! user-id))
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle! (:events (delete-recipients* (notification.db/recipients-for-user user-id)))))
+  nil)
 
 (defn unsubscribe-user!
-  "Unsubscribe a user from a notification."
+  "Unsubscribe a user from a notification, publishing the events of the deleted NotificationRecipients."
   [notification-id user-id]
-  (notification.db/delete-user-recipients-for-notification! notification-id user-id))
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle!
+     (:events (delete-recipients* (notification.db/user-recipients-for-notification notification-id user-id)))))
+  nil)
 
 ;;; ------------------------------------------------ Specs ------------------------------------------------
-
-(defmethod events/spec :model/Notification
-  [_model]
-  {:create :event/notification-row-create
-   :update :event/notification-row-update
-   :delete :event/notification-row-delete})
 
 (defmethod app-db-copy/spec :model/Notification [_model]
   {:skip? false})
@@ -1033,24 +1225,12 @@
   {:track [:payload_type :active :internal_id :payload_id :creator_id]
    :skip  []})
 
-(defmethod events/spec :model/NotificationSubscription
-  [_model]
-  {:create :event/notification-subscription-create
-   :update :event/notification-subscription-update
-   :delete :event/notification-subscription-delete})
-
 (defmethod app-db-copy/spec :model/NotificationSubscription [_model]
   {:skip? false})
 
 (defmethod change-log/spec :model/NotificationSubscription [_model]
   {:track [:notification_id :type :event_name :cron_schedule :ui_display_type]
    :skip  []})
-
-(defmethod events/spec :model/NotificationHandler
-  [_model]
-  {:create :event/notification-handler-create
-   :update :event/notification-handler-update
-   :delete :event/notification-handler-delete})
 
 (defmethod app-db-copy/spec :model/NotificationHandler [_model]
   {:skip? false})
@@ -1059,24 +1239,12 @@
   {:track [:channel_type :notification_id :channel_id :template_id :active]
    :skip  []})
 
-(defmethod events/spec :model/NotificationRecipient
-  [_model]
-  {:create :event/notification-recipient-create
-   :update :event/notification-recipient-update
-   :delete :event/notification-recipient-delete})
-
 (defmethod app-db-copy/spec :model/NotificationRecipient [_model]
   {:skip? false})
 
 (defmethod change-log/spec :model/NotificationRecipient [_model]
   {:track [:notification_handler_id :type :user_id :permissions_group_id :details]
    :skip  []})
-
-(defmethod events/spec :model/NotificationCard
-  [_model]
-  {:create :event/notification-card-create
-   :update :event/notification-card-update
-   :delete :event/notification-card-delete})
 
 (defmethod app-db-copy/spec :model/NotificationCard [_model]
   {:skip? false})

@@ -20,8 +20,7 @@
 
 (doto :model/PulseCard
   (derive :metabase/model)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 ;;; ------------------------------------------------- Persistence Functions -------------------------------------------------
 
@@ -47,43 +46,58 @@
 
 ;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
-(mu/defn create-pulse-cards!
-  "Insert the PulseCard `rows`."
+(mu/defn create-pulse-cards* :- [:map [:pulse-cards [:sequential :map]] [:events events/Events]]
+  "Insert the PulseCard `rows`, returning the inserted instances as `:pulse-cards` and their create event as `:events`,
+  which the caller publishes."
   [rows :- [:sequential ::pulse.schema/pulse-card.create]]
-  (pulse.db/insert-pulse-cards! rows))
+  (if (seq rows)
+    (let [pulse-cards (pulse.db/insert-pulse-cards! rows)]
+      {:pulse-cards pulse-cards
+       :events      [(events/created :event/pulse-card-create pulse-cards)]})
+    {:pulse-cards [] :events []}))
 
-(mu/defn append-pulse-cards!
-  "Creates new PulseCards, joining the given card, pulse, and dashboard card and setting appropriate defaults for other
-  values if they're not provided."
+(mu/defn- pulse-cards-to-append :- [:sequential ::pulse.schema/pulse-card.create]
+  "The rows of the PulseCards of `new-pulse-cards`, with the defaults of a PulseCard."
   [new-pulse-cards :- [:sequential NewPulseCard]]
-  (create-pulse-cards!
-   (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
-     {:card_id           card_id
-      :pulse_id          pulse_id
-      :dashboard_card_id dashboard_card_id
-      :position          (u/or-with some? position (next-position-for pulse_id))
-      :include_csv       (boolean include_csv)
-      :include_xls       (boolean include_xls)
-      :format_rows       (boolean format_rows)
-      :pivot_results     (boolean pivot_results)})))
+  (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
+    {:card_id           card_id
+     :pulse_id          pulse_id
+     :dashboard_card_id dashboard_card_id
+     :position          (u/or-with some? position (next-position-for pulse_id))
+     :include_csv       (boolean include_csv)
+     :include_xls       (boolean include_xls)
+     :format_rows       (boolean format_rows)
+     :pivot_results     (boolean pivot_results)}))
 
-(mu/defn delete-pulse-cards-for-pulse!
-  "Delete the PulseCards of the Pulse with `pulse-id`."
+(mu/defn append-pulse-cards* :- [:map [:pulse-cards [:sequential :map]] [:events events/Events]]
+  "Create new PulseCards as [[create-pulse-cards*]] does, joining the given card, pulse, and dashboard card and setting
+  appropriate defaults for other values if they're not provided."
+  [new-pulse-cards :- [:sequential NewPulseCard]]
+  (create-pulse-cards* (vec (pulse-cards-to-append new-pulse-cards))))
+
+(mu/defn delete-pulse-cards-for-pulse* :- [:map {:closed true} [:events events/Events]]
+  "Delete the PulseCards of the Pulse with `pulse-id`, returning their delete event as `:events`, which the caller
+  publishes."
   [pulse-id :- ::lib.schema.id/pulse]
-  (pulse.db/delete-pulse-cards-for-pulse! pulse-id))
+  (let [rows (pulse.db/pulse-cards-for-pulse pulse-id)]
+    (if (seq rows)
+      (let [event (events/deleted :event/pulse-card-delete :model/PulseCard rows)]
+        (pulse.db/delete-pulse-cards-for-pulse! pulse-id)
+        {:events [event]})
+      {:events []})))
 
-(mu/defn delete-pulse-cards-for-dashcards!
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
+(mu/defn delete-pulse-cards-for-dashcards* :- [:map {:closed true} [:events events/Events]]
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning their delete event as `:events`, which
+  the caller publishes."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids))
+  (let [rows (if (seq dashcard-ids) (pulse.db/pulse-cards-for-dashcards dashcard-ids) [])]
+    (if (seq rows)
+      (let [event (events/deleted :event/pulse-card-delete :model/PulseCard rows)]
+        (pulse.db/delete-pulse-cards-for-dashcards! dashcard-ids)
+        {:events [event]})
+      {:events []})))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
-
-(defmethod events/spec :model/PulseCard
-  [_model]
-  {:create :event/pulse-card-create
-   :update :event/pulse-card-update
-   :delete :event/pulse-card-delete})
 
 (defmethod app-db-copy/spec :model/PulseCard [_model]
   {:skip? false})

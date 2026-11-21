@@ -107,10 +107,10 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one :model/Pulse :id pulse-id))
 
-(mu/defn pulses-for-dashboard
-  "The Pulses of the Dashboard with `dashboard-id`, archived or not."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/Pulse :dashboard_id dashboard-id))
+(mu/defn pulses-for-dashboards
+  "The Pulses (subscriptions) of the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential {:min 1} ::lib.schema.id/dashboard]]
+  (t2/select :model/Pulse :dashboard_id [:in dashboard-ids]))
 
 (mu/defn pulse-id
   "The id of the Pulse with `pulse-id` if it exists, or nil."
@@ -250,11 +250,21 @@
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (t2/delete! :model/Pulse :id [:in pulse-ids]))
 
-(mu/defn update-pulses-for-dashboard!
-  "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse {:dashboard_id dashboard-id} (assoc changes :updated_at :updated_at)))
+(mu/defn update-pulses-for-dashboards!
+  "Apply the changes of each Dashboard in `changes-by-dashboard`, a map of Dashboard id to changes with the same keys,
+  to the Pulses of that Dashboard in one statement, leaving `updated_at` untouched."
+  [changes-by-dashboard :- [:map-of {:min 1} ::lib.schema.id/dashboard ::pulse.schema/pulse.update]]
+  (let [columns (vec (distinct (mapcat keys (vals changes-by-dashboard))))
+        value-of (fn [column]
+                   (into [:case]
+                         (concat (mapcat (fn [[dashboard-id changes]]
+                                           [[:= :dashboard_id dashboard-id] (get changes column)])
+                                         changes-by-dashboard)
+                                 [:else column])))]
+    (t2/update! :model/Pulse
+                :dashboard_id [:in (vec (keys changes-by-dashboard))]
+                (-> (into {} (map (juxt identity value-of)) columns)
+                    (assoc :updated_at :updated_at)))))
 
 (mu/defn pulse-cards-for-pulses
   "The non-archived Cards of the Pulses with `pulse-ids` together with their PulseCard options, in position order."
@@ -296,14 +306,24 @@
                        :group-by [:pulse_id]})))
 
 (mu/defn insert-pulse-cards!
-  "Insert the PulseCard `rows`."
+  "Insert the PulseCard `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.update]]
-  (t2/insert! :model/PulseCard rows))
+  (t2/insert-returning-instances! :model/PulseCard rows))
+
+(mu/defn pulse-cards-for-dashcards
+  "The PulseCards of the DashboardCards with `dashcard-ids`."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/select :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
 
 (mu/defn delete-pulse-cards-for-dashcards!
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+
+(mu/defn pulse-cards-for-pulse
+  "The PulseCards of the Pulse with `pulse-id`."
+  [pulse-id :- ::lib.schema.id/pulse]
+  (t2/select :model/PulseCard :pulse_id pulse-id))
 
 (mu/defn delete-pulse-cards-for-pulse!
   "Delete the PulseCards of the Pulse with `pulse-id`."
@@ -335,10 +355,10 @@
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
   (t2/select-fn-set :pulse_id :model/PulseChannel :pulse_id [:in pulse-ids]))
 
-(mu/defn pulse-channel-details
-  "The details of the PulseChannel with `channel-id`, or nil."
-  [channel-id :- ms/PositiveInt]
-  (t2/select-one-fn :details :model/PulseChannel :id channel-id))
+(mu/defn pulse-channel-details-by-ids
+  "A map of PulseChannel id to its `:details`, for the PulseChannels with `channel-ids`."
+  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select-pk->fn :details :model/PulseChannel :id [:in channel-ids]))
 
 (mu/defn pulse-channels-without-recipients
   "The id, details, Channel, and type of the PulseChannels of the Pulse with `pulse-id` that have no recipients."
@@ -373,9 +393,9 @@
                           [:= :d.archived false]]}))
 
 (mu/defn insert-pulse-channel!
-  "Insert the PulseChannel `row` and return its id."
+  "Insert the PulseChannel `row` and return the inserted instance."
   [row :- ::pulse.schema/pulse-channel.update]
-  (t2/insert-returning-pk! :model/PulseChannel row))
+  (t2/insert-returning-instance! :model/PulseChannel row))
 
 (mu/defn update-pulse-channel!
   "Apply `changes` to the PulseChannel with `channel-id`."
@@ -426,10 +446,10 @@
   [channel-id :- ms/PositiveInt]
   (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))
 
-(mu/defn pulse-channel-recipients-for-user
-  "The PulseChannelRecipients of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select :model/PulseChannelRecipient :user_id user-id))
+(mu/defn pulse-channel-recipients-for-users
+  "The PulseChannelRecipients of the Users with `user-ids`."
+  [user-ids :- [:sequential ::lib.schema.id/user]]
+  (t2/select :model/PulseChannelRecipient :user_id [:in user-ids]))
 
 (mu/defn pulse-channel-recipients-by-ids
   "The PulseChannelRecipients with `recipient-ids`."
@@ -446,9 +466,9 @@
                    {:group-by [:pulse_channel_id]})))
 
 (mu/defn insert-pulse-channel-recipients!
-  "Insert the PulseChannelRecipient `rows`."
+  "Insert the PulseChannelRecipient `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.update]]
-  (t2/insert! :model/PulseChannelRecipient rows))
+  (t2/insert-returning-instances! :model/PulseChannelRecipient rows))
 
 (mu/defn delete-pulse-channel-recipients!
   "Delete the PulseChannelRecipients with `recipient-ids`."

@@ -224,9 +224,9 @@
   (t2/select-one-fn :card_id :model/NotificationCard :id notification-card-id))
 
 (mu/defn insert-notification-card!
-  "Insert `notification-card` and return its ID."
+  "Insert `notification-card` and return the inserted instance."
   [notification-card :- NotificationCardRow]
-  (t2/insert-returning-pk! :model/NotificationCard notification-card))
+  (t2/insert-returning-instance! :model/NotificationCard notification-card))
 
 (mu/defn delete-notification-cards!
   "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."
@@ -300,10 +300,10 @@
                                     [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
                                     user-clause)})))
 
-(mu/defn insert-handler!
-  "Insert `handler` and return its ID."
-  [handler :- NotificationHandlerRow]
-  (t2/insert-returning-pk! :model/NotificationHandler handler))
+(mu/defn insert-handlers!
+  "Insert the NotificationHandler `handlers`, returning the inserted instances in their order."
+  [handlers :- [:sequential {:min 1} NotificationHandlerRow]]
+  (t2/insert-returning-instances! :model/NotificationHandler handlers))
 
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
@@ -324,30 +324,34 @@
                        :type :notification-recipient/raw-value))
 
 (mu/defn insert-recipients!
-  "Insert one NotificationRecipient map or a sequence of them, returning the number inserted."
-  [recipients :- [:or NotificationRecipientRow [:sequential NotificationRecipientRow]]]
-  (t2/insert! :model/NotificationRecipient recipients))
+  "Insert the NotificationRecipient `recipients`, returning the inserted instances."
+  [recipients :- [:sequential {:min 1} NotificationRecipientRow]]
+  (t2/insert-returning-instances! :model/NotificationRecipient recipients))
 
-(mu/defn delete-recipient!
-  "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
+(mu/defn recipient
+  "The NotificationRecipient with `recipient-id`, or nil."
   [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/NotificationRecipient :id recipient-id))
+  (t2/select-one :model/NotificationRecipient :id recipient-id))
 
-(mu/defn delete-recipients-for-user!
-  "Delete the NotificationRecipients of the User with `user-id`, returning the number deleted."
+(mu/defn delete-recipients!
+  "Delete the NotificationRecipients with `recipient-ids`, returning the number deleted."
+  [recipient-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/NotificationRecipient :id [:in recipient-ids]))
+
+(mu/defn recipients-for-user
+  "The NotificationRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/NotificationRecipient :user_id user-id))
+  (t2/select :model/NotificationRecipient :user_id user-id))
 
-(mu/defn delete-user-recipients-for-notification!
-  "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
-  returning the number deleted."
+(mu/defn user-recipients-for-notification
+  "The NotificationRecipients for the User with `user-id` on the Notification with `notification-id`."
   [notification-id :- ms/PositiveInt
    user-id         :- ::lib.schema.id/user]
-  (t2/delete! :model/NotificationRecipient
-              :user_id user-id
-              :notification_handler_id [:in ^:allow-subquery {:select [:id]
-                                                              :from   [:notification_handler]
-                                                              :where  [:= :notification_id notification-id]}]))
+  (t2/select :model/NotificationRecipient
+             :user_id user-id
+             :notification_handler_id [:in ^:allow-subquery {:select [:id]
+                                                             :from   [:notification_handler]
+                                                             :where  [:= :notification_id notification-id]}]))
 
 ;;; ---------------------------------------------- Channels ----------------------------------------------
 

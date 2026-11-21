@@ -426,10 +426,10 @@
       (parameter-card/delete-all-for-parameterized-objects! "dashboard" dashboard-ids)
       (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
       (cache-config/delete-target-configs! "dashboard" dashboard-ids)
-      (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-      (let [event (events/deleted :event/dashboard-delete :model/Dashboard dashboards)]
+      (let [pulses (pulse/delete-pulses* (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
+            event  (events/deleted :event/dashboard-delete :model/Dashboard dashboards)]
         (dashboards.db/delete-dashboards! dashboard-ids)
-        {:events [event]}))))
+        {:events (conj (vec (:events pulses)) event)}))))
 
 (mu/defn delete-dashboards! :- :nil
   "Delete the Dashboards with `dashboard-ids` as [[delete-dashboards*]] does, publishing the events of the writes."
