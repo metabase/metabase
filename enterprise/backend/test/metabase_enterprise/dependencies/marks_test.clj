@@ -7,12 +7,14 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.actions.models :as action]
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
    [metabase.measures.models.measure :as measure]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.queries.models.card :as card]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
@@ -196,8 +198,7 @@
                 analysis"
           (is (= (marked {:dependency [:card-native :snippet-inner :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(t2/update! :model/NativeQuerySnippet :id (id-of world :snippet-inner)
-                                            {:content "ORDERS"})))))
+                 (marks! world #(snippet/update-snippet! (id-of world :snippet-inner) {:content "ORDERS"})))))
         (testing "a measure definition change marks its own dependency and every transitive dependent's result
                 metadata and analysis"
           (is (= (marked {:dependency      [:measure]
@@ -215,7 +216,7 @@
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(t2/delete! :model/NativeQuerySnippet :id (id-of world :snippet-inner))))))
+                 (marks! world #(snippet/delete-snippets! [(id-of world :snippet-inner)])))))
         (testing "deleting a measure marks every transitive dependent's result metadata and analysis"
           (is (= (marked {:analysis [:card-d :card-e] :result-metadata [:card-d :card-e]})
                  (marks! world #(measure/delete-measures! [(id-of world :measure)])))))))))
@@ -364,12 +365,12 @@
           (let [world (assoc world :action [:action action-id])]
             (testing "a query action's query change marks the action's dependency"
               (is (= (marked {:dependency [:action]})
-                     (marks! world #(t2/update! :model/QueryAction :action_id action-id
-                                                {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                  "UPDATE venues SET id = 2")})))))
+                     (marks! world #(action/update-query-actions! [{:action_id     action-id
+                                                                    :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                                                     "UPDATE venues SET id = 2")}])))))
             (testing "an action rename marks nothing"
               (is (= (marked {:triggers? false})
-                     (marks! world #(t2/update! :model/Action :id action-id {:name "Renamed"})))))))))))
+                     (marks! world #(action/update-actions! [{:id action-id :name "Renamed"}])))))))))))
 
 (deftest data-app-writes-test
   (mt/with-premium-features #{:dependencies}

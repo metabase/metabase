@@ -8,6 +8,7 @@
    [metabase.graph.core :as graph]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -214,7 +215,7 @@
             (mt/with-temp [:model/NativeQuerySnippet snippet]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
               (computed! :snippet (:id snippet))
-              (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "new content"})
+              (snippet/update-snippet! (:id snippet) {:content "new content"})
               (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test

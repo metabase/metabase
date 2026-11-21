@@ -14,6 +14,7 @@
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.dimension :as dimension]
@@ -210,7 +211,7 @@
         (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                        :to_entity_type   :snippet :to_entity_id outer-id})
         (computed! :card card-id)
-        (t2/delete! :model/NativeQuerySnippet :id inner-id)
+        (snippet/delete-snippets! [inner-id])
         (is (pending? :card card-id))))))
 
 (deftest card-marks-own-statuses-test

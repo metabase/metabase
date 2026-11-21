@@ -9,6 +9,7 @@
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.test-util :as deps.test]
+   [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
    [metabase.config.core :as config]
@@ -985,7 +986,7 @@
                                   set))]
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :venues) action-id))
-            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (action/update-implicit-actions! [{:action_id action-id :table_id (mt/id :categories)}])
             (deps.test/synchronously-run-dependency-job!)
             (is (contains? (dependents :categories) action-id))
             (is (not (contains? (dependents :venues) action-id)))))))))
