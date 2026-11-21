@@ -10,17 +10,18 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.config.core :as config]
    [metabase.core.init-test :as init-test]
-   [metabase.metabot.db :as metabot.db]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.permissions.settings :as permissions.settings]
    [metabase.pulse.db :as pulse.db]
+   [metabase.queries.models.card :as card]
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection Types)))
@@ -192,7 +193,7 @@
           (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}
                          :model/Card                card                 {}]
             (is (= [["report_card" (:id card) "update"]]
-                   (logged-by #(metabot.db/link-card-to-conversation! (:id card) conversation-id "chart"))))))
+                   (logged-by #(card/link-to-metabot-conversation! (:id card) conversation-id "chart"))))))
         (testing "the classifier's data sensitivity cleared, for a table and then for its database"
           (mt/with-temp [:model/Database db      {}
                          :model/Table    table-a {:db_id (:id db)}
@@ -200,9 +201,9 @@
                          :model/Field    field-a {:table_id (:id table-a), :data_sensitivity :PII}
                          :model/Field    field-b {:table_id (:id table-b), :data_sensitivity :PII}]
             (is (= [["metabase_field" (:id field-a) "update"]]
-                   (logged-by #(sync.db/reset-classifier-data-sensitivity-for-table! (:id table-a)))))
+                   (logged-by #(field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-table-clause (:id table-a))))))
             (is (= [["metabase_field" (:id field-b) "update"]]
-                   (logged-by #(sync.db/reset-classifier-data-sensitivity-for-database! (:id db)))))))
+                   (logged-by #(field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-database-clause (:id db))))))))
         (testing "every tenant deactivated"
           (mt/with-temp [:model/Tenant tenant {}]
             (t2/with-transaction [_conn nil {:rollback-only true}]

@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration
   methods."
   (:require
+   [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
@@ -388,11 +389,6 @@
                       [:= :dcs.card_id card-id]
                       [:not= :dc.dashboard_id dashboard-id]]}))
 
-(mu/defn delete-dashcard-series!
-  "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
-  [series-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
-
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
@@ -410,19 +406,6 @@
                                       :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                       :where  [:in :action.model_id model-ids]})
     #{}))
-
-(mu/defn delete-card-moderation-reviews!
-  "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
-  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
-  [card-id :- ::lib.schema.id/card]
-  ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
-  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
-
-(mu/defn delete-card-moderation-reviews-of-cards!
-  "Delete the ModerationReviews of the Cards with `card-ids`, returning the number deleted.
-  Bypasses delete capture like [[delete-card-moderation-reviews!]]: use it only when deleting the Cards."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id [:in card-ids]))
 
 (mu/defn card-notification-ids-for-cards
   "The IDs of the card Notifications attached to the Cards with `card-ids`."
@@ -895,3 +878,99 @@
                             [:= :collection.archived false]]
                            [:report_dashboard :dashboard]
                            [:= :dashboard.id :card.dashboard_id]]}) :can_read :can_write))
+
+(mu/defn card-ids-for-databases-reducible
+  "A reducible of the `:id`s of the Cards of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/reducible-query {:from   [(t2/table-name :model/Card)]
+                       :select [:id]
+                       :where  [:in :database_id database-ids]}))
+
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
+(mu/defn delete-cards-of-databases! :- :int
+  "Delete the Cards with `card-ids` that still belong to one of the Databases with `database-ids`, returning the number
+  deleted."
+  [database-ids :- [:sequential ::lib.schema.id/database]
+   card-ids     :- [:sequential ::lib.schema.id/card]]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+  (first (t2/query {:delete-from (t2/table-name :model/Card)
+                    :where       [:and
+                                  [:in :database_id database-ids]
+                                  [:in :id card-ids]]})))
+
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
+
+;;; ------------------------------------------------ Card stamps ------------------------------------------------
+
+(def ^:private Temporal
+  "A `java.time` instant, date, or date-time."
+  [:fn #(instance? java.time.temporal.Temporal %)])
+
+(mu/defn update-cards-last-used-at!
+  "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
+  [card-id->timestamp :- [:map-of ::lib.schema.id/card Temporal]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+  (t2/query {:update [(t2/table-name :model/Card)]
+             :where  [:in :id (keys card-id->timestamp)]
+             :set    {:last_used_at (into [:case]
+                                          (mapcat (fn [[id timestamp]]
+                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                  card-id->timestamp))
+                      :updated_at :updated_at}}))
+
+(mu/defn increment-card-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`, in one raw
+  statement that publishes no event, returning the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (mdb/increment-counts! :model/Card :view_count count->ids))
+
+(mu/defn set-card-last-used-at!
+  "Set `last_used_at` of the Card with `card-id`, returning the number updated."
+  [card-id      :- ::lib.schema.id/card
+   last-used-at :- ms/TemporalInstant]
+  (t2/update! :model/Card :id card-id {:last_used_at last-used-at}))
+
+(mu/defn shift-card-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Cards in the Collection with
+  `collection-id` whose position matches `position-clause`, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- [:or
+                       [:tuple [:enum :> :>=] ms/PositiveInt]
+                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
+   plus-or-minus   :- [:enum :+ :-]]
+  (t2/update! :model/Card {:collection_id       collection-id
+                           :collection_position position-clause}
+              {:collection_position [plus-or-minus :collection_position 1]}))
+
+(mu/defn set-cards-cache-invalidated-at!
+  "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
+  [card-ids       :- [:sequential ::lib.schema.id/card]
+   invalidated-at :- ms/TemporalInstant]
+  (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
+
+(mu/defn set-card-metabot-chart!
+  "Set the MetabotConversation and chart the Card with `card-id` was saved from, with a statement against its table
+  that publishes no event, returning the number updated."
+  [card-id         :- ::lib.schema.id/card
+   conversation-id :- :string
+   chart-id        :- :string]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the caller logs the row first
+  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                       :metabot_chart_id        chart-id}))
+
+(mu/defn delete-query-executions-before!
+  "Delete up to `batch-size` of the QueryExecutions whose `time-column` is at or before `cutoff`, returning the number
+  deleted."
+  [time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (mdb/delete-oldest-rows! :model/QueryExecution time-column cutoff batch-size))

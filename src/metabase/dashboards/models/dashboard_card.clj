@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.actions.models :as actions.models]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -466,6 +467,29 @@
       (doseq [[changes group] (group-by #(dissoc % :id) rows)]
         (dashboards.db/update-dashcards! (mapv :id group) changes))
       rows)))
+
+(mu/defn delete-dashcards-of-archived-actions! :- :nil
+  "Delete the DashboardCards of the Actions with `action-ids`, which are being archived, in one statement. Unlike
+  [[delete-dashboard-cards!]] it leaves their PulseCards, as archiving an Action always has."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (dashboards.db/delete-dashcards-of-actions! action-ids)
+  nil)
+
+(defmethod actions.models/delete-for-archived-actions! :model/DashboardCard
+  [_model action-ids]
+  (delete-dashcards-of-archived-actions! action-ids))
+
+(defmethod card/create-followers! :model/DashboardCard
+  [_model rows]
+  (create-dashboard-cards! rows))
+
+(defmethod card/update-followers! :model/DashboardCard
+  [_model rows]
+  (update-dashboard-card-rows! rows))
+
+(defmethod card/delete-followers! :model/DashboardCard
+  [_model ids]
+  (delete-dashboard-cards! ids))
 
 (defn- set-questions-archived!
   "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."

@@ -315,18 +315,31 @@
       (some? lo-value)           (assoc :transform/checkpoint-lo (encode-checkpoint-value lo-value))
       (some? hi-value)           (assoc :transform/checkpoint-hi (encode-checkpoint-value hi-value)))))
 
+(defmulti record-run-changes!
+  "Apply `changes` that running a Transform records to the row of `model` with `id`: the watermark or target Table of
+  a Transform, the checkpoint range a TransformRun reads. The model, whose namespace requires this one, implements it
+  with its own write function."
+  {:arglists '([model id changes])}
+  (fn [model _id _changes] model))
+
+(defn- record-run-changes-of!
+  "Call [[record-run-changes!]] for `model`, after loading it."
+  [model id changes]
+  (t2/resolve-model model)
+  (record-run-changes! model id changes))
+
 (defn- update-transform!
-  "Applies `changes` to the Transform with `transform-id` through the write function of its model, whose namespace
-  requires this one."
+  "Apply `changes` to the Transform with `transform-id` through the write function of its model."
   [transform-id changes]
-  ((requiring-resolve 'metabase.transforms.models.transform/update-transforms!) {transform-id changes}))
+  (record-run-changes-of! :model/Transform transform-id changes))
 
 (mu/defn save-watermark! :- :nil
   "Commits the incremental transforms :hi watermark value to the appdb."
   [transform-id        :- ::lib.schema.id/transform
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (let [hi-value (:value (:hi source-range-params))]
-    (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})))
+    (update-transform! transform-id {:last_checkpoint_value (some-> hi-value encode-checkpoint-value)})
+    nil))
 
 (mu/defn save-run-checkpoint-range! :- [:maybe :int]
   "Persist the checkpoint range (lo/hi) on a transform run record.
@@ -335,10 +348,10 @@
    source-range-params :- [:maybe ::transforms-base.schema/source-range-params]]
   (when (and run-id source-range-params)
     (let [{:keys [checkpoint-filter-field-id lo hi]} source-range-params]
-      (transforms-base.db/update-transform-run! run-id
-                                                (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
-                                                  lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
-                                                  hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
+      (record-run-changes-of! :model/TransformRun run-id
+                              (cond-> {:checkpoint_filter_field_id checkpoint-filter-field-id}
+                                lo (assoc :checkpoint_lo_value (encode-checkpoint-value (:value lo)))
+                                hi (assoc :checkpoint_hi_value (encode-checkpoint-value (:value hi))))))))
 
 (mu/defn- coerce-to-local-datetime :- ::transforms-base.schema/temporal
   "Coerce a temporal value to LocalDateTime, stripping any timezone information."

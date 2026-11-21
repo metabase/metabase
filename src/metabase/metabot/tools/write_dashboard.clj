@@ -648,7 +648,7 @@
                                             {:id api/*current-user-id*}
                                             false)]
         (when conversation-id
-          (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
+          (queries.card/link-to-metabot-conversation! (:id card) conversation-id chart-id))
         {:chart-id chart-id, :card-id (:id card), :card card}))))
 
 (defn- with-card-ids

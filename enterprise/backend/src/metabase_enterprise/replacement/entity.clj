@@ -54,9 +54,9 @@
 
 (mu/defn apply-writes!
   "Apply `writes`, each an update of the row of a model with an id, in order, by the `:update!` of the replacement spec
-  of the model when it has one."
+  of the model, the write function of its module."
   [writes :- replacement.spec/Writes]
   (doseq [[model id changes] writes]
     (if-let [update! (:update! (replacement.spec/spec model))]
       (update! id changes)
-      (replacement.db/update-row! model id changes))))
+      (throw (ex-info (format "%s has no :update! in its replacement spec" model) {:model model})))))

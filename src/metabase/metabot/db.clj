@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
-   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -945,17 +944,6 @@
              :archived false
              {:order-by [[:id :asc]]}))
 
-(mu/defn link-card-to-conversation!
-  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`."
-  [card-id :- ::lib.schema.id/card
-   conversation-id :- :string
-   chart-id :- :string]
-  (t2/with-transaction [_conn]
-    (change-log/log-rows! :model/Card :update :id card-id)
-    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-    (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
-                                                         :metabot_chart_id        chart-id})))
-
 (mu/defn conversation-dashboard-questions
   "The unarchived dashboard questions of `dashboard-id` that were saved from `chart-id` in the conversation with
   `conversation-id`, oldest first."
@@ -1258,3 +1246,23 @@
   "A map of Segment ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
+
+(mu/defn insert-conversation-row!
+  "Insert the MetabotConversation `row`, which carries its own id and timestamps."
+  [row :- ::metabot.schema/metabot-conversation]
+  (t2/insert! :model/MetabotConversation row))
+
+(mu/defn insert-usage-log-row!
+  "Insert the AiUsageLog `row`, timestamps and all."
+  [row :- ::metabot.schema/ai-usage-log.update]
+  (t2/insert! :model/AiUsageLog row))
+
+(mu/defn delete-usage-logs-for-conversations!
+  "Delete the AiUsageLog rows of the conversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+
+(mu/defn delete-conversations!
+  "Delete the MetabotConversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))

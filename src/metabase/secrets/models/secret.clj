@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.followers :as warehouses.followers]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -374,6 +375,10 @@
     (when (seq secret-ids)
       (log/infof "Deleting secret IDs %s from app DB because their owning databases are being deleted" (sort secret-ids))
       (secrets.db/delete-secrets! (vec secret-ids)))))
+
+(defmethod warehouses.followers/delete-for-databases! :model/Secret
+  [_model databases]
+  (delete-orphaned-secrets! databases))
 
 (defn- handle-secrets-for-details-key
   "Process secret-type connection properties in `details-key` of `database`, converting raw secret

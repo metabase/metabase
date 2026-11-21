@@ -78,6 +78,8 @@
  [metabase.app-db.query
   compile
   current-timestamp-string
+  delete-oldest-rows!
+  increment-counts!
   isa
   join
   qualify

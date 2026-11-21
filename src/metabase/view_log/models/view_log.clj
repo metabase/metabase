@@ -7,6 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.view-log.db :as view-log.db]
    [metabase.view-log.models.view-log-impl :as view-log-impl]
    [metabase.view-log.schema :as view-log.schema]
@@ -41,6 +42,14 @@
   "Insert the ViewLog rows `views` in one transaction."
   [views :- [:sequential ::view-log.schema/view-log.create]]
   (view-log.db/insert-view-logs! views))
+
+(mu/defn delete-older-than! :- [:maybe :int]
+  "Delete up to `batch-size` of the ViewLogs whose `time-column` is at or before `cutoff`, in one statement, as the
+  retention policy trims them; returns the number deleted."
+  [time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (view-log.db/delete-view-logs-before! time-column cutoff batch-size))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -31,6 +31,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
@@ -86,7 +87,7 @@
         (with-redefs [t2/query-one (fn [& args]
                                      (swap! delete-queries into (filter :delete-from args))
                                      (apply original-query-one args))]
-          (#'database/delete-database-fields! [db-id]))
+          (field/delete-fields-of-databases! [db-id]))
         (is (empty? @delete-queries))))))
 
 (deftest ^:parallel delete-database-fields-test
@@ -99,7 +100,7 @@
         ;; This only deletes the test-local Database Fields created above.
         ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/validate-deftest]}
-        (#'database/delete-database-fields! [db-id])
+        (field/delete-fields-of-databases! [db-id])
         (is (= 4 (call-count))
             "One existence check, two successful DELETEs, and one terminating DELETE"))
       (is (not (t2/exists? :model/Field :id parent-id)))

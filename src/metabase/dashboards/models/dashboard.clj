@@ -48,6 +48,7 @@
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -421,6 +422,43 @@
   "The `:revert!` of the revisions spec: puts back the columns, tabs and dashcards of a Revision."
   (partial dashboards.revisions/revert-dashboard! {:update-dashboard! update-dashboard!
                                                    :delete-dashcards! delete-dashcards!}))
+
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`, in one plain
+  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (dashboards.db/increment-dashboard-view-counts! count->ids))
+
+(mu/defn touch-last-viewed! :- :nil
+  "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
+  `updated_at`, in one plain statement that publishes no event: a usage stat the search index may see late."
+  [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
+  (dashboards.db/update-dashboards-last-viewed-at! dashboard-id->timestamp)
+  nil)
+
+(mu/defn set-last-viewed-at! :- :int
+  "Set `last_viewed_at` of the Dashboard with `id`, through the model, returning the number updated. The testing API backdates
+  it."
+  [id   :- ::lib.schema.id/dashboard
+   time :- ms/TemporalInstant]
+  (dashboards.db/set-dashboard-last-viewed-at! id time))
+
+(mu/defn shift-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Dashboards in the Collection with
+  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
+  position, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- vector?
+   plus-or-minus   :- [:enum :+ :-]]
+  (dashboards.db/shift-dashboard-positions! collection-id position-clause plus-or-minus))
+
+(defmethod api/shift-collection-positions! :model/Dashboard
+  [_model collection-id position-clause plus-or-minus]
+  (shift-positions! collection-id position-clause plus-or-minus))
+
+(defmethod card/update-followers! :model/Dashboard
+  [_model rows]
+  (update-dashboards! rows))
 
 (defmethod collection/archive-in-collections! :model/Dashboard
   [model collection-ids]

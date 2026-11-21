@@ -439,6 +439,13 @@
     (run! #(assert-not-admin-group {:group_id %}) (permissions.db/permissions-group-ids-where where))
     (permissions.db/delete-permissions! where)))
 
+(mu/defn delete-permissions-of-objects! :- [:maybe :int]
+  "Delete every Permissions row for `objects`, in one raw statement, returning the number deleted. Unlike
+  [[delete-permissions!]] it deletes the Admin group's rows too: a Collection that moves into the tenant-specific
+  namespace keeps no Permissions rows at all."
+  [objects :- [:sequential :string]]
+  (permissions.db/delete-permissions-with-objects! objects))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Permissions [_model]

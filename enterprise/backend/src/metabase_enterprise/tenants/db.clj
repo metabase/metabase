@@ -110,9 +110,3 @@
   "The IDs of the Collections under the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-set :model/Collection :location [:like (str "/" collection-id "/%")]))
-
-(mu/defn delete-permissions-with-objects!
-  "Delete the Permissions rows for `objects`, returning the number deleted."
-  [objects :- [:sequential :string]]
-  (t2/query-one {:delete-from :permissions
-                 :where       [:in :object objects]}))

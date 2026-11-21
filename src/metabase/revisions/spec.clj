@@ -23,7 +23,8 @@
     recorded before the column existed.
   - `:before-revert`, a fn of the id, the id of the user and a snapshot returning the snapshot to write, which checks
     and upgrades the snapshot, identity by default.
-  - `:revert!`, a fn of the id, the id of the user and a snapshot that replaces the revert of the tracked columns.
+  - `:revert!`, a fn of the id, the id of the user and a snapshot that reverts the row through the write function of
+    its model, which every revisioned entity has.
   - `:describe`, a fn of the snapshots before and after and the names that [[metabase.revisions.models.revision]]
     gives returning the strings that describe the change, which replaces the description of the changed columns.
   - `:diff-columns`, the columns whose change the diff of two snapshots lists, each as `{column {:before :after}}`,

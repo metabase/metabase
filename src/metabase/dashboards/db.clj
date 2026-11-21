@@ -2,6 +2,7 @@
   "Application database queries for the dashboards module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [java-time.api :as t]
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
@@ -308,6 +309,11 @@
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
+
+(mu/defn delete-dashcard-series!
+  "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
+  [series-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
 
 (mu/defn delete-series-for-dashcards!
   "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -660,3 +666,46 @@
                            [:and
                             [:= :c.id :dash.collection_id]
                             [:= :c.archived false]]]}) :can_read :can_write))
+
+(mu/defn increment-dashboard-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Dashboards with `ids`, in one raw
+  statement that publishes no event, returning the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (mdb/increment-counts! :model/Dashboard :view_count count->ids))
+
+(mu/defn update-dashboards-last-viewed-at!
+  "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
+  `updated_at`, via a raw update that publishes no lifecycle event, so the search index is not re-fed (it tolerates
+  staleness on this field until the next re-index or edit)."
+  [dashboard-id->timestamp :- [:map-of ms/PositiveInt ms/TemporalInstant]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+  (t2/query {:update (t2/table-name :model/Dashboard)
+             :set    {:last_viewed_at (into [:case]
+                                            (mapcat (fn [[id timestamp]]
+                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                    dashboard-id->timestamp))
+                      :updated_at :updated_at}
+             :where  [:in :id (keys dashboard-id->timestamp)]}))
+
+(mu/defn set-dashboard-last-viewed-at!
+  "Set `last_viewed_at` of the Dashboard with `dashboard-id`, returning the number updated."
+  [dashboard-id   :- ::lib.schema.id/dashboard
+   last-viewed-at :- ms/TemporalInstant]
+  (t2/update! :model/Dashboard :id dashboard-id {:last_viewed_at last-viewed-at}))
+
+(mu/defn shift-dashboard-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Dashboards in the Collection with
+  `collection-id` whose position matches `position-clause`, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- [:or
+                       [:tuple [:enum :> :>=] ms/PositiveInt]
+                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
+   plus-or-minus   :- [:enum :+ :-]]
+  (t2/update! :model/Dashboard {:collection_id       collection-id
+                                :collection_position position-clause}
+              {:collection_position [plus-or-minus :collection_position 1]}))
+
+(mu/defn delete-dashcards-of-actions!
+  "Delete the DashboardCards of the Actions with `action-ids`, returning the number deleted."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/delete! :model/DashboardCard :action_id [:in action-ids]))

@@ -25,6 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.collection-items :as warehouse-schema.collection-items]
@@ -651,6 +652,12 @@
   "Delete the Table with `table-id`, as [[delete-tables!]] does."
   [table-id :- ::lib.schema.id/table]
   (delete-tables! [table-id]))
+
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one plain
+  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (warehouse-schema.db/increment-table-view-counts! count->ids))
 
 (defmethod collection/archive-in-collections! :model/Table
   [_model collection-ids]

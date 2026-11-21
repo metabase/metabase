@@ -173,11 +173,6 @@
   [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/delete! :model/ImplicitAction :action_id [:in action-ids]))
 
-(mu/defn delete-dashcards-for-actions!
-  "Delete the DashboardCards of the Actions with `action-ids`, returning the number deleted."
-  [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/delete! :model/DashboardCard :action_id [:in action-ids]))
-
 (mu/defn actions-by-id
   "A map of id to Action for the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
@@ -207,6 +202,16 @@
   "The ids of the Actions of the Cards with `model-ids`."
   [model-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pks-vec :model/Action :model_id [:in model-ids]))
+
+(mu/defn action-ids-of-databases :- [:set ::lib.schema.id/action]
+  "The ids of the query Actions whose query runs against one of the Databases with `database-ids` and of the implicit
+  Actions that write to one of their Tables."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (into (set (t2/select-fn-set :action_id :model/QueryAction :database_id [:in database-ids]))
+        (t2/select-fn-set :action_id :model/ImplicitAction
+                          {:join  [[(t2/table-name :model/Table) :table]
+                                   [:= :table.id :implicit_action.table_id]]
+                           :where [:in :table.db_id database-ids]})))
 
 (mu/defn implicit-action-ids-of-tables
   "The ids of the Actions whose ImplicitAction writes to one of the Tables with `table-ids`."

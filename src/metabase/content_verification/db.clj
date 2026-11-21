@@ -68,3 +68,9 @@
   "Insert the ModerationReview `row` and return the inserted instance."
   [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))
+
+(mu/defn delete-card-reviews!
+  "Delete the ModerationReviews of the Cards with `card-ids`, returning the number deleted. By table name, so search's
+  delete capture skips it: these reviews only feed the Cards being deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id [:in card-ids]))

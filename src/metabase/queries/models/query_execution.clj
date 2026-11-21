@@ -62,6 +62,14 @@
   [rows :- [:sequential ::queries.schema/query-execution.create]]
   (queries.db/insert-query-executions! rows))
 
+(mu/defn delete-older-than! :- [:maybe :int]
+  "Delete up to `batch-size` of the QueryExecutions whose `time-column` is at or before `cutoff`, in one statement, as the
+  retention policy trims them; returns the number deleted."
+  [time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (queries.db/delete-query-executions-before! time-column cutoff batch-size))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/QueryExecution [_model]

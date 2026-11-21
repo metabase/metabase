@@ -6,10 +6,12 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.models.card :as card]
    [metabase.revisions.core :as revisions]
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -43,6 +45,16 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (dashboards.db/delete-series-for-dashcards! dashcard-ids)
   nil)
+
+(mu/defn delete-dashboard-card-series! :- :nil
+  "Delete the DashboardCardSeries with `series-ids`."
+  [series-ids :- [:sequential ms/PositiveInt]]
+  (dashboards.db/delete-dashcard-series! series-ids)
+  nil)
+
+(defmethod card/delete-followers! :model/DashboardCardSeries
+  [_model ids]
+  (delete-dashboard-card-series! ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

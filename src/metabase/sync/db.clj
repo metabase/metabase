@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [metabase.app-db.core :as app-db]
-   [metabase.change-log.core :as change-log]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -555,33 +554,21 @@
    [:not= :data_sensitivity nil]
    [:not (user-set-data-sensitivity-clause)]])
 
-(mu/defn reset-classifier-data-sensitivity-for-table!
-  "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the
-  Table with `table-id`. Returns the number of Fields cleared."
+(mu/defn classifier-data-sensitivity-of-table-clause :- vector?
+  "The Honey SQL clause matching the Fields of the Table with `table-id` whose `data_sensitivity` the classifier wrote
+  (see [[classifier-data-sensitivity-clause]])."
   [table-id :- ::lib.schema.id/table]
-  (let [where [:and [:= :table_id table-id] (classifier-data-sensitivity-clause)]]
-    (t2/with-transaction [_conn]
-      (change-log/log-rows! :model/Field :update {:where where})
-      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-      (t2/query-one {:update (t2/table-name :model/Field)
-                     :set    {:data_sensitivity nil}
-                     :where  where}))))
+  [:and [:= :table_id table-id] (classifier-data-sensitivity-clause)])
 
-(mu/defn reset-classifier-data-sensitivity-for-database!
-  "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of every
-  Table of the Database with `database-id`. Returns the number of Fields cleared."
+(mu/defn classifier-data-sensitivity-of-database-clause :- vector?
+  "The Honey SQL clause matching the Fields of every Table of the Database with `database-id` whose
+  `data_sensitivity` the classifier wrote (see [[classifier-data-sensitivity-clause]])."
   [database-id :- ::lib.schema.id/database]
-  (let [where [:and
-               [:in :table_id ^:allow-subquery {:select [:id]
-                                                :from   [(t2/table-name :model/Table)]
-                                                :where  [:= :db_id database-id]}]
-               (classifier-data-sensitivity-clause)]]
-    (t2/with-transaction [_conn]
-      (change-log/log-rows! :model/Field :update {:where where})
-      #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
-      (t2/query-one {:update (t2/table-name :model/Field)
-                     :set    {:data_sensitivity nil}
-                     :where  where}))))
+  [:and
+   [:in :table_id ^:allow-subquery {:select [:id]
+                                    :from   [(t2/table-name :model/Table)]
+                                    :where  [:= :db_id database-id]}]
+   (classifier-data-sensitivity-clause)])
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
 

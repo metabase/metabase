@@ -1,9 +1,9 @@
 (ns metabase-enterprise.tenants.permissions
   "Enterprise implementation of tenant-specific collection permissions management."
   (:require
-   [metabase-enterprise.tenants.db :as tenants.db]
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions :as permissions]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
@@ -15,10 +15,10 @@
 
   This needs to be done recursively for all descendants as well."
   [collection :- (ms/InstanceOf :model/Collection)]
-  (tenants.db/delete-permissions-with-objects! (for [coll (cons collection (collection/descendants collection))
-                                                     path-fn [perms/collection-read-path
-                                                              perms/collection-readwrite-path]]
-                                                 (path-fn coll))))
+  (permissions/delete-permissions-of-objects! (for [coll (cons collection (collection/descendants collection))
+                                                    path-fn [perms/collection-read-path
+                                                             perms/collection-readwrite-path]]
+                                                (path-fn coll))))
 
 (mu/defn- grant-perms-when-moving-out-of-tenant-specific!
   "When moving a descendant of a tenant-specific Collection into a regular Collection namespace, we need to grant it
