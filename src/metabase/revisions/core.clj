@@ -12,8 +12,8 @@
 
 (p/import-vars
  [metabase.revisions.models.revision
+  columns-to-revert
   describe-columns
-  revert-columns!
   revisions
   same-definition?
   snapshot]

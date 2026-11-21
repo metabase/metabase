@@ -14,6 +14,7 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
+   [metabase.run-tracking.core :as rt]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.util :as u]
@@ -574,6 +575,26 @@
    changes :- ::transforms.schema/transform-run.update]
   (t2/update! :model/TransformRun :id run-id :is_active true changes))
 
+(mu/defn update-run!
+  "Apply `changes` to the TransformRun with `run-id`, returning the number updated."
+  [run-id  :- ms/PositiveInt
+   changes :- :map]
+  (t2/update! :model/TransformRun :id run-id changes))
+
+(mu/defn set-run-times-of-transform!
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id`, returning the number
+  updated."
+  [transform-id :- ::lib.schema.id/transform
+   run-time     :- ms/TemporalInstant]
+  (t2/update! :model/TransformRun :transform_id transform-id {:start_time run-time :end_time run-time}))
+
+(mu/defn set-table-dependencies!
+  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, returning the
+  number updated, with a statement against its table that publishes no event."
+  [transform-id      :- ::lib.schema.id/transform
+   dependencies-json :- :string]
+  (t2/update! (t2/table-name :model/Transform) :id transform-id {:table_dependencies dependencies-json}))
+
 (mu/defn cancel-active-runs!
   "Mark the active TransformRuns among `run-ids` canceled because the user asked but the run could not be stopped."
   [run-ids :- [:sequential ms/PositiveInt]]
@@ -1044,3 +1065,25 @@
                   [:=
                    [:inline 0]
                    [:inline 1]])]})))
+
+(def ^:private run-model
+  "A model of the runs of this module whose rows the run tracking heartbeats and reaps."
+  [:enum :model/TransformRun :model/TransformJobRun :model/TransformDagRun])
+
+(mu/defn heartbeat-active-runs!
+  "Set `last_heartbeat` to now on the active `model` runs with `run-ids`, returning the number updated."
+  [model   :- run-model
+   run-ids :- [:sequential ms/PositiveInt]]
+  (t2/query (rt/heartbeat-statement model [:is_active true] :last_heartbeat run-ids)))
+
+(mu/defn set-active-runs-terminal!
+  "Apply the `terminal` column values to the active `model` runs with `run-ids`, returning the number updated."
+  [model    :- run-model
+   run-ids  :- [:sequential ms/PositiveInt]
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
+  (t2/query (rt/terminal-statement model [:is_active true] run-ids terminal)))

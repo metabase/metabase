@@ -181,6 +181,10 @@
         (warehouse-schema.db/clear-user-settings-fk-targets-to-fields! field-ids)
         (delete-empty! targeting)))))
 
+(defmethod field/clear-for-deactivated-fields! :model/FieldUserSettings
+  [_model field-ids]
+  (clear-fk-targets-to-fields! field-ids))
+
 (mu/defn delete-field-user-settings!
   "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
   [field-ids :- [:sequential ::lib.schema.id/field]]

@@ -4,14 +4,12 @@
   and transactions."
   (:require
    [clojure.string :as str]
-   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -516,6 +514,24 @@
   "Delete the Permissions rows matching the HoneySQL `where` clause, returning the number deleted."
   [where :- vector?]
   (t2/delete! :model/Permissions {:where where}))
+
+(mu/defn delete-permissions-with-objects!
+  "Delete the Permissions rows for `objects` with a raw statement, which runs no Permissions hook, returning the
+  number deleted."
+  [objects :- [:sequential :string]]
+  (t2/query-one {:delete-from :permissions
+                 :where       [:in :object objects]}))
+
+(mu/defn set-database-table-permissions-schema-name!
+  "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
+  update because the model's before-update rejects all updates."
+  [database-id :- ::lib.schema.id/database
+   schema-name :- [:maybe :string]]
+  (t2/query {:update (t2/table-name :model/DataPermissions)
+             :set    {:schema_name schema-name}
+             :where  [:and
+                      [:= :db_id database-id]
+                      [:not= :table_id nil]]}))
 
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`."
@@ -1149,12 +1165,6 @@
   "The earliest `date_joined` of any User, or nil."
   []
   (:min (t2/select-one [:model/User [:%min.date_joined :min]])))
-
-(mu/defn update-users!
-  "Apply `changes` to the Users with `user-ids` through the model, returning the number updated."
-  [user-ids :- [:set {:min 1} ::lib.schema.id/user]
-   changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id [:in user-ids] changes))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

@@ -530,3 +530,15 @@
   "The IDs of the PulseChannels of the Channels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in channel-ids])))
+
+(mu/defn shift-pulse-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Pulses in the Collection with
+  `collection-id` whose position matches `position-clause`, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- [:or
+                       [:tuple [:enum :> :>=] ms/PositiveInt]
+                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
+   plus-or-minus   :- [:enum :+ :-]]
+  (t2/update! :model/Pulse {:collection_id       collection-id
+                            :collection_position position-clause}
+              {:collection_position [plus-or-minus :collection_position 1]}))

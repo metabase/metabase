@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.run-tracking.core :as rt]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run-cancelation :as cancel]
    [metabase.transforms.models.util :as transforms.models.u]
@@ -203,6 +204,32 @@
                               (:user_id run) (assoc :user-id (:user_id run))))
      run)))
 
+(mu/defn set-checkpoint-range! :- :int
+  "Record on the TransformRun with `run-id` the checkpoint range it reads, returning the number updated."
+  [run-id  :- ms/PositiveInt
+   changes :- [:map {:closed true}
+               [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
+               [:checkpoint_lo_value        {:optional true} [:maybe :string]]
+               [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
+  (transforms.db/update-run! run-id changes))
+
+(mu/defn set-message! :- :int
+  "Set the message of the TransformRun with `run-id`, returning the number updated."
+  [run-id  :- ms/PositiveInt
+   message :- [:maybe :string]]
+  (transforms.db/update-run! run-id {:message message}))
+
+(mu/defn set-run-times! :- :int
+  "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id` to `run-time`, returning
+  the number updated. The testing API backdates them."
+  [transform-id :- ::lib.schema.id/transform
+   run-time     :- ms/TemporalInstant]
+  (transforms.db/set-run-times-of-transform! transform-id run-time))
+
+(defmethod transforms-base.u/record-run-changes! :model/TransformRun
+  [_model run-id changes]
+  (set-checkpoint-range! run-id changes))
+
 (mu/defn succeed-started-run! :- :int
   "Mark a started run as successfully completed."
   ([run-id :- ms/PositiveInt]
@@ -278,7 +305,8 @@
                   {:model    :model/TransformRun
                    :active   [:is_active true]
                    :stale    [{:column stale-column :age age :unit unit}]
-                   :terminal {:status "timeout" :end_time :%now :is_active nil :message message}
+                   :set-terminal! #(transforms.db/set-active-runs-terminal!
+                                    :model/TransformRun % {:status "timeout" :end_time :%now :is_active nil :message message})
                    :metrics  {:total-metric   :metabase-transforms/timeouts-total
                               :latency-metric :metabase-transforms/timeout-detection-latency-ms
                               :tags           {:type "transform"}
@@ -303,7 +331,8 @@
 (mu/defn heartbeat-runs! :- :nil
   "Stamp `last_heartbeat = now` on the given still-active `run-ids`."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! :model/TransformRun [:is_active true] :last_heartbeat run-ids)
+  (when (seq run-ids)
+    (transforms.db/heartbeat-active-runs! :model/TransformRun run-ids))
   nil)
 
 (mu/defn reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-run]]

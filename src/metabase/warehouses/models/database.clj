@@ -7,7 +7,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
-   [metabase.cache.models.cache-config :as cache-config]
    [metabase.change-log.core :as change-log]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
@@ -35,6 +34,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.app-db-copy :as warehouses.app-db-copy]
    [metabase.warehouses.db :as warehouses.db]
+   [metabase.warehouses.followers :as followers]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.serialization :as warehouses.serialization]
@@ -224,27 +224,6 @@
            (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))
-
-(defenterprise reconcile-workspace-database-refs-before-delete!
-  "Called by [[delete-databases!]] before anything else. In workspaces mode this refuses the delete (409) if any
-   non-`:unprovisioned` `workspace_database` rows reference one of `db-ids`, and explicitly removes any
-   `:unprovisioned` rows so the FK RESTRICT is satisfied. OSS implementation is a no-op: OSS has nothing to reconcile."
-  metabase-enterprise.workspaces.models.workspace-database
-  [_db-ids]
-  nil)
-
-(mu/defn- delete-database-fields!
-  [database-ids :- [:sequential ::lib.schema.id/database]]
-  ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
-  ;; database - iteratively, deleting those that no one depends on first
-  ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
-  ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
-  ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
-  (when (warehouses.db/fields-exist-for-databases? database-ids)
-    (loop []
-      (let [deleted (warehouses.db/delete-childless-fields-for-databases! database-ids)]
-        (when (pos? deleted)
-          (recur))))))
 
 (t2/define-before-delete :model/Database
   [{driver :engine, :as database}]
@@ -876,83 +855,34 @@
   []
   (warehouses.db/disable-uploads-for-all-databases!))
 
-(defmulti delete-for-databases!
-  "Delete the rows of `model` that belong to the Databases with `database-ids`, through the write functions of `model`,
-  as [[delete-databases!]] deletes those Databases. A model implements it whose module requires this one, so that this
-  namespace cannot require its write functions."
-  {:arglists '([model database-ids])}
-  (fn [model _database-ids] model))
+(def ^:private refusing-follower-models
+  "The models that implement [[followers/delete-for-databases!]] and may refuse the delete, so they go before the
+  sync triggers are unscheduled: a WorkspaceDatabase in use refuses it. Only an EE build has them."
+  (if config/ee-available? [:model/WorkspaceDatabase] []))
 
 (def ^:private follower-models
-  "The models that implement [[delete-for-databases!]]."
-  [:model/Transform])
+  "The other models that implement [[followers/delete-for-databases!]], in the order their rows are deleted."
+  [:model/Secret :model/Field :model/Action :model/Transform :model/CacheConfig :model/Card])
 
-(def ^:private tombstone-chunk-size
-  "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
-  1000)
-
-(defn- delete-database-cards!
-  "Delete the Cards of the Databases with `database-ids` in bounded statements, with their search documents and cache
-  configs."
-  [database-ids]
-  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
-  ;; their search documents are enumerated first.
-  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
-  ;; indexes, which Toucan never sees.
-  (let [{:keys [gone cascading]}
-        (reduce (fn [{:keys [gone cascading]} batch]
-                  (let [ids    (mapv :id batch)
-                        ;; A search error must not fail the database delete; those documents are left to the reindex.
-                        merged (try
-                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
-                                 (catch Exception e
-                                   (log/errorf e "Skipping search cascade enumeration for databases %s" database-ids)
-                                   cascading))]
-                    ;; A card that moved to another database since the scan survives, and keeps its documents.
-                    ;; Only a short count says one did, so a full batch skips the check.
-                    {:gone      (if (= (count ids) (warehouses.db/delete-cards! database-ids ids))
-                                  (into gone ids)
-                                  (into gone (remove (warehouses.db/existing-card-ids ids)) ids))
-                     :cascading merged}))
-                {:gone [], :cascading nil}
-                (eduction
-                 (map t2.realize/realize)
-                 (partition-all 1000)
-                 (warehouses.db/card-ids-for-databases-reducible database-ids)))]
-    (doseq [card-ids (partition-all tombstone-chunk-size gone)]
-      (cache-config/delete-target-configs! "question" card-ids))
-    ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
-    ;; older re-index that may already have read a soon-to-be-deleted card.
-    (when (or (seq gone) (seq cascading))
-      (apply search/after-commit! "database delete"
-             ;; Each chunk is its own step, and after-commit! catches each step's failure separately.
-             ;; Without an ingestion worker a step deletes at once, so a failed chunk costs only its own ids.
-             ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
-             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
-                       (fn [] (search/delete! :model/Card chunk)))
-                     [(fn [] (search/reconcile-cascading-documents! cascading))])))))
+(defn- delete-followers!
+  "Delete the rows of each of `models`, in order, that belong to the Database rows `databases`."
+  [models databases]
+  (doseq [model models]
+    (t2/resolve-model model)
+    (followers/delete-for-databases! model databases)))
 
 (mu/defn delete-databases! :- :nil
-  "Delete the Databases with `database-ids` in one batch of events, after the workspace databases that refer to them
-  are reconciled, which may refuse the delete; their sync triggers unscheduled; and their Secrets, Fields, Actions,
-  followers (see [[delete-for-databases!]]), cache configs and Cards deleted."
+  "Delete the Databases with `database-ids` in one batch of events, after what belongs to them (see
+  [[followers/delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the
+  delete have accepted it."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (when (seq database-ids)
     (events/with-batched-events
-      (let [databases (warehouses.db/databases (vec (distinct database-ids)))
-            ids       (mapv :id databases)]
-        (when (seq ids)
-          ;; Workspace databases go first: an active one refuses the delete before any other cleanup.
-          (reconcile-workspace-database-refs-before-delete! ids)
-          (run! unschedule-tasks! databases)
-          (models.secret/delete-orphaned-secrets! databases)
-          (delete-database-fields! ids)
-          (warehouses.db/delete-actions-for-databases! ids)
-          (doseq [model follower-models]
-            (delete-for-databases! (t2/resolve-model model) ids))
-          (cache-config/delete-target-configs! "database" ids)
-          (delete-database-cards! ids)
-          (warehouses.db/delete-databases! ids)))))
+      (when-let [databases (not-empty (warehouses.db/databases (vec (distinct database-ids))))]
+        (delete-followers! refusing-follower-models databases)
+        (run! unschedule-tasks! databases)
+        (delete-followers! follower-models databases)
+        (warehouses.db/delete-databases! (mapv :id databases)))))
   nil)
 
 (mu/defn delete-database! :- :nil

@@ -2,6 +2,7 @@
   "Cluster-safe lifecycle tracking for the runs of every type of test, and for the runs of test suites."
   (:require
    [medley.core :as m]
+   [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.test-suite-run :as data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
@@ -77,7 +78,8 @@
 (mu/defn heartbeat-runs!
   "Stamp a heartbeat on the given runs while they are still started."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (rt/heartbeat-ids! :model/DataTestRun [:status "started"] :last_heartbeat run-ids))
+  (when (seq run-ids)
+    (data-testing.db/heartbeat-started-runs! :model/DataTestRun run-ids)))
 
 (defn- call-or-log-failure
   "Call `thunk` and return its value. When `thunk` throws, log the throwable as a failure to `what`, a verb phrase such
@@ -108,7 +110,7 @@
    #(rt/heartbeat-and-reconcile! {:model      :model/TestSuiteRun
                                   :active     [:status "started"]
                                   :ids        @active-suite-runs
-                                  :heartbeat! (fn [ids] (rt/heartbeat-ids! :model/TestSuiteRun [:status "started"] :last_heartbeat ids))
+                                  :heartbeat! (fn [ids] (when (seq ids) (data-testing.db/heartbeat-started-runs! :model/TestSuiteRun ids)))
                                   :on-gone    (fn [id] (swap! active-suite-runs disj id))}))
   nil)
 
@@ -120,7 +122,8 @@
   (let [reaped (rt/reap-orphaned! {:model    model
                                    :active   [:status "started"]
                                    :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                                   :terminal {:status "timeout" :end_time :%now}})]
+                                   :set-terminal! #(data-testing.db/set-started-runs-terminal!
+                                                    model % {:status "timeout" :end_time :%now})})]
     (doseq [run reaped]
       (if-let [topic (topic-of run)]
         (call-or-log-failure

@@ -107,7 +107,7 @@
   scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
   a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
   [database-id :- ::lib.schema.id/database]
-  (let [n (sync.db/reset-classifier-data-sensitivity-for-database! database-id)]
+  (let [n (field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-database-clause database-id))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s"
                n (sync-util/name-for-logging (driver.u/lib-database database-id)))
     n))
@@ -115,7 +115,7 @@
 (mu/defn reset-table-data-sensitivity! :- :int
   "Like [[reset-data-sensitivity!]], for a single `table`."
   [table :- i/TableInstance]
-  (let [n (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id table))]
+  (let [n (field/clear-data-sensitivity-where! (sync.db/classifier-data-sensitivity-of-table-clause (u/the-id table)))]
     (log/infof "Data sensitivity reset %d classifier-written labels in %s" n (sync-util/name-for-logging table))
     n))
 

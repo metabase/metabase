@@ -2,6 +2,7 @@
   "Application database queries for the audit app module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.schema :as audit-app.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -38,30 +39,13 @@
                          [:user_id  [:maybe ::lib.schema.id/user]]]]]
   (t2/insert! :model/AuditLog rows))
 
-(mu/defn delete-oldest-by-id-subquery!
-  "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`, lowest ids first."
-  [table       :- :keyword
-   time-column :- :keyword
+(mu/defn delete-audit-logs-before!
+  "Delete up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, returning the number
+  deleted."
+  [time-column :- :keyword
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
-  (t2/query-one {:delete-from table
-                 :where [:in
-                         :id
-                         ^:allow-subquery {:select [:id]
-                                           :from table
-                                           :where [:<= time-column cutoff]
-                                           :order-by [[:id :asc]]
-                                           :limit batch-size}]}))
-
-(mu/defn delete-oldest-with-limit!
-  "Delete up to `batch-size` of the `table` rows whose `time-column` is at or before `cutoff`."
-  [table       :- :keyword
-   time-column :- :keyword
-   cutoff      :- ms/TemporalInstant
-   batch-size  :- ms/PositiveInt]
-  (t2/query-one {:delete-from table
-                 :where [:<= time-column cutoff]
-                 :limit batch-size}))
+  (mdb/delete-oldest-rows! :model/AuditLog time-column cutoff batch-size))
 
 (mu/defn parent-ids
   "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."

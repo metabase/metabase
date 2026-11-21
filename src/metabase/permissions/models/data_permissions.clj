@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.app-db-copy :as permissions.app-db-copy]
    [metabase.permissions.db :as permissions.db]
@@ -134,6 +135,15 @@
   [ids :- [:sequential ms/PositiveInt]]
   (doseq [batch (partition-all permission-batch-size ids)]
     (permissions.db/delete-data-permissions! batch)))
+
+(mu/defn set-table-schema-name-of-database! :- :nil
+  "Set the `schema_name` of the table-level DataPermissions of the Database with `database-id`, which follows its
+  Tables when the sample Database moves to another schema, in one raw statement, since the model's hooks refuse every
+  update."
+  [database-id :- ::lib.schema.id/database
+   schema-name :- [:maybe :string]]
+  (permissions.db/set-database-table-permissions-schema-name! database-id schema-name)
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

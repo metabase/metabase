@@ -45,25 +45,6 @@
 (defn- revision-schema-key [prefix model]
   (keyword "metabase.revisions.db" (str prefix "." (name model))))
 
-(doseq [[model schema] revisioned-model-row-schema]
-  (mr/register! (revision-schema-key "revisioned-row" model)
-                [:map {:closed true}
-                 [:model [:= model]]
-                 [:row [:merge schema [:map {:closed true} [:id {:optional true} ms/PositiveInt]]]]]))
-
-(def ^:private RevisionedRow
-  "A `{:model ..., :row ...}` pair naming one of the models revisions are tracked for, the row typed by that
-  model's own row schema plus `:id` (a revisioned row is always a real, previously-selected row)."
-  (into [:multi {:dispatch :model, :lazy-refs true}]
-        (for [model (keys revisioned-model-row-schema)]
-          [model (revision-schema-key "revisioned-row" model)])))
-
-(mu/defn update-entity!
-  "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
-  [id     :- ms/PositiveInt
-   entity :- RevisionedRow]
-  (t2/update! (:model entity) :id id (:row entity)))
-
 (mu/defn parameter-card-ids
   "The Card ids of the ParameterCards of the `parameterized-object-type` with `parameterized-object-id`."
   [parameterized-object-type :- :string

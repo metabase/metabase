@@ -117,6 +117,14 @@
     (span/with-span! {:name "create-audit-logs!" :attributes {:audit/rows (count rows)}}
       (audit-app.db/insert-audit-logs! rows))))
 
+(mu/defn delete-older-than! :- [:maybe :int]
+  "Delete up to `batch-size` of the AuditLogs whose `time-column` is at or before `cutoff`, in one statement, as the
+  retention policy trims them; returns the number deleted."
+  [time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (audit-app.db/delete-audit-logs-before! time-column cutoff batch-size))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/AuditLog [_model]

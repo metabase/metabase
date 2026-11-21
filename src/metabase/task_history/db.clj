@@ -2,6 +2,7 @@
   "Application database queries for the task history module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.run-tracking.core :as rt]
    [metabase.task-history.schema :as task-history.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -229,3 +230,14 @@
   (t2/update! :model/TaskHistory
               {:status :started, :run_id [:in run-ids]}
               {:status :unknown, :ended_at :%now}))
+
+(mu/defn set-started-task-runs-terminal!
+  "Apply the `terminal` column values to the started TaskRuns with `run-ids`, returning the number updated."
+  [run-ids  :- [:sequential ms/PositiveInt]
+   terminal :- [:map {:closed true}
+                [:status    {:optional true} [:maybe [:or :string :keyword]]]
+                [:end_time  {:optional true} [:maybe [:or :string :keyword]]]
+                [:ended_at  {:optional true} [:maybe [:or :string :keyword]]]
+                [:is_active {:optional true} [:maybe :boolean]]
+                [:message   {:optional true} [:maybe :string]]]]
+  (t2/query (rt/terminal-statement :model/TaskRun [:status "started"] run-ids terminal)))

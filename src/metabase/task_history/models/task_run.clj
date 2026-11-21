@@ -209,11 +209,11 @@
   `max-duration-hours` ago, returning the abandoned rows."
   [heartbeat-hours    :- ms/PositiveInt
    max-duration-hours :- ms/PositiveInt]
-  (rt/reap-rows! {:model    :model/TaskRun
-                  :active   [:status "started"]
-                  :terminal {:status "abandoned" :ended_at :%now}
-                  :stale    [{:column :updated_at :age heartbeat-hours :unit :hour}
-                             {:column :started_at :age max-duration-hours :unit :hour}]}))
+  (rt/reap-rows! {:model         :model/TaskRun
+                  :active        [:status "started"]
+                  :set-terminal! #(task-history.db/set-started-task-runs-terminal! % {:status "abandoned" :ended_at :%now})
+                  :stale         [{:column :updated_at :age heartbeat-hours :unit :hour}
+                                  {:column :started_at :age max-duration-hours :unit :hour}]}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

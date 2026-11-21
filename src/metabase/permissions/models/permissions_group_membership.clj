@@ -189,6 +189,13 @@
         (check-group-manager-member membership member)
         (check-tenancy-matches membership member group-id->tenant?)))))
 
+(defmulti set-member-flags-of!
+  "Set `changes`, the `is_superuser` or `is_data_analyst` flag a membership implies, on the rows of `model` with
+  `user-ids`, without the cascades of an ordinary update, which the memberships keep themselves. The User model, whose
+  namespace requires this one, implements it with its own write function."
+  {:arglists '([model user-ids changes])}
+  (fn [model _user-ids _changes] model))
+
 (defn- set-member-flags!
   "Set the `is_superuser` flag of the Users of `memberships` in the Administrators group, and the `is_data_analyst` flag
   of those in the Data Analysts group, to `value`."
@@ -197,7 +204,8 @@
                            [(:id (perms-group/data-analyst)) :is_data_analyst]]
           :let            [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id)) memberships)]
           :when           (seq user-ids)]
-    (permissions.db/update-users! user-ids {flag value})))
+    (t2/resolve-model :model/User)
+    (set-member-flags-of! :model/User user-ids {flag value})))
 
 (defn- delete-memberships!
   "Delete `memberships`, keeping at least one active admin, and unset the flags their Administrators and Data Analysts

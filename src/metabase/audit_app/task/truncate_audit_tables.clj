@@ -7,28 +7,31 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.audit-app.db :as audit-app.db]
+   [metabase.audit-app.models.audit-log :as audit-log]
    [metabase.audit-app.settings :as audit-app.settings]
    [metabase.audit-app.task.partitions :as partitions]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
+   [metabase.view-log.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+(def ^:private model->delete-older-than!
+  "The write function of each model the retention policy trims."
+  {:model/QueryExecution query-execution/delete-older-than!
+   :model/AuditLog       audit-log/delete-older-than!
+   :model/ViewLog        view-log/delete-older-than!})
+
 (defn- truncate-table-batched!
-  [table-name time-column]
+  [model time-column]
   (let [cutoff     (t/minus (t/offset-date-time) (t/days (audit-app.settings/audit-max-retention-days)))
         batch-size (audit-app.settings/audit-table-truncation-batch-size)]
-    (case (mdb/db-type)
-      (:postgres :h2)
-      (audit-app.db/delete-oldest-by-id-subquery! (keyword table-name) (keyword time-column) cutoff batch-size)
-
-      :mysql
-      (audit-app.db/delete-oldest-with-limit! (keyword table-name) (keyword time-column) cutoff batch-size))))
+    ((model->delete-older-than! model) time-column cutoff batch-size)))
 
 (defn- truncate-table!
   "Given a model, deletes all rows older than the configured threshold"
@@ -41,7 +44,7 @@
         (try
           (log/infof "Cleaning up %s table" table-name)
           (loop [total-rows-deleted 0]
-            (let [batch-rows-deleted (truncate-table-batched! table-name time-column)]
+            (let [batch-rows-deleted (truncate-table-batched! model time-column)]
               ;; Only try to delete another batch if the last batch was full
               (if (= batch-rows-deleted (audit-app.settings/audit-table-truncation-batch-size))
                 (recur (+ total-rows-deleted (long batch-rows-deleted)))

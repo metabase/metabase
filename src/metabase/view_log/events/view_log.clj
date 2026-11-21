@@ -8,8 +8,11 @@
    [metabase.app-db.sql-errors :as sql-errors]
    [metabase.audit-app.core :as audit]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.models.card :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -17,6 +20,7 @@
    [metabase.view-log.db :as view-log.db]
    [metabase.view-log.models.view-log :as view-log]
    [metabase.view-log.schema :as view-log.schema]
+   [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -59,10 +63,10 @@
           ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
           (cluster-lock/with-cluster-lock {:lock lock-name :retry-transient? true}
             (case model
-              :model/Card      (view-log.db/increment-card-view-counts! cnt->ids)
-              :model/Dashboard (view-log.db/increment-dashboard-view-counts! cnt->ids)
-              :model/Table     (view-log.db/increment-table-view-counts! cnt->ids)
-              :model/Document  (view-log.db/increment-document-view-counts! cnt->ids))))))
+              :model/Card      (card/increment-view-counts! cnt->ids)
+              :model/Dashboard (dashboard/increment-view-counts! cnt->ids)
+              :model/Table     (table/increment-view-counts! cnt->ids)
+              :model/Document  (document/increment-view-counts! cnt->ids))))))
     (catch Exception e
       (log/errorf "Failed to increment view counts: %s" (ex-message e)))))
 
@@ -193,7 +197,7 @@
       ;; :retry-transient? — the body is a single idempotent statement, safe to re-run on a
       ;; multi-master deadlock (e.g. MariaDB Galera, where the cluster lock can't serialize writers).
       (cluster-lock/with-cluster-lock {:lock dashboard-statistics-lock :retry-transient? true}
-        (view-log.db/update-dashboards-last-viewed-at! dashboard-id->timestamp))
+        (dashboard/touch-last-viewed! dashboard-id->timestamp))
       (catch Exception e
         (log/errorf "Failed to update dashboard last_viewed_at: %s" (ex-message e))))))
 

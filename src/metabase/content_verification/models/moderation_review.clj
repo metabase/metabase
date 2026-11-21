@@ -6,6 +6,7 @@
    [metabase.content-verification.impl :as moderation]
    [metabase.content-verification.schema :as content-verification.schema]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
@@ -90,6 +91,12 @@
       (content-verification.db/delete-moderation-reviews-beyond-newest! moderated_item_id moderated_item_type
                                                                         max-moderation-reviews)
       review)))
+
+(mu/defn delete-reviews-of-deleted-cards! :- :int
+  "Delete the ModerationReviews of the Cards with `card-ids`, which are being deleted, in one statement that bypasses
+  delete capture, so their search documents are not re-derived; returns the number deleted."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (content-verification.db/delete-card-reviews! card-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

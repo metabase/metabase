@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.plugins.core :as plugins]
    [metabase.sample-data.db :as sample-data.db]
    [metabase.sync.core :as sync]
@@ -168,7 +169,7 @@
       ;; Table-level permission rows denormalize the table's schema; keep them matching or schema-scoped
       ;; permission checks (e.g. schema visibility in the data picker) stop counting them. Delete+reinsert would churn
       ;; ids for a rename that doesn't change any permission value.
-      (sample-data.db/set-database-table-permissions-schema-name! (:id old-sample-db) (table-schema-for-engine engine)))
+      (data-perms/set-table-schema-name-of-database! (:id old-sample-db) (table-schema-for-engine engine)))
     (sync/sync-database! (:id old-sample-db))))
 
 (defn update-sample-database-if-needed!

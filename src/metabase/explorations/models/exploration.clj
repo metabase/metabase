@@ -11,6 +11,7 @@
    [metabase.explorations.collection-items :as explorations.collection-items]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.schema :as explorations.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search]
@@ -218,6 +219,14 @@
   [exploration-id :- ms/PositiveInt]
   (delete-explorations! [exploration-id]))
 
+(mu/defn revert-exploration! :- :int
+  "Write to the Exploration with `id` the tracked columns of the revision `snapshot` that its table still has, in one
+  statement through the model, returning the number updated."
+  [id        :- ms/PositiveInt
+   _user-id  :- [:maybe ::lib.schema.id/user]
+   snapshot  :- :map]
+  (explorations.db/update-exploration-columns! id (revisions/columns-to-revert :model/Exploration id snapshot)))
+
 (defmethod collection/archive-in-collections! :model/Exploration
   [model collection-ids]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
@@ -240,7 +249,8 @@
   {:skip? false})
 
 (defmethod revisions/spec :model/Exploration [_model]
-  {:track [:name :description :collection_id :archived]
+  {:revert! revert-exploration!
+   :track [:name :description :collection_id :archived]
    :skip  [:archived_directly :collection_position :creator_id :entity_id]})
 
 (defmethod search/spec :model/Exploration

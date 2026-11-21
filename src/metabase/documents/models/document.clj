@@ -20,6 +20,7 @@
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.models.interface :as mi]
    [metabase.parameters.params :as params]
@@ -625,6 +626,40 @@
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
 
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one plain
+  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (documents.db/increment-document-view-counts! count->ids))
+
+(mu/defn set-last-viewed-at! :- :int
+  "Set `last_viewed_at` of the Document with `id`, through the model, returning the number updated. The testing API backdates
+  it."
+  [id   :- ms/PositiveInt
+   time :- ms/TemporalInstant]
+  (documents.db/set-document-last-viewed-at! id time))
+
+(mu/defn shift-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Documents in the Collection with
+  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
+  position, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- vector?
+   plus-or-minus   :- [:enum :+ :-]]
+  (documents.db/shift-document-positions! collection-id position-clause plus-or-minus))
+
+(defmethod api/shift-collection-positions! :model/Document
+  [_model collection-id position-clause plus-or-minus]
+  (shift-positions! collection-id position-clause plus-or-minus))
+
+(mu/defn revert-document! :- :int
+  "Write to the Document with `id` the tracked columns of the revision `snapshot` that its table still has, in one
+  statement through the model, returning the number updated."
+  [id        :- ms/PositiveInt
+   _user-id  :- [:maybe ::lib.schema.id/user]
+   snapshot  :- :map]
+  (documents.db/update-document-columns! id (revisions/columns-to-revert :model/Document id snapshot)))
+
 (defmethod collection/archive-in-collections! :model/Document
   [model collection-ids]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
@@ -668,7 +703,8 @@
    :synced-filter-clause documents.db/synced-documents-clause})
 
 (defmethod revisions/spec :model/Document [_model]
-  {:track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
+  {:revert! revert-document!
+   :track [:name :document :content_type :exploration_id :is_placeholder :archived :archived_directly]
    :skip  [:collection_id :collection_position :creator_id :entity_id :last_viewed_at :made_public_by_id
            :public_uuid :public_uuid_prefix :view_count]})
 

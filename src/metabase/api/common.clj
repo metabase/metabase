@@ -509,6 +509,25 @@
 
 ;;; ------------------------------------------ COLLECTION POSITION HELPER FNS ----------------------------------------
 
+(defmulti shift-collection-positions!
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the rows of `model` in the Collection with
+  `collection-id` whose position matches `position-clause`, such as `[:> 3]` or `[:between 2 5]`, in one statement.
+  Each model with a collection position implements it with its own write function."
+  {:arglists '([model collection-id position-clause plus-or-minus])}
+  (fn [model _collection-id _position-clause _plus-or-minus] model))
+
+(def ^:private positioned-models
+  "The models whose rows have a position in their Collection."
+  [:model/Card :model/Dashboard :model/Pulse :model/Document])
+
+(defn- shift-positions!
+  "Shift the positions matching `position-clause` of each of [[positioned-models]] in the Collection with
+  `collection-id` by one, up or down by `plus-or-minus`."
+  [collection-id position-clause plus-or-minus]
+  (doseq [model positioned-models]
+    (t2/resolve-model model)
+    (shift-collection-positions! model collection-id position-clause plus-or-minus)))
+
 (mu/defn reconcile-position-for-collection!
   "Compare `old-position` and `new-position` to determine what needs to be updated based on the position change. Used
   for fixing card/dashboard/pulse changes that impact other instances in the collection"
@@ -519,24 +538,16 @@
     (cond
       (and (nil? new-position)
            old-position)
-      (doseq [shift-after! [api.db/shift-card-positions-after! api.db/shift-dashboard-positions-after!
-                            api.db/shift-pulse-positions-after! api.db/shift-document-positions-after!]]
-        (shift-after! collection-id old-position :-))
+      (shift-positions! collection-id [:> old-position] :-)
 
       (and new-position (nil? old-position))
-      (doseq [shift-from! [api.db/shift-card-positions-from! api.db/shift-dashboard-positions-from!
-                           api.db/shift-pulse-positions-from! api.db/shift-document-positions-from!]]
-        (shift-from! collection-id new-position :+))
+      (shift-positions! collection-id [:>= new-position] :+)
 
       (> new-position old-position)
-      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
-                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
-        (shift-between! collection-id old-position new-position :-))
+      (shift-positions! collection-id [:between old-position new-position] :-)
 
       (< new-position old-position)
-      (doseq [shift-between! [api.db/shift-card-positions-between! api.db/shift-dashboard-positions-between!
-                              api.db/shift-pulse-positions-between! api.db/shift-document-positions-between!]]
-        (shift-between! collection-id new-position old-position :+)))))
+      (shift-positions! collection-id [:between new-position old-position] :+))))
 
 (def ^:private ModelWithPosition
   "Intended to cover Cards/Dashboards/Pulses, it only asserts collection id and position, allowing extra keys"

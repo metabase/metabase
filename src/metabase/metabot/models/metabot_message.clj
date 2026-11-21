@@ -100,6 +100,11 @@
    deleted-by-user-id :- ::lib.schema.id/user]
   (metabot.db/soft-delete-messages-where! conditions deleted-by-user-id))
 
+(mu/defn seed-metabot-message!
+  "Insert the MetabotMessage `row` as given, its timestamps included, which the testing API seeds."
+  [row :- ::metabot.schema/metabot-message.update]
+  (metabot.db/insert-messages! row))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/MetabotMessage [_model]

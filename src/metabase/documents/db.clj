@@ -4,6 +4,7 @@
   (:require
    [java-time.api :as t]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -289,3 +290,34 @@
                              [:and
                               [:= :c.id :d.collection_id]
                               [:= :c.archived false]]]}) :can_read :can_write)))
+
+(mu/defn increment-document-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Documents with `ids`, in one raw
+  statement that publishes no event, returning the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (mdb/increment-counts! :model/Document :view_count count->ids))
+
+(mu/defn set-document-last-viewed-at!
+  "Set `last_viewed_at` of the Document with `document-id`, returning the number updated."
+  [document-id    :- ms/PositiveInt
+   last-viewed-at :- ms/TemporalInstant]
+  (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
+
+(mu/defn shift-document-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Documents in the Collection with
+  `collection-id` whose position matches `position-clause`, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- [:or
+                       [:tuple [:enum :> :>=] ms/PositiveInt]
+                       [:tuple [:= :between] ms/PositiveInt ms/PositiveInt]]
+   plus-or-minus   :- [:enum :+ :-]]
+  (t2/update! :model/Document {:collection_id       collection-id
+                               :collection_position position-clause}
+              {:collection_position [plus-or-minus :collection_position 1]}))
+
+(mu/defn update-document-columns!
+  "Apply `changes` to the Document with `document-id` in one statement through the model, returning the number
+  updated."
+  [document-id :- ms/PositiveInt
+   changes     :- :map]
+  (t2/update! :model/Document :id document-id changes))

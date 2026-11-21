@@ -104,21 +104,20 @@
              (select-keys snapshot (revisions.spec/snapshot-keys model))
              (revisions.spec/children model)))
 
-(defn revert-columns!
-  "Write the tracked columns of `snapshot` that the table of `model` still has to the row with `id`."
+(defn columns-to-revert
+  "The tracked columns of `snapshot` that the table of `model` still has, which a revert of the row with `id` writes."
   [model id snapshot]
   (let [valid-columns (set (keys (revisions.db/raw-row model id)))]
-    (revisions.db/update-entity! id {:model model
-                                     :row   (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))})))
+    (select-keys snapshot (filter valid-columns (revisions.spec/tracked-columns model)))))
 
 (defn revert-to-revision!
   "Return the row of `model` with `id` to the state that the `snapshot` of a Revision recorded."
   [model id user-id snapshot]
   (let [{:keys [before-revert revert!]} (revisions.spec/spec model)
         snapshot (if before-revert (before-revert id user-id snapshot) snapshot)]
-    (if revert!
-      (revert! id user-id snapshot)
-      (revert-columns! model id snapshot))))
+    (when-not revert!
+      (throw (ex-info (format "%s has no :revert! in its revisions spec" model) {:model model})))
+    (revert! id user-id snapshot)))
 
 (defn- without-skipped
   "The `snapshot` of `model` without the columns that its spec skips, which an older snapshot may still hold."
