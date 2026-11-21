@@ -12,6 +12,7 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -114,6 +115,8 @@ export const BrowseModels = () => {
                   setModelFilters={setModelFilters}
                 />
               )}
+              {/* PROTOTYPE: "No top nav" puts Chat with Metabot last. */}
+              <PageMetabotButton />
             </Group>
           </Flex>
         </Flex>

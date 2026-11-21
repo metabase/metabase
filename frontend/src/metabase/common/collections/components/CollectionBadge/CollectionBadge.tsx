@@ -1,5 +1,6 @@
 import { useGetCollectionQuery } from "metabase/api";
 import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import { getPickerCollectionName } from "metabase/common/components/Pickers/utils";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -53,7 +54,11 @@ const CollectionBadgeInner = ({
       }
       onClick={onClick}
     >
-      {tc(getName(collection))}
+      {/* PROTOTYPE: the Library's sections use the nav's names ("Data",
+          "Datasets") here too. */}
+      {tc(
+        getPickerCollectionName({ ...collection, name: getName(collection) }),
+      )}
     </Breadcrumb>
   );
 };

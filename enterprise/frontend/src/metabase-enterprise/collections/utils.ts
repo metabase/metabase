@@ -6,6 +6,7 @@ import type {
 } from "metabase/common/collections/types";
 import type { IconData, ObjectWithModel } from "metabase/common/utils/icon";
 import { useGetIconBase } from "metabase/hooks/use-icon";
+import { isPremiumFeatureHiddenByPrototype } from "metabase/nav/prototype/hidden-premium-features";
 import { type ItemWithCollection, PLUGIN_LIBRARY } from "metabase/plugins";
 import type {
   Bookmark,
@@ -38,8 +39,15 @@ export function getCollectionType({
 }: Partial<Collection>):
   | CollectionAuthorityLevelConfig
   | CollectionInstanceAnaltyicsConfig {
+  // PROTOTYPE: with Official collections simulated as gone, official
+  // collections look like regular ones.
+  const authorityLevel = isPremiumFeatureHiddenByPrototype(
+    "official_collections",
+  )
+    ? null
+    : authority_level;
   return (
-    COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
+    COLLECTION_TYPES?.[String(type || authorityLevel)] ?? REGULAR_COLLECTION
   );
 }
 

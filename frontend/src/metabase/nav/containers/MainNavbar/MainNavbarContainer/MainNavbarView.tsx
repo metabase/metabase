@@ -1,46 +1,27 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { CollectionTreeItem } from "metabase/common/collections/utils";
-import {
-  isInstanceAnalyticsCollection,
-  isLibraryCollection,
-  isRootTrashCollection,
-} from "metabase/common/collections/utils";
 import { CollapseSection } from "metabase/common/components/CollapseSection";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { Tree } from "metabase/common/components/tree";
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import {
   getIsTenantUser,
-  getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
 import { NavbarLibrarySection } from "metabase/nav/containers/MainNavbar/NavbarLibrarySection";
-import { PrototypeControls } from "metabase/nav/prototype/PrototypeControls";
 import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
-import {
-  PLUGIN_DATA_APPS,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TENANTS,
-} from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
   getCanAccessOnboardingPage,
   getIsNewInstance,
 } from "metabase/selectors/onboarding";
-import { useSetting, useUserSetting } from "metabase/settings";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { useUserSetting } from "metabase/settings";
+import { ActionIcon, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { isSmallScreen } from "metabase/utils/dom";
 import type { Bookmark, Collection } from "metabase-types/api";
@@ -55,10 +36,16 @@ import type { SelectedItem } from "../types";
 
 import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
+import { ExternalCollectionsNavSection } from "./ExternalCollectionsNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
-import { DatabasesNavLink, OfficialNavSection } from "./OfficialNavSection";
+import {
+  DatabasesNavLink,
+  ModelsNavLink,
+  OfficialNavSection,
+} from "./OfficialNavSection";
+import { useNavCollections } from "./use-nav-collections";
 
-type Props = {
+export type MainNavbarViewProps = {
   isOpen: boolean;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
@@ -80,21 +67,13 @@ type Props = {
   }) => Promise<any>;
 };
 
-type NavView = "official" | "explorations" | "bookmarks";
+type NavView =
+  | "official"
+  | "explorations"
+  | "external-collections"
+  | "bookmarks";
 
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
-
-/** Drops synced collections (and everything inside them) from a nav tree. */
-function withoutSyncedCollections(
-  items: CollectionTreeItem[],
-): CollectionTreeItem[] {
-  return items
-    .filter((item) => !item.is_remote_synced)
-    .map((item) => ({
-      ...item,
-      children: withoutSyncedCollections(item.children),
-    }));
-}
 
 export function MainNavbarView({
   bookmarks,
@@ -108,7 +87,7 @@ export function MainNavbarView({
   canAccessTenantSpecificCollections,
   canCreateSharedCollection,
   showExternalCollectionsSection,
-}: Props) {
+}: MainNavbarViewProps) {
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
@@ -117,17 +96,23 @@ export function MainNavbarView({
   );
 
   // With git integration on, the nav shows synced ("Official") content first;
-  // Explorations (everything else) and Bookmarks are one level in, behind nav
-  // items.
+  // Explorations (everything else), External collections and Bookmarks are one
+  // level in, behind nav items.
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
-  const [navView, setNavView] = useState<NavView>("official");
+  const [selectedNavView, setNavView] = useState<NavView>("official");
+  // Falls back to Official if External collections goes away (tenants off).
+  const navView =
+    selectedNavView === "external-collections" &&
+    !showExternalCollectionsSection
+      ? "official"
+      : selectedNavView;
   const showOfficial = isGitIntegrationEnabled && navView === "official";
   const showExplorations =
     isGitIntegrationEnabled && navView === "explorations";
+  const showExternalCollections =
+    isGitIntegrationEnabled && navView === "external-collections";
   const showBookmarks = isGitIntegrationEnabled && navView === "bookmarks";
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
-  const currentUser = useSelector(getUser);
-  const useTenants = useSetting("use-tenants");
   const isTenantUser = useSelector(getIsTenantUser);
 
   const [
@@ -148,40 +133,10 @@ export function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const { regularCollections, trashCollection } = useMemo(() => {
-    const trashCollection = collections.find(isRootTrashCollection);
-
-    // Usage analytics lives in Monitor's Content management section. With
-    // git integration on, synced collections are listed in the Official
-    // view, so Explorations leaves them out.
-    const regularCollections = collections.filter((c) => {
-      const isNormalCollection =
-        !isRootTrashCollection(c) && !isInstanceAnalyticsCollection(c);
-      return isNormalCollection && !isLibraryCollection(c);
-    });
-    const exploredCollections = isGitIntegrationEnabled
-      ? withoutSyncedCollections(regularCollections)
-      : regularCollections;
-
-    return {
-      trashCollection,
-      regularCollections:
-        useTenants && isTenantUser
-          ? PLUGIN_TENANTS.getFlattenedCollectionsForNavbar({
-              currentUser,
-              sharedTenantCollections,
-              regularCollections: exploredCollections,
-            })
-          : exploredCollections,
-    };
-  }, [
+  const { regularCollections, trashCollection } = useNavCollections(
     collections,
-    isGitIntegrationEnabled,
-    isTenantUser,
-    useTenants,
     sharedTenantCollections,
-    currentUser,
-  ]);
+  );
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -243,7 +198,7 @@ export function MainNavbarView({
     <ErrorBoundary>
       <Flex direction="column" justify="space-between" flex={1}>
         <div>
-          {(showExplorations || showBookmarks) && (
+          {(showExplorations || showExternalCollections || showBookmarks) && (
             <SidebarSection>
               {/* In Explorations, this row also holds "new collection", since
                   the Collections heading is gone. */}
@@ -260,6 +215,16 @@ export function MainNavbarView({
                 {showExplorations && newCollectionButton}
               </Flex>
             </SidebarSection>
+          )}
+
+          {showExternalCollections && (
+            <ExternalCollectionsNavSection
+              canAccessTenantSpecificCollections={
+                canAccessTenantSpecificCollections
+              }
+              canCreateSharedCollection={canCreateSharedCollection}
+              sharedTenantCollections={sharedTenantCollections}
+            />
           )}
 
           {showBookmarks && (
@@ -300,7 +265,7 @@ export function MainNavbarView({
             <SidebarSection>
               <SidebarHeading>{t`More`}</SidebarHeading>
               <SidebarLink
-                icon="telescope"
+                icon="files"
                 right={
                   <Icon name="chevronright" size={12} c="text-secondary" />
                 }
@@ -308,6 +273,17 @@ export function MainNavbarView({
               >
                 {t`Explorations`}
               </SidebarLink>
+              {showExternalCollectionsSection && (
+                <SidebarLink
+                  icon="globe"
+                  right={
+                    <Icon name="chevronright" size={12} c="text-secondary" />
+                  }
+                  onClick={() => setNavView("external-collections")}
+                >
+                  {t`External collections`}
+                </SidebarLink>
+              )}
               <SidebarLink
                 icon="bookmark"
                 right={
@@ -351,9 +327,10 @@ export function MainNavbarView({
                 </SidebarSection>
               )}
 
-              {/* Tenant users don't see the section about "External collections" */}
-              {showExternalCollectionsSection && (
-                <PLUGIN_TENANTS.MainNavSharedCollections
+              {/* Tenant users don't see the section about "External collections".
+                  With git integration on, it's behind its own nav item. */}
+              {showExternalCollectionsSection && !showExplorations && (
+                <ExternalCollectionsNavSection
                   canAccessTenantSpecificCollections={
                     canAccessTenantSpecificCollections
                   }
@@ -368,6 +345,10 @@ export function MainNavbarView({
                   selectedId={collectionItem?.id}
                   onItemSelect={onItemSelect}
                 >
+                  <ModelsNavLink
+                    nonEntityItem={nonEntityItem}
+                    onItemSelect={onItemSelect}
+                  />
                   {hasDataAccess && (
                     <DatabasesNavLink
                       nonEntityItem={nonEntityItem}
@@ -412,23 +393,18 @@ export function MainNavbarView({
         </div>
 
         <SidebarSection>
-          <Flex align="center" gap="xs">
-            <Box flex={1} miw={0}>
-              {trashCollection &&
-                (!isGitIntegrationEnabled || showExplorations) && (
-                  <ErrorBoundary>
-                    <Tree
-                      data={[trashCollection]}
-                      selectedId={collectionItem?.id}
-                      onSelect={onItemSelect}
-                      TreeNode={SidebarCollectionLink}
-                      role="tree"
-                    />
-                  </ErrorBoundary>
-                )}
-            </Box>
-            <PrototypeControls />
-          </Flex>
+          {trashCollection &&
+            (!isGitIntegrationEnabled || showExplorations) && (
+              <ErrorBoundary>
+                <Tree
+                  data={[trashCollection]}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                />
+              </ErrorBoundary>
+            )}
         </SidebarSection>
       </Flex>
 

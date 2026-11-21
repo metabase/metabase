@@ -18,6 +18,7 @@ import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
 
 const BROWSE_DATABASES_URL = "/browse/databases";
+const BROWSE_MODELS_URL = "/browse/models";
 
 /** The "Databases" browse link, shared by the Official and non-git navs. */
 export function DatabasesNavLink({
@@ -40,6 +41,29 @@ export function DatabasesNavLink({
   );
 }
 
+/**
+ * PROTOTYPE: the "Models" browse link, listed under Data in every nav variant
+ * now that Models isn't in Data Studio.
+ */
+export function ModelsNavLink({
+  nonEntityItem,
+  onItemSelect,
+}: {
+  nonEntityItem?: SelectedItem;
+  onItemSelect: () => void;
+}) {
+  return (
+    <SidebarLink
+      icon="model"
+      url={BROWSE_MODELS_URL}
+      isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+      onClick={onItemSelect}
+    >
+      {t`Models`}
+    </SidebarLink>
+  );
+}
+
 // Top-most collections synced from the git repository (with their subtrees).
 // The Library syncs too, but it's listed under "Data" instead.
 function getSyncedRoots(items: CollectionTreeItem[]): CollectionTreeItem[] {
@@ -51,15 +75,17 @@ function getSyncedRoots(items: CollectionTreeItem[]): CollectionTreeItem[] {
   });
 }
 
-function findCollection(
+// Subfolders of the Library's sections share their section's type, so the
+// section itself is the one marked as the Library root.
+function findLibrarySection(
   items: CollectionTreeItem[],
   type: CollectionType,
 ): CollectionTreeItem | undefined {
   for (const item of items) {
-    if (item.type === type) {
+    if (item.type === type && item.is_library_root) {
       return item;
     }
-    const found = findCollection(item.children, type);
+    const found = findLibrarySection(item.children, type);
     if (found != null) {
       return found;
     }
@@ -76,16 +102,14 @@ type Props = {
 };
 
 /**
- * The "Official" side of the nav: content synced from the git repository
- * (collections and data apps) and the Library's published tables and metrics.
+ * Content synced from the git repository: synced collections and data apps,
+ * or an empty state pointing admins at the sync settings.
  */
-export function OfficialNavSection({
+export function SyncedContentList({
   collections,
   selectedCollectionId,
-  nonEntityItem,
-  hasDataAccess,
   onItemSelect,
-}: Props) {
+}: Pick<Props, "collections" | "selectedCollectionId" | "onItemSelect">) {
   // Data apps and Data Studio pages hide this nav, so those links never need a
   // selected state.
   const isAdmin = useSelector(getUserIsAdmin);
@@ -95,62 +119,118 @@ export function OfficialNavSection({
   });
   const dataApps = allDataApps.filter((app) => app.enabled && !app.outdated);
 
-  // The Library's Data and Metrics collection pages list every published
-  // table and metric.
-  const tablesCollection = findCollection(collections, "library-data");
-  const metricsCollection = findCollection(collections, "library-metrics");
+  if (syncedRoots.length === 0 && dataApps.length === 0) {
+    return (
+      <Stack gap="sm" align="flex-start" ps="lg" pt="sm">
+        <Text c="text-secondary" fz="sm">
+          {t`Nothing from your repository is synced to this instance yet.`}
+        </Text>
+        {isAdmin && (
+          <Button
+            component={ForwardRefLink}
+            to="/admin/settings/remote-sync"
+            size="sm"
+          >
+            {t`Choose what to sync`}
+          </Button>
+        )}
+      </Stack>
+    );
+  }
 
+  return (
+    <>
+      <Tree
+        data={syncedRoots}
+        selectedId={selectedCollectionId}
+        onSelect={onItemSelect}
+        TreeNode={SidebarCollectionLink}
+        role="tree"
+        aria-label={t`Synced collections`}
+        rightSection={(item) =>
+          typeof item.id === "number" && (
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "collection", id: item.id }}
+            />
+          )
+        }
+      />
+      {dataApps.map((app) => (
+        <SidebarLink
+          key={app.slug}
+          icon="app"
+          url={Urls.dataApp(app.slug)}
+          onClick={onItemSelect}
+        >
+          {app.name}
+        </SidebarLink>
+      ))}
+    </>
+  );
+}
+
+/** The Library's published metrics and tables, plus the Databases browser. */
+export function OfficialDataLinks({
+  collections,
+  selectedCollectionId,
+  nonEntityItem,
+  hasDataAccess,
+  onItemSelect,
+}: Props) {
+  // The Library's Metrics and Data collections, labeled by what they hold.
+  // As tree rows, they expand to list their subfolders when they have any.
+  const metricsCollection = findLibrarySection(collections, "library-metrics");
+  const tablesCollection = findLibrarySection(collections, "library-data");
+  const sectionTree = useMemo(
+    () =>
+      [
+        metricsCollection && { ...metricsCollection, name: t`Metrics` },
+        tablesCollection && { ...tablesCollection, name: t`Datasets` },
+      ].filter((item): item is CollectionTreeItem => item != null),
+    [metricsCollection, tablesCollection],
+  );
+
+  return (
+    <>
+      <Tree
+        data={sectionTree}
+        selectedId={selectedCollectionId}
+        onSelect={onItemSelect}
+        TreeNode={SidebarCollectionLink}
+        role="tree"
+        aria-label={t`Metrics and tables`}
+        rightSection={(item) =>
+          typeof item.id === "number" && (
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "collection", id: item.id }}
+            />
+          )
+        }
+      />
+      <ModelsNavLink
+        nonEntityItem={nonEntityItem}
+        onItemSelect={onItemSelect}
+      />
+      {hasDataAccess && (
+        <DatabasesNavLink
+          nonEntityItem={nonEntityItem}
+          onItemSelect={onItemSelect}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * The "Official" side of the nav: content synced from the git repository
+ * (collections and data apps) and the Library's published tables and metrics.
+ */
+export function OfficialNavSection(props: Props) {
   return (
     <>
       <SidebarSection>
         <ErrorBoundary>
-          {syncedRoots.length === 0 && dataApps.length === 0 ? (
-            <Stack gap="sm" align="flex-start" ps="lg" pt="sm">
-              <Text c="text-secondary" fz="sm">
-                {t`Nothing from your repository is synced to this instance yet.`}
-              </Text>
-              {isAdmin && (
-                <Button
-                  component={ForwardRefLink}
-                  to="/admin/settings/remote-sync"
-                  size="sm"
-                >
-                  {t`Choose what to sync`}
-                </Button>
-              )}
-            </Stack>
-          ) : (
-            <>
-              <Tree
-                data={syncedRoots}
-                selectedId={selectedCollectionId}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label={t`Synced collections`}
-                rightSection={(item) =>
-                  typeof item.id === "number" && (
-                    <PLUGIN_REMOTE_SYNC.ChangesBadge
-                      target={{ type: "collection", id: item.id }}
-                    />
-                  )
-                }
-              />
-              {dataApps.map((app) => {
-                const url = Urls.dataApp(app.slug);
-                return (
-                  <SidebarLink
-                    key={app.slug}
-                    icon="app"
-                    url={url}
-                    onClick={onItemSelect}
-                  >
-                    {app.name}
-                  </SidebarLink>
-                );
-              })}
-            </>
-          )}
+          <SyncedContentList {...props} />
         </ErrorBoundary>
       </SidebarSection>
 
@@ -158,32 +238,7 @@ export function OfficialNavSection({
         <SidebarHeading>
           {c("A noun, shown in the sidebar as a navigation link").t`Data`}
         </SidebarHeading>
-        {metricsCollection && (
-          <SidebarLink
-            icon="metric"
-            url={Urls.collection(metricsCollection)}
-            isSelected={selectedCollectionId === metricsCollection.id}
-            onClick={onItemSelect}
-          >
-            {t`Metrics`}
-          </SidebarLink>
-        )}
-        {tablesCollection && (
-          <SidebarLink
-            icon="table"
-            url={Urls.collection(tablesCollection)}
-            isSelected={selectedCollectionId === tablesCollection.id}
-            onClick={onItemSelect}
-          >
-            {t`Tables`}
-          </SidebarLink>
-        )}
-        {hasDataAccess && (
-          <DatabasesNavLink
-            nonEntityItem={nonEntityItem}
-            onItemSelect={onItemSelect}
-          />
-        )}
+        <OfficialDataLinks {...props} />
       </SidebarSection>
     </>
   );

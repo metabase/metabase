@@ -26,6 +26,8 @@ export interface NewItemMenuProps {
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
+  /** PROTOTYPE: leaves out the AI exploration item. */
+  hideAIExploration?: boolean;
 }
 
 export const NewItemMenuView = ({
@@ -35,6 +37,7 @@ export const NewItemMenuView = ({
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
   onCloseNavbar,
+  hideAIExploration,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -50,7 +53,7 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess && hasNlqAccess) {
+    if (hasDataAccess && hasNlqAccess && !hideAIExploration) {
       items.push(<NewMenuItemAIExploration key="nlq" />);
     }
 
@@ -64,9 +67,10 @@ export const NewItemMenuView = ({
             { mode: "notebook", creationType: "custom_question" },
           )}
           onClick={onCloseNavbar}
-          leftSection={<Icon name="insight" />}
+          // PROTOTYPE: was "Question" with the insight icon.
+          leftSection={<Icon name="notebook" />}
         >
-          {t`Question`}
+          {t`GUI query`}
         </Menu.Item>,
       );
     }
@@ -128,6 +132,7 @@ export const NewItemMenuView = ({
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
     dispatch,
+    hideAIExploration,
     canWriteToCollections,
     hasNlqAccess,
     onCloseNavbar,

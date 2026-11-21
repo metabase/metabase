@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
@@ -19,6 +20,7 @@ import {
 
 export const useGetEntityPickerIcon = () => {
   const getIcon = useGetIcon();
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
 
   return useCallback(
     (
@@ -47,6 +49,16 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "synced_collection";
       }
 
+      // PROTOTYPE: with git integration on, the root collection is shown as
+      // "Explorations" and gets the nav's Explorations icon.
+      const isRootCollection =
+        item.model === "collection" &&
+        item.id === "root" &&
+        !("namespace" in item && item.namespace);
+      if (isGitIntegrationEnabled && isRootCollection) {
+        icon.name = "files";
+      }
+
       if (isSelected && !icon.color) {
         icon.color = "text-primary-inverse";
       }
@@ -61,7 +73,7 @@ export const useGetEntityPickerIcon = () => {
 
       return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
-    [getIcon],
+    [getIcon, isGitIntegrationEnabled],
   );
 };
 

@@ -123,6 +123,14 @@
   }
 }
 
+/* PROTOTYPE: "No top nav" — the same height as the nav's 52px header, with
+   no extra vertical padding, so both rows' contents share a center line. */
+.ViewHeaderContainer.alignWithNavHeader {
+  min-height: 52px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 .ViewHeaderIconButtonContainer {
   .ViewHeaderIconButton {
     padding: 0.25rem 0.5rem;

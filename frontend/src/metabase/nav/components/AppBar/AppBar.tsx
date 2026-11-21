@@ -7,7 +7,7 @@ import type { DetailViewState } from "metabase/redux/store";
 import type { CollectionId, SearchResult, User } from "metabase-types/api";
 
 import S from "./AppBar.module.css";
-import { AppBarLarge } from "./AppBarLarge";
+import { AppBarLarge, type MinimalAppBarLayout } from "./AppBarLarge";
 import { AppBarSmall } from "./AppBarSmall";
 
 export interface AppBarProps {
@@ -32,6 +32,10 @@ export interface AppBarProps {
   onToggleNavbar: () => void;
   onOpenNavbar: () => void;
   onCloseNavbar: () => void;
+  /** PROTOTYPE: see `AppBarLargeProps.isMinimal`. */
+  isMinimal?: boolean;
+  /** PROTOTYPE: see `AppBarLargeProps.minimalLayout`. */
+  minimalLayout?: MinimalAppBarLayout;
 }
 
 export const AppBar = (props: AppBarProps): JSX.Element => {

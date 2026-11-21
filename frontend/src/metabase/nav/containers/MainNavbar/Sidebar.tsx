@@ -50,8 +50,9 @@ interface SidebarSectionProps extends BoxProps {
   children?: ReactNode;
 }
 
+// PROTOTYPE: nav items sit 8px from both edges of the nav.
 export const SidebarSection = (props: SidebarSectionProps) => (
-  <Box mt="sm" mb="lg" px="lg" {...props} />
+  <Box mt="sm" mb="lg" px="sm" {...props} />
 );
 
 interface SidebarHeadingProps extends TextProps {

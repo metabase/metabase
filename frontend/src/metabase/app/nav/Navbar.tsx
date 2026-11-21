@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { NoTopNavHeader } from "metabase/app/nav/prototype/NoTopNavHeader";
 import { getUser } from "metabase/current-user";
 import { getDashboard } from "metabase/dashboard/shell-selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { connect } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
@@ -33,6 +35,7 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
   const location = useLocation();
   const params = useParams();
   useListDatabasesQuery();
+  const { variant } = useNavVariant();
   const isAdminApp = useMemo(
     () => location.pathname.startsWith("/admin/"),
     [location.pathname],
@@ -50,6 +53,7 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
       location={location}
       params={params}
       dashboard={dashboard}
+      header={variant === "no-top-nav" ? <NoTopNavHeader /> : undefined}
     />
   );
 }

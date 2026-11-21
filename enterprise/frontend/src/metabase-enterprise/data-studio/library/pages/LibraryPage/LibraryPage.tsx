@@ -177,7 +177,7 @@ function LibraryPageContent({ section }: { section?: LibraryPageSection }) {
     <LibraryTreePage
       title={
         section === "data"
-          ? t`Published tables`
+          ? t`Published datasets`
           : section === "metrics"
             ? t`Metrics`
             : t`Semantic layer`

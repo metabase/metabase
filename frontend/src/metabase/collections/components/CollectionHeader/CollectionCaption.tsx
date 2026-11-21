@@ -32,6 +32,10 @@ export const CollectionCaption = ({
   const currentUser = useSelector(getUser);
   const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
+  // PROTOTYPE: the Library's published-data section is shown as "Datasets"
+  // everywhere, so its heading matches; its real name isn't edited here.
+  const isDatasetsSection =
+    collection.type === "library-data" && collection.is_library_root === true;
 
   const handleChangeName = useCallback(
     (name: string) => {
@@ -54,9 +58,9 @@ export const CollectionCaption = ({
         <EditableText
           key={collection.id}
           as="h1"
-          initialValue={collection.name}
+          initialValue={isDatasetsSection ? t`Datasets` : collection.name}
           placeholder={t`Add title`}
-          isDisabled={!isEditable}
+          isDisabled={!isEditable || isDatasetsSection}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
           maxLength={100}

@@ -8,7 +8,6 @@ type TabName =
   | "library-tables"
   | "snippets"
   | "actions"
-  | "models"
   | "data-apps"
   | "transforms"
   | "dependencies"
@@ -35,8 +34,6 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "actions";
     case pathname.startsWith(Urls.dataStudioDataApps()):
       return "data-apps";
-    case pathname.startsWith(Urls.dataStudioModels()):
-      return "models";
     case pathname.startsWith(Urls.dataStudioLibraryMetrics()):
       return "library-metrics";
     case pathname.startsWith(Urls.dataStudioLibraryTables()):

@@ -121,7 +121,7 @@ export function DataStudioLayout() {
           isGated={!hasLibraryFeature}
         />
         <AreaTab
-          label={t`Published tables`}
+          label={t`Published datasets`}
           icon="table"
           to={
             hasLibraryFeature
@@ -191,18 +191,6 @@ export function DataStudioLayout() {
             <PLUGIN_REMOTE_SYNC.ChangesBadge
               target={{ type: "area", area: "glossary" }}
             />
-          }
-        />
-        <AreaTab
-          label={t`Models`}
-          icon="model"
-          to={Urls.dataStudioModels()}
-          isSelected={currentTab === "models"}
-          showLabel={isNavbarOpened}
-          rightSection={
-            isNavbarOpened ? (
-              <Badge variant="light" color="neutral">{t`Legacy`}</Badge>
-            ) : null
           }
         />
       </AreaTabGroup>

@@ -21,11 +21,13 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
@@ -57,6 +59,12 @@ export function DashboardHeaderView({
   onLastEditInfoClick,
 }: DashboardHeaderViewProps) {
   const { titled } = useDashboardContext();
+  // PROTOTYPE: in "No top nav" with the nav collapsed, the breadcrumb strip
+  // right above already spaces the title from the top, so it needs less of
+  // its own. With the nav open there's no strip, so it keeps its spacing.
+  const { variant } = useNavVariant();
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const hasCompactTop = variant === "no-top-nav" && !isNavbarOpen;
 
   const isEditing = useSelector(getIsEditing);
 
@@ -138,6 +146,7 @@ export function DashboardHeaderView({
                   aria-level={1}
                   className={cx(S.HeaderContent, {
                     [S.showSubHeader]: showSubHeader,
+                    [S.compactTop]: hasCompactTop,
                   })}
                 >
                   <Flex className={S.HeaderCaptionContainer} gap={2}>

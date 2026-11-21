@@ -50,6 +50,8 @@ interface CollectionSidebarBookmarksProps {
   }) => Promise<any>;
   onToggle: (isExpanded: boolean) => void;
   initialState: "expanded" | "collapsed";
+  /** Lists the bookmarks without the collapsible "Bookmarks" heading. */
+  hideHeading?: boolean;
 }
 
 interface BookmarkItemProps {
@@ -152,6 +154,7 @@ const BookmarkList = ({
   reorderBookmarks,
   onToggle,
   initialState,
+  hideHeading,
 }: CollectionSidebarBookmarksProps) => {
   const [deleteBookmark] = useDeleteBookmarkMutation();
   const listRef = useRef<HTMLUListElement>(null);
@@ -196,6 +199,39 @@ const BookmarkList = ({
 
   const bookmarkIds = bookmarks.map((b) => b.id);
 
+  const list = (
+    <DndContext
+      onDragEnd={handleSortEnd}
+      onDragStart={handleSortStart}
+      modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+      sensors={[pointerSensor]}
+    >
+      <SortableContext
+        items={bookmarkIds ?? []}
+        strategy={verticalListSortingStrategy}
+      >
+        <ul ref={listRef}>
+          {orderedBookmarks.map((bookmark, index) => (
+            <BookmarkItem
+              bookmark={bookmark}
+              isDraggable={orderedBookmarks.length > 1}
+              isSorting={isSorting}
+              key={bookmark.id}
+              index={index}
+              selectedItem={selectedItem}
+              onSelect={onSelect}
+              onDeleteBookmark={onDeleteBookmark}
+            />
+          ))}
+        </ul>
+      </SortableContext>
+    </DndContext>
+  );
+
+  if (hideHeading) {
+    return list;
+  }
+
   return (
     <CollapseSection
       header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
@@ -206,32 +242,7 @@ const BookmarkList = ({
       aria-label={t`Bookmarks`}
       onToggle={onToggle}
     >
-      <DndContext
-        onDragEnd={handleSortEnd}
-        onDragStart={handleSortStart}
-        modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-        sensors={[pointerSensor]}
-      >
-        <SortableContext
-          items={bookmarkIds ?? []}
-          strategy={verticalListSortingStrategy}
-        >
-          <ul ref={listRef}>
-            {orderedBookmarks.map((bookmark, index) => (
-              <BookmarkItem
-                bookmark={bookmark}
-                isDraggable={orderedBookmarks.length > 1}
-                isSorting={isSorting}
-                key={bookmark.id}
-                index={index}
-                selectedItem={selectedItem}
-                onSelect={onSelect}
-                onDeleteBookmark={onDeleteBookmark}
-              />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
+      {list}
     </CollapseSection>
   );
 };

@@ -114,6 +114,8 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
           [S.dropTarget]: isHovered,
         })}
         bdrs="xxs"
+        // PROTOTYPE: nav items use the regular weight.
+        fw={400}
         aria-selected={isSelected}
         onClick={isSelected ? onToggleExpand : undefined}
         ref={ref}

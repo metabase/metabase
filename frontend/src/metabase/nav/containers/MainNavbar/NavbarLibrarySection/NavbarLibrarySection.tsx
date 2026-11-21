@@ -25,6 +25,8 @@ type LibraryCollectionSectionProps = {
   onItemSelect: () => void;
   /** Extra links listed below the Library's collections. */
   children?: ReactNode;
+  /** Lists the links without the collapsible "Data" heading or section. */
+  hideHeading?: boolean;
 };
 
 /** Build the tree for a single library section (Data, Metrics, or Dashboards).
@@ -93,6 +95,7 @@ export function NavbarLibrarySection({
   selectedId,
   onItemSelect,
   children,
+  hideHeading,
 }: LibraryCollectionSectionProps) {
   const [expandLibrary = true, setExpandLibrary] = useUserSetting(
     "expand-library-in-nav",
@@ -108,7 +111,7 @@ export function NavbarLibrarySection({
       libraryCollection,
       collections,
       "library-data",
-      t`Tables`,
+      t`Datasets`,
     );
     const metricsTree = buildSectionTree(
       libraryCollection,
@@ -132,6 +135,31 @@ export function NavbarLibrarySection({
     return null;
   }
 
+  const content = (
+    <>
+      <Tree
+        data={libraryTree}
+        selectedId={selectedId}
+        onSelect={onItemSelect}
+        TreeNode={SidebarCollectionLink}
+        role="tree"
+        aria-label="library-collection-tree"
+        rightSection={(item) =>
+          typeof item.id === "number" && (
+            <PLUGIN_REMOTE_SYNC.ChangesBadge
+              target={{ type: "collection", id: item.id }}
+            />
+          )
+        }
+      />
+      {children}
+    </>
+  );
+
+  if (hideHeading) {
+    return content;
+  }
+
   return (
     <SidebarSection>
       <ErrorBoundary>
@@ -148,22 +176,7 @@ export function NavbarLibrarySection({
           aria-label={t`Data`}
           onToggle={setExpandLibrary}
         >
-          <Tree
-            data={libraryTree}
-            selectedId={selectedId}
-            onSelect={onItemSelect}
-            TreeNode={SidebarCollectionLink}
-            role="tree"
-            aria-label="library-collection-tree"
-            rightSection={(item) =>
-              typeof item.id === "number" && (
-                <PLUGIN_REMOTE_SYNC.ChangesBadge
-                  target={{ type: "collection", id: item.id }}
-                />
-              )
-            }
-          />
-          {children}
+          {content}
         </CollapseSection>
       </ErrorBoundary>
     </SidebarSection>

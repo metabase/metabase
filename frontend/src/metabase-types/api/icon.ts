@@ -104,6 +104,7 @@ export type IconName =
   | "factory"
   | "field"
   | "fields"
+  | "files"
   | "filter"
   | "filter_plus"
   | "find_replace"

@@ -8,6 +8,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useNavigate } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
@@ -51,7 +52,12 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  const showHistory = isConfigured && isHistoryEnabledProfile(profile);
+  // PROTOTYPE: "No top nav" and "Ask AI" list conversations in the nav's
+  // AI conversations tab, so this page doesn't repeat them.
+  const { variant } = useNavVariant();
+  const hasNavConversations = variant === "no-top-nav" || variant === "ask-ai";
+  const showHistory =
+    isConfigured && isHistoryEnabledProfile(profile) && !hasNavConversations;
   const historyAction = showHistory ? (
     <MetabotConversationHistory
       profileId={profile}
@@ -65,7 +71,9 @@ export const MetabotAsk = () => {
       direction="column"
       h="100%"
       w="100%"
-      bg="background_page-primary"
+      // PROTOTYPE: the Ask page sits on the secondary background; conversation
+      // pages keep the primary one.
+      bg={isAskPage ? "background_page-secondary" : "background_page-primary"}
       pos="relative"
     >
       {showGreeting ? (

@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -145,6 +147,9 @@ export function ViewTitleHeader({
   ]);
 
   const isSaved = question.isSaved();
+  // PROTOTYPE: in "No top nav", this row sits beside the nav's header, so it
+  // matches that header's height to line their contents up.
+  const { variant } = useNavVariant();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
   const isSummarized = Lib.aggregations(query, -1).length > 0;
@@ -154,11 +159,14 @@ export function ViewTitleHeader({
       <ViewSection
         className={cx(ViewTitleHeaderS.ViewHeaderContainer, className, {
           [ViewTitleHeaderS.isNavBarOpen]: isNavBarOpen,
+          [ViewTitleHeaderS.alignWithNavHeader]: variant === "no-top-nav",
         })}
         style={style}
         data-testid="qb-header"
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
+          {/* PROTOTYPE: "No top nav" opens the closed nav from here. */}
+          <NavOpenButton />
           <QueryBuilderBackButton mr="sm" />
           {isSaved ? (
             <SavedQuestionLeftSide

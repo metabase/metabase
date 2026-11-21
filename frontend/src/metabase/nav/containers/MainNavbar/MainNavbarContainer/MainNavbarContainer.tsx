@@ -21,6 +21,8 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/current-user";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
+import { useTenantsEnabled } from "metabase/nav/prototype/use-tenants-enabled";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { connect, useDispatch, useSelector } from "metabase/redux";
 import { logout } from "metabase/redux/auth";
@@ -35,6 +37,7 @@ import { NavbarLoadingView } from "../NavbarLoadingView";
 import type { MainNavbarProps, SelectedItem } from "../types";
 
 import { MainNavbarView } from "./MainNavbarView";
+import { TabsNavbarView } from "./TabsNavbarView";
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
@@ -79,6 +82,7 @@ function MainNavbarContainer({
   const dispatch = useDispatch();
 
   const { data: bookmarks = [] } = useListBookmarksQuery();
+  const { variant } = useNavVariant();
   const [reorderBookmarksMutation] = useReorderBookmarksMutation();
 
   const {
@@ -101,9 +105,15 @@ function MainNavbarContainer({
   const {
     canAccessTenantSpecificCollections,
     canCreateSharedCollection,
-    showExternalCollectionsSection,
+    showExternalCollectionsSection: isRealExternalCollectionsSectionVisible,
     sharedTenantCollections,
   } = PLUGIN_TENANTS.useTenantMainNavbarData();
+  // PROTOTYPE: the prototype controls' Tenants switch decides; with tenants
+  // really off, the section shows mocked collections.
+  const tenants = useTenantsEnabled();
+  const showExternalCollectionsSection =
+    tenants.isEnabled &&
+    (tenants.isReal ? isRealExternalCollectionsSectionVisible : !isTenantUser);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -175,9 +185,13 @@ function MainNavbarContainer({
     return <NavbarLoadingView />;
   }
 
+  const NavbarView = variant === "sections" ? MainNavbarView : TabsNavbarView;
+
   return (
     <>
-      <MainNavbarView
+      {/* PROTOTYPE: keyed, so switching variants remounts the nav. */}
+      <NavbarView
+        key={variant}
         {...props}
         bookmarks={bookmarks}
         isOpen={isOpen}

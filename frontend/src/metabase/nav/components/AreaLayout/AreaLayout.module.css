@@ -7,6 +7,19 @@
   width: 300px;
 }
 
+/* PROTOTYPE: wraps the open nav so it can be resized. The frame draws the
+   edge (and gets the resize handle); the nav inside fills it. */
+.resizableFrame {
+  position: relative;
+  flex-shrink: 0;
+  border-right: 1px solid var(--mb-color-border-neutral);
+
+  & .nav {
+    width: 100%;
+    border-right: none;
+  }
+}
+
 .logo {
   display: flex;
   align-items: center;

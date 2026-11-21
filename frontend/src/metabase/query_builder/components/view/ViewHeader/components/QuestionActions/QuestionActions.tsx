@@ -7,6 +7,7 @@ import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { useDispatch } from "metabase/redux";
 import type {
@@ -194,6 +195,9 @@ export const QuestionActions = ({
           />
         </>
       )}
+      {/* PROTOTYPE: "No top nav" puts Chat with Metabot left of "…", or last
+          when there's none. */}
+      <PageMetabotButton />
       {!question.isArchived() && (
         <QuestionMoreActionsMenu
           question={question}

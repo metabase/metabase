@@ -8,7 +8,7 @@ import type { OmniPickerCollectionItem, OmniPickerItem } from "./EntityPicker";
 
 /**
  * The name the picker shows for a collection. The Library and its Data
- * section use the main nav's labels ("Data" and "Tables") instead of their
+ * section use the main nav's labels ("Data" and "Datasets") instead of their
  * collection names, and the root collection uses `rootName` when given.
  */
 export function getPickerCollectionName(
@@ -17,6 +17,7 @@ export function getPickerCollectionName(
     name,
     type,
     namespace,
+    is_library_root,
   }: {
     id?: unknown;
     name: string;
@@ -24,6 +25,7 @@ export function getPickerCollectionName(
     // Library's collection types are relabeled.
     type?: string | null;
     namespace?: string | null;
+    is_library_root?: boolean;
   },
   rootName?: string,
 ): string {
@@ -34,7 +36,9 @@ export function getPickerCollectionName(
     case "library":
       return c("A noun, shown in the sidebar as a navigation link").t`Data`;
     case "library-data":
-      return t`Tables`;
+      // Subfolders share the section's type; only the section is relabeled.
+      // PROTOTYPE: was "Tables".
+      return is_library_root === false ? name : t`Datasets`;
     default:
       return name;
   }
