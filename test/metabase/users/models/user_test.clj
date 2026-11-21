@@ -500,7 +500,7 @@
 (deftest import-created-users-join-all-users-test
   (let [emails [(mt/random-email) (mt/random-email)]]
     (try
-      (let [users (serialization/insert! :model/User (mapv #(hash-map :email % :is_active false) emails))]
+      (let [users (serialization/insert-stub-users! (mapv #(hash-map :email % :is_active false) emails))]
         (is (= (set emails) (set (map :email users))))
         (doseq [{user-id :id} users]
           (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))

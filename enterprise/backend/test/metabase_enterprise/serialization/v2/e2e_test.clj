@@ -33,6 +33,7 @@
    [metabase.sync.sync :as sync.sync]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.users.models.user]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]
    [metabase.warehouses.serialization :as warehouses.serialization]
@@ -43,6 +44,8 @@
    (java.nio.file Path)))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here rely on the H2 test-data database via Card defaults, so we keep the H2 guard

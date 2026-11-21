@@ -552,8 +552,8 @@
            :type :entity_id :deactivated_at :tenant_id :jwt_attributes :deactivated_with_tenant :is_data_analyst]
    :skip  []})
 
-(defmethod serialization/insert-rows :model/User [_model]
-  create-users!)
+(defmethod serialization/insert-stub-users! :model/User [rows]
+  (create-users! rows))
 
 (defmethod audit/spec :model/User [_model]
   {:track          [:first_name :last_name :email :sso_source :tenant_id]

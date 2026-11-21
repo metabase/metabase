@@ -6,8 +6,11 @@
    [metabase.serialization.resolve :as resolve]
    [metabase.serialization.writes :as serialization.writes]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 (defn- query-count [thunk]
   (t2/with-call-count [call-count]

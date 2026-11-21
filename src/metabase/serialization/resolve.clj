@@ -178,21 +178,15 @@
 
 (defn- insert-missing!
   "The map from each of the set `refs` that `found` lacks to the id of the `model` row inserted into the app DB for it
-  by `->row` when `opts` has `:create-missing?`, merged into `found`. An inserted row is matched to its ref by
-  `key-fn`, by default the identity columns of the model."
-  ([model found refs opts ->row]
-   (insert-missing! model found refs opts ->row nil))
-  ([model found refs opts ->row key-fn]
-   (let [missing (into [] (remove #(contains? found %)) refs)]
-     (if (and (:create-missing? opts) (seq missing))
-       (let [rows      (mapv ->row missing)
-             instances (if key-fn
-                         (serialization.writes/insert-matched! model rows key-fn)
-                         (serialization.writes/insert-matched! model rows))]
-         (into found
-               (keep (fn [[ref instance]] (when instance [ref (:id instance)])))
-               (map vector missing instances)))
-       found))))
+  by `->row` when `opts` has `:create-missing?`, merged into `found`. An inserted row is matched to its ref by its
+  identity columns."
+  [model found refs opts ->row]
+  (let [missing (into [] (remove #(contains? found %)) refs)]
+    (if (and (:create-missing? opts) (seq missing))
+      (into found
+            (keep (fn [[ref instance]] (when instance [ref (:id instance)])))
+            (map vector missing (serialization.writes/insert-matched! model (mapv ->row missing))))
+      found)))
 
 (defn- ref-pks
   "The map from each of the set `refs` to the primary key of the `model` row with that ref, leaving out the refs no row
@@ -214,9 +208,17 @@
 (defn user-ids
   "The map from each of `emails` to the id of its User, an inactive one created when `opts` has `:create-missing?`."
   [store emails opts]
-  (insert-missing! :model/User (ref-pks store :model/User emails) emails opts
-                   (fn [email] {:email email :is_active false})
-                   #(some-> (:email %) u/lower-case-en)))
+  (let [found   (ref-pks store :model/User emails)
+        missing (into [] (remove #(contains? found %)) emails)]
+    (if (and (:create-missing? opts) (seq missing))
+      (into found
+            (keep (fn [[email user]] (when user [email (:id user)])))
+            (map vector missing (serialization.writes/insert-matched!
+                                 :model/User
+                                 (mapv (fn [email] {:email email :is_active false}) missing)
+                                 #(some-> (:email %) u/lower-case-en)
+                                 serialization.writes/insert-stub-users!)))
+      found)))
 
 (defn database-ids
   "The map from each of `db-names` to the id of the Database it names, a stub created when `opts` has

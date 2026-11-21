@@ -21,25 +21,37 @@
     (fn [row] (mapv #(comparable (get row %)) ks))))
 
 (defn insert!
-  "Inserts `rows` of `model` and returns the inserted instances, in any order, without the rows the model leaves out:
-  by the `:insert!` of its spec, or, for a model that is not serialized but that an import creates rows of, by its
-  [[metabase.serialization.spec/insert-rows]]."
+  "Inserts `rows` of `model` and returns the inserted instances, in any order, without the rows the model leaves out."
   [model rows]
-  (if-let [f (or (:insert! (serialization.spec/spec model)) (serialization.spec/insert-rows model))]
+  (if-let [f (:insert! (serialization.spec/spec model))]
     (vec (f (vec rows)))
     (into []
           (mapcat #(serialization.db/insert-rows! model (vec %)))
           (partition-all serialization.util/batch-size rows))))
 
+(defmulti insert-stub-users!
+  "Inserts `rows`, the inactive Users an import creates for the emails it does not know, and returns the instances.
+  User is not serialized, so it has no spec to name its write function, and serialization cannot require the User
+  model, which requires serialization: the User model, loaded by the init of its module, implements this for
+  `:model/User`. By default it inserts nothing."
+  {:arglists '([rows])}
+  (fn [_rows] :model/User))
+
+(defmethod insert-stub-users! :default
+  [_rows]
+  [])
+
 (defn insert-matched!
   "Inserts `rows` of `model` (see [[insert!]]) and returns, for each of `rows` in order, its inserted instance, or nil
   for a row the model left out. An instance is matched to its row by `key-fn`, by default the identity columns of the
-  model, never by the order [[insert!]] returns them in."
+  model, never by the order they are returned in. `insert-fn`, by default [[insert!]] of `model`, inserts them."
   ([model rows]
    (insert-matched! model rows (identity-of model)))
   ([model rows key-fn]
+   (insert-matched! model rows key-fn #(insert! model %)))
+  ([model rows key-fn insert-fn]
    (let [rows      (vec rows)
-         instances (insert! model rows)
+         instances (vec (insert-fn rows))
          row-keys  (mapv key-fn rows)
          by-key    (into {} (map (juxt key-fn identity)) instances)]
      (when-not (and (apply distinct? nil row-keys) (= (count by-key) (count instances)))

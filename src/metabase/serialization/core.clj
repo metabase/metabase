@@ -78,6 +78,7 @@
  [serialization.writes
   delete!
   insert!
+  insert-stub-users!
   update!]
  [serialization.storage
   batch-storage-paths
@@ -137,7 +138,6 @@
   visualization-settings-transform]
  [serialization.spec
   columns
-  insert-rows
   spec
   spec-of]
  [serialization.transform
