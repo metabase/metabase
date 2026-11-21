@@ -7,6 +7,7 @@
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.session.db :as session.db]
+   [metabase.session.models.session :as models.session]
    [metabase.task.core :as task]))
 
 (set! *warn-on-reflection* true)
@@ -19,17 +20,17 @@
   []
   (let [unrecorded (session.db/sessions-with-unrecorded-ending (session/liveness-params))]
     (doseq [[reason rows] (group-by :reason unrecorded)]
-      (session.db/end-sessions-by-ids! (mapv :id rows) reason nil))))
+      (models.session/end-sessions-by-ids! (mapv :id rows) reason nil))))
 
 (defn- cleanup-sessions!
   "Two passes over `core_session`: record the ending of every session that has stopped being live, then delete the
   rows whose recorded ending is older than the retention period. MCP-backed rows are not sessions and are simply
   deleted once they expire, as they always were."
   []
-  (session.db/delete-expired-mcp-sessions! (config/config-int :max-session-age)
-                                           (request/enabled-session-timeout-seconds))
+  (models.session/delete-expired-mcp-sessions! (config/config-int :max-session-age)
+                                               (request/enabled-session-timeout-seconds))
   (record-unrecorded-endings!)
-  (session.db/delete-sessions-ended-long-ago!))
+  (models.session/delete-sessions-ended-long-ago!))
 
 (def ^:private session-cleanup-job-key (jobs/key "metabase.task.session-cleanup.job"))
 (def ^:private session-cleanup-trigger-key (triggers/key "metabase.task.session-cleanup.trigger"))

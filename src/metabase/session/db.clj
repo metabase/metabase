@@ -4,7 +4,6 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.auth-identity.db :as auth-identity.db]
-   [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.session.query :as session.query]
    [metabase.session.schema :as session.schema]
@@ -21,47 +20,68 @@
   ;; and the audit tables are a different concern
   30)
 
-(def default-end-batch-size
-  "How many ids one `UPDATE ... WHERE id IN (...)` may name. Ending sessions by id has no upper bound on how many
-  there are, and every id is a bind parameter — pgjdbc refuses a statement with more than 65,535 of them."
-  1000)
+(mu/defn insert-session! :- ::session.schema/session
+  "Insert the Session `row` and return the inserted instance."
+  [{:keys [id user_id auth_identity_id session_key expires_at mfa_auth_identity_id
+           saml_session_index saml_name_id saml_name_id_format]} :- ::session.schema/session.create]
+  ;; `:id` and `:session_key` stay unmarked: the before-insert hook checks the id is not a UUID and hashes the key,
+  ;; and both need the plain string. The key itself never reaches SQL, only its hash.
+  (t2/insert-returning-instance! :model/Session
+                                 ;; Without setting the ID here we can't return an instance on MySQL
+                                 :id id
+                                 :user_id (long user_id)
+                                 :auth_identity_id (some-> auth_identity_id long)
+                                 :session_key session_key
+                                 :expires_at [:auto/param expires_at]
+                                 :mfa_auth_identity_id (some-> mfa_auth_identity_id long)
+                                 :saml_session_index [:auto/param saml_session_index]
+                                 :saml_name_id [:auto/param saml_name_id]
+                                 :saml_name_id_format [:auto/param saml_name_id_format]))
+
+(mu/defn select-or-insert-mcp-session!
+  "The `core_session` row with `key-hashed` of the User with `user-id`, inserting the row `new-row` returns when there
+  is none. Writes the table rather than `:model/Session`, so the row gets no model defaults."
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user
+   new-row    :- [:=> [:cat] [:map {:closed true}
+                              [:id               :string]
+                              [:anti_csrf_token  :nil]
+                              [:auth_identity_id ms/PositiveInt]
+                              [:created_at       :keyword]]]]
+  (mdb/select-or-insert! :core_session {:key_hashed key-hashed :user_id user-id} new-row))
 
 (mu/defn end-sessions! :- ms/IntGreaterThanOrEqualToZero
-  "Record that every Session matching `conditions` (see `::session.schema/end-conditions`) has ended: `ended_at`
-  becomes now, `end_reason` becomes `reason`, `ended_by_user_id` becomes `ended-by`, and `key_hashed` is cleared so
-  the row can never authenticate a request again. A session that has already ended is left as it was. Returns the
-  number of sessions ended. See `::session.schema/ended-by` for `ended-by`."
-  [conditions :- ::session.schema/end-conditions
+  "Record that every live Session matching the Toucan `conditions` has ended with `reason`, ended by `ended-by` (a
+  User id, or `:user_id` for the session's own user), clearing its key. Returns the number ended."
+  [conditions :- [:map {:closed true}
+                  [:id         {:optional true} [:tuple [:= :in] [:sequential :string]]]
+                  [:user_id    {:optional true} ::lib.schema.id/user]
+                  [:key_hashed {:optional true} :string]]
    reason     :- ::session.schema/end-reason
-   ended-by   :- ::session.schema/ended-by]
-  ;; an explicitly empty id list matches nothing; `IN ()` is not valid SQL anywhere
-  (if (and (contains? conditions :id) (empty? (:id conditions)))
-    0
-    (t2/update! :model/Session
-                (cond-> (assoc conditions :ended_at nil)
-                  (:id conditions) (update :id (fn [ids] [:in ids])))
-                {:ended_at         :%now
-                 :end_reason       reason
-                 ;; a bare keyword is a column reference, so `:self` writes the row's own `user_id`
-                 :ended_by_user_id (if (= ended-by :self) :user_id ended-by)
-                 :key_hashed       nil})))
+   ended-by   :- [:maybe [:or ::lib.schema.id/user [:= :user_id]]]]
+  (t2/update! :model/Session
+              (assoc conditions :ended_at nil)
+              {:ended_at         :%now
+               :end_reason       reason
+               :ended_by_user_id ended-by
+               :key_hashed       nil}))
 
-(mu/defn end-sessions-by-ids! :- ms/IntGreaterThanOrEqualToZero
-  "[[end-sessions!]] for the Sessions with `ids`, in batches of `batch-size` ids ([[default-end-batch-size]] by
-  default), returning the total number ended. An empty `ids` ends nothing."
-  ([ids      :- [:sequential :string]
-    reason   :- ::session.schema/end-reason
-    ended-by :- ::session.schema/ended-by]
-   (end-sessions-by-ids! ids reason ended-by default-end-batch-size))
+(mu/defn delete-session-of-user!
+  "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user]
+  (t2/query {:delete-from :core_session
+             :where       [:and
+                           [:= :key_hashed key-hashed]
+                           [:= :user_id user-id]]}))
 
-  ([ids        :- [:sequential :string]
-    reason     :- ::session.schema/end-reason
-    ended-by   :- ::session.schema/ended-by
-    batch-size :- ms/PositiveInt]
-   (transduce (map (fn [batch] (end-sessions! {:id batch} reason ended-by)))
-              +
-              0
-              (partition-all batch-size ids))))
+(mu/defn touch-session!
+  "Set `last_active_at` of the Session with `key-hashed` to now. Writes the table rather than `:model/Session`, whose
+  update hook allows only the columns that record an ending."
+  [key-hashed :- :string]
+  (t2/query-one {:update (t2/table-name :model/Session)
+                 :set    {:last_active_at :%now}
+                 :where  [:= :key_hashed key-hashed]}))
 
 (mu/defn sessions-with-unrecorded-ending :- [:sequential [:map {:closed true}
                                                           [:id     :string]
@@ -138,12 +158,6 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (auth-identity.db/auth-identity-exists? user-id provider))
-
-(mu/defn set-auth-identity-credentials!
-  "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
-  [auth-identity-id :- ms/PositiveInt
-   credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
-  (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
 
 (mu/defn auth-identity-provider
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."

@@ -6,9 +6,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.events.core :as events]
    [metabase.login-history.record]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
+   [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -172,6 +174,58 @@
                                                    :session_key key)]
         (is (nil? (:key session)) "Key is not returned by the insert")
         (is (= (session/hash-session-key key) (t2/select-one-fn :key_hashed :model/Session :user_id user-id)))))))
+
+(deftest create-session!-test
+  (mt/with-temp [:model/User         {user-id :id} {}
+                 :model/AuthIdentity {pw-id :id}   {:user_id user-id :provider "password"
+                                                    :credentials {:plaintext_password "Password123!"}}]
+    (mt/with-model-cleanup [:model/Session]
+      (testing "publishes login events of the User"
+        (let [published (atom [])]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+            (session/create-session! {:id               (session/generate-session-id)
+                                      :user_id          user-id
+                                      :auth_identity_id pw-id
+                                      :session_key      (session/generate-session-key)}))
+          (is (= [[:event/user-login {:user-id user-id}]
+                  [:event/user-joined {:user-id user-id}]]
+                 @published))))
+      (testing "plain insert publishes no login event"
+        (let [published (atom [])]
+          (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
+            (t2/insert! :model/Session {:id          (session/generate-session-id)
+                                        :user_id     user-id
+                                        :session_key (session/generate-session-key)}))
+          (is (= [] @published)))))))
+
+(deftest create-session!-refuses-password-session-when-password-login-disabled-test
+  (mt/with-temp [:model/User         {user-id :id}     {}
+                 :model/AuthIdentity {pw-id :id}       {:user_id user-id :provider "password"
+                                                        :credentials {:plaintext_password "Password123!"}}
+                 :model/AuthIdentity {google-id :id}   {:user_id user-id :provider "google"}]
+    (mt/with-model-cleanup [:model/Session]
+      (ldap.test/with-ldap-server!
+        (mt/with-premium-features #{:disable-password-login}
+          (mt/with-temporary-setting-values [enable-password-login false]
+            (testing "password session is refused and nothing is stored"
+              (is (=? {:status-code 400}
+                      (try
+                        (session/create-session! {:id               (session/generate-session-id)
+                                                  :user_id          user-id
+                                                  :auth_identity_id pw-id
+                                                  :session_key      (session/generate-session-key)})
+                        (catch clojure.lang.ExceptionInfo e
+                          (ex-data e)))))
+              (is (not (t2/exists? :model/Session :user_id user-id))))
+            (testing "MCP session of password AuthIdentity is refused too"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Password login is disabled"
+                                    (session/get-or-create-mcp-session! (str "mcp-test-" (random-uuid)) user-id pw-id)))
+              (is (not (t2/exists? :model/Session :user_id user-id))))
+            (testing "session of another provider is created"
+              (is (some? (session/create-session! {:id               (session/generate-session-id)
+                                                   :user_id          user-id
+                                                   :auth_identity_id google-id
+                                                   :session_key      (session/generate-session-key)}))))))))))
 
 (deftest hash-session-key-test
   (testing "the no-secret on-disk format stays plain SHA-512; a format regression here mass-logs-out keyless

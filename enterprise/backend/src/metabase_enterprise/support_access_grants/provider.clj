@@ -9,6 +9,7 @@
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.schema :as schema]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -80,8 +81,8 @@
                              :credentials (create-support-access-reset-token-credentials <> grant-ends-at)
                              :metadata (auth-identity/create-reset-token-metadata (:email user))}]
           (if-let [auth-identity-id (support-access-grants.db/support-access-auth-identity-id user-id)]
-            (support-access-grants.db/update-auth-identity! auth-identity-id auth-identity)
-            (support-access-grants.db/insert-auth-identity! auth-identity)))))))
+            (models.auth-identity/update-auth-identity! auth-identity-id auth-identity)
+            (models.auth-identity/create-auth-identity! auth-identity)))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 
@@ -105,7 +106,8 @@
       (log/infof "Setting password expiration for user %s to %s based on support access grant"
                  (:id user) grant-ends-at)
       (t2/with-transaction [_]
-        (support-access-grants.db/update-auth-identity! (:id auth-identity) (auth-identity/mark-token-consumed auth-identity))
+        (models.auth-identity/update-auth-identity! (:id auth-identity)
+                                                    (dissoc (auth-identity/mark-token-consumed auth-identity) :id))
         ;; the support user is who is changing their own password here, so they are who ends their sessions
         (auth-identity/set-password! (:id user) password {:expires-at grant-ends-at, :ended-by (:id user)}))))
   result)

@@ -45,6 +45,7 @@
    [metabase.request.core :as request]
    [metabase.server.middleware.security :as mw.security]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -241,7 +242,7 @@
                                           :response-validators [:signature :require-authenticated :issuer]})]
       (if-let [metabase-session-key (and (saml/logout-success? response) (get-in cookies [request/metabase-session-cookie :value]))]
         (do
-          (session/end-sessions! {:key_hashed (session/hash-session-key metabase-session-key)} "sso-logout" :self)
+          (models.session/end-sessions! {:key_hashed (session/hash-session-key metabase-session-key)} "sso-logout" :self)
           (request/clear-session-cookie (response/redirect (system/site-url))))
         {:status 500 :body "SAML logout failed."}))
     (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

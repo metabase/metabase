@@ -153,10 +153,3 @@
   [user-id                      :- ::lib.schema.id/user
    enable-advanced-permissions? :- :boolean]
   (t2/query-one (cons (user-data-for-id-query enable-advanced-permissions?) [user-id])))
-
-(mu/defn touch-session!
-  "Set `last_active_at` of the Session with `key-hashed` to now."
-  [key-hashed :- :string]
-  (t2/query-one {:update (t2/table-name :model/Session)
-                 :set    {:last_active_at :%now}
-                 :where  [:= :key_hashed key-hashed]}))
