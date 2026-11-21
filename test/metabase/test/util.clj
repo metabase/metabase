@@ -6,7 +6,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.scheduler :as qs]
    [colorize.core :as colorize]
    [diehard.core :as dh]
@@ -94,15 +93,12 @@
     data))
 
   ([pred data]
-   (walk/prewalk (fn [maybe-map]
-                   (if (map? maybe-map)
-                     (reduce-kv (fn [acc k v]
-                                  (if (pred k)
-                                    (assoc acc k (some? v))
-                                    (assoc acc k v)))
-                                {} maybe-map)
-                     maybe-map))
-                 data)))
+   (match/replace-all data
+     #'map? (reduce-kv (fn [acc k v]
+                         (if (pred k)
+                           (assoc acc k (some? v))
+                           (assoc acc k v)))
+                       {} &match))))
 
 (defn- user-id [username]
   (classloader/require 'metabase.test.data.users)

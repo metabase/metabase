@@ -3,7 +3,6 @@
   their bundles, and generate the files of their repository."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
@@ -22,7 +21,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -122,7 +122,7 @@
 (defn- kebab-case-keys
   "`x` with the keys of every map in it kebab-cased, as the SDK's camelCase keys are in Lib's test query spec."
   [x]
-  (walk/postwalk #(cond-> % (map? %) (update-keys (comp keyword u/->kebab-case-en name))) x))
+  (match/replace-all x #'map? (update-keys &match (comp keyword u/->kebab-case-en name))))
 
 (defn- definitions-schema
   "Request schema for definitions by export name."
