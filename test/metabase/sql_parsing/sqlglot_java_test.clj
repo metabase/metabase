@@ -19,8 +19,8 @@
    [metabase.test :as mt])
   (:import
    (com.metabase.sqlglot SqlglotInterruptedException)
-   (org.graalvm.polyglot Context)
-   (java.util.concurrent TimeoutException)))
+   (java.util.concurrent TimeoutException)
+   (org.graalvm.polyglot Context)))
 
 (set! *warn-on-reflection* true)
 

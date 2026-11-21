@@ -295,7 +295,9 @@
              :message    "The SQL of the query under test holds a list of values too long for the SQL check to parse."}
             (single-select :postgres
                            (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
-                           nil))))
+                           nil)))))
+
+(deftest ensure-single-select-without-a-dialect-test
   (testing "a driver with no SQLGlot dialect"
     (testing "runs a single SELECT as written"
       (is (= "SELECT 1 AS id -- one"
