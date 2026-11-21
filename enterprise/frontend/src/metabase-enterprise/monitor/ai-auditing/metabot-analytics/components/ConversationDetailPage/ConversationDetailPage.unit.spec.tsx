@@ -6,11 +6,16 @@ import {
   createMockParentedMessage,
   setupGroupsEndpoint,
   setupMetabotConversationEndpoint,
+  setupMetabotConversationEndpointError,
+  setupMetabotConversationRawEndpoint,
   setupPermissionMembershipEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
+import { openSaveDialog } from "metabase/utils/dom";
+import { defer } from "metabase/utils/promise";
 import type {
   ConversationDetail,
   ConversationFeedback,
@@ -19,12 +24,21 @@ import type {
   GroupListQuery,
   ListUserMembershipsResponse,
 } from "metabase-types/api";
-import { createMockGroup, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockGroup,
+  createMockUser,
+  createMockVersion,
+} from "metabase-types/api/mocks";
 
 import { ConversationDetailPage } from "./ConversationDetailPage";
 
 jest.mock("metabase/monitor/components/MonitorLayout", () => ({
   MonitorMain: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
+  openSaveDialog: jest.fn(),
 }));
 
 jest.mock("metabase/monitor/components/MonitorLayout/Sidebar", () => ({
@@ -109,12 +123,28 @@ function createConversation(
   };
 }
 
-function setup(
-  conversation: ConversationDetail,
-  groups: GroupListQuery[] = [],
-  memberships: ListUserMembershipsResponse = {},
-) {
-  setupMetabotConversationEndpoint(conversation);
+interface SetupOpts {
+  conversation: ConversationDetail;
+  /** The detail endpoint's exact response text, when it holds JSON that `conversation` can't */
+  conversationResponseText?: string;
+  groups?: GroupListQuery[];
+  memberships?: ListUserMembershipsResponse;
+}
+
+function setup({
+  conversation,
+  conversationResponseText,
+  groups = [],
+  memberships = {},
+}: SetupOpts) {
+  if (conversationResponseText != null) {
+    setupMetabotConversationRawEndpoint(
+      conversation.conversation_id,
+      conversationResponseText,
+    );
+  } else {
+    setupMetabotConversationEndpoint(conversation);
+  }
   setupGroupsEndpoint(groups);
   setupPermissionMembershipEndpoint(memberships);
   return renderWithProviders(
@@ -125,8 +155,12 @@ function setup(
     {
       withRouter: true,
       initialRoute: "/conversations/convo-1",
+      withUndos: true,
       storeInitialState: {
         currentUser: createMockUser({ is_superuser: true }),
+        settings: mockSettings({
+          version: createMockVersion({ tag: "v1.58.0" }),
+        }),
       },
     },
   );
@@ -134,12 +168,12 @@ function setup(
 
 describe("ConversationDetailPage", () => {
   it("shows the conversation title in the header", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "hi"),
         agentMessage("a1", "u1", "an answer"),
       ]),
-    );
+    });
 
     expect(
       await screen.findByRole("heading", { name: "A conversation" }),
@@ -153,14 +187,16 @@ describe("ConversationDetailPage", () => {
       title: "Original chat",
     });
     setup({
-      ...createConversation([
-        userMessage("u1", null, "hi"),
-        agentMessage("a1", "u1", "inherited answer"),
-        userMessage("u2", "a1", "follow up"),
-        agentMessage("a2", "u2", "new answer"),
-      ]),
-      forked_from_conversation_id: "convo-0",
-      fork_boundary_message_id: "a1",
+      conversation: {
+        ...createConversation([
+          userMessage("u1", null, "hi"),
+          agentMessage("a1", "u1", "inherited answer"),
+          userMessage("u2", "a1", "follow up"),
+          agentMessage("a2", "u2", "new answer"),
+        ]),
+        forked_from_conversation_id: "convo-0",
+        fork_boundary_message_id: "a1",
+      },
     });
 
     expect(await screen.findByText("inherited answer")).toBeInTheDocument();
@@ -191,13 +227,15 @@ describe("ConversationDetailPage", () => {
       title: "Original chat",
     });
     setup({
-      ...createConversation([
-        userMessage("u1", null, "count orders"),
-        agentMessage("a1", "u1", "inherited answer"),
-        agentMessage("a2", "u1", "regenerated answer"),
-      ]),
-      forked_from_conversation_id: "convo-0",
-      fork_boundary_message_id: "a1",
+      conversation: {
+        ...createConversation([
+          userMessage("u1", null, "count orders"),
+          agentMessage("a1", "u1", "inherited answer"),
+          agentMessage("a2", "u1", "regenerated answer"),
+        ]),
+        forked_from_conversation_id: "convo-0",
+        fork_boundary_message_id: "a1",
+      },
     });
 
     expect(await screen.findByText("regenerated answer")).toBeInTheDocument();
@@ -214,12 +252,12 @@ describe("ConversationDetailPage", () => {
   });
 
   it("does not render a fork boundary for a non-forked conversation", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "hi"),
         agentMessage("a1", "u1", "an answer"),
       ]),
-    );
+    });
 
     expect(await screen.findByText("an answer")).toBeInTheDocument();
     expect(
@@ -228,13 +266,13 @@ describe("ConversationDetailPage", () => {
   });
 
   it("defaults a regenerated turn to the latest attempt and pages between attempts", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "count orders"),
         agentMessage("a1", "u1", "first try"),
         agentMessage("a2", "u1", "kept answer"),
       ]),
-    );
+    });
 
     expect(await screen.findByText("kept answer")).toBeInTheDocument();
     expect(screen.queryByText("first try")).not.toBeInTheDocument();
@@ -263,13 +301,13 @@ describe("ConversationDetailPage", () => {
   });
 
   it("shows the loading state with a reachable pager while a regeneration streams", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "count orders"),
         agentMessage("a1", "u1", "first try"),
         inProgressMessage("a2", "u1"),
       ]),
-    );
+    });
 
     expect(
       await screen.findByTestId("metabot-response-loader"),
@@ -293,15 +331,15 @@ describe("ConversationDetailPage", () => {
   });
 
   it("truncates the conversation after a superseded attempt", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "count orders"),
         agentMessage("a1", "u1", "first try"),
         agentMessage("a2", "u1", "kept answer"),
         userMessage("u2", "a2", "and by month?"),
         agentMessage("b1", "u2", "monthly answer"),
       ]),
-    );
+    });
 
     expect(await screen.findByText("kept answer")).toBeInTheDocument();
     expect(screen.getByText("monthly answer")).toBeInTheDocument();
@@ -316,12 +354,12 @@ describe("ConversationDetailPage", () => {
   });
 
   it("does not let admins submit feedback ratings from the transcript", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "hi"),
         agentMessage("a1", "u1", "an answer"),
       ]),
-    );
+    });
 
     expect(await screen.findByText("an answer")).toBeInTheDocument();
     expect(
@@ -342,8 +380,8 @@ describe("ConversationDetailPage", () => {
       issue_type: "not-factual",
       freeform_feedback: "wrong table",
     };
-    setup(
-      createConversation(
+    setup({
+      conversation: createConversation(
         [
           userMessage("u1", null, "count orders"),
           agentMessage("a1", "u1", "discarded answer"),
@@ -351,18 +389,18 @@ describe("ConversationDetailPage", () => {
         ],
         [feedback],
       ),
-    );
+    });
 
     expect(await screen.findByText("discarded answer")).toBeInTheDocument();
   });
 
   it("shows tool call details in a sidebar, and closes it", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "search orders"),
         agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
-    );
+    });
 
     expect(await screen.findByText("search")).toBeInTheDocument();
     expect(
@@ -385,12 +423,12 @@ describe("ConversationDetailPage", () => {
   });
 
   it("closes the sidebar when the same tool call is clicked again", async () => {
-    setup(
-      createConversation([
+    setup({
+      conversation: createConversation([
         userMessage("u1", null, "search orders"),
         agentMessage("a1", "u1", toolCallPart("a1"), "found 3 orders"),
       ]),
-    );
+    });
 
     await screen.findByText("search");
     const toolCallRow = screen.getAllByTestId("metabot-chat-message")[1];
@@ -413,8 +451,8 @@ describe("ConversationDetailPage", () => {
       name: "Analysts",
       magic_group_type: null,
     });
-    setup(
-      {
+    setup({
+      conversation: {
         ...createConversation([userMessage("u1", null, "hi")]),
         user: {
           id: 7,
@@ -423,9 +461,11 @@ describe("ConversationDetailPage", () => {
           tenant_id: null,
         },
       },
-      [group],
-      { 7: [{ user_id: 7, group_id: group.id, membership_id: 1 }] },
-    );
+      groups: [group],
+      memberships: {
+        7: [{ user_id: 7, group_id: group.id, membership_id: 1 }],
+      },
+    });
 
     await userEvent.click(
       await screen.findByRole("button", { name: /Analysts/ }),
@@ -436,5 +476,117 @@ describe("ConversationDetailPage", () => {
       "href",
       Urls.monitorAiAuditingUsage({ groupId: 42 }),
     );
+  });
+
+  describe("JSON download", () => {
+    const CONVERSATION = createConversation([
+      userMessage("u1", null, "count orders"),
+      agentMessage("a1", "u1", "an answer"),
+    ]);
+    const DOWNLOAD_BUTTON = { name: "Download JSON" };
+
+    beforeEach(() => {
+      jest.mocked(openSaveDialog).mockClear();
+    });
+
+    // jsdom's Blob has no .text()
+    function readBlobText(blob: Blob): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(blob);
+      });
+    }
+
+    async function waitForDownloadToFinish(button: HTMLElement) {
+      await waitFor(() => {
+        expect(button).not.toHaveAttribute("data-loading");
+      });
+      expect(button).toBeEnabled();
+    }
+
+    function lastSavedFile() {
+      const lastCall = jest.mocked(openSaveDialog).mock.lastCall;
+      if (!lastCall) {
+        throw new Error("Nothing was downloaded");
+      }
+      const [fileName, blob] = lastCall;
+      return { fileName, blob };
+    }
+
+    it("offers a JSON download of the conversation", async () => {
+      setup({ conversation: CONVERSATION });
+
+      expect(
+        await screen.findByRole("button", DOWNLOAD_BUTTON),
+      ).toBeInTheDocument();
+    });
+
+    it("downloads the conversation exactly as the API sent it, in a versioned JSON envelope", async () => {
+      // As the backend writes it: Cheshire spells doubles 45.0 and
+      // 1.23456789E7, and JSON.parse would round 9007199254740993.
+      const responseText = JSON.stringify({
+        ...CONVERSATION,
+        total_tokens: 1,
+      }).replace(
+        '"total_tokens":1',
+        '"total_tokens":9007199254740993,"cost":45.0,"rows":1.23456789E7',
+      );
+      setup({
+        conversation: CONVERSATION,
+        conversationResponseText: responseText,
+      });
+
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      await userEvent.click(button);
+
+      await waitForDownloadToFinish(button);
+      expect(openSaveDialog).toHaveBeenCalledTimes(1);
+      const { fileName, blob } = lastSavedFile();
+      expect(fileName).toBe("metabot-conversation-convo-1.json");
+      expect(blob.type).toBe("application/json");
+      const text = await readBlobText(blob);
+      expect(text).toMatch(
+        /^\{"format":"metabase\.metabot-conversation","version":1,"description":"(?:[^"\\]|\\.)+","exported_at":"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z","metabase_version":"v1\.58\.0","conversation":/,
+      );
+      expect(text.endsWith(`"conversation":${responseText}}`)).toBe(true);
+      expect(() => JSON.parse(text)).not.toThrow();
+    });
+
+    it("shows that it is loading and ignores clicks until the download is ready", async () => {
+      setup({ conversation: CONVERSATION });
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      const response = defer<string>();
+      setupMetabotConversationRawEndpoint(
+        CONVERSATION.conversation_id,
+        response.promise,
+      );
+
+      await userEvent.click(button);
+      await waitFor(() => {
+        expect(button).toHaveAttribute("data-loading", "true");
+      });
+      expect(button).toBeDisabled();
+      await userEvent.click(button, { pointerEventsCheck: 0 });
+      response.resolve(JSON.stringify(CONVERSATION));
+
+      await waitForDownloadToFinish(button);
+      expect(openSaveDialog).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows an error toast and saves nothing when the conversation cannot be fetched", async () => {
+      setup({ conversation: CONVERSATION });
+      const button = await screen.findByRole("button", DOWNLOAD_BUTTON);
+      setupMetabotConversationEndpointError(CONVERSATION.conversation_id);
+
+      await userEvent.click(button);
+
+      expect(
+        await screen.findByText("Couldn't export the conversation"),
+      ).toBeInTheDocument();
+      await waitForDownloadToFinish(button);
+      expect(openSaveDialog).not.toHaveBeenCalled();
+    });
   });
 });

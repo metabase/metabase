@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
@@ -17,6 +17,7 @@ import { PLUGIN_TENANTS } from "metabase/plugins";
 import {
   ActionIcon,
   Anchor,
+  Box,
   Flex,
   Icon,
   Menu,
@@ -36,8 +37,11 @@ import S from "./ConversationDetailPage.module.css";
 
 export function ConversationHeader({
   conversation,
+  actions,
 }: {
   conversation: ConversationDetail;
+  /** Controls shown at the right of the title row. */
+  actions?: ReactNode;
 }) {
   const { data: forkedFromConversation } =
     useGetMetabotAnalyticsConversationQuery(
@@ -152,6 +156,7 @@ export function ConversationHeader({
             )}
           </Flex>
         </Stack>
+        {actions && <Box flex="none">{actions}</Box>}
       </Flex>
     </>
   );

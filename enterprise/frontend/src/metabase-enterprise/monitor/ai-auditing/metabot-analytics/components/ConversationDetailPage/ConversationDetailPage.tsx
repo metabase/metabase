@@ -59,6 +59,7 @@ import type {
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, VisualizationDisplay } from "metabase-types/api";
 
+import { ConversationDownloadButton } from "./ConversationDownloadButton";
 import { ConversationHeader } from "./ConversationHeader";
 import { ForkBoundary } from "./ForkBoundary";
 import { ToolCallDetailsSidebar } from "./ToolCallDetailsSidebar";
@@ -158,7 +159,14 @@ export function ConversationDetailPage() {
       <MonitorMain>
         <Box w="100%" maw={800} mx="auto">
           <Stack gap="xxl">
-            <ConversationHeader conversation={conversation} />
+            <ConversationHeader
+              conversation={conversation}
+              actions={
+                <ConversationDownloadButton
+                  conversationId={conversation.conversation_id}
+                />
+              }
+            />
 
             <SimpleGrid cols={4}>
               <StatCard
