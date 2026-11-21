@@ -4961,6 +4961,7 @@
                                     :type          :model}
          :model/Dashboard {dash-id        :id
                            dashboard-name :name} {:name       "My Awesome Dashboard"
+                                                  :creator_id (mt/user->id :rasta)
                                                   :parameters [param]}
          :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
                                                   :card_id            card-id
@@ -4969,7 +4970,7 @@
                                                                         :target       [:dimension
                                                                                        [:field (mt/id :people :source)
                                                                                         {:base-type :type/Text}]]}]}
-
+         ;; Broken email pulse
          :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
                                           :dashboard_id  dash-id
                                           :creator_id    (mt/user->id :trashbird)
@@ -4982,7 +4983,7 @@
                                                      :pulse_id     bad-pulse-id
                                                      :enabled      true}
          :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                         :user_id          (mt/user->id :rasta)}
+                                         :user_id          (mt/user->id :lucky)}
          :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                          :user_id          (mt/user->id :crowberto)}
          ;; Broken slack pulse
@@ -5009,7 +5010,7 @@
                                                           :pulse_id     good-pulse-id
                                                           :enabled      true}
          :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                         :user_id          (mt/user->id :rasta)}
+                                         :user_id          (mt/user->id :lucky)}
          :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
                                          :user_id          (mt/user->id :crowberto)}]
         (testing "The pulses are active"
@@ -5017,34 +5018,40 @@
           (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
         (mt/with-fake-inbox
           (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
-                                                          :rasta :put 200 (str "dashboard/" dash-id)
+                                                          :lucky :put 200 (str "dashboard/" dash-id)
                                                           {:parameters []}))
-                title            (format "Subscription to %s removed" dashboard-name)
+                title            (format "Subscription to %s deleted" dashboard-name)
                 ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
                 ;; as "We've Noticed a New Metabase Login, Rasta".
                 inbox            (update-vals
                                   @mt/inbox
                                   (fn [messages]
                                     (filterv (comp #{title} :subject) messages)))
-                emails-received? (fn [recipient-email]
-                                   (testing "The first email was received"
-                                     (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                        (str/includes? title)))))
-                                   (testing "The second email (about the broken slack pulse) was received"
-                                     (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                                              (str/includes? email-body-pattern))))))]
+                email-pulse-email-received? (fn [recipient-email]
+                                              (testing "Email about broken email pulse was received"
+                                                (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
+                                                                   (str/includes? title))))))
+                slack-pulse-email-received? (fn [recipient-email]
+                                              (testing "Email about broken slack pulse was received"
+                                                (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                                         (str/includes? email-body-pattern))))))]
             (testing "The dashboard parameters were removed"
               (is (empty? parameters)))
             (testing "The broken pulse was archived"
               (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id))))
             (testing "The unbroken pulse is still active"
               (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
-            (testing "The dashboard and pulse creators were emailed about the removed pulse"
-              (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
+            (testing "The dashboard creator, pulse creator, and recipients were emailed about the removed pulse"
+              (is (= #{"trashbird@metabase.com" "rasta@metabase.com" "crowberto@metabase.com" "lucky@metabase.com"}
                      (set (keys inbox)))))
             (testing "Notification emails were sent to the dashboard and pulse creators"
-              (emails-received? "rasta@metabase.com")
-              (emails-received? "trashbird@metabase.com"))))))))
+              (email-pulse-email-received? "trashbird@metabase.com")
+              (slack-pulse-email-received? "trashbird@metabase.com")
+              (email-pulse-email-received? "rasta@metabase.com")
+              (slack-pulse-email-received? "rasta@metabase.com"))
+            (testing "Notification emails were sent to email subscribers"
+              (email-pulse-email-received? "lucky@metabase.com")
+              (email-pulse-email-received? "crowberto@metabase.com"))))))))
 
 (deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"

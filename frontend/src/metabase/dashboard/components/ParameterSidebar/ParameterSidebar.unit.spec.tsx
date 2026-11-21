@@ -273,7 +273,7 @@ describe("ParameterSidebar", () => {
       expect(removeParameter).not.toHaveBeenCalled();
       const dialog = await screen.findByRole("dialog");
       expect(dialog).toHaveTextContent(/active subscription/i);
-      expect(dialog).toHaveTextContent(/archive/i);
+      expect(dialog).toHaveTextContent(/delete/i);
     });
 
     it("removes the parameter when the user confirms in the warning dialog", async () => {
