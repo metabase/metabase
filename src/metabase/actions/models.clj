@@ -28,7 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.followers :as warehouses.followers]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -922,7 +922,7 @@
   (when-let [ids (not-empty (actions.db/action-ids-of-databases database-ids))]
     (delete-actions! (vec ids))))
 
-(defmethod warehouses.followers/delete-for-databases! :model/Action
+(defmethod database/delete-for-databases! :model/Action
   [_model databases]
   (delete-actions-of-databases! (mapv :id databases)))
 

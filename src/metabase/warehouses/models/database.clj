@@ -34,7 +34,6 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.app-db-copy :as warehouses.app-db-copy]
    [metabase.warehouses.db :as warehouses.db]
-   [metabase.warehouses.followers :as followers]
    [metabase.warehouses.provider-detection :as provider-detection]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.serialization :as warehouses.serialization]
@@ -855,32 +854,40 @@
   []
   (warehouses.db/disable-uploads-for-all-databases!))
 
+(defmulti delete-for-databases!
+  "Delete the rows of `model` that belong to the Database rows `databases`, through the write functions of `model`, as
+  [[delete-databases!]] deletes those Databases. Each model whose rows belong to a Database implements it in its own
+  model file."
+  {:arglists '([model databases])}
+  (fn [model _databases] model))
+
 (def ^:private refusing-follower-models
-  "The models that implement [[followers/delete-for-databases!]] and may refuse the delete, so they go before the
-  sync triggers are unscheduled: a WorkspaceDatabase in use refuses it. Only an EE build has them."
+  "The models that implement [[delete-for-databases!]] and may refuse the delete, so they go before the sync triggers
+  are unscheduled: a WorkspaceDatabase in use refuses it. Only an EE build has them."
   (if config/ee-available? [:model/WorkspaceDatabase] []))
 
 (def ^:private follower-models
-  "The other models that implement [[followers/delete-for-databases!]], in the order their rows are deleted."
-  [:model/Secret :model/Field :model/Action :model/Transform :model/CacheConfig :model/Card])
+  "The other models that implement [[delete-for-databases!]], in the order their rows are deleted."
+  [:model/Field :model/Action :model/Transform :model/CacheConfig :model/Card])
 
 (defn- delete-followers!
   "Delete the rows of each of `models`, in order, that belong to the Database rows `databases`."
   [models databases]
   (doseq [model models]
     (t2/resolve-model model)
-    (followers/delete-for-databases! model databases)))
+    (delete-for-databases! model databases)))
 
 (mu/defn delete-databases! :- :nil
-  "Delete the Databases with `database-ids` in one batch of events, after what belongs to them (see
-  [[followers/delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the
-  delete have accepted it."
+  "Delete the Databases with `database-ids` in one batch of events, after their Secrets and what else belongs to them
+  (see [[delete-for-databases!]]), with their sync triggers unscheduled once the followers that may refuse the delete
+  have accepted it."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (when (seq database-ids)
     (events/with-batched-events
       (when-let [databases (not-empty (warehouses.db/databases (vec (distinct database-ids))))]
         (delete-followers! refusing-follower-models databases)
         (run! unschedule-tasks! databases)
+        (models.secret/delete-orphaned-secrets! databases)
         (delete-followers! follower-models databases)
         (warehouses.db/delete-databases! (mapv :id databases)))))
   nil)

@@ -42,7 +42,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.followers :as warehouses.followers]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -573,7 +573,7 @@
    dependencies-json :- :string]
   (transforms.db/set-table-dependencies! transform-id dependencies-json))
 
-(defmethod warehouses.followers/delete-for-databases! :model/Transform
+(defmethod database/delete-for-databases! :model/Transform
   [_model databases]
   (delete-transforms! (transforms.db/transform-ids-for-source-databases (mapv :id databases))))
 

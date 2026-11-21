@@ -72,7 +72,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.followers :as warehouses.followers]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -1913,7 +1913,7 @@
   [_model card-id metadata]
   (update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}]))
 
-(defmethod warehouses.followers/delete-for-databases! :model/Card
+(defmethod database/delete-for-databases! :model/Card
   [_model databases]
   (delete-cards-of-databases! (mapv :id databases)))
 

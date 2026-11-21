@@ -30,7 +30,6 @@
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
-   [metabase.warehouses.followers :as warehouses.followers]
    [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
@@ -633,7 +632,7 @@
     (change-log/log-rows! :model/Field :update {:where where})
     (warehouse-schema.db/clear-fields-data-sensitivity-where! where)))
 
-(defmethod warehouses.followers/delete-for-databases! :model/Field
+(defmethod database/delete-for-databases! :model/Field
   [_model databases]
   (delete-fields-of-databases! (mapv :id databases)))
 

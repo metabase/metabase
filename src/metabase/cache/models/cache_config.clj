@@ -16,7 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.followers :as warehouses.followers]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -268,7 +268,7 @@
   (when (seq model-ids)
     (cache.db/delete-cache-configs! model (vec model-ids))))
 
-(defmethod warehouses.followers/delete-for-databases! :model/CacheConfig
+(defmethod database/delete-for-databases! :model/CacheConfig
   [_model databases]
   (delete-target-configs! "database" (mapv :id databases)))
 

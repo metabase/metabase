@@ -3600,7 +3600,6 @@
    :module-exports #{warehouses.schema
                      warehouses.secrets}
    :api  #{metabase.warehouses.core
-           metabase.warehouses.followers
            metabase.warehouses.init
            metabase.warehouses.models.database
            metabase.warehouses.schema}
@@ -3628,7 +3627,6 @@
                     :model/CacheConfig
                     :model/Card
                     :model/Field
-                    :model/Secret
                     :model/Table
                     :model/Transform
                     :model/WorkspaceDatabase}}
@@ -3772,9 +3770,7 @@
            models
            premium-features
            system
-           util
-           warehouses}
-   :model-exports #{:model/Secret}}
+           util}}
 
   workspaces
   {:team "Verification"

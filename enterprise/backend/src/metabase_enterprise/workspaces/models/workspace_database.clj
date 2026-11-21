@@ -10,7 +10,7 @@
    [metabase.settings.core :as setting]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.followers :as warehouses.followers]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -138,7 +138,7 @@
   (ws.db/delete-unprovisioned-workspace-databases-of-databases! database-ids)
   nil)
 
-(defmethod warehouses.followers/delete-for-databases! :model/WorkspaceDatabase
+(defmethod database/delete-for-databases! :model/WorkspaceDatabase
   [_model databases]
   (delete-workspace-databases-of-databases! (mapv :id databases)))
 
