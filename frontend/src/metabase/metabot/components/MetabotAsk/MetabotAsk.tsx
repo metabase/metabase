@@ -79,6 +79,14 @@ export const MetabotAsk = () => {
     >
       {showGreeting ? (
         <>
+          {/* PROTOTYPE: "No top nav" skips the nav-closed strip here; its
+              open-nav button sits in the page's top-left corner instead, where
+              the strip had it. */}
+          {variant === "no-top-nav" && (
+            <Box pos="absolute" top={10} left="1rem" style={{ zIndex: 1 }}>
+              <NavOpenButton />
+            </Box>
+          )}
           {historyAction && (
             <Box className={S.historyAction}>{historyAction}</Box>
           )}
@@ -98,13 +106,11 @@ export const MetabotAsk = () => {
             className={S.chat}
             headerActions={historyAction}
             // PROTOTYPE: in "No top nav", the conversation header lines up
-            // with the nav's header and, on conversation pages (which skip
-            // the nav-closed strip), holds the open-nav button.
+            // with the nav's header and holds the open-nav button, since this
+            // page skips the nav-closed strip.
             isHeaderNavAligned={variant === "no-top-nav"}
             headerLeading={
-              variant === "no-top-nav" && !isAskPage ? (
-                <NavOpenButton />
-              ) : undefined
+              variant === "no-top-nav" ? <NavOpenButton /> : undefined
             }
           />
         </Box>
