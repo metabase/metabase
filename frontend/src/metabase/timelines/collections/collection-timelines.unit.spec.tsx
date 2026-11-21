@@ -93,7 +93,9 @@ const releases = (opts?: Partial<Timeline>) =>
 const event = (opts: Partial<TimelineEvent>) =>
   createMockTimelineEvent({ timeline_id: 2, ...opts });
 
-const findHeading = (name: string) => screen.findByRole("heading", { name });
+// v65 timeline modals show their title as plain text, not as a heading
+const findHeading = async (name: string) =>
+  within(await screen.findByRole("dialog")).findByText(name);
 
 const eventList = () => screen.getByTestId("event-list");
 
@@ -187,7 +189,8 @@ describe("collection timelines", () => {
             name: "RC1",
             timezone: BROWSER_TIMEZONE,
             description: "*1.0-rc1* release",
-            timestamp: "2026-10-20T00:00:00.000Z",
+            // v65 sends a date-only event as the local midnight
+            timestamp: dayjs("2026-10-20").toISOString(),
             time_matters: false,
             icon: "star",
             timeline_id: 100,
@@ -221,7 +224,8 @@ describe("collection timelines", () => {
         body: expect.objectContaining({
           name: "RC2",
           timezone: BROWSER_TIMEZONE,
-          timestamp: "2027-05-12T00:00:00.000Z",
+          // v65 sends a date-only event as the local midnight
+          timestamp: dayjs("2027-05-12").toISOString(),
           icon: "cake",
           timeline_id: 100,
         }),
@@ -394,7 +398,7 @@ describe("collection timelines", () => {
       it("moves an event to another timeline", async () => {
         await moveRC2ToReleases();
 
-        await userEvent.click(screen.getByRole("button", { name: "Back" }));
+        await userEvent.click(screen.getByLabelText("chevronleft icon"));
         await userEvent.click(await screen.findByText("Releases"));
         await findHeading("Releases");
         expect(await screen.findByText("RC2")).toBeInTheDocument();
@@ -654,7 +658,8 @@ describe("collection timelines", () => {
           path: "/api/timeline-event/5",
           body: expect.objectContaining({
             name: "RC1",
-            timestamp: "2022-10-15T00:00:00.000Z",
+            // v65 sends a date-only event as the local midnight
+            timestamp: dayjs("2022-10-15").toISOString(),
           }),
         },
       ]);
@@ -694,7 +699,7 @@ describe("collection timelines", () => {
       });
 
       await findHeading("Metrics");
-      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
 
       await findHeading("Events");
       expect(pathname()).toBe("/collection/root/timelines");
@@ -710,7 +715,7 @@ describe("collection timelines", () => {
 
       await findHeading("Releases");
       expect(
-        screen.queryByRole("button", { name: "Back" }),
+        screen.queryByLabelText("chevronleft icon"),
       ).not.toBeInTheDocument();
     });
 
@@ -876,7 +881,7 @@ describe("collection timelines", () => {
         body: { archived: false, default: false },
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
       await findHeading("Releases");
     });
 
@@ -896,7 +901,7 @@ describe("collection timelines", () => {
         body: undefined,
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Back" }));
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
       await findHeading("Our analytics events");
     });
 
@@ -924,7 +929,7 @@ describe("collection timelines", () => {
         }),
       });
 
-      await userEvent.click(screen.getByRole("button", { name: "Close" }));
+      await userEvent.click(screen.getByLabelText("close icon"));
       await screen.findByText("Collection page");
       await act(() =>
         store.dispatch(
