@@ -531,9 +531,12 @@
    :content (str (:block (stored-context reply)) (message-text message))})
 
 (defn- row-steps
-  "The parts of the assistant row `data`, one vector per LLM call of the turn. Each call starts at a `step-start`
-  part. A row migrated from v1 has no `step-start` parts, so it does not record which parts each call made: there,
-  each part is a step of its own."
+  "The parts of the assistant row `data`, split into steps (vectors of parts) at each `step-start` part.
+
+  Each LLM call of the turn starts at a `step-start` part, so each step after the first holds the parts of one call.
+  The first step holds the parts before the first `step-start`, such as the `<context>` data part. It is empty when
+  there are no such parts. A row migrated from v1 has no `step-start` parts, so it does not record which parts each
+  call made: there, each part is a step of its own."
   [data]
   (if (some #(= "step-start" (:type %)) data)
     (reduce (fn [steps part]
