@@ -646,10 +646,10 @@
       ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
       ;; test result return the most recent status and don't duplicate the result
       (doseq [status ["verified" nil "verified"]]
-        (moderation-review/create-review! {:moderated_item_id   card-id
-                                           :moderated_item_type "card"
-                                           :moderator_id        (mt/user->id :crowberto)
-                                           :status              status}))
+        (moderation-review/create-moderation-review! {:moderated_item_id   card-id
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (mt/user->id :crowberto)
+                                                      :status              status}))
       (is (=? [{:id               card-id
                 :model            "card"
                 :moderated_status "verified"}]

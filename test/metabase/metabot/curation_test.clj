@@ -1,7 +1,7 @@
 (ns metabase.metabot.curation-test
   (:require
    [clojure.test :refer :all]
-   [metabase.content-verification.core :as moderation]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.metabot.curation :as metabot.curation]
    [metabase.search.core :as search]
    [metabase.search.test-util :as search.tu]
@@ -35,10 +35,10 @@
                      ;; final-layer table that is NOT published: neither source nor index marks it curated
                      :model/Table {ult :id} {:db_id db :name "curationfixture unpublishedlib" :active true
                                              :is_published false :data_layer :final}]
-        (moderation/create-review! {:moderated_item_id   vq
-                                    :moderated_item_type "card"
-                                    :moderator_id        (mt/user->id :crowberto)
-                                    :status              "verified"})
+        (moderation-review/create-moderation-review! {:moderated_item_id   vq
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (mt/user->id :crowberto)
+                                                      :status              "verified"})
         ;; re-ingest the now-verified card so the index reflects it
         (search/update! (t2/select-one :model/Card :id vq) true)
         (let [items    [["card" vq] ["card" oq] ["card" pq]
@@ -77,10 +77,10 @@
                      :model/Table {ht :id} {:db_id db :name "parityfixture hidden" :active true
                                             :visibility_type :hidden :data_authority :authoritative}
                      :model/Table {xt :id} {:db_id db :name "parityfixture plaintable" :active true}]
-        (moderation/create-review! {:moderated_item_id   vq
-                                    :moderated_item_type "card"
-                                    :moderator_id        (mt/user->id :crowberto)
-                                    :status              "verified"})
+        (moderation-review/create-moderation-review! {:moderated_item_id   vq
+                                                      :moderated_item_type "card"
+                                                      :moderator_id        (mt/user->id :crowberto)
+                                                      :status              "verified"})
         (search/update! (t2/select-one :model/Card :id vq) true)
         (let [items   [["card" vq] ["card" oq] ["card" aq] ["metric" lm] ["metric" om] ["metric" pm]
                        ["dashboard" od] ["dashboard" pd]

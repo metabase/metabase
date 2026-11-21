@@ -763,7 +763,10 @@
 
   content-verification
   {:team "UX West"
-   :api  #{metabase.content-verification.core metabase.content-verification.init metabase.content-verification.schema}
+   :api  #{metabase.content-verification.core
+           metabase.content-verification.init
+           metabase.content-verification.models.moderation-review
+           metabase.content-verification.schema}
    :uses #{api
            app-db
            events

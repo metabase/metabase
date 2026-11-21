@@ -21,3 +21,9 @@
   [:map {:closed true}
    [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
    [:user_attribute {:optional true} ::database-router.user-attribute]])
+
+(mr/def ::database-router.create
+  "What creating a DatabaseRouter takes: the Database it routes and the user attribute it routes on."
+  [:map {:closed true}
+   [:database_id    :metabase.lib.schema.id/database]
+   [:user_attribute ::database-router.user-attribute]])
