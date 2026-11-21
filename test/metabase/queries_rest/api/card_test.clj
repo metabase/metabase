@@ -17,6 +17,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.events.core :as events]
@@ -3428,7 +3429,7 @@
         ;; testing that we aren't just adding a nil moderation each time we update a card
         (with-card :verified
           (is (verified? card))
-          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+          (content-verification.write/create-review! {:moderated_item_id   (u/the-id card)
                                              :moderated_item_type "card"
                                              :moderator_id        (mt/user->id :rasta)
                                              :status              nil})

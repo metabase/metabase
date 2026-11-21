@@ -18,8 +18,8 @@
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -872,8 +872,8 @@
                   (is (= :succeeded (t2/select-one-fn :status :model/TransformRun :transform_id (:id @transform)
                                                       {:order-by [[:id :desc]]})))
                   (is (= #{"PUBLIC"} (table-rows))))
-                (let [real-succeed (mt/original-fn #'transform-run/succeed-started-run!)]
-                  (mt/with-dynamic-fn-redefs [transform-run/succeed-started-run!
+                (let [real-succeed (mt/original-fn #'transforms.write/succeed-started-run!)]
+                  (mt/with-dynamic-fn-redefs [transforms.write/succeed-started-run!
                                               (fn [& args]
                                                 (u/prog1 (apply real-succeed args)
                                                   (mt/user-http-request :crowberto :put 200 (str "database/" (mt/id))

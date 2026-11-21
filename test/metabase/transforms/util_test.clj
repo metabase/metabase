@@ -25,9 +25,9 @@
    [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
-   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.util :as transforms.u]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -612,7 +612,7 @@
                     transforms.canceling/chan-start-timeout-vthread! (constantly nil)
                     transforms.canceling/chan-start-run!             (constantly nil)
                     transforms.canceling/chan-end-run!               (constantly nil)
-                    transform-run/succeed-started-run!               (constantly nil)]
+                    transforms.write/succeed-started-run!               (constantly nil)]
         (mt/with-premium-features #{:transforms-basic}
           (mt/with-temporary-setting-values [transform-timeout 90]
             (transforms.u/run-cancelable-transform!
@@ -637,7 +637,7 @@
                  transforms.canceling/chan-start-timeout-vthread! (constantly nil)
                  transforms.canceling/chan-start-run!             (constantly nil)
                  transforms.canceling/chan-end-run!               (constantly nil)
-                 transform-run/succeed-started-run!               (constantly nil)]
+                 transforms.write/succeed-started-run!               (constantly nil)]
      (mt/with-premium-features #{:transforms-basic}
        (transforms.u/run-cancelable-transform!
         1 transform driver {:db-id 1 :conn-spec {} :output-schema "x"}

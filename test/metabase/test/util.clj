@@ -25,6 +25,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1164,7 +1165,7 @@
             model-or-id              model-or-ids]
       (doseq [status ["verified" nil "verified"]]
         ;; create multiple moderation review for a card, but the end result is it's still verified
-        (moderation-review/create-review!
+        (content-verification.write/create-review!
          {:moderated_item_id   (u/the-id model-or-id)
           :moderated_item_type (name item-type)
           :moderator_id        ((requiring-resolve 'metabase.test.data.users/user->id) :rasta)

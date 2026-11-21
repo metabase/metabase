@@ -21,6 +21,7 @@
    [metabase.transforms.settings]
    [metabase.transforms.usage]
    [metabase.transforms.util]
+   [metabase.transforms.write]
    [potemkin :as p]))
 
 (p/import-vars
@@ -69,9 +70,10 @@
  [metabase.transforms.models.transform
   update-transform-tags!]
  [metabase.transforms.models.transform-run
-  timeout-run!
   paged-runs
   running-run-for-transform-id]
+ [metabase.transforms.write
+  timeout-run!]
  [metabase.transforms.models.job-run
   paged-job-runs
   transform-runs-for-job-run]

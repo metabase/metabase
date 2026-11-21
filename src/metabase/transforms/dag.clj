@@ -17,6 +17,7 @@
    [metabase.transforms.models.dag-run :as dag-run]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -130,7 +131,7 @@
    user-id          :- [:maybe ::lib.schema.id/user]
    transform-count  :- :int]
   (try
-    (dag-run/start-dag-run! transform-id direction user-id transform-count)
+    (transforms.write/start-dag-run! transform-id direction user-id transform-count)
     (catch Exception e
       (when-not (transforms.u/duplicate-key-violation? e)
         (throw e)))))

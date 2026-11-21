@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.collections.models.collection :as collection]
    [metabase.content-verification.models.moderation-review :as moderation-review]
+   [metabase.content-verification.write :as content-verification.write]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
@@ -646,7 +647,7 @@
       ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
       ;; test result return the most recent status and don't duplicate the result
       (doseq [status ["verified" nil "verified"]]
-        (moderation-review/create-review! {:moderated_item_id   card-id
+        (content-verification.write/create-review! {:moderated_item_id   card-id
                                            :moderated_item_type "card"
                                            :moderator_id        (mt/user->id :crowberto)
                                            :status              status}))

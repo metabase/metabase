@@ -16,12 +16,12 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.jobs :as jobs]
-   [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [transform-run-timeout-seconds with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.u]
+   [metabase.transforms.write :as transforms.write]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CyclicBarrier TimeUnit)))
@@ -605,8 +605,8 @@
                                         (on-exit)
                                         (if ex (throw ex) ret)))]
                         (let [plan (#'jobs/get-plan #{(:id transform)})
-                              run1 (transforms.job-run/start-run! (:id job) :manual)
-                              run2 (transforms.job-run/start-run! (:id job) :manual)
+                              run1 (transforms.write/start-job-run! (:id job) :manual)
+                              run2 (transforms.write/start-job-run! (:id job) :manual)
                               fut1 (future
                                      (try
                                        {:result (jobs/run-transforms! (:id run1) #{(:id transform)} plan

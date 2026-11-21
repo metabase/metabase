@@ -25,6 +25,7 @@
    [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.transforms.util :as transforms.u]
+   [metabase.transforms.write :as transforms.write]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
@@ -690,7 +691,7 @@
               (some-> start-promise (deliver nil))
               nil)
           (let [plan         (get-plan transforms)
-                {run-id :id} (transforms.job-run/start-run! job-id run-method)
+                {run-id :id} (transforms.write/start-job-run! job-id run-method)
                 ;; failed cron runs are included in the failure digest
                 notify!      (fn [failures]
                                (when (= :cron run-method)
@@ -732,7 +733,7 @@
 (mu/defn- reap-orphaned-runs! :- [:maybe [:sequential ::transforms.schema/transform-job-run]]
   "Reap job runs whose coordinator process died (stale heartbeat)."
   []
-  (transforms.job-run/reap-orphaned-runs! transform-job-heartbeat-stale-minutes))
+  (coordinated-run/reap-orphaned-runs! :model/TransformJobRun "job" transform-job-heartbeat-stale-minutes))
 
 (defmethod task/init! ::TransformJobRunHeartbeat [_]
   (rt/start-heartbeat! heartbeat-and-reconcile-runs! 1))
