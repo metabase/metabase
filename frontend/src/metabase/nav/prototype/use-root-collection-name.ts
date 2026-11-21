@@ -5,9 +5,9 @@ import { useGitIntegrationEnabled } from "./use-git-integration-enabled";
 /**
  * PROTOTYPE: the name shown for the root collection ("Our analytics"), which
  * the nav never shows itself. It matches the nav heading its folders sit
- * under: "Explorations" with git integration on, "Collections" with it off.
+ * under: "Saved" with git integration on, "Collections" with it off.
  */
 export function useRootCollectionName(): string {
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
-  return isGitIntegrationEnabled ? t`Explorations` : t`Collections`;
+  return isGitIntegrationEnabled ? t`Saved` : t`Collections`;
 }

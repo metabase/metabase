@@ -28,7 +28,7 @@ import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
-import { isQueryBuilderPagePath } from "metabase/nav/prototype/NavOpenButton";
+import { hasOwnNavOpenButton } from "metabase/nav/prototype/NavOpenButton";
 import { NavVariantPicker } from "metabase/nav/prototype/NavVariantPicker";
 import {
   PageMetabotButtonFallback,
@@ -125,10 +125,7 @@ export function App() {
   const showAppBar =
     isAppBarVisible &&
     !isUsageAnalyticsContent &&
-    !(
-      isNoTopNav &&
-      (isNavbarOpen || isQueryBuilderPagePath(location.pathname))
-    );
+    !(isNoTopNav && (isNavbarOpen || hasOwnNavOpenButton(location.pathname)));
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
   const { pathname } = location;

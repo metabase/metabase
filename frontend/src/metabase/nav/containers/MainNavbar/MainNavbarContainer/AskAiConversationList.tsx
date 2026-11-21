@@ -18,8 +18,8 @@ const CONVERSATION_PATH_PREFIX = `/${Urls.CONVERSATION_BASE_PATH}/`;
 type ConversationItem = { id: string; title: string };
 
 /**
- * PROTOTYPE: the "Ask AI" variant's Ask AI section — a "New" button for a
- * fresh conversation, then the user's recent Ask AI conversations, newest
+ * PROTOTYPE: the tab variants' AI conversations section — a "New" button for
+ * a fresh conversation, then the user's recent Ask AI conversations, newest
  * first, each linking to its conversation page.
  */
 export function AskAiConversationList({

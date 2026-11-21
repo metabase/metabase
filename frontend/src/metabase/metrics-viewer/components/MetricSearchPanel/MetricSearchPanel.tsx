@@ -6,6 +6,7 @@ import {
   trackMetricsViewerMetricRemoved,
 } from "metabase/metrics-viewer/analytics";
 import { useMetricsViewerContext } from "metabase/metrics-viewer/context";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
 import { Box, Button, Flex, Icon, Stack, Text, Tooltip } from "metabase/ui";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -87,9 +88,14 @@ export function MetricSearchPanel() {
   return (
     <Stack gap="lg">
       <Flex align="center" justify="space-between" mih="1.875rem">
-        <Text fw={700} size="lg" component="h1">
-          {t`Explore`}
-        </Text>
+        {/* PROTOTYPE: "No top nav" puts its open-nav button beside the
+            heading, since this page skips the nav-closed strip. */}
+        <Flex align="center" gap="sm">
+          <NavOpenButton />
+          <Text fw={700} size="lg" component="h1">
+            {t`Explore`}
+          </Text>
+        </Flex>
         {hasDefinitions && (
           <FilterPopover
             definitionSources={definitionSources}

@@ -271,7 +271,7 @@ export function MainNavbarView({
                 }
                 onClick={() => setNavView("explorations")}
               >
-                {t`Explorations`}
+                {t`Saved`}
               </SidebarLink>
               {showExternalCollectionsSection && (
                 <SidebarLink
@@ -345,16 +345,16 @@ export function MainNavbarView({
                   selectedId={collectionItem?.id}
                   onItemSelect={onItemSelect}
                 >
-                  <ModelsNavLink
-                    nonEntityItem={nonEntityItem}
-                    onItemSelect={onItemSelect}
-                  />
                   {hasDataAccess && (
                     <DatabasesNavLink
                       nonEntityItem={nonEntityItem}
                       onItemSelect={onItemSelect}
                     />
                   )}
+                  <ModelsNavLink
+                    nonEntityItem={nonEntityItem}
+                    onItemSelect={onItemSelect}
+                  />
                 </NavbarLibrarySection>
               )}
 

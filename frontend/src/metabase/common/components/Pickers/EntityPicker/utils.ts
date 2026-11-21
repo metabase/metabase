@@ -50,7 +50,7 @@ export const useGetEntityPickerIcon = () => {
       }
 
       // PROTOTYPE: with git integration on, the root collection is shown as
-      // "Explorations" and gets the nav's Explorations icon.
+      // "Saved" and gets the nav's Saved icon.
       const isRootCollection =
         item.model === "collection" &&
         item.id === "root" &&

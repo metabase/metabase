@@ -66,7 +66,7 @@ function getCollectionItemsParentId(parentItem: OmniPickerItem) {
 
 /**
  * PROTOTYPE: with git integration on, the root's synced collections are listed
- * under "Synced content" and left out of "Explorations".
+ * under "Synced content" and left out of "Saved".
  */
 function getSyncedTreeItems({
   parentItem,

@@ -119,7 +119,7 @@ export const PaletteContainer = ({
         {isGitIntegrationEnabled && (
           <Box px="xl" pt="sm">
             <Checkbox
-              label={t`Also search Explorations`}
+              label={t`Also search Saved`}
               checked={includeExplorations}
               onChange={(event) =>
                 setIncludeExplorations(event.currentTarget.checked)

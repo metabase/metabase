@@ -19,7 +19,7 @@ function addSyncedCollectionIds(
 
 /**
  * PROTOTYPE: IDs of collections synced from git (the Library included) and
- * everything inside them, for keeping "Official" and "Explorations" content
+ * everything inside them, for keeping "Official" and "Saved" content
  * apart.
  */
 export function useSyncedCollectionIds({ skip = false } = {}) {

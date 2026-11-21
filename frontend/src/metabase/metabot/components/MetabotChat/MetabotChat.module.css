@@ -15,6 +15,16 @@
   gap: 1rem;
 }
 
+/* PROTOTYPE: "No top nav" full-page chat — as tall as the nav's 52px header
+   so the title lines up with it, ruled off from the conversation below. */
+.header.headerNavAligned {
+  height: 52px;
+  padding: 0 1.5rem;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  flex-shrink: 0;
+}
+
 .headerTitle {
   min-width: 0;
   flex: 1;

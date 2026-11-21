@@ -5,6 +5,7 @@ import {
   PanelHeaderTitle,
 } from "metabase/common/data-studio/components/PaneHeader";
 import type { MetricUrls } from "metabase/common/metrics/types";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
@@ -34,6 +35,9 @@ export function MetricHeader({
     <PaneHeader
       data-testid="metric-header"
       showAppSwitcher={showAppSwitcher}
+      // PROTOTYPE: main-app metric pages (no app switcher; Data Studio's have
+      // one) carry "No top nav"'s open-nav button beside the breadcrumbs.
+      breadcrumbsLeading={showAppSwitcher ? undefined : <NavOpenButton />}
       title={
         <Flex align="center" gap="sm">
           {card.can_write ? (

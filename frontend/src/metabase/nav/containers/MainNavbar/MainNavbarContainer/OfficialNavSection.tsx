@@ -207,16 +207,16 @@ export function OfficialDataLinks({
           )
         }
       />
-      <ModelsNavLink
-        nonEntityItem={nonEntityItem}
-        onItemSelect={onItemSelect}
-      />
       {hasDataAccess && (
         <DatabasesNavLink
           nonEntityItem={nonEntityItem}
           onItemSelect={onItemSelect}
         />
       )}
+      <ModelsNavLink
+        nonEntityItem={nonEntityItem}
+        onItemSelect={onItemSelect}
+      />
     </>
   );
 }

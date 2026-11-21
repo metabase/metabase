@@ -8,6 +8,7 @@ import {
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { NavOpenButton } from "metabase/nav/prototype/NavOpenButton";
 import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { useNavigate } from "metabase/router";
@@ -52,10 +53,10 @@ export const MetabotAsk = () => {
 
   const showGreeting = messages.length === 0 && !isDoingScience;
 
-  // PROTOTYPE: "No top nav" and "Ask AI" list conversations in the nav's
-  // AI conversations tab, so this page doesn't repeat them.
+  // PROTOTYPE: "Tabs" and "No top nav" list conversations in the nav's AI
+  // conversations tab, so this page doesn't repeat them.
   const { variant } = useNavVariant();
-  const hasNavConversations = variant === "no-top-nav" || variant === "ask-ai";
+  const hasNavConversations = variant === "tabs" || variant === "no-top-nav";
   const showHistory =
     isConfigured && isHistoryEnabledProfile(profile) && !hasNavConversations;
   const historyAction = showHistory ? (
@@ -96,6 +97,15 @@ export const MetabotAsk = () => {
             config={{ suggestionModels: SUGGESTION_MODELS }}
             className={S.chat}
             headerActions={historyAction}
+            // PROTOTYPE: in "No top nav", the conversation header lines up
+            // with the nav's header and, on conversation pages (which skip
+            // the nav-closed strip), holds the open-nav button.
+            isHeaderNavAligned={variant === "no-top-nav"}
+            headerLeading={
+              variant === "no-top-nav" && !isAskPage ? (
+                <NavOpenButton />
+              ) : undefined
+            }
           />
         </Box>
       )}

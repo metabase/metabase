@@ -121,8 +121,6 @@ export function TabsNavbarView({
 }: MainNavbarViewProps) {
   const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
   const { variant } = useNavVariant();
-  // PROTOTYPE: "No top nav" and "Ask AI" both have the Ask AI tab.
-  const hasAskAiTab = variant === "ask-ai" || variant === "no-top-nav";
   const navigate = useNavigate();
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
   const isTenantUser = useSelector(getIsTenantUser);
@@ -176,7 +174,7 @@ export function TabsNavbarView({
         { id: "home", label: t`Collections`, icon: "dashboard" },
         dataTab,
         ...externalCollectionsTabs,
-        { id: "explorations", label: t`Explorations`, icon: "files" },
+        { id: "explorations", label: t`Saved`, icon: "files" },
         bookmarksTab,
       ]
     : [
@@ -197,14 +195,23 @@ export function TabsNavbarView({
             ]
           : []),
       ];
-  // PROTOTYPE: the "Ask AI" variant adds Ask AI right below the first tab.
-  const tabs: NavTab[] = hasAskAiTab
-    ? [
-        sectionTabs[0],
-        { id: "ask-ai", label: t`AI conversations`, icon: "ai" },
-        ...sectionTabs.slice(1),
-      ]
-    : sectionTabs;
+  // PROTOTYPE: AI conversations takes Data's spot, and Data takes the one
+  // right below the first tab.
+  const dataTabIndex = sectionTabs.findIndex((tab) => tab.id === "data");
+  const aiConversationsTab: NavTab = {
+    id: "ask-ai",
+    label: t`AI conversations`,
+    icon: "ai",
+  };
+  const tabs: NavTab[] = [
+    sectionTabs[0],
+    dataTab,
+    ...sectionTabs
+      .slice(1)
+      .map((tab, index) =>
+        index + 1 === dataTabIndex ? aiConversationsTab : tab,
+      ),
+  ];
 
   const [storedTabId, setStoredTabId] = useLocalStorage<string>({
     key: ACTIVE_TAB_KEY,
@@ -293,16 +300,16 @@ export function TabsNavbarView({
             onItemSelect={onItemSelect}
             hideHeading
           >
-            <ModelsNavLink
-              nonEntityItem={nonEntityItem}
-              onItemSelect={onItemSelect}
-            />
             {hasDataAccess && (
               <DatabasesNavLink
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
               />
             )}
+            <ModelsNavLink
+              nonEntityItem={nonEntityItem}
+              onItemSelect={onItemSelect}
+            />
           </NavbarLibrarySection>
         )}
       </NavTabSection>

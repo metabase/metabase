@@ -30,12 +30,16 @@ export function NavOpenButton() {
 /**
  * PROTOTYPE: pages whose own header carries `NavOpenButton`, so the "No top
  * nav" variant skips its slim top bar there: the query builder, for saved and
- * ad-hoc questions and models (not their detail pages, Ask, or research).
+ * ad-hoc questions and models (not their detail pages, Ask, or research),
+ * Metabot conversation pages, metric pages, and the metrics explorer.
  */
-export function isQueryBuilderPagePath(pathname: string): boolean {
-  return (
+export function hasOwnNavOpenButton(pathname: string): boolean {
+  const isQueryBuilder =
     /^\/(question|model)(\/|$)/.test(pathname) &&
     !/^\/question\/(ask|research)(\/|$)/.test(pathname) &&
-    !/\/detail(\/|$)/.test(pathname)
-  );
+    !/\/detail(\/|$)/.test(pathname);
+  const isConversation = pathname.startsWith("/metabot/conversation/");
+  const isMetric = pathname.startsWith("/metric/");
+  const isMetricsExplorer = /^\/explore(\/|$)/.test(pathname);
+  return isQueryBuilder || isConversation || isMetric || isMetricsExplorer;
 }

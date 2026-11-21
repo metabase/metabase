@@ -28,6 +28,13 @@ export interface NewItemMenuProps {
   onCloseNavbar: () => void;
   /** PROTOTYPE: leaves out the AI exploration item. */
   hideAIExploration?: boolean;
+  /**
+   * PROTOTYPE: turns the menu into an overflow menu — these items go above
+   * the new-item options (headed by `itemsLabel`) and `itemsAfter` below.
+   */
+  itemsBefore?: ReactNode;
+  itemsLabel?: string;
+  itemsAfter?: ReactNode;
 }
 
 export const NewItemMenuView = ({
@@ -38,6 +45,9 @@ export const NewItemMenuView = ({
   hasDatabaseWithJsonEngine,
   onCloseNavbar,
   hideAIExploration,
+  itemsBefore,
+  itemsLabel,
+  itemsAfter,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -148,7 +158,12 @@ export const NewItemMenuView = ({
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      <Menu.Dropdown>
+        {itemsBefore}
+        {itemsLabel && <Menu.Label>{itemsLabel}</Menu.Label>}
+        {menuItems}
+        {itemsAfter}
+      </Menu.Dropdown>
     </Menu>
   );
 };

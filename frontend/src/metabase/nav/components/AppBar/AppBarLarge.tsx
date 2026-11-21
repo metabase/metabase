@@ -101,10 +101,10 @@ export const AppBarLarge = ({
 
   const { hasMetabotAccess: isMetabotVisibleToUser } =
     useUserMetabotPermissions();
-  // PROTOTYPE: the "Ask AI" variant has an Ask AI nav item, so +New leaves out
-  // its AI exploration option.
+  // PROTOTYPE: the "Tabs" variant has an AI conversations nav item, so +New
+  // leaves out its AI exploration option.
   const { variant: navVariant } = useNavVariant();
-  const isAskAiVariant = navVariant === "ask-ai";
+  const hasNavConversations = navVariant === "tabs";
 
   const info = (
     <Flex
@@ -209,7 +209,7 @@ export const AppBarLarge = ({
           {isNewButtonVisible && (
             <NewItemButton
               collectionId={collectionId}
-              hideAIExploration={isAskAiVariant}
+              hideAIExploration={hasNavConversations}
             />
           )}
           {<MetabotAppBarButton />}

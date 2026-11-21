@@ -14,6 +14,7 @@ import {
   useHasTokenFeature,
 } from "metabase/common/hooks";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { useTenantsEnabled } from "metabase/nav/prototype/use-tenants-enabled";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_LIBRARY,
@@ -57,14 +58,17 @@ const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
 export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasTenants = useSetting("use-tenants");
+  // PROTOTYPE: the prototype controls' Tenants switch also hides tenant
+  // collections here when it's off.
+  const { isEnabled: isTenantsSimulatedOn } = useTenantsEnabled();
+  const hasTenants = useSetting("use-tenants") && isTenantsSimulatedOn;
   const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
   const { showSyncedContent } = useSyncedContent();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
-  const tenantsEnabled = useSetting("use-tenants");
+  const tenantsEnabled = hasTenants;
   const showsDataApps = shouldShowDataApps({ options, models });
   const { data: dataApps, isLoading: isLoadingDataApps } =
     PLUGIN_DATA_APPS.useDataApps({ skip: !showsDataApps });

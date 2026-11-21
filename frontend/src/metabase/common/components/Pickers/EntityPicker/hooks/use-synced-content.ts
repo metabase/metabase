@@ -10,7 +10,7 @@ import type { OmniPickerCollectionItem, OmniPickerItem } from "../types";
 /** PROTOTYPE: virtual root folder listing the collections synced from git. */
 export const SYNCED_CONTENT_ID = "synced-content";
 
-/** The root collection ("Our analytics", shown as "Explorations"). */
+/** The root collection ("Our analytics", shown as "Saved"). */
 export function isRootCollectionItem(item: OmniPickerItem): boolean {
   return (
     item.model === "collection" &&

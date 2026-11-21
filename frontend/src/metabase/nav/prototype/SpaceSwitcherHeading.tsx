@@ -42,7 +42,11 @@ export function SpaceSwitcherHeading({
       menuPosition="bottom-start"
       showProfile={false}
       target={
-        <UnstyledButton className={S.heading} aria-label={t`Switch space`}>
+        <UnstyledButton
+          className={S.heading}
+          aria-label={t`Switch space`}
+          data-on-dark={isOnDarkBackground || undefined}
+        >
           <Group gap="xxs" wrap="nowrap">
             <Text fz={14} fw={700} c="inherit" truncate>
               {label}
@@ -54,7 +58,7 @@ export function SpaceSwitcherHeading({
               c={
                 isOnDarkBackground ? "icon-secondary-inverse" : "icon-secondary"
               }
-              style={{ transform: "translateY(1px)" }}
+              style={{ flexShrink: 0, transform: "translateY(1px)" }}
             />
           </Group>
         </UnstyledButton>
