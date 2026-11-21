@@ -5,7 +5,6 @@
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn database
@@ -29,12 +28,6 @@
   "Whether the Database with `database-id` is a routing destination."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
-
-(mu/defn insert-databases!
-  "Insert the Database `rows` and return the new instances."
-  [rows :- [:sequential
-            ::warehouses.schema/database.update]]
-  (t2/insert-returning-instances! :model/Database rows))
 
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."

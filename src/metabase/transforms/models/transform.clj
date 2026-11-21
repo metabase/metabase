@@ -42,6 +42,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -560,6 +561,10 @@
       (delete-transform-tests! (vec transform-ids))
       (transforms.db/delete-transforms! (vec transform-ids))))
   nil)
+
+(defmethod database/delete-for-databases! :model/Transform
+  [_model database-ids]
+  (delete-transforms! (transforms.db/transform-ids-for-source-databases database-ids)))
 
 (def ^:private revision-columns
   "The columns a revision of a Transform records and a revert restores."

@@ -456,7 +456,7 @@
   "Marks initial sync as complete for this database so that this is reflected in the UI, if not already set"
   [database]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "complete"
+    (database/update-database! (u/the-id database) {:initial_sync_status "complete"
                                                    :initial_sync_error  nil})))
 
 (defn set-initial-database-sync-aborted!
@@ -464,7 +464,7 @@
   so that the cause can be displayed on the UI"
   [database error]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
-    (sync.db/update-database! (u/the-id database) {:initial_sync_status "aborted"
+    (database/update-database! (u/the-id database) {:initial_sync_status "aborted"
                                                    :initial_sync_error  (ex-message error)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

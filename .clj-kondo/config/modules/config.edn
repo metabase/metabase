@@ -3297,7 +3297,8 @@
            transforms.feature-gating
            transforms.indexes
            transforms.schema
-           util}
+           util
+           warehouses}
    :model-exports #{:model/Transform
                     :model/TransformDagRun
                     :model/TransformJob
@@ -3441,6 +3442,7 @@
            settings
            sync
            util
+           warehouses
            warehouses.schema
            workspaces}
    :model-imports #{:model/Card
@@ -4018,7 +4020,6 @@
    :uses #{analytics
            analytics.interface
            api
-           lib.schema
            premium-features
            settings
            util

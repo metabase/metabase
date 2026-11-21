@@ -2,14 +2,14 @@
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
    [malli.core :as mc]
-   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.connection :as driver.conn]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf]
+   [metabase.warehouses.models.database :as database])
   (:import
    (com.google.auth.oauth2 GoogleCredentials ServiceAccountCredentials)
    (com.google.cloud ServiceOptions)
@@ -186,5 +186,5 @@
                           "(%s vs %s). The cached project-id-from-credentials uses the read connection's project; "
                           "query qualification may be incorrect for write connections.")
                      (u/the-id database) creds-proj-id write-proj-id))))
-    (bigquery.db/update-database-details! (u/the-id database) (assoc details :project-id-from-credentials creds-proj-id))
+    (database/update-database! (u/the-id database) {:details (assoc details :project-id-from-credentials creds-proj-id)})
     creds-proj-id))

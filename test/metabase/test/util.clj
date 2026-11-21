@@ -43,6 +43,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
+   [metabase.secrets.models.secret :as models.secret]
    [metabase.settings.core :as setting]
    [metabase.settings.models.setting]
    [metabase.settings.models.setting.cache :as setting.cache]
@@ -65,6 +66,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
@@ -586,6 +588,19 @@
         (f temp-card))
       (finally
         (card/delete-cards! [(:id temp-card)])))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Database
+  "Stores the client secrets of a temporary Database as `create-databases!` does, and deletes it with
+  `delete-database!`."
+  [model explicit-attributes f]
+  (next-method model
+               (cond-> explicit-attributes
+                 (:engine explicit-attributes) (models.secret/handle-incoming-client-secrets! nil))
+               (fn [temp-database]
+                 (try
+                   (f temp-database)
+                   (finally
+                     (database/delete-database! (:id temp-database)))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
   "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."

@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.workspaces.core :as workspaces]))
 
@@ -61,8 +62,8 @@
        :body (into {} invalid-destinations)}
       (events/with-event-context {:details {:primary_db_name (:name router-db)
                                             :primary_db_id   (:id router-db)}}
-        (u/prog1 (database-routing.db/insert-databases!
-                  (map (fn [{:keys [name details]}]
+        (u/prog1 (database/create-databases!
+                  (mapv (fn [{:keys [name details]}]
                          {:name               name
                           :engine             engine
                           :details            details

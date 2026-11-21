@@ -6,7 +6,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
 (mu/defn query-executions-in-month
@@ -59,18 +58,3 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id [:auto/param database-id]))
 
-(mu/defn insert-database!
-  "Insert `database` and return the new instance."
-  [database :- ::warehouses.schema/database.update]
-  (t2/insert-returning-instance! :model/Database database))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database
-   changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
-
-(mu/defn delete-database!
-  "Delete the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))

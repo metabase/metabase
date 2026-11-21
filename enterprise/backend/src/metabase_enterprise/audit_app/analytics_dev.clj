@@ -25,7 +25,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.match :as match])
+   [metabase.util.match :as match]
+   [metabase.warehouses.models.database :as database])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -75,7 +76,7 @@
       (do
         (log/info "Analytics dev database already exists:" (:id existing))
         existing)
-      (let [db (audit-app.db/insert-returning-database!
+      (let [db (database/create-database!
                 {:name canonical-db-name
                  :description "Development database for analytics views and content"
                  :engine (keyword db-type)
@@ -93,7 +94,7 @@
   "Deletes the analytics dev database and all related metadata."
   [db-id]
   (log/info "Deleting analytics dev database:" db-id)
-  (audit-app.db/delete-database! db-id)
+  (database/delete-database! db-id)
   (log/info "Deleted analytics dev database"))
 
 ;;; ============================================================================
@@ -286,7 +287,7 @@
        (find-analytics-collection)))
 
 (defn- cleanup-real-analytics []
-  (audit-app.db/delete-audit-databases!)
+  (database/delete-databases! (audit-app.db/audit-database-ids))
   (audit-app.db/delete-analytics-collections!))
 
 (defn- analytics-dev-mode-setup []
