@@ -59,8 +59,8 @@ import {
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import { isObject } from "metabase-types/guards";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
+import { isObject } from "metabase-types/guards";
 
 const TEST_COLLECTION = createMockCollection();
 
