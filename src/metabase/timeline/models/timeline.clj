@@ -42,12 +42,6 @@
   [row]
   (cond-> row (nil? (:icon row)) (assoc :icon timeline-event/default-icon)))
 
-(t2/define-before-update :model/Timeline
-  [row]
-  (cond-> row
-    (contains? (t2/changes row) :archived)
-    (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row))))))
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]
@@ -219,6 +213,18 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (when (seq collection-ids)
     (timeline.db/delete-timelines-in-collections! collection-ids)))
+
+(defmethod collection/archive-in-collections! :model/Timeline
+  [_model collection-ids]
+  (archive-timelines-in-collections! (vec collection-ids)))
+
+(defmethod collection/restore-in-collections! :model/Timeline
+  [_model collection-ids]
+  (restore-timelines-in-collections! (vec collection-ids)))
+
+(defmethod collection/delete-in-collections! :model/Timeline
+  [_model collection-ids]
+  (delete-timelines-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

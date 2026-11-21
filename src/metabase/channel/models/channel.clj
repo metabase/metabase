@@ -244,6 +244,12 @@
       (channel.db/insert-channels! rows))
     []))
 
+(defmulti delete-for-channels!
+  "Deletes the rows of `model` that belong to the Channels with `channel-ids`, which a model that follows its Channels
+  implements with its own write function."
+  {:arglists '([model channel-ids])}
+  (fn [model _channel-ids] model))
+
 (mu/defn update-channels! :- :nil
   "Apply the changes in `changes-by-id`, a map from the id of a Channel to its changes, with one statement per distinct
   change set. Deactivating an active Channel first deletes its PulseChannels."
@@ -254,7 +260,8 @@
             active-ids   (when deactivating
                            (into [] (comp (filter :active) (map :id)) (channel.db/channels-by-ids deactivating)))]
         (when (seq active-ids)
-          (channel.db/delete-pulse-channels-for-channels! active-ids)))
+          (t2/resolve-model :model/PulseChannel)
+          (delete-for-channels! :model/PulseChannel active-ids)))
       (doseq [[changes pairs] (group-by val changes-by-id)
               :when           (seq changes)]
         (channel.db/update-channels! (mapv key pairs) changes))))

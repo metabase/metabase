@@ -81,21 +81,6 @@
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
 
-(mu/defn insert-resource-collections! :- [:sequential ms/PositiveInt]
-  "Insert the resource collection of each data app named in `slugs`, a top-level collection of data apps, returning their
-  IDs in the order of `slugs`."
-  [slugs :- [:sequential {:min 1} :string]]
-  (t2/insert-returning-pks! :model/Collection (mapv (fn [slug]
-                                                      {:name      (resource-collection-name slug)
-                                                       :namespace "data-apps"})
-                                                    slugs)))
-
-(mu/defn delete-resource-collections! :- :nil
-  "Delete the resource collections with `collection-ids`."
-  [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/delete! :model/Collection :id [:in [:auto/param collection-ids]])
-  nil)
-
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."
   [rows :- [:sequential {:min 1} :map]]

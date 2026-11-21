@@ -16,6 +16,7 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
+   [metabase.actions.models :as actions.models]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
@@ -62,7 +63,6 @@
    [metabase.util.json :as json]
    [metabase.util.match :as match]
    [metabase.util.random :as u.random]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
    [methodical.core :as methodical]
@@ -562,7 +562,7 @@
                                              (f temp-table)
                                              (finally
                                                (field/delete-fields-for-tables! [(:id temp-table)])
-                                               (warehouse-schema.db/delete-implicit-actions-for-tables!
+                                               (actions.models/delete-implicit-actions-of-tables!
                                                 [(:id temp-table)]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Field
@@ -587,16 +587,27 @@
       (finally
         (card/delete-cards! [(:id temp-card)])))))
 
+(methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
+  "Creates a temporary Collection as `create-collections!` does, without checking its attributes against the schema of a
+  write, and deletes it with `delete-collections!`."
+  [model explicit-attributes f]
+  (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
+        temp       (first (#'collection/create-collections* [attributes]))]
+    (try
+      (testing "\nwith temporary :model/Collection\n"
+        (f temp))
+      (finally
+        (collection/delete-collections! [(:id temp)])))))
+
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
   "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."
   [model explicit-attributes f]
   (if (contains? explicit-attributes :tenant_collection_id)
     (next-method model explicit-attributes f)
     (let [tenant-name   (:name (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
-          collection-id (t2/insert-returning-pk! :model/Collection
-                                                 {:type      collection/tenant-specific-root-collection-type
-                                                  :name      (format "Tenant Collection: %s" tenant-name)
-                                                  :namespace :tenant-specific})]
+          collection-id (:id (first (collection/create-collections! [{:type      collection/tenant-specific-root-collection-type
+                                                                      :name      (format "Tenant Collection: %s" tenant-name)
+                                                                      :namespace :tenant-specific}])))]
       (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
@@ -606,13 +617,12 @@
   (if (contains? explicit-attributes :resource_collection_id)
     (next-method model explicit-attributes f)
     (let [slug          (:slug (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
-          collection-id (t2/insert-returning-pk! :model/Collection
-                                                 {:name      (format "Data App: %s" slug)
-                                                  :namespace "data-apps"})]
+          collection-id (:id (first (collection/create-collections! [{:name      (format "Data App: %s" slug)
+                                                                      :namespace "data-apps"}])))]
       (try
         (next-method model (assoc explicit-attributes :resource_collection_id collection-id) f)
         (finally
-          (t2/delete! :model/Collection :id collection-id))))))
+          (collection/delete-collections! [collection-id]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroup
   "Gives a temporary PermissionsGroup the default permissions on every Database that `create-permissions-group!` gives

@@ -123,11 +123,6 @@
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
   (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
 
-(mu/defn delete-collection!
-  "Delete the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Collection :id [:auto/param collection-id]))
-
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
 (mu/defn tag

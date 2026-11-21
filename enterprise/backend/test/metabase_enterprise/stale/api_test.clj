@@ -8,8 +8,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.stale-test :as stale.test]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,7 +68,7 @@
       (with-collection-hierarchy! [{:keys [a b]}]
         (stale.test/with-stale-items [:model/Card card   {:collection_id (:id a)}
                                       :model/Card hidden {:collection_id (:id b)}]
-          (t2/update! :model/Collection :id (:id b) {:archived true})
+          (collection/update-collections! [{:id (:id b) :archived true}])
           (let [result (mt/user-http-request :crowberto :get 200 (stale-url a) :is_recursive true)
                 ids    (->> result :data (map (juxt :model :id)) set)]
             (is (contains? ids ["card" (u/the-id card)]))

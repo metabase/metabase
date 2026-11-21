@@ -137,8 +137,7 @@
               (is (thrown-with-msg?
                    Exception
                    #"You are not allowed to change the owner of a Tenant Collection."
-                   (t2/update! :model/Collection :id tenant-collection-id
-                               {:personal_owner_id user-id}))))))))))
+                   (collection/update-collections! [{:id tenant-collection-id :personal_owner_id user-id}]))))))))))
 
 (deftest cannot-change-namespace-after-creation-test
   (testing "Cannot change namespace of tenant collection after creation"
@@ -149,8 +148,7 @@
             (is (thrown-with-msg?
                  Exception
                  #"cannot move a Collection to a different namespace"
-                 (t2/update! :model/Collection :id tenant-collection-id
-                             {:namespace nil})))))))))
+                 (collection/update-collections! [{:id tenant-collection-id :namespace nil}])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Tenant Collection Name Localization                                       |

@@ -33,6 +33,8 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.pulse.models.pulse :as pulse]
+   [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
@@ -78,14 +80,6 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defmethod mi/after-archived-change :model/Dashboard
-  [_model rows changes]
-  (let [ids (mapv :id rows)]
-    (events/with-event-context {:archived-with [:model/Dashboard (first ids)]}
-      (if (:archived changes)
-        (dashboards.db/archive-dashboard-questions! ids)
-        (dashboards.db/unarchive-dashboard-questions! ids)))))
-
 (t2/define-before-insert :model/Dashboard
   [dashboard]
   (let [defaults  {:parameters []}
@@ -96,16 +90,11 @@
 
 (t2/define-before-update :model/Dashboard
   [row]
-  (let [changes   (lib/normalize ::dashboards.schema/dashboard (t2/changes row))
-        dashboard (lib/normalize ::dashboards.schema/dashboard row)]
+  (let [dashboard (lib/normalize ::dashboards.schema/dashboard row)]
     (params/assert-valid-parameters dashboard)
     (-> dashboard
-        (cond-> (contains? changes :archived)
-          (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id dashboard)))))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
-
-(mi/define-update-in-transaction :model/Dashboard)
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -319,6 +308,28 @@
                          (not (parent-archived? (if (contains? row :collection_id) (:collection_id row) (:collection_id stored)))))))
     row))
 
+(defn- move-questions!
+  "Moves the dashboard questions of the Dashboards of `moved`, update rows that change `collection_id`, to the Collection
+  of their Dashboard, with one call for each Collection."
+  [moved]
+  (doseq [[collection-id moved-rows] (group-by :collection_id moved)
+          :let [question-ids (dashboards.db/question-ids-of-dashboards (mapv :id moved-rows))]
+          :when (seq question-ids)]
+    (card/update-cards! (mapv (fn [id] {:id id :collection_id collection-id}) question-ids))))
+
+(defn- set-questions-archived!
+  "Archives the dashboard questions of the Dashboards of `rows`, update rows that change `archived`, which the Dashboard
+  archives, and restores those that its archive took down."
+  [rows]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)
+          :let [ids          (mapv :id group)
+                question-ids (if archived?
+                               (dashboards.db/question-ids-archived-with-dashboards ids)
+                               (dashboards.db/question-ids-restored-with-dashboards ids))]
+          :when (seq question-ids)]
+    (events/with-event-context {:archived-with [:model/Dashboard (first ids)]}
+      (card/update-cards! (mapv (fn [id] {:id id :archived archived?}) question-ids)))))
+
 (mu/defn update-dashboards! :- [:sequential ::dashboards.schema/dashboard.update-row]
   "Apply the columns of each of `rows` to the Dashboard with its `:id`, and return `rows`. A Dashboard moved to another
   Collection moves its dashboard questions along and the new Collection must be able to hold it, a change of
@@ -331,20 +342,27 @@
     (if (empty? rows)
       rows
       (events/with-batched-events
-        (let [parent-archived? (memoize collection/archived?)
+        (let [archived-ids     (collection/archived-collection-ids
+                                (into [] (keep (fn [row]
+                                                 (when (contains? row :archived)
+                                                   (if (contains? row :collection_id)
+                                                     (:collection_id row)
+                                                     (:collection_id (get stored (:id row)))))))
+                                      rows))
+              parent-archived? #(contains? archived-ids %)
               rows             (mapv #(with-archived-directly (get stored (:id %)) % parent-archived?) rows)
               moved            (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
               reparameterised  (filterv #(changed? (get stored (:id %)) % :parameters) rows)]
           (check-collections! (for [row moved]
                                 {:collection_id (:collection_id row)
                                  :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))}))
-          (doseq [[collection-id moved-rows] (group-by :collection_id moved)]
-            (dashboards.db/move-dashboard-questions! (mapv :id moved-rows) collection-id))
+          (move-questions! moved)
           (when (seq reparameterised)
             (parameter-card/sync-parameter-cards!
              "dashboard" (mapv (juxt :id :parameters) reparameterised)))
           (doseq [[changes group] (group-by #(dissoc % :id) rows)]
             (dashboards.db/update-dashboards! (mapv :id group) changes))
+          (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
           rows)))))
 
 (mu/defn update-dashboard! :- :nil
@@ -363,7 +381,7 @@
       (parameter-card/delete-all-for-parameterized-objects! "dashboard" dashboard-ids)
       (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
       (cache-config/delete-target-configs! "dashboard" dashboard-ids)
-      (dashboards.db/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
+      (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
       (dashboards.db/delete-dashboards! dashboard-ids)))
   nil)
 
@@ -403,6 +421,21 @@
   "The `:revert!` of the revisions spec: puts back the columns, tabs and dashcards of a Revision."
   (partial dashboards.revisions/revert-dashboard! {:update-dashboard! update-dashboard!
                                                    :delete-dashcards! delete-dashcards!}))
+
+(defmethod collection/archive-in-collections! :model/Dashboard
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-dashboards! (mapv (fn [id] {:id id :archived true}) ids))))
+
+(defmethod collection/restore-in-collections! :model/Dashboard
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-dashboards! (mapv (fn [id] {:id id :archived false}) ids))))
+
+(defmethod collection/delete-in-collections! :model/Dashboard
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
+    (delete-dashboards! ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -52,7 +52,7 @@
                                  collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))
 
-(defn do-with-library-synced
+(defn do-with-library-synced!
   "Implementation for with-library-synced macro.
    If a Library collection exists, temporarily sets is_remote_synced to true.
    If no Library collection exists, creates a temporary one with is_remote_synced true."
@@ -60,10 +60,10 @@
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced true})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced true}])
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}]))))
     ;; No library collection exists, create one for the test
     (mt/with-temp [:model/Collection _ {:name             "Library"
                                         :type             collection/library-collection-type
@@ -75,25 +75,25 @@
 (defmacro with-library-synced
   "Sets up Library collection as remote-synced for the duration of body."
   [& body]
-  `(do-with-library-synced (fn [] ~@body)))
+  `(do-with-library-synced! (fn [] ~@body)))
 
-(defn do-with-library-not-synced
+(defn do-with-library-not-synced!
   "Implementation for with-library-not-synced macro.
    If a Library collection exists, temporarily sets is_remote_synced to false."
   [f]
   (if-let [library (collection/library-collection)]
     (let [original-synced (:is_remote_synced library)]
       (try
-        (t2/update! :model/Collection :id (:id library) {:is_remote_synced false})
+        (collection/update-collections! [{:id (:id library) :is_remote_synced false}])
         (f)
         (finally
-          (t2/update! :model/Collection :id (:id library) {:is_remote_synced (boolean original-synced)}))))
+          (collection/update-collections! [{:id (:id library) :is_remote_synced (boolean original-synced)}]))))
     (f)))
 
 (defmacro with-library-not-synced
   "Ensures Library collection is not remote-synced for the duration of body."
   [& body]
-  `(do-with-library-not-synced (fn [] ~@body)))
+  `(do-with-library-not-synced! (fn [] ~@body)))
 
 (defn do-with-library
   "Implementation for [[with-library]]."

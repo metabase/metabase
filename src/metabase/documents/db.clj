@@ -3,7 +3,6 @@
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
@@ -11,7 +10,6 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.revisions.sql :as revisions.sql]
@@ -38,10 +36,12 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/Document :id id))
 
-(mu/defn exploration-archived?
-  "Whether the Exploration with `exploration-id` is archived."
-  [exploration-id :- ms/PositiveInt]
-  (t2/exists? :model/Exploration :id exploration-id :archived true))
+(mu/defn archived-exploration-ids
+  "The IDs among `exploration-ids` of the Explorations that are archived."
+  [exploration-ids :- [:set ms/PositiveInt]]
+  (if (seq exploration-ids)
+    (set (t2/select-pks-set :model/Exploration :id [:in exploration-ids] :archived true))
+    #{}))
 
 (mu/defn explorations
   "The Explorations with `exploration-ids`."
@@ -128,12 +128,6 @@
    document-id :- ms/PositiveInt]
   (t2/exists? :model/Card :id card-id :document_id document-id :archived false))
 
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`, returning the number updated."
-  [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
-  (t2/update! :model/Card :id card-id changes))
-
 (mu/defn cards-archived-with-document
   "The unarchived Cards in the Document with `document-id`, which archiving it archives along with it."
   [document-id :- ms/PositiveInt]
@@ -144,24 +138,21 @@
   [document-id :- ms/PositiveInt]
   (t2/select :model/Card :document_id document-id :archived true :archived_directly false))
 
-(mu/defn archive-document-cards!
-  "Archive, through their model, the rows of [[cards-archived-with-document]] of the Documents with `document-ids`,
-  returning the number updated."
+(mu/defn card-ids-archived-with-documents
+  "The IDs of the unarchived Cards in the Documents with `document-ids`, which archiving them archives along with them."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/Card :document_id [:in document-ids] :archived false {:archived true}))
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived false))
 
-(mu/defn restore-document-cards!
-  "Restore, through their model, the rows of [[cards-restored-with-document]] of the Documents with `document-ids`,
-  returning the number updated."
+(mu/defn card-ids-restored-with-documents
+  "The IDs of the Cards in the Documents with `document-ids` that were archived along with them, which restoring them
+  restores."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/Card :document_id [:in document-ids] :archived true :archived_directly false {:archived false}))
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids] :archived true :archived_directly false))
 
-(mu/defn move-document-cards!
-  "Move the Cards of the Documents with `document-ids` to the Collection with `collection-id`, returning the number
-  updated."
-  [document-ids  :- [:sequential ms/PositiveInt]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :document_id [:in document-ids] {:collection_id collection-id}))
+(mu/defn card-ids-of-documents
+  "The IDs of the Cards in the Documents with `document-ids`."
+  [document-ids :- [:sequential ms/PositiveInt]]
+  (t2/select-pks-vec :model/Card :document_id [:in document-ids]))
 
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."

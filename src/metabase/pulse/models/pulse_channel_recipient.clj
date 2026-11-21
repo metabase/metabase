@@ -8,6 +8,7 @@
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
    [metabase.pulse.schema :as pulse.schema]
+   [metabase.users.models.user :as user]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -60,6 +61,10 @@
   as [[delete-pulse-channel-recipients!]] does."
   [user-id :- ::lib.schema.id/user]
   (delete-recipients! (pulse.db/pulse-channel-recipients-for-user user-id)))
+
+(defmethod user/delete-for-users! :model/PulseChannelRecipient
+  [_model user-ids]
+  (run! delete-pulse-channel-recipients-for-user! user-ids))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

@@ -7,7 +7,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.embedding.settings :as embed.settings]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -350,43 +349,22 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select-pk->fn :parameters [:model/Dashboard :id :parameters] :id [:in dashboard-ids]))
 
-(mu/defn update-dashboard!
-  "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
-  [dashboard-id :- ::lib.schema.id/dashboard
-   changes      :- ::dashboards.schema/dashboard.update]
-  ((requiring-resolve 'metabase.dashboards.models.dashboard/update-dashboard!) dashboard-id changes))
-
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/select :model/DashboardCard :card_id card-id))
 
-(mu/defn insert-dashcard!
-  "Insert `dashcard` through the DashboardCard model."
-  [dashcard :- ::dashboards.schema/dashboard-card.update]
-  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/create-dashboard-cards!) [dashcard]))
-
-(mu/defn update-dashcard!
-  "Apply `changes` to the DashboardCard with `dashcard-id` through the DashboardCard model."
-  [dashcard-id :- ::lib.schema.id/dashcard
-   changes     :- ::dashboards.schema/dashboard-card.update]
-  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/update-dashboard-card-rows!) [(assoc changes :id dashcard-id)]))
-
-(mu/defn delete-dashcards-for-card-on-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id` through the
-  DashboardCard model."
+(mu/defn dashcard-ids-for-card-on-dashboard
+  "The IDs of the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!)
-   (vec (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
 
-(mu/defn delete-dashcards-for-card-off-dashboard!
-  "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id` through the
-  DashboardCard model."
+(mu/defn dashcard-ids-for-card-off-dashboard
+  "The IDs of the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  ((requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!)
-   (vec (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))))
+  (t2/select-pks-vec :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
 
 (mu/defn dashcard-series-for-card-on-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
@@ -423,18 +401,6 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-model!
-  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
-  updated."
-  [model-id      :- ::lib.schema.id/card
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
-
-(mu/defn delete-actions-of-model!
-  "Delete the Actions of the Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id))
-
 (mu/defn implicit-action-ids-for-models
   "The IDs of the implicit Actions of the model Cards with `model-ids`."
   [model-ids :- [:sequential ::lib.schema.id/card]]
@@ -444,23 +410,6 @@
                                       :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                       :where  [:in :action.model_id model-ids]})
     #{}))
-
-(mu/defn move-actions-of-models!
-  "Move the Actions of the model Cards with `model-ids` to the Collection with `collection-id`, returning the number
-  updated."
-  [model-ids     :- [:sequential ::lib.schema.id/card]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
-
-(mu/defn delete-actions-of-models!
-  "Delete the Actions of the Cards with `model-ids`, returning the number deleted."
-  [model-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Action :model_id [:in model-ids]))
-
-(mu/defn delete-actions!
-  "Delete the Actions with `action-ids`, returning the number deleted."
-  [action-ids :- [:set ::lib.schema.id/action]]
-  (t2/delete! :model/Action :id [:in action-ids]))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted.
@@ -494,13 +443,6 @@
                      :payload_id [:in ^:allow-subquery {:select [:id]
                                                         :from   [:notification_card]
                                                         :where  [:= :card_id card-id]}]))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`, returning the number deleted."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  ((requiring-resolve 'metabase.notification.models/delete-notifications!) (vec notification-ids)))
-
-;;; --------------------------------------------- ParameterCard ---------------------------------------------
 
 (mu/defn parameter-cards-for-card
   "The ParameterCards drawing values from the Card with `card-id`."

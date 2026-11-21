@@ -86,10 +86,10 @@
   ;; dependency-free namespace that exists for exactly this.
   (t2/select-one (queries.card-schema/selection) :id card-id))
 
-(mu/defn archive-cards-for-table!
-  "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
+(mu/defn unarchived-card-ids-for-table
+  "The ids of the unarchived Cards of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/update-returning-pks! :model/Card {:table_id table-id :archived false} {:archived true}))
+  (t2/select-pks-vec :model/Card :table_id table-id :archived false))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

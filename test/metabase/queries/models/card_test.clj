@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.actions.models :as actions.models]
    [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -2329,11 +2331,11 @@
           (is (not (t2/exists? :model/Notification :id (:id notification)))))))))
 
 (deftest alerts-are-deleted-when-card-is-archived-test
-  (testing "an alert is deleted by any writer when its Card is archived, and kept when the Card is restored"
+  (testing "an alert is deleted when its Card is archived"
     (notification.tu/with-card-notification
       [notification {:card {:display :line}}]
       (let [card-id (-> notification :payload :card_id)]
-        (t2/update! :model/Card :id card-id {:archived true})
+        (card/update-cards! [{:id card-id :archived true}])
         (is (not (t2/exists? :model/Notification :id (:id notification))))))))
 
 (deftest can-update-embedding-and-public-link-need-admin-test
@@ -2372,7 +2374,7 @@
         (mt/with-temp [:model/Collection {collection-id :id} {}]
           (let [card-id (-> notification :payload :card_id)
                 emails  (notification.tu/with-mock-inbox-email!
-                          (mt/with-dynamic-fn-redefs [queries.db/move-actions-of-models!
+                          (mt/with-dynamic-fn-redefs [actions.models/move-actions-of-models!
                                                       (fn [& _] (throw (ex-info "after-update failed" {})))]
                             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"after-update failed"
                                                   (mt/with-test-user :crowberto
@@ -2392,7 +2394,7 @@
           [in-dashboard {:card {:collection_id collection-id :dashboard_id dashboard-id}}]
           (let [collection-card (-> in-collection :payload :card_id)
                 dashboard-card  (-> in-dashboard :payload :card_id)]
-            (t2/update! :model/Collection :id collection-id {:archived true})
+            (collection/update-collections! [{:id collection-id :archived true}])
             (is (every? #(false? (:archived_directly %))
                         (t2/select [:model/Card :archived_directly] :id [:in [collection-card dashboard-card]])))
             (is (t2/exists? :model/Notification :id (:id in-collection)))
@@ -2485,7 +2487,7 @@
     (let [archive (fn [n]
                     (mt/with-temp [:model/Collection {collection-id :id} {}]
                       (card/create-cards! (cards-with-metadata n collection-id))
-                      (statement-count #(t2/update! :model/Collection :id collection-id {:archived true}))))]
+                      (statement-count #(collection/update-collections! [{:id collection-id :archived true}]))))]
       (archive 2)
       (is (= (archive 2) (archive 6))))))
 

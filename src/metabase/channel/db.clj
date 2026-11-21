@@ -90,13 +90,6 @@
                                       [:= :p.object permission-path]]}]
                  :group-by [:pgm.user_id]}))
 
-(mu/defn delete-pulse-channels-for-channels!
-  "Delete the PulseChannels of the Channels with `channel-ids`, returning the number deleted."
-  [channel-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (let [pulse-channel-ids (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in [:auto/param channel-ids]]))]
-    ((requiring-resolve 'metabase.pulse.models.pulse/remove-pulse-channels!) pulse-channel-ids)
-    (count pulse-channel-ids)))
-
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]

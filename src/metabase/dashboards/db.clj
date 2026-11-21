@@ -109,11 +109,6 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (vec (t2/select-pks-vec :model/Pulse :dashboard_id [:in dashboard-ids])))
 
-(mu/defn delete-pulses!
-  "Delete the Pulses with `pulse-ids` through their model, returning the number deleted."
-  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  ((requiring-resolve 'metabase.pulse.models.pulse/delete-pulses!) pulse-ids))
-
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
@@ -162,13 +157,6 @@
    archived? :- :boolean]
   (t2/select :model/Card :id [:in card-ids] :archived (not archived?)))
 
-(mu/defn set-cards-archived!
-  "Set the `archived` flag of the [[cards-to-set-archived]], which gives them their `archived_directly`, returning the
-  number updated."
-  [card-ids  :- [:sequential ::lib.schema.id/card]
-   archived? :- :boolean]
-  (t2/update! :model/Card :id [:in card-ids] :archived (not archived?) {:archived archived?}))
-
 (mu/defn questions-archived-with-dashboard
   "The unarchived Cards internal to the Dashboard with `dashboard-id`, which archiving it archives along with it."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -180,24 +168,22 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/Card :dashboard_id dashboard-id :archived true :archived_directly false))
 
-(mu/defn archive-dashboard-questions!
-  "Archive, through their model, the rows of [[questions-archived-with-dashboard]] of the Dashboards with
-  `dashboard-ids`, returning the number updated."
+(mu/defn question-ids-archived-with-dashboards
+  "The IDs of the unarchived Cards internal to the Dashboards with `dashboard-ids`, which archiving them archives along
+  with them."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] :archived false {:archived true}))
+  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids] :archived false))
 
-(mu/defn unarchive-dashboard-questions!
-  "Restore, through their model, the rows of [[questions-restored-with-dashboard]] of the Dashboards with
-  `dashboard-ids`, returning the number updated."
+(mu/defn question-ids-restored-with-dashboards
+  "The IDs of the Cards internal to the Dashboards with `dashboard-ids` that were archived along with them, which
+  restoring them restores."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] :archived true :archived_directly false {:archived false}))
+  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids] :archived true :archived_directly false))
 
-(mu/defn move-dashboard-questions!
-  "Move the Cards internal to the Dashboards with `dashboard-ids` to the Collection with `collection-id`, returning the
-  number updated."
-  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]
-   collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :dashboard_id [:in dashboard-ids] {:collection_id collection-id}))
+(mu/defn question-ids-of-dashboards
+  "The IDs of the Cards internal to the Dashboards with `dashboard-ids`."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (t2/select-pks-vec :model/Card :dashboard_id [:in dashboard-ids]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -322,11 +308,6 @@
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
-
-(mu/defn delete-pulse-cards-for-dashcards!
-  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  ((requiring-resolve 'metabase.pulse.models.pulse-card/delete-pulse-cards-for-dashcards!) dashcard-ids))
 
 (mu/defn delete-series-for-dashcards!
   "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."

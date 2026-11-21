@@ -145,10 +145,11 @@
    [:row  [:ref ::collection]]])
 
 (mr/def ::collection.type
-  "The `:type` column of a Collection: nil for a regular Collection, or one of these special types."
+  "The `:type` column of a Collection: nil for a regular Collection, or one of these special types, or `remote-synced`,
+  which a write turns into the `is_remote_synced` flag."
   [:enum {:decode/normalize lib.schema.common/normalize-string-key}
    "trash" "tenant-specific-root-collection" "instance-analytics"
-   "library" "library-data" "library-metrics" "library-dashboards"])
+   "library" "library-data" "library-metrics" "library-dashboards" "remote-synced"])
 
 (mr/def ::collection.name
   ms/NonBlankString)
@@ -162,8 +163,8 @@
    [:location             {:optional true} [:maybe :string]]
    [:personal_owner_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:slug                 {:optional true} [:maybe :string]]
-   [:namespace            {:optional true} [:maybe ::lib.schema.common/keyword]]
-   [:authority_level      {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:namespace            {:optional true} [:maybe [:or ::lib.schema.common/keyword :string]]]
+   [:authority_level      {:optional true} [:maybe [:or ::lib.schema.common/keyword :string]]]
    [:entity_id            {:optional true} [:maybe :string]]
    [:created_at           {:optional true} [:maybe ms/TemporalInstant]]
    [:type                 {:optional true} [:maybe ::collection.type]]
@@ -171,6 +172,20 @@
    [:archive_operation_id {:optional true} [:maybe :string]]
    [:archived_directly    {:optional true} [:maybe :boolean]]
    [:is_remote_synced     {:optional true} [:maybe :boolean]]])
+
+(mr/def ::collection.create
+  "What an insert of a Collection accepts: what an update accepts, and a name."
+  [:merge
+   ::collection.update
+   [:map {:closed true}
+    [:name ::collection.name]]])
+
+(mr/def ::collection.update-row
+  "A Collection by its id with the columns to change."
+  [:merge
+   ::collection.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/collection]]])
 
 (mr/def ::external-collection
   "A Collection as serialization writes it, with portable references in place of ids."

@@ -226,13 +226,6 @@
    active?          :- :boolean]
   (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
 
-(mu/defn delete-implicit-actions-for-tables!
-  "Delete the implicit Actions that write to the Tables with `table-ids`, returning the number deleted."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/ImplicitAction :table_id [:in table-ids]))]
-    (t2/delete! :model/Action :id [:in action-ids])
-    0))
-
 (mu/defn user-renamed-field-names :- [:set :string]
   "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
   Uploads use it to leave those Fields alone when appending re-derives display names from the CSV header."
@@ -924,3 +917,16 @@
                        [:in :t.id table-ids]]
                :left-join [[:metabase_database :db]
                            [:= :db.id :t.db_id]]}) :can_read :can_write))
+
+(mu/defn published-table-ids-in-collections
+  "The ids of the published Tables in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pks-vec :model/Table :collection_id [:in collection-ids] :is_published true))
+
+(mu/defn table-user-settings-ids-of-published-tables-in-collections
+  "The ids of the TableUserSettings of the published Tables in the Collections with `collection-ids`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select-pks-vec :model/TableUserSettings
+                     :table_id [:in ^:allow-subquery {:select [:id]
+                                                      :from   [(t2/table-name :model/Table)]
+                                                      :where  [:and [:in :collection_id collection-ids] [:= :is_published true]]}]))

@@ -95,21 +95,21 @@
                     {:join  [:exploration_thread [:= :exploration_thread.exploration_id :exploration.id]]
                      :where [:= :exploration_thread.id thread-id]}))
 
-(mu/defn insert-exploration!
-  "Insert `exploration` and return the new instance."
-  [exploration :- ::explorations.schema/exploration.update]
-  (first (t2/insert-returning-instances! :model/Exploration exploration)))
+(mu/defn insert-explorations!
+  "Insert the Explorations `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration.update]]
+  (t2/insert-returning-instances! :model/Exploration rows))
 
-(mu/defn update-exploration!
-  "Apply `changes` to the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt
-   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
-  (t2/update! :model/Exploration :id exploration-id changes))
+(mu/defn update-explorations!
+  "Apply `changes` to the Explorations with `exploration-ids`, returning the number updated."
+  [exploration-ids :- [:sequential ms/PositiveInt]
+   changes         :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
+  (t2/update! :model/Exploration :id [:in exploration-ids] changes))
 
-(mu/defn delete-exploration!
-  "Delete the Exploration with `exploration-id`."
-  [exploration-id :- ms/PositiveInt]
-  (t2/delete! :model/Exploration :id exploration-id))
+(mu/defn delete-explorations!
+  "Delete the Explorations with `exploration-ids`, returning the number deleted."
+  [exploration-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Exploration :id [:in exploration-ids]))
 
 ;;; ------------------------------------------------- Threads -------------------------------------------------
 

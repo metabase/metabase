@@ -4,7 +4,6 @@
   (:require
    [malli.util :as mut]
    [metabase-enterprise.tenants.schema :as tenants.schema]
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -107,22 +106,10 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :tenant_id :model/User :id user-id))
 
-(mu/defn set-collection-archived!
-  "Archive the Collection with `collection-id` and what is in it when `archived?`, else restore it and what its
-  archive took down, through its model."
-  [collection-id :- ::lib.schema.id/collection
-   archived?     :- :boolean]
-  (t2/update! :model/Collection :id collection-id {:archived archived?}))
-
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-set :model/Collection :location [:like (str "/" collection-id "/%")]))
-
-(mu/defn insert-collection!
-  "Insert `collection` and return its ID."
-  [collection :- ::collections.schema/collection.update]
-  (t2/insert-returning-pk! :model/Collection collection))
 
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects`, returning the number deleted."

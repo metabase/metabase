@@ -7,6 +7,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -97,7 +98,7 @@
         (let [self-finding  (mk-finding! :collection (:id parent))
               child-finding (mk-finding! :card child-card-id (:id child))
               outside       (mk-finding! :card other-card-id)]
-          (t2/update! :model/Collection :id (:id parent) {:archived true})
+          (collection/update-collections! [{:id (:id parent) :archived true}])
           (is (invalidated? self-finding) "the archived collection's own finding")
           (is (invalidated? child-finding) "a finding for a card in a descendant collection")
           (is (not (invalidated? outside)) "an unrelated finding is untouched"))))))
@@ -115,7 +116,7 @@
                   updates  (atom 0)]
               (mt/with-dynamic-fn-redefs [cd.db/invalidate-findings-where! (let [f (mt/original-fn #'cd.db/invalidate-findings-where!)]
                                                                              (fn [where] (swap! updates inc) (f where)))]
-                (t2/update! :model/Collection :id coll-id {:archived true}))
+                (collection/update-collections! [{:id coll-id :archived true}]))
               (is (every? invalidated? findings))
               (is (= 1 @updates)))))))))
 

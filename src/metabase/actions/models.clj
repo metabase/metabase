@@ -180,9 +180,7 @@
 
 (t2/define-before-update :model/Action
   [action]
-  (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-    (contains? (t2/changes action) :archived)
-    (assoc :archived_directly (mi/archived-directly action #(collection/archived? (:collection_id action))))))
+  (public-sharing/add-public-uuid-prefix-if-changed action))
 
 (defn- normalized-query
   "The query of `query-action` normalized, or nil when it has none."
@@ -889,7 +887,8 @@
   "Delete the Actions of the model Cards with `model-ids`, in one statement."
   [model-ids :- [:sequential ::lib.schema.id/card]]
   (when (seq model-ids)
-    (delete-actions! (actions.db/action-ids-of-models model-ids))))
+    (when-let [ids (not-empty (actions.db/action-ids-of-models model-ids))]
+      (delete-actions! (vec ids)))))
 
 (mu/defn move-actions-of-models!
   "Move the Actions of the model Cards with `model-ids` to the Collection with `collection-id`, nil for the root, in
@@ -898,13 +897,15 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (when (seq model-ids)
     (update-actions! (mapv (fn [id] {:id id :collection_id collection-id})
-                           (actions.db/action-ids-of-models model-ids)))))
+                           (actions.db/action-ids-of-models model-ids)))
+    nil))
 
 (mu/defn delete-implicit-actions-of-tables!
   "Delete the Actions that write to the Tables with `table-ids`, in one statement."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (when (seq table-ids)
-    (delete-actions! (actions.db/implicit-action-ids-of-tables table-ids))))
+    (when-let [ids (not-empty (actions.db/implicit-action-ids-of-tables table-ids))]
+      (delete-actions! (vec ids)))))
 
 (mu/defn archive-actions-in-collections!
   "Archive the Actions in the Collections with `collection-ids`, which an archive of their Collection carries, in one
@@ -929,6 +930,18 @@
   (when (seq collection-ids)
     (events/with-batched-events
       (actions.db/delete-actions-in-collections! collection-ids))))
+
+(defmethod collection/archive-in-collections! :model/Action
+  [_model collection-ids]
+  (archive-actions-in-collections! (vec collection-ids)))
+
+(defmethod collection/restore-in-collections! :model/Action
+  [_model collection-ids]
+  (restore-actions-in-collections! (vec collection-ids)))
+
+(defmethod collection/delete-in-collections! :model/Action
+  [_model collection-ids]
+  (delete-actions-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -110,6 +110,7 @@
    :api  #{metabase.actions.args
            metabase.actions.core
            metabase.actions.init
+           metabase.actions.models
            metabase.actions.schema
            metabase.actions.types}
    :uses #{analytics
@@ -588,7 +589,6 @@
            parameters
            permissions
            premium-features
-           pulse
            query-processor
            query-processor.pivot
            request
@@ -683,7 +683,6 @@
            app-db
            audit-app
            collection-items
-           dashboards
            events
            lib
            lib.schema
@@ -691,8 +690,6 @@
            notification
            permissions
            premium-features
-           pulse
-           queries
            remote-sync
            search
            serialization
@@ -1136,8 +1133,7 @@
 
   events
   {:team "Gadget"
-   :api  #{metabase.events.batch
-           metabase.events.core
+   :api  #{metabase.events.core
            metabase.events.hierarchy
            metabase.events.impl
            metabase.events.init}
@@ -1914,7 +1910,6 @@
            metabase.models.util.spec-update}
    :uses #{api
            app-db
-           events
            lib
            lib.legacy-mbql
            lib.schema
@@ -1978,7 +1973,10 @@
 
   native-query-snippets
   {:team "Querying"
-   :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
+   :api  #{metabase.native-query-snippets.api
+           metabase.native-query-snippets.core
+           metabase.native-query-snippets.init
+           metabase.native-query-snippets.schema}
    :uses #{api
            api.eid-translation
            app-db
@@ -2295,9 +2293,13 @@
            task
            task.history
            tracing
+           users
            util
            util.config}
-   :model-exports #{:model/Pulse :model/PulseCard :model/PulseChannel}
+   :model-exports #{:model/Pulse
+                    :model/PulseCard
+                    :model/PulseChannel
+                    :model/PulseChannelRecipient}
    :model-imports #{:model/Card
                     :model/Channel
                     :model/Collection
@@ -2317,7 +2319,8 @@
            metabase.queries.models.stored-result
            metabase.queries.models.stored-result-use
            metabase.queries.schema}
-   :uses #{activity-feed
+   :uses #{actions
+           activity-feed
            analytics
            analytics.interface
            api
@@ -3219,7 +3222,10 @@
 
   timeline
   {:team "UX West"
-   :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
+   :api  #{metabase.timeline.api
+           metabase.timeline.core
+           metabase.timeline.init
+           metabase.timeline.schema}
    :uses #{analytics
            api
            api.eid-translation
@@ -3499,7 +3505,6 @@
            notification
            permissions
            premium-features
-           pulse
            serialization
            settings
            setup
@@ -3513,6 +3518,7 @@
    :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
+                    :model/PulseChannelRecipient
                     :model/Tenant}}
 
   users.rest
@@ -3539,7 +3545,6 @@
            util
            util.config}
    :model-imports #{:model/Card
-                    :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
                     :model/Session
@@ -3667,7 +3672,8 @@
           metabase.warehouse-schema.schema
           metabase.warehouse-schema.table
           metabase.warehouse-schema.user-settings}
-   :uses #{activity-feed
+   :uses #{actions
+           activity-feed
            api
            api.eid-translation
            app-db
@@ -3705,11 +3711,9 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Action
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Database
-                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3901,6 +3905,7 @@
    :uses #{api
            app-db
            audit-app
+           collections
            driver
            lib
            lib.metadata
