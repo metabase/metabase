@@ -857,16 +857,12 @@
 ;;; |                                                      set!                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- update-setting!
-  "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
-  [setting-name new-value]
-  ;; Toucan 2 version of `update!` will do transforms and stuff like that
-  (settings.db/update-setting-value! setting-name new-value))
+(declare create-setting! update-setting! delete-setting!)
 
 (defn- set-new-setting!
   "Insert a new row for a Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (try (settings.db/insert-setting! setting-name new-value)
+  (try (create-setting! setting-name new-value)
        ;; if for some reason inserting the new value fails it almost certainly means the cache is out of date
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
@@ -935,11 +931,11 @@
             (cond
               (nil? new-value)
               (do
-                (settings.db/delete-setting! setting-name)
+                (delete-setting! setting-name)
                 ;; also clear the deprecated-name key so that fallback doesn't resurface an old value
                 (when-let [deprecated-name (:deprecated-name setting)]
                   (let [deprecated-key (core/name deprecated-name)]
-                    (settings.db/delete-setting! deprecated-key)
+                    (delete-setting! deprecated-key)
                     (setting.cache/update-cache! deprecated-key nil))))
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
@@ -1935,6 +1931,25 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-setting! :- :map
+  "Insert a Setting row for `setting-key` holding `value` and return it."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/insert-setting! setting-key value))
+
+(mu/defn update-setting! :- :int
+  "Set the value of the Setting with `setting-key` to `value`, returning the number updated."
+  [setting-key :- [:or :keyword :string]
+   value       :- :string]
+  (settings.db/update-setting-value! setting-key value))
+
+(mu/defn delete-setting! :- :int
+  "Delete the Setting with `setting-key`, returning the number deleted."
+  [setting-key :- [:or :keyword :string]]
+  (settings.db/delete-setting! setting-key))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

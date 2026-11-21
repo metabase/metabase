@@ -4,8 +4,11 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,6 +60,32 @@
    conversations k
    #(metabot.db/user-summaries-by-id (keep :user_id conversations))
    :user_id {:default nil}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-metabot-conversation!
+  "Insert the MetabotConversation `row` under the client-generated `conversation-id`."
+  [conversation-id :- :string
+   row             :- ::metabot.schema/metabot-conversation.create]
+  (metabot.db/insert-conversation! conversation-id row))
+
+(mu/defn upsert-metabot-conversation!
+  "Insert or update the MetabotConversation with `conversation-id`; `update-fn` receives the existing row, or nil, and
+  returns the columns to write."
+  [conversation-id :- :string
+   update-fn       :- fn?]
+  (metabot.db/upsert-conversation! conversation-id update-fn))
+
+(mu/defn set-metabot-conversation-title-if-missing!
+  "Set the title of the MetabotConversation with `conversation-id` when it has none."
+  [conversation-id :- :string
+   title           :- :string]
+  (metabot.db/set-conversation-title-if-missing! conversation-id title))
+
+(mu/defn delete-metabot-conversations-created-before!
+  "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (metabot.db/delete-conversations-created-before! cutoff))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

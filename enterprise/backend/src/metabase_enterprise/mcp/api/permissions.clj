@@ -118,7 +118,7 @@
     (run! api/write-check (t2/hydrate (mcp.db/hidden-group-permissions advanced?) :can_write))
     (api/create-check :model/McpGroupPermission seeded-permission)
     (t2/with-transaction [_conn]
-      (mcp.db/delete-hidden-group-permissions! advanced?)
+      (mcp-group-permission/delete-hidden-mcp-group-permissions! advanced?)
       (mcp-group-permission/create-missing-mcp-group-permissions!
        (mapv #(assoc seeded-permission :group_id %) (mcp.db/seeded-group-ids advanced?))))))
 

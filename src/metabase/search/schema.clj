@@ -22,6 +22,15 @@
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
    [:lang_code  {:optional true} [:maybe :string]]])
 
+(mr/def ::search-index-metadata.create
+  "What creating a SearchIndexMetadata takes: the engine, version, language and status of an index, and its name."
+  [:map {:closed true}
+   [:engine     :keyword]
+   [:version    :string]
+   [:lang_code  :string]
+   [:status     [:enum :pending :active :retired]]
+   [:index_name :string]])
+
 (mr/def ::weights.overrides
   "The search weights a client overrides, by weight name, with the context they apply to."
   [:map {:closed false, :description "search weight overrides"}

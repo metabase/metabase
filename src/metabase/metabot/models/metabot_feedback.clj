@@ -2,8 +2,11 @@
   "Persist Metabot message feedback"
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,6 +22,16 @@
    feedbacks k
    #(metabot.db/user-summaries-by-id (keep :user_id feedbacks))
    :user_id {:default nil}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn upsert-metabot-feedback!
+  "Insert or update the MetabotFeedback of the User with `submitter-user-id` on the MetabotMessage with `message-id`;
+  `update-fn` receives the existing row, or nil, and returns the columns to write."
+  [message-id        :- ms/PositiveInt
+   submitter-user-id :- ::lib.schema.id/user
+   update-fn         :- fn?]
+  (metabot.db/upsert-feedback! message-id submitter-user-id update-fn))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

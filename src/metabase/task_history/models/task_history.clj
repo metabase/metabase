@@ -51,18 +51,6 @@
   [_model k instance]
   (assoc instance k (boolean (can-access?))))
 
-(defn cleanup-task-history!
-  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
-  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
-  [num-rows-to-keep]
-  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
-  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
-  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
-  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
-  ;; disk.
-  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
-    (task-history.db/delete-task-history-ended-before! clean-before-date)))
-
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
    :logs         mi/transform-json
@@ -105,9 +93,26 @@
   []
   (vec (task-history.db/distinct-task-names)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            with-task-history macro                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
+;; TaskHistory can contain an exception for logging purposes, so use the built-in
+;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
+(json/add-encoder
+ Throwable
+ (fn [throwable json-generator]
+   (json/generate-map (Throwable->map throwable) json-generator)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn cleanup-task-history!
+  "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
+  This is intended for a quick cleanup of old rows. Returns `true` if something was deleted."
+  [num-rows-to-keep :- ms/IntGreaterThanOrEqualToZero]
+  ;; Ideally this would be one query, but MySQL does not allow nested queries with a limit. The query below orders the
+  ;; tasks by the time they finished, newest first. Then finds the first row after skipping `num-rows-to-keep`. Using
+  ;; the date that task finished, it deletes everything after that. As we continue to add TaskHistory entries, this
+  ;; ensures we'll have a good amount of history for debugging/troubleshooting, but not grow too large and fill the
+  ;; disk.
+  (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
+    (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}
@@ -259,12 +264,10 @@
   [info & body]
   `(do-with-task-history ~info (fn [] ~@body)))
 
-;; TaskHistory can contain an exception for logging purposes, so use the built-in
-;; serialization of a `Throwable->map` to make this something that can be JSON encoded.
-(json/add-encoder
- Throwable
- (fn [throwable json-generator]
-   (json/generate-map (Throwable->map throwable) json-generator)))
+(mu/defn mark-started-tasks-unknown! :- :int
+  "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, returning the number updated."
+  [run-ids :- [:set ms/PositiveInt]]
+  (task-history.db/mark-started-tasks-unknown! run-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

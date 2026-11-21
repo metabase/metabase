@@ -257,7 +257,7 @@
 (mu/defn insert-conversation!
   "Insert `conversation` under the client-generated `conversation-id`."
   [conversation-id :- :string
-   conversation    :- ::metabot.schema/metabot-conversation.update]
+   conversation    :- ::metabot.schema/metabot-conversation.create]
   (t2/insert! :model/MetabotConversation (assoc conversation :id conversation-id)))
 
 (mu/defn upsert-conversation!
@@ -369,13 +369,7 @@
   "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
   rows updated. `conditions` must have at least one key -- an empty map would match every message. `:id` matches a
   single MetabotMessage or, given a collection, any of several."
-  [conditions :- [:and
-                  [:map {:closed true}
-                   [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
-                   [:channel_id   {:optional true} [:maybe :string]]
-                   [:slack_msg_id {:optional true} [:maybe :string]]
-                   [:role         {:optional true} [:maybe [:or :keyword :string]]]]
-                  [:fn {:error/message "must have at least one condition"} seq]]
+  [conditions :- ::metabot.schema/metabot-message.soft-delete-conditions
    deleted-by-user-id :- ::lib.schema.id/user]
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
@@ -385,12 +379,20 @@
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
-  [rows :- [:sequential [:map {:closed true}
-                         [:id {:optional true} ms/PositiveInt]
-                         [:message_id {:optional true} [:maybe ms/PositiveInt]]
-                         [:table_id {:optional true} [:maybe ::lib.schema.id/table]]
-                         [:created_at {:optional true} [:maybe ms/TemporalInstant]]]]]
+  [rows :- [:sequential ::metabot.schema/metabot-used-table.create]]
   (t2/insert! :model/MetabotUsedTable rows))
+
+;;; -------------------------------------------------- AI usage --------------------------------------------------
+
+(mu/defn insert-usage-log!
+  "Insert the AiUsageLog `row`."
+  [row :- ::metabot.schema/ai-usage-log.create]
+  (t2/insert! :model/AiUsageLog row))
+
+(mu/defn delete-usage-logs-created-before!
+  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]}))
 
 ;;; --------------------------------------------------- Feedback ---------------------------------------------------
 

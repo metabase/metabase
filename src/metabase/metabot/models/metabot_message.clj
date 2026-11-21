@@ -2,11 +2,15 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -70,6 +74,31 @@
 
     :else
     message))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-metabot-message! :- ms/PositiveInt
+  "Insert the MetabotMessage `row` and return its id."
+  [row :- ::metabot.schema/metabot-message.create]
+  (metabot.db/insert-message-returning-pk! row))
+
+(mu/defn create-metabot-messages!
+  "Insert the MetabotMessage `rows` in one statement."
+  [rows :- [:sequential ::metabot.schema/metabot-message.create]]
+  (metabot.db/insert-messages! rows))
+
+(mu/defn update-metabot-message!
+  "Apply `changes` to the MetabotMessage with `message-id`."
+  [message-id :- ms/PositiveInt
+   changes    :- ::metabot.schema/metabot-message.update]
+  (metabot.db/update-message! message-id changes))
+
+(mu/defn soft-delete-metabot-messages! :- :int
+  "Soft-delete the MetabotMessages matching `conditions` on behalf of the User with `deleted-by-user-id`, returning the
+  number of rows updated."
+  [conditions         :- ::metabot.schema/metabot-message.soft-delete-conditions
+   deleted-by-user-id :- ::lib.schema.id/user]
+  (metabot.db/soft-delete-messages-where! conditions deleted-by-user-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

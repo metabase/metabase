@@ -5,7 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
-   [metabase-enterprise.metabot.db :as metabot.db]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -23,7 +23,7 @@
       (do
         (log/infof "Trimming AI usage log rows older than %d days." (long retention-days))
         (let [cutoff  (t/minus (t/offset-date-time) (t/days (long retention-days)))
-              deleted (metabot.db/delete-usage-logs-created-before! cutoff)]
+              deleted (ai-usage-log/delete-ai-usage-logs-created-before! cutoff)]
           (log/infof "AI usage log cleanup complete. Deleted %d rows." (or deleted 0)))))))
 
 (task/defjob AiUsageTrimmer

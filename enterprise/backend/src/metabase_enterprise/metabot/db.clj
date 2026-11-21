@@ -4,7 +4,6 @@
   (:require
    [metabase-enterprise.metabot.schema :as metabot-ee.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.usage-controls :as usage-controls]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -127,11 +126,6 @@
   [tenant-id :- [:maybe ms/PositiveInt]]
   (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
 
-(mu/defn insert-usage-log!
-  "Insert the AiUsageLog `row`."
-  [row :- ::metabot.schema/ai-usage-log.update]
-  (t2/insert! :model/AiUsageLog row))
-
 (defn- usage-window-expr
   [period-start user-id tenant-id]
   [:and
@@ -165,8 +159,3 @@
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
                            (seq sources) (conj [:in :source sources])
                            request-id    (conj [:not= :request_id request-id]))}))
-
-(mu/defn delete-usage-logs-created-before!
-  "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
-  [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
