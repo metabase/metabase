@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
    [metabase.cache.schema :as cache.schema]
@@ -245,24 +246,27 @@
 ;;; ---------------------------------------------------- Writes -----------------------------------------------------
 
 (defn save-cache-config!
-  "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id."
+  "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id. A
+  concurrent first save of the same target makes one of them retry as an update."
   [_user-id {:keys [model model_id] :as config}]
-  (events/with-batched-events
-    (let [data    (config->row config)
-          current (cache.db/lock-cache-config model model_id)
-          context {:details (caching-change current data)}]
-      (if current
-        (let [changes (into {} (remove (fn [[k v]] (= v (get current k)))) data)]
-          (when (seq changes)
-            (cache.db/update-cache-config-strategy! (:id current) (select-keys changes [:strategy :config :refresh_automatically]))
-            (events/publish-lifecycle! [(events/updated :event/cache-config-update
-                                                        [current]
-                                                        [(events/updated-row current changes)])]
-                                       {:context context}))
-          (:id current))
-        (let [row (cache.db/insert-cache-config! data)]
-          (events/publish-lifecycle! [(events/created :event/cache-config-create [row])] {:context context})
-          (:id row))))))
+  (let [save! (fn []
+                (events/with-batched-events
+                  (let [data    (config->row config)
+                        current (cache.db/lock-cache-config model model_id)
+                        context {:details (caching-change current data)}]
+                    (if current
+                      (let [changes (into {} (remove (fn [[k v]] (= v (get current k)))) data)]
+                        (when (seq changes)
+                          (cache.db/update-cache-config-strategy! (:id current) (select-keys changes [:strategy :config :refresh_automatically]))
+                          (events/publish-lifecycle! [(events/updated :event/cache-config-update
+                                                                      [current]
+                                                                      [(events/updated-row current changes)])]
+                                                     {:context context}))
+                        (:id current))
+                      (let [row (cache.db/insert-cache-config! data)]
+                        (events/publish-lifecycle! [(events/created :event/cache-config-create [row])] {:context context})
+                        (:id row))))))]
+    (mdb/with-conflict-retry (save!))))
 
 (defn delete-cache-configs!
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."

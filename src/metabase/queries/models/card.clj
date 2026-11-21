@@ -66,6 +66,7 @@
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.events :as u.events]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -1750,8 +1751,9 @@
       (seq merged) (conj [:event/card-update
                           (mapv (fn [id]
                                   (let [changes (get by-id id)]
-                                    {:previous-object (:previous-object (first changes))
-                                     :object          (:object (peek changes))}))
+                                    (cond-> {:previous-object (:previous-object (first changes))
+                                             :object          (:object (peek changes))}
+                                      (some :changed changes) (assoc :changed (into #{} (mapcat :changed) changes)))))
                                 order)]))))
 
 (defn- update-cards-with-events*
@@ -1820,13 +1822,15 @@
                                             (when (contains? changes :result_metadata)
                                               [(or (get after (:id before)) before) changes])))
                                     entries))
-              own-events     (events/updated :event/card-update
-                                             (mapv :before (filterv (comp seq :changes) entries))
-                                             (mapv (fn [{:keys [before changes]}]
-                                                     (or (when (some #(contains? changes %) derived-from-columns)
-                                                           (get after (:id before)))
-                                                         (events/updated-row before changes)))
-                                                   (filterv (comp seq :changes) entries)))]
+              own-events     [:event/card-update
+                              (mapv (fn [{:keys [before changes update]}]
+                                      (let [object (or (when (some #(contains? changes %) derived-from-columns)
+                                                         (get after (:id before)))
+                                                       (events/updated-row before changes))]
+                                        (cond-> {:previous-object before :object object}
+                                          (= :updated_at (:updated_at update))
+                                          (assoc :changed (u.events/changed-keys {:previous-object before :object object})))))
+                                    (filterv (comp seq :changes) entries))]]
           {:cards  updates
            :events (merge-update-events (into [own-events] cat [archive-events reset-events]))})))))
 
