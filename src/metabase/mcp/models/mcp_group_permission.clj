@@ -93,6 +93,11 @@
     (let [existing (mcp.db/group-ids-with-permission (mapv :group_id rows))]
       (mcp.db/insert-group-permissions! (vec (remove #(contains? existing (:group_id %)) rows))))))
 
+(mu/defn delete-hidden-mcp-group-permissions!
+  "Delete the McpGroupPermission rows of the groups the permission mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (mcp.db/delete-hidden-group-permissions! advanced?))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/McpGroupPermission [_model]

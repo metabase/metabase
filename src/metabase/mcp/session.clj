@@ -13,7 +13,7 @@
   (:require
    [clojure.string :as str]
    [metabase.mcp.db :as mcp.db]
-   [metabase.mcp.models.mcp-query-handle]
+   [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
@@ -412,7 +412,7 @@
    ;; filters on for cross-session ownership.
    (let [core-session-id (:id (get-or-create-embedding-session! mcp-session-id user-id))
          handle-id       (str (UUID/randomUUID))]
-     (mcp.db/insert-query-handle!
+     (mcp-query-handle/create-mcp-query-handle!
       handle-id
       (cond-> {:mcp_session_id  mcp-session-id
                :core_session_id core-session-id
@@ -479,5 +479,5 @@
   [session-id user-id]
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
-    (mcp.db/delete-query-handles-for-user-session! session-id key-hashed user-id)
+    (mcp-query-handle/delete-mcp-query-handles-of-session! session-id key-hashed user-id)
     (mcp.db/delete-session-for-user! key-hashed user-id)))

@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.models.metabot :as metabot]
    [metabase.metabot.suggested-prompts :as metabot.suggested-prompts]
    [metabase.metabot.task.suggested-prompts-refresh :as metabot.suggested-prompts-refresh]
    [metabase.metabot.usage :as metabot.usage]
@@ -56,7 +57,7 @@
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
     (let [old-vals (select-keys old-metabot (keys metabot-updates))]
       (when (not= old-vals metabot-updates)
-        (metabot.db/update-metabot! id metabot-updates)
+        (metabot/update-metabot! id metabot-updates)
         ;; Content scope changed, so the suggested prompts are stale. Regenerate in the background so
         ;; the toggle returns instantly; the job re-reads the saved scope and debounces rapid toggles.
         (metabot.suggested-prompts-refresh/schedule-refresh! id))

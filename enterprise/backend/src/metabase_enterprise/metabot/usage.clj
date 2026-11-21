@@ -7,6 +7,7 @@
    [metabase-enterprise.metabot.models.metabot-instance-limit :as instance-limit]
    [metabase-enterprise.metabot.settings :as metabot.settings]
    [metabase.api.common :as api]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log])
   (:import
@@ -75,7 +76,7 @@
       (let [cache-creation (or cache-creation-tokens 0)
             cache-read     (or cache-read-tokens 0)
             total-tokens   (+ prompt-tokens completion-tokens)]
-        (metabot.db/insert-usage-log!
+        (ai-usage-log/create-ai-usage-log!
          {:source                 source
           :model                  model
           :provider               provider

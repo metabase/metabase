@@ -1,10 +1,13 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -54,6 +57,14 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         entities))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn update-metabot!
+  "Apply `changes` to the Metabot with `metabot-id`."
+  [metabot-id :- ms/PositiveInt
+   changes    :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
+  (metabot.db/update-metabot! metabot-id changes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

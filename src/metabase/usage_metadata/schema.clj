@@ -132,6 +132,18 @@
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
 
+(mr/def ::source-dimension-daily.create
+  "What creating a SourceDimensionDaily row takes: every column except `id`."
+  [:map {:closed true}
+   [:source_type    [:maybe [:or :keyword :string]]]
+   [:source_id      [:maybe ms/PositiveInt]]
+   [:ownership_mode [:maybe [:or :keyword :string]]]
+   [:field_id       [:maybe ::lib.schema.id/field]]
+   [:temporal_unit  [:maybe [:or :keyword :string]]]
+   [:binning        [:maybe :string]]
+   [:bucket_date    [:maybe ms/TemporalInstant]]
+   [:count          [:maybe :int]]])
+
 (mr/def ::source-dimension-profile-daily
   "A SourceDimensionProfileDaily as selected from the app DB: every column of `:source_dimension_profile_daily`."
   [:merge
@@ -150,6 +162,18 @@
    [:observation_value {:optional true} [:maybe :string]]
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
+
+(mr/def ::source-dimension-profile-daily.create
+  "What creating a SourceDimensionProfileDaily row takes: every column except `id`."
+  [:map {:closed true}
+   [:source_type       [:maybe [:or :keyword :string]]]
+   [:source_id         [:maybe ms/PositiveInt]]
+   [:field_id          [:maybe ::lib.schema.id/field]]
+   [:source_basis      [:maybe [:or :keyword :string]]]
+   [:observation_type  [:maybe [:or :keyword :string]]]
+   [:observation_value [:maybe :string]]
+   [:bucket_date       [:maybe ms/TemporalInstant]]
+   [:count             [:maybe :int]]])
 
 (mr/def ::source-metric-daily
   "A SourceMetricDaily as selected from the app DB: every column of `:source_metric_daily`."
@@ -171,6 +195,19 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-metric-daily.create
+  "What creating a SourceMetricDaily row takes: every column except `id`."
+  [:map {:closed true}
+   [:source_type       [:maybe [:or :keyword :string]]]
+   [:source_id         [:maybe ms/PositiveInt]]
+   [:ownership_mode    [:maybe [:or :keyword :string]]]
+   [:agg_type          [:maybe [:or :keyword :string]]]
+   [:agg_field_id      [:maybe ::lib.schema.id/field]]
+   [:temporal_field_id [:maybe ::lib.schema.id/field]]
+   [:temporal_unit     [:maybe [:or :keyword :string]]]
+   [:bucket_date       [:maybe ms/TemporalInstant]]
+   [:count             [:maybe :int]]])
+
 (mr/def ::source-segment-composite-daily
   "A SourceSegmentCompositeDaily as selected from the app DB: every column of `:source_segment_composite_daily`."
   [:merge
@@ -190,6 +227,18 @@
    [:bucket_date       {:optional true} [:maybe ms/TemporalInstant]]
    [:count             {:optional true} [:maybe :int]]])
 
+(mr/def ::source-segment-composite-daily.create
+  "What creating a SourceSegmentCompositeDaily row takes: every column except `id`."
+  [:map {:closed true}
+   [:source_type       [:maybe [:or :keyword :string]]]
+   [:source_id         [:maybe ms/PositiveInt]]
+   [:ownership_mode    [:maybe [:or :keyword :string]]]
+   [:clause            [:maybe :string]]
+   [:atom_fingerprints [:maybe :string]]
+   [:atom_count        [:maybe :int]]
+   [:bucket_date       [:maybe ms/TemporalInstant]]
+   [:count             [:maybe :int]]])
+
 (mr/def ::source-segment-daily
   "A SourceSegmentDaily as selected from the app DB: every column of `:source_segment_daily`."
   [:merge
@@ -207,3 +256,14 @@
    [:predicate      {:optional true} [:maybe :string]]
    [:bucket_date    {:optional true} [:maybe ms/TemporalInstant]]
    [:count          {:optional true} [:maybe :int]]])
+
+(mr/def ::source-segment-daily.create
+  "What creating a SourceSegmentDaily row takes: every column except `id`."
+  [:map {:closed true}
+   [:source_type    [:maybe [:or :keyword :string]]]
+   [:source_id      [:maybe ms/PositiveInt]]
+   [:ownership_mode [:maybe [:or :keyword :string]]]
+   [:field_id       [:maybe ::lib.schema.id/field]]
+   [:predicate      [:maybe :string]]
+   [:bucket_date    [:maybe ms/TemporalInstant]]
+   [:count          [:maybe :int]]])

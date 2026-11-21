@@ -11,6 +11,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
+   [metabase.metabot.usage-controls :as usage-controls]
    [metabase.session.core :as session]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -147,6 +148,31 @@
   "Insert the McpFeedback `row`, returning the number inserted."
   [row :- ::mcp.schema/mcp-feedback.update]
   (t2/insert! :model/McpFeedback row))
+
+(mu/defn insert-session-log!
+  "Insert the McpSessionLog `row`."
+  [row :- ::mcp.schema/mcp-session-log.create]
+  (t2/insert! :model/McpSessionLog row))
+
+(mu/defn end-session-log!
+  "Stamp `ended_at` on the McpSessionLog with `session-id`."
+  [session-id :- :string]
+  (t2/update! :model/McpSessionLog :id [:auto/param session-id] {:ended_at :%now}))
+
+(mu/defn delete-session-logs-created-before!
+  "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]}))
+
+(mu/defn insert-tool-call-log!
+  "Insert the McpToolCallLog `row`."
+  [row :- ::mcp.schema/mcp-tool-call-log.update]
+  (t2/insert! :model/McpToolCallLog row))
+
+(mu/defn delete-tool-call-logs-created-before!
+  "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]}))
 
 (defn session-user-ids
   "The ids of every User owning a `core_session` with `key-hashed`.
@@ -292,6 +318,12 @@
                  [:mcp_enabled :boolean]
                  [:tool_access ::mcp.perms/tool-access]]]
   (t2/update! :model/McpGroupPermission {:group_id [:in group-ids]} values))
+
+(mu/defn delete-hidden-group-permissions!
+  "Delete the McpGroupPermission rows of the groups the mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (t2/delete! :model/McpGroupPermission
+              {:where [:not (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (defn user-id->tenant-id
   "Map of user id to `tenant_id` for `user-ids`, in one query. An empty collection asks nothing of the
