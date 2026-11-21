@@ -545,12 +545,14 @@
             so conversation-state does not later replay a failed turn's partial state (BOT-522)"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
+            loop-opts  (promise)
             finalized  (promise)]
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [_ctx]
             (mt/with-dynamic-fn-redefs [agent/run-agent-loop
-                                        (fn [_opts]
+                                        (fn [opts]
+                                          (deliver loop-opts opts)
                                           (reify clojure.lang.IReduceInit
                                             (reduce [_ rf init]
                                               (rf init {:type :error :error {:message "boom"}}))))
@@ -563,7 +565,12 @@
                          event-body)
               (let [opts (deref finalized 5000 ::timeout)]
                 (is (not= ::timeout opts))
-                (is (= {:message "boom"} (:error opts)))))))))))
+                (is (= {:message "boom"} (:error opts)))
+                (testing "the finalized turn gets the conversation id for the large-message warn"
+                  (let [agent-opts (deref loop-opts 5000 ::timeout)]
+                    (is (not= ::timeout agent-opts))
+                    (is (some? (:conversation-id agent-opts)))
+                    (is (= (:conversation-id agent-opts) (:conversation-id opts)))))))))))))
 
 (deftest ^:synchronized slackbot-streaming-persists-failed-conversations-test
   (testing "User row is persisted even if setup throws after it (BOT-1279). With placeholders,

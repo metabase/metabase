@@ -29,12 +29,18 @@
   ;; state is diffed separately into the row's state column
   ;; search_results and tool_title render under the client-only chain of
   ;; thought, never rehydrated
-  #{search-results-type
+  ;; research_plan_update is large picker hydration. The explorations UI reads
+  ;; it only on the live stream. Stored rows used it only for a debug JSON card
+  ;; (Metabot sidebar debug mode, EE AI auditing conversation page). The stored
+  ;; add_research_groups tool part keeps the args and the text summary.
+  #{research-plan-update-type
+    search-results-type
     state-type
     tool-title-type})
 
 (defn persistable-data-part?
-  "True if `part` should be written to MetabotMessage.data. `state` parts are
+  "True if `part` should be written to MetabotMessage.data. Data parts whose
+  type is in `ephemeral-data-types` are skipped. For example, `state` parts are
   skipped because their value is diffed separately into MetabotMessage.state;
   duplicating the full blob in the message data would bloat storage. Non-data
   parts are always persistable here; the caller is responsible for filtering

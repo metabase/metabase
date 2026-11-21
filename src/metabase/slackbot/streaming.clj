@@ -388,6 +388,7 @@
           (metabot.persistence/finalize-assistant-turn!
            assistant-msg-id
            combined-parts
+           :conversation-id       conversation-id
            :profile-id            "slackbot"
            :slack-msg-id          (when get-res-slack-msg-id (get-res-slack-msg-id))
            :turn-state            (some-> @memory-atom memory/turn-state)

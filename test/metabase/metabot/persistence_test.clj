@@ -1,9 +1,11 @@
 (ns metabase.metabot.persistence-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self.core :as self.core]
@@ -501,6 +503,90 @@
         (metabot-persistence/finalize-assistant-turn!
          assistant-msg-id [{:type :text :text "Hello"}])
         (is (nil? (:context_tokens (t2/select-one :model/MetabotMessage :id assistant-msg-id))))))))
+
+(deftest finalize-assistant-turn-drops-research-plan-update-test
+  (testing "finalize-assistant-turn! does not store the research plan update, but keeps its tool part"
+    (with-rasta-tx
+      (let [conversation-id            (str (random-uuid))
+            plan-part                  (streaming/research-plan-update-part {:groups [{:id "g1"} {:id "g2"}]})
+            {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                        conversation-id "explorations"
+                                        {:role "user" :content "compare revenue and orders"})]
+        ;; Expand the data parts as the agent loop does, so the plan part sits at top level
+        ;; and carries the tool call id.
+        (metabot-persistence/finalize-assistant-turn!
+         assistant-msg-id
+         (into [] streaming/expand-data-parts-xf
+               [{:type :tool-input :id "c1" :function "add_research_groups" :arguments {}}
+                {:type :tool-output :id "c1" :result {:output "Added 2 groups" :data-parts [plan-part]}}
+                {:type :text :text "Done."}]))
+        (let [data (:data (t2/select-one :model/MetabotMessage :id assistant-msg-id))]
+          (is (not-any? #(= "data-research_plan_update" (:type %)) data))
+          (is (= [{:output "Added 2 groups"}]
+                 (->> data
+                      (filter #(= "tool-add_research_groups" (:type %)))
+                      (map :output)))))))))
+
+(def ^:private large-message-marker
+  "Start of the padded text. The warn tests check that the log does not contain it."
+  "padded-message-content-")
+
+(defn- text-part-of-stored-bytes
+  "Return a text part whose stored content is exactly `n` JSON bytes.
+
+  The text is ASCII, so each character adds one byte."
+  [n]
+  (let [overhead (u/string-byte-count
+                  (json/encode (metabot-persistence/parts->storable-content [{:type :text :text ""}])))
+        text     (str large-message-marker
+                      (apply str (repeat (- n overhead (count large-message-marker)) "x")))]
+    {:type :text :text text}))
+
+(defn- finalize-and-capture-warns!
+  "Finalize a new turn with one text part of `n` stored bytes. Return the ids and the captured warns."
+  [n]
+  (with-rasta-tx
+    (let [conversation-id            (str (random-uuid))
+          {:keys [assistant-msg-id]} (metabot-persistence/start-turn!
+                                      conversation-id "internal"
+                                      {:role "user" :content "hi"})]
+      (log.capture/with-log-messages-for-level [logs [metabase.metabot.persistence :warn]]
+        (metabot-persistence/finalize-assistant-turn!
+         assistant-msg-id [(text-part-of-stored-bytes n)]
+         :profile-id      "internal"
+         :conversation-id conversation-id)
+        {:conversation-id  conversation-id
+         :assistant-msg-id assistant-msg-id
+         :warns            (logs)}))))
+
+(deftest ^:parallel text-part-of-stored-bytes-test
+  (testing "the helper builds content of the exact byte size"
+    (doseq [n [1000001 1048575 1048576 1048577]]
+      (is (= n (u/string-byte-count
+                (json/encode (metabot-persistence/parts->storable-content
+                              [(text-part-of-stored-bytes n)]))))))))
+
+(deftest finalize-assistant-turn-warns-on-large-message-test
+  (doseq [n [1048576 1048577 2000000]]
+    (testing (format "content of %d bytes logs one warn with the ids and the byte count" n)
+      (let [{:keys [conversation-id assistant-msg-id warns]} (finalize-and-capture-warns! n)
+            message (:message (first warns))]
+        (is (= 1 (count warns)))
+        (is (= :warn (:level (first warns))))
+        (is (str/starts-with? (str message) "Metabot message to store is large. "))
+        (is (str/includes? (str message) (str "conversation-id: " conversation-id ",")))
+        (is (str/includes? (str message) (str "message-id: " assistant-msg-id ",")))
+        (is (str/includes? (str message) "profile-id: internal,"))
+        (is (str/includes? (str message) "role: assistant,"))
+        (is (str/ends-with? (str message) (str "bytes: " n)))
+        (testing "the warn does not contain the message content"
+          (is (not (str/includes? (str message) large-message-marker)))
+          (is (not (str/includes? (str message) "xxxxxxxxxx"))))))))
+
+(deftest finalize-assistant-turn-no-warn-below-threshold-test
+  (doseq [n [1048575 1000001]]
+    (testing (format "content of %d bytes logs no warn" n)
+      (is (empty? (:warns (finalize-and-capture-warns! n)))))))
 
 (deftest ^:parallel messages->client-messages-context-tokens-test
   (testing "a message reports the context it occupied, and omits it when the turn observed no usage"
