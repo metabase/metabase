@@ -55,11 +55,6 @@
   [group-name :- :string]
   (t2/select-one-pk :model/PermissionsGroup :name group-name))
 
-(mu/defn insert-permissions-group!
-  "Insert a PermissionsGroup named `group-name` and return its id."
-  [group-name :- :string]
-  (t2/insert-returning-pk! :model/PermissionsGroup {:name group-name}))
-
 (mu/defn group-membership-exists?
   "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
   [user-id  :- ::lib.schema.id/user

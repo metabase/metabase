@@ -434,7 +434,7 @@
 (deftest delete-group-audit-test
   (mt/with-premium-features #{:audit-app}
     (testing "permissions group delete is audited"
-      (let [{group-id :id} (t2/insert-returning-instance! :model/PermissionsGroup {:name "Delete Me"})
+      (let [{group-id :id} (perms-group/create-permissions-group! {:name "Delete Me"})
             before-delete-count (t2/count :model/AuditLog)]
         (mt/user-http-request :crowberto :delete 204 (format "permissions/group/%d" group-id))
         (is (= (inc before-delete-count) (t2/count :model/AuditLog)))
@@ -903,9 +903,9 @@
                                                       :active     true
                                                       :created_at now
                                                       :updated_at now}))
-              group-ids  (t2/insert-returning-pks! :model/PermissionsGroup
-                                                   (for [i (range num-groups)]
-                                                     {:name (str "perf-test-group-" i "-" (random-uuid))}))]
+              group-ids  (vec (for [i (range num-groups)]
+                                (:id (perms-group/create-permissions-group!
+                                      {:name (str "perf-test-group-" i "-" (random-uuid))}))))]
           (try
             (let [base-graph    (data-perms.graph/api-graph {:group-ids group-ids})
                   view-perms    {"PUBLIC" (zipmap table-ids (repeat :unrestricted))}

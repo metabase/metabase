@@ -12,6 +12,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as permissions-group]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
@@ -484,7 +485,7 @@
       (when (scim.db/group-name-exists? group-name)
         (throw-scim-error 409 "A group with that name already exists"))
       (t2/with-transaction [_conn]
-        (let [new-group (scim.db/insert-group! {:name group-name})]
+        (let [new-group (permissions-group/create-permissions-group! {:name group-name})]
           (when (seq entity-ids)
             (update-group-membership (:id new-group) entity-ids))
           (-> new-group
@@ -507,7 +508,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (scim.db/update-group! (u/the-id group) {:name group-name})
+          (permissions-group/update-permissions-group! (u/the-id group) {:name group-name})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -525,5 +526,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (scim.db/delete-group! (u/the-id group))
+      (permissions-group/delete-permissions-group! (u/the-id group))
       (scim-response nil 204))))

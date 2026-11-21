@@ -3,7 +3,9 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -29,6 +31,13 @@
   []
   (or (permissions.db/latest-permissions-revision-id)
       0))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-permissions-revision!
+  "Insert the PermissionsRevision `row` and return it."
+  [row :- ::permissions.schema/permissions-revision.create]
+  (permissions.db/insert-permissions-revision! row))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

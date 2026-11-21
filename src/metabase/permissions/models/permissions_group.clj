@@ -20,10 +20,13 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.db :as permissions.db]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -137,56 +140,9 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- check-name-not-already-taken
-  [group-name]
-  (when (exists-with-name? group-name)
-    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
-
-(defn- check-not-magic-group
-  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
-  [{id :id}]
-  {:pre [(integer? id)]}
-  (doseq [magic-group [(all-users)
-                       (all-external-users)
-                       (admin)
-                       (data-analyst)]]
-    (when (= id (:id magic-group))
-      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-                      {:status-code 400})))))
-
-(t2/define-before-insert :model/PermissionsGroup
-  [{group-name :name, :as group}]
-  (u/prog1 group
-    (check-name-not-already-taken group-name)))
-
-(defn- set-default-permission-values!
-  [group]
-  (data-perms/with-global-permissions-lock
-    (let [db-ids (permissions.db/non-destination-database-ids)]
-      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
-
-(t2/define-after-insert :model/PermissionsGroup
-  [group]
-  (u/prog1 group
-    (set-default-permission-values! group)))
-
-(t2/define-before-delete :model/PermissionsGroup
-  [{id :id, :as group}]
-  (check-not-magic-group group)
-  (setting/set-value-of-type!
-   :json :ldap-group-mappings
-   (when-let [mappings (setting/get :ldap-group-mappings)]
-     (zipmap (keys mappings)
-             (for [val (vals mappings)]
-               (remove (partial = id) val))))))
-
 (t2/define-before-update :model/PermissionsGroup
   [group]
   (let [changes (t2/changes group)]
-    (when (contains? changes :name)
-      (check-not-magic-group group))
-    (when-let [group-name (:name changes)]
-      (check-name-not-already-taken group-name))
     (when (contains? changes :is_tenant_group)
       (throw (ex-info (tru "You cannot change whether a group is a tenant group.") {:status-code 400})))
     (when (contains? changes :magic_group_type)
@@ -257,6 +213,73 @@
   (let [group-id->num-members (group-id->num-members)]
     (for [group groups]
       (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-name-not-already-taken
+  [group-name]
+  (when (exists-with-name? group-name)
+    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
+
+(defn- check-not-magic-group
+  "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
+  [{id :id}]
+  {:pre [(integer? id)]}
+  (doseq [magic-group [(all-users)
+                       (all-external-users)
+                       (admin)
+                       (data-analyst)]]
+    (when (= id (:id magic-group))
+      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+                      {:status-code 400})))))
+
+(defn- set-default-permission-values!
+  [group]
+  (data-perms/with-global-permissions-lock
+    (let [db-ids (permissions.db/non-destination-database-ids)]
+      (data-perms/set-default-group-permissions! group db-ids (not (:is_tenant_group group))))))
+
+(defn- remove-from-ldap-group-mappings!
+  "Drop the group with `group-id` from every mapping of the `ldap-group-mappings` setting."
+  [group-id]
+  (setting/set-value-of-type!
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = group-id) val))))))
+
+(mu/defn create-permissions-group! :- ::permissions.schema/permissions-group
+  "Insert the PermissionsGroup `row` with the default permissions on every Database and return it; the name of an
+  existing group is a 400."
+  [{group-name :name :as row} :- ::permissions.schema/permissions-group.create]
+  (t2/with-transaction [_conn]
+    (check-name-not-already-taken group-name)
+    (u/prog1 (permissions.db/insert-permissions-group! row)
+      (set-default-permission-values! <>))))
+
+(mu/defn update-permissions-group!
+  "Apply `changes` to the PermissionsGroup with `id`, returning the number updated; renaming a magic group, or to the
+  name of an existing group, is a 400."
+  [id      :- ms/PositiveInt
+   changes :- ::permissions.schema/permissions-group.update]
+  (t2/with-transaction [_conn]
+    (when-let [stored (permissions.db/permissions-group id)]
+      (when (and (contains? changes :name) (not= (:name changes) (:name stored)))
+        (check-not-magic-group stored)
+        (when-let [group-name (:name changes)]
+          (check-name-not-already-taken group-name))))
+    (permissions.db/update-permissions-group! id changes)))
+
+(mu/defn delete-permissions-group!
+  "Delete the PermissionsGroup with `id` and drop it from the LDAP group mappings, returning the number deleted;
+  deleting a magic group is a 400."
+  [id :- ms/PositiveInt]
+  (t2/with-transaction [_conn]
+    (when-let [stored (permissions.db/permissions-group id)]
+      (check-not-magic-group stored)
+      (remove-from-ldap-group-mappings! id)
+      (permissions.db/delete-permissions-group! id))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

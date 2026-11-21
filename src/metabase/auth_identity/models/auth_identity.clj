@@ -99,6 +99,24 @@
     (for [user users]
       (assoc user :has_used_password (contains? user-ids (u/the-id user))))))
 
+(mu/defn current-password? :- :boolean
+  "Whether `password` is the current password of the user with `user-id`, false when they have none."
+  [user-id  :- ms/PositiveInt
+   password :- :string]
+  (boolean
+   (when-let [{{:keys [password_hash password_salt]} :credentials} (auth-identity.db/auth-identity user-id "password")]
+     (u.password/verify-password password password_salt password_hash))))
+
+(mu/defn reset-token-hash :- [:maybe :string]
+  "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
+  AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
+  without reading the legacy `core_user.reset_token` column."
+  [user-id :- ms/PositiveInt]
+  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
+          [:credentials :token_hash]))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no
@@ -136,22 +154,6 @@
          (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
      (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
      (auth-identity.db/end-sessions-for-user! user-id (:ended-by opts)))))
-
-(mu/defn current-password? :- :boolean
-  "Whether `password` is the current password of the user with `user-id`, false when they have none."
-  [user-id  :- ms/PositiveInt
-   password :- :string]
-  (boolean
-   (when-let [{{:keys [password_hash password_salt]} :credentials} (auth-identity.db/auth-identity user-id "password")]
-     (u.password/verify-password password password_salt password_hash))))
-
-(mu/defn reset-token-hash :- [:maybe :string]
-  "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
-  AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
-  without reading the legacy `core_user.reset_token` column."
-  [user-id :- ms/PositiveInt]
-  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
-          [:credentials :token_hash]))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

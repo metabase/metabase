@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
@@ -234,7 +235,7 @@
   [_model {:keys [group_id]}]
   ((perms-group/manageable-group-id-fn) group_id))
 
-;;; ------------------------------------------------- Write helpers --------------------------------------------------
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from aa sequence of maps of users, groups and is-group-manager?."
@@ -304,6 +305,12 @@
   "Removes a user from all groups."
   [user-id]
   (permissions.db/delete-memberships-for-user! user-id))
+
+(mu/defn update-permissions-group-membership!
+  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::permissions.schema/permissions-group-membership.update]
+  (permissions.db/update-group-membership! id changes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
