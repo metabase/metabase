@@ -14,6 +14,7 @@ export type FormulaEditorProps = {
   database: Database | undefined;
   expressionMode: Lib.ExpressionMode;
   initialSource?: string;
+  initialName?: string;
   submitLabel: string;
   onEditorCreate?: (view: EditorView) => void;
   onNameChange?: (name: string, source: string) => void;
