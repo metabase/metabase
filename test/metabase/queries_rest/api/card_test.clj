@@ -5657,18 +5657,6 @@
           (when existing-config
             (t2/insert! :model/CacheConfig existing-config)))))))
 
-(deftest ^:parallel return-legacy-query-test
-  (testing "GET /api/card/:id?legacy-mbql=true"
-    (mt/with-temp [:model/Card card {:dataset_query (let [mp (mt/metadata-provider)]
-                                                      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                          (lib/aggregate (lib/count))))}]
-      (is (=? {:database (mt/id)
-               :type     "query"
-               :query    {:source-table (mt/id :orders)
-                          :aggregation  [["count"]]}}
-              (-> (mt/user-http-request :crowberto :get 200 (str "card/" (:id card)) :legacy-mbql true)
-                  :dataset_query))))))
-
 ;;; +--------------------------------------------------------------------------------------------------+
 ;;; |       result_metadata persistence with parameters (QUE2-502)                                     |
 ;;; |       See also: metabase.dashboards-rest.api-test (dashboard endpoint tests for MBQL cards)      |

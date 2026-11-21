@@ -7,6 +7,10 @@ summary: Breaking changes to the Metabase API, listed by release.
 
 ## Metabase 0.66.0
 
+- `GET /api/card/:id` no longer accepts the query parameter `legacy-mbql`. The endpoint ignores it, and always
+  returns the Card's `dataset_query` as MBQL 5. Before, `?legacy-mbql=true` returned the query as MBQL 4 (legacy
+  MBQL).
+
 - The Security Center advisory endpoints moved under `/api/ee/security-center/advisories`: `GET /api/ee/security-center`
   is now `GET /api/ee/security-center/advisories`, and `POST /api/ee/security-center/:advisory-id/acknowledge`,
   `POST /api/ee/security-center/acknowledge`, `POST /api/ee/security-center/sync` and

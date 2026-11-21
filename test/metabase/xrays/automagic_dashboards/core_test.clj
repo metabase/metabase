@@ -200,17 +200,18 @@
 
 (defn- test-automagic-analysis
   ([entity card-count] (test-automagic-analysis entity nil card-count))
-  ([entity cell-query card-count]
+  ([entity legacy-cell-query card-count]
    ;; We want to both generate as many cards as we can to catch all aberrations, but also make sure
    ;; that size limiting works.
-   (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
-     (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
-   (when (or (and (not (mi/instance-of? :model/Query entity))
-                  (not (mi/instance-of? :model/Card entity)))
-             (#'magic/table-like? entity))
-     (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
-       ;; 1 for the actual card returned + 1 for the visual display card = 2
-       (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2)))))
+   (let [cell-query (some-> legacy-cell-query automagic-dashboards.test/mbql5-cell-query)]
+     (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show :all}))
+       (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show :all}) card-count))
+     (when (or (and (not (mi/instance-of? :model/Query entity))
+                    (not (mi/instance-of? :model/Card entity)))
+               (#'magic/table-like? entity))
+       (testing (u/pprint-to-str (list 'automagic-analysis entity {:cell-query cell-query, :show 1}))
+         ;; 1 for the actual card returned + 1 for the visual display card = 2
+         (automagic-dashboards.test/test-dashboard-is-valid (magic/automagic-analysis entity {:cell-query cell-query, :show 1}) 2))))))
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
@@ -964,7 +965,7 @@
                                                                 :type     :query
                                                                 :database (mt/id)}}]
         (let [entity     (t2/select-one :model/Card :id card-id)
-              cell-query [:= [:field (mt/id :venues :category_id) nil] 2]]
+              cell-query (automagic-dashboards.test/mbql5-cell-query [:= [:field (mt/id :venues :category_id) nil] 2])]
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
@@ -1418,7 +1419,7 @@
     (is (= #{1 2 "TOTAL"}
            (#'magic/singular-cell-dimension-field-ids
             {:database   1
-             :cell-query (lib/normalize
+             :cell-query (automagic-dashboards.test/mbql5-cell-query
                           [:and
                            [:= [:field 1 nil] 5]
                            [:= [:field 2 nil] 6]
@@ -1474,9 +1475,10 @@
                                        :aggregation  [[:avg $tax]]
                                        :breakout     [&Products.products.title]}))
               right                (t2/select-one :model/Table :id (mt/id :orders))
-              cell-query           [:= [:field (mt/id :products :title)
-                                        {:base-type :type/Text :join-alias "Products"}]
-                                    "Intelligent Granite Hat"]
+              cell-query           (automagic-dashboards.test/mbql5-cell-query
+                                    [:= [:field (mt/id :products :title)
+                                         {:base-type :type/Text :join-alias "Products"}]
+                                     "Intelligent Granite Hat"])
               dashboard            (magic/automagic-analysis left {:show         nil
                                                                    :query-filter nil
                                                                    :comparison?  true})
@@ -1524,11 +1526,12 @@
                                                      [:field (mt/id :orders :created_at)
                                                       {:temporal-unit :month}]]}})
               right                (t2/select-one :model/Table :id (mt/id :orders))
-              cell-query           [:and
-                                    [:= [:expression "TestColumn"] 2]
-                                    [:= [:field (mt/id :orders :created_at)
-                                         {:temporal-unit :month}]
-                                     "2019-02-01T00:00:00Z"]]
+              cell-query           (automagic-dashboards.test/mbql5-cell-query
+                                    [:and
+                                     [:= [:expression "TestColumn"] 2]
+                                     [:= [:field (mt/id :orders :created_at)
+                                          {:temporal-unit :month}]
+                                      "2019-02-01T00:00:00Z"]])
               dashboard            (magic/automagic-analysis left {:show         nil
                                                                    :query-filter nil
                                                                    :comparison?  true})
@@ -1653,7 +1656,8 @@
                              {:group-name (get-in dashcard [:visualization_settings :text])
                               :card-name  (get-in dashcard [:card :name])})
                            dashcards)))))
-          (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
+          (let [cell-query (automagic-dashboards.test/mbql5-cell-query
+                            ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"])
                 {comparison-description :description
                  comparison-dashcards   :dashcards
                  transient_name         :transient_name} (comparison/comparison-dashboard
@@ -1702,7 +1706,8 @@
                                                                  (m/find-first #(= (:name %) "SOURCE")
                                                                                (lib/breakoutable-columns query))))]
                                       (qp.test-util/card-with-source-metadata-for-query query))]
-      (let [cell-query ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"]]
+      (let [cell-query (automagic-dashboards.test/mbql5-cell-query
+                        ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"])]
         (is (= ["Over time"
                 "Number of 15655 per day of the week"
                 "Number of 15655 per hour of the day"
