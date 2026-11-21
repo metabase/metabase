@@ -793,3 +793,19 @@
                 (testing (:name coll)
                   (collection/delete-collections! [(:id coll)])
                   (is (not (t2/exists? :model/Collection :id (:id coll)))))))))))))
+
+(defn- delete-sandboxes-count!
+  "The number of statements that deleting `n` Sandboxes, each of a new group, runs."
+  [n]
+  (mt/with-model-cleanup [:model/Sandbox :model/PermissionsGroup]
+    (let [group-ids   (t2/insert-returning-pks! :model/PermissionsGroup
+                                                (for [_ (range n)] {:name (mt/random-name)}))
+          sandbox-ids (t2/insert-returning-pks! :model/Sandbox
+                                                (for [group-id group-ids]
+                                                  {:group_id group-id :table_id (mt/id :venues)}))]
+      (t2/with-call-count [call-count]
+        (is (= n (sandboxes/delete-sandboxes! (set sandbox-ids))))
+        (call-count)))))
+
+(deftest delete-sandboxes-runs-fixed-statement-count-test
+  (is (= (delete-sandboxes-count! 2) (delete-sandboxes-count! 6))))

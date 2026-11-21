@@ -12,6 +12,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.users.models.user :as user]
    [oidc-provider.store :as oidc.store]
    [toucan2.core :as t2]))
 
@@ -267,10 +268,10 @@
             (save-access-token! token user-id client-id [oauth-server/full-access-scope] (in-one-hour))
             (testing "authenticates before deactivation"
               (is (= user-id (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active false})
+            (user/update-user! user-id {:is_active false})
             (testing "after deactivation the token no longer authenticates"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))
-            (t2/update! :model/User :id user-id {:is_active true})
+            (user/update-user! user-id {:is_active true})
             (testing "after reactivation the same token STILL does not authenticate"
               (is (nil? (:metabase-user-id (merge-current-user-info (bearer-request token))))))))))))
 

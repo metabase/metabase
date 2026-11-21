@@ -17,11 +17,11 @@
   (testing "a router stays with the database it was made for"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Database {other-id :id} {}
-                   :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "tenant"}]
+                   :model/DatabaseRouter _ {:database_id db-id :user_attribute "tenant"}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the database of a router"
-           (t2/update! :model/DatabaseRouter :id router-id {:database_id other-id}))))))
+           (database-routing.models/update-database-router! db-id {:database_id other-id}))))))
 
 (deftest destination-cannot-be-router-test
   (testing "a destination database cannot be made a router"
@@ -33,3 +33,40 @@
            (database-routing.models/create-database-router! {:database_id dest-id :user_attribute "tenant"})))
       (is (pos? (database-routing.models/create-database-router! {:database_id router-db-id :user_attribute "tenant"})))
       (t2/delete! :model/DatabaseRouter :database_id router-db-id))))
+
+(deftest database-router-events-test
+  (mt/with-premium-features #{:audit-app :database-routing}
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details (:details (mt/db)) :name "Routed"}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (database-routing.models/create-database-router! {:database_id db-id :user_attribute "tenant"})
+        (testing "creating a router is recorded as an update of its database"
+          (is (= {:model_id db-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:db_routing "enabled" :routing_attribute "tenant"}
+                  :topic    :database-update
+                  :model    "Database"}
+                 (mt/latest-audit-log-entry :database-update db-id))))
+        (testing "changing the attribute of a router is recorded as an update of its database with the change"
+          (database-routing.models/update-database-router! db-id {:user_attribute "other"})
+          (is (= {:model_id db-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:db_routing "enabled"
+                             :previous   {:routing_attribute "tenant"}
+                             :new        {:routing_attribute "other"}}
+                  :topic    :database-update
+                  :model    "Database"}
+                 (mt/latest-audit-log-entry :database-update db-id))))
+        (testing "deleting a router is recorded as an update of its database"
+          (database-routing.models/delete-database-router! db-id)
+          (is (= {:model_id db-id
+                  :user_id  (mt/user->id :crowberto)
+                  :details  {:db_routing "disabled"}
+                  :topic    :database-update
+                  :model    "Database"}
+                 (mt/latest-audit-log-entry :database-update db-id))))
+        (testing "a write without a change records nothing"
+          (database-routing.models/create-database-router! {:database_id db-id :user_attribute "tenant"})
+          (let [before (t2/count :model/AuditLog)]
+            (database-routing.models/update-database-router! db-id {:user_attribute "tenant"})
+            (is (= before (t2/count :model/AuditLog))))
+          (database-routing.models/delete-database-router! db-id))))))

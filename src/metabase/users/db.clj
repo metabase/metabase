@@ -105,17 +105,6 @@
     (some? limit)                           (sql.helpers/limit limit)
     (some? offset)                          (sql.helpers/offset offset)))
 
-(mu/defn set-user-last-login-now!
-  "Set `last_login` of the User with `user-id` to now."
-  [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User :id user-id {:last_login :%now}))
-
-(mu/defn update-user-settings!
-  "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
-  [user-id       :- ::lib.schema.id/user
-   settings-json :- :string]
-  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))
-
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -158,16 +147,17 @@
   [rows :- [:sequential ::users.schema/user.create]]
   (t2/insert-returning-instances! :model/User rows))
 
-(mu/defn user-ids
-  "The ids of the Users matching `conditions`."
+(mu/defn users
+  "The Users matching `conditions`, with every column of `:core_user`."
   [conditions :- ::users.schema/user.conditions]
-  (apply t2/select-pks-set :model/User (mapcat identity conditions)))
+  (apply t2/select [:model/User :*] (mapcat identity conditions)))
 
 (mu/defn update-users!
-  "Apply `changes` to the Users matching `conditions`, returning the number updated."
-  [conditions :- ::users.schema/user.conditions
-   changes    :- ::users.schema/user.update]
-  (apply t2/update! :model/User (concat (mapcat identity conditions) [changes])))
+  "Write `columns`, the values a User write function computed, to the Users with `user-ids` in one statement, returning
+  the number updated."
+  [user-ids :- [:sequential {:min 1} ::lib.schema.id/user]
+   columns  :- :map]
+  (t2/update! :model/User :id [:in user-ids] columns))
 
 (mu/defn same-groups-user-ids
   "The `:user_id`s of the Users sharing a PermissionsGroup other than the one with `all-users-group-id` with the User

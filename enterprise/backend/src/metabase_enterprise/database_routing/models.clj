@@ -21,18 +21,9 @@
 
 (methodical/defmethod t2/table-name :model/DatabaseRouter [_model] :db_router)
 
-(doto :model/DatabaseRouter
-  (derive :metabase/model)
-  (derive :hook/events))
+(derive :model/DatabaseRouter :metabase/model)
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-update :model/DatabaseRouter
-  [router]
-  (let [changes (t2/changes router)]
-    (when (contains? changes :database_id)
-      (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
-    router))
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
@@ -70,21 +61,41 @@
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
 (mu/defn create-database-router!
-  "Insert the DatabaseRouter `row`; a destination Database is a 400."
+  "Insert the DatabaseRouter `row`, publishing the event of the write; a destination Database is a 400."
   [{:keys [database_id user_attribute]} :- ::database-routing.schema/database-router.create]
   (check-not-destination database_id)
-  (database-routing.db/insert-router! database_id user_attribute))
+  (t2/with-transaction [_conn]
+    (let [routers (database-routing.db/insert-router! database_id user_attribute)]
+      (events/publish-lifecycle! [(events/created :event/database-router-create routers)])
+      (count routers))))
 
 (mu/defn update-database-router!
-  "Apply `changes` to the DatabaseRouter of the Database with `database-id`."
+  "Apply `changes` to the DatabaseRouter of the Database with `database-id`, publishing the event of the write; moving it
+  to another Database is a 400."
   [database-id :- ::lib.schema.id/database
    changes     :- ::database-routing.schema/database-router.update]
-  (database-routing.db/update-router! database-id changes))
+  (t2/with-transaction [_conn]
+    (if-let [stored (database-routing.db/router-for-database database-id)]
+      (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+        (when (contains? changed :database_id)
+          (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
+        (if (empty? changed)
+          0
+          (u/prog1 (database-routing.db/update-router! database-id changed)
+            (events/publish-lifecycle! [(events/updated :event/database-router-update
+                                                        [stored]
+                                                        [(events/updated-row stored changed)])]))))
+      0)))
 
 (mu/defn delete-database-router!
-  "Delete the DatabaseRouter of the Database with `database-id`."
+  "Delete the DatabaseRouter of the Database with `database-id`, publishing the event of the write."
   [database-id :- ::lib.schema.id/database]
-  (database-routing.db/delete-router! database-id))
+  (t2/with-transaction [_conn]
+    (if-let [stored (database-routing.db/router-for-database database-id)]
+      (let [event (events/deleted :event/database-router-delete :model/DatabaseRouter [stored])]
+        (u/prog1 (database-routing.db/delete-router! database-id)
+          (events/publish-lifecycle! [event])))
+      0)))
 
 (defenterprise delete-associated-database-router!
   "Deletes the Database Router associated with this router database."
@@ -93,12 +104,6 @@
   (delete-database-router! db-id))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/DatabaseRouter
-  [_model]
-  {:create :event/database-router-create
-   :update :event/database-router-update
-   :delete :event/database-router-delete})
 
 (defmethod app-db-copy/spec :model/DatabaseRouter [_model]
   {:skip? true})

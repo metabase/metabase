@@ -96,10 +96,15 @@
                         :is_active]
              :group-by [:tenant_id]}))
 
-(mu/defn deactivate-all-tenants!
-  "Deactivate every active Tenant, returning the number updated."
+(mu/defn active-tenants
+  "Every active Tenant."
   []
-  (t2/update! :model/Tenant :is_active true {:is_active false}))
+  (t2/select :model/Tenant :is_active true))
+
+(mu/defn deactivate-tenants!
+  "Deactivate the Tenants with `tenant-ids`, returning the number updated."
+  [tenant-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/update! :model/Tenant :id [:in tenant-ids] {:is_active false}))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."

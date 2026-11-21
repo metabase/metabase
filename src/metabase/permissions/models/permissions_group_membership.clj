@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -22,7 +23,6 @@
 (methodical/defmethod t2/table-name :model/PermissionsGroupMembership [_model] :permissions_group_membership)
 
 (derive :model/PermissionsGroupMembership :metabase/model)
-(derive :model/PermissionsGroupMembership :hook/events)
 
 (def fail-to-remove-last-admin-msg
   "Exception message when try to remove the last admin."
@@ -69,17 +69,6 @@
   [& body]
   `(binding [*update-user-when-added-to-admin-group?* false]
      (do ~@body)))
-
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(t2/define-before-update :model/PermissionsGroupMembership
-  [membership]
-  (let [changes (t2/changes membership)]
-    (when (contains? changes :user_id)
-      (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
-    (when (contains? changes :group_id)
-      (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
-    membership))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -151,6 +140,13 @@
   [user-id]
   (check-admins-remain #{user-id}))
 
+(defn throw-if-last-admins!
+  "Throw an Exception if there are no admins left besides the Users with `user-ids`, which are about to be archived or
+  have their admin status removed, in one query."
+  [user-ids]
+  (when (seq user-ids)
+    (check-admins-remain (set user-ids))))
+
 (defn- check-group-manager-member
   "Throws a 400 when `membership` makes `member`, its User, a tenant user or an admin a group manager."
   [{:keys [user_id is_group_manager]} member]
@@ -191,49 +187,66 @@
 
 (defmulti set-member-flags-of!
   "Set `changes`, the `is_superuser` or `is_data_analyst` flag a membership implies, on the rows of `model` with
-  `user-ids`, without the cascades of an ordinary update, which the memberships keep themselves. The User model, whose
-  namespace requires this one, implements it with its own write function."
+  `user-ids`, without the cascades of an ordinary update, which the memberships keep themselves, returning the events of
+  the writes for the caller to publish. The User model, whose namespace requires this one, implements it with its own
+  write function."
   {:arglists '([model user-ids changes])}
   (fn [model _user-ids _changes] model))
 
-(defn- set-member-flags!
+(defn- set-member-flags
   "Set the `is_superuser` flag of the Users of `memberships` in the Administrators group, and the `is_data_analyst` flag
-  of those in the Data Analysts group, to `value`."
+  of those in the Data Analysts group, to `value`, returning the events of the writes."
   [memberships value]
-  (doseq [[group-id flag] [[(:id (perms-group/admin)) :is_superuser]
-                           [(:id (perms-group/data-analyst)) :is_data_analyst]]
-          :let            [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id)) memberships)]
-          :when           (seq user-ids)]
-    (t2/resolve-model :model/User)
-    (set-member-flags-of! :model/User user-ids {flag value})))
+  (into []
+        (mapcat (fn [[group-id flag]]
+                  (let [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id)) memberships)]
+                    (when (seq user-ids)
+                      (t2/resolve-model :model/User)
+                      (set-member-flags-of! :model/User user-ids {flag value})))))
+        [[(:id (perms-group/admin)) :is_superuser]
+         [(:id (perms-group/data-analyst)) :is_data_analyst]]))
 
-(defn- delete-memberships!
+(defn- delete-memberships*
   "Delete `memberships`, keeping at least one active admin, and unset the flags their Administrators and Data Analysts
-  rows set on their Users."
+  rows set on their Users, returning the events of the writes as `:events`."
   [memberships]
-  (when (seq memberships)
-    (events/with-batched-events
+  (if (empty? memberships)
+    {:events []}
+    (do
       (check-magic-group-members-unchanged (map :group_id memberships))
       (let [admin-id    (:id (perms-group/admin))
             admin-rows? #(= admin-id (:group_id %))]
         (when-let [admin-user-ids (not-empty (into #{} (comp (filter admin-rows?) (map :user_id)) memberships))]
           (check-admins-remain admin-user-ids))
-        (u/prog1 (permissions.db/delete-group-memberships! (mapv :id memberships))
-          (set-member-flags! (cond->> memberships
-                               (not *update-user-when-added-to-admin-group?*) (remove admin-rows?))
-                             false))))))
+        (let [event (events/deleted :event/group-membership-delete :model/PermissionsGroupMembership (vec memberships))]
+          (permissions.db/delete-group-memberships! (mapv :id memberships))
+          {:events (into [event]
+                         (set-member-flags (cond->> memberships
+                                             (not *update-user-when-added-to-admin-group?*) (remove admin-rows?))
+                                           false))})))))
 
-(mu/defn add-users-to-groups!
-  "Creates permission group memberships from a sequence of maps of users, groups and is-group-manager?."
-  [pgms :- [:sequential
-            [:map {:closed true}
-             [:group [:or
-                      pos-int?
-                      ::permissions.schema/permissions-group]]
-             [:user [:or pos-int? :metabase.users.schema/user]]
-             [:is-group-manager? {:optional true}
-              :boolean]]]]
-  (when (seq pgms)
+(defn- publish!
+  "Run `f`, which returns the events of its writes as `:events`, in a transaction, and publish them."
+  [f]
+  (t2/with-transaction [_conn]
+    (events/publish-lifecycle! (:events (f)))))
+
+(mr/def ::new-memberships
+  [:sequential
+   [:map {:closed true}
+    [:group [:or
+             pos-int?
+             ::permissions.schema/permissions-group]]
+    [:user [:or pos-int? :metabase.users.schema/user]]
+    [:is-group-manager? {:optional true}
+     :boolean]]])
+
+(mu/defn add-users-to-groups* :- [:map {:closed true} [:events events/Events]]
+  "Create the permission group memberships of a sequence of maps of users, groups and is-group-manager?, returning the
+  events of the writes as `:events`, which the caller publishes."
+  [pgms :- ::new-memberships]
+  (if (empty? pgms)
+    {:events []}
     (let [pgms (->> pgms
                     (map (fn [{:keys [user group is-group-manager?]}]
                            {:user-id (u/the-id user)
@@ -245,18 +258,27 @@
                                                                  (when-not (= 1 (count (distinct pgms)))
                                                                    (throw (ex-info "Conflicting permissions group memberships"
                                                                                    {:conflicts (distinct pgms)})))
-                                                                 (boolean (:is-group-manager? (first pgms))))))]
-      (events/with-batched-events
-        (let [existing    (permissions.db/existing-membership-pairs (keys user-id-group-id->is-group-manager?))
-              memberships (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?
-                                :when (not (contains? existing [user-id group-id]))]
-                            {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})]
-          (when (seq memberships)
-            (check-magic-group-members-unchanged (map :group_id memberships))
-            (check-can-add-to-data-analyst-group (map :group_id memberships))
-            (check-members memberships)
-            (permissions.db/insert-group-memberships! (vec memberships))
-            (set-member-flags! memberships true)))))))
+                                                                 (boolean (:is-group-manager? (first pgms))))))
+          existing    (permissions.db/existing-membership-pairs (keys user-id-group-id->is-group-manager?))
+          memberships (for [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?
+                            :when (not (contains? existing [user-id group-id]))]
+                        {:user_id user-id :group_id group-id :is_group_manager is-group-manager?})]
+      (if (empty? memberships)
+        {:events []}
+        (do
+          (check-magic-group-members-unchanged (map :group_id memberships))
+          (check-can-add-to-data-analyst-group (map :group_id memberships))
+          (check-members memberships)
+          (let [created (permissions.db/insert-group-memberships! (vec memberships))]
+            {:events (into [(events/created :event/group-membership-create created)]
+                           (set-member-flags created true))}))))))
+
+(mu/defn add-users-to-groups!
+  "Creates permission group memberships from a sequence of maps of users, groups and is-group-manager?, publishing the
+  events of the writes."
+  [pgms :- ::new-memberships]
+  (when (seq pgms)
+    (publish! #(add-users-to-groups* pgms))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"
@@ -272,12 +294,30 @@
   ([user-id-or-user group-id-or-group] (add-user-to-group! user-id-or-user group-id-or-group false))
   ([user-id-or-user group-id-or-group is-group-manager?] (add-user-to-groups! user-id-or-user [group-id-or-group] is-group-manager?)))
 
+(mu/defn remove-user-from-groups* :- [:map {:closed true} [:events events/Events]]
+  "Remove the User `user-id-or-user` from the groups `group-ids-or-groups`, returning the events of the writes as
+  `:events`, which the caller publishes."
+  [user-id-or-user     :- [:or pos-int? :metabase.users.schema/user]
+   group-ids-or-groups :- [:sequential [:or pos-int? ::permissions.schema/permissions-group]]]
+  (if (empty? group-ids-or-groups)
+    {:events []}
+    (delete-memberships* (permissions.db/memberships-for-user-in-groups (u/the-id user-id-or-user)
+                                                                        (map u/the-id group-ids-or-groups)))))
+
+(mu/defn remove-users-from-group* :- [:map {:closed true} [:events events/Events]]
+  "Remove the Users with `user-ids` from the group with `group-id`, returning the events of the writes as `:events`,
+  which the caller publishes."
+  [user-ids :- [:sequential pos-int?]
+   group-id :- pos-int?]
+  (if (empty? user-ids)
+    {:events []}
+    (delete-memberships* (permissions.db/memberships-for-users-in-group user-ids group-id))))
+
 (defn remove-user-from-groups!
   "Removes a user from groups."
   [user-id-or-user group-ids-or-groups]
   (when (seq group-ids-or-groups)
-    (delete-memberships! (permissions.db/memberships-for-user-in-groups (u/the-id user-id-or-user)
-                                                                        (map u/the-id group-ids-or-groups)))))
+    (publish! #(remove-user-from-groups* user-id-or-user (vec group-ids-or-groups)))))
 
 (defn remove-user-from-group!
   "Removes a user from a group."
@@ -287,32 +327,37 @@
 (defn remove-all-users-from-group!
   "Removes all users from a group."
   [group-id]
-  (delete-memberships! (permissions.db/memberships-for-group group-id)))
+  (publish! #(delete-memberships* (permissions.db/memberships-for-group group-id))))
 
 (defn remove-user-from-all-groups!
   "Removes a user from all groups."
   [user-id]
-  (delete-memberships! (permissions.db/memberships-for-user user-id)))
+  (publish! #(delete-memberships* (permissions.db/memberships-for-user user-id))))
 
 (mu/defn update-permissions-group-membership!
-  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated; making a tenant user or an
-  admin a group manager is a 400."
+  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated; moving it to another user
+  or group, or making a tenant user or an admin a group manager, is a 400."
   [id      :- ms/PositiveInt
    changes :- ::permissions.schema/permissions-group-membership.update]
-  (events/with-batched-events
-    (when (:is_group_manager changes)
-      (when-let [stored (permissions.db/group-membership id)]
+  (t2/with-transaction [_conn]
+    (let [stored  (permissions.db/group-membership id)
+          changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+      (when (and stored (:is_group_manager changes))
         (check-group-manager-member (merge stored changes)
-                                    (first (permissions.db/member-flags #{(:user_id stored)})))))
-    (permissions.db/update-group-membership! id changes)))
+                                    (first (permissions.db/member-flags #{(:user_id stored)}))))
+      (if-not (and stored (seq changed))
+        0
+        (do
+          (when (contains? changed :user_id)
+            (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
+          (when (contains? changed :group_id)
+            (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
+          (u/prog1 (permissions.db/update-group-membership! id changed)
+            (events/publish-lifecycle! [(events/updated :event/group-membership-update
+                                                        [stored]
+                                                        [(events/updated-row stored changed)])])))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/PermissionsGroupMembership
-  [_model]
-  {:create :event/group-membership-create
-   :update :event/group-membership-update
-   :delete :event/group-membership-delete})
 
 (defmethod app-db-copy/spec :model/PermissionsGroupMembership [_model]
   {:skip? false})
