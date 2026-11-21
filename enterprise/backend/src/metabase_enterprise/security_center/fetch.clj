@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.security-center.schema :as security-center.schema]
@@ -128,7 +129,7 @@
    On insert, match_status starts as :unknown until the matching engine evaluates it.
    On update, merges new data but preserves :match_status, :last_evaluated_at, and acknowledgement fields."
   [advisory]
-  (security-center.db/upsert-advisory! advisory))
+  (security-advisory/upsert-advisory! advisory))
 
 (defn sync-advisories!
   "Fetch advisories from the MetaStore and upsert into the appdb."

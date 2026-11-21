@@ -4,12 +4,14 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.card :as data-testing.subject.card]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -39,8 +41,8 @@
 
 (t2/deftransforms :model/CardTest
   {:now          data-testing.models/now-column
-   :inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
-   :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/CardTest :last_run]
   "Add the newest run, or nil, to each card test."
@@ -54,7 +56,7 @@
   ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
   ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
   ;; runs are never listed or shown as `last_run`.
-  (data-testing.db/clear-test-id-of-runs! :card (:id card-test))
+  (data-testing.models.data-test-run/clear-test-id-of-runs! :card (:id card-test))
   (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
   card-test)
 

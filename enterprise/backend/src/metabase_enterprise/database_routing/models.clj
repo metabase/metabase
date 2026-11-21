@@ -8,6 +8,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
@@ -51,12 +52,6 @@
   (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
-(defenterprise delete-associated-database-router!
-  "Deletes the Database Router associated with this router database."
-  :feature :database-routing
-  [db-id]
-  (database-routing.db/delete-router! db-id))
-
 (defenterprise-schema db-routing-enabled? :- :boolean
   "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database, even while
   the `:database-routing` feature is unavailable."
@@ -79,6 +74,23 @@
   [{:keys [database_id user_attribute]} :- ::database-routing.schema/database-router.create]
   (check-not-destination database_id)
   (database-routing.db/insert-router! database_id user_attribute))
+
+(mu/defn update-database-router!
+  "Apply `changes` to the DatabaseRouter of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   changes     :- ::database-routing.schema/database-router.update]
+  (database-routing.db/update-router! database-id changes))
+
+(mu/defn delete-database-router!
+  "Delete the DatabaseRouter of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (database-routing.db/delete-router! database-id))
+
+(defenterprise delete-associated-database-router!
+  "Deletes the Database Router associated with this router database."
+  :feature :database-routing
+  [db-id]
+  (delete-database-router! db-id))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

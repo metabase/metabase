@@ -2,7 +2,8 @@
   "Cluster-safe lifecycle tracking for the runs of every type of test, and for the runs of test suites."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.data-testing.db :as data-testing.db]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
+   [metabase-enterprise.data-testing.models.test-suite-run :as data-testing.models.test-suite-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.events.core :as events]
@@ -32,7 +33,7 @@
   ([test-type    :- ::data-testing.schema/test-type
     test-id      :- ms/PositiveInt
     initiated-by :- [:maybe ::lib.schema.id/user]]
-   (let [run (data-testing.db/insert-test-run! test-type test-id initiated-by)]
+   (let [run (data-testing.models.data-test-run/start-data-test-run! test-type test-id initiated-by)]
      (events/publish-event! (get-in (data-testing.test-type/spec test-type) [:run-topics :start])
                             (-> {:object run}
                                 (m/assoc-some :user-id initiated-by)))
@@ -46,7 +47,7 @@
   [run-id :- ms/PositiveInt
    status :- ::data-testing.schema/run-status]
   (try
-    (data-testing.db/finish-started-test-run! run-id status)
+    (data-testing.models.data-test-run/finish-data-test-run! run-id status)
     (finally
       (swap! active-runs disj run-id))))
 
@@ -55,7 +56,7 @@
   process."
   [suite-id     :- ms/PositiveInt
    initiated-by :- [:maybe ::lib.schema.id/user]]
-  (let [run (data-testing.db/insert-suite-run! suite-id initiated-by)]
+  (let [run (data-testing.models.test-suite-run/start-test-suite-run! suite-id initiated-by)]
     (events/publish-event! :event/test-suite-run-start (-> {:object run}
                                                            (m/assoc-some :user-id initiated-by)))
     (swap! active-suite-runs conj (:id run))
@@ -69,7 +70,7 @@
    status  :- ::data-testing.schema/run-status
    members :- [:maybe ::data-testing.schema/test-suite-run.stored-members]]
   (try
-    (data-testing.db/finish-started-suite-run! run-id status members)
+    (data-testing.models.test-suite-run/finish-test-suite-run! run-id status members)
     (finally
       (swap! active-suite-runs disj run-id))))
 

@@ -158,7 +158,7 @@
   [scan-id findings]
   (doseq [chunk (partition-all insert-batch-size findings)]
     (t2/with-transaction [_conn]
-      (cd.db/insert-findings!
+      (finding/create-findings!
        (for [{:keys [entity-type entity-id finding-type details scope-collection-id
                      last-active-at duration-ms content-count duplicate-count
                      entity-name entity-created-at entity-creator-id entity-creator-name

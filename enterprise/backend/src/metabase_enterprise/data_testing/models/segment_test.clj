@@ -4,12 +4,14 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.subject :as data-testing.subject]
    [metabase-enterprise.data-testing.subject.segment :as data-testing.subject.segment]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -40,8 +42,8 @@
   :model/Segment)
 
 (t2/deftransforms :model/SegmentTest
-  {:inputs       (data-testing.models/json-column ::data-testing.schema/inputs)
-   :expectations (data-testing.models/json-column ::data-testing.schema/expectations)})
+  {:inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (methodical/defmethod t2/batched-hydrate [:model/SegmentTest :last_run]
   "Add the newest run, or nil, to each segment test."
@@ -51,7 +53,7 @@
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/SegmentTest [segment-test]
-  (data-testing.db/clear-test-id-of-runs! :segment (:id segment-test))
+  (data-testing.models.data-test-run/clear-test-id-of-runs! :segment (:id segment-test))
   (data-testing.models/remove-deleted-test-from-suites! :segment (:entity_id segment-test))
   segment-test)
 

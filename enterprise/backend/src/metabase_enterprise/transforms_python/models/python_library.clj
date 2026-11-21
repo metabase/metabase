@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -65,15 +66,6 @@
   [path]
   (transforms-python.db/python-library-by-path (normalize-path path)))
 
-(defn update-python-library-source!
-  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
-  [path source]
-  (let [normalized-path (normalize-path path)
-        id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
-        library         (transforms-python.db/python-library id)]
-    library))
-
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defn- storage-paths
@@ -82,6 +74,18 @@
   (mapv (fn [entity]
           [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
         entities))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn update-python-library-source!
+  "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
+  [path   :- :string
+   source :- :string]
+  (let [normalized-path (normalize-path path)
+        id              (transforms-python.db/upsert-python-library-source!
+                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
+        library         (transforms-python.db/python-library id)]
+    library))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
