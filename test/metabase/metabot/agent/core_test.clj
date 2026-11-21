@@ -18,6 +18,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
@@ -79,6 +80,17 @@
     (is (not (#'agent/has-tool-calls? [{:type :text :text "hello"}])))
     (is (#'agent/has-tool-calls? [{:type :text :text "hi"}
                                   {:type :tool-input :id "t1"}]))))
+
+(deftest step-parts-test
+  (testing "memory keeps text as history replays it: deltas merged first, blank text dropped after"
+    (let [tool-input {:type :tool-input :id "t1" :function "search" :arguments {}}]
+      (is (= [{:type :text :text "Hello world"} tool-input]
+             (#'agent/step-parts [{:type :text :text "Hello"}
+                                  {:type :text :text " "}
+                                  {:type :text :text "world"}
+                                  tool-input
+                                  {:type :text :text "\n"}
+                                  {:type :text :text "\n"}]))))))
 
 (deftest should-continue-test
   (let [max-iter 3
@@ -1531,7 +1543,7 @@
                                       :charts  map?}}
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (metabot.persistence/combine-text-parts-xf)
+                          (into [] (streaming/combine-text-parts-xf)
                                 (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -1752,16 +1764,14 @@
                 (is (= preload? (boolean (some #(= "load_skill" (:function %)) input-1))))
                 (is (= input-1 (take (count input-1) input-2)))
                 (is (= input-2 (take (count input-2) input-3)))
-                (is (=? [{:type :text :text "See "}
-                         {:type :text :text "[Orders](metabase://model/1)."}
+                (is (=? [{:type :text :text "See [Orders](metabase://model/1)."}
                          {:type :tool-input :id "call-1" :function "search" :arguments {:keyword_queries ["orders"]}}
                          {:type     :tool-output
                           :id       "call-1"
                           :function "search"
                           :result   {:structured-output {:result-type :search}}}]
                         (drop (count input-1) input-2)))
-                (is (=? [{:type :text :text "See "}
-                         {:type :text :text "[Ops](metabase://dashboard/2)."}
+                (is (=? [{:type :text :text "See [Ops](metabase://dashboard/2)."}
                          {:type :tool-input :id "call-2" :function "search" :arguments {:keyword_queries ["people"]}}
                          {:type     :tool-output
                           :id       "call-2"
@@ -1940,7 +1950,7 @@
                      {:type :data :data-type "state"}
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (metabot.persistence/combine-text-parts-xf)
+                      (into [] (streaming/combine-text-parts-xf)
                             (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}

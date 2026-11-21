@@ -4,11 +4,11 @@
   between two turns: the first request of a turn must start with the last request of the turn before it, in the
   wire format of each adapter.
 
-  They cover the `<context>` block sent before each user message, and a turn with one successful tool call. The
-  history does not replay some other parts of a turn as they were sent: the SQL dialect preload, thinking, text
-  streamed in deltas, parallel tool calls and failed tool calls. No conversation here has those parts, except
-  DeepSeek's thinking directive, which the tool-call test leaves out: after a tool call with no signed thinking, it
-  differs between the two turns."
+  They cover the `<context>` block sent before each user message, assistant text streamed in deltas, and a turn with
+  one successful tool call. The history does not replay some other parts of a turn as they were sent: the SQL
+  dialect preload, thinking, parallel tool calls and failed tool calls. No conversation here has those parts, except
+  DeepSeek's thinking directive, which the tests with tool calls leave out: after a tool call with no signed
+  thinking, it differs between the two turns."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -95,6 +95,27 @@
    {:message  "And last month?"
     :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
     :response (answer "msg-2" "Last month there were 1,412.")}])
+
+(defn- load-skill-call
+  "A response with text and then a call to `load_skill`, which always succeeds."
+  [id text]
+  (mut/mock-llm-response [{:type :start :id id}
+                          {:type :text :id (str id "-text") :text text}
+                          {:type :tool-input :id (str id "-call") :function "load_skill"
+                           :arguments {:ids ["read-resource"]}}]))
+
+(def ^:private streamed-text-turns
+  "Two turns, the first with three LLM calls. [[mut/mock-llm-response]] streams text in deltas of five characters,
+  so each text block of the first two calls arrives in parts. The text of the second call is only whitespace, as a
+  model can send before a tool call. It is longer than five characters, so it arrives in two deltas."
+  [{:message   "How many orders do we have?"
+    :context   {:current_time_with_timezone "2026-10-20T10:00:00+00:00"}
+    :responses [(load-skill-call "msg-1" "Let me read how to look up a table first.")
+                (load-skill-call "msg-2" "\n\n   \n\n")
+                (answer "msg-3" "There are 18,760 orders.")]}
+   {:message  "And last month?"
+    :context  {:current_time_with_timezone "2026-10-20T10:05:00+00:00"}
+    :response (answer "msg-4" "Last month there were 1,412.")}])
 
 ;;; ------------------------------------------------ Prefix comparison -----------------------------------------------
 
@@ -358,3 +379,17 @@
         (doseq [message (concat (user-messages turn-1) (user-messages turn-2))]
           (is (str/includes? message line))))
       (check-turn-edge turn-1 turn-2))))
+
+(deftest streamed-text-replays-as-one-part-test
+  (let [requests                    (run-turns! streamed-text-turns)
+        [_ _ last-of-turn-1 turn-2] requests
+        texts                       (fn [opts] (keep #(when (= :text (:type %)) (:text %)) (:input opts)))]
+    (testing "turn 1 makes three LLM calls, turn 2 makes one"
+      (is (= 4 (count requests))))
+    (testing "a text block streamed in deltas is sent as one part in the next call, and blank text is not sent"
+      (is (= ["Let me read how to look up a table first."]
+             (texts last-of-turn-1))))
+    ;; DeepSeek turns thinking off while the open turn holds a tool call with no signed thinking, as these mocked
+    ;; calls do, and on again in the next turn. That is part of the thinking, which the history does not replay as
+    ;; sent.
+    (check-turn-edge last-of-turn-1 turn-2 {"deepseek" [:thinking]})))
