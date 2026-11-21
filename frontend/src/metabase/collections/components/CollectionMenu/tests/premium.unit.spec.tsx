@@ -70,6 +70,20 @@ describe("CollectionMenu", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should not be able to remove the official badge if not an admin", async () => {
+    setupPremium({
+      collection: createMockCollection({
+        can_write: true,
+        authority_level: "official",
+      }),
+      isAdmin: false,
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(await screen.findByText("Move")).toBeInTheDocument();
+    expect(screen.queryByText("Remove Official badge")).not.toBeInTheDocument();
+  });
+
   it("should not be able to make the collection official if it's the root collection", async () => {
     const collection = createMockCollection({
       id: "root",

@@ -17,6 +17,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { fetchCardData } from "metabase/dashboard/actions/data-fetching";
@@ -1148,6 +1149,90 @@ describe("DashCard", () => {
       await user.click(getIcon("ellipsis"));
 
       expect(await screen.findByText("Download results")).toBeInTheDocument();
+    });
+  });
+
+  describe("official collection badge", () => {
+    const officialDashcard = createMockDashboardCard({
+      id: 21,
+      collection_authority_level: "official",
+      card: createMockCard({
+        id: 22,
+        name: "Official Question",
+        display: "table",
+      }),
+    });
+
+    const setupOfficial = ({
+      hasFeature,
+      dashboardAuthorityLevel = null,
+    }: {
+      hasFeature: boolean;
+      dashboardAuthorityLevel?: "official" | null;
+    }) => {
+      mockSettings({
+        "token-features": createMockTokenFeatures({
+          official_collections: hasFeature,
+        }),
+      });
+      setupEnterpriseOnlyPlugin("collections");
+
+      setup({
+        dashboard: createMockDashboard({
+          name: "Regular Dashboard",
+          collection_authority_level: dashboardAuthorityLevel,
+          dashcards: [officialDashcard],
+        }),
+        dashcard: officialDashcard,
+        dashcardData: {
+          [officialDashcard.id]: {
+            [officialDashcard.card.id]:
+              tableDashcardData[tableDashcard.id][tableDashcard.card.id],
+          },
+        },
+      });
+    };
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("shows the official badge on a question from an official collection in a regular dashboard", async () => {
+      setupOfficial({ hasFeature: true });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(
+        within(caption).getByLabelText("official_collection icon"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the official badge when the dashboard is official too", async () => {
+      setupOfficial({ hasFeature: true, dashboardAuthorityLevel: "official" });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
+    });
+
+    it("does not show the official badge without the official_collections feature", async () => {
+      setupOfficial({ hasFeature: false });
+
+      const caption = await screen.findByTestId("legend-caption");
+      // The visualization loads lazily, so let it finish before asserting.
+      await waitForLoaderToBeRemoved();
+      expect(
+        within(caption).getByText("Official Question"),
+      ).toBeInTheDocument();
+      expect(queryIcon("official_collection")).not.toBeInTheDocument();
     });
   });
 
