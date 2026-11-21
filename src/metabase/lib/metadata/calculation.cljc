@@ -590,8 +590,9 @@
                       (str "Expected an options map, got a " (pr-str (:lib/type value))))}
     (complement :lib/type)]])
 
+;;; delayed, so loading this namespace doesn't resolve the schema
 (def ^:private returned-columns-options-keys
-  (mu/map-schema-keys ::returned-columns.options))
+  (delay (mu/map-schema-keys ::returned-columns.options)))
 
 (defmulti returned-columns-method
   "Impl for [[returned-columns]]."
@@ -659,7 +660,7 @@
      ;; minor optimization for caching purposes: only keep the options keys that are actually relevant for
      ;; `returned-columns` purposes. As a bonus, this means undocumented options keys that aren't part of the schema
      ;; will effectively be ignored, which sorta forces people to actually go document them.
-     (let [options (select-keys options returned-columns-options-keys)]
+     (let [options (select-keys options @returned-columns-options-keys)]
        (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
@@ -689,8 +690,9 @@
     [:include-implicitly-joinable?                 {:optional true, :default true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true, :default true} :boolean]]])
 
+;;; delayed, so loading this namespace doesn't resolve the schema
 (def ^:private visible-columns-options-keys
-  (mu/map-schema-keys ::visible-columns.options))
+  (delay (mu/map-schema-keys ::visible-columns.options)))
 
 (mu/defn- default-visible-columns-options :- ::visible-columns.options
   []
@@ -739,7 +741,7 @@
                      ;; minor caching optimization: only keep the keys that are relevant to `visible-columns` --
                      ;; ignore any other ones. As a bonus, this means undocumented options keys that aren't part of
                      ;; the schema will effectively be ignored.
-                     (select-keys visible-columns-options-keys))]
+                     (select-keys @visible-columns-options-keys))]
      (lib.metadata.cache/with-cached-value query (cache-key ::visible-columns query stage-number nil options)
        ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.stage/-visible-columns)
         query
