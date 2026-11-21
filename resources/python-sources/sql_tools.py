@@ -448,9 +448,9 @@ def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
     return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
 
 
-# The arguments a FROM or JOIN source may carry for `join_steps` to describe it. Anything else (a PIVOT, a time-travel
-# clause, a sample, a table function's arguments, a nested join tree) changes what the source yields, so the query is
-# refused rather than rebuilt without it.
+# The arguments a FROM or JOIN source, or a join, may carry for `join_steps` to rebuild it.
+# Any other argument (a PIVOT, a time-travel clause, a sample) changes what the source yields, so the query is refused
+# rather than rebuilt without it.
 _JOIN_STEP_TABLE_ARGS = {"this", "db", "catalog", "alias"}
 _JOIN_STEP_SUBQUERY_ARGS = {"this", "alias"}
 _JOIN_STEP_JOIN_ARGS = {"this", "on", "using", "side", "kind", "method"}
@@ -470,8 +470,10 @@ def _set_args(node):
 
 
 def _join_step_source(node, cte_names):
-    """The description of a FROM or JOIN source: its kind (`table`, `cte` or `derived`), its `[catalog, schema, table]`
-    when it is a table, and its alias. Raises `_JoinStepsUnsupported` for a source `join_steps` cannot rebuild."""
+    """A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its table parts or None, and its alias.
+
+    Raises `_JoinStepsUnsupported` for a source `join_steps` cannot rebuild.
+    """
     if isinstance(node, exp.Table):
         if _set_args(node) - _JOIN_STEP_TABLE_ARGS or not isinstance(node.this, exp.Identifier):
             raise _JoinStepsUnsupported("unsupported-source")
@@ -493,8 +495,10 @@ def _join_step_source(node, cte_names):
 
 
 def _join_step_strategy(join):
-    """The join's strategy (`inner`, `left`, `right`, `full` or `cross`), raising `_JoinStepsUnsupported` for a join
-    `join_steps` cannot rebuild."""
+    """The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
+
+    Raises `_JoinStepsUnsupported` for a join `join_steps` cannot rebuild.
+    """
     args = _set_args(join)
     if args - _JOIN_STEP_JOIN_ARGS:
         raise _JoinStepsUnsupported("unsupported-join")
@@ -513,7 +517,7 @@ def _join_step_strategy(join):
 
 
 def _count_select(from_, joins, with_=None):
-    """`SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
+    """The query `SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
     select = exp.Select(
         expressions=[exp.alias_(exp.Count(this=exp.Star()), "n")], from_=from_.copy(), joins=[j.copy() for j in joins]
     )
@@ -523,8 +527,9 @@ def _count_select(from_, joins, with_=None):
 
 
 def _two_counts(first, second, with_=None):
-    """`SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`: both one-row counts in one row. Each count is
-    a derived table rather than a scalar subquery so the query has a FROM clause, which some databases require."""
+    """Both one-row counts in one row: `SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`."""
+    # Each count is a derived table rather than a scalar subquery so the query has a FROM clause, which some databases
+    # (Oracle before 23c) require.
     select = exp.Select(
         expressions=[exp.column("n", table="w"), exp.column("n", table="m")],
         from_=exp.From(this=first.subquery("w")),
@@ -539,20 +544,22 @@ def join_steps(sql: str, dialect: str = None) -> str:
     """
     The row-count queries of each join in `sql`, a SELECT, taken one join at a time.
 
-    The FROM source and every join are described, and each comes with the SQL of a query that counts the rows of the
-    FROM source joined with the joins up to and including it. The WHERE clause, grouping, ordering and everything
-    else outside FROM and JOIN are left out: these are the counts of the join chain itself. A WITH clause is kept, so
-    a CTE or a derived table can be a source.
+    The FROM source and every join are described, each with the SQL of a query that counts its rows.
+    For the FROM source that is the source alone; for a join, the FROM source joined with every join up to and
+    including it.
+    The WHERE clause and everything else outside FROM and JOIN are left out, and a WITH clause is kept.
 
-    For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
-    and the rows of the same chain with that last join made an INNER join. Every other step query returns one count.
+    For a LEFT, RIGHT or FULL join, the step query returns two counts in one row.
+    The first counts the chain as written, and the second the same chain with that last join made INNER.
+    Every other step query returns one count.
 
-    Returns a JSON object: on success, `{"status": "ok", "from": <source>, "base_sql": "<count of the FROM source>",
-    "steps": [<source> + {"strategy": ..., "sql": "<step query>"}, ...]}`, where a source is `{"source": "table" |
-    "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}` and `strategy` is one of `inner`,
-    `left`, `right`, `full` and `cross`. Otherwise `{"status": "unsupported", "reason": ...}`, the reason one of
-    `unparseable`, `multiple-statements`, `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`,
-    `nested-join`, `unsupported-source` and `parameters`.
+    Returns a JSON object.
+    On success it is `{"status": "ok", "from": <source>, "base_sql": <sql>, "steps": [<step>, ...]}`.
+    A source is `{"source": "table" | "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}`.
+    A step is a source with a `strategy` (`inner`, `left`, `right`, `full` or `cross`) and its `sql`.
+    Otherwise it is `{"status": "unsupported", "reason": ...}`, with one of these reasons: `unparseable`,
+    `multiple-statements`, `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`, `nested-join`,
+    `unsupported-source` and `parameters`.
 
     Examples:
         join_steps("SELECT * FROM a LEFT JOIN b ON a.id = b.a_id WHERE a.x > 1")

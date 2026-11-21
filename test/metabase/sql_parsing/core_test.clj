@@ -121,7 +121,7 @@
 (deftest ^:parallel join-steps-large-literal-list-test
   (testing "SQL too large to parse whole is refused, not answered for a copy with its lists collapsed"
     (let [sql (str "SELECT * FROM a JOIN b ON a.id = b.id WHERE a.x IN (" (str/join ", " (range 100000)) ")")]
-      (is (= {:status "unsupported" :reason "large-literal-list"}
+      (is (= {:status "unsupported", :reason "large-literal-list"}
              (sql-parsing/join-steps (sql-tools/sqlglot-parser) "postgres" sql))))))
 
 ;;; ------------------------------------------------ transpile-sql -------------------------------------------------

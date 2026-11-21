@@ -92,13 +92,13 @@
   #{:h2})
 
 (defn- source-table-ids
-  "A function from a `join_steps` source's `[catalog schema table]` to the id of the Table it names in `query`'s
-  database, or nil when it names none (or a transform's target that has no Table yet)."
+  "A function from a source's `[catalog schema table]` to the id of the Table it names in `query`'s database.
+  It returns nil for a name that matches no Table, a transform's target not yet created included."
   [driver query sources]
   (let [database  (lib.metadata/database query)
         spec      (fn [[_catalog table-schema table]]
                     (sql-tools.common/normalize-table-spec
-                     driver {:table table :schema (or table-schema (:default-schema database))}))
+                     driver {:table table, :schema (or table-schema (:default-schema database))}))
         specs     (into {} (keep (fn [{:keys [table]}] (when table [table (spec table)]))) sources)
         table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table (vals specs)))
         tables    (lib.metadata/bulk-metadata query :metadata/table table-ids)]
@@ -108,12 +108,12 @@
                :table))))
 
 (defn join-steps
-  "The row-count queries of each join in `query`, a native query, for `driver`, from `parser`. See
-  [[metabase.sql-tools.core/join-steps]]."
+  "The row-count queries of each join in `query`, a native query, for `driver`, from `parser`.
+  See [[metabase.sql-tools.core/join-steps]]."
   [parser driver query]
   (let [dialect (driver->dialect driver)
         result  (if (and (nil? dialect) (not (drivers-without-dialect driver)))
-                  {:status "unsupported" :reason "unsupported-dialect"}
+                  {:status "unsupported", :reason "unsupported-dialect"}
                   (sql-parsing/join-steps parser dialect (lib/raw-native-query query)))]
     (if-not (= "ok" (:status result))
       {:unsupported (keyword (:reason result))}

@@ -67,7 +67,7 @@
 ;;; -------------------------------------------------- Native SQL --------------------------------------------------
 
 (defn- native-count-query
-  "`sql`, a count query [[metabase.sql-tools.core/join-steps]] generated, as a native query on `db-id`."
+  "The count query `sql`, which [[metabase.sql-tools.core/join-steps]] generated, as a native query on `db-id`."
   [db-id sql]
   (lib/native-query (lib-be/application-database-metadata-provider db-id) sql))
 

@@ -1,5 +1,5 @@
 (ns metabase.sql-parsing.sqlglot-java.join-steps
-  "`join_steps`: the row-count queries of each join in a SELECT, taken one join at a time."
+  "The row-count queries of each join in a SELECT, taken one join at a time: the port of `join_steps`."
   (:require
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references]
@@ -13,10 +13,15 @@
 
 (set! *warn-on-reflection* true)
 
+;; Any other argument on a source (a PIVOT, a time-travel clause, a sample) changes what it yields, so the query is
+;; refused rather than rebuilt without it.
+
 (def ^:private table-args
-  "The arguments a FROM or JOIN table may carry. Anything else (a PIVOT, a time-travel clause, a sample) changes what
-  the source yields, so the query is refused rather than rebuilt without it."
-  #{"this" "db" "catalog" "alias"})
+  "The arguments a FROM or JOIN table may carry."
+  #{"alias"
+    "catalog"
+    "db"
+    "this"})
 
 (def ^:private subquery-args
   "The arguments a derived-table source may carry."
@@ -24,7 +29,19 @@
 
 (def ^:private join-args
   "The arguments a join may carry."
-  #{"this" "on" "using" "side" "kind" "method"})
+  #{"kind"
+    "method"
+    "on"
+    "side"
+    "this"
+    "using"})
+
+(def ^:private join-kinds
+  "The join kinds a step can be rebuilt for. A SEMI or ANTI join is not one."
+  #{""
+    "CROSS"
+    "INNER"
+    "OUTER"})
 
 (defn- unsupported [reason]
   (ex-info reason {::reason reason}))
@@ -49,8 +66,8 @@
     (if (seq node-alias) node-alias (ast/node-name node))))
 
 (defn- step-source
-  "The description of a FROM or JOIN source: its kind (`table`, `cte` or `derived`), its `[catalog schema table]` when
-  it is a table, and its alias. Port of `_join_step_source`."
+  "A FROM or JOIN source as its kind (`table`, `cte` or `derived`), its `[catalog schema table]` or nil, and its alias.
+  Port of `_join_step_source`."
   [node cte-names]
   (cond
     (instance? Expressions$Table node)
@@ -62,8 +79,8 @@
       (if (and (empty? (ast/text node "db"))
                (empty? (ast/text node "catalog"))
                (contains? cte-names (ast/lower (ast/node-name node))))
-        {:source "cte" :table nil :alias (alias-or-name node)}
-        {:source "table" :table parts :alias (alias-or-name node)}))
+        {:source "cte", :table nil, :alias (alias-or-name node)}
+        {:source "table", :table parts, :alias (alias-or-name node)}))
 
     (instance? Expressions$Subquery node)
     (do
@@ -73,7 +90,7 @@
       ;; query.
       (when-not (instance? Expressions$Query (ast/this node))
         (throw (unsupported "nested-join")))
-      {:source "derived" :table nil :alias (alias-or-name node)})
+      {:source "derived", :table nil, :alias (alias-or-name node)})
 
     :else
     (throw (unsupported "unsupported-source"))))
@@ -82,7 +99,8 @@
   (u/upper-case-en (ast/text join k)))
 
 (defn- step-strategy
-  "The join's strategy (`inner`, `left`, `right`, `full` or `cross`). Port of `_join_step_strategy`."
+  "The join's strategy: `inner`, `left`, `right`, `full` or `cross`.
+  Port of `_join_step_strategy`."
   [join]
   (let [args   (set-args join)
         side   (upper-arg join "side")
@@ -90,7 +108,7 @@
         method (upper-arg join "method")]
     (when-not (and (every? join-args args)
                    (#{"" "NATURAL"} method)
-                   (#{"" "INNER" "OUTER" "CROSS"} kind))
+                   (join-kinds kind))
       (throw (unsupported "unsupported-join")))
     (cond
       (= kind "CROSS")
@@ -103,20 +121,21 @@
       (throw (unsupported "comma-join"))
 
       :else
-      (get {"LEFT" "left" "RIGHT" "right" "FULL" "full"} side "inner"))))
+      (get {"LEFT" "left", "RIGHT" "right", "FULL" "full"} side "inner"))))
 
 (defn- with-clause [^Expr select with-node]
   (cond-> select
     with-node (ast/set-arg! "with_" (ast/copy with-node))))
 
 (defn- count-star-as-n
-  "`COUNT(*) AS n`."
+  "The select expression `COUNT(*) AS n`."
   []
   (ast/create "Alias" {"this"  (ast/create "Count" {"this" (ast/create "Star")})
                        "alias" (ast/to-identifier "n")}))
 
 (defn- count-select
-  "`SELECT COUNT(*) AS n FROM <from-node> <joins>`, with `with-node` as its WITH clause. Port of `_count_select`."
+  "The query `SELECT COUNT(*) AS n FROM <from-node> <joins>`, with `with-node` as its WITH clause.
+  Port of `_count_select`."
   ([from-node joins]
    (count-select from-node joins nil))
   ([from-node joins with-node]
@@ -130,11 +149,14 @@
                           "alias" (ast/create "TableAlias" {"this" (ast/to-identifier table-alias)})}))
 
 (defn- two-counts
-  "`SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`: both one-row counts in one row, with a FROM
-  clause, which some databases require. Port of `_two_counts`."
+  "Both one-row counts in one row: `SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`.
+  Port of `_two_counts`."
   [first-select second-select with-node]
+  ;; Each count is a derived table rather than a scalar subquery so the query has a FROM clause, which some databases
+  ;; (Oracle before 23c) require.
   (let [column (fn [table-alias]
-                 (ast/create "Column" {"this" (ast/to-identifier "n") "table" (ast/to-identifier table-alias)}))]
+                 (ast/create "Column" {"this"  (ast/to-identifier "n")
+                                       "table" (ast/to-identifier table-alias)}))]
     (with-clause (ast/create "Select" {"expressions" [(column "w") (column "m")]
                                        "from_"       (ast/create "From" {"this" (derived first-select "w")})
                                        "joins"       [(ast/create "Join" {"this" (derived second-select "m")
@@ -151,6 +173,8 @@
     inner))
 
 (defn- parse-statement
+  "The one statement in `sql`.
+  Throws an `unparseable` or `multiple-statements` refusal otherwise."
   [dialect sql]
   (let [stmts (try
                 (ast/nonempty-statements (ast/parse sql dialect))
@@ -173,6 +197,8 @@
     (contains? (set-args stmt) "laterals")                                 "unsupported-join"))
 
 (defn- steps
+  "The `ok` result of [[join-steps]].
+  Throws a refusal, an `ex-info` with its reason under `::reason`, for a query whose joins cannot be rebuilt."
   [dialect sql]
   (let [stmt (parse-statement dialect sql)]
     (when-let [reason (statement-refusal stmt)]
@@ -206,14 +232,13 @@
                        joins))})))
 
 (defn join-steps
-  "The row-count queries of each join in `sql`, a SELECT, taken one join at a time: `{:status \"ok\" :from <source>
-  :base_sql <sql> :steps [<source> + {:strategy <s> :sql <sql>}]}`, or `{:status \"unsupported\" :reason <r>}`.
-  A two-count step query returns the rows of the chain as written and the rows with its last join made INNER.
+  "The row-count queries of each join in `sql`, a SELECT, taken one join at a time.
+  Returns the result [[metabase.sql-parsing.core/join-steps]] describes.
   Port of `join_steps`."
   [dialect sql]
   (try
     (steps dialect sql)
     (catch clojure.lang.ExceptionInfo e
       (if-let [reason (::reason (ex-data e))]
-        {:status "unsupported" :reason reason}
+        {:status "unsupported", :reason reason}
         (throw e)))))
