@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.search.test-util :as search.tu]
    [metabase.serialization.core :as serialization]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -176,7 +177,7 @@
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-            (action/update! {:id action-id, :archived true} (action/select-action :id action-id))
+            (action/update-action! {:id action-id, :archived true} (action/select-action :id action-id))
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
 (deftest dashcard-deletion-test-2
@@ -198,13 +199,13 @@
                                              :kind "row/create"}]
         (testing "Insert new action"
           (let [action        (action/select-action :id action-id)
-                new-id        (action/insert! (dissoc action :id :made_public_by_id :public_uuid :entity_id))
+                new-id        (action/create-action! (dissoc action :id :made_public_by_id :public_uuid :entity_id))
                 cloned-action (action/select-action :id new-id)]
             (is (partial= {:kind :row/create} cloned-action))))
         (testing "Update action"
           (let [action (action/select-action :id action-id)]
             ;; Update columns on both the action and the subtype table
-            (action/update! (assoc action :name "New name" :kind :row/update) action)
+            (action/update-action! (assoc action :name "New name" :kind :row/update) action)
             (let [new-action (action/select-action :id action-id)]
               (is (partial= {:name "New name"
                              :kind :row/update} new-action)))))))))
@@ -213,22 +214,22 @@
   (mt/with-actions-enabled
     (mt/with-actions [{model-id :id, model-db-id :database_id} {:type :model, :dataset_query (mt/mbql-query categories)}]
       (testing "insert! derives :database_id from the query's database"
-        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                       {:type          :query
-                                                        :name          "derive db insert"
-                                                        :model_id      model-id
-                                                        :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
-                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+        (let [action-id (action/create-action! (lib/normalize ::actions.schema/action.for-insert
+                                                              {:type          :query
+                                                               :name          "derive db insert"
+                                                               :model_id      model-id
+                                                               :database_id   Integer/MAX_VALUE   ; bogus; the query targets the model DB
+                                                               :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
           (is (= model-db-id (:database_id (action/select-action :id action-id))))))
       (testing "update! refuses a :database_id without its query"
-        (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                       {:type          :query
-                                                        :name          "derive db update"
-                                                        :model_id      model-id
-                                                        :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
+        (let [action-id (action/create-action! (lib/normalize ::actions.schema/action.for-insert
+                                                              {:type          :query
+                                                               :name          "derive db update"
+                                                               :model_id      model-id
+                                                               :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))
               existing  (action/select-action :id action-id)]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"follows its query"
-                                (action/update! {:id action-id, :database_id Integer/MAX_VALUE} existing)))
+                                (action/update-action! {:id action-id, :database_id Integer/MAX_VALUE} existing)))
           (is (= model-db-id (:database_id (action/select-action :id action-id)))))))))
 
 (deftest query-action-query-must-be-native-test
@@ -283,10 +284,10 @@
       (let [query-id    (insert-bare-action! :query)
             implicit-id (insert-bare-action! :implicit)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"have to match its type"
-                              (t2/insert! :model/ImplicitAction {:action_id query-id, :kind "row/create", :table_id (mt/id :venues)})))
+                              (action/create-implicit-actions! [{:action_id query-id, :kind :row/create, :table_id (mt/id :venues)}])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"have to match its type"
-                              (t2/insert! :model/QueryAction {:action_id     implicit-id
-                                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")})))
+                              (action/create-query-actions! [{:action_id     implicit-id
+                                                              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}])))
         (is (not (t2/exists? :model/ImplicitAction :action_id query-id)))
         (is (not (t2/exists? :model/QueryAction :action_id implicit-id)))))))
 
@@ -300,9 +301,9 @@
     (mt/with-temp [:model/Collection {coll-id :id} {}]
       (mt/with-model-cleanup [:model/Action]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action without a model can only go in"
-                              (t2/insert! :model/Action [{:name "Root", :type :query, :creator_id (mt/user->id :crowberto)}
-                                                         {:name "Elsewhere", :type :query, :collection_id coll-id
-                                                          :creator_id (mt/user->id :crowberto)}])))
+                              (action/create-actions! [{:name "Root", :type :query, :creator_id (mt/user->id :crowberto)}
+                                                       {:name "Elsewhere", :type :query, :collection_id coll-id
+                                                        :creator_id (mt/user->id :crowberto)}])))
         (is (not (t2/exists? :model/Action :name "Root")))))))
 
 (deftest query-action-without-model-test
@@ -311,16 +312,16 @@
       (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [insert!   (fn [collection-id]
-                            (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                           {:type          :query
-                                                            :name          "No model"
-                                                            :collection_id collection-id
-                                                            :database_id   (mt/id)
-                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})))
+                            (action/create-action! (lib/normalize ::actions.schema/action.for-insert
+                                                                  {:type          :query
+                                                                   :name          "No model"
+                                                                   :collection_id collection-id
+                                                                   :database_id   (mt/id)
+                                                                   :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})})))
                 action-id (insert! coll-id)]
             (is (=? {:model_id nil :collection_id coll-id :database_id (mt/id)}
                     (action/select-action :id action-id)))
-            (action/update! {:id action-id :name "Renamed"} (action/select-action :id action-id))
+            (action/update-action! {:id action-id :name "Renamed"} (action/select-action :id action-id))
             (is (=? {:name "Renamed" :model_id nil :collection_id coll-id}
                     (action/select-action :id action-id)))))))))
 
@@ -336,7 +337,7 @@
                                           :name          "No model"
                                           :collection_id collection-id
                                           :table_id      (mt/id :categories)}))
-              elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
+              elsewhere (action/select-action :id (action/create-action! (action-in coll-id)))]
           (mt/with-test-user :crowberto
             (is (true? (mi/can-write? (t2/hydrate elsewhere :can_write))))
             (is (true? (mi/can-create? :model/Action (action-in app-id))))
@@ -351,21 +352,21 @@
   `action-columns` merged into its Action row: an implicit one of no model inserting into the venues table, or a query
   one running SQL."
   [collection-id action-type action-name & [action-columns]]
-  (let [action-id (t2/insert-returning-pk! :model/Action (merge {:name          action-name
-                                                                 :type          action-type
-                                                                 :collection_id collection-id
-                                                                 :creator_id    (mt/user->id :crowberto)}
-                                                                action-columns))]
+  (let [action-id (:id (first (action/create-actions! [(merge {:name          action-name
+                                                               :type          action-type
+                                                               :collection_id collection-id
+                                                               :creator_id    (mt/user->id :crowberto)}
+                                                              action-columns)])))]
     (if (= :implicit action-type)
-      (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create" :table_id (mt/id :venues)})
-      (t2/insert! :model/QueryAction {:action_id     action-id
+      (action/create-implicit-actions! [{:action_id action-id :kind :row/create :table_id (mt/id :venues)}])
+      (action/create-query-actions! [{:action_id     action-id
                                       :database_id   (mt/id)
-                                      :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}))
+                                      :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}]))
     action-id))
 
 (def ^:private card-values-parameters
   "Action parameters, one taking its values from a card that doesn't exist."
-  [{:id "name" :slug "name" :type :string/= :values_source_type "card" :values_source_config {:card_id Integer/MAX_VALUE}}])
+  [{:id "name" :slug "name" :type :string/= :values_source_type :card :values_source_config {:card_id Integer/MAX_VALUE}}])
 
 (deftest action-in-a-data-apps-collection-is-plain-implicit-action-test
   (testing "an action in a collection of the data apps namespace is an implicit action of no model, neither archived nor
@@ -387,7 +388,7 @@
               (testing "moved in from elsewhere, where it is fine"
                 (let [action-id (insert-data-app-action! other-id action-type (str label " elsewhere") columns)]
                   (is (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                        (t2/update! :model/Action :id action-id {:collection_id app-id})))
+                                        (action/update-actions! [{:id action-id :collection_id app-id}])))
                   (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
 
 (deftest action-in-a-data-apps-collection-writes-to-any-table-test
@@ -397,22 +398,22 @@
                      :model/Collection {other-id :id} {:namespace "data-actions"}]
         (mt/with-model-cleanup [:model/Action]
           (let [action-id (insert-data-app-action! app-id :implicit "Add venue")]
-            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (action/update-implicit-actions! [{:action_id action-id :table_id (mt/id :categories)}])
             (is (= (mt/id :categories) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))
           (testing "and one moves in"
             (let [action-id (insert-data-app-action! other-id :implicit "Moved in")]
-              (t2/update! :model/Action :id action-id {:collection_id app-id})
+              (action/update-actions! [{:id action-id :collection_id app-id}])
               (is (= app-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
 
 (deftest implicit-action-requires-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (testing "an implicit action cannot be inserted without a model or a table"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An implicit action needs a table"
-                            (action/insert! {:type :implicit :name "No table" :kind :row/create}))))
+                            (action/create-action! {:type :implicit :name "No table" :kind :row/create}))))
     (testing "an implicit action without a model writes to the table it was made for"
       (mt/with-actions-test-data
         (mt/with-model-cleanup [:model/Action]
-          (let [action-id (action/insert! {:type :implicit :name "Table" :kind :row/create :table_id (mt/id :categories)})]
+          (let [action-id (action/create-action! {:type :implicit :name "Table" :kind :row/create :table_id (mt/id :categories)})]
             (is (=? {:model_id    nil
                      :table_id    (mt/id :categories)
                      :database_id (mt/id)
@@ -422,7 +423,7 @@
       (mt/with-actions-enabled
         (mt/with-actions [{:keys [action-id]} {:type :implicit :kind "row/create"}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action's model can't be changed"
-                                (action/update! {:id action-id :model_id nil} (action/select-action :id action-id))))
+                                (action/update-action! {:id action-id :model_id nil} (action/select-action :id action-id))))
           (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
 
 (deftest actions-of-two-models-on-one-table-test
@@ -434,8 +435,8 @@
         (mt/with-temp [:model/Card {first-model :id}  {:type :model :dataset_query query :result_metadata metadata}
                        :model/Card {second-model :id} {:type :model :dataset_query query :result_metadata metadata}]
           (mt/with-model-cleanup [:model/Action]
-            (let [first-id  (action/insert! {:type :implicit :name "First" :kind :row/update :model_id first-model})
-                  second-id (action/insert! {:type :implicit :name "Second" :kind :row/update :model_id second-model})]
+            (let [first-id  (action/create-action! {:type :implicit :name "First" :kind :row/update :model_id first-model})
+                  second-id (action/create-action! {:type :implicit :name "Second" :kind :row/update :model_id second-model})]
               (is (= {first-id ["id" "name"], second-id ["id" "name"]}
                      (into {} (map (juxt :id #(map :id (:parameters %))))
                            (action/select-actions-for-ids [first-id second-id])))))))))))
@@ -451,10 +452,10 @@
                  :model/Table    {stub-id :id}      {:db_id db-id :name "STUB"}]
     (mt/with-model-cleanup [:model/Action]
       (testing "a column name that clashes only with a sensitive column leaves the action its fields"
-        (let [action-id (action/insert! {:type :implicit :name "Clash" :kind :row/update :table_id clash-id})]
+        (let [action-id (action/create-action! {:type :implicit :name "Clash" :kind :row/update :table_id clash-id})]
           (is (= ["id" "name"] (map :id (:parameters (action/select-action :id action-id)))))))
       (testing "the hooks take a table without fields, as a load writes the action before it, or without, the table's fields"
-        (is (some? (action/insert! {:type :implicit :name "Stub" :kind :row/create :table_id stub-id})))))))
+        (is (some? (action/create-action! {:type :implicit :name "Stub" :kind :row/create :table_id stub-id})))))))
 
 (deftest deleting-a-table-deletes-its-actions-test
   (testing "deleting a table, or its database, deletes the implicit actions without a model that write to it"
@@ -466,8 +467,8 @@
                    :model/Field    _              {:table_id other-id :name "id" :base_type :type/Integer
                                                    :semantic_type :type/PK}]
       (mt/with-model-cleanup [:model/Action]
-        (let [of-table    (action/insert! {:type :implicit :name "T" :kind :row/create :table_id table-id})
-              of-database (action/insert! {:type :implicit :name "U" :kind :row/create :table_id other-id})]
+        (let [of-table    (action/create-action! {:type :implicit :name "T" :kind :row/create :table_id table-id})
+              of-database (action/create-action! {:type :implicit :name "U" :kind :row/create :table_id other-id})]
           (t2/delete! :model/Table :id table-id)
           (is (not (t2/exists? :model/Action :id of-table)))
           (is (t2/exists? :model/Action :id of-database))
@@ -481,8 +482,8 @@
         (mt/with-temp-vals-in-db :model/Field (mt/id :venues :longitude) {:visibility_type "details-only"}
           (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:visibility_type "retired"}
             (mt/with-model-cleanup [:model/Action]
-              (let [action-id (action/insert! {:type :implicit :name "Venue" :kind :row/update
-                                               :table_id (mt/id :venues)})]
+              (let [action-id (action/create-action! {:type :implicit :name "Venue" :kind :row/update
+                                                      :table_id (mt/id :venues)})]
                 (is (= #{"id" "name" "latitude" "longitude"}
                        (set (map :id (:parameters (action/select-action :id action-id))))))))))))))
 
@@ -503,18 +504,18 @@
           (is (= coll-id (t2/select-one-fn :collection_id :model/Action :id action-id))))
         (testing "and can't be moved out of it"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (t2/update! :model/Action :id action-id {:collection_id other-id})))
+                                (action/update-actions! [{:id action-id :collection_id other-id}])))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (t2/update! :model/Action :id action-id {:collection_id nil}))))
+                                (action/update-actions! [{:id action-id :collection_id nil}]))))
         (testing "nor be inserted in another collection"
           (mt/with-model-cleanup [:model/Action]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                  (action/insert! {:type          :query
-                                                   :name          "Elsewhere"
-                                                   :model_id      model-id
-                                                   :collection_id other-id
-                                                   :database_id   (mt/id)
-                                                   :dataset_query (lib/native-query (mt/metadata-provider) "select 1")})))))
+                                  (action/create-action! {:type          :query
+                                                          :name          "Elsewhere"
+                                                          :model_id      model-id
+                                                          :collection_id other-id
+                                                          :database_id   (mt/id)
+                                                          :dataset_query (lib/native-query (mt/metadata-provider) "select 1")})))))
         (testing "moving the model moves its actions"
           (t2/update! :model/Card :id model-id {:collection_id other-id})
           (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
@@ -525,7 +526,7 @@
                       {:keys [action-id]} {:type :implicit :kind "row/create"}]
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id)))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action of a model writes to the model's table"
-                            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})))
+                            (action/update-implicit-actions! [{:action_id action-id :table_id (mt/id :categories)}])))
       (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))
 
 (deftest model-update-moves-action-to-another-model-test
@@ -535,7 +536,7 @@
                                                        :collection_id other-coll}]
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
-        (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll})
+        (action/update-actions! [{:id action-id :model_id other-id :collection_id other-coll}])
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 
@@ -545,7 +546,7 @@
       (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model can't be changed"
-                              (action/update! {:id action-id :model_id other-id} (action/select-action :id action-id))))
+                              (action/update-action! {:id action-id :model_id other-id} (action/select-action :id action-id))))
         (is (= model-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))
 
 (deftest switching-to-implicit-checks-the-model-test
@@ -554,20 +555,20 @@
       (testing "a query action cannot become implicit when its card is a question"
         (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query (mt/mbql-query categories)}]
           (mt/with-model-cleanup [:model/Action]
-            (let [action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
-                                                           {:type          :query
-                                                            :name          "On a question"
-                                                            :model_id      question-id
-                                                            :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
+            (let [action-id (action/create-action! (lib/normalize ::actions.schema/action.for-insert
+                                                                  {:type          :query
+                                                                   :name          "On a question"
+                                                                   :model_id      question-id
+                                                                   :dataset_query (mt/native-query {:query "update categories set name = 'x' where id = 1"})}))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
-                                    (action/update! {:id action-id :type :implicit :kind :row/update}
-                                                    (action/select-action :id action-id))))))))
+                                    (action/update-action! {:id action-id :type :implicit :kind :row/update}
+                                                           (action/select-action :id action-id))))))))
       (testing "a query action cannot become implicit when its model has clauses"
         (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
                           {:keys [action-id]} {:type :query}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                (action/update! {:id action-id :type :implicit :kind :row/update}
-                                                (action/select-action :id action-id)))))))))
+                                (action/update-action! {:id action-id :type :implicit :kind :row/update}
+                                                       (action/select-action :id action-id)))))))))
 
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -685,11 +686,11 @@
                                    :kind     :row/create
                                    :name     "create foo"
                                    :model_id model-id}
-              action-id           (action/insert! action-data)
+              action-id           (action/create-action! action-data)
               select-action       #(action/select-action :id action-id)
               action-after-insert (select-action)]
           (is (= [:boolean] (map :type (:parameters action-after-insert))))
-          (action/update! (assoc (select-action) :name "create foo2") action-after-insert)
+          (action/update-action! (assoc (select-action) :name "create foo2") action-after-insert)
           (is (= (:parameters action-after-insert) (:parameters (select-action)))))))))
 
 (deftest implicit-action-parameters-schema-change-test
@@ -706,7 +707,7 @@
                            :kind     :row/create
                            :name     "create foo"
                            :model_id model-id}
-              action-id   (action/insert! action-data)
+              action-id   (action/create-action! action-data)
               exec!       #(do (jdbc/execute! one-off-dbs/*conn* [%])
                                (sync/sync-database! (mt/id)))]
           (testing "if a column type is varied the parameter types are updated on select-action"
@@ -714,7 +715,7 @@
             (is (= [["name" :number]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
             (testing "if the column type is varied after an update to the action, it is reflected in the parameters"
               (let [action (action/select-action action-id)]
-                (action/update! (assoc action :name "create foo2") action)
+                (action/update-action! (assoc action :name "create foo2") action)
                 (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
                 (sync/sync-database! (mt/id))
                 (is (= [["name" :text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
@@ -725,7 +726,7 @@
             (let [action     (action/select-action action-id)
                   hide-state #(-> % :visualization_settings :fields (update-vals :hidden))]
               (is (= {"name" false} (hide-state action)))
-              (action/update! (assoc-in action [:visualization_settings :fields "name" :hidden] true) action)
+              (action/update-action! (assoc-in action [:visualization_settings :fields "name" :hidden] true) action)
               (is (= {"name" true}  (hide-state (action/select-action action-id))))
               (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
               (is (= {"name" true}  (hide-state (action/select-action action-id)))))))))))
@@ -742,8 +743,8 @@
 (deftest load-table-action-without-its-table-test
   (testing "table action doesn't depend on its table for serdes, and loading it makes stub of table that isn't there"
     (mt/with-model-cleanup [:model/Action :model/Table]
-      (let [action-id (action/insert! {:type :implicit :name "On categories" :kind :row/create
-                                       :table_id (mt/id :categories) :creator_id (mt/user->id :crowberto)})
+      (let [action-id (action/create-action! {:type :implicit :name "On categories" :kind :row/create
+                                              :table_id (mt/id :categories) :creator_id (mt/user->id :crowberto)})
             entity-id (u/generate-nano-id)
             exported  (-> (u/rfirst (serialization/export :model/Action (t2/select :model/Action :id action-id)))
                           (assoc :entity_id entity-id)
@@ -776,3 +777,32 @@
                                  [{:type  action-type
                                    :query [{:dataset_query {:source-card card-eid}}]}]))
                          [:model/Card card-eid])))))))
+
+(deftest writes-run-fixed-statements-test
+  (letfn [(creating [n]
+            (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+              (mt/with-model-cleanup [:model/Action]
+                (let [table-id (mt/id :venues)
+                      user-id  (mt/user->id :crowberto)]
+                  (search.tu/with-index-disabled
+                    (t2/with-call-count [call-count]
+                      (let [actions (action/create-actions! (for [i (range n)]
+                                                              {:name (str "created " i) :type :implicit
+                                                               :collection_id coll-id :creator_id user-id}))]
+                        (action/create-implicit-actions! (for [{id :id} actions]
+                                                           {:action_id id :kind :row/create :table_id table-id})))
+                      (call-count)))))))
+          (updating [n]
+            (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+              (mt/with-model-cleanup [:model/Action]
+                (let [actions (action/create-actions! (for [i (range n)]
+                                                        {:name (str "updated " i) :type :implicit
+                                                         :collection_id coll-id :creator_id (mt/user->id :crowberto)}))]
+                  (search.tu/with-index-disabled
+                    (t2/with-call-count [call-count]
+                      (action/update-actions! (mapv (fn [{id :id}] {:id id :description "described"}) actions))
+                      (call-count)))))))]
+    (testing "creating actions runs one statement count whatever their number"
+      (is (= (creating 2) (creating 6))))
+    (testing "updating actions runs one statement count whatever their number"
+      (is (= (updating 2) (updating 6))))))

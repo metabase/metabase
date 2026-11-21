@@ -7,6 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.segments.db :as segments.db]
+   [metabase.segments.models.segment :as segment]
    [metabase.segments.schema :as segments.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -20,9 +21,11 @@
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
-    (let [segment (api/check-500
-                   (segments.db/insert-segment! api/*current-user-id* name description definition))]
-      (t2/hydrate segment :creator))))
+    (-> (segment/create-segment! {:creator_id  api/*current-user-id*
+                                  :name        name
+                                  :description description
+                                  :definition  definition})
+        (t2/hydrate :creator))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -76,8 +79,8 @@
     (api/update-check existing new-body)
     (when changes
       (events/with-event-context {:revision-message revision_message}
-        (segments.db/update-segment! id (cond-> changes
-                                          (:definition changes) (update :definition lib-be/normalize-query)))))
+        (segment/update-segment! id (cond-> changes
+                                      (:definition changes) (update :definition lib-be/normalize-query)))))
     (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

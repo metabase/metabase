@@ -38,6 +38,19 @@
    [:default       {:optional true} [:maybe :boolean]]
    [:entity_id     {:optional true} [:maybe :string]]])
 
+(mr/def ::timeline.create
+  "What a caller gives to create a Timeline."
+  [:map {:closed true}
+   [:name              ::name]
+   [:description       {:optional true} [:maybe :string]]
+   [:icon              {:optional true} ::icon]
+   [:collection_id     {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived          {:optional true} [:maybe :boolean]]
+   [:archived_directly {:optional true} [:maybe :boolean]]
+   [:creator_id        {:optional true} [:maybe ::lib.schema.id/user]]
+   [:default           {:optional true} [:maybe :boolean]]
+   [:entity_id         {:optional true} [:maybe :string]]])
+
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
   [:merge
@@ -59,6 +72,20 @@
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:entity_id    {:optional true} [:maybe :string]]])
+
+(mr/def ::timeline-event.create
+  "What a caller gives to create a TimelineEvent."
+  [:map {:closed true}
+   [:timeline_id  ms/PositiveInt]
+   [:name         ::name]
+   [:description  {:optional true} [:maybe :string]]
+   [:timestamp    ms/TemporalInstant]
+   [:time_matters {:optional true} ::time-matters]
+   [:timezone     {:optional true} [:maybe :string]]
+   [:icon         {:optional true} ::icon]
+   [:archived     {:optional true} [:maybe :boolean]]
+   [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:entity_id    {:optional true} [:maybe :string]]])
 
 (mr/def ::external-timeline

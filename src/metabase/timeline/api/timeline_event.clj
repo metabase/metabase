@@ -54,7 +54,7 @@
                                        :collection_id (:collection_id timeline)}
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
-      (u/prog1 (timeline.db/insert-timeline-event! tl-event)))))
+      (timeline-event/create-timeline-event! tl-event))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -96,7 +96,7 @@
       (throw (ex-info (tru "Invalid Timeline event timezone.") {:status-code 400})))
     (api/update-check existing changes)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (timeline.db/update-timeline-event! id changes)
+    (timeline-event/update-timeline-event! id changes)
     (u/prog1 (timeline.db/timeline-event id))))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
@@ -104,5 +104,5 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/TimelineEvent id)
-  (timeline.db/delete-timeline-event! id)
+  (timeline-event/delete-timeline-event! id)
   api/generic-204-no-content)

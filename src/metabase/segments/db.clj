@@ -2,7 +2,6 @@
   "Application database queries for the segments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
-   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -25,17 +24,10 @@
                       :from   [[(t2/table-name :model/TableUserSettings) :settings]]
                       :where  (remote-sync/synced-filter-clause :model/TableUserSettings :settings opts)}]])
 
-(mu/defn insert-segment!
-  "Insert a Segment and return the inserted instance."
-  [creator-id :- ::lib.schema.id/user
-   segment-name :- :string
-   description :- [:maybe :string]
-   definition :- ::segments.schema/segment.definition]
-  (t2/insert-returning-instance! :model/Segment
-                                 :creator_id  creator-id
-                                 :name        segment-name
-                                 :description description
-                                 :definition  definition))
+(mu/defn insert-segments!
+  "Insert the Segment `rows` and return the inserted instances."
+  [rows :- [:sequential ::segments.schema/segment.create]]
+  (t2/insert-returning-instances! :model/Segment rows))
 
 (mu/defn segment
   "The Segment with `id`, or nil."
@@ -47,11 +39,21 @@
   []
   (t2/select :model/Segment :archived false {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn update-segment!
-  "Apply `changes` to the Segment with `id`."
-  [id :- ::lib.schema.id/segment
-   changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
-  (t2/update! :model/Segment :id id changes))
+(mu/defn segments-by-id
+  "A map of id to Segment for the Segments with `ids`."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/select-pk->fn identity :model/Segment :id [:in ids]))
+
+(mu/defn update-segments!
+  "Apply `changes` to the Segments with `ids`, returning the number updated."
+  [ids     :- [:sequential ::lib.schema.id/segment]
+   changes :- ::segments.schema/segment.update]
+  (t2/update! :model/Segment :id [:in ids] changes))
+
+(mu/defn delete-segments!
+  "Delete the Segments with `ids`, returning the number deleted."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (t2/delete! :model/Segment :id [:in ids]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

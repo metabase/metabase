@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.measures.db :as measures.db]
+   [metabase.measures.models.measure :as measure]
    [metabase.measures.schema :as measures.schema]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
@@ -38,9 +39,11 @@
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
-    (let [measure (api/check-500
-                   (measures.db/insert-measure! api/*current-user-id* name description definition))]
-      (t2/hydrate measure :creator))))
+    (-> (measure/create-measure! {:creator_id  api/*current-user-id*
+                                  :name        name
+                                  :description description
+                                  :definition  definition})
+        (t2/hydrate :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
   "Create a new `Measure`. The Measure's table is derived from its `definition`."
@@ -101,7 +104,7 @@
     (api/update-check existing new-body)
     (when changes
       (events/with-event-context {:revision-message revision_message}
-        (measures.db/update-measure! id changes)))
+        (measure/update-measure! id changes)))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

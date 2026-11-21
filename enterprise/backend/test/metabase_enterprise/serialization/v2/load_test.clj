@@ -2081,7 +2081,7 @@
                                      :dataset_query {:database (:id db)
                                                      :type   :native
                                                      :native {:query "select 1"}})
-                _action-id (action/insert! (lib/normalize ::actions.schema/action.for-insert
+                _action-id (action/create-action! (lib/normalize ::actions.schema/action.for-insert
                                                           {:entity_id     eid
                                                            :name          "the action"
                                                            :model_id      (:id card)
@@ -2231,7 +2231,7 @@
                 _child     (ts/create! :model/Collection
                                        :name "Child Collection"
                                        :location (format "/%d/" (:id parent)))
-                _action-id (action/insert! {:entity_id     eid
+                _action-id (action/create-action! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query

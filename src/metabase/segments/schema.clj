@@ -62,6 +62,26 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:entity_id               {:optional true} [:maybe :string]]])
 
+(mr/def ::segment.create
+  "What a caller gives to create a Segment; its table follows its definition."
+  [:map {:closed true}
+   [:name                    ::segment.name]
+   [:definition              ::segment.definition]
+   [:creator_id              {:optional true} [:maybe ::lib.schema.id/user]]
+   [:description             {:optional true} [:maybe :string]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:entity_id               {:optional true} [:maybe :string]]])
+
+(mr/def ::segment.row
+  "A Segment id and the columns to change, as an update of several Segments takes it."
+  [:merge
+   ::segment.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/segment]]])
+
 (mr/def ::external-segment
   "A Segment as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}
