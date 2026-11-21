@@ -22,7 +22,7 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -261,7 +261,7 @@
         (api/read-check :model/Collection collection-id)))
     (check-writable! (cond-> {:kind :collection} collection-id (assoc :id collection-id))
                      #(api/create-check :model/Card {:collection_id collection-id}))
-    (let [card (queries/create-card!
+    (let [card (queries.card/create-card!
                 {:name                   name
                  :description            description
                  :dataset_query          dataset_query
@@ -284,7 +284,7 @@
     (check-writable! {:kind :dashboard :id dashboard-id}
                      #(do (api/write-check dashboard)
                           (api/create-check :model/Card {:collection_id (:collection_id dashboard)})))
-    (let [card (queries/create-card!
+    (let [card (queries.card/create-card!
                 {:name                   name
                  :description            description
                  :dataset_query          dataset_query
@@ -307,7 +307,7 @@
     (check-writable! {:kind :document :id document-id}
                      #(do (api/write-check document)
                           (api/create-check :model/Card {:collection_id (:collection_id document)})))
-    (let [card (queries/create-card!
+    (let [card (queries.card/create-card!
                 {:name                   name
                  :description            description
                  :dataset_query          dataset_query

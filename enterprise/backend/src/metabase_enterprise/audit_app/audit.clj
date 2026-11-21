@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions :as permissions]
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.card :as queries.card]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -386,12 +387,13 @@
   [orphan-table-id survivor-table-id]
   (let [field-id-remap (orphan->survivor-field-ids orphan-table-id survivor-table-id)]
     (doseq [card (audit-app.db/cards-of-table orphan-table-id)]
-      (audit-app.db/update-card! (:id card)
-                                 (cond-> {:dataset_query (-> (:dataset_query card)
-                                                             (lib/replace-table-ids {orphan-table-id survivor-table-id})
-                                                             (lib/replace-field-ids field-id-remap))}
-                                   (:result_metadata card)
-                                   (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))))))
+      (queries.card/update-cards!
+       [(cond-> {:id            (:id card)
+                 :dataset_query (-> (:dataset_query card)
+                                    (lib/replace-table-ids {orphan-table-id survivor-table-id})
+                                    (lib/replace-field-ids field-id-remap))}
+          (:result_metadata card)
+          (assoc :result_metadata (remap-result-metadata field-id-remap (:result_metadata card))))]))))
 
 (defn- reconcile-audit-db-duplicates!
   "Collapse duplicate `metabase_table` rows for the same audit view into a single active row at the host-canonical

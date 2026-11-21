@@ -13,6 +13,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -235,9 +236,9 @@
   (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
 
 (mu/defn insert-card!
-  "Insert the Card `row` and return the inserted instance."
+  "Create the Card `row` through the Card model and return the new instance."
   [row :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card row))
+  (first (queries.card/create-cards! [row])))
 
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"

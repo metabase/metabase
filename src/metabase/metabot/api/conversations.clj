@@ -18,7 +18,7 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -224,7 +224,7 @@
   ;; The stamp is a raw table update — it should not run the Card model's heavy
   ;; before-update pipeline (query normalization, metadata population).
   (let [created (t2/with-transaction [_conn]
-                  (u/prog1 (queries/create-card!
+                  (u/prog1 (queries.card/create-card!
                             (-> (select-keys card [:name :description :dataset_query :display
                                                    :visualization_settings :collection_id
                                                    :dashboard_id :dashboard_tab_id])

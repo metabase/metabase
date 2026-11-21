@@ -8,7 +8,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.dependencies.core :as dependencies]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -840,14 +839,6 @@
   (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
                          (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
           (select-keys [:updated_at :result_metadata])))
-
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` to `result-metadata` through the Card model, without touching
-  `updated_at`."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 

@@ -16,6 +16,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -78,7 +79,7 @@
     ;; `POST /api/card/:id/copy`, while any change to it is still checked.
     (queries/with-copy-source-card card
       (api/create-check :model/Card new-card))
-    (queries/create-card! new-card @api/*current-user*)))
+    (queries.card/create-card! new-card @api/*current-user*)))
 
 (defn- fetch-dashboard
   [id-or-eid]

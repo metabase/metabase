@@ -36,6 +36,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.search.spec :as search.spec]
@@ -544,6 +545,18 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :model/Card
+  "Creates a temporary Card as `create-cards!` does, without checking its attributes against the schema of a write, and
+  deletes it with `delete-cards!`."
+  [model explicit-attributes f]
+  (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
+        temp-card  (first (#'card/create-cards* [attributes]))]
+    (try
+      (testing "\nwith temporary :model/Card\n"
+        (f temp-card))
+      (finally
+        (card/delete-cards! [(:id temp-card)])))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Tenant
   "Gives a temporary Tenant the Collection of its own that `create-tenant!` makes, unless the attributes name one."

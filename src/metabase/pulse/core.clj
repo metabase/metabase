@@ -21,6 +21,6 @@
   retrieve-pulse
   update-pulse!]
  [metabase.pulse.update-alerts
-  delete-alerts-if-card-changed!
+  card-change-invalidates-alerts?
   alerts-of-card-being-changed
   notify-alerts-deleted!])

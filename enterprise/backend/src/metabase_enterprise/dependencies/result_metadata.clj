@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -122,7 +123,7 @@
     (models.result-metadata-status/mark-dependents-result-metadata-statuses-stale! :card #{card-id})
     (models.analysis-finding-status/mark-dependents-analysis-finding-statuses-stale! :card #{card-id})
     (if (= state (dependencies.db/card-state card-id true))
-      (dependencies.db/set-card-result-metadata! card-id metadata)
+      (queries.card/update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}])
       (models.result-metadata-status/mark-result-metadata-statuses-stale! {:card #{card-id}}))))
 
 (mu/defn- rederive-card!

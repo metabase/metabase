@@ -26,6 +26,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -478,7 +479,7 @@
         {:keys [copy discard reference]} (cards-to-copy deep-copy? (:dashcards old-dashboard))]
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
-                                  (queries/create-card!
+                                  (queries.card/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))

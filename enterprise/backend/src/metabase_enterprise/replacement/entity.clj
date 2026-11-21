@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase.dependencies.core :as dependencies]
+   [metabase.queries.models.card :as queries.card]
    [metabase.replacement.spec :as replacement.spec]
    [metabase.util.malli :as mu]))
 
@@ -56,4 +57,6 @@
   "Apply `writes`, each an update of the row of a model with an id, in order."
   [writes :- replacement.spec/Writes]
   (doseq [[model id changes] writes]
-    (replacement.db/update-row! model id changes)))
+    (if (= model :model/Card)
+      (queries.card/update-cards! [(assoc changes :id id)])
+      (replacement.db/update-row! model id changes))))

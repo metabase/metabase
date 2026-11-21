@@ -21,6 +21,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.sync.core :as sync]
    [metabase.upload.based-on-upload :as based-on-upload]
    [metabase.upload.db :as upload.db]
@@ -632,7 +633,7 @@
                                                           :schema       schema-name
                                                           :table-name   table-name
                                                           :display-name display-name})
-            card              (queries/create-card!
+            card              (queries.card/create-card!
                                {:collection_id          collection-id
                                 :type                   :model
                                 :database_id            (:id database)
@@ -756,7 +757,7 @@
             ;; the initial upload.
             fix-name #(update % :display_name warehouse-schema.humanization/name->human-readable-name)
             metadata (queries/refresh-metadata card {:update-fn fix-name})]
-        (upload.db/set-card-result-metadata! id metadata)))))
+        (queries.card/update-cards! [{:id id :result_metadata metadata}])))))
 
 (defn- translate-type-keywords [m]
   (match/replace-all m

@@ -8,6 +8,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.queries.models.card :as queries.card]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -130,7 +131,7 @@
             (is (t2/exists? :model/Notification :id (:id active-notification)))
             (is (t2/exists? :model/Notification :id (:id inactive-notification)))
             (is (= 2 (t2/count :model/NotificationCard :card_id card-id))))
-          (t2/delete! :model/Card :id card-id)
+          (queries.card/delete-cards! [card-id])
           (testing "both notifications should be removed when the card is deleted"
             (is (not (t2/exists? :model/Notification :id (:id active-notification))))
             (is (not (t2/exists? :model/Notification :id (:id inactive-notification)))))

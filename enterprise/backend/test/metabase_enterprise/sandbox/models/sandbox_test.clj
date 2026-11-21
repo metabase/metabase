@@ -20,6 +20,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.revisions.test-util :as revisions.tu]
    [metabase.test :as mt]
@@ -176,7 +177,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (t2/update! :model/Card :id (:id card) {:result_metadata metadata})
+                           (queries.card/update-cards! [{:id (:id card) :result_metadata metadata}])
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?

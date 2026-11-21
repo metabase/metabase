@@ -323,6 +323,12 @@
                                          (revisions.sql/newest-revision-clause :r model-name :r.model_id)])))
                               [["Card" card-ids] ["Dashboard" dashboard-ids]])}))
 
+(mu/defn delete-revisions-for-entities!
+  "Delete the Revisions of the rows of the model named `model-name` with `model-ids`, returning the number deleted."
+  [model-name :- :string
+   model-ids  :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/Revision :model model-name :model_id [:in model-ids]))
+
 (mu/defn delete-revisions-for-entity!
   "Delete the Revisions of the row of the model named `model-name` (e.g. \"Card\") with `model-id`, returning the number
   deleted."

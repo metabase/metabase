@@ -427,7 +427,9 @@
 (mu/defn delete-cards-in-collections!
   "Delete the Cards in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Card :collection_id [:in collection-ids]))
+  (let [card-ids (vec (t2/select-pks-vec :model/Card :collection_id [:in collection-ids]))]
+    ((requiring-resolve 'metabase.queries.models.card/delete-cards!) card-ids)
+    (count card-ids)))
 
 (mu/defn delete-dashboards-in-collections!
   "Delete the Dashboards in the Collections with `collection-ids`, returning the number deleted."

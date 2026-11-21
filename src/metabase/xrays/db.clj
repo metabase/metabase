@@ -4,7 +4,6 @@
   (:require
    [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -171,15 +170,10 @@
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select :model/Card :table_id table-id :type :metric :archived false))
 
-(mu/defn insert-card!
-  "Insert the Card `card` and return the inserted instance."
-  [card :- ::queries.schema/card.update]
-  (t2/insert-returning-instance! :model/Card card))
-
-(mu/defn delete-cards-in-collection!
-  "Delete the Cards in the Collection with `collection-id`, returning the number deleted."
+(mu/defn card-ids-in-collection
+  "The IDs of the Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Card :collection_id collection-id))
+  (vec (t2/select-pks-vec :model/Card :collection_id collection-id)))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."

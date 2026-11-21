@@ -117,6 +117,57 @@
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
 
+(defn- upsertable-parameter?
+  "Whether `parameter` takes its values from a Card."
+  [{:keys [values_source_type values_source_config id]}]
+  (boolean (and values_source_type id (:card_id values_source_config) (= values_source_type :card))))
+
+(mu/defn sync-parameter-cards!
+  "From the parameters lists of several objects of `object-type`, `objects`, each `[object-id parameters]` of a
+  Dashboard or Card, create, update, or delete the ParameterCards of each of them, in a fixed number of statements."
+  [object-type :- ::parameterized-object-type
+   objects     :- [:sequential [:tuple pos-int? [:maybe [:sequential ::parameters.schema/parameter]]]]]
+  (let [wanted (into {}
+                     (for [[object-id parameters] objects
+                           {:keys [id values_source_config] :as parameter} parameters
+                           :when (upsertable-parameter? parameter)]
+                       [[object-id id] (:card_id values_source_config)]))
+        stored (into {}
+                     (map (juxt (juxt :parameterized_object_id :parameter_id) identity))
+                     (queries.db/parameter-cards-for-objects object-type (mapv first objects)))
+        stale  (into [] (comp (remove #(contains? wanted (key %))) (map (comp :id val))) stored)
+        new    (into []
+                     (keep (fn [[[object-id parameter-id :as k] card-id]]
+                             (when-not (contains? stored k)
+                               {:parameterized_object_id   object-id
+                                :parameterized_object_type object-type
+                                :parameter_id              parameter-id
+                                :card_id                   card-id})))
+                     wanted)
+        moved  (group-by first
+                         (keep (fn [[k card-id]]
+                                 (when-let [row (get stored k)]
+                                   (when (not= card-id (:card_id row))
+                                     [card-id (:id row)])))
+                               wanted))]
+    (when (seq new)
+      (queries.db/insert-parameter-cards! new))
+    (doseq [[card-id pairs] moved]
+      (queries.db/set-parameter-cards-card-id! (mapv second pairs) card-id))
+    (when (seq stale)
+      (queries.db/delete-parameter-cards-by-id! stale))))
+
+(mu/defn delete-parameter-cards-for-objects!
+  "Delete the ParameterCards of the Cards or Dashboards of `object-type` with `object-ids`, and those drawing values
+  from the Cards with `card-ids`."
+  [object-type :- ::parameterized-object-type
+   object-ids  :- [:sequential pos-int?]
+   card-ids    :- [:sequential pos-int?]]
+  (when (seq object-ids)
+    (queries.db/delete-parameter-cards-for-objects! object-type object-ids))
+  (when (seq card-ids)
+    (queries.db/delete-parameter-cards-for-cards! card-ids)))
+
 (mu/defn delete-parameter-cards-for-card!
   "Delete the ParameterCards that draw their values from the Card with `card-id`."
   [card-id :- pos-int?]

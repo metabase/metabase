@@ -32,7 +32,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.util :as u]
    [metabase.util.quoting :as quoting]
    [toucan2.core :as t2]))
@@ -640,7 +640,7 @@
                             (reusable-card chart-id dashboard-id dataset_query display))]
       (cond-> {:chart-id chart-id, :card-id (:id reused)}
         (not= name (:name reused)) (assoc :kept-name (:name reused)))
-      (let [card (queries/create-card! {:name                   name
+      (let [card (queries.card/create-card! {:name                   name
                                         :dataset_query          dataset_query
                                         :display                display
                                         :visualization_settings {}
