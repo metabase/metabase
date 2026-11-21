@@ -6,6 +6,8 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
   setupDependencyGraphEndpoint,
+  setupSdkReact18HostsEndpoint,
+  setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -174,6 +176,12 @@ function setup({
   setupDatabasesEndpoints(databases);
   setupCardDataset();
   setupDependencyGraphEndpoint({ nodes: [], edges: [] });
+  setupSdkReact18HostsEndpoint([]);
+  setupUserKeyValueEndpoints({
+    namespace: "user_acknowledgement",
+    key: "sdk-react-18-notice",
+    value: false,
+  });
   fetchMock.get("path:/api/setting/engines", {});
   fetchMock.get(`path:/api/database/${MISSING_ID}`, 404);
   fetchMock.get(`path:/api/database/${MISSING_ID}/schemas`, 404);
