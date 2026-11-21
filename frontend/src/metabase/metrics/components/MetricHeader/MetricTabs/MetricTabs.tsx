@@ -13,7 +13,7 @@ import {
 } from "metabase/current-user";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import * as Lib from "metabase-lib";
 import type { Card } from "metabase-types/api";
@@ -75,6 +75,13 @@ function getTabs(
     tabs.push({
       label: t`Dimensions`,
       to: urls.dimensions(card.id),
+    });
+  }
+
+  if (PLUGIN_DATA_TESTING.isEnabled && urls.tests != null) {
+    tabs.push({
+      label: t`Tests`,
+      to: urls.tests(card.id),
     });
   }
 

@@ -9,6 +9,7 @@ export * from "./content-diagnostics";
 export * from "./dashboards";
 export * from "./data-apps";
 export * from "./data-studio";
+export * from "./data-testing";
 export * from "./dependencies";
 export * from "./documents";
 export * from "./embedding-hub";

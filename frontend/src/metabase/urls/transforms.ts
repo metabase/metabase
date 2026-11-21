@@ -3,7 +3,6 @@ import _ from "underscore";
 import type {
   CardId,
   CollectionId,
-  DataTestRunStatus,
   DatabaseId,
   SortDirection,
   TableId,
@@ -19,6 +18,8 @@ import type {
   TransformTagId,
   TransformTestId,
 } from "metabase-types/api";
+
+import { type DataTestRunListParams, dataTestRuns } from "./data-testing";
 
 const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
 const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
@@ -93,34 +94,12 @@ export function transformTest(
   return `${TRANSFORMS_ROOT_URL}/${transformId}/tests/${testId}`;
 }
 
-export type DataTestRunListParams = {
-  page?: number;
-  statuses?: DataTestRunStatus[];
-  startTime?: string;
-  endTime?: string;
-};
-
 export function transformTestRuns(
   transformId: TransformId,
   testId: TransformTestId,
-  { page, statuses, startTime, endTime }: DataTestRunListParams = {},
+  params?: DataTestRunListParams,
 ) {
-  const searchParams = new URLSearchParams();
-  if (page != null) {
-    searchParams.set("page", String(page));
-  }
-  statuses?.forEach((status) => {
-    searchParams.append("statuses", status);
-  });
-  if (startTime != null) {
-    searchParams.set("start-time", startTime);
-  }
-  if (endTime != null) {
-    searchParams.set("end-time", endTime);
-  }
-  const queryString = searchParams.toString();
-  const baseUrl = `${transformTest(transformId, testId)}/runs`;
-  return queryString.length > 0 ? `${baseUrl}?${queryString}` : baseUrl;
+  return dataTestRuns(transformTest(transformId, testId), params);
 }
 
 export function transformDependencies(transformId: TransformId) {

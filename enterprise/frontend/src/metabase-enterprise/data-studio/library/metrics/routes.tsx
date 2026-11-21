@@ -1,4 +1,4 @@
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { PLUGIN_DATA_TESTING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Route } from "metabase/router";
 
 /**
@@ -79,6 +79,7 @@ export function getDataStudioMetricRoutes() {
         </Route>
       )}
       <Route path=":cardId/history" lazy={metricHistoryPage} />
+      {PLUGIN_DATA_TESTING.getMetricTestRoutes()}
     </Route>
   );
 }
