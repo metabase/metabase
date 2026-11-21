@@ -1486,6 +1486,50 @@
                   {:role :tool :tool_call_id "c1" :content "rows"}]
                  history)))))))
 
+(deftest history-replays-the-calls-of-a-step-before-their-results-test
+  (with-rasta-tx
+    (let [replay (fn [parts]
+                   (let [conversation-id (str (random-uuid))]
+                     (seed-turn! conversation-id "look it up" parts)
+                     (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id)))))
+          call   (fn [id] {:role :assistant :tool_calls [{:id id :name "search" :arguments (json/encode {:q id})}]})
+          result (fn [id] {:role :tool :tool_call_id id :content (str "found " id)})
+          parts  (fn [id] [{:type :tool-input :id id :function "search" :arguments {:q id}}
+                           {:type :tool-output :id id :result {:output (str "found " id)}}])]
+      (testing "the calls of one step replay before their results, as the agent loop sends them"
+        (is (= [{:role :assistant :content "on it"}
+                (call "c1") (call "c2") (result "c1") (result "c2")
+                (call "c3") (result "c3")
+                {:role :assistant :content "done"}]
+               (replay (concat [{:type :start} {:type :text :text "on it"}]
+                               (map first [(parts "c1") (parts "c2")])
+                               (map second [(parts "c1") (parts "c2")])
+                               [{:type :start}]
+                               (parts "c3")
+                               [{:type :start} {:type :text :text "done"}])))))
+      (testing "text that the model writes after a call in the same step replays before the result of that call"
+        (is (= [{:role :assistant :content "Let me look that up."}
+                (call "c1")
+                {:role :assistant :content "This may take a moment."}
+                (result "c1")]
+               (replay [{:type :start}
+                        {:type :text :text "Let me look that up."}
+                        (first (parts "c1"))
+                        {:type :text :text "This may take a moment."}
+                        (second (parts "c1"))]))))
+      (testing "a row with no step-start parts, as a row migrated from v1 is, replays each result after its call"
+        (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+               (replay (concat (parts "c1") (parts "c2"))))))
+      (testing "a v1 row, which the read path migrates, replays each result after its call"
+        (let [conversation-id (str (random-uuid))
+              v1-input        (fn [id] {:type "tool-input" :id id :function "search" :arguments {:q id}})
+              v1-output       (fn [id] {:type "tool-output" :id id :function "search" :result {:output (str "found " id)}})]
+          (t2/update! :model/MetabotMessage :id (seed-turn! conversation-id "look it up" [])
+                      {:data         [(v1-input "c1") (v1-input "c2") (v1-output "c1") (v1-output "c2")]
+                       :data_version 1})
+          (is (= [(call "c1") (result "c1") (call "c2") (result "c2")]
+                 (rest (metabot-persistence/history (metabot-persistence/live-messages conversation-id))))))))))
+
 (deftest history-tool-output-shapes-test
   (testing "bare-scalar, nil, and errored tool outputs each coerce to a string tool result"
     (with-rasta-tx
