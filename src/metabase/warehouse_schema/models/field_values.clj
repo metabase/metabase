@@ -40,6 +40,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -106,8 +107,7 @@
 
 (doto :model/FieldValues
   (derive :metabase/model)
-  (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
@@ -688,19 +688,45 @@
 
              (do
                (when existing
-                 (touch-field-values! (:id existing)))
+                 (touch-field-values! existing))
                (get-latest-full-field-values field-id)))))
         (do
-          (touch-field-values! (:id existing))
+          (touch-field-values! existing)
           existing)))))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
+(defn- deleted-event
+  "The `:event/field-values-delete` event of the delete of the FieldValues `rows`, as they were read, which the caller
+  publishes after it deletes them."
+  [rows]
+  (events/deleted :event/field-values-delete :model/FieldValues (vec rows)))
+
+(defn- delete-read-field-values!
+  "Delete the FieldValues `rows`, as they were read, with `delete!`, a function of no arguments, when there are any, and
+  publish their deletes."
+  [rows delete!]
+  (when (seq rows)
+    (t2/with-transaction [_conn]
+      (let [event (deleted-event rows)]
+        (u/prog1 (delete!)
+          (events/publish-lifecycle! [event]))))))
+
 (defn- clear-advanced-field-values-for-fields!
-  "Delete the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace."
+  "Delete the advanced FieldValues of the Fields with `field-ids`, which their full FieldValues replace, returning the
+  event of the delete, which the caller publishes."
   [field-ids]
   (when (seq field-ids)
-    (warehouse-schema.db/delete-field-values-of-types! (vec field-ids) advanced-field-values-types)))
+    (let [field-ids (vec field-ids)
+          rows      (warehouse-schema.db/field-values-of-types field-ids advanced-field-values-types)]
+      (when (seq rows)
+        (u/prog1 (deleted-event rows)
+          (warehouse-schema.db/delete-field-values-of-types! field-ids advanced-field-values-types))))))
+
+(defn- publish!
+  "Publish `events`, `[topic changes]` pairs, leaving out the nil ones."
+  [events]
+  (events/publish-lifecycle! (into [] (remove nil?) events)))
 
 (mu/defn create-field-values! :- [:sequential ::warehouse-schema.schema/field-values]
   "Insert the FieldValues `rows` and return the inserted instances, deleting first the advanced FieldValues of the
@@ -708,10 +734,11 @@
   [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
   (if (empty? rows)
     []
-    (events/with-batched-events
-      (clear-advanced-field-values-for-fields!
-       (into #{} (comp (filter #(= :full (keyword (or (:type %) :full)))) (map :field_id)) rows))
-      (vec (warehouse-schema.db/insert-field-values! rows)))))
+    (t2/with-transaction [_conn]
+      (let [cleared (clear-advanced-field-values-for-fields!
+                     (into #{} (comp (filter #(= :full (keyword (or (:type %) :full)))) (map :field_id)) rows))]
+        (u/prog1 (vec (warehouse-schema.db/insert-field-values! rows))
+          (publish! [cleared (events/created :event/field-values-create <>)]))))))
 
 (defn- without-unchanged-identity
   "`row` without the `type` and `hash_key` that `stored`, the row it updates, already holds."
@@ -720,6 +747,14 @@
     (= (some-> (:type row) keyword) (:type stored)) (dissoc :type)
     (= (:hash_key row) (:hash_key stored))         (dissoc :hash_key)))
 
+(defn- updated-event
+  "The `:event/field-values-update` event of the update of the FieldValues `previous` by `changes`, leaving it out when
+  it changes nothing."
+  [previous changes]
+  (let [change {:previous-object previous :object (events/updated-row previous changes)}]
+    (when (seq (u.events/changed-keys change))
+      change)))
+
 (mu/defn update-field-values! :- [:sequential [:map [:id ms/PositiveInt]]]
   "Apply each of `rows`, the id of a FieldValues and the columns to change, and return the rows of the FieldValues that
   exist, deleting the advanced FieldValues of the Fields whose full values change: one read, one delete and one
@@ -727,19 +762,21 @@
   [rows :- [:sequential ::warehouse-schema.schema/field-values.update-row]]
   (if (empty? rows)
     []
-    (events/with-batched-events
-      (let [stored (u/index-by :id (warehouse-schema.db/field-values-by-ids (mapv :id rows)))
-            rows   (into [] (keep #(some->> (stored (:id %)) (without-unchanged-identity %))) rows)]
-        (clear-advanced-field-values-for-fields!
-         (into #{}
-               (keep (fn [{:keys [id] :as row}]
-                       (let [{:keys [type values field_id]} (stored id)]
-                         (when (and (= :full type) (contains? row :values) (not= values (:values row)))
-                           field_id))))
-               rows))
+    (t2/with-transaction [_conn]
+      (let [stored  (u/index-by :id (warehouse-schema.db/field-values-by-ids (mapv :id rows)))
+            rows    (into [] (keep #(some->> (stored (:id %)) (without-unchanged-identity %))) rows)
+            cleared (clear-advanced-field-values-for-fields!
+                     (into #{}
+                           (keep (fn [{:keys [id] :as row}]
+                                   (let [{:keys [type values field_id]} (stored id)]
+                                     (when (and (= :full type) (contains? row :values) (not= values (:values row)))
+                                       field_id))))
+                           rows))]
         (doseq [[changes rows] (group-by #(dissoc % :id) rows)
                 :when (seq changes)]
           (warehouse-schema.db/update-field-values! (mapv :id rows) changes))
+        (publish! [cleared
+                   [:event/field-values-update (into [] (keep #(updated-event (stored (:id %)) (dissoc % :id))) rows)]])
         rows))))
 
 (mu/defn find-or-create-full-field-values! :- ::warehouse-schema.schema/field-values
@@ -748,14 +785,19 @@
   [field-id        :- ::lib.schema.id/field
    has-more-values :- :boolean
    values          :- [:maybe ms/FieldValues]]
-  (events/with-batched-events
-    (warehouse-schema.db/find-or-insert-full-field-values!
-     field-id
-     (fn []
-       (clear-advanced-field-values-for-fields! [field-id])
-       {:has_more_values       has-more-values
-        :values                values
-        :human_readable_values nil}))))
+  (t2/with-transaction [_conn]
+    (let [cleared (volatile! nil)
+          created (volatile! false)]
+      (u/prog1 (warehouse-schema.db/find-or-insert-full-field-values!
+                field-id
+                (fn []
+                  (vreset! cleared (clear-advanced-field-values-for-fields! [field-id]))
+                  (vreset! created true)
+                  {:has_more_values       has-more-values
+                   :values                values
+                   :human_readable_values nil}))
+        (when @created
+          (publish! [@cleared (events/created :event/field-values-create [<>])]))))))
 
 (mu/defn update-or-create-full-field-values! :- :int
   "Set the values and human-readable values of the full FieldValues of the Field with `field-id`, creating it when it
@@ -763,14 +805,22 @@
   [field-id              :- ::lib.schema.id/field
    values                :- [:maybe ms/FieldValues]
    human-readable-values :- [:maybe ms/FieldValues]]
-  (events/with-batched-events
-    (warehouse-schema.db/update-or-insert-full-field-values!
-     field-id
-     (fn [existing]
-       (when (or (nil? existing) (not= (:values existing) values))
-         (clear-advanced-field-values-for-fields! [field-id]))
-       {:values                values
-        :human_readable_values human-readable-values}))))
+  (t2/with-transaction [_conn]
+    (let [cleared  (volatile! nil)
+          previous (volatile! nil)
+          changes  {:values                values
+                    :human_readable_values human-readable-values}]
+      (u/prog1 (warehouse-schema.db/update-or-insert-full-field-values!
+                field-id
+                (fn [existing]
+                  (vreset! previous existing)
+                  (when (or (nil? existing) (not= (:values existing) values))
+                    (vreset! cleared (clear-advanced-field-values-for-fields! [field-id])))
+                  changes))
+        (publish! [@cleared
+                   (if-let [existing @previous]
+                     [:event/field-values-update (into [] (keep identity) [(updated-event existing changes)])]
+                     (events/created :event/field-values-create (warehouse-schema.db/field-values-by-ids [<>])))])))))
 
 (mu/defn find-or-create-advanced-field-values! :- [:maybe ::warehouse-schema.schema/field-values]
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, creating the one `insert-fn` returns when it
@@ -778,29 +828,44 @@
   [field-id  :- ::lib.schema.id/field
    hash-key  :- :string
    insert-fn :- fn?]
-  (warehouse-schema.db/find-or-insert-advanced-field-values! field-id hash-key insert-fn))
+  (t2/with-transaction [_conn]
+    (let [created (volatile! false)]
+      (u/prog1 (warehouse-schema.db/find-or-insert-advanced-field-values!
+                field-id hash-key (fn [] (u/prog1 (insert-fn) (vreset! created true))))
+        (when (and @created <>)
+          (publish! [(events/created :event/field-values-create [<>])]))))))
 
 (mu/defn touch-field-values!
-  "Stamp `last_used_at` on the FieldValues with `field-values-id`, so sync keeps them up to date."
-  [field-values-id :- ms/PositiveInt]
-  (warehouse-schema.db/touch-field-values! field-values-id))
+  "Stamp `last_used_at` on `field-values`, the FieldValues as the caller read them, so sync keeps them up to date, in
+  one statement."
+  [field-values :- [:map [:id ms/PositiveInt]]]
+  (t2/with-transaction [_conn]
+    (u/prog1 (warehouse-schema.db/touch-field-values! (:id field-values))
+      (when (pos? <>)
+        (let [previous (t2/instance :model/FieldValues field-values)]
+          (publish! [[:event/field-values-update [{:previous-object previous
+                                                   :object          (events/updated-row previous
+                                                                                        {:last_used_at :%now})}]]]))))))
 
 (mu/defn delete-field-values!
   "Delete the FieldValues with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (warehouse-schema.db/delete-field-values! (vec ids))))
+    (delete-read-field-values! (warehouse-schema.db/field-values-by-ids (vec ids))
+                               #(warehouse-schema.db/delete-field-values! (vec ids)))))
 
 (mu/defn delete-field-values-for-fields!
   "Delete every FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (when (seq field-ids)
-    (warehouse-schema.db/delete-field-values-for-fields! (vec field-ids))))
+    (delete-read-field-values! (warehouse-schema.db/field-values-of-fields (vec field-ids))
+                               #(warehouse-schema.db/delete-field-values-for-fields! (vec field-ids)))))
 
 (defn clear-advanced-field-values-for-field!
   "Delete the advanced FieldValues of `field-or-id`."
   [field-or-id]
-  (clear-advanced-field-values-for-fields! [(u/the-id field-or-id)]))
+  (t2/with-transaction [_conn]
+    (publish! [(clear-advanced-field-values-for-fields! [(u/the-id field-or-id)])])))
 
 (defn clear-field-values-for-field!
   "Delete every FieldValues of `field-or-id`, the advanced ones included."
@@ -811,27 +876,24 @@
   "Delete the FieldValues of the Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (when (seq table-ids)
-    (warehouse-schema.db/delete-field-values-for-tables! (vec table-ids))))
+    (delete-read-field-values! (warehouse-schema.db/field-values-of-tables (vec table-ids))
+                               #(warehouse-schema.db/delete-field-values-for-tables! (vec table-ids)))))
 
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (warehouse-schema.db/delete-field-values-for-database! database-id))
+  (delete-read-field-values! (warehouse-schema.db/field-values-of-database database-id)
+                             #(warehouse-schema.db/delete-field-values-for-database! database-id)))
 
 (mu/defn delete-field-values-of-types-before!
   "Delete the FieldValues of `types` of the Field with `field-id` created more than `max-age-days` days ago."
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (warehouse-schema.db/delete-field-values-of-types-before! field-id types max-age-days))
+  (delete-read-field-values! (warehouse-schema.db/field-values-of-types-before field-id types max-age-days)
+                             #(warehouse-schema.db/delete-field-values-of-types-before! field-id types max-age-days)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/FieldValues
-  [_model]
-  {:create :event/field-values-create
-   :update :event/field-values-update
-   :delete :event/field-values-delete})
 
 (defmethod app-db-copy/spec :model/FieldValues [_model]
   {:skip? false})

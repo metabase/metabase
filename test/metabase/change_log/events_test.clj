@@ -28,6 +28,7 @@
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection Types)))
@@ -51,12 +52,12 @@
                      :model/Table    t  {:db_id (:id db)}]
         (testing "an insert, an update and a delete each log the row's table, id and action"
           (let [id   (atom nil)
-                rows (logged-by #(do (reset! id (t2/insert-returning-pk! :model/Field {:table_id      (:id t)
-                                                                                       :name          "f"
-                                                                                       :base_type     :type/Text
-                                                                                       :database_type "TEXT"}))
-                                     (t2/update! :model/Field :id @id {:name "g"})
-                                     (t2/delete! :model/Field :id @id)))]
+                rows (logged-by #(do (reset! id (field/create-field! {:table_id      (:id t)
+                                                                      :name          "f"
+                                                                      :base_type     :type/Text
+                                                                      :database_type "TEXT"}))
+                                     (field/update-field! @id {:name "g"})
+                                     (field/delete-fields! [@id])))]
             (is (= [["metabase_field" @id "insert"]
                     ["metabase_field" @id "update"]
                     ["metabase_field" @id "delete"]]
@@ -65,17 +66,15 @@
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
             (is (= [["metabase_field" (:id f) "update"]
                     ["metabase_field" (:id f) "delete"]]
-                   ;; the linter asks for `:id`, but a bare key takes its own path through Toucan
-                   #_{:clj-kondo/ignore [:metabase/t2-implicit-pk]}
-                   (logged-by #(do (t2/update! :model/Field (:id f) {:name "h"})
-                                   (t2/delete! :model/Field (:id f))))))))
+                   (logged-by #(do (field/update-field! (:id f) {:name "h"})
+                                   (field/delete-fields! [(:id f)])))))))
         (testing "an update that changes nothing logs nothing"
-          (is (= [] (logged-by #(t2/update! :model/Table :id (:id t) {:name (:name t)}))))
-          (is (= [] (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))
+          (is (= [] (logged-by #(table/update-table! (:id t) {:name (:name t)}))))
+          (is (= [] (logged-by #(table/update-tables-where! {:db_id (:id db)} {:active true})))))
         (testing "an update that changes one row of two logs the one it changes"
           (mt/with-temp [:model/Table other {:db_id (:id db), :active false}]
             (is (= #{["metabase_table" (:id other) "update"]}
-                   (set (logged-by #(t2/update! :model/Table {:db_id (:id db)} {:active true})))))))
+                   (set (logged-by #(table/update-tables-where! {:db_id (:id db)} {:active true})))))))
         (testing "an update that changes nothing logs nothing, on a model with a no-op before-update"
           (mt/with-temp [:model/Pulse pulse {:name "Before"}]
             (is (= [] (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "Before"}))))
@@ -83,21 +82,21 @@
                    (logged-by #(models.pulse/update-pulses! [(:id pulse)] {:name "After"}))))))
         (testing "an update that sets only ignored columns logs nothing"
           (mt/with-temp [:model/Field f {:table_id (:id t)}]
-            (is (= [] (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 99}))))
+            (is (= [] (logged-by #(field/update-field! (:id f) {:fingerprint_version 99}))))
             (is (= 99 (t2/select-one-fn :fingerprint_version :model/Field :id (:id f))))
             (testing "and one that also sets another column logs the row"
               (is (= [["metabase_field" (:id f) "update"]]
-                     (logged-by #(t2/update! :model/Field :id (:id f) {:fingerprint_version 100, :description "d"})))))))
+                     (logged-by #(field/update-field! (:id f) {:fingerprint_version 100, :description "d"})))))))
         (testing "an update that matches no row logs nothing"
-          (is (= [] (logged-by #(t2/update! :model/Table :id Integer/MAX_VALUE {:name "none"})))))
-        (testing "`t2/insert!` logs the rows it inserts, and still returns their count"
+          (is (= [] (logged-by #(table/update-table! Integer/MAX_VALUE {:name "none"})))))
+        (testing "a bulk insert logs the rows it inserts"
           (let [names #{"f1" "f2"}
                 n     (atom nil)
-                rows  (logged-by #(reset! n (t2/insert! :model/Field (for [field-name names]
-                                                                       {:table_id      (:id t)
-                                                                        :name          field-name
-                                                                        :base_type     :type/Text
-                                                                        :database_type "TEXT"}))))]
+                rows  (logged-by #(reset! n (count (field/create-fields! (vec (for [field-name names]
+                                                                                {:table_id      (:id t)
+                                                                                 :name          field-name
+                                                                                 :base_type     :type/Text
+                                                                                 :database_type "TEXT"}))))))]
             (is (= 2 @n))
             (is (= (set (t2/select-pks-set :model/Field :table_id (:id t) :name [:in names]))
                    (set (map second rows))))
@@ -161,7 +160,7 @@
           (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]
-                 (sort (logged-by #(t2/update! :model/Field {:table_id (:id t)} {:description "x"}))))))))))
+                 (sort (logged-by #(field/update-fields-where! {:table_id (:id t)} {:description "x"}))))))))))
 
 (deftest transaction-test
   (when config/ee-available?
@@ -270,7 +269,9 @@
     :model/DatabaseRouter
     :model/Segment :model/Measure :model/MetabotConversation :model/Transform :model/TransformJob
     :model/TransformTag :model/DataApp :model/CustomVizPlugin :model/PythonLibrary :model/TransformTest
-    :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember})
+    :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember
+    :model/Database :model/Table :model/Field :model/FieldValues :model/Dimension :model/FieldUserSettings
+    :model/TableUserSettings})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"
@@ -524,7 +525,10 @@
                      :model/Field             fk      {:table_id (:id other-t)}]
         (t2/update! :metabase_field :id (:id fk) {:fk_target_field_id (:id f)})
         (testing "a delete logs the rows ON DELETE CASCADE deletes, at any depth, and those ON DELETE SET NULL updates"
-          (let [logged (set (logged-by #(t2/delete! :model/Database :id (:id db))))]
+          (let [logged (set (logged-by #(let [event (events/deleted :event/database-delete :model/Database
+                                                                    [(t2/select-one :model/Database :id (:id db))])]
+                                          (t2/delete! :model/Database :id (:id db))
+                                          (events/publish-lifecycle! [event]))))]
             (is (contains? logged ["metabase_database" (:id db) "delete"]))
             (is (contains? logged ["metabase_table" (:id t) "delete"]))
             (is (contains? logged ["metabase_field" (:id f) "delete"]))
@@ -554,7 +558,7 @@
                                                         (when (= "metabase_table" table)
                                                           (swap! rows conj [table (count deleted)])
                                                           (swap! calls conj (call-count))))))]
-                        (t2/delete! :model/Table :db_id (:id db)))
+                        (table/delete-tables! (vec (t2/select-pks-set :model/Table :db_id (:id db)))))
                       {:rows @rows, :queries (first @calls)})))]
           (let [one   (capture-queries 1)
                 three (capture-queries 3)]

@@ -8,6 +8,7 @@
    [metabase.actions.models :as actions.models]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -230,11 +231,24 @@
        (try
          (f)
          (finally
-           (doseq [table-id to-publish]
-             (t2/update! :model/TableUserSettings :table_id table-id
-                         (get previous table-id {:collection_id nil, :is_published nil})))
-           (when (seq to-publish)
-             (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))))))))
+           (let [stored (into {} (map (juxt :table_id identity))
+                              (when (seq to-publish)
+                                (t2/select :model/TableUserSettings :table_id [:in (set to-publish)])))
+                 pairs  (vec (for [table-id to-publish
+                                   :let [changes (get previous table-id {:collection_id nil, :is_published nil})]]
+                               (do (t2/update! :model/TableUserSettings :table_id table-id changes)
+                                   [(stored table-id) changes])))
+                 pairs  (filterv first pairs)
+                 empty  (when (seq to-publish)
+                          (warehouse-schema.db/empty-table-user-settings (vec to-publish)))
+                 delete (events/deleted :event/table-user-settings-delete :model/TableUserSettings (vec empty))]
+             (when (seq to-publish)
+               (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))
+             (events/publish-lifecycle!
+              [(events/updated :event/table-user-settings-update
+                               (mapv first pairs)
+                               (mapv (fn [[row changes]] (events/updated-row row changes)) pairs))
+               delete]))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

@@ -67,7 +67,8 @@
     :transform-test-create :transform-test-update :transform-test-delete
     :card-test-create :card-test-update :card-test-delete
     :segment-test-create :segment-test-update :segment-test-delete
-    :test-suite-create :test-suite-update :test-suite-delete})
+    :test-suite-create :test-suite-update :test-suite-delete
+    :database-create :database-update :database-delete})
 
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,

@@ -19,6 +19,7 @@
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.secrets.core :as secret]
    [metabase.serialization.core :as serialization]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -1432,16 +1433,18 @@
                          (database/delete-databases! ids)))))]
       (is (apply = counts)))))
 
-(deftest update-database-plain-changes-are-one-statement-test
-  (testing "a change that needs nothing but its statement runs what a plain update runs"
+(deftest update-database-plain-changes-add-one-read-test
+  (testing "a change that needs nothing but its statement runs what a plain update runs and one read of the stored row,
+           the search index left out as it reacts to the event the plain update does not publish"
     (mt/with-temp [:model/Database {db-id :id} {}]
       (let [plain   (t2/with-call-count [call-count]
                       (t2/update! :model/Database :id db-id {:dbms_version {:version "1"}})
                       (call-count))
-            written (t2/with-call-count [call-count]
-                      (database/update-database! db-id {:dbms_version {:version "2"}})
-                      (call-count))]
-        (is (= plain written))
+            written (binding [search.ingestion/*disable-updates* true]
+                      (t2/with-call-count [call-count]
+                        (database/update-database! db-id {:dbms_version {:version "2"}})
+                        (call-count)))]
+        (is (= (inc plain) written))
         (is (= {:version "2"} (t2/select-one-fn :dbms_version :model/Database :id db-id)))))))
 
 (deftest delete-databases-call-count-test

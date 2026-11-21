@@ -5,6 +5,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.secrets.core :as secret]
@@ -287,13 +288,26 @@
 ;;; |                                              with-temp-copy-of-db                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- publish-field-updates!
+  "Publish the updates of the Fields that a copy makes with plain statements, `[field changes]` pairs with `field` the
+  row before them, as one event, as the write functions of Field publish theirs."
+  [pairs]
+  (when (seq pairs)
+    (events/publish-lifecycle!
+     [(events/updated :event/field-update
+                      (mapv first pairs)
+                      (mapv (fn [[field changes]] (events/updated-row field changes)) pairs))])))
+
 (defn- copy-table-fields! [old-table-id new-table-id]
   (let [old-fields (t2/select :model/Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-    (t2/insert! :model/Field
-                (for [field old-fields]
-                  (-> field
-                      (dissoc :id :fk_target_field_id)
-                      (assoc :table_id new-table-id))))
+    (when (seq old-fields)
+      (events/publish-lifecycle!
+       [(events/created :event/field-create
+                        (vec (t2/insert-returning-instances! :model/Field
+                                                             (for [field old-fields]
+                                                               (-> field
+                                                                   (dissoc :id :fk_target_field_id)
+                                                                   (assoc :table_id new-table-id))))))]))
     ;; Remap `:parent_id` on copied nested fields. The insert above leaves them pointing to the *old* parent
     ;; field ids; nested fields would otherwise reference fields in the original DB, which breaks anything that
     ;; walks the parent chain (e.g. resolve-fields → bulk-metadata-or-throw).
@@ -306,12 +320,14 @@
                                        (when-let [new-id (get new-key->id (field-key old-field))]
                                          [old-id new-id])))
                                old-fields)]
-      (doseq [{new-id :id, old-parent-id :parent_id} new-fields
-              :when                                  (some? old-parent-id)
-              :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
-              :when                                  (and new-parent-id
-                                                          (not= new-parent-id old-parent-id))]
-        (t2/update! :model/Field :id new-id {:parent_id new-parent-id})))
+      (publish-field-updates!
+       (vec (for [{new-id :id, old-parent-id :parent_id, :as new-field} new-fields
+                  :when                                                 (some? old-parent-id)
+                  :let                                                  [new-parent-id (get old-id->new-id old-parent-id)]
+                  :when                                                 (and new-parent-id
+                                                                             (not= new-parent-id old-parent-id))]
+              (do (t2/update! :model/Field :id new-id {:parent_id new-parent-id})
+                  [new-field {:parent_id new-parent-id}])))))
     ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
     ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
     ;; up in whatever a test counts.
@@ -319,48 +335,62 @@
           new-field-name->id (t2/select-fn->pk :name :model/Field :table_id new-table-id :active true)
           old-field-values   (when-let [field-ids (seq (keys old-field-id->name))]
                                (t2/select :model/FieldValues :field_id [:in (set field-ids)] :type :full))]
-      (t2/insert! :model/FieldValues
-                  (for [{old-field-id :field_id, :as field-values} old-field-values
-                        :let                                       [field-name (get old-field-id->name old-field-id)]]
-                    (-> field-values
-                        (dissoc :id)
-                        (assoc :field_id (get new-field-name->id field-name))
-                        ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
-                        ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
-                        ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
-                        (update :human_readable_values not-empty)))))))
+      (when (seq old-field-values)
+        (events/publish-lifecycle!
+         [(events/created :event/field-values-create
+                          (vec (t2/insert-returning-instances!
+                                :model/FieldValues
+                                (for [{old-field-id :field_id, :as field-values} old-field-values
+                                      :let                                       [field-name (get old-field-id->name old-field-id)]]
+                                  (-> field-values
+                                      (dissoc :id)
+                                      (assoc :field_id (get new-field-name->id field-name))
+                                      ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
+                                      ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
+                                      ;; NULL like [[metabase.parameters.chain-filter/search-cached-field-values?]]
+                                      (update :human_readable_values not-empty))))))])))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select :model/Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
-        new-table-ids (sort ; sorting by PK recovers the insertion order, because insert-returning-pks! doesn't guarantee this
-                       (t2/insert-returning-pks! :model/Table
-                                                 (for [table old-tables]
-                                                   (-> table
-                                                       (dissoc :id)
-                                                       (assoc :db_id new-db-id)))))]
+        new-tables    (when (seq old-tables)
+                        (vec (t2/insert-returning-instances! :model/Table
+                                                             (for [table old-tables]
+                                                               (-> table
+                                                                   (dissoc :id)
+                                                                   (assoc :db_id new-db-id))))))
+        _             (when (seq new-tables)
+                        (events/publish-lifecycle! [(events/created :event/table-create new-tables)]))
+        new-table-ids (sort (map :id new-tables))]
     (doseq [[old-table-id new-table-id] (zipmap (map :id old-tables) new-table-ids)]
       (copy-table-fields! old-table-id new-table-id))))
 
 (defn- copy-db-fks! [old-db-id new-db-id]
-  (doseq [{:keys [source-field source-table target-field target-table]}
-          (mdb/query {:select    [[:source-field.name :source-field]
-                                  [:source-table.name :source-table]
-                                  [:target-field.name :target-field]
-                                  [:target-table.name :target-table]]
-                      :from      [[:metabase_field :source-field]]
-                      :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
-                                  [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
-                                  [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
-                      :where     [:and
-                                  [:= :source-table.db_id old-db-id]
-                                  [:= :target-table.db_id old-db-id]
-                                  :source-field.active
-                                  :target-field.active
-                                  :source-table.active
-                                  :target-table.active
-                                  [:not= :source-field.fk_target_field_id nil]]})]
-    (t2/update! :model/Field :id (the-field-id (the-table-id new-db-id source-table) source-field)
-                {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
+  (let [pairs  (vec (for [{:keys [source-field source-table target-field target-table]}
+                          (mdb/query {:select    [[:source-field.name :source-field]
+                                                  [:source-table.name :source-table]
+                                                  [:target-field.name :target-field]
+                                                  [:target-table.name :target-table]]
+                                      :from      [[:metabase_field :source-field]]
+                                      :left-join [[:metabase_table :source-table] [:= :source-field.table_id :source-table.id]
+                                                  [:metabase_field :target-field] [:= :source-field.fk_target_field_id :target-field.id]
+                                                  [:metabase_table :target-table] [:= :target-field.table_id :target-table.id]]
+                                      :where     [:and
+                                                  [:= :source-table.db_id old-db-id]
+                                                  [:= :target-table.db_id old-db-id]
+                                                  :source-field.active
+                                                  :target-field.active
+                                                  :source-table.active
+                                                  :target-table.active
+                                                  [:not= :source-field.fk_target_field_id nil]]})]
+                      [(the-field-id (the-table-id new-db-id source-table) source-field)
+                       (the-field-id (the-table-id new-db-id target-table) target-field)]))
+        fields (when (seq pairs)
+                 (into {} (map (juxt :id identity)) (t2/select :model/Field :id [:in (set (map first pairs))])))]
+    (publish-field-updates!
+     (vec (for [[source-id target-id] pairs
+                :let [changes {:fk_target_field_id target-id}]]
+            (do (t2/update! :model/Field :id source-id changes)
+                [(get fields source-id) changes]))))))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
   (copy-db-tables! old-db-id new-db-id)

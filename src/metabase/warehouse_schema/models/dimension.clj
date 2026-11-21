@@ -12,6 +12,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -30,8 +31,7 @@
 (doto :model/Dimension
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/timestamped?))
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
@@ -81,14 +81,27 @@
   [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (check-human-readable-fields (filter :human_readable_field_id rows))
-      (vec (warehouse-schema.db/insert-dimensions! rows)))))
+      (u/prog1 (vec (warehouse-schema.db/insert-dimensions! rows))
+        (events/publish-lifecycle! [(events/created :event/dimension-create <>)])))))
 
 (mu/defn create-dimension! :- ::warehouse-schema.schema/dimension
   "Insert the Dimension `row` and return it, as [[create-dimensions!]] does."
   [row :- ::warehouse-schema.schema/dimension.create]
   (first (create-dimensions! [row])))
+
+(defn- dimension-updated
+  "The `:event/dimension-update` event of the update of each of the Dimensions `previous` by its changes in `changes`,
+  `{id changes}`, leaving out those that change nothing."
+  [previous changes]
+  [:event/dimension-update (into []
+                                 (keep (fn [{:keys [id] :as dimension}]
+                                         (let [change {:previous-object dimension
+                                                       :object          (events/updated-row dimension (changes id))}]
+                                           (when (seq (u.events/changed-keys change))
+                                             change))))
+                                 previous)])
 
 (mu/defn update-dimensions! :- [:sequential [:map [:id ::lib.schema.id/dimension]]]
   "Apply each of `rows`, the id of a Dimension and the columns to change, and return the rows of the Dimensions that
@@ -97,7 +110,7 @@
   [rows :- [:sequential ::warehouse-schema.schema/dimension.update-row]]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [stored (u/index-by :id (warehouse-schema.db/dimensions-by-ids (mapv :id rows)))
             rows   (filterv #(contains? stored (:id %)) rows)]
         (check-human-readable-fields
@@ -108,44 +121,54 @@
         (doseq [[changes rows] (group-by #(dissoc % :id) rows)
                 :when (seq changes)]
           (warehouse-schema.db/update-dimensions! (mapv :id rows) changes))
+        (events/publish-lifecycle! [(dimension-updated (keep (comp stored :id) rows)
+                                                       (into {} (map (juxt :id #(dissoc % :id))) rows))])
         rows))))
+
+(defn- delete-dimension-rows!
+  "Delete the Dimensions `dimensions`, as they were read, in one statement, and publish their deletes."
+  [dimensions]
+  (when (seq dimensions)
+    (t2/with-transaction [_conn]
+      (let [event (events/deleted :event/dimension-delete :model/Dimension dimensions)]
+        (warehouse-schema.db/delete-dimensions! (mapv :id dimensions))
+        (events/publish-lifecycle! [event])))))
 
 (mu/defn delete-dimensions!
   "Delete the Dimensions with `ids`."
   [ids :- [:sequential ::lib.schema.id/dimension]]
   (when (seq ids)
-    (warehouse-schema.db/delete-dimensions! ids)))
+    (delete-dimension-rows! (warehouse-schema.db/dimensions-by-ids ids))))
 
 (mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (warehouse-schema.db/delete-dimensions-for-field! field-id))
+  (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:field_id field-id})))
 
 (mu/defn delete-dimensions-of-type-for-field!
   "Delete the `dimension-type` Dimensions of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-type :- ::warehouse-schema.schema/dimension.type]
-  (warehouse-schema.db/delete-dimensions-of-type-for-field! field-id dimension-type))
+  (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:field_id field-id :type dimension-type})))
 
 (mu/defn delete-dimensions-reading-fields!
   "Delete the Dimensions whose human-readable values come from the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (when (seq field-ids)
-    (warehouse-schema.db/delete-dimensions-reading-fields! field-ids)))
+    (delete-dimension-rows! (warehouse-schema.db/dimensions-where {:human_readable_field_id [:in field-ids]}))))
 
 (mu/defn rename-dimensions-for-fields!
   "Name the Dimension of each Field in `field-id->name` after it, in one statement."
   [field-id->name :- [:map-of ::lib.schema.id/field :string]]
   (when (seq field-id->name)
-    (warehouse-schema.db/rename-dimensions-for-fields! field-id->name)))
+    (t2/with-transaction [_conn]
+      (when-let [dimensions (not-empty (warehouse-schema.db/dimensions-for-fields (set (keys field-id->name))))]
+        (warehouse-schema.db/rename-dimensions-for-fields! field-id->name)
+        (events/publish-lifecycle!
+         [(dimension-updated dimensions
+                             (into {} (map (fn [{:keys [id field_id]}] [id {:name (field-id->name field_id)}])) dimensions))])))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Dimension
-  [_model]
-  {:create :event/dimension-create
-   :update :event/dimension-update
-   :delete :event/dimension-delete})
 
 (defmethod app-db-copy/spec :model/Dimension [_model]
   {:skip? false})

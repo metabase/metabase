@@ -22,6 +22,7 @@
    [metabase.search.spec :as search]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,7 +38,8 @@
    [metabase.warehouse-schema.xrays :as warehouse-schema.xrays]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 ;;; --------------------------------------------------- Definition ---------------------------------------------------
 
@@ -111,7 +113,6 @@
 (doto :model/Table
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -547,10 +548,11 @@
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (check-allowed-contents (map :collection_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-tables! (with-default-field-orders rows)))
-        (set-new-permissions! <>)))))
+        (set-new-permissions! <>)
+        (events/publish-lifecycle! [(events/created :event/table-create <>)])))))
 
 (mu/defn create-table! :- ::warehouse-schema.schema/table
   "Insert the Table `row` and return it, as [[create-tables!]] does."
@@ -575,6 +577,26 @@
   [table :- [:map [:id ::lib.schema.id/table] [:field_order {:optional true} [:maybe :keyword]]]]
   (update-field-positions-for-tables! [table]))
 
+(defn- updated-table
+  "The Table `previous`, an instance as the function read it, as an update of `changes` leaves it, with the columns its
+  before-update derives and the `:updated_at` it had."
+  [previous changes]
+  (-> (t2.before-update/before-update :model/Table (merge previous changes))
+      (assoc :updated_at (:updated_at previous))))
+
+(defn- table-updated
+  "The `:event/table-update` event of the update of each of `rows`, the id of a Table and its changes, from its `stored`
+  row, `{id row}`, leaving out the rows that change nothing."
+  [stored rows]
+  [:event/table-update (into []
+                             (keep (fn [{:keys [id] :as row}]
+                                     (when-let [previous (stored id)]
+                                       (let [change {:previous-object previous
+                                                     :object          (updated-table previous (dissoc row :id))}]
+                                         (when (seq (u.events/changed-keys change))
+                                           change)))))
+                             rows)])
+
 (defn- update-tables-by-change!
   "Apply each of `rows`, the id of a Table and the columns to change, with one statement per distinct set of changes,
   returning the number updated."
@@ -584,54 +606,73 @@
                 (warehouse-schema.db/update-tables! (into #{} (map :id) rows) changes))))
 
 (defn- apply-table-updates!
-  "Apply each of `rows`, the id of a Table and the columns to change, and the changes that follow them, returning the
-  number of Tables updated: a new field order sets the positions of the Table's Fields."
-  [rows]
+  "Apply each of `rows`, the id of a Table and the columns to change, to the `stored` Tables, `{id row}`, and the
+  changes that follow them, and publish their events, returning the number of Tables updated: a new field order sets
+  the positions of the Table's Fields."
+  [stored rows]
   (if (empty? rows)
     0
-    (events/with-batched-events
-      (let [stored (when-let [ids (not-empty (into #{} (keep (fn [row] (when (some #(contains? row %) [:field_order :collection_id]) (:id row)))) rows))]
-                     (u/index-by :id (warehouse-schema.db/tables ids)))]
-        (check-allowed-contents (for [{:keys [id collection_id]} rows
-                                      :when (and collection_id (not= collection_id (:collection_id (stored id))))]
-                                  collection_id))
-        (u/prog1 (update-tables-by-change! rows)
-          (update-field-positions-for-tables!
-           (for [{:keys [id field_order] :as row} rows
-                 :when (and (contains? row :field_order)
-                            (contains? stored id)
-                            (not= (some-> field_order keyword) (:field_order (stored id))))]
-             {:id id :field_order (some-> field_order keyword)})))))))
+    (t2/with-transaction [_conn]
+      (check-allowed-contents (for [{:keys [id collection_id]} rows
+                                    :when (and collection_id (not= collection_id (:collection_id (stored id))))]
+                                collection_id))
+      (u/prog1 (update-tables-by-change! rows)
+        (update-field-positions-for-tables!
+         (for [{:keys [id field_order] :as row} rows
+               :when (and (contains? row :field_order)
+                          (contains? stored id)
+                          (not= (some-> field_order keyword) (:field_order (stored id))))]
+           {:id id :field_order (some-> field_order keyword)}))
+        (events/publish-lifecycle! [(table-updated stored rows)])))))
+
+(defn- stored-tables
+  "The stored Tables that `rows` update, `{id row}`, read once."
+  [rows]
+  (if-let [ids (not-empty (into #{} (map :id) rows))]
+    (u/index-by :id (warehouse-schema.db/tables ids))
+    {}))
 
 (mu/defn update-tables! :- [:sequential [:map [:id ::lib.schema.id/table]]]
   "Apply each of `rows`, the id of a Table and the columns to change, and return them, as [[update-table!]] does."
   [rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
-  (apply-table-updates! rows)
+  (apply-table-updates! (stored-tables rows) rows)
   (vec rows))
 
 (mu/defn update-table! :- :int
-  "Apply `changes` to the Table with `table-id` and return the number updated; a Collection that cannot hold Tables
-  throws, and a new field order sets the positions of its Fields."
-  [table-id :- ::lib.schema.id/table
-   changes  :- ::warehouse-schema.schema/table.update]
-  (apply-table-updates! [(assoc changes :id table-id)]))
+  "Apply `changes` to `table`, the Table or its id, and return the number updated; a Collection that cannot hold
+  Tables throws, and a new field order sets the positions of its Fields. A Table the caller gives is the stored row
+  the events publish as the row before the update."
+  [table   :- [:or ::lib.schema.id/table [:fn {:error/message "a Table"} #(t2/instance-of? :model/Table %)]]
+   changes :- ::warehouse-schema.schema/table.update]
+  (let [row (assoc changes :id (u/the-id table))]
+    (apply-table-updates! (if (t2/instance? table) {(:id table) table} (stored-tables [row])) [row])))
 
 (mu/defn update-tables-with-changes! :- :int
   "Apply the same `changes` to the Tables with `table-ids` and return the number updated, as [[update-table!]] does."
   [table-ids :- [:set ::lib.schema.id/table]
    changes   :- ::warehouse-schema.schema/table.update]
-  (apply-table-updates! (mapv #(assoc changes :id %) table-ids)))
+  (let [rows (mapv #(assoc changes :id %) table-ids)]
+    (apply-table-updates! (stored-tables rows) rows)))
 
 (mu/defn update-tables-where! :- :int
   "Apply `changes`, values or HoneySQL expressions, to the Tables matching `conditions` and return the number updated:
   one statement, unless `changes` set a Collection or a field order, which updates the matching Tables as
-  [[update-table!]] does."
+  [[update-table!]] does. The matching Tables are read once; an expression the database evaluates is in the event as
+  given."
   [conditions :- ::warehouse-schema.schema/conditions
    changes    :- ::warehouse-schema.schema/sql-changes]
-  (if (some #(contains? changes %) [:collection_id :field_order])
-    (apply-table-updates! (mapv #(assoc changes :id %) (warehouse-schema.db/table-ids-where conditions)))
-    (events/with-batched-events
-      (warehouse-schema.db/update-tables-where! conditions changes))))
+  (t2/with-transaction [_conn]
+    (let [stored (u/index-by :id (warehouse-schema.db/tables-where conditions))]
+      (cond
+        (empty? stored)
+        0
+
+        (some #(contains? changes %) [:collection_id :field_order])
+        (apply-table-updates! stored (mapv #(assoc changes :id %) (keys stored)))
+
+        :else
+        (u/prog1 (warehouse-schema.db/update-tables-to-sql-changes! (set (keys stored)) changes)
+          (events/publish-lifecycle! [(table-updated stored (mapv #(assoc changes :id %) (keys stored)))]))))))
 
 (mu/defn set-display-name!
   "Set the display name of the Table with `table-id`."
@@ -644,9 +685,12 @@
   [ids :- [:sequential ::lib.schema.id/table]]
   (when (seq ids)
     (events/with-batched-events
-      (field/delete-fields-for-tables! (vec ids))
-      (actions.models/delete-implicit-actions-of-tables! (vec ids))
-      (warehouse-schema.db/delete-tables! (vec ids)))))
+      (let [tables (warehouse-schema.db/tables (vec ids))]
+        (field/delete-fields-for-tables! (vec ids))
+        (actions.models/delete-implicit-actions-of-tables! (vec ids))
+        (let [event (events/deleted :event/table-delete :model/Table tables)]
+          (warehouse-schema.db/delete-tables! (vec ids))
+          (events/publish-lifecycle! [event]))))))
 
 (mu/defn delete-table!
   "Delete the Table with `table-id`, as [[delete-tables!]] does."
@@ -665,12 +709,6 @@
     (update-tables-with-changes! (set table-ids) {:collection_id nil :is_published false})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Table
-  [_model]
-  {:create :event/table-create
-   :update :event/table-update
-   :delete :event/table-delete})
 
 (defmethod app-db-copy/spec :model/Table [_model]
   {:skip?     false

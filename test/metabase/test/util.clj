@@ -16,7 +16,6 @@
    [java-time.api :as t]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [mb.hawk.parallel]
-   [metabase.actions.models :as actions.models]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
@@ -615,7 +614,18 @@
    :model/TestSuite             {:create :event/test-suite-create
                                  :delete :event/test-suite-delete}
    :model/TestSuiteMember       {:create :event/test-suite-member-create
-                                 :delete :event/test-suite-member-delete}})
+                                 :delete :event/test-suite-member-delete}
+   :model/Database              {:create :event/database-create}
+   :model/Table                 {:create :event/table-create}
+   :model/Field                 {:create :event/field-create}
+   :model/FieldValues           {:create :event/field-values-create
+                                 :delete :event/field-values-delete}
+   :model/Dimension             {:create :event/dimension-create
+                                 :delete :event/dimension-delete}
+   :model/FieldUserSettings     {:create :event/field-user-settings-create
+                                 :delete :event/field-user-settings-delete}
+   :model/TableUserSettings     {:create :event/table-user-settings-create
+                                 :delete :event/table-user-settings-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."
@@ -660,27 +670,24 @@
     (next-method model explicit-attributes f)))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Table
-  "Gives a temporary Table the default permissions of a new Table that `create-tables!` gives it, and deletes the
-  Fields and implicit Actions left on it as `delete-tables!` does."
+  "Gives a temporary Table the default permissions of a new Table that `create-tables!` gives it, and deletes it with
+  `delete-tables!`, with the Fields and implicit Actions left on it."
   [model explicit-attributes f]
   (next-method model explicit-attributes (fn [temp-table]
                                            (#'table/set-new-permissions! [temp-table])
                                            (try
                                              (f temp-table)
                                              (finally
-                                               (field/delete-fields-for-tables! [(:id temp-table)])
-                                               (actions.models/delete-implicit-actions-of-tables!
-                                                [(:id temp-table)]))))))
+                                               (table/delete-tables! [(:id temp-table)]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Field
-  "Deletes the Fields left nested under a temporary Field, as `delete-fields!` does."
+  "Deletes a temporary Field with `delete-fields!`, with the Fields left nested under it."
   [model explicit-attributes f]
   (next-method model explicit-attributes (fn [temp-field]
                                            (try
                                              (f temp-field)
                                              (finally
-                                               (field/delete-fields!
-                                                (vec (t2/select-pks-set :model/Field :parent_id (:id temp-field)))))))))
+                                               (field/delete-fields! [(:id temp-field)]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :model/Card
   "Creates a temporary Card as `create-cards!` does, without checking its attributes against the schema of a write, and

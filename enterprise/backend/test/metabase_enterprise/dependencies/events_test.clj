@@ -15,6 +15,12 @@
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.dimension :as dimension]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (comment
@@ -60,7 +66,7 @@
         (let [submitted (atom [])]
           (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue write] (swap! submitted conj write))]
             (deps.test/do-with-immediate-hook-writes
-             #(t2/update! :model/Field :id field-id {:last_analyzed (t/offset-date-time)})))
+             #(field/update-field! field-id {:last_analyzed (t/offset-date-time)})))
           (is (= [] @submitted)))))))
 
 (deftest output-columns-mark-dependents-test
@@ -84,12 +90,12 @@
           (is (not (marks? card-id #(t2/update! :model/Card :id source-id {:name "Renamed"}))))
           (is (marks? card-id #(t2/update! :model/Card :id metric-id {:name "Renamed"})))
           (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:position 5}
-            (is (marks? source-id #(t2/update! :model/Field :id (mt/id :venues :price) {:position 0}))))
+            (is (marks? source-id #(field/update-field! (mt/id :venues :price) {:position 0}))))
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}
-            (is (marks? source-id #(t2/update! :model/Table :id (mt/id :venues) {:schema "OTHER"}))))
-          (mt/with-temp [:model/TableUserSettings _ {:table_id (mt/id :venues)}]
-            (is (not (marks? source-id #(t2/update! :model/TableUserSettings :table_id (mt/id :venues)
-                                                    {:caveats "Careful"}))))))))))
+            (is (marks? source-id #(table/update-table! (mt/id :venues) {:schema "OTHER"}))))
+          (mt/with-temp [:model/TableUserSettings {settings-id :id} {:table_id (mt/id :venues)}]
+            (is (not (marks? source-id #(table-user-settings/update-table-user-settings-rows!
+                                         [{:id settings-id :caveats "Careful"}]))))))))))
 
 (deftest card-metadata-dependents-see-test
   (testing "a card's result metadata change marks its dependents only when it changes what they see"
@@ -141,7 +147,8 @@
               (is (both-pending?)))
             (testing "changing its human-readable field"
               (processed!)
-              (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Renamed"}
+              (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Title"}
+                (field/update-field! (mt/id :products :title) {:display_name "Renamed"})
                 (is (both-pending?))))
             (testing "a user setting of its human-readable field"
               (processed!)
@@ -159,9 +166,9 @@
                          :model/FieldValues fv {:field_id (mt/id :venues :price) :type :full
                                                 :values [1 2 3 4] :human_readable_values []}]
             (processed!)
-            (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3 4 5]})
+            (field-values/update-field-values! [{:id (:id fv) :values [1 2 3 4 5]}])
             (is (not (both-pending?)))
-            (t2/update! :model/FieldValues :id (:id fv) {:human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]})
+            (field-values/update-field-values! [{:id (:id fv) :human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]}])
             (is (both-pending?))))))))
 
 (deftest batched-marks-test
@@ -185,8 +192,8 @@
                 (reset! submitted [])
                 (deps.test/do-with-immediate-hook-writes
                  #(events/with-batched-events
-                    (t2/update! :model/Field :id (mt/id :venues :price) {:position 0})
-                    (t2/update! :model/Field :id (mt/id :venues :name) {:position 1})))
+                    (field/update-field! (mt/id :venues :price) {:position 0})
+                    (field/update-field! (mt/id :venues :name) {:position 1})))
                 (is (= [[:table #{(mt/id :venues)}]] @marks))
                 (is (= [{:dependency-jobs true}] @submitted))
                 (is (deps.test/result-metadata-pending? card-id))))))))))
@@ -268,19 +275,24 @@
                            (write!)
                            (deps.test/result-metadata-pending? card-id))]
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
-              (is (changes? #(t2/update! :model/Table :id table-id {:display_name "Places"}))))
+              (is (changes? #(table/update-table! table-id {:display_name "Places"}))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
-              (is (changes? #(t2/update! :model/Field :id field-id {:display_name "Cost"}))))
-            (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :display_name "Cost"}]
-              (is (changes? (fn [] (t2/update! :model/FieldUserSettings :field_id field-id {:display_name "Price"})))))
-            (is (changes? #(t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Places"})))
-            (is (changes? #(t2/update! :model/TableUserSettings :table_id table-id {:display_name "Spots"})))
-            (is (changes? #(t2/delete! :model/TableUserSettings :table_id table-id)))
+              (is (changes? #(field/update-field! field-id {:display_name "Cost"}))))
+            (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
+              (mt/with-temp [:model/FieldUserSettings {settings-id :id} {:field_id field-id :display_name "Cost"}]
+                (is (changes? #(field-user-settings/update-field-user-settings-rows!
+                                [{:id settings-id :display_name "Price"}])))))
+            (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
+              (let [settings-id (atom nil)]
+                (is (changes? #(reset! settings-id (:id (first (table-user-settings/create-table-user-settings!
+                                                                [{:table_id table-id :display_name "Places"}]))))))
+                (is (changes? #(table-user-settings/update-table-user-settings-rows!
+                                [{:id @settings-id :display_name "Spots"}])))
+                (is (changes? #(table-user-settings/delete-table-user-settings! [table-id])))))
             (let [dimension-id (atom nil)]
-              (is (changes? #(reset! dimension-id (t2/insert-returning-pk! :model/Dimension
-                                                                           {:field_id field-id :name "Price"
-                                                                            :type :internal}))))
-              (is (changes? #(t2/delete! :model/Dimension :id @dimension-id))))))))))
+              (is (changes? #(reset! dimension-id (:id (dimension/create-dimension!
+                                                        {:field_id field-id :name "Price" :type :internal})))))
+              (is (changes? #(dimension/delete-dimensions! [@dimension-id]))))))))))
 
 (deftest card-writes-mark-resource-collection-apps-in-one-statement-test
   (testing "a card write in a data app's resource collection marks the app's dependencies stale in one statement,
@@ -383,7 +395,7 @@
                                          :to_entity_type   :table :to_entity_id (mt/id :venues)})
           (deps.test/record-result-metadata-processed! card-id)
           (is (not (deps.test/result-metadata-pending? card-id)))
-          (t2/update! :model/Dimension :id dim-id {:name "Cost"})
+          (dimension/update-dimensions! [{:id dim-id :name "Cost"}])
           (is (deps.test/result-metadata-pending? card-id)
               "after a Dimension rename the card's result metadata status should be stale"))))))
 

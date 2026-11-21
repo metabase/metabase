@@ -22,6 +22,7 @@
    [metabase.transforms.models.transform :as transform]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -709,7 +710,7 @@
   (mt/with-temp [:model/Table table {:name "My Cool Table"}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
-        (t2/update! :model/Table :id (:id table) {:is_published published?})
+        (table/update-table! (:id table) {:is_published published?})
         (is (=? {:topic    topic
                  :user_id  (mt/user->id :rasta)
                  :model    "Table"

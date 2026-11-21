@@ -69,8 +69,8 @@
     ;; cool, now we should be ok to update the model
     (when values-to-set
       (case (mi/model original-model)
-        :model/Field (sync.updates/update-field-unless-user-set! (u/the-id original-model) values-to-set)
-        :model/Table (sync.updates/update-table-unless-user-set! (u/the-id original-model) values-to-set))
+        :model/Field (sync.updates/update-field-unless-user-set! original-model values-to-set)
+        :model/Table (sync.updates/update-table-unless-user-set! original-model values-to-set))
       true)))
 
 (def ^:private ClassifyOpts

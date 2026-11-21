@@ -11,7 +11,8 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]))
+   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +20,8 @@
   "Marks initial sync as complete for this table so that it becomes usable in the UI, if not already set"
   [table]
   (when (not= (:initial_sync_status table) "complete")
-    (table/update-table! (u/the-id table) {:initial_sync_status "complete"})))
+    (table/update-table! (if (t2/instance-of? :model/Table table) table (u/the-id table))
+                         {:initial_sync_status "complete"})))
 
 (defn set-initial-table-sync-complete-for-db!
   "Marks initial sync for all tables in `db` as complete so that it becomes usable in the UI, if not already
@@ -32,21 +34,21 @@
             (partition-all sync-util/*batch-size* ids))))
 
 (mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Field with `field-id` the `changes` to columns no user set, returning the number updated."
-  [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
+  "Apply to `field`, the Field or its id, the `changes` to columns no user set, returning the number updated."
+  [field   :- [:or ::lib.schema.id/field (ms/InstanceOf :model/Field)]
+   changes :- ::warehouse-schema.schema/field.update]
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
-                                       (sync.db/field-user-settings field-id)))]
+                                       (sync.db/field-user-settings (u/the-id field))))]
     (if (seq changes)
-      (field/update-field! field-id changes)
+      (field/update-field! field changes)
       0)))
 
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
-  "Apply to the Table with `table-id` the `changes` to columns no user set, returning the number updated."
-  [table-id :- ::lib.schema.id/table
-   changes  :- ::warehouse-schema.schema/table.update]
+  "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
+  [table   :- [:or ::lib.schema.id/table (ms/InstanceOf :model/Table)]
+   changes :- ::warehouse-schema.schema/table.update]
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
-                                       (sync.db/table-user-settings table-id)))]
+                                       (sync.db/table-user-settings (u/the-id table))))]
     (if (seq changes)
-      (table/update-table! table-id changes)
+      (table/update-table! table changes)
       0)))
