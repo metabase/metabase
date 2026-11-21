@@ -293,7 +293,8 @@
                       (protocol/simple-query java-parser "postgres" sql)
                       (protocol/field-references java-parser "postgres" sql)
                       (protocol/single-stmt-of-type java-parser "postgres" sql "read-only")
-                      (protocol/transpile-sql java-parser sql "postgres" "snowflake")]]
+                      (protocol/transpile-sql java-parser sql "postgres" "snowflake")
+                      (protocol/join-steps java-parser "postgres" sql)]]
         (is (not-any? sqlglot-java.ast/ast-node? (tree-seq coll? seq result))
             (pr-str result))))))
 

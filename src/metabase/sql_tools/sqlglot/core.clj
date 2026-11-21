@@ -77,6 +77,58 @@
         #{}
         (throw e)))))
 
+;;;; Join steps
+
+(def ^:private join-strategies
+  "The `join_steps` strategy names as Metabase join strategies."
+  {"inner" :inner-join
+   "left"  :left-join
+   "right" :right-join
+   "full"  :full-join
+   "cross" :cross-join})
+
+(def ^:private drivers-without-dialect
+  "The drivers with no sqlglot dialect whose step queries, generated in sqlglot's default dialect, are tested to run."
+  #{:h2})
+
+(defn- source-table-ids
+  "A function from a `join_steps` source's `[catalog schema table]` to the id of the Table it names in `query`'s
+  database, or nil when it names none (or a transform's target that has no Table yet)."
+  [driver query sources]
+  (let [database  (lib.metadata/database query)
+        spec      (fn [[_catalog table-schema table]]
+                    (sql-tools.common/normalize-table-spec
+                     driver {:table table :schema (or table-schema (:default-schema database))}))
+        specs     (into {} (keep (fn [{:keys [table]}] (when table [table (spec table)]))) sources)
+        table-ids (sql-tools.common/table-ids-by-name (lib/database-id query) (keep :table (vals specs)))
+        tables    (lib.metadata/bulk-metadata query :metadata/table table-ids)]
+    (fn [parts]
+      (some->> (get specs parts)
+               (sql-tools.common/find-table-or-transform driver database tables [])
+               :table))))
+
+(defn join-steps
+  "The row-count queries of each join in `query`, a native query, for `driver`, from `parser`. See
+  [[metabase.sql-tools.core/join-steps]]."
+  [parser driver query]
+  (let [dialect (driver->dialect driver)
+        result  (if (and (nil? dialect) (not (drivers-without-dialect driver)))
+                  {:status "unsupported" :reason "unsupported-dialect"}
+                  (sql-parsing/join-steps parser dialect (lib/raw-native-query query)))]
+    (if-not (= "ok" (:status result))
+      {:unsupported (keyword (:reason result))}
+      (let [table-id (source-table-ids driver query (cons (:from result) (:steps result)))
+            source   (fn [{:keys [table alias] :as s}]
+                       {:source   (keyword (:source s))
+                        :table-id (some-> table table-id)
+                        :alias    (sql-tools.common/normalize-name driver alias)})]
+        {:from  (assoc (source (:from result)) :sql (:base_sql result))
+         :steps (mapv (fn [step]
+                        (assoc (source step)
+                               :strategy (join-strategies (:strategy step))
+                               :sql      (:sql step)))
+                      (:steps result))}))))
+
 (defmethod sql-tools/referenced-tables-impl :sqlglot
   [backend driver query]
   (referenced-tables backend driver query))

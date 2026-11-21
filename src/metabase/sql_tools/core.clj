@@ -289,6 +289,47 @@
   [driver sql stmt-type]
   (sql-parsing/classify-stmt (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
+(mr/def ::join-step-source
+  [:map {:closed true}
+   [:source   [:enum :table :cte :derived]]
+   [:table-id [:maybe pos-int?]]
+   [:alias    [:maybe :string]]
+   [:sql      :string]])
+
+(mr/def ::join-steps
+  [:or
+   [:map {:closed true}
+    [:unsupported :keyword]]
+   [:map {:closed true}
+    [:from  [:ref ::join-step-source]]
+    [:steps [:sequential [:merge
+                          [:ref ::join-step-source]
+                          [:map [:strategy [:enum :inner-join :left-join :right-join :full-join :cross-join]]]]]]]])
+
+(mu/defn join-steps :- ::join-steps
+  "The row-count queries of each join in `native-query`, a single SELECT, taken one join at a time, ready to run.
+
+  `:from` describes the FROM source, and its `:sql` counts that source's rows. Each of `:steps` describes one join,
+  in query order, and its `:sql` counts the rows of the FROM source joined with every join up to and including it.
+  The WHERE clause and everything else outside FROM and JOIN are left out; a WITH clause is kept. For an outer join
+  the `:sql` returns a second count in the same row: the rows of the same chain with that last join made INNER, which
+  is how many found a match.
+
+  A source's `:source` is `:table`, `:cte` or `:derived`, and `:table-id` the id of the Table a `:table` source names
+  in the query's database, nil when none matches. Its `:alias` is the alias, or the table's name, normalized for
+  `driver`.
+
+  A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`. The reasons include `:comma-join`
+  (its join condition would be in the WHERE clause), `:set-operation`, `:not-a-select`, `:multiple-statements`,
+  `:nested-join`, `:unsupported-join`, `:unsupported-source`, `:parameters`, `:large-literal-list`, `:unparseable`
+  and `:unsupported-dialect`.
+
+  Always parses with sqlglot, so with Macaw selected it uses the default sqlglot backend."
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (metrics/with-operation-timing [(sqlglot-backend) "join-steps"]
+    (sqlglot/join-steps (sqlglot-parser) driver native-query)))
+
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
   lock or reach past the query: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no

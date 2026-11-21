@@ -448,6 +448,174 @@ def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
     return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
 
 
+# The arguments a FROM or JOIN source may carry for `join_steps` to describe it. Anything else (a PIVOT, a time-travel
+# clause, a sample, a table function's arguments, a nested join tree) changes what the source yields, so the query is
+# refused rather than rebuilt without it.
+_JOIN_STEP_TABLE_ARGS = {"this", "db", "catalog", "alias"}
+_JOIN_STEP_SUBQUERY_ARGS = {"this", "alias"}
+_JOIN_STEP_JOIN_ARGS = {"this", "on", "using", "side", "kind", "method"}
+
+
+class _JoinStepsUnsupported(Exception):
+    """A query `join_steps` refuses, with the reason it gives."""
+
+    def __init__(self, reason):
+        super().__init__(reason)
+        self.reason = reason
+
+
+def _join_step_source(node, cte_names):
+    """The description of a FROM or JOIN source: its kind (`table`, `cte` or `derived`), its `[catalog, schema, table]`
+    when it is a table, and its alias. Raises `_JoinStepsUnsupported` for a source `join_steps` cannot rebuild."""
+    if isinstance(node, exp.Table):
+        if set(k for k, v in node.args.items() if v) - _JOIN_STEP_TABLE_ARGS or not isinstance(node.this, exp.Identifier):
+            raise _JoinStepsUnsupported("unsupported-source")
+        parts = table_parts(node)
+        if parts is None:
+            raise _JoinStepsUnsupported("unsupported-source")
+        if not node.db and not node.catalog and node.name.lower() in cte_names:
+            return {"source": "cte", "table": None, "alias": node.alias_or_name}
+        return {"source": "table", "table": list(parts), "alias": node.alias_or_name}
+    if isinstance(node, exp.Subquery):
+        if set(k for k, v in node.args.items() if v) - _JOIN_STEP_SUBQUERY_ARGS:
+            raise _JoinStepsUnsupported("unsupported-source")
+        # A parenthesized join tree, `JOIN (b JOIN c ON ...) ON ...`, is a Subquery around something that is not a query.
+        if not isinstance(node.this, exp.Query):
+            raise _JoinStepsUnsupported("nested-join")
+        return {"source": "derived", "table": None, "alias": node.alias_or_name}
+    raise _JoinStepsUnsupported("unsupported-source")
+
+
+def _join_step_strategy(join):
+    """The join's strategy (`inner`, `left`, `right`, `full` or `cross`), raising `_JoinStepsUnsupported` for a join
+    `join_steps` cannot rebuild."""
+    if set(k for k, v in join.args.items() if v) - _JOIN_STEP_JOIN_ARGS:
+        raise _JoinStepsUnsupported("unsupported-join")
+    side = (join.side or "").upper()
+    kind = (join.kind or "").upper()
+    method = (join.method or "").upper()
+    if method not in ("", "NATURAL") or kind not in ("", "INNER", "OUTER", "CROSS"):
+        raise _JoinStepsUnsupported("unsupported-join")
+    if kind == "CROSS":
+        return "cross"
+    # `FROM a, b` parses as a join with no side, kind or condition. Its condition, if any, is in the WHERE clause,
+    # which the step queries leave out, so they would count the whole cross product.
+    if not side and not kind and not method and not join.args.get("on") and not join.args.get("using"):
+        raise _JoinStepsUnsupported("comma-join")
+    return {"LEFT": "left", "RIGHT": "right", "FULL": "full"}.get(side, "inner")
+
+
+def _count_select(from_, joins, with_=None):
+    """`SELECT COUNT(*) AS n FROM <from_> <joins>`, with `with_` as its WITH clause."""
+    select = exp.Select(
+        expressions=[exp.alias_(exp.Count(this=exp.Star()), "n")], from_=from_.copy(), joins=[j.copy() for j in joins]
+    )
+    if with_ is not None:
+        select.set("with_", with_.copy())
+    return select
+
+
+def _two_counts(first, second, with_=None):
+    """`SELECT w.n, m.n FROM (<first>) AS w CROSS JOIN (<second>) AS m`: both one-row counts in one row. Each count is
+    a derived table rather than a scalar subquery so the query has a FROM clause, which some databases require."""
+    select = exp.Select(
+        expressions=[exp.column("n", table="w"), exp.column("n", table="m")],
+        from_=exp.From(this=first.subquery("w")),
+        joins=[exp.Join(this=second.subquery("m"), kind="CROSS")],
+    )
+    if with_ is not None:
+        select.set("with_", with_.copy())
+    return select
+
+
+def join_steps(sql: str, dialect: str = None) -> str:
+    """
+    The row-count queries of each join in `sql`, a SELECT, taken one join at a time.
+
+    The FROM source and every join are described, and each comes with the SQL of a query that counts the rows of the
+    FROM source joined with the joins up to and including it. The WHERE clause, grouping, ordering and everything
+    else outside FROM and JOIN are left out: these are the counts of the join chain itself. A WITH clause is kept, so
+    a CTE or a derived table can be a source.
+
+    For a LEFT, RIGHT or FULL join, the step query returns two counts in one row: the rows of the chain as written,
+    and the rows of the same chain with that last join made an INNER join. Every other step query returns one count.
+
+    Returns a JSON object: on success, `{"status": "ok", "from": <source>, "base_sql": "<count of the FROM source>",
+    "steps": [<source> + {"strategy": ..., "sql": "<step query>"}, ...]}`, where a source is `{"source": "table" |
+    "cte" | "derived", "table": [catalog, schema, table] or null, "alias": ...}` and `strategy` is one of `inner`,
+    `left`, `right`, `full` and `cross`. Otherwise `{"status": "unsupported", "reason": ...}`, the reason one of
+    `unparseable`, `multiple-statements`, `set-operation`, `not-a-select`, `no-from`, `comma-join`, `unsupported-join`,
+    `nested-join`, `unsupported-source` and `parameters`.
+
+    Examples:
+        join_steps("SELECT * FROM a LEFT JOIN b ON a.id = b.a_id WHERE a.x > 1")
+        => '{"status": "ok", "from": {"source": "table", "table": [null, null, "a"], "alias": "a"},
+             "base_sql": "SELECT COUNT(*) AS n FROM a",
+             "steps": [{"source": "table", "table": [null, null, "b"], "alias": "b", "strategy": "left",
+                        "sql": "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM a LEFT JOIN b ON a.id = b.a_id) AS w
+                                CROSS JOIN (SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.a_id) AS m"}]}'
+
+        join_steps("SELECT * FROM a, b")
+        => '{"status": "unsupported", "reason": "comma-join"}'
+    """
+    try:
+        try:
+            stmts = _nonempty_statements(sqlglot.parse(sql, read=dialect))
+        except ParseError:
+            raise _JoinStepsUnsupported("unparseable")
+        if len(stmts) != 1:
+            raise _JoinStepsUnsupported("multiple-statements" if stmts else "unparseable")
+        stmt = stmts[0]
+        if isinstance(stmt, exp.SetOperation):
+            raise _JoinStepsUnsupported("set-operation")
+        if not isinstance(stmt, exp.Select):
+            raise _JoinStepsUnsupported("not-a-select")
+        # A placeholder is a value the step queries would have to be handed again, and nothing passes them on.
+        if stmt.find(exp.Placeholder, exp.Parameter):
+            raise _JoinStepsUnsupported("parameters")
+        # Hive's `LATERAL VIEW` hangs off the SELECT, not a join.
+        if stmt.args.get("laterals"):
+            raise _JoinStepsUnsupported("unsupported-join")
+        from_ = stmt.args.get("from_")
+        if from_ is None or from_.this is None:
+            raise _JoinStepsUnsupported("no-from")
+        if from_.expressions:
+            raise _JoinStepsUnsupported("comma-join")
+
+        with_ = stmt.args.get("with_")
+        cte_names = {cte.alias.lower() for cte in (with_.expressions if with_ else []) if cte.alias}
+        joins = stmt.args.get("joins") or []
+        from_source = _join_step_source(from_.this, cte_names)
+        steps = []
+        for n, join in enumerate(joins, start=1):
+            # The source first: a LATERAL or APPLY source looks like a comma join to the strategy check.
+            source = _join_step_source(join.this, cte_names)
+            strategy = _join_step_strategy(join)
+            step = dict(source, strategy=strategy)
+            if strategy in ("left", "right", "full"):
+                inner = join.copy()
+                inner.set("side", None)
+                if (inner.kind or "").upper() == "OUTER":
+                    inner.set("kind", None)
+                query = _two_counts(
+                    _count_select(from_, joins[:n]), _count_select(from_, joins[: n - 1] + [inner]), with_
+                )
+            else:
+                query = _count_select(from_, joins[:n], with_)
+            step["sql"] = query.sql(dialect=dialect)
+            steps.append(step)
+        return json.dumps(
+            {
+                "status": "ok",
+                "from": from_source,
+                "base_sql": _count_select(from_, [], with_).sql(dialect=dialect),
+                "steps": steps,
+            }
+        )
+    except _JoinStepsUnsupported as e:
+        return json.dumps({"status": "unsupported", "reason": e.reason})
+
+
 def fold_keys(mapping):
     """
     Case-insensitive view of a replacement map, for matching an identifier written in another case.

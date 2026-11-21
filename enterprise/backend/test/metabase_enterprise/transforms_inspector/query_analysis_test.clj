@@ -1,13 +1,12 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.query-analysis-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms-inspector.lens.join-analysis :as join-analysis]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -61,13 +60,6 @@
   {:source {:type :query :query query}
    :name   "query-analysis-test"})
 
-(defn- make-sources
-  [& table-keys]
-  (mapv (fn [k]
-          {:table_name (t2/select-one-fn :name :model/Table :id (mt/id k))
-           :table_id   (mt/id k)})
-        table-keys))
-
 ;;; -------------------------------------------------- Native CTE / subquery tests --------------------------------------------------
 
 (deftest analyze-native-query-cte-join-source-table-is-nil-test
@@ -80,9 +72,8 @@
                             "SELECT p.*, cte." (qf :orders :user_id) " "
                             "FROM " (qt :people) " p "
                             "LEFT JOIN cte ON p." (qf :people :id) " = cte." (qf :orders :user_id)))
-            sources   (make-sources :orders :people)
             transform (make-native-transform query)
-            result    (query-analysis/analyze-native-query transform sources)]
+            result    (query-analysis/analyze-native-query transform)]
         (is (some? result))
         (is (= 1 (count (:join-structure result))))
         (is (nil? (:source-table (first (:join-structure result))))
@@ -99,9 +90,8 @@
                             "FROM " (qt :orders) " o "
                             "JOIN " (qt :products) " pr ON o." (qf :orders :product_id) " = pr." (qf :products :id) " "
                             "LEFT JOIN cte ON o." (qf :orders :id) " = cte." (qf :reviews :id)))
-            sources   (make-sources :orders :products :reviews)
             transform (make-native-transform query)
-            result    (query-analysis/analyze-native-query transform sources)]
+            result    (query-analysis/analyze-native-query transform)]
         (is (some? result))
         (is (= 2 (count (:join-structure result))))
         (let [[products-join cte-join] (:join-structure result)]
@@ -110,37 +100,67 @@
           (is (nil? (:source-table cte-join))
               "CTE join should not resolve to a real table ID"))))))
 
-(deftest ^:parallel macaw-table->hsql-returns-vector-test
-  (testing "unaliased table wraps the identifier in a single-element vector"
-    (let [result (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})]
-      (is (= [[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "ORDERS"]]] result))))
-  (testing "aliased table returns [identifier alias]"
-    (let [result (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders" :table-alias "o"})]
-      (is (= [[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "ORDERS"]] :O] result)))))
+;;; -------------------------------------------------- Native step queries --------------------------------------------------
 
-(deftest ^:parallel macaw-table->hsql-compiles-in-from-test
-  (testing "unaliased table compiles in a :from position without illegal-syntax errors"
-    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})
-          [sql] (sql.qp/format-honeysql :h2 {:select [[[:count :*]]]
-                                             :from   [from-table]})]
-      (is (string? sql))
-      (is (re-find #"(?i)from" sql))
-      (is (re-find #"(?i)orders" sql))))
-  (testing "aliased table compiles in a :from position"
-    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders" :table-alias "o"})
-          [sql] (sql.qp/format-honeysql :h2 {:select [[[:count :*]]]
-                                             :from   [from-table]})]
-      (is (string? sql))
-      (is (re-find #"(?i)orders" sql)))))
+(defn- run-sql
+  "The rows of `sql`, run on the test database."
+  [sql]
+  (mt/rows (qp/process-query (lib/native-query (mt/metadata-provider) sql))))
 
-(deftest ^:parallel build-native-join-step-hsql-compiles-with-unaliased-tables-test
-  (testing "build-native-join-step-hsql output compiles when FROM and JOIN tables come from macaw-table->hsql without aliases"
-    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})
-          join-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "products"})
-          joins      [{:strategy       :left-join
-                       :join-table     join-table
-                       :join-condition [:= [:raw "orders.product_id"] [:raw "products.id"]]}]
-          hsql       (#'join-analysis/build-native-join-step-hsql from-table joins)
-          [sql]      (sql.qp/format-honeysql :h2 hsql)]
-      (is (string? sql))
-      (is (re-find #"(?i)left join" sql)))))
+(defn- count-of
+  "The single count `sql` returns."
+  [sql]
+  (long (ffirst (run-sql sql))))
+
+(defn- step-counts
+  "The counts the step query of each join returns, as longs."
+  [result]
+  (mapv (fn [{:keys [step-sql]}] (mapv long (first (run-sql step-sql))))
+        (:join-structure result)))
+
+(deftest analyze-native-query-step-queries-count-the-join-chain-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
+                                             :+features [:left-join]})
+    (testing "a LEFT JOIN with a compound condition counts the rows as written and the rows that found a match"
+      (let [query     (lib/native-query
+                       (mt/metadata-provider)
+                       (str "SELECT o." (qf :orders :id) " "
+                            "FROM " (qt :orders) " o "
+                            "LEFT JOIN " (qt :products) " pr "
+                            "ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                            "AND pr." (qf :products :category) " = 'Widget' "
+                            "WHERE o." (qf :orders :total) " > 100"))
+            result    (query-analysis/analyze-native-query (make-native-transform query))
+            orders    (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))
+            widgets   (count-of (str "SELECT COUNT(*) FROM " (qt :orders) " o "
+                                     "JOIN " (qt :products) " pr ON pr." (qf :products :id) " = o." (qf :orders :product_id) " "
+                                     "WHERE pr." (qf :products :category) " = 'Widget'"))]
+        (is (=? {:from-table-id  (mt/id :orders)
+                 :join-structure [{:strategy :left-join :source-table (mt/id :products)}]}
+                result))
+        (testing "the WHERE clause is left out of every count"
+          (is (= orders (count-of (:from-count-sql result))))
+          (is (= [[orders widgets]] (step-counts result)))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql
+                                             :+features [:left-join]})
+    (testing "a condition true of every unmatched row counts no match, where COUNT(CASE WHEN <condition>) counted all"
+      (let [query  (lib/native-query
+                    (mt/metadata-provider)
+                    (str "SELECT o." (qf :orders :id) " "
+                         "FROM " (qt :orders) " o "
+                         "LEFT JOIN " (qt :products) " pr ON pr." (qf :products :id) " IS NULL"))
+            result (query-analysis/analyze-native-query (make-native-transform query))
+            orders (count-of (str "SELECT COUNT(*) FROM " (qt :orders)))]
+        (is (= [[orders 0]] (step-counts result)))))))
+
+(deftest analyze-native-query-comma-join-has-no-join-structure-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql})
+    (testing "a comma join is refused, since its condition is in the WHERE clause, and visited fields still resolve"
+      (let [query  (lib/native-query
+                    (mt/metadata-provider)
+                    (str "SELECT o." (qf :orders :id) " "
+                         "FROM " (qt :orders) " o, " (qt :products) " pr "
+                         "WHERE pr." (qf :products :id) " = o." (qf :orders :product_id)))
+            result (query-analysis/analyze-native-query (make-native-transform query))]
+        (is (nil? (:join-structure result)))
+        (is (contains? (get-in result [:visited-fields :all]) (mt/id :orders :product_id)))))))
