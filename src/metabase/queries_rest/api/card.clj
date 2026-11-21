@@ -603,9 +603,9 @@
                                                  (assoc :result_metadata           metadata
                                                         :verified-result-metadata? true))
             card                               (-> (queries.card/update-card! {:card-before-update    card-before-update
-                                                                          :card-updates          card-updates
-                                                                          :actor                 @api/*current-user*
-                                                                          :delete-old-dashcards? delete-old-dashcards?})
+                                                                               :card-updates          card-updates
+                                                                               :actor                 @api/*current-user*
+                                                                               :delete-old-dashcards? delete-old-dashcards?})
                                                    hydrate-card-details
                                                    (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
         ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
@@ -728,9 +728,9 @@
           (when-let [cards-with-position (seq (filter :collection_position cards))]
             (update-collection-positions! new-collection-id-or-nil cards-with-position))
           (queries.card/update-cards! (into []
-                                    (comp (remove :collection_position)
-                                          (map #(hash-map :id (u/the-id %) :collection_id new-collection-id-or-nil)))
-                                    cards))))
+                                            (comp (remove :collection_position)
+                                                  (map #(hash-map :id (u/the-id %) :collection_id new-collection-id-or-nil)))
+                                            cards))))
       nil))
 
   (when new-collection-id-or-nil
@@ -866,8 +866,8 @@
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
                      (queries.card/update-cards! [{:id                card-id
-                                           :public_uuid       <>
-                                           :made_public_by_id api/*current-user-id*}])))]
+                                                   :public_uuid       <>
+                                                   :made_public_by_id api/*current-user-id*}])))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -881,8 +881,8 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
   (queries.card/update-cards! [{:id                card-id
-                        :public_uuid       nil
-                        :made_public_by_id nil}])
+                                :public_uuid       nil
+                                :made_public_by_id nil}])
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"

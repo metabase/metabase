@@ -298,7 +298,8 @@
 
 (defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
-   :swap-source        segments.replacement/swap-source})
+   :swap-source        segments.replacement/swap-source
+   :update!            update-segment!})
 
 (defmethod eid-translation/spec :model/Segment [_model]
   {:names [:segment]})

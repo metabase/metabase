@@ -204,9 +204,9 @@
         card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
     (queries.card/update-card! {:card-before-update    card-before
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+                                :card-updates          card-updates
+                                :actor                 @api/*current-user*
+                                :delete-old-dashcards? false})
     (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------

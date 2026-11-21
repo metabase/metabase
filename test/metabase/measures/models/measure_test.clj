@@ -29,8 +29,8 @@
          Exception
          #"does not exist"
          (measure/create-measure! {:name       "Bad Measure"
-                                      :creator_id (mt/user->id :rasta)
-                                      :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
+                                   :creator_id (mt/user->id :rasta)
+                                   :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
     (is (not (t2/exists? :model/Measure :name "Bad Measure")))))
 
 (deftest insert-measure-referencing-measure-test

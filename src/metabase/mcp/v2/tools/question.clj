@@ -462,9 +462,9 @@
                                                        card-before
                                                        column_metadata)))]
       (queries.card/update-card! {:card-before-update    card-before
-                             :card-updates          card-updates
-                             :actor                 @api/*current-user*
-                             :delete-old-dashcards? false}))
+                                  :card-updates          card-updates
+                                  :actor                 @api/*current-user*
+                                  :delete-old-dashcards? false}))
     (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema

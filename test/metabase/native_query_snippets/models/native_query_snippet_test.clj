@@ -135,10 +135,10 @@
     (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
       (testing "nil in -> {} out"
         (let [snippet (native-query-snippet/create-snippet!
-                                  {:name "nil-tags"
-                                   :content "SELECT 1"
-                                   :creator_id user-id
-                                   :template_tags nil})
+                       {:name "nil-tags"
+                        :content "SELECT 1"
+                        :creator_id user-id
+                        :template_tags nil})
               extracted (export-one snippet)]
           ;; toucan hooks populate it:
           (is (= {} (:template_tags extracted)))

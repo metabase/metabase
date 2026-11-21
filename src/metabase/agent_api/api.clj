@@ -912,9 +912,9 @@
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
     (queries.card/update-card! {:card-before-update    card-before-update
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+                                :card-updates          card-updates
+                                :actor                 @api/*current-user*
+                                :delete-old-dashcards? false})
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request

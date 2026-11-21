@@ -2,7 +2,6 @@
   "Application database queries for the audit-app module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions and connections."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse :as pulse]

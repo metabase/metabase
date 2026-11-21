@@ -574,30 +574,6 @@
   [parameter-card :- ::queries.schema/parameter-card.update]
   (t2/insert! :model/ParameterCard parameter-card))
 
-(mu/defn parameter-cards-for-objects
-  "The ParameterCards of the parameterized objects of `object-type` with `object-ids`."
-  [object-type :- [:or :keyword :string]
-   object-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ParameterCard
-             :parameterized_object_type object-type
-             :parameterized_object_id [:in object-ids]))
-
-(mu/defn insert-parameter-cards!
-  "Insert the ParameterCard `rows` in one statement, returning the number inserted."
-  [rows :- [:sequential ::queries.schema/parameter-card.update]]
-  (t2/insert! :model/ParameterCard rows))
-
-(mu/defn set-parameter-cards-card-id!
-  "Point the ParameterCards with `parameter-card-ids` at `card-id`, returning the number updated."
-  [parameter-card-ids :- [:sequential ms/PositiveInt]
-   card-id            :- ::lib.schema.id/card]
-  (t2/update! :model/ParameterCard :id [:in parameter-card-ids] {:card_id card-id}))
-
-(mu/defn delete-parameter-cards-by-ids!
-  "Delete the ParameterCards with `parameter-card-ids`, returning the number deleted."
-  [parameter-card-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ParameterCard :id [:in parameter-card-ids]))
-
 (mu/defn delete-parameter-cards-for-card!
   "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
@@ -624,15 +600,6 @@
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
               :parameterized_object_id object-id))
-
-(mu/defn delete-parameter-cards-for-objects!
-  "Delete every ParameterCard of the parameterized objects of `object-type` with `object-ids`, returning the number
-  deleted."
-  [object-type :- [:or :keyword :string]
-   object-ids  :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
-              :parameterized_object_id [:in object-ids]))
 
 (mu/defn delete-parameter-cards-for-object-except!
   "Delete the ParameterCards of the given parameterized object whose parameter is not one of `parameter-ids`,

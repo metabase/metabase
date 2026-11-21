@@ -2116,6 +2116,11 @@
   [card-id _user-id snapshot]
   (update-cards* [(assoc (select-keys snapshot (revisions/tracked-columns :model/Card)) :id card-id)]))
 
+(defn- update-replaced-card!
+  "Apply `changes`, a write of a source replacement, to the Card `card-id`, as any other update of it."
+  [card-id changes]
+  (update-cards! [(assoc changes :id card-id)]))
+
 (defn- create-imported-cards!
   "Creates the Cards of an import from `rows`, with the model metadata of their entities, which the import has checked
   against the schema of an exported Card."
@@ -2247,7 +2252,8 @@
   {:source-database-id :database_id
    :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs
-   :swap-source        queries.replacement/swap-source})
+   :swap-source        queries.replacement/swap-source
+   :update!            update-replaced-card!})
 
 (defmethod collection-items/spec :model/Card [_model]
   {"card"    {:rank    5

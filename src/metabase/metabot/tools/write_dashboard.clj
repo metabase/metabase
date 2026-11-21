@@ -641,12 +641,12 @@
       (cond-> {:chart-id chart-id, :card-id (:id reused)}
         (not= name (:name reused)) (assoc :kept-name (:name reused)))
       (let [card (queries.card/create-card! {:name                   name
-                                        :dataset_query          dataset_query
-                                        :display                display
-                                        :visualization_settings {}
-                                        :dashboard_id           dashboard-id}
-                                       {:id api/*current-user-id*}
-                                       false)]
+                                             :dataset_query          dataset_query
+                                             :display                display
+                                             :visualization_settings {}
+                                             :dashboard_id           dashboard-id}
+                                            {:id api/*current-user-id*}
+                                            false)]
         (when conversation-id
           (metabot.db/link-card-to-conversation! (:id card) conversation-id chart-id))
         {:chart-id chart-id, :card-id (:id card), :card card}))))

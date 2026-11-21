@@ -3,9 +3,7 @@
   (:require
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase.dependencies.core :as dependencies]
-   [metabase.queries.models.card :as queries.card]
    [metabase.replacement.spec :as replacement.spec]
-   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)

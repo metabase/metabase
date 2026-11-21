@@ -185,5 +185,5 @@
       (archive! :model/Dashboard (u/the-id dashboard) true)
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Dashboard"
                             (first (#'card/create-cards* [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
-                                                                          (dissoc :id :entity_id :created_at :updated_at)
-                                                                          (assoc :archived false))])))))))
+                                                              (dissoc :id :entity_id :created_at :updated_at)
+                                                              (assoc :archived false))])))))))

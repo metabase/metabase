@@ -86,7 +86,6 @@
   ;; dependency-free namespace that exists for exactly this.
   (t2/select-one (queries.card-schema/selection) :id card-id))
 
-
 (mu/defn archive-cards-for-table!
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
   [table-id :- ::lib.schema.id/table]
