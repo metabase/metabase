@@ -480,7 +480,7 @@
 
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since.
-   Saving a chart from a conversation sets the two columns, in [[metabot.db/link-card-to-conversation!]].
+   Saving a chart from a conversation sets the two columns, in [[metabase.queries.models.card/link-to-metabot-conversation!]].
    The Card model's `clear-metabot-origin` clears them when the query, display or visualization settings change."
   [card]
   ;; A question's `query_type` is native only when its whole query is one SQL stage, so a notebook stage over SQL

@@ -13,6 +13,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -20,9 +22,13 @@
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
    [metabase.mcp.usage :as mcp.usage]
+   [metabase.metabot.models.ai-usage-log :as ai-usage-log]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
+   [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.permissions.models.permissions-group :as permissions-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.models.card :as card]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.task.search-index :as task.search-index]
@@ -31,6 +37,7 @@
    [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.transforms.models.transform :as transform]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.users.models.user :as user]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
@@ -250,14 +257,14 @@
                                       {:status-code 400}))))
                (t/minus (t/local-date) (t/months 7)))]
     (case model
-      "card"      (testing-api.db/set-card-last-used-at! id date)
-      "dashboard" (testing-api.db/set-dashboard-last-viewed-at! id date)
-      "document"  (testing-api.db/set-document-last-viewed-at! id date)
+      "card"      (card/set-last-used-at! id date)
+      "dashboard" (dashboard/set-last-viewed-at! id date)
+      "document"  (document/set-last-viewed-at! id date)
       "transform" (do
                     (transform/update-transforms! {id {:created_at date}})
                     ;; collapsed to a zero-length run so backdating staleness can't also make the
                     ;; transform look slow
-                    (testing-api.db/set-transform-run-times! id date))
+                    (transform-run/set-run-times! id date))
       (throw (ex-info (str "unknown model: '" model "'") {:status-code 400})))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -363,14 +370,19 @@
    [:published_at      [:maybe :string]]
    [:updated_at        [:maybe :string]]])
 
+(defenterprise replace-security-advisories!
+  "Delete every SecurityAdvisory and insert `advisories`, which only EE has."
+  metabase-enterprise.security-center.models.security-advisory
+  [_advisories]
+  (throw (ex-info "Security advisories need the enterprise edition." {:status-code 400})))
+
 (api.macros/defendpoint :post "/security-advisories"
   "Nuke all existing security advisories and insert the provided ones."
   [_route-params
    _query-params
    {:keys [advisories]} :- [:map {:closed true}
                             [:advisories [:sequential TestAdvisory]]]]
-  (testing-api.db/delete-all-security-advisories!)
-  (testing-api.db/insert-security-advisories! (mapv #(m/update-existing % :matching_query walk/keywordize-keys) advisories)))
+  (replace-security-advisories! (mapv #(m/update-existing % :matching_query walk/keywordize-keys) advisories)))
 
 (api.macros/defendpoint :post "/native-query" :- ::lib.schema/query
   "Creates a native query from a test query spec."
@@ -410,19 +422,19 @@
 
 (defn- delete-seeded-usage-auditing-data!
   []
-  (testing-api.db/delete-ai-usage-logs-for-conversations! e2e-usage-auditing-conversation-ids)
-  (testing-api.db/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
+  (ai-usage-log/delete-ai-usage-logs-for-conversations! e2e-usage-auditing-conversation-ids)
+  (metabot-conversation/delete-metabot-conversations! e2e-usage-auditing-conversation-ids))
 
 (defn- insert-seeded-usage-auditing-conversation!
   [{:keys [id user-id created-at source profile-id prompt-tokens completion-tokens total-tokens roles ip-address tenant-id]}]
-  (testing-api.db/insert-metabot-conversation!
+  (metabot-conversation/seed-metabot-conversation!
    {:id         id
     :user_id    user-id
     :title      "E2E usage auditing conversation"
     :created_at created-at
     :ip_address ip-address})
   (doseq [role roles]
-    (testing-api.db/insert-metabot-message!
+    (metabot-message/seed-metabot-message!
      {:conversation_id id
       :user_id         user-id
       :role            role
@@ -431,7 +443,7 @@
       :data_version    2
       :total_tokens    0
       :created_at      created-at}))
-  (testing-api.db/insert-ai-usage-log!
+  (ai-usage-log/seed-ai-usage-log!
    (cond-> {:source            source
             :model             "anthropic/claude-sonnet-4-6"
             :conversation_id   id

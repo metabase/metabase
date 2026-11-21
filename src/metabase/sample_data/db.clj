@@ -25,14 +25,3 @@
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id [:auto/param database-id]))
-
-(mu/defn set-database-table-permissions-schema-name!
-  "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
-  update because the model's before-update rejects all updates."
-  [database-id :- ::lib.schema.id/database
-   schema-name :- [:maybe :string]]
-  (t2/query {:update (t2/table-name :model/DataPermissions)
-             :set    {:schema_name schema-name}
-             :where  [:and
-                      [:= :db_id database-id]
-                      [:not= :table_id nil]]}))

@@ -3,6 +3,7 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.cache.db :as cache.db]
+   [metabase.cache.schema :as cache.schema]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -20,6 +21,33 @@
   "Delete the QueryCache entries with `query-hashes`."
   [query-hashes :- [:sequential bytes?]]
   (cache.db/delete-query-caches! query-hashes))
+
+(mu/defn claim-refresh-lease! :- :int
+  "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
+  `lease-free-sentinel`) is older than `lease-cutoff`, in one statement, returning the number updated."
+  [query-hash          :- bytes?
+   lease-free-sentinel :- ::cache.schema/temporal
+   lease-cutoff        :- ::cache.schema/temporal
+   started-at          :- ::cache.schema/temporal]
+  (cache.db/claim-query-cache-refresh-lease! query-hash lease-free-sentinel lease-cutoff started-at))
+
+(mu/defn delete-query-cache!
+  "Delete the QueryCache entry for `query-hash`."
+  [query-hash :- bytes?]
+  (cache.db/delete-query-cache! query-hash))
+
+(mu/defn delete-query-caches-updated-before!
+  "Delete the QueryCache entries last updated at or before `updated-before`."
+  [updated-before :- ::cache.schema/temporal]
+  (cache.db/delete-query-caches-updated-before! updated-before))
+
+(mu/defn upsert-query-cache!
+  "Insert or update the QueryCache entry for `query-hash` with `results` and `timestamp`, clearing its refresh lease,
+  and return its primary key, the hash bytes."
+  [query-hash :- bytes?
+   timestamp  :- ::cache.schema/temporal
+   results    :- bytes?]
+  (cache.db/upsert-query-cache! query-hash timestamp results))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

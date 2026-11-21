@@ -185,12 +185,6 @@
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard-ids]))
 
-(mu/defn invalidate-cards!
-  "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
-  [card-ids       :- [:sequential ::lib.schema.id/card]
-   invalidated-at :- ms/TemporalInstant]
-  (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
-
 (mu/defn invalidate-cache-configs!
   "Set `invalidated_at` of the CacheConfigs identified by the `[model model-id]` pairs to `invalidated-at`, returning
   the number updated."
@@ -216,3 +210,38 @@
   "Delete the QueryCache entries with `query-hashes`."
   [query-hashes :- [:sequential bytes?]]
   (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
+
+;;; ---------------------------------------------- Query cache entries ----------------------------------------------
+
+(mu/defn claim-query-cache-refresh-lease!
+  "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
+  `lease-free-sentinel`) is older than `lease-cutoff`, returning the number of rows updated."
+  [query-hash          :- bytes?
+   lease-free-sentinel :- ::cache.schema/temporal
+   lease-cutoff        :- ::cache.schema/temporal
+   started-at          :- ::cache.schema/temporal]
+  (t2/update! (t2/table-name :model/QueryCache)
+              {:query_hash                                         query-hash
+               [:coalesce :refresh_started_at lease-free-sentinel] [:< lease-cutoff]}
+              {:refresh_started_at started-at}))
+
+(mu/defn delete-query-cache!
+  "Delete the QueryCache entry for `query-hash`."
+  [query-hash :- bytes?]
+  (t2/delete! (t2/table-name :model/QueryCache) :query_hash query-hash))
+
+(mu/defn delete-query-caches-updated-before!
+  "Delete the QueryCache entries last updated at or before `updated-before`."
+  [updated-before :- ::cache.schema/temporal]
+  (t2/delete! (t2/table-name :model/QueryCache) :updated_at [:<= updated-before]))
+
+(mu/defn upsert-query-cache!
+  "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
+  `timestamp`, and clearing `:refresh_started_at`. Returns the entry's primary key, which is the hash bytes."
+  [query-hash :- bytes?
+   timestamp  :- ::cache.schema/temporal
+   results    :- bytes?]
+  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
+                            (constantly {:updated_at         timestamp
+                                         :results            results
+                                         :refresh_started_at nil})))

@@ -378,7 +378,7 @@
   (testing "one tombstone chunk throwing does not cost the chunks after it"
     (search.tu/with-appdb-search-if-available-without-fallback
       ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
-      (with-redefs [database/tombstone-chunk-size 1]
+      (with-redefs [queries.card/tombstone-chunk-size 1]
         (mt/with-temp [:model/Database {db-id :id}    {}
                        :model/Card     {fail-card :id} {:name "Db Chunk Failure Model", :type :model, :database_id db-id}
                        :model/Card     {ok-card :id}   {:name "Db Chunk Survivor Model", :type :model, :database_id db-id}]

@@ -562,9 +562,20 @@
       (transforms.db/delete-transforms! (vec transform-ids))))
   nil)
 
+(defmethod transforms-base.u/record-run-changes! :model/Transform
+  [_model transform-id changes]
+  (update-transforms! {transform-id changes}))
+
+(mu/defn set-table-dependencies! :- :int
+  "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, a cache no rule
+  reads and no event reports, in one plain statement."
+  [transform-id      :- ::lib.schema.id/transform
+   dependencies-json :- :string]
+  (transforms.db/set-table-dependencies! transform-id dependencies-json))
+
 (defmethod database/delete-for-databases! :model/Transform
-  [_model database-ids]
-  (delete-transforms! (transforms.db/transform-ids-for-source-databases database-ids)))
+  [_model databases]
+  (delete-transforms! (transforms.db/transform-ids-for-source-databases (mapv :id databases))))
 
 (def ^:private revision-columns
   "The columns a revision of a Transform records and a revert restores."

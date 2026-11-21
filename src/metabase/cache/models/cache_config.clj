@@ -16,6 +16,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -267,11 +268,21 @@
   (when (seq model-ids)
     (cache.db/delete-cache-configs! model (vec model-ids))))
 
+(defmethod database/delete-for-databases! :model/CacheConfig
+  [_model databases]
+  (delete-target-configs! "database" (mapv :id databases)))
+
 (mu/defn update-cache-config!
   "Apply `changes` to the cache configuration with `cache-config-id`."
   [cache-config-id :- ms/PositiveInt
    changes         :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
   (cache.db/update-cache-config! cache-config-id changes))
+
+(defmulti invalidate-cached-results!
+  "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The
+  Card model, whose namespace requires this one, implements it with its own write function."
+  {:arglists '([model ids invalidated-at])}
+  (fn [model _ids _invalidated-at] model))
 
 (defn- invalidate-cards [databases dashboards questions]
   (let [card-ids (concat
@@ -282,7 +293,8 @@
                     (cache.db/dashboard-card-ids dashboards)))]
     (if (empty? card-ids)
       -1
-      (cache.db/invalidate-cards! card-ids (t/offset-date-time)))))
+      (do (t2/resolve-model :model/Card)
+          (invalidate-cached-results! :model/Card card-ids (t/offset-date-time))))))
 
 (defn- invalidate-cache-configs [databases dashboards questions]
   (let [model+ids (for [[k vs] [[:database databases]

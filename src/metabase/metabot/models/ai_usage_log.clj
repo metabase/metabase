@@ -25,6 +25,16 @@
   [cutoff :- ms/TemporalInstant]
   (metabot.db/delete-usage-logs-created-before! cutoff))
 
+(mu/defn seed-ai-usage-log!
+  "Insert the AiUsageLog `row` as given, its timestamps included, which the testing API seeds."
+  [row :- ::metabot.schema/ai-usage-log.update]
+  (metabot.db/insert-usage-log-row! row))
+
+(mu/defn delete-ai-usage-logs-for-conversations!
+  "Delete the AiUsageLogs of the conversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (metabot.db/delete-usage-logs-for-conversations! conversation-ids))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/AiUsageLog [_model]

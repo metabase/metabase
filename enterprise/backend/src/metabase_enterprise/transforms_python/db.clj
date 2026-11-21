@@ -37,12 +37,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
-(mu/defn update-run-message!
-  "Set the message of the TransformRun with `run-id`."
-  [run-id  :- ms/PositiveInt
-   message :- [:maybe :string]]
-  (t2/update! :model/TransformRun :id run-id {:message message}))
-
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
   [library-id :- ms/PositiveInt]

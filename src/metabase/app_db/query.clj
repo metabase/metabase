@@ -219,6 +219,45 @@
           (t2/with-transaction [_conn]
             (t2/insert-returning-instance! model (insert-fn)))))))
 
+(mu/defn increment-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to `column` of the rows of `model` with `ids`, in one raw
+  statement that runs no hook and publishes no event, for a usage counter no rule reads. Returns the number updated."
+  [model      :- :keyword
+   column     :- :keyword
+   count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the change log leaves out usage stats
+  (first (t2/query {:update (t2/table-name model)
+                    :set    {column [:+ column (into [:case]
+                                                     (mapcat (fn [[cnt ids]]
+                                                               [[:in :id ids] cnt])
+                                                             count->ids))]}
+                    :where  [:in :id (apply concat (vals count->ids))]})))
+
+(mu/defn delete-oldest-rows! :- [:maybe :int]
+  "Delete up to `batch-size` of the rows of `model` whose `time-column` is at or before `cutoff`, lowest ids first
+  where the database can say so, in one raw statement that runs no hook, for a log table a retention policy trims.
+  Returns the number deleted."
+  [model       :- :keyword
+   time-column :- :keyword
+   cutoff      :- ms/TemporalInstant
+   batch-size  :- ms/PositiveInt]
+  (let [table (t2/table-name model)]
+    (case (mdb.connection/db-type)
+      (:postgres :h2)
+      (t2/query-one {:delete-from table
+                     :where [:in
+                             :id
+                             ^:allow-subquery {:select [:id]
+                                               :from table
+                                               :where [:<= time-column cutoff]
+                                               :order-by [[:id :asc]]
+                                               :limit batch-size}]})
+
+      :mysql
+      (t2/query-one {:delete-from table
+                     :where [:<= time-column cutoff]
+                     :limit batch-size}))))
+
 (defn update-or-insert!
   "Update a database record, if it exists, otherwise create it.
 

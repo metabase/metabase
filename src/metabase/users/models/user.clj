@@ -2,6 +2,7 @@
   (:require
    [clojure.data :as data]
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
@@ -16,6 +17,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.serialization.core :as serialization]
    [metabase.settings.core :as setting]
+   [metabase.settings.models.setting :as settings.models]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
    [metabase.tenants.core :as tenants]
@@ -541,6 +543,29 @@
   "Set the `last_login` of the User with `user-id` to now."
   [user-id :- ::lib.schema.id/user]
   (users.db/set-user-last-login-now! user-id))
+
+(mu/defn set-member-flags! :- :int
+  "Set `changes`, the `is_superuser` or `is_data_analyst` flag a group membership implies, on the Users with
+  `user-ids` in one statement, returning the number updated. The memberships call it and keep the Administrators group
+  and the last admin themselves, so it adds no membership and checks no last admin."
+  [user-ids :- [:set {:min 1} ::lib.schema.id/user]
+   changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
+  (users.db/update-users! {:id [:in (vec user-ids)]} changes))
+
+(mu/defn set-settings! :- :int
+  "Store `settings-json` as the user-local setting values of the User with `user-id` in one statement, returning the
+  number updated."
+  [user-id       :- ::lib.schema.id/user
+   settings-json :- :string]
+  (users.db/update-user-settings! user-id settings-json))
+
+(defmethod settings.models/store-user-local-values! :model/User
+  [_model user-id settings-json]
+  (set-settings! user-id settings-json))
+
+(defmethod perms-group-membership/set-member-flags-of! :model/User
+  [_model user-ids changes]
+  (set-member-flags! user-ids changes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

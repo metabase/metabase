@@ -231,7 +231,7 @@
                                 (update :display keyword)
                                 (update :visualization_settings #(or % {})))
                             {:id api/*current-user-id*})
-                    (metabot.db/link-card-to-conversation! (:id <>) id chart_id)))]
+                    (queries.card/link-to-metabot-conversation! (:id <>) id chart_id)))]
     (assoc created
            :metabot_conversation_id id
            :metabot_chart_id        chart_id)))

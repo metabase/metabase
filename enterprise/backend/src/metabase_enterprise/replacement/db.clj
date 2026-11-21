@@ -73,13 +73,6 @@
    ids   :- [:sequential ms/PositiveInt]]
   (t2/select model :id [:in ids]))
 
-(mu/defn update-row!
-  "Apply `changes` to the row of `model` with `id`, returning the number updated."
-  [model   :- :keyword
-   id      :- ms/PositiveInt
-   changes :- :map]
-  (t2/update! model :id id changes))
-
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]

@@ -110,6 +110,12 @@
   [user-id :- ::lib.schema.id/user]
   (t2/update! :model/User :id user-id {:last_login :%now}))
 
+(mu/defn update-user-settings!
+  "Store `settings-json` as the user-local settings of the User with `user-id`, returning the number updated."
+  [user-id       :- ::lib.schema.id/user
+   settings-json :- :string]
+  (t2/update! :model/User :id [:auto/param user-id] {:settings settings-json}))
+
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]

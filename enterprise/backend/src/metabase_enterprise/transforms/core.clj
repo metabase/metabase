@@ -9,6 +9,7 @@
    [java-time.api :as t]
    [metabase-enterprise.transforms.db :as transforms.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.transforms.models.transform :as transform]
    [metabase.util.json :as json]
    [metabase.util.log :as log]))
 
@@ -19,7 +20,7 @@
   [id->raw-deps]
   (doseq [[id raw-deps] id->raw-deps]
     (try
-      (transforms.db/cache-table-dependencies! id (json/encode (vec raw-deps)))
+      (transform/set-table-dependencies! id (json/encode (vec raw-deps)))
       (catch Throwable e
         (log/warnf "Failed to cache table-dependencies for transform %s: %s" id (ex-message e))))))
 

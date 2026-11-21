@@ -471,10 +471,17 @@
   "The columns of an update whose effects depend on the stored row."
   [:display_name :json_unfolding :fk_target_field_id])
 
+(defmulti clear-for-deactivated-fields!
+  "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose
+  namespace requires this one implements with its own write function."
+  {:arglists '([model field-ids])}
+  (fn [model _field-ids] model))
+
 (defn- clear-user-settings-fk-targets!
   "Unset the user-set foreign keys to the Fields with `field-ids` in the settings of the Fields that target them."
   [field-ids]
-  ((requiring-resolve 'metabase.warehouse-schema.models.field-user-settings/clear-fk-targets-to-fields!) field-ids))
+  (t2/resolve-model :model/FieldUserSettings)
+  (clear-for-deactivated-fields! :model/FieldUserSettings field-ids))
 
 (defn- deactivated!
   "Clear what points at the deactivated Fields with `field-ids`: the foreign keys to them, in the Fields' settings and
@@ -602,6 +609,32 @@
                                    (group-by depth)
                                    (sort-by key)
                                    (mapv (comp set val))))))))
+
+(mu/defn delete-fields-of-databases! :- :nil
+  "Delete the Fields of the Tables of the Databases with `database-ids`, as those Databases are deleted: the childless
+  ones first, one statement per level of nesting, so that no Field is deleted before its children."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  ;; Avoid issuing the DELETE when no Fields exist. Keep this check non-locking: locking an empty range on MySQL
+  ;; recreates the contention this guard avoids. A concurrent sync can race this check, but the foreign keys preserve
+  ;; integrity by rejecting the Database deletion if it introduces nested Fields after the transaction snapshot.
+  (when (warehouse-schema.db/fields-exist-for-databases? database-ids)
+    (loop []
+      (let [deleted (warehouse-schema.db/delete-childless-fields-for-databases! database-ids)]
+        (when (pos? deleted)
+          (recur)))))
+  nil)
+
+(mu/defn clear-data-sensitivity-where! :- :int
+  "Clear the `data_sensitivity` of the Fields matching the Honey SQL `where` clause, so that the next scan of the
+  classifier computes it again: the rows logged in the change log and one statement, returning the number cleared."
+  [where :- vector?]
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Field :update {:where where})
+    (warehouse-schema.db/clear-fields-data-sensitivity-where! where)))
+
+(defmethod database/delete-for-databases! :model/Field
+  [_model databases]
+  (delete-fields-of-databases! (mapv :id databases)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

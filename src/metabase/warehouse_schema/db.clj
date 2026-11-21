@@ -930,3 +930,51 @@
                      :table_id [:in ^:allow-subquery {:select [:id]
                                                       :from   [(t2/table-name :model/Table)]
                                                       :where  [:and [:in :collection_id collection-ids] [:= :is_published true]]}]))
+
+(defn- table-ids-of-databases-query
+  [database-ids]
+  ^:allow-subquery {:from [(t2/table-name :model/Table)], :select [:id], :where [:in :db_id database-ids]})
+
+(mu/defn fields-exist-for-databases?
+  "Whether any Field belongs to a Table of the Databases with `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/exists? :model/Field :table_id [:in (table-ids-of-databases-query database-ids)]))
+
+(mu/defn delete-childless-fields-for-databases!
+  "Delete the childless Fields of the Tables of the Databases with `database-ids`, returning the number deleted."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (let [table-ids-query (table-ids-of-databases-query database-ids)
+        extra-clause    (if (= (app-db/db-type) :mysql)
+                          ;; double-wrapped subquery to work around the MySQL restriction on selecting from the
+                          ;; DELETE target
+                          [:not-in :id ^:allow-subquery {:select [:parent_id]
+                                                         :from   [[^:allow-subquery {:select [:parent_id]
+                                                                                     :from   [(t2/table-name :model/Field)]
+                                                                                     :where  [:and
+                                                                                              [:not= :parent_id nil]
+                                                                                              [:in :table_id table-ids-query]]}
+                                                                   :parent_fields]]}]
+                          [:not [:exists ^:allow-subquery {:select [1]
+                                                           :from   [[(t2/table-name :model/Field) :child_field]]
+                                                           :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+    (t2/query-one {:delete-from (t2/table-name :model/Field)
+                   :where       [:and
+                                 [:in :table_id table-ids-query]
+                                 extra-clause]})))
+
+(mu/defn increment-table-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Tables with `ids`, in one raw
+  statement that publishes no event, returning the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (app-db/increment-counts! :model/Table :view_count count->ids))
+
+(mu/defn clear-fields-data-sensitivity-where!
+  "Clear the `data_sensitivity` of the Fields matching the Honey SQL `where` clause with a raw statement, which runs
+  no Field hook and publishes no event, returning the number cleared."
+  [where :- vector?]
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; the caller logs the rows first
+  (t2/query-one {:update (t2/table-name :model/Field)
+                 :set    {:data_sensitivity nil}
+                 :where  where}))

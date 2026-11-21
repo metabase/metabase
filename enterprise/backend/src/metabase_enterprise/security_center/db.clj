@@ -118,3 +118,13 @@
   "Whether a connection impersonation policy exists on the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+
+(mu/defn delete-all-advisories!
+  "Delete every SecurityAdvisory."
+  []
+  (t2/delete! :model/SecurityAdvisory))
+
+(mu/defn insert-advisories!
+  "Insert `advisories` and return the inserted SecurityAdvisory instances."
+  [advisories :- [:sequential ::security-center.schema/security-advisory.update]]
+  (t2/insert-returning-instances! :model/SecurityAdvisory advisories))

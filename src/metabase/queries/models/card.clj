@@ -55,6 +55,7 @@
    [metabase.queries.serialization :as queries.serialization]
    [metabase.queries.staleness :as queries.staleness]
    [metabase.queries.xrays :as queries.xrays]
+   [metabase.query-processor.card-writes :as qp.card-writes]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
@@ -70,10 +71,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
+   [toucan2.realize :as t2.realize]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
@@ -533,6 +537,30 @@
   (and (mi/can-write? (t2/hydrate card :can_write))
        (sandboxes-allow-card-delete? card)))
 
+(defmulti create-followers!
+  "Create the `rows` of `model` that a write of Cards adds, such as the DashboardCard of a dashboard question, which a
+  model whose namespace requires this one implements with its own write function."
+  {:arglists '([model rows])}
+  (fn [model _rows] model))
+
+(defmulti update-followers!
+  "Apply `rows`, each the `:id` of a row of `model` and the columns to change, that a write of Cards changes, which a
+  model whose namespace requires this one implements with its own write function."
+  {:arglists '([model rows])}
+  (fn [model _rows] model))
+
+(defmulti delete-followers!
+  "Delete the rows of `model` with `ids` that a write of Cards removes, which a model whose namespace requires this one
+  implements with its own write function."
+  {:arglists '([model ids])}
+  (fn [model _ids] model))
+
+(defn- write-followers!
+  "Call `multi` with `model`, after loading it, and `rows-or-ids`."
+  [multi model rows-or-ids]
+  (t2/resolve-model model)
+  (multi model rows-or-ids))
+
 (defn- value-field-gone?
   [metadata-columns value-field]
   (or (nil? value-field)
@@ -578,7 +606,7 @@
                                                     (when (not= parameters new-parameters)
                                                       {:id id :parameters new-parameters}))))
                                           dashboard-ids))]
-        (@(requiring-resolve 'metabase.dashboards.models.dashboard/update-dashboards!) dashboard-updates)))))
+        (write-followers! update-followers! :model/Dashboard dashboard-updates)))))
 
 (defn- reset-values-sources-of-changed-cards!
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of one of
@@ -1769,12 +1797,125 @@
         (delete-card-tests! card-ids)
         (actions.models/delete-actions-of-models! card-ids)
         (parameter-card/delete-parameter-cards-for-objects! "card" card-ids card-ids)
-        (queries.db/delete-card-moderation-reviews-of-cards! card-ids)
+        (moderation-review/delete-reviews-of-deleted-cards! card-ids)
         (revision/delete-revisions-for-entities! "Card" card-ids)
         (cache-config/delete-target-configs! "question" card-ids)
         (delete-notifications-of-cards! card-ids)
         (queries.db/delete-cards! card-ids)))
     nil))
+
+(def ^:private tombstone-chunk-size
+  "Card ids per [[metabase.search.core/after-commit!]] step when tombstoning a deleted database's cards."
+  1000)
+
+(mu/defn delete-cards-of-databases! :- :nil
+  "Delete the Cards of the Databases with `database-ids` in bounded statements, as those Databases are deleted, with
+  their search documents and cache configs."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  ;; Cards are deleted by id in bounded statements, bypassing their row-level delete hook and delete capture, so
+  ;; their search documents are enumerated first.
+  ;; The database cascade then removes rows that hang off those cards, such as their remaining actions and model
+  ;; indexes, which Toucan never sees.
+  (let [{:keys [gone cascading]}
+        (reduce (fn [{:keys [gone cascading]} batch]
+                  (let [ids    (mapv :id batch)
+                        ;; A search error must not fail the database delete; those documents are left to the reindex.
+                        merged (try
+                                 (search/add-cascading-documents cascading (mapv #(t2/instance :model/Card %) batch))
+                                 (catch Exception e
+                                   (log/errorf e "Skipping search cascade enumeration for databases %s" database-ids)
+                                   cascading))]
+                    ;; A card that moved to another database since the scan survives, and keeps its documents.
+                    ;; Only a short count says one did, so a full batch skips the check.
+                    {:gone      (if (= (count ids) (queries.db/delete-cards-of-databases! database-ids ids))
+                                  (into gone ids)
+                                  (into gone (remove (queries.db/existing-card-ids ids)) ids))
+                     :cascading merged}))
+                {:gone [], :cascading nil}
+                (eduction
+                 (map t2.realize/realize)
+                 (partition-all 1000)
+                 (queries.db/card-ids-for-databases-reducible database-ids)))]
+    (doseq [card-ids (partition-all tombstone-chunk-size gone)]
+      (cache-config/delete-target-configs! "question" card-ids))
+    ;; Index mutations must see committed state. The shared ingestion queue serializes these tombstones after any
+    ;; older re-index that may already have read a soon-to-be-deleted card.
+    (when (or (seq gone) (seq cascading))
+      (apply search/after-commit! "database delete"
+             ;; Each chunk is its own step, and after-commit! catches each step's failure separately.
+             ;; Without an ingestion worker a step deletes at once, so a failed chunk costs only its own ids.
+             ;; With a worker the steps only queue tombstones, and the worker applies adjacent ones as one run.
+             (concat (for [chunk (partition-all tombstone-chunk-size gone)]
+                       (fn [] (search/delete! :model/Card chunk)))
+                     [(fn [] (search/reconcile-cascading-documents! cascading))]))))
+  nil)
+
+(mu/defn touch-last-used! :- :nil
+  "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`,
+  in one plain statement that publishes no event: a usage stat no rule reads."
+  [card-id->timestamp :- [:map-of ::lib.schema.id/card [:fn #(instance? java.time.temporal.Temporal %)]]]
+  (when (seq card-id->timestamp)
+    (queries.db/update-cards-last-used-at! card-id->timestamp))
+  nil)
+
+(mu/defn increment-view-counts! :- :int
+  "Add, for each `[count ids]` entry of `count->ids`, `count` to the `view_count` of the Cards with `ids`, in one plain
+  statement that publishes no event: a usage stat no rule reads. Returns the number updated."
+  [count->ids :- [:map-of ms/PositiveInt [:sequential ms/PositiveInt]]]
+  (queries.db/increment-card-view-counts! count->ids))
+
+(mu/defn set-last-used-at! :- :int
+  "Set `last_used_at` of the Card with `id`, through the model, returning the number updated. The testing API backdates
+  it."
+  [id   :- ::lib.schema.id/card
+   time :- ms/TemporalInstant]
+  (queries.db/set-card-last-used-at! id time))
+
+(mu/defn shift-positions! :- :int
+  "Add or subtract (`plus-or-minus`) one from the `collection_position` of the Cards in the Collection with
+  `collection-id` whose position matches `position-clause`, in one statement, as another item takes or leaves a
+  position, returning the number updated."
+  [collection-id   :- [:maybe ::lib.schema.id/collection]
+   position-clause :- vector?
+   plus-or-minus   :- [:enum :+ :-]]
+  (queries.db/shift-card-positions! collection-id position-clause plus-or-minus))
+
+(defmethod api/shift-collection-positions! :model/Card
+  [_model collection-id position-clause plus-or-minus]
+  (shift-positions! collection-id position-clause plus-or-minus))
+
+(mu/defn invalidate-cached-results! :- :int
+  "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, in one statement through the model, so
+  that the cached results stored before it are not served; returns the number updated."
+  [card-ids       :- [:sequential ::lib.schema.id/card]
+   invalidated-at :- ms/TemporalInstant]
+  (queries.db/set-cards-cache-invalidated-at! (vec card-ids) invalidated-at))
+
+(defmethod cache-config/invalidate-cached-results! :model/Card
+  [_model card-ids invalidated-at]
+  (invalidate-cached-results! card-ids invalidated-at))
+
+(mu/defn link-to-metabot-conversation! :- :int
+  "Record that the Card with `card-id` was saved from the MetabotConversation with `conversation-id` as `chart-id`, in
+  the change log and in one statement that publishes no event, returning the number updated."
+  [card-id         :- ::lib.schema.id/card
+   conversation-id :- :string
+   chart-id        :- :string]
+  (t2/with-transaction [_conn]
+    (change-log/log-rows! :model/Card :update :id card-id)
+    (queries.db/set-card-metabot-chart! card-id conversation-id chart-id)))
+
+(defmethod qp.card-writes/touch-last-used! :model/Card
+  [_model card-id->timestamp]
+  (touch-last-used! card-id->timestamp))
+
+(defmethod qp.card-writes/save-result-metadata! :model/Card
+  [_model card-id metadata]
+  (update-cards! [{:id card-id :result_metadata metadata :updated_at :updated_at}]))
+
+(defmethod database/delete-for-databases! :model/Card
+  [_model databases]
+  (delete-cards-of-databases! (mapv :id databases)))
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
   (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
@@ -1791,23 +1932,23 @@
                         cards-on-first-tab size_x size_y autoplace/default-grid-width)
                        (autoplace/get-position-for-new-dashcard
                         cards-on-first-tab (:display card)))]
-        (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/create-dashboard-cards!)
-         [(assoc new-spot
-                 :dashboard_tab_id (some-> first-tab :id)
-                 :card_id (:id card)
-                 :dashboard_id dashboard-id)])))))
+        (write-followers! create-followers! :model/DashboardCard
+                          [(assoc new-spot
+                                  :dashboard_tab_id (some-> first-tab :id)
+                                  :card_id (:id card)
+                                  :dashboard_id dashboard-id)])))))
 
 (defn- delete-dashcards!
   "Deletes the DashboardCards with `dashcard-ids` through their model, whose namespace requires this one."
   [dashcard-ids]
   (when (seq dashcard-ids)
-    (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/delete-dashboard-cards!) (vec dashcard-ids))))
+    (write-followers! delete-followers! :model/DashboardCard (vec dashcard-ids))))
 
 (defn- autoremove-dashcard-for-card!
   [card-id dashboard-id]
   (delete-dashcards! (queries.db/dashcard-ids-for-card-on-dashboard card-id dashboard-id))
   (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
-    (queries.db/delete-dashcard-series! (set dashcard-ids))))
+    (write-followers! delete-followers! :model/DashboardCardSeries (vec dashcard-ids))))
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
@@ -1862,7 +2003,7 @@
       ;; removed from the dashboard" since you can't restore to the previous state...
       (delete-dashcards! (queries.db/dashcard-ids-for-card-off-dashboard card-id new-dashboard-id))
       (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (queries.db/delete-dashcard-series! ids)))))
+        (write-followers! delete-followers! :model/DashboardCardSeries (vec ids))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -2055,8 +2196,7 @@
         (when (seq updates)
           (t2/with-transaction [_conn]
             (doseq [[id update] updates]
-              (@(requiring-resolve 'metabase.dashboards.models.dashboard-card/update-dashboard-card-rows!)
-               [(assoc update :id id)]))))))))
+              (write-followers! update-followers! :model/DashboardCard [(assoc update :id id)]))))))))
 
 (deftype SourceCardDependentsGraph []
   graph/Graph

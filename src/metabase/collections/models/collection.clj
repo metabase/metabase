@@ -2590,7 +2590,7 @@
        [source target]))
     (when-let [objects (not-empty (vec (mapcat (comp permission-objects subtree-ids)
                                                (remove #(personal-or-descendant? personal-ids (:before %)) crossing))))]
-      (permissions/delete-permissions! [:in :object objects]))
+      (permissions/delete-permissions-of-objects! objects))
     (doseq [{:keys [before changes]} entries]
       (update-perms-for-tenant-specific-namespace-change! before changes))))
 
@@ -2729,7 +2729,7 @@
                           (map :id)
                           (collections.db/collections-below (mapv children-location (vals stored))))]
             (delete-followers! ids)
-            (permissions/delete-permissions! [:in :object (permission-objects ids)])
+            (permissions/delete-permissions-of-objects! (permission-objects ids))
             (collections.db/delete-collections! (vec ids)))))))
   nil)
 

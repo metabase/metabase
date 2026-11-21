@@ -919,3 +919,10 @@
                 [:= :exploration.archived_directly false]])
              [:= :exploration.archived (boolean archived?)]
              (collections.listing/pinned-state->clause pinned-state :exploration.collection_position)]}))
+
+(mu/defn update-exploration-columns!
+  "Apply `changes` to the Exploration with `exploration-id` in one statement through the model, returning the number
+  updated."
+  [exploration-id :- ms/PositiveInt
+   changes        :- :map]
+  (t2/update! :model/Exploration :id exploration-id changes))

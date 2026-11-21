@@ -87,6 +87,16 @@
   [cutoff :- ms/TemporalInstant]
   (metabot.db/delete-conversations-created-before! cutoff))
 
+(mu/defn seed-metabot-conversation!
+  "Insert the MetabotConversation `row` as given, its id and timestamps included, which the testing API seeds."
+  [row :- ::metabot.schema/metabot-conversation]
+  (metabot.db/insert-conversation-row! row))
+
+(mu/defn delete-metabot-conversations!
+  "Delete the MetabotConversations with `conversation-ids`."
+  [conversation-ids :- [:sequential :string]]
+  (metabot.db/delete-conversations! conversation-ids))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod events/spec :model/MetabotConversation

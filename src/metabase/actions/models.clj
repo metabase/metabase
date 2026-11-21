@@ -28,6 +28,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -863,6 +864,12 @@
         :query    (update-query-actions! [type-row])
         :implicit (update-implicit-actions! [type-row])))))
 
+(defmulti delete-for-archived-actions!
+  "Delete the rows of `model` that show the Actions with `action-ids`, which are being archived. The DashboardCard
+  model, whose namespace requires this one, implements it with its own write function."
+  {:arglists '([model action-ids])}
+  (fn [model _action-ids] model))
+
 (mu/defn update-action!
   "Updates an Action and the related type table.
   Deletes the old type table row if the type has changed, and the DashboardCards of an Action that it archives."
@@ -880,7 +887,8 @@
                                        (= (:type updates) :implicit) (dissoc :database_id)))]
         (update-details! id type-row (:type updates) (:type existing-action)))
       (when (and (:archived updates) (not (:archived existing-action)))
-        (actions.db/delete-dashcards-for-actions! [id]))
+        (t2/resolve-model :model/DashboardCard)
+        (delete-for-archived-actions! :model/DashboardCard [id]))
       (actions.db/action id))))
 
 (mu/defn delete-actions-of-models!
@@ -906,6 +914,17 @@
   (when (seq table-ids)
     (when-let [ids (not-empty (actions.db/implicit-action-ids-of-tables table-ids))]
       (delete-actions! (vec ids)))))
+
+(mu/defn delete-actions-of-databases!
+  "Delete the query Actions whose query runs against one of the Databases with `database-ids` and the implicit Actions
+  that write to one of their Tables, in one statement."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (when-let [ids (not-empty (actions.db/action-ids-of-databases database-ids))]
+    (delete-actions! (vec ids))))
+
+(defmethod database/delete-for-databases! :model/Action
+  [_model databases]
+  (delete-actions-of-databases! (mapv :id databases)))
 
 (mu/defn archive-actions-in-collections!
   "Archive the Actions in the Collections with `collection-ids`, which an archive of their Collection carries, in one

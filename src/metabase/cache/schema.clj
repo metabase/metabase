@@ -162,3 +162,7 @@
    [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
    [:results            {:optional true} [:maybe [:or bytes? :string]]]
    [:refresh_started_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::temporal
+  "A `java.time` instant, date, or date-time."
+  [:fn #(instance? java.time.temporal.Temporal %)])

@@ -7,6 +7,7 @@
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -95,6 +96,14 @@
    user-id      :- ::lib.schema.id/user]
   (let [advisories (security-center.db/unacknowledged-advisories-by-advisory-ids (set advisory-ids))]
     (mapv #(acknowledge! % user-id) advisories)))
+
+(defenterprise replace-security-advisories!
+  "Delete every SecurityAdvisory and insert `advisories`, returning the inserted instances, which the testing API
+  seeds."
+  :feature :none
+  [advisories]
+  (security-center.db/delete-all-advisories!)
+  (security-center.db/insert-advisories! advisories))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

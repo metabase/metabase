@@ -425,13 +425,20 @@
                api/*current-user-id*)
     (swap! user-local-values vary-meta dissoc unreadable-user-settings-key)))
 
+(defmulti store-user-local-values!
+  "Store `settings-json`, the user-local setting values, on the row of `model` with `user-id`. The User model, whose
+  namespace requires this one, implements it with its own write function."
+  {:arglists '([model user-id settings-json])}
+  (fn [model _user-id _settings-json] model))
+
 (defn- set-user-local-value! [setting-definition-or-name value]
   (let [{setting-name :name} (resolve-setting setting-definition-or-name)]
     (warn-discarding-unreadable-settings! @*user-local-values*)
     ;; Update the atom in *user-local-values* with the new value before writing to the DB. This ensures that
     ;; subsequent setting updates within the same API request will not overwrite this value.
     (swap! @*user-local-values* u/assoc-dissoc setting-name value)
-    (settings.db/update-user-settings! api/*current-user-id* (json/encode @@*user-local-values*))))
+    (t2/resolve-model :model/User)
+    (store-user-local-values! :model/User api/*current-user-id* (json/encode @@*user-local-values*))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enforce-setting-access-checks*
