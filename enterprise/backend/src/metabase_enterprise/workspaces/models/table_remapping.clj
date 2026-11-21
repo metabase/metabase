@@ -9,7 +9,7 @@
    app code can pass nil or omit the column. Reads return rows verbatim
    (`\"\"` shows up); callers wanting nil semantics translate locally.
 
-   Inserts, deletes and updates of a routing column invalidate the QP cache for the affected database —
+   Inserts and deletes invalidate the QP cache for the affected database —
    Phase 2's SQL rewriter doesn't run on cache hits, so a stale canonical-
    identifier result post-remap would silently breach workspace isolation.
    They also drop this process's [[database-ids-with-remappings]] cache."
@@ -48,6 +48,8 @@
           m
           sentinel-columns))
 
+(t2/define-before-insert :model/TableRemapping [row]    (coerce-sentinels true  row))
+(t2/define-before-update :model/TableRemapping [row]    (coerce-sentinels true  row))
 (t2/define-before-select :model/TableRemapping [query]  (update query :kv-args #(coerce-sentinels false %)))
 
 ;; `:generation` counts invalidations, so a read that raced a write never caches what it read. `:read-at` is the
@@ -94,20 +96,7 @@
   ;; and would cache that after an early drop. The writing transaction's own reads bypass the cache.
   (app-db/do-after-commit invalidate-database-ids!))
 
-(def ^:private routing-columns
-  "The columns whose change moves what a remapping routes."
-  #{:database_id :from_db :from_schema :from_table_name :to_db :to_schema :to_table_name})
-
-(t2/define-before-insert :model/TableRemapping [row] (invalidate! row) (coerce-sentinels true row))
-
-(t2/define-before-update :model/TableRemapping
-  [row]
-  (let [changes (t2/changes row)]
-    (when (some routing-columns (keys changes))
-      (invalidate! row)
-      (when (contains? changes :database_id)
-        (invalidate! (t2/original row)))))
-  (coerce-sentinels true row))
+(t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
 (t2/define-before-delete :model/TableRemapping [row] (invalidate! row))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

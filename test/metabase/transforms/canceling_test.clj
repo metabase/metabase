@@ -7,7 +7,6 @@
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.transforms.canceling :as canceling]
-   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as trc]
    [toucan2.core :as t2])
   (:import
@@ -142,12 +141,3 @@
             ;; Healthy: success=1, error=0. Buggy (double-count): success=1, error=1.
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "success"})))
             (is (== 0 (mt/metric-value system :metabase-transforms/cancelation-completed {:outcome "error"})))))))))
-
-(deftest cancel-request-on-ended-run-keeps-it-inactive-test
-  (mt/with-premium-features #{:transforms-basic}
-    (mt/with-temp [:model/Transform {transform-id :id} {}]
-      (let [run-id (:id (transform-run/start-run! transform-id {:run_method :manual}))]
-        (transform-run/succeed-started-run! run-id)
-        (trc/mark-cancel-started-run! run-id)
-        (is (nil? (t2/select-one-fn :is_active :model/TransformRun :id run-id)))
-        (is (not (t2/exists? :model/TransformRun :transform_id transform-id :is_active true)))))))

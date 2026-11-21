@@ -24,7 +24,6 @@
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -222,10 +221,7 @@
        (mi/superuser?))
    (mi/can-write? instance)
    (or (mi/superuser?)
-       (current-user-can-read-payload? (cond-> (merge instance changes)
-                                         (map? (:payload changes)) (update :payload #(merge (:payload instance)
-                                                                                            %
-                                                                                            (select-keys (:payload instance) [:card_id]))))))))
+       (current-user-can-read-payload? (merge instance changes)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Notification :can_write]
   "Whether the current user writes each of `notifications`: a superuser, or the creator with subscription permissions
@@ -614,12 +610,6 @@
           :send_once      false}
          instance))
 
-(t2/define-before-update :model/NotificationCard
-  [instance]
-  (when (contains? (t2/changes instance) :card_id)
-    (throw (ex-info (tru "The card of a notification cannot be changed.") {:status-code 400})))
-  instance)
-
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                          Update Spec                                            ;;
 ;; ------------------------------------------------------------------------------------------------;;
@@ -630,8 +620,8 @@
    :compare-cols [:active :creator_id]
    :extra-cols   [:payload_type :internal_id :payload_id]
    :nested-specs [[:payload       {:model        :model/NotificationCard
-                                   :compare-cols [:card_id :send_condition :send_once]
-                                   :extra-cols   []}]
+                                   :compare-cols [:send_condition :send_once]
+                                   :extra-cols   [:card_id]}]
                   [:subscriptions {:model        :model/NotificationSubscription
                                    :fk-column    :notification_id
                                    :compare-cols [:notification_id :type :event_name :cron_schedule :ui_display_type]
@@ -907,6 +897,50 @@
   "Find all active notifications for a given event."
   [event-name]
   (notification.db/active-system-event-notifications (u/qualified-name event-name)))
+
+(defn create-notification!
+  "Create a new notification with `subsciptions`.
+  Return the created notification."
+  [notification subscriptions handlers+recipients]
+  (validate-email-handlers! handlers+recipients)
+  (events/with-batched-events
+    (let [payload-id      (case (:payload_type notification)
+                            (:notification/system-event :notification/testing)
+                            nil
+                            :notification/card
+                            (notification.db/insert-notification-card! (:payload notification)))
+          notification    (-> notification
+                              (assoc :payload_id payload-id)
+                              (dissoc :payload))
+          instance        (notification.db/insert-notification! notification)
+          notification-id (:id instance)]
+      (when (seq subscriptions)
+        (notification.db/insert-subscriptions! (map #(assoc % :notification_id notification-id) subscriptions)))
+      (doseq [{:keys [recipients template] :as handler} handlers+recipients]
+        ;; assert can either template_id exists, then template but be nil, and vice versa
+        (when (and template (not (map? template)))
+          (throw (ex-info "Channel template must be a map" {:status-code 400})))
+        (let [template-id (if template
+                            (notification.db/insert-channel-template! template)
+                            (:template_id handler))
+              handler    (-> handler
+                             (dissoc :recipients :template)
+                             (assoc :notification_id notification-id
+                                    :template_id template-id))
+              handler-id (notification.db/insert-handler! handler)]
+          (notification.db/insert-recipients! (map #(assoc % :notification_handler_id handler-id) recipients))))
+      instance)))
+
+(defn update-notification!
+  "Update an existing notification with `new-notification`."
+  [existing-notification new-notification]
+  (validate-email-handlers! (:handlers new-notification))
+  (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec))
+
+(defn unsubscribe-user!
+  "Unsubscribe a user from a notification."
+  [notification-id user-id]
+  (notification.db/delete-user-recipients-for-notification! notification-id user-id))
 
 ;;; ------------------------------------------------ Specs ------------------------------------------------
 

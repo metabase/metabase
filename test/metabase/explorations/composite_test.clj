@@ -5,7 +5,7 @@
    [metabase.explorations.composite :as composite]))
 
 ;;; eq-result constructors — match what
-;;; `metabase.explorations.write/load-eq-results`
+;;; `metabase.explorations.models.exploration-query-result/load-eq-results`
 ;;; produces.
 
 (defn- eq-result

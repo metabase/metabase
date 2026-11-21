@@ -16,7 +16,6 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.send :as notification.send]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
-   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -126,7 +125,7 @@
 (defn do-with-temp-notification
   "Create a temporary notification for testing."
   [{:keys [notification handlers subscriptions]} thunk]
-  (let [notification (notification.write/create-notification!
+  (let [notification (models.notification/create-notification!
                       notification
                       subscriptions
                       handlers)]

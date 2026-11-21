@@ -6,18 +6,16 @@
    [metabase.notification.api.admin]
    [metabase.notification.api.notification]
    [metabase.notification.api.unsubscribe]
-   [metabase.notification.write]
    [potemkin :as p]))
 
 (p/import-vars
  [metabase.notification.api.notification
-  list-notifications]
- [metabase.notification.write
-  create-notification-with-perm-checks!
+  create-notification!
+  list-notifications
   get-notification
   publish-notification-update!
   unsubscribe-user!
-  update-notification-with-perm-checks!])
+  update-notification!])
 
 (def ^{:arglists '([request respond raise])} notification-routes
   "`/api/notification` routes."

@@ -18,7 +18,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
@@ -74,9 +73,10 @@
   or nil."
   [model :- :keyword
    row   :- [:maybe [:map]]]
-  (when-let [{entity-type :type, column :key, via :via} (:part-of (dependencies/spec model))]
-    [entity-type (cond-> (get row column)
-                   via (some-> via))]))
+  (when-let [{entity-type :type, column :key, [via-model via-column] :via} (:part-of (dependencies/spec model))]
+    [entity-type (if via-model
+                   (some->> (get row column) (dependencies.db/column-value via-model via-column))
+                   (get row column))]))
 
 (mu/defn- mark-dependents!
   "Add the entity `entity-type` `entity-id` to what `batched`, an atom of the marks of a batch, marks when it ends: the
@@ -107,7 +107,7 @@
   "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
   [batched :- Marks
    row     :- [:maybe [:map]]]
-  (when-let [table-id (some-> (:field_id row) field/field-id->table-id)]
+  (when-let [table-id (some-> (:field_id row) dependencies.db/field-table-id)]
     (mark-remapped-tables! batched #{table-id})))
 
 (mu/defn- mark-field-values! :- :boolean

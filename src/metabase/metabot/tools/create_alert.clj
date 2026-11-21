@@ -68,7 +68,7 @@
   (do-with-refusal
    ::no-alert-permission
    (tru "You don''t have permission to create alerts.")
-   #(notification.api/create-notification-with-perm-checks!
+   #(notification.api/create-notification!
      {:payload_type  :notification/card
       :active        true
       :creator_id    api/*current-user-id*

@@ -4,10 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
-   [metabase.events.batch :as events.batch]
    [metabase.models.interface :as mi]
-   [metabase.models.models.write-probe :as write-probe]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -253,62 +250,3 @@
 (deftest ^:parallel ->integer-test
   (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
     (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))
-
-(defn- with-probe-rows
-  "Runs `thunk` with Setting rows of `ks` stored, and a clear probe log."
-  [ks thunk]
-  (reset! write-probe/log [])
-  (try
-    (t2/insert! :setting (for [k ks] {:key k :value "before"}))
-    (thunk)
-    (finally
-      (t2/delete! :setting :key [:in ks]))))
-
-(deftest update-with-before-update-runs-in-one-transaction-test
-  (with-probe-rows ["probe-accepted"]
-    (fn []
-      (t2/update! ::write-probe/probe :key "probe-accepted" {:value "after"})
-      (testing "before-update runs in transaction, and its after-commit work runs once row is written"
-        (is (= [[:before-update "probe-accepted" true]
-                [:after-update "probe-accepted"]
-                [:after-commit "probe-accepted"]]
-               @write-probe/log))))))
-
-(deftest refused-update-runs-no-after-commit-work-test
-  (with-probe-rows ["probe-accepted" "probe-refused"]
-    (fn []
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Refused"
-                            (t2/update! ::write-probe/probe :key [:in ["probe-accepted" "probe-refused"]] {:value "after"})))
-      (testing "nothing of refused statement is written or scheduled"
-        (is (= #{"before"} (t2/select-fn-set :value :setting :key [:in ["probe-accepted" "probe-refused"]])))
-        (is (not-any? #(= :after-commit (first %)) @write-probe/log))))))
-
-(deftest write-in-transaction?-test
-  (run! t2/resolve-model [:model/Session :model/Dashboard :model/TaskHistory])
-  (testing "update of model with before-update, and any write of model with events, run in transaction"
-    (is (mi/write-in-transaction? :toucan.query-type/update.update-count ::write-probe/probe))
-    (is (mi/write-in-transaction? :toucan.query-type/update.update-count :model/Session))
-    (doseq [query-type [:toucan.query-type/insert.pks :toucan.query-type/update.update-count :toucan.query-type/delete.update-count]]
-      (is (mi/write-in-transaction? query-type :model/Dashboard))))
-  (testing "write of model without hooks or events, and insert or delete of model without events, run as they are"
-    (doseq [query-type [:toucan.query-type/insert.pks :toucan.query-type/update.update-count :toucan.query-type/delete.update-count]]
-      (is (not (mi/write-in-transaction? query-type :model/TaskHistory))))
-    (is (not (mi/write-in-transaction? :toucan.query-type/insert.pks :model/Session)))
-    (is (not (mi/write-in-transaction? :toucan.query-type/delete.update-count :model/Session)))))
-
-(deftest update-of-model-without-hooks-is-one-statement-test
-  (mt/with-temp [:model/TaskHistory {id :id} {:task "probe" :started_at (t/offset-date-time) :status :started}]
-    (is (= 1 (t2/with-call-count [call-count]
-               (t2/update! :model/TaskHistory :id id {:status :success})
-               (call-count))))))
-
-(deftest events-batch-runs-inside-write-transaction-test
-  (testing "events of model with before-update and events are collected inside transaction of write"
-    (mt/with-temp [:model/Dashboard {id :id} {:name "Probe"}]
-      (let [in-transaction (atom [])
-            collect!       (mt/original-fn #'events.batch/collect!)]
-        (mt/with-dynamic-fn-redefs [events.batch/collect! (fn [event]
-                                                            (swap! in-transaction conj (some? (mdb/transaction-state)))
-                                                            (collect! event))]
-          (t2/update! :model/Dashboard :id id {:name "Renamed"}))
-        (is (= [true] @in-transaction))))))

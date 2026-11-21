@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.appearance.core :as appearance]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -40,6 +41,21 @@
   {:pre [(integer? user-id)]}
   (api/check (not= user-id config/internal-mb-user-id)
              [400 (tru "Not able to modify the internal user")]))
+
+(defn- updated-user-name [user-before-update changes]
+  (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
+        updated-names (merge previous current)]
+    (when (not= previous updated-names)
+      updated-names)))
+
+(defn- maybe-update-user-personal-collection-name! [user-before-update changes]
+  ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
+  (when-some [{:keys [first_name last_name]} (updated-user-name user-before-update changes)]
+    (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
+      (let [{email :email} user-before-update
+            new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
+        (when-not (= new-collection-name (:name collection))
+          (users-rest.db/rename-collection! (:id collection) new-collection-name))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -471,6 +487,16 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
+(defn- reset-magic-group-membership!
+  [user-id tenant-id]
+  (perms/allow-changing-all-users-group-members
+    (perms/allow-changing-all-external-users-group-members
+     (perms/remove-user-from-all-groups! user-id)
+     (when tenant-id
+       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+     (when (nil? tenant-id)
+       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -517,18 +543,40 @@
       (when email
         (api/checkp (not (users-rest.db/other-user-with-email-exists? email id))
                     "email" (tru "Email address already associated to another user.")))
-      (users/update-user! user-before-update
-                          changes
-                          (cond-> {:user-group-memberships user_group_memberships
-                                   :is-superuser?          is_superuser}
-                            (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
-                            (assoc :is-data-analyst? is_data_analyst)))))
+      (t2/with-transaction [_conn]
+        (when (seq changes)
+          (users-rest.db/update-user! id changes)
+          (when (contains? changes :tenant_id)
+            (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
+                           "Superusers cannot be tenant users")
+            (reset-magic-group-membership! id (:tenant_id changes)))
+          (maybe-update-user-personal-collection-name! user-before-update changes))
+        ;; Handle is_data_analyst by updating Data Analysts group membership
+        (when (and (contains? updatable :is_data_analyst) (contains? body :is_data_analyst))
+          (let [data-analyst-group-id (:id (perms/data-analyst-group))]
+            (if is_data_analyst
+              (perms/add-user-to-group! id data-analyst-group-id)
+              (perms/remove-user-from-group! id data-analyst-group-id))))
+        (users/maybe-set-user-group-memberships! id user_group_memberships is_superuser))))
   (-> (users/fetch-user :id id)
       (t2/hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- reactivate-user! [existing-user]
+  (users-rest.db/update-user! (u/the-id existing-user)
+                              {:is_active     true
+                               :is_superuser  false
+                               ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user
+                               ;; (see metabase#3323)
+                               :sso_source   (case (:sso_source existing-user)
+                                               :google (when (sso/google-auth-enabled) :google)
+                                               :ldap   (when (sso/ldap-enabled) :ldap)
+                                               (:sso_source existing-user))})
+  ;; now return the existing user whether they were originally active or not
+  (users/fetch-user :id (u/the-id existing-user)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -540,7 +588,14 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (users/reactivate-user! (api/check-404 (users-rest.db/personal-user-columns id))))
+  (let [user (users-rest.db/personal-user-columns id)]
+    (api/check-404 user)
+    ;; Can only reactivate inactive users
+    (api/check (not (:is_active user))
+               [400 {:message (tru "Not able to reactivate an active user")}])
+    (api/check (tenants/tenant-is-active? (:tenant_id user))
+               [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
+    (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |

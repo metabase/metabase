@@ -247,7 +247,7 @@
           (let [msg-id (insert-message! conversation-id external-id)]
             (mt/with-current-user user-id
               (is (thrown-with-msg? ExceptionInfo
-                                    #"Invalid input"
+                                    #"Invalid value"
                                     (metabot.feedback/persist-source-feedback!
                                      (source-payload {:message-id  external-id
                                                       :source-id   42

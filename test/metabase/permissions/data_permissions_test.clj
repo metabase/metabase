@@ -64,41 +64,6 @@
                                                :perm_type  :perms/view-data
                                                :perm_value :unrestricted}))))))
 
-(deftest database-level-type-on-table-insert-test
-  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                 :model/Database         {db-id :id}    {}
-                 :model/Table            {table-id :id} {:db_id db-id :schema "PUBLIC"}]
-    (mt/with-restored-data-perms-for-group! group-id
-      (t2/delete! :model/DataPermissions :db_id db-id :group_id group-id)
-      (doseq [[perm-type perm-value] {:perms/manage-database :no
-                                      :perms/transforms      :no}]
-        (testing (str perm-type " on Table is refused with 400")
-          (is (=? {:status-code 400}
-                  (try
-                    (t2/insert! :model/DataPermissions {:db_id       db-id
-                                                        :table_id    table-id
-                                                        :schema_name "PUBLIC"
-                                                        :group_id    group-id
-                                                        :perm_type   perm-type
-                                                        :perm_value  perm-value})
-                    (catch ExceptionInfo e
-                      (ex-data e)))))
-          (is (not (t2/exists? :model/DataPermissions :db_id db-id :group_id group-id :perm_type perm-type)))))
-      (testing "Database-level types on Database and Table-level types on Table are stored"
-        (t2/insert! :model/DataPermissions [{:db_id      db-id
-                                             :group_id   group-id
-                                             :perm_type  :perms/manage-database
-                                             :perm_value :no}
-                                            {:db_id       db-id
-                                             :table_id    table-id
-                                             :schema_name "PUBLIC"
-                                             :group_id    group-id
-                                             :perm_type   :perms/manage-table-metadata
-                                             :perm_value  :no}])
-        (is (= #{[:perms/manage-database nil] [:perms/manage-table-metadata table-id]}
-               (t2/select-fn-set (juxt :perm_type :table_id) :model/DataPermissions
-                                 :db_id db-id :group_id group-id)))))))
-
 (deftest destination-db-permissions-batch-insert-throws-test
   (testing "batch-insert-permissions! throws for a destination database row"
     (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}

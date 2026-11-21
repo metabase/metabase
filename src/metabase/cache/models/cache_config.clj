@@ -7,7 +7,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
-   [metabase.cache.schema :as cache.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -51,33 +50,12 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(def ^:private strategy-columns
-  "The columns of a CacheConfig that together hold its cache strategy."
-  #{:strategy :config :refresh_automatically})
-
-(defn- target-exists?
-  "Whether the entity a CacheConfig targets with its `model` and `model_id` exists; the root config always does."
-  [{:keys [model model_id]}]
-  (case model
-    "root"      true
-    "database"  (cache.db/database-exists? model_id)
-    "dashboard" (cache.db/dashboard-exists? model_id)
-    "question"  (cache.db/card-exists? model_id)))
-
-(t2/define-before-insert :model/CacheConfig
-  [cache-config]
-  (cache.schema/check-target cache-config)
-  (when-not (target-exists? cache-config)
-    (throw (ex-info (tru "The target of a cache configuration must exist.") {:status-code 400})))
-  (cache.schema/check-strategy cache-config))
-
 (t2/define-before-update :model/CacheConfig
   [cache-config]
   (let [changes (t2/changes cache-config)]
     (when (or (contains? changes :model) (contains? changes :model_id))
       (throw (ex-info (tru "You cannot change the target of a cache configuration.") {:status-code 400})))
-    (cond-> cache-config
-      (some strategy-columns (keys changes)) cache.schema/check-strategy)))
+    cache-config))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 

@@ -6,7 +6,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.session.core :as session]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -63,16 +63,12 @@
       (support-access-grants.db/expire-auth-identities! auth-identity-ids ended-at))
     (session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
 
-(t2/define-before-update :model/SupportAccessGrantLog
-  [{revoked-by :revoked_by_user_id, :as grant}]
-  (let [changes (t2/changes grant)]
-    (when (and (contains? changes :revoked_at)
-               (some? (:revoked_at (t2/original grant))))
-      (throw (ex-info (tru "Grant is already revoked") {:status-code 400})))
-    (when-let [revoked-at (:revoked_at changes)]
+(t2/define-after-update :model/SupportAccessGrantLog
+  [{revoked-at :revoked_at, revoked-by :revoked_by_user_id, :as grant}]
+  (u/prog1 grant
+    (when revoked-at
       (when-let [support-user (support-access-grants.db/user-by-email (sag.settings/support-access-grant-email))]
-        (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))
-    grant))
+        (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

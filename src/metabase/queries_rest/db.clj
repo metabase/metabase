@@ -3,7 +3,9 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -97,6 +99,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
+(mu/defn card-public-uuid-columns
+  "The public uuid of the Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card :public_uuid] :id card-id))
+
 (mu/defn compatible-series-cards
   "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types`, newest first, whose id is
   less than `last-cursor` (when given), excluding `exclude-ids`, and whose lower-cased name matches the SQL LIKE
@@ -128,6 +135,34 @@
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
+
+(mu/defn update-card!
+  "Apply `changes` to the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card
+   changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
+  (t2/update! :model/Card :id card-id changes))
+
+(mu/defn delete-card!
+  "Delete the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/delete! :model/Card :id card-id))
+
+(mu/defn max-collection-position
+  "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
+  (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
+
+(mu/defn cards-to-move-to-collection
+  "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
+  `new-collection-id-or-nil`."
+  [card-ids :- [:set ::lib.schema.id/card]
+   new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
+  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
+              :entity_id :result_metadata :dimensions :dimension_mappings]
+             {:where [:and [:in :id card-ids]
+                      [:or [:not= :collection_id new-collection-id-or-nil]
+                       (when new-collection-id-or-nil
+                         [:= :collection_id nil])]]}))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."

@@ -4,7 +4,6 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.embedding.schema :as embedding.schema]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -22,7 +21,7 @@
 (t2/define-before-insert :model/EmbeddingSdkReact18Host
   [{:keys [host], :as row}]
   (when-not (mr/validate ::embedding.schema/sdk-react-18-host.host host)
-    (throw (ex-info (tru "Invalid React 18 SDK host: {0}" (pr-str host)) {:host host, :status-code 400})))
+    (throw (ex-info (format "Invalid React 18 SDK host: %s" (pr-str host)) {:host host})))
   row)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

@@ -98,7 +98,7 @@
     (with-slack-channels
       (mt/with-current-user (mt/user->id :rasta)
         (testing "a user who may not create alerts is told so"
-          (mt/with-dynamic-fn-redefs [notification.api/create-notification-with-perm-checks!
+          (mt/with-dynamic-fn-redefs [notification.api/create-notification!
                                       (fn [_] (throw (ex-info "You don't have permissions to do that."
                                                               {:status-code 403})))]
             (is (= {:class        :unrecoverable
@@ -106,7 +106,7 @@
                     :user-message "You don't have permission to create alerts."}
                    (:error (create-alert (daily-alert card-id)))))))
         (testing "any other failure may have come after the alert was saved, so the user is told to check"
-          (mt/with-dynamic-fn-redefs [notification.api/create-notification-with-perm-checks! (fn [_] (throw (ex-info "boom" {})))]
+          (mt/with-dynamic-fn-redefs [notification.api/create-notification! (fn [_] (throw (ex-info "boom" {})))]
             (is (= {:class        :unrecoverable
                     :code         :unconfirmed-write
                     :user-message (str "Something went wrong. The change may have been saved, "

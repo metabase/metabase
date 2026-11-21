@@ -22,7 +22,7 @@
     column up as the series breakout.
 
   This module is pure data — serialisation/persistence lives in
-  `metabase.explorations.write`."
+  `metabase.explorations.models.exploration-query-result`."
   (:require
    [metabase.util.i18n :refer [tru]]))
 

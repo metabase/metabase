@@ -7,7 +7,6 @@
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
    [metabase.pulse.task.send-pulses-trigger :as task.send-pulses-trigger]
-   [metabase.pulse.write :as pulse.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -75,7 +74,7 @@
 ;; create a channel then select its details
 (defn- create-channel-then-select!
   [channel]
-  (when-let [new-channel-id (pulse.write/create-pulse-channel! channel)]
+  (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
     (-> (t2/select-one :model/PulseChannel :id new-channel-id)
         (t2/hydrate :recipients)
         (update :recipients #(sort-by :email %))
@@ -85,7 +84,7 @@
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
-  (pulse.write/update-pulse-channel! channel)
+  (pulse-channel/update-pulse-channel! channel)
   (-> (t2/select-one :model/PulseChannel :id id)
       (t2/hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
@@ -199,7 +198,7 @@
                    :recipients    [{:email "foo@bar.com"} {:id (mt/user->id :rasta)}]})))))
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
         (mt/with-temp [:model/PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
-          (pulse.write/update-recipients! channel-id [(mt/user->id :rasta)])
+          (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
           (is (= (merge default-pulse-channel
                         {:recipients    [(user-details :crowberto)]
                          :channel_type  :email
@@ -237,7 +236,7 @@
   (mt/with-temp [:model/Pulse        {pulse-id :id} {}
                  :model/PulseChannel {channel-id :id} {:pulse_id pulse-id}]
     (letfn [(upd-recipients! [recipients]
-              (pulse.write/update-recipients! channel-id recipients)
+              (pulse-channel/update-recipients! channel-id recipients)
               (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]

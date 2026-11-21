@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.permissions.util :as perms-util]
    [metabase.pulse.broken-subscriptions :as pulse.broken-subscriptions]
-   [metabase.pulse.write :as pulse.write]
+   [metabase.pulse.models.pulse :as models.pulse]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -123,7 +123,7 @@
             (testing "Pulse starts as unarchived"
               (is (false? (:archived bad-pulse))))
             (testing "Pulse is now archived"
-              (is (true? (:archived (pulse.write/update-pulse! {:id bad-pulse-id :archived true})))))))))))
+              (is (true? (:archived (models.pulse/update-pulse! {:id bad-pulse-id :archived true})))))))))))
 
 (deftest handle-broken-subscriptions-returns-what-it-archived-test
   (testing "returns what it archived, counting active destinations of enabled channels, and less of unreadable ones"

@@ -10,8 +10,7 @@
 (methodical/defmethod t2/table-name :model/MetabotFeedback [_model] :metabot_feedback)
 
 (doto :model/MetabotFeedback
-  (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :metabase/model))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotFeedback :user]
   "Batch-hydrate `:user` (id/email/name only) — the feedback submitter."

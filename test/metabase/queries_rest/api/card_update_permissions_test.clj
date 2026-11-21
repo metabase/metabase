@@ -2,8 +2,8 @@
   "A user-by-change table of the answers and statuses of `PUT /api/card/:id`."
   (:require
    [clojure.test :refer :all]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

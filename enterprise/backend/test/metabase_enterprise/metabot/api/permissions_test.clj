@@ -90,17 +90,6 @@
                                 (filter #(= (:group_id %) group-id)))]
               (is (= all-perm-types (set (map :perm_type perms)))))))))))
 
-(deftest update-permissions-refuses-value-outside-type-test
-  (mt/with-premium-features #{:ai-controls}
-    (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
-        (let [body {:permissions [{:group_id group-id :perm_type "permission/metabot-nlq" :perm_value "maybe"}]}]
-          (doseq [user [:rasta :crowberto]]
-            (testing user
-              (is (= "Invalid perm_value maybe for perm_type metabot-nlq."
-                     (mt/user-http-request user :put 400 "ee/ai-controls/permissions" body)))))
-          (is (not (t2/exists? :model/MetabotPermissions :group_id group-id))))))))
-
 (deftest update-permissions-hidden-group-test
   (mt/with-premium-features #{:ai-controls}
     (testing "PUT /api/ee/ai-controls/permissions refuses a group the current permission mode hides"

@@ -477,9 +477,9 @@
                                   :payload      {:card_id 1}
                                   :payload_type "notification/card"}))))
   (testing "400 on invalid payload"
-    (is (=? {:errors {:payload {:send_condition string?}}}
+    (is (=? {:specific-errors {:payload {:card_id ["missing required key, received: nil"]}}}
             (mt/user-http-request :crowberto :put 400 "notification/1" {:creator_id   (mt/user->id :crowberto)
-                                                                        :payload      {:send_condition 1}
+                                                                        :payload      {}
                                                                         :payload_type "notification/card"})))))
 
 (deftest update-notification-route-id-is-authoritative-test
@@ -1505,18 +1505,3 @@
                 (is (=? {:status "skipped" :skip_reason "No results"}
                         (mt/user-http-request :crowberto :post 200 "notification/send"
                                               (make-req card-id))))))))))))
-
-(deftest update-notification-card-id-test
-  (notification.tu/with-card-notification
-    [notification {}]
-    (mt/with-temp [:model/Card {other-card-id :id} {}]
-      (let [card-id (-> notification :payload :card_id)
-            body    (-> (mt/user-http-request :crowberto :get 200 (str "notification/" (:id notification)))
-                        (assoc-in [:payload :send_once] true))]
-        (testing "Sending the same card_id back updates the other payload columns"
-          (is (=? {:payload {:card_id card-id :send_once true}}
-                  (mt/user-http-request :crowberto :put 200 (str "notification/" (:id notification)) body))))
-        (testing "A different card_id is refused and not written"
-          (mt/user-http-request :crowberto :put 400 (str "notification/" (:id notification))
-                                (assoc-in body [:payload :card_id] other-card-id))
-          (is (= card-id (t2/select-one-fn :card_id :model/NotificationCard :id (:payload_id notification)))))))))

@@ -100,7 +100,7 @@
           (cond-> #{} collection_id (conj [:model/Collection collection_id])))
         entities))
 
-(defn without-derived-half
+(defn- without-derived-half
   "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
   [{:keys [visibility_type data_layer] :as changes}]
   (if (and (contains? changes :visibility_type) (contains? changes :data_layer))

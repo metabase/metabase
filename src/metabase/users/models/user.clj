@@ -134,19 +134,10 @@
   (when (and superuser? tenant-id)
     (throw (ex-info (tru "Superusers cannot be tenant users") {:status-code 400}))))
 
-(defn- check-email-not-taken
-  "Throws a 400 when another User than the one with `user-id` (any User when nil) has `email`, compared lower-cased."
-  [email user-id]
-  (when (if user-id
-          (users.db/other-user-with-email-exists? (u/lower-case-en email) user-id)
-          (users.db/user-email-exists? (u/lower-case-en email)))
-    (throw (ex-info (tru "Email address already in use.") {:status-code 400}))))
-
 (defn- validate-user-insert!
   "Validate all constraints for user insertion."
   [{:keys [email locale sso_source] user-type :type :as user}]
   (validate-user-email! email)
-  (check-email-not-taken email nil)
   (check-superuser-has-no-tenant user)
   (validate-user-locale! locale)
   (validate-sso-setup! sso_source)
@@ -243,12 +234,9 @@
         {:keys [email locale]
          superuser? :is_superuser
          active? :is_active} changes
-        in-admin-group?           (when (or (some? superuser?) (false? active?))
-                                    (users.db/group-membership-exists? (:id (perms/admin-group)) id))]
+        in-admin-group?           (users.db/group-membership-exists? (:id (perms/admin-group)) id)]
     (validate-last-admin-not-archived! id in-admin-group? active?)
-    (when email
-      (validate-user-email! email)
-      (check-email-not-taken email id))
+    (when email (validate-user-email! email))
     (when locale (validate-user-locale! locale))
     (handle-superuser-toggle! id superuser? in-admin-group?)
     (handle-user-archival! id active?)
@@ -427,12 +415,44 @@
   (when user-or-id
     (users.db/user-group-ids (u/the-id user-or-id))))
 
+(declare form-password-reset-url)
+
+(defn serdes-synthesize-user!
+  "Creates a new user with a default password, when deserializing eg. a `:creator_id` field whose email address doesn't
+  match any existing user."
+  [new-user]
+  (users.db/insert-user! new-user))
+
+(mu/defn create-and-invite-user!
+  "Convenience function for inviting a new `User` and sending them a welcome email.
+  This function will create the user, which will trigger the built-in system event
+  notification to send an invite via email."
+  ([new-user :- users.schema/NewUser
+    invitor  :- ::users.schema/user
+    setup?   :- :boolean]
+   (create-and-invite-user! new-user invitor setup? nil))
+  ([new-user      :- users.schema/NewUser
+    invitor       :- ::users.schema/user
+    setup?        :- :boolean
+    invite-target :- [:maybe users.schema/InviteTarget]]
+   ;; create the new user
+   (u/prog1 (users.db/insert-user! new-user)
+     (events/publish-event! :event/user-invited
+                            {:object
+                             (cond-> (assoc <>
+                                            :is_from_setup setup?
+                                            :invite_method "email"
+                                            :sso_source    (:sso_source new-user))
+                               invite-target (assoc :invite_target invite-target))
+                             :details {:invitor (select-keys invitor [:email :first_name])}}))))
+
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]
   {:pre [(string? reset-token)]}
   (str (system/site-url) "/auth/reset_password/" reset-token))
 
+;; TODO -- does this belong HERE, or in the `permissions` module?
 (defn set-permissions-groups!
   "Set the user's group memberships to equal the supplied group IDs. Returns `true` if updates were made, `nil`
   otherwise."

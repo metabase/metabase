@@ -57,11 +57,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one [:model/Collection :id :namespace :type :archived] :id [:auto/param collection-id]))
 
-(mu/defn collection-immutable-columns
-  "The ID, namespace and type of the ::collections.schema/collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace :type] :id [:auto/param collection-id]))
-
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]
@@ -231,6 +226,12 @@
                      :archive_operation_id [:= archive-operation-id]
                      :archived [:= true]))
 
+(mu/defn collection-ids-of-type
+  "The IDs of the Collections among `collection-ids` of `type`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   type           :- :string]
+  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
+
 (mu/defn personal-collection-ids
   "The IDs of every personal ::collections.schema/collection."
   []
@@ -265,16 +266,6 @@
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
   (t2/update! :model/Collection :id collection-id changes))
 
-(mu/defn directly-archived-descendant-collections
-  "The directly archived Collections whose location starts with `location-prefix`."
-  [location-prefix :- :string]
-  (t2/select :model/Collection :location [:like (str location-prefix "%")] :archived_directly true))
-
-(mu/defn delete-collection!
-  "Delete the Collection with `id`, returning the number deleted."
-  [id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Collection :id id))
-
 (mu/defn collection-remote-synced-by-item-id
   "The `:id` of each of the `model` rows with `ids` and the `:is_remote_synced` of its Collection, as stored."
   [model :- :keyword
@@ -306,23 +297,19 @@
    remote-synced? :- :boolean]
   (t2/update! :model/Collection :id [:in collection-ids] {:is_remote_synced remote-synced?}))
 
-(mu/defn archive-collections-at-location!
-  "Archive, through their model, the unarchived Collections directly at `location` as followers of an archive operation
-  with `archive-operation-id`, returning the number updated."
-  [location             :- :string
+(mu/defn archive-collections!
+  "Archive, through their model, the Collections with `ids` as followers of an archive operation with
+  `archive-operation-id`, returning the number updated."
+  [ids                  :- [:sequential ::lib.schema.id/collection]
    archive-operation-id :- :string]
-  (t2/update! :model/Collection :location [:auto/param location] :archived false
+  (t2/update! :model/Collection :id [:in ids]
               {:archived true, :archive_operation_id archive-operation-id}))
 
-(mu/defn restore-collections-at-location!
-  "Restore, through their model, the Collections directly at `location` that the archive operation with
-  `archive-operation-id` took down, returning the number updated."
-  [location             :- :string
-   archive-operation-id :- :string]
-  (t2/update! :model/Collection
-              :location [:auto/param location]
-              :archive_operation_id [:auto/param archive-operation-id]
-              :archived true
+(mu/defn restore-collections!
+  "Restore, through their model, the Collections with `ids`, which an archive of an ancestor took down, returning the
+  number updated."
+  [ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/update! :model/Collection :id [:in ids]
               {:archived false, :archive_operation_id nil}))
 
 (mu/defn move-descendant-collections!

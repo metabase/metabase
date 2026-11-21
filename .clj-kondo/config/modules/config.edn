@@ -410,8 +410,7 @@
            task
            task.history
            tracing
-           util
-           warehouses}
+           util}
    :model-exports #{:model/AuditLog}
    :model-imports #{:model/ApiKey
                     :model/Card
@@ -825,6 +824,7 @@
    :api  #{metabase.dashboards.autoplace
            metabase.dashboards.constants
            metabase.dashboards.init
+           metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.schema
            metabase.dashboards.settings
@@ -887,6 +887,7 @@
    :ns-prefix "metabase.dashboards-rest"
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
+           analytics
            api
            api.eid-translation
            app-db
@@ -2407,6 +2408,7 @@
            util}
    :model-imports #{:model/Card
                     :model/CardBookmark
+                    :model/Collection
                     :model/Dashboard
                     :model/Database
                     :model/StoredResult
@@ -2762,7 +2764,6 @@
            segments.schema
            serialization
            util
-           warehouses
            xrays}
    :model-exports #{:model/Segment}
    :model-imports #{:model/Collection :model/Table :model/TableUserSettings}}
@@ -3374,6 +3375,7 @@
            metabase.transforms-rest.api.transform-tag}
    :uses #{api
            events
+           lib.schema
            models
            request
            transforms
@@ -3475,7 +3477,6 @@
            audit-app
            batch-processing
            change-log
-           collections
            events
            lib.schema
            models
@@ -3491,8 +3492,7 @@
            util
            util.config}
    :model-exports #{:model/User :model/UserParameterValue}
-   :model-imports #{:model/Collection
-                    :model/Dashboard
+   :model-imports #{:model/Dashboard
                     :model/Database
                     :model/PermissionsGroupMembership
                     :model/PulseChannelRecipient
@@ -3505,6 +3505,7 @@
    :uses #{api
            api-scope
            appearance
+           collections
            events
            lib.schema
            models
@@ -3521,6 +3522,7 @@
            util
            util.config}
    :model-imports #{:model/Card
+                    :model/Collection
                     :model/Dashboard
                     :model/LoginHistory
                     :model/Session
@@ -4073,9 +4075,10 @@
    :api  #{metabase-enterprise.content-verification.api.routes}
    :uses #{api
            content-verification
+           lib.schema
            util
            enterprise/api}
-   :model-imports #{:model/ModerationReview}}
+   :model-imports #{:model/Card :model/Dashboard}}
 
   enterprise/core
   {:team "Gadget"
@@ -4275,7 +4278,6 @@
            transforms.schema
            util
            util.graph
-           warehouses.schema
            enterprise/permissions.sandbox}
    :model-imports #{:model/Action
                     :model/Card

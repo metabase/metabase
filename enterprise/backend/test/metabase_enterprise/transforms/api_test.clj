@@ -302,10 +302,9 @@
   (testing "GET /api/transform/run - sort by status (translated names)"
     (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Transform    {transform-id :id}        {}
-                     :model/Transform    {canceling-transform-id :id} {}
                      ;; Sorted by translated name: "Canceled" < "Canceling" < "Failed" < "In progress" < "Success" < "Timeout"
                      :model/TransformRun {canceled-run-id :id}     {:transform_id transform-id :status "canceled"}
-                     :model/TransformRun {canceling-run-id :id}    {:transform_id canceling-transform-id :status "canceling"}
+                     :model/TransformRun {canceling-run-id :id}    {:transform_id transform-id :status "canceling"}
                      :model/TransformRun {failed-run-id :id}       {:transform_id transform-id :status "failed"}
                      :model/TransformRun {in-progress-run-id :id}  {:transform_id transform-id :status "started"
                                                                     :is_active    true}
@@ -316,7 +315,7 @@
             (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
                                                  :sort-column "status"
                                                  :sort-direction sort-direction
-                                                 :transform-ids [transform-id canceling-transform-id])]
+                                                 :transform-ids [transform-id])]
               (is (= (cond-> [canceled-run-id canceling-run-id failed-run-id
                               in-progress-run-id success-run-id timeout-run-id]
                        (= sort-direction :desc) reverse)

@@ -25,14 +25,6 @@
   [row :- ::glossary.schema/glossary.update]
   (t2/insert-returning-instance! :model/Glossary row))
 
-(mu/defn term-taken?
-  "Whether a Glossary entry other than the one with `id`, nil for a new entry, has `term`."
-  [term :- :string
-   id   :- [:maybe ms/PositiveInt]]
-  (t2/exists? :model/Glossary {:where [:and
-                                       [:= :term [:auto/param term]]
-                                       (when id [:not= :id [:auto/param id]])]}))
-
 (mu/defn glossary-entry
   "The Glossary entry with `id`, or nil."
   [id :- ms/PositiveInt]

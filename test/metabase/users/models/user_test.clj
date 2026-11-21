@@ -22,7 +22,6 @@
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
-   [metabase.users.write :as users.write]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
@@ -94,7 +93,7 @@
         (try
           (if sso-auth?
             (sso-login! (-> new-user (dissoc :password) (assoc :sso_source :google)))
-            (users.write/create-and-invite-user! new-user invitor false))
+            (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)
@@ -486,12 +485,12 @@
       (is (thrown-with-msg?
            Exception
            #"Metabase instance has not been initialized"
-           (users.write/create-and-invite-user! {:first_name "John"
-                                                 :last_name  "Smith"
-                                                 :email      "john.smith@gmail.com"
-                                                 :sso_source "jwt"}
-                                                default-invitor
-                                                false))))))
+           (user/create-and-invite-user! {:first_name "John"
+                                          :last_name  "Smith"
+                                          :email      "john.smith@gmail.com"
+                                          :sso_source "jwt"}
+                                         default-invitor
+                                         false))))))
 
 (deftest deactivated-at-test
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
@@ -780,44 +779,3 @@
                           (api/create-check :model/User {:email "user@example.com"}))))
   (mt/with-current-user (mt/user->id :crowberto)
     (is (api/create-check :model/User {:email "user@example.com"}))))
-
-(deftest insert-with-taken-email-test
-  (mt/with-temp [:model/User {email :email} {}]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Email address already in use."
-                          (t2/insert! :model/User {:email (u/upper-case-en email) :first_name "Other"})))
-    (is (= 1 (t2/count :model/User :%lower.email (u/lower-case-en email))))))
-
-(deftest update-to-taken-email-test
-  (mt/with-temp [:model/User {email :email}          {}
-                 :model/User {user-id :id old :email} {}]
-    (testing "another user's email, in any case, is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Email address already in use."
-                            (t2/update! :model/User :id user-id {:email (u/upper-case-en email)})))
-      (is (= old (t2/select-one-fn :email :model/User :id user-id))))
-    (testing "the user's own email in another case is accepted"
-      (t2/update! :model/User :id user-id {:email (u/upper-case-en old)})
-      (is (= old (t2/select-one-fn :email :model/User :id user-id))))))
-
-(deftest invite-user-test
-  (testing "invite-user! creates the user with a password and the given groups, and checks the email first"
-    (mt/with-model-cleanup [:model/User]
-      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-        (mt/with-current-user (mt/user->id :crowberto)
-          (let [email (mt/random-email)
-                {user-id :id} (users.write/invite-user! {:email                  email
-                                                         :password               "p4ssw0rd!!"
-                                                         :user-group-memberships [{:id (u/the-id (perms-group/all-users))}
-                                                                                  {:id group-id}]})]
-            (is (true? (:success? (auth-identity/authenticate :provider/password {:email    email
-                                                                                  :password "p4ssw0rd!!"}))))
-            (is (contains? (user/group-ids user-id) group-id))
-            (is (=? {:errors {:email "Email address already in use."}}
-                    (try (users.write/invite-user! {:email (u/upper-case-en email)})
-                         (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))
-
-(deftest user-rename-skips-admin-membership-read-test
-  (testing "User update changing neither is_superuser nor is_active to false reads no Administrators membership"
-    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"}]
-      (t2/with-call-count [call-count]
-        (t2/update! :model/User :id user-id {:first_name "Renamed"})
-        (is (= 2 (call-count)))))))

@@ -96,16 +96,13 @@
          (map normalize-bookmark-result))))
 
 (defn save-ordering!
-  "Saves a bookmark ordering of shape `[{:type, :item_id}]` for the items `user-id` has bookmarked, in one transaction.
-   Replaces all existing orderings of the user so should be given a total ordering."
+  "Saves a bookmark ordering of shape `[{:type, :item_id}]`
+   Deletes all existing orderings for user so should be given a total ordering."
   [user-id orderings]
-  (let [bookmarked (bookmarks.db/bookmarked-items user-id)]
-    (bookmarks.db/replace-bookmark-orderings!
-     user-id
-     (->> orderings
-          (map #(select-keys % [:type :item_id]))
-          (filter #(contains? bookmarked ((juxt :type :item_id) %)))
-          (map-indexed #(assoc %2 :user_id user-id :ordering %1))))))
+  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
+  (bookmarks.db/insert-bookmark-orderings! (->> orderings
+                                                (map #(select-keys % [:type :item_id]))
+                                                (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

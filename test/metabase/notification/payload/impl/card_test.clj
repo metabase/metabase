@@ -7,11 +7,11 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.notification.write :as notification.write]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -574,7 +574,7 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          notification.tu/default-card-name
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [notification (notification.write/create-notification!
+        (let [notification (models.notification/create-notification!
                             {:payload_type :notification/card
                              :payload      {:card_id card-id}
                              :creator_id   (mt/user->id :crowberto)}

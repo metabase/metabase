@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -74,7 +75,10 @@
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
   (api/create-check :model/Action action)
-  (let [action-id (actions/create-action! (assoc action :creator_id api/*current-user-id*))]
+  (actions/check-implicit-actions-supported action)
+  (actions/check-implicit-action-table-pk action)
+  (actions/check-action-databases-enabled action)
+  (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
                              :type           action-type
@@ -95,7 +99,13 @@
   (let [existing-action (api/write-check :model/Action id)
         action          (api/updates-without-collection-when-archiving existing-action action)]
     (api/update-check existing-action action)
-    (actions/update-action! (assoc action :id id) existing-action))
+    (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
+                   (tru "A model''s action can''t be archived. Delete it instead."))
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id])
+      (let [merged (merge (actions/select-action :id id) action)]
+        (actions/check-implicit-action-table-pk merged)
+        (actions/check-action-databases-enabled merged)))
+    (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated

@@ -160,9 +160,6 @@
         (doseq [host ["Upper.example.com" nil]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid React 18 SDK host"
                                 (t2/insert! :model/EmbeddingSdkReact18Host {:host host, :last_seen_at now}))
-              (pr-str host))
-          (is (= 400 (try (t2/insert! :model/EmbeddingSdkReact18Host {:host host, :last_seen_at now})
-                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))
               (pr-str host)))))))
 
 (deftest record-react-18-sdk-host-handler-test

@@ -156,14 +156,3 @@
         "l%s"   #{}
         "a%a%a" #{}
         "literal" #{"g1" "g2"}))))
-
-(deftest duplicate-term-test
-  (mt/with-temp [:model/Glossary _ {:term "Duplicated" :definition "First"}
-                 :model/Glossary {other-id :id} {:term "Other" :definition "Second"}]
-    (testing "POST with existing term is refused with 400"
-      (is (= "A glossary entry with that term already exists."
-             (mt/user-http-request :crowberto :post 400 "glossary" {:term "Duplicated" :definition "Third"}))))
-    (testing "PUT with existing term is refused with 400"
-      (is (= "A glossary entry with that term already exists."
-             (mt/user-http-request :crowberto :put 400 (str "glossary/" other-id)
-                                   {:term "Duplicated" :definition "Third"}))))))

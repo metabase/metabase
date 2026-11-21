@@ -7,8 +7,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.collection.graph :as graph]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -101,7 +101,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
           (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
-            (perms/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :write}}})
+            (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :write}}})
             (is (= {:revision 0
                     :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                    (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
@@ -109,7 +109,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
           (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
-            (perms/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :read}}})
+            (graph/update-graph! {:revision 0 :groups {(u/the-id (perms-group/all-users)) {(u/the-id collection) :read}}})
             (is (= {:revision 0
                     :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                    (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))))
@@ -168,7 +168,7 @@
     (clear-graph-revisions!)
     (mt/with-non-admin-groups-no-root-collection-perms
       (binding [*current-user-id* (mt/user->id :crowberto)]
-        (perms/update-graph! (graph :clear-revisions? true))
+        (graph/update-graph! (graph :clear-revisions? true))
         (is (= {:revision 0
                 :groups {(u/the-id (perms-group/admin)) {:root :write}}}
                (graph))
@@ -180,7 +180,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :read))
           (is (= {:revision 1
@@ -192,7 +192,7 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :write))
           (is (= {:revision 1
@@ -207,7 +207,7 @@
       (mt/with-temp [:model/Collection collection]
         (binding [*current-user-id* (mt/user->id :crowberto)]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id (perms-group/all-users)) (u/the-id collection)]
                                          :none))
           (is (= {:revision 1
@@ -220,7 +220,7 @@
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]
                                          :read))
           (is (= {:revision 1
@@ -232,7 +232,7 @@
       (clear-graph-revisions!)
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]
                                          :write))
           (is (= {:revision 1
@@ -247,7 +247,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (binding [*current-user-id* (mt/user->id :crowberto)]
           (perms/grant-collection-readwrite-permissions! new-group collection/root-collection)
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                          [:groups (u/the-id new-group) :root]
                                          :none))
           (is (= {:revision 1
@@ -273,8 +273,8 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
             path [:groups (u/the-id (perms-group/all-users)) lucky-personal-collection-id]]
-        (mt/throw-if-called! perms/update-group-permissions!
-          (perms/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
+        (mt/throw-if-called! graph/update-group-permissions!
+          (graph/update-graph! (assoc-in (graph :clear-revisions? true) path :read)))
         (testing "double-check that the graph is unchanged"
           (is (= {:revision 0
                   :groups {(u/the-id (perms-group/admin)) {:root :write}}}
@@ -287,7 +287,7 @@
       (let [lucky-personal-collection-id (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))]
         (is (thrown?
              Exception
-             (perms/update-graph! (assoc-in (graph :clear-revisions? true)
+             (graph/update-graph! (assoc-in (graph :clear-revisions? true)
                                             [:groups
                                              (u/the-id (perms-group/all-users))
                                              lucky-personal-collection-id
@@ -297,10 +297,10 @@
 (set! *warn-on-reflection* true)
 
 (defn- update-graph-and-wait!
-  "`perms/update-graph!` updates the before and after values in the graph asyncronously, so we need to wait for them to be written"
+  "`graph/update-graph!` updates the before and after values in the graph asyncronously, so we need to wait for them to be written"
   ([new-graph] (update-graph-and-wait! nil new-graph))
   ([namespaze new-graph]
-   (when-let [future (perms/update-graph! namespaze new-graph false)]
+   (when-let [future (graph/update-graph! namespaze new-graph false)]
      ;; Block until the entire graph has been `filled-in!`
      @future)))
 
@@ -433,7 +433,7 @@
             (let [before-default (graph/graph)]
               (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
             ;; Now update currency namespace
-            @(perms/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
+            @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
             (is (= {"Currency A" :write, "Currency A -> B" :read}
                    (nice-graph (graph/graph :currency))))
             (testing "Updates to Collections in other namespaces should be ignored"
@@ -461,11 +461,11 @@
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You cannot grant write permissions on collections only admins can write"
-                       (perms/update-graph! collection-namespace
+                       (graph/update-graph! collection-namespace
                                             (assoc (graph/graph collection-namespace) :groups {group-id {target-id :write}})
                                             false)))))
               (is (= :none (get-in (graph/graph collection-namespace) [:groups group-id collection-id] :none)))
-              @(perms/update-graph! collection-namespace
+              @(graph/update-graph! collection-namespace
                                     (assoc (graph/graph collection-namespace) :groups {group-id {collection-id :read}})
                                     false)
               (is (= :read (get-in (graph/graph collection-namespace) [:groups group-id collection-id]))))))))))
@@ -500,7 +500,7 @@
             (let [before-default (graph/graph)]
               (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
             ;; Update currency namespace
-            @(perms/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
+            @(graph/update-graph! :currency (assoc (graph/graph) :groups {group-id {default-a :write, currency-a :write}}) false)
             ;; Now update root collection
             (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
             (is (= {:root :read, "Default A" :read, "Default A -> B" :write}
@@ -544,7 +544,7 @@
             (let [before-default (graph/graph)]
               (update-graph-and-wait! (assoc before-default :groups {group-id {default-ab :write, currency-ab :write}})))
             (let [before-currency (graph/graph :currency)]
-              @(perms/update-graph! :currency (assoc before-currency :groups {group-id {default-a :write, currency-a :write}}) false))
+              @(graph/update-graph! :currency (assoc before-currency :groups {group-id {default-a :write, currency-a :write}}) false))
             (update-graph-and-wait! (assoc (graph/graph) :groups {group-id {:root :read}}))
             ;; Now update root for currency namespace
             (update-graph-and-wait! :currency (assoc (graph/graph :currency) :groups {group-id {:root :write}}))
@@ -600,7 +600,7 @@
               _ (perms/revoke-collection-permissions! all-users-group-id collection-id)
               before (graph/graph)
               new-graph (assoc before :groups {(u/the-id (perms-group/all-users)) {collection-id :read}})]
-          @(perms/update-graph! new-graph)
+          @(graph/update-graph! new-graph)
           (is (malli= [:map [:id :int] [:user_id :int] [:before :some] [:after :some]]
                       (t2/select-one :model/CollectionPermissionGraphRevision :id (inc (:revision before))))
               "Values for before and after should be present in the revision."))))))

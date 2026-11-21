@@ -5,13 +5,11 @@
   (:require
    [metabase.pulse.models.pulse]
    [metabase.pulse.update-alerts]
-   [metabase.pulse.write]
    [potemkin :as p]))
 
 (comment
   metabase.pulse.models.pulse/keep-me
-  metabase.pulse.update-alerts/keep-me
-  metabase.pulse.write/keep-me)
+  metabase.pulse.update-alerts/keep-me)
 
 (p/import-vars
  [metabase.pulse.models.pulse
@@ -20,8 +18,7 @@
   maybe-strip-sensitive-metadata
   retrieve-alert
   retrieve-alerts-for-cards
-  retrieve-pulse]
- [metabase.pulse.write
+  retrieve-pulse
   update-pulse!]
  [metabase.pulse.update-alerts
   delete-alerts-if-card-changed!

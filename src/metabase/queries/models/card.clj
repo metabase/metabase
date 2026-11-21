@@ -16,9 +16,11 @@
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
+   [metabase.dashboards.autoplace :as autoplace]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -65,7 +67,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.spec :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -379,9 +380,7 @@
   [{{query-db-id :database, :as query} :dataset_query, :as card}]
   ;; for updates if `query` isn't being updated we don't need to validate anything.
   (when query
-    (when-let [field-ids (some->> (params/card->template-tag-field-ids card)
-                                  (filter #(not (contains? #{nil query-db-id} (field/field-id->database-id %))))
-                                  not-empty)]
+    (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
@@ -451,9 +450,7 @@
        (map (juxt :id :name))
        (into {})))
 
-(defn assert-is-valid-dashboard-internal-update
-  "Throws a 400 when `changes` make `card` an invalid Dashboard Question."
-  [changes card]
+(defn- assert-is-valid-dashboard-internal-update [changes card]
   ;; Clients re-send the current `dashboard_id` on every save, so only a genuine move into a dashboard is checked
   ;; (#82237).
   (when (and (api/column-will-change? (:dashboard_id card) (get changes :dashboard_id ::api/not-provided))
@@ -554,7 +551,7 @@
 
 (defn- update-parameters-using-card-as-values-source
   "Resets to the default source the parameters of any Dashboard or Card that take their values from a field of `card`
-  that its new `result_metadata` in `changes` no longer has; [[archive-followers!]] resets those of archived cards."
+  that its new `result_metadata` in `changes` no longer has; [[after-archived-change]] resets those of archived cards."
   [{:keys [id database_id]} changes]
   (when (and (contains? changes :result_metadata) (not (:archived changes)))
     (let [metadata-columns (when-let [result-metadata (:result_metadata changes)]
@@ -1327,8 +1324,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (sync.field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (when (seq (parameter-card/values-source-card-ids (:parameters card)))
-      (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card)))))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
@@ -1368,12 +1364,7 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
-(defn- archive-followers!
-  "Deletes the Actions of `card`, which is being archived, and resets the parameters that take their values from it."
-  [{:keys [id]}]
-  (queries.db/delete-actions-of-models! [id])
-  (reset-values-sources! (queries.db/parameter-cards-for-cards [id])
-                         (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))
+(mi/define-update-in-transaction :model/Card)
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -1386,13 +1377,12 @@
     (when (contains? changes :visualization_settings)
       (check-timeline-settings card))
     (when (or (contains? changes :collection_id) (contains? changes :type))
-      (collection/check-allowed-content (:type card) (:collection_id card)))
+      (collection/check-allowed-content (:type card) (parent (:collection_id card))))
     (when (some #(contains? changes %) [:collection_id :dashboard_id :document_id])
       (check-not-in-archived-container card (parent (:collection_id card))))
     (-> card
         (cond-> (contains? changes :archived) (assoc :archived_directly (mi/archived-directly card #(card-parent-archived? card (parent (:collection_id card))))))
         (doto (delete-alerts-if-archived-directly changes))
-        (cond-> (true? (:archived changes)) (doto archive-followers!))
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
         (apply-dashboard-question-updates changes)
@@ -1409,6 +1399,14 @@
         (doto (delete-alerts-if-changed original changes))
         maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
+
+(defmethod mi/after-archived-change :model/Card
+  [_model rows changes]
+  (when (:archived changes)
+    (let [ids (mapv :id rows)]
+      (queries.db/delete-actions-of-models! ids)
+      (reset-values-sources! (queries.db/parameter-cards-for-cards ids)
+                             (fn [param-cards _parameters] (set (map :parameter_id param-cards)))))))
 
 (t2/define-after-update :model/Card
   [card]
@@ -1441,6 +1439,142 @@
 (defmethod mi/non-internal-filter-clause :model/Card
   [_model alias]
   [:not= (h2x/identifier :field alias :creator_id) config/internal-mb-user-id])
+
+;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
+
+(defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
+  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+        {:keys [dashcards tabs]} dashboard
+        tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
+        already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
+    (when-not already-on-dashboard?
+      (let [first-tab (first tabs)
+            cards-on-first-tab (or (when first-tab
+                                     (:cards first-tab))
+                                   dashcards)
+            new-spot (if-let [{:keys [size_x size_y]} size]
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab size_x size_y autoplace/default-grid-width)
+                       (autoplace/get-position-for-new-dashcard
+                        cards-on-first-tab (:display card)))]
+        (queries.db/insert-dashcard! (assoc new-spot
+                                            :dashboard_tab_id (some-> first-tab :id)
+                                            :card_id (:id card)
+                                            :dashboard_id dashboard-id))))))
+
+(defn- autoremove-dashcard-for-card!
+  [card-id dashboard-id]
+  (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
+  (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
+    (queries.db/delete-dashcard-series! (set dashcard-ids))))
+
+(defn- autoplace-or-remove-dashcards-for-card!
+  "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
+  DashboardQuestions."
+  [{:as card-before-update
+    card-id :id
+    old-archived :archived
+    old-dashboard-id :dashboard_id}
+   {:as card-updates
+    dashboard-id-update :dashboard_id
+    dashboard-tab-id :dashboard_tab_id
+    archived-update :archived}
+   delete-old-dashcards?]
+  (let [dashboard-changes? (api/column-will-change? old-dashboard-id (get card-updates :dashboard_id ::api/not-provided))
+        new-dashboard-id (if-not dashboard-changes?
+                           old-dashboard-id
+                           dashboard-id-update)
+        on-dashboard-before? (boolean old-dashboard-id)
+        on-dashboard-after? (boolean new-dashboard-id)
+        archived-changes? (api/column-will-change? old-archived (get card-updates :archived ::api/not-provided))
+        new-archived (if-not archived-changes?
+                       old-archived
+                       archived-update)
+        archived-after? (boolean new-archived)]
+    ;; you can't specify the dashboard_tab_id if not on a dashboard
+    (api/check-400
+     (not (and dashboard-tab-id
+               (not new-dashboard-id))))
+    ;; we'll end up unarchived and a dashboard card => make sure we autoplace
+    (when (and on-dashboard-after? (not archived-after?))
+      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
+    (when (and
+           ;; we start out as a DQ, and
+           on-dashboard-before?
+           (or
+            ;; we're moving to a *different* dashboard,
+            (and on-dashboard-after?
+                 dashboard-changes?)
+            ;; we're archiving the DQ, or
+            (and archived-after?
+                 on-dashboard-after?)
+            ;; we're moving the DQ to a collection, AND the user has told us to delete
+            (and (not on-dashboard-after?)
+                 delete-old-dashcards?)))
+      (autoremove-dashcard-for-card! card-id old-dashboard-id))
+    ;; we're moving from a collection to a dashboard, and the user has told us to remove the dashcards for other
+    ;; dashboards
+    (when (and on-dashboard-after?
+               (not on-dashboard-before?)
+               delete-old-dashcards?)
+      ;; TODO: should we publish events here? might be expensive, and it might not be right to show "card X was
+      ;; removed from the dashboard" since you can't restore to the previous state...
+      (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
+      (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
+        (queries.db/delete-dashcard-series! ids)))))
+
+(defn create-card!
+  "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
+  the card will be saved without metadata and it will be saved to the card in the future when it is ready.
+
+  The Card events are published by the write of the row."
+  ([card creator] (create-card! card creator true))
+  ([{:keys [result_metadata parameters parameter_mappings type] :as input-card-data} creator autoplace-dashboard-questions?]
+   ;; you can't specify the dashboard_tab_id and not a dashboard_id
+   (api/check-400 (not (and (:dashboard_tab_id input-card-data)
+                            (not (:dashboard_id input-card-data)))))
+   ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
+   (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
+     (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
+   (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
+                                             :parameters :parameter_mappings :collection_id :collection_position
+                                             :cache_ttl :type :dashboard_id :document_id]
+         position-info                      {:collection_id (:collection_id input-card-data)
+                                             :collection_position (:collection_position input-card-data)}
+         card-data                          (-> (select-keys input-card-data data-keys)
+                                                (assoc
+                                                 :creator_id (:id creator)
+                                                 :parameters (or parameters [])
+                                                 :parameter_mappings (or parameter_mappings [])
+                                                 :entity_id (u/generate-nano-id))
+                                                (cond-> (nil? type)
+                                                  (assoc :type :question))
+                                                ;; Strict so a malformed query throws here instead of being silently
+                                                ;; coerced to `{}`. See #74615.
+                                                (m/update-existing :dataset_query #(lib-be/normalize-query nil % {:strict? true})))
+         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
+                                             {:query     (:dataset_query card-data)
+                                              :metadata  result_metadata
+                                              :entity-id (:entity_id card-data)
+                                              :model?    (model? card-data)})
+         card                               (t2/with-transaction [_conn]
+                                              ;; Adding a new card at `collection_position` could cause other cards in
+                                              ;; this collection to change position, check that and fix it if needed
+                                              (api/maybe-reconcile-collection-position! position-info)
+                                              (queries.db/insert-card!
+                                               (lib/normalize ::queries.schema/card.update
+                                                              (cond-> card-data
+                                                                metadata
+                                                                (assoc :result_metadata metadata)))))]
+     (let [{:keys [dashboard_id]} card]
+       (when (and dashboard_id autoplace-dashboard-questions?)
+         (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card (:size input-card-data))))
+     (when metadata-future
+       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata")
+       (card.metadata/save-metadata-async! metadata-future card))
+     ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
+     ;; returned one -- See #4283
+     card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -1483,6 +1617,179 @@
                      snapshot
                      {:id user-id})
     snapshot))
+
+(mu/defn- mbql-clause->identifier-for-parameter-updates
+  "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
+  but with an empty options clause."
+  [mbql-clause :- vector?]
+  ;; this can currently get called with either MBQL 5 (from query breakouts) or with legacy refs (in `parameter_mappings`)
+  (if (map? (second mbql-clause))
+    (into [(first mbql-clause)] (drop 2) mbql-clause)
+    (subvec mbql-clause 0 2)))
+
+(defn- breakout->identifier->refs
+  "Generate mapping of of _ref identifier_ -> #{_ref..._}.
+
+  _ref identifier_ is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]"
+  [breakouts]
+  (-> (group-by mbql-clause->identifier-for-parameter-updates breakouts)
+      (update-vals set)))
+
+(defn- action-for-identifier+refs
+  "Generate _action_ for combination of args.
+
+  _Action_ is to be performed on _parameter mapping_ of a _dashcard_. For more info see
+  the [[update-associated-parameters!]]'s docstring.
+
+  _Action_ has a form of [<action> & args]."
+  [after-identifier->refs identifier before-refs]
+  (let [after-refs (get after-identifier->refs identifier #{})]
+    (when (and (= 1 (count before-refs) (count after-refs))
+               (not= (lib/remove-lib-uuids before-refs) (lib/remove-lib-uuids after-refs)))
+      [:update (first after-refs)])))
+
+(defn- breakouts->identifier->action
+  "Generate mapping of _identifier_ -> _action_.
+
+  _identifier_ is is a vector of first 2 elements of ref, eg. [:expression \"xix\"] or [:field 10]. Action is generated
+  in [[action-for-identifier+refs]] and performed later in [[update-mapping]]."
+  [breakout-before-update breakout-after-update]
+  (let [before-identifier->refs (breakout->identifier->refs breakout-before-update)
+        after-identifier->refs  (breakout->identifier->refs breakout-after-update)]
+    ;; Remove no-ops to avoid redundant db calls in [[update-associated-parameters!]].
+    (->> before-identifier->refs
+         (m/map-kv-vals #(action-for-identifier+refs after-identifier->refs %1 %2))
+         (m/filter-vals some?)
+         not-empty)))
+
+(defn- eligible-mapping?
+  "Decide whether parameter mapping has structure so it can be updated presumably using [[update-mapping]]."
+  [{[dim [ref-kind]] :target :as _mapping}]
+  (and (= dim :dimension)
+       (#{:field :expression} ref-kind)))
+
+(defn- update-mapping
+  "Return modified mapping according to action."
+  [identifier->action {[_dim field-ref] :target :as mapping}]
+  (let [identifier   (mbql-clause->identifier-for-parameter-updates field-ref)
+        [action arg] (get identifier->action identifier)]
+    (case action
+      ;; allowed for now since parameter mappings still use Legacy MBQL fields refs (for now)
+      :update (assoc-in mapping [:target 1] (lib/->legacy-MBQL-ref arg))
+      mapping)))
+
+(defn- updates-for-dashcards
+  [identifier->action dashcards]
+  (not-empty (for [{:keys [id parameter_mappings]} dashcards
+                   :let [updated (into [] (map #(if (eligible-mapping? %)
+                                                  (update-mapping identifier->action %)
+                                                  %))
+                                       parameter_mappings)]
+                   :when (not= parameter_mappings updated)]
+               [id {:parameter_mappings updated}])))
+
+(mu/defn- update-associated-parameters!
+  "Update _parameter mappings_ of _dashcards_ that target modified _card_, to reflect the modification.
+
+  This function handles only modifications to breakout.
+
+  Context. Card can have multiple multiple breakout elements referencing same field or expression, having different
+  _temporal unit_. Those refs can be targeted by dashboard _temporal unit parameter_. If refs change, and card is saved,
+  _parameter mappings_ have to be updated to target new, modified refs. This function takes care of that.
+
+  First mappings of _identifier_ -> _action_ are generated. _identifier_ is described
+  eg. in [[breakouts->identifier->action]] docstring. Then, dashcards are fetched and updates are generated
+  by [[updates-for-dashcards]]. Updates are then executed."
+  [card-before :- ::queries.schema/card
+   card-after  :- ::queries.schema/card]
+  (let [card->breakouts  #(some-> % :dataset_query not-empty lib/breakouts)
+        breakouts-before (card->breakouts card-before)
+        breakouts-after  (card->breakouts card-after)]
+    (when-some [identifier->action (breakouts->identifier->action breakouts-before breakouts-after)]
+      (let [dashcards (queries.db/dashcards-for-card (some :id [card-after card-before]))
+            updates   (updates-for-dashcards identifier->action dashcards)]
+        ;; Beware. This can have negative impact on card update performance as queries are fired in sequence. I'm not
+        ;; aware of more reasonable way.
+        (when (seq updates)
+          (t2/with-transaction [_conn]
+            (doseq [[id update] updates]
+              (queries.db/update-dashcard! id update))))))))
+
+(deftype SourceCardDependentsGraph []
+  graph/Graph
+  (children-of [_this key-seq]
+    (if (empty? key-seq)
+      {}
+      (let [deps (queries.db/source-card-dependents key-seq)]
+        (u/group-by :source_card_id :id conj #{} deps)))))
+
+(defn- dependent-cards-to-update
+  "Return cards to rewrite when `root-card-id` moves off `old-db-id`, with sources before their dependents.
+  A card's `database_id` comes from its source card, so updating a dependent first preserves the old ID."
+  [root-card-id old-db-id]
+  (when-let [all-dep-ids (seq (graph/transitive (->SourceCardDependentsGraph) [root-card-id]))]
+    (let [id->card (m/index-by :id (queries.db/cards-queries-info all-dep-ids))]
+      (into []
+            (comp (map id->card)
+                  (filter #(= (get-in % [:dataset_query :database]) old-db-id)))
+            all-dep-ids))))
+
+(defn- cascade-database-change-to-dependents!
+  "When a card's `database_id` changes, update all cards that use it as a `:source-card` (transitively) so their
+  `dataset_query` `:database` key stays in sync. Without this dependent cards would fail with 'Card does not exist'
+   because the metadata provider filters cards by database (#74561)."
+  [card-before-update card-updates]
+  (let [card-id   (:id card-before-update)
+        old-db-id (-> card-before-update :dataset_query :database)
+        new-db-id (-> card-updates :dataset_query :database)]
+    (when (and old-db-id new-db-id (not= old-db-id new-db-id))
+      (let [cards-to-update (dependent-cards-to-update card-id old-db-id)]
+        (doseq [{dep-id :id, dep-query :dataset_query} cards-to-update]
+          (queries.db/update-card! dep-id {:dataset_query (assoc dep-query :database new-db-id)}))))))
+
+(defn- update-card-in-db!
+  "Write `card-updates` to the Card and the rows that depend on it, in one transaction."
+  [card-before-update card-updates actor delete-old-dashcards?]
+  ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
+  (t2/with-transaction [_conn]
+    (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
+    (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
+    (let [updated-fields (u/select-keys-when card-updates
+                                             ;; `collection_id` and `description` can be `nil` (in order to unset them).
+                                             ;; Other values should only be modified if they're passed in as non-nil
+                                             :present #{:collection_id :collection_position :description :cache_ttl :dashboard_id :document_id :embedding_type}
+                                             :non-nil #{:dataset_query :display :name :visualization_settings :archived
+                                                        :enable_embedding :type :parameters :parameter_mappings :embedding_params
+                                                        :result_metadata :verified-result-metadata?})]
+      (assert-is-valid-dashboard-internal-update card-updates card-before-update)
+      (maybe-unverify! card-before-update updated-fields actor)
+      (queries.db/update-card! (:id card-before-update)
+                               (m/update-existing updated-fields :dataset_query
+                                                  #(lib/normalize ::queries.schema/card.dataset-query.write %)))
+      (cache/invalidate-config! {:questions [(:id card-before-update)]
+                                 :with-overrides? true}))
+    ;; Update all transitively dependent cards if the database was changed (#74561)
+    (cascade-database-change-to-dependents! card-before-update card-updates)
+    ;; ok, now update dependent dashcard parameters
+    (try
+      (update-associated-parameters! card-before-update card-updates)
+      (catch Throwable e
+        (log/errorf "Update of dependent card parameters failed!: %s" (ex-message e))))
+    (queries.db/card (:id card-before-update))))
+
+(defn update-card!
+  "Update a Card. Metadata is fetched asynchronously. If it is ready before [[metadata-sync-wait-ms]] elapses it will be
+  included, otherwise the metadata will be saved to the database asynchronously."
+  [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
+  (let [notifications (pulse/alerts-of-card-being-changed card-before-update card-updates)]
+    (events/with-batched-events
+      (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?))
+    ;; Fetch the updated Card from the DB
+    (let [card (queries.db/card (:id card-before-update))]
+      ;;; TODO -- this should be triggered indirectly by `:event/card-update`
+      (pulse/notify-alerts-deleted! :old-card card-before-update, :new-card card, :actor actor
+                                    :notifications notifications)
+      card)))
 
 (defn sole-dashboard-id
   "Given a card, returns the dashboard_id of the *sole* dashboard it's in, or `nil` if it's not in exactly one dashboard."

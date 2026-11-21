@@ -26,21 +26,6 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select-one :model/Card :id [:in ids]))
 
-(mu/defn database-exists?
-  "Whether a Database with `database-id` exists."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id [:auto/param database-id]))
-
-(mu/defn dashboard-exists?
-  "Whether a Dashboard with `dashboard-id` exists."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/exists? :model/Dashboard :id [:auto/param dashboard-id]))
-
-(mu/defn card-exists?
-  "Whether a Card with `card-id` exists."
-  [card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/Card :id [:auto/param card-id]))
-
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]

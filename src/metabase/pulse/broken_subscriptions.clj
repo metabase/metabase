@@ -7,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as pulse]
-   [metabase.pulse.write :as pulse.write]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -167,7 +166,7 @@
     (mapv (fn [{:keys [pulse-id] :as broken-subscription}]
             ;; Described before archiving, which disables the pulse's channels.
             (let [archived (archived-subscription original-dashboard-params readable-ids broken-subscription)]
-              (pulse.write/update-pulse! {:id pulse-id :archived true})
+              (pulse/update-pulse! {:id pulse-id :archived true})
               (messages/send-broken-subscription-notification! broken-subscription)
               archived))
           broken)))

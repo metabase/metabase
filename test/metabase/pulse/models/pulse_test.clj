@@ -9,7 +9,6 @@
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.schema :as pulse.schema]
-   [metabase.pulse.write :as pulse.write]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
@@ -37,16 +36,16 @@
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
   [pulse-name creator cards channels skip-if-empty? & [dashboard-id]]
-  (-> (pulse.write/create-pulse! cards channels
-                                 {:name          pulse-name
-                                  :creator_id    (u/the-id creator)
-                                  :skip_if_empty skip-if-empty?
-                                  :dashboard_id dashboard-id})
+  (-> (models.pulse/create-pulse! cards channels
+                                  {:name          pulse-name
+                                   :creator_id    (u/the-id creator)
+                                   :skip_if_empty skip-if-empty?
+                                   :dashboard_id dashboard-id})
       remove-uneeded-pulse-keys))
 
 (defn- update-pulse-then-select!
   [pulse]
-  (-> (pulse.write/update-pulse! pulse)
+  (-> (models.pulse/update-pulse! pulse)
       remove-uneeded-pulse-keys))
 
 (def ^:private pulse-defaults
@@ -112,7 +111,7 @@
                               1 card-1
                               2 card-2
                               3 card-3))]
-                (pulse.write/update-notification-cards! pulse (map models.pulse/card->ref cards)))
+                (models.pulse/update-notification-cards! pulse (map models.pulse/card->ref cards)))
               (when-let [card-ids (seq (t2/select-fn-set :card_id :model/PulseCard, :pulse_id (u/the-id pulse)))]
                 (t2/select-fn-set :name :model/Card, :id [:in card-ids])))]
       (doseq [[cards expected] {[]    nil
@@ -168,15 +167,15 @@
       (mt/with-model-cleanup [:model/Pulse]
         (mt/with-premium-features #{:audit-app}
           (let [pulse (mt/with-current-user (mt/user->id :rasta)
-                        (pulse.write/create-pulse! [(models.pulse/card->ref card)]
-                                                   [{:channel_type  :email
-                                                     :schedule_type :daily
-                                                     :schedule_hour 18
-                                                     :enabled       true
-                                                     :recipients    [{:email "foo@bar.com"}]}]
-                                                   {:name          "pulse-name"
-                                                    :creator_id    (mt/user->id :rasta)
-                                                    :skip_if_empty false}))]
+                        (models.pulse/create-pulse! [(models.pulse/card->ref card)]
+                                                    [{:channel_type  :email
+                                                      :schedule_type :daily
+                                                      :schedule_hour 18
+                                                      :enabled       true
+                                                      :recipients    [{:email "foo@bar.com"}]}]
+                                                    {:name          "pulse-name"
+                                                     :creator_id    (mt/user->id :rasta)
+                                                     :skip_if_empty false}))]
             (is (= {:topic    :pulse-create
                     :user_id  (mt/user->id :rasta)
                     :model    "Pulse"
@@ -459,21 +458,6 @@
     (testing "body with only some of the columns passes"
       (is (nil? (pulse-channel-test/normalize-status ::pulse.schema/pulse.update
                                                      {:dashboard_id 1 :alert_condition "rows"}))))))
-
-(deftest dashboard-subscription-insert-shape-test
-  (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
-    (mt/with-model-cleanup [:model/Pulse]
-      (testing "insert cannot give dashboard subscription the columns of an alert or collection position"
-        (doseq [overrides [{:alert_condition "rows"}
-                           {:alert_first_only false}
-                           {:alert_above_goal true}
-                           {:collection_position 1}]]
-          (testing (pr-str overrides)
-            (is (= 400 (status-code #(insert-pulse! (assoc overrides :dashboard_id dashboard-id))))))))
-      (testing "pulse without dashboard keeps its alert columns and collection position"
-        (let [pulse-id (insert-pulse! {:alert_condition "rows" :alert_first_only false :collection_position 1})]
-          (is (=? {:alert_condition "rows" :collection_position 1}
-                  (t2/select-one :model/Pulse :id pulse-id))))))))
 
 (deftest dashboard-subscription-update-shape-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]

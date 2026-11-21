@@ -71,18 +71,3 @@
     (testing "every user can read entries"
       (mt/with-test-user :rasta
         (is (= [true] (map mi/can-read? (t2/hydrate [entry] :can_read))))))))
-
-(deftest duplicate-term-test
-  (mt/with-temp [:model/Glossary {first-id :id} {:term "Duplicated" :definition "First"}
-                 :model/Glossary _              {:term "Other" :definition "Second"}]
-    (testing "insert of existing term is refused with 400"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already exists"
-                            (t2/insert! :model/Glossary {:term "Duplicated" :definition "Third"})))
-      (is (= 1 (t2/count :model/Glossary :term "Duplicated"))))
-    (testing "update to existing term is refused with 400"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already exists"
-                            (t2/update! :model/Glossary :term "Other" {:term "Duplicated"})))
-      (is (= 1 (t2/count :model/Glossary :term "Other"))))
-    (testing "update that keeps the term is accepted"
-      (is (= 1 (t2/update! :model/Glossary :id first-id {:term "Duplicated" :definition "Changed"})))
-      (is (= "Changed" (t2/select-one-fn :definition :model/Glossary :id first-id))))))

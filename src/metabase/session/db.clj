@@ -145,10 +145,10 @@
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
   (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
 
-(mu/defn auth-identity-provider-and-expiry
-  "The `:provider` and `:expires_at` of the AuthIdentity with `auth-identity-id`, or nil."
+(mu/defn auth-identity-provider
+  "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one [:model/AuthIdentity :provider :expires_at] :id auth-identity-id))
+  (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
 
 (mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."

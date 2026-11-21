@@ -1,8 +1,8 @@
 (ns metabase-enterprise.action-v2.actions
   (:require
    [metabase-enterprise.action-v2.data-editing :as data-editing]
+   [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.validation :as validation]
-   [metabase-enterprise.action-v2.write :as action-v2.write]
    [metabase.actions.args :as actions.args]
    [metabase.actions.core :as actions]
    [metabase.driver.util :as driver.u]
@@ -127,7 +127,7 @@
   [_action context _inputs]
   (try
     {:context context
-     :outputs (action-v2.write/undo! context (:user-id context) (:scope context))}
+     :outputs (undo/undo! context (:user-id context) (:scope context))}
     (catch ExceptionInfo e
       (throw (translate-undo-error e)))))
 
@@ -135,6 +135,6 @@
   [_action context _inputs]
   (try
     {:context context
-     :outputs (action-v2.write/redo! context (:user-id context) (:scope context))}
+     :outputs (undo/redo! context (:user-id context) (:scope context))}
     (catch ExceptionInfo e
       (throw (translate-undo-error e)))))

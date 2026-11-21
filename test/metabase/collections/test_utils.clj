@@ -27,7 +27,7 @@
    Example:
    ```clojure
    (without-library
-     (let [lib (collections.write/create-library-collection!)]
+     (let [lib (collection/create-library-collection!)]
        ...))
    ```"
   [& body]

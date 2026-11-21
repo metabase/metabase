@@ -11,7 +11,6 @@
    [metabase.queries.models.query]
    [metabase.queries.models.stored-result]
    [metabase.queries.models.stored-result-use]
-   [metabase.queries.write]
    [metabase.query-processor.card]
    [potemkin :as p]))
 
@@ -25,7 +24,6 @@
          metabase.queries.models.query/keep-me
          metabase.queries.models.stored-result/keep-me
          metabase.queries.models.stored-result-use/keep-me
-         metabase.queries.write/keep-me
          metabase.query-processor.card/keep-me)
 
 (p/import-vars
@@ -42,6 +40,7 @@
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!
   check-shared-dashboard-timeline-permissions-for-card-ids!
+  create-card!
   card-exposed-timeline-ids
   dashcard-hides-card-events?
   with-copy-source-card]
@@ -51,13 +50,6 @@
   check-allowed-to-run-query!
   check-allowed-to-update-card!
   check-card-can-be-saved!]
- [metabase.queries.write
-  create-card!
-  create-public-link!
-  delete-card!
-  delete-public-link!
-  move-cards-to-collection!
-  update-card!]
  [metabase.queries.metadata
   batch-fetch-card-metadata
   ;; TODO does this belong here, or in the `dashboards` module?
@@ -70,6 +62,7 @@
   sole-dashboard-id
   starting-card-schema-version
   timeline-events-supported-display?
+  update-card!
   visible-metric-cards-where-clause]
  [metabase.queries.models.card.metadata
   infer-metadata-with-model-overrides

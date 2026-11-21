@@ -1,7 +1,7 @@
 (ns metabase.segments.audit
   "What the audit spec of a Segment needs beyond its columns."
   (:require
-   [metabase.warehouses.models.database :as database]))
+   [metabase.segments.db :as segments.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -10,5 +10,5 @@
   [{:keys [table_id] :as row} _event]
   (cond-> {:table_id    table_id
            :database_id (when table_id
-                          (database/table-id->database-id table_id))}
+                          (:db_id (segments.db/table table_id)))}
     (contains? row :revision_message) (assoc :revision_message (:revision_message row))))

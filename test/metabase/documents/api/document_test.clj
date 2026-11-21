@@ -5,10 +5,10 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.api.document :as api.document]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
-   [metabase.documents.write :as documents.write]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -2701,12 +2701,12 @@
                  :model/Card     {card-2 :id}      {:document_id document-id}]
     (mt/with-current-user (mt/user->id :crowberto)
       (testing "add-card-to-document! returns the hydrated document"
-        (let [result (documents.write/add-card-to-document! document-id card-1 nil)]
+        (let [result (api.document/add-card-to-document! document-id card-1 nil)]
           (is (=? {:id document-id :is_placeholder false :can_write true :creator map?} result))
           (is (= [card-1] (embedded-card-ids (:document result))))))
       (testing "add-card-to-document-row! returns the plain row, without hydrating it"
-        (let [result (documents.write/add-card-to-document-row! document-id card-2 nil
-                                                                :extra-attrs {:chart_href "/x"})]
+        (let [result (api.document/add-card-to-document-row! document-id card-2 nil
+                                                             :extra-attrs {:chart_href "/x"})]
           (is (=? {:id document-id :is_placeholder false} result))
           (is (not-any? #(contains? result %) [:can_write :creator]))
           (is (= [card-1 card-2]

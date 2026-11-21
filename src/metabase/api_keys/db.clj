@@ -108,11 +108,9 @@
   (t2/insert-returning-instance! :model/ApiKey row))
 
 (mu/defn update-api-key!
-  "Give the ApiKey with `id` the new unhashed key of `changes`, which the model hashes and prefixes."
+  "Apply `changes` to the ApiKey with `id`."
   [id      :- ms/PositiveInt
-   changes :- [:map {:closed true}
-               [:metabase.api-keys.core/unhashed-key ::api-keys.schema/key.unhashed-or-secret]
-               [:updated_by_id                       {:optional true} [:maybe ms/PositiveInt]]]]
+   changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
   (t2/update! :model/ApiKey :id id changes))
 
 (defn lock-available-key-ids

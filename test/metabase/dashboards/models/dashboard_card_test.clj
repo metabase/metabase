@@ -1,9 +1,9 @@
 (ns metabase.dashboards.models.dashboard-card-test
   (:require
    [clojure.test :refer :all]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
-   [metabase.dashboards.write :as dashboards.write]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card-test :as card-test]
@@ -97,7 +97,7 @@
                  :model/Card          {card-id-2 :id} {:name "card2"}
                  :model/Card          {card-id3 :id} {:name "card3"}]
     (let [upd-series (fn [series]
-                       (dashboards.write/update-dashboard-cards-series! {dashcard-id series})
+                       (dashboard-card/update-dashboard-cards-series! {dashcard-id series})
                        (set (for [card-id (t2/select-fn-set :card_id :model/DashboardCardSeries, :dashboardcard_id dashcard-id)]
                               (t2/select-one-fn :name :model/Card, :id card-id))))]
       (is (= #{}
@@ -115,7 +115,7 @@
   (testing "create-dashboard-card! simple example with a single card"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id} {:name "Test Card"}]
-      (let [dashboard-card (first (dashboards.write/create-dashboard-cards!
+      (let [dashboard-card (first (dashboard-card/create-dashboard-cards!
                                    [{:dashboard_id           dashboard-id
                                      :card_id                card-id
                                      :size_x                 4
@@ -181,7 +181,7 @@
                  :series                 []}
                 (dashboard-card/retrieve-dashboard-card dashcard-id))))
       (testing "return value from the update call should be nil"
-        (is (nil? (dashboards.write/update-dashboard-card!
+        (is (nil? (dashboard-card/update-dashboard-card!
                    {:id                     dashcard-id
                     :dashboard_id           nil
                     :card_id                nil
@@ -229,31 +229,31 @@
       (let [dashboard (t2/hydrate dashboard [:dashcards :series :card])]
         (testing "Should have fewer DB calls if there are no changes to the dashcards"
           (t2/with-call-count [call-count]
-            (dashboards.write/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
+            (dashboard/update-dashcards! dashboard [dashcard-1 dashcard-2 dashcard-3])
             (is (= 1 (call-count)))))
         (testing "Should have more calls if there are changes to the dashcards"
           (t2/with-call-count [call-count]
-            (dashboards.write/update-dashcards! dashboard [{:id     (:id dashcard-1)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series [{:id series-id-1}]}
-                                                           {:id     (:id dashcard-2)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series [{:id series-id-2}]}
-                                                           {:id     (:id dashcard-3)
-                                                            :card_id card-id
-                                                            :row    1
-                                                            :col    2
-                                                            :size_x 3
-                                                            :size_y 4
-                                                            :series []}])
+            (dashboard/update-dashcards! dashboard [{:id     (:id dashcard-1)
+                                                     :card_id card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series [{:id series-id-1}]}
+                                                    {:id     (:id dashcard-2)
+                                                     :card_id card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series [{:id series-id-2}]}
+                                                    {:id     (:id dashcard-3)
+                                                     :card_id card-id
+                                                     :row    1
+                                                     :col    2
+                                                     :size_x 3
+                                                     :size_y 4
+                                                     :series []}])
             ;; this is usually 13, but it can be 14 sometimes in CI for some reason
             (is (contains? #{12 13} (call-count)))))))))
 
@@ -500,137 +500,3 @@
   (testing "parameter mappings of DashboardCard are sequence of mappings"
     (is (not (mr/validate ::dashboards.schema/dashboard-card.update
                           {:parameter_mappings [{:target [:dimension [:field 1 nil]]}]})))))
-
-(deftest dashcard-card-not-in-document-test
-  (testing "A Card of a Document is not put on a Dashboard by the create function or by the update function"
-    (mt/with-temp [:model/Dashboard dash      {}
-                   :model/Document  document  {}
-                   :model/Card      card      {}
-                   :model/Card      doc-card  {:document_id (u/the-id document)}
-                   :model/DashboardCard dashcard {:dashboard_id (u/the-id dash) :card_id (u/the-id card)}]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cards with 'document_id' cannot be added to dashboards"
-                            (dashboards.write/create-dashboard-cards! [{:dashboard_id (u/the-id dash) :card_id (u/the-id doc-card)
-                                                                        :size_x 4 :size_y 4 :row 0 :col 0}])))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cards with 'document_id' cannot be added to dashboards"
-                            (dashboards.write/update-dashboard-card! (assoc dashcard :card_id (u/the-id doc-card)) dashcard)))
-      (is (= (u/the-id card) (t2/select-one-fn :card_id :model/DashboardCard :id (u/the-id dashcard))))
-      (is (= 1 (t2/count :model/DashboardCard :dashboard_id (u/the-id dash)))))))
-
-(deftest delete-dashboard-cards-cleans-up-test
-  (testing "Deleting dashcards through the write function removes their inline parameters and PulseCards"
-    (mt/with-temp [:model/Dashboard dash {:parameters [{:id "keep" :name "Keep" :slug "keep" :type :string/=}
-                                                       {:id "inline" :name "Inline" :slug "inline" :type :string/=}]}
-                   :model/Card card {}
-                   :model/DashboardCard dashcard {:dashboard_id      (u/the-id dash)
-                                                  :card_id           (u/the-id card)
-                                                  :inline_parameters ["inline"]}
-                   :model/DashboardCard other {:dashboard_id (u/the-id dash)
-                                               :card_id      (u/the-id card)}
-                   :model/Pulse pulse {:dashboard_id (u/the-id dash)}
-                   :model/PulseCard _ {:pulse_id          (u/the-id pulse)
-                                       :card_id           (u/the-id card)
-                                       :dashboard_card_id (u/the-id dashcard)}]
-      (dashboards.write/delete-dashboard-cards! [(u/the-id dashcard)])
-      (is (= ["keep"] (map :id (t2/select-one-fn :parameters :model/Dashboard :id (u/the-id dash)))))
-      (is (zero? (t2/count :model/PulseCard :dashboard_card_id (u/the-id dashcard))))
-      (is (t2/exists? :model/DashboardCard :id (u/the-id other))))))
-
-(deftest dashcard-delete-statement-count-test
-  (testing "Removing dashcards through update-dashboard! does not add statements per dashcard"
-    (let [calls (fn [n inline?]
-                  (mt/with-temp [:model/Card {card-id :id} {}
-                                 :model/Dashboard {dash-id :id} {:parameters (if inline?
-                                                                               (vec (for [i (range n)]
-                                                                                      {:id (str "p" i) :name (str "p" i) :slug (str "p" i) :type :category}))
-                                                                               [])}]
-                    (doseq [i (range n)]
-                      (t2/insert! :model/DashboardCard (cond-> {:dashboard_id dash-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}
-                                                         inline? (assoc :inline_parameters [(str "p" i)]))))
-                    (t2/with-call-count [call-count]
-                      (mt/with-current-user (mt/user->id :crowberto)
-                        (dashboards.write/update-dashboard! dash-id {:dashcards []}))
-                      (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id)))
-                      (call-count))))]
-      (doseq [inline? [false true]]
-        (testing (str "inline parameters " inline?)
-          (is (= (calls 3 inline?) (calls 12 inline?))))))))
-
-(defn- insert-dashcard-call-count
-  "The number of app-DB statements an insert of a DashboardCard of the Card with `card-id` on the tab with `tab-id`
-  of the Dashboard with `dashboard-id` runs."
-  [dashboard-id tab-id card-id]
-  (t2/with-call-count [call-count]
-    (t2/insert! :model/DashboardCard {:dashboard_id     dashboard-id
-                                      :dashboard_tab_id tab-id
-                                      :card_id          card-id
-                                      :row              0
-                                      :col              0
-                                      :size_x           4
-                                      :size_y           4})
-    (call-count)))
-
-(deftest dashcards-on-same-tab-read-tab-once-test
-  (testing "dashcards after first on same tab read nothing about tab"
-    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
-                   :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id :name "Tab" :position 0}
-                   :model/Card         {card-id :id}      {}]
-      (let [[first-count & later-counts] (repeatedly 3 #(insert-dashcard-call-count dashboard-id tab-id card-id))]
-        (is (= [(dec first-count) (dec first-count)] later-counts))))))
-
-(deftest tab-check-refusals-test
-  (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
-                 :model/Dashboard    {other-id :id}     {}
-                 :model/DashboardTab {other-tab :id}    {:dashboard_id other-id :name "Other" :position 0}
-                 :model/Card         {card-id :id}      {}]
-    (testing "tab of other Dashboard is refused on each insert"
-      (dotimes [_ 2]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"The tab of a dashboard card must belong to its dashboard"
-                              (insert-dashcard-call-count dashboard-id other-tab card-id)))))
-    (testing "missing tab is not cached, so tab created afterwards is found"
-      (let [missing-id (+ 1000000 (t2/select-one-fn :max-id [:model/DashboardTab [:%max.id :max-id]]))]
-        (is (nil? (dashboard-card/dashboard-tab-id->immutable-info missing-id)))
-        (mt/with-temp [:model/DashboardTab _ {:id missing-id :dashboard_id dashboard-id :name "Late" :position 1}]
-          (is (pos? (insert-dashcard-call-count dashboard-id missing-id card-id))))))))
-
-(deftest tab-check-ignores-rolled-back-tabs-test
-  (testing "cached Dashboard of rolled-back tab is never served for tab created afterwards"
-    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                   :model/Dashboard {other-id :id}     {}
-                   :model/Card      {card-id :id}      {}]
-      (let [rolled-back-id (t2/with-transaction [_conn nil {:rollback-only true}]
-                             (let [tab-id (t2/insert-returning-pk! :model/DashboardTab {:dashboard_id dashboard-id
-                                                                                        :name         "Gone"
-                                                                                        :position     0})]
-                               (insert-dashcard-call-count dashboard-id tab-id card-id)
-                               tab-id))]
-        (is (not (t2/exists? :model/DashboardTab :id rolled-back-id)))
-        (mt/with-temp [:model/DashboardTab {tab-id :id} {:dashboard_id other-id :name "New" :position 0}]
-          (is (< rolled-back-id tab-id))
-          (is (= other-id (:dashboard_id (dashboard-card/dashboard-tab-id->immutable-info tab-id)))))))))
-
-(deftest plain-dashcard-select-runs-no-import-test
-  (testing "dashcard without visualizer settings comes back as stored with no statement beyond its select"
-    (mt/with-temp [:model/Dashboard     dash {}
-                   :model/Card          card {}
-                   :model/DashboardCard dc   {:dashboard_id           (:id dash)
-                                              :card_id                (:id card)
-                                              :visualization_settings {:card.title "Plain"}}]
-      (let [[loaded call-count] (t2/with-call-count [call-count]
-                                  [(t2/select-one :model/DashboardCard :id (:id dc)) (call-count)])]
-        (is (= 1 call-count))
-        (is (= {:card.title "Plain"} (:visualization_settings loaded)))))))
-
-(deftest dashboard-card-id->immutable-info-test
-  (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                 :model/Card          {card-id :id}      {}
-                 :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id}]
-    (testing "found DashboardCard is read once"
-      (is (= {:id dashcard-id :dashboard_id dashboard-id} (dashboard-card/dashboard-card-id->immutable-info dashcard-id)))
-      (is (= 0 (t2/with-call-count [call-count]
-                 (dashboard-card/dashboard-card-id->dashboard-id dashcard-id)
-                 (call-count)))))
-    (testing "missing DashboardCard is not cached, so DashboardCard created afterwards is found"
-      (let [missing-id (+ 1000000 (t2/select-one-fn :max-id [:model/DashboardCard [:%max.id :max-id]]))]
-        (is (nil? (dashboard-card/dashboard-card-id->dashboard-id missing-id)))
-        (mt/with-temp [:model/DashboardCard _ {:id missing-id :dashboard_id dashboard-id :card_id card-id}]
-          (is (= dashboard-id (dashboard-card/dashboard-card-id->dashboard-id missing-id))))))))

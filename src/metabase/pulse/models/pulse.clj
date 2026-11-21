@@ -38,6 +38,7 @@
    [metabase.pulse.audit :as pulse.audit]
    [metabase.pulse.collection-items :as pulse.collection-items]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -94,7 +95,6 @@
 (t2/define-before-insert :model/Pulse
   [pulse]
   (u/prog1 (new-pulse pulse)
-    (check-dashboard-subscription <>)
     (collection/check-collection-for :model/Pulse <>)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -339,7 +339,7 @@
    [:id    {:optional true} ms/PositiveInt]
    [:email {:optional true} :string]])
 
-(def PulseChannelInput
+(def ^:private PulseChannelInput
   "A PulseChannel as [[update-notification-channels!]]/[[create-pulse!]] accept it: a subset of `::pulse-channel`
   columns (`:id`/`:pulse_id` filled in server-side when absent) plus `:recipients`."
   [:map {:closed true}
@@ -358,7 +358,7 @@
    [:created_at     {:optional true} ms/TemporalInstant]
    [:updated_at     {:optional true} ms/TemporalInstant]])
 
-(def UpdateNotificationInput
+(def ^:private UpdateNotificationInput
   "What [[update-notification!]] accepts: the keys of a Pulse/Alert to update, all optional except `:id`."
   [:map {:closed true}
    [:id                    ms/PositiveInt]
@@ -374,7 +374,7 @@
    [:archived            {:optional true} boolean?]
    [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]])
 
-(def NotificationOrId
+(def ^:private NotificationOrId
   "A Pulse/Alert id, a full Pulse row, or [[update-notification!]]'s own argument map — the shapes
   [[u/the-id]] is called with below."
   [:or ms/PositiveInt ::pulse.schema/pulse UpdateNotificationInput])
@@ -539,7 +539,7 @@
   the current user. Returns `nil` when the caller is not tenant-scoped, i.e. when nothing is hidden.
 
   The write path uses this to restore recipients the caller was never shown; see
-  [[metabase.pulse.write/maybe-add-recipients]]."
+  [[metabase.pulse.api.pulse/maybe-add-recipients]]."
   [recipients]
   (when (tenant-scoped-caller?)
     (let [tenant-id     (:tenant_id @api/*current-user*)
@@ -631,6 +631,172 @@
    :format_rows       (get card :format_rows true)
    :pivot_results     (get card :pivot_results false)
    :dashboard_card_id (get card :dashboard_card_id nil)})
+
+;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
+
+(mu/defn update-notification-cards!
+  "Update the PulseCards for a given `notification-or-id`. `card-refs` should be a definitive collection of *all* Cards
+  for the Notification in the desired order. They should have keys like `id`, `include_csv`, and `include_xls`.
+
+  *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
+  *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  [notification-or-id :- NotificationOrId
+   card-refs           :- [:maybe [:sequential CardRef]]]
+  ;; first off, just delete any cards associated with this pulse (we add them again below)
+  (pulse.db/delete-pulse-cards-for-pulse! (u/the-id notification-or-id))
+  ;; now just insert all of the cards that were given to us
+  (when (seq card-refs)
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
+                               {:pulse_id          (u/the-id notification-or-id)
+                                :card_id           card-id
+                                :position          i
+                                :include_csv       include_csv
+                                :include_xls       include_xls
+                                :format_rows       format_rows
+                                :pivot_results     pivot_results
+                                :dashboard_card_id dashboard_card_id})
+                             card-refs)]
+      (pulse.db/insert-pulse-cards! cards))))
+
+(mu/defn update-notification-channels!
+  "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
+  the channels for the Notification.
+
+    * If a channel in the list has no existing `PulseChannel` object, one will be created.
+
+    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+
+    * All previously existing channels will be updated with their most recent information."
+  [notification-or-id :- NotificationOrId
+   channels           :- [:sequential PulseChannelInput]]
+  (let [existing-channels   (pulse.db/pulse-channels-for-pulse (u/the-id notification-or-id))
+        channels            (map-indexed
+                             (fn [idx channel]
+                               (assoc channel
+                                      :channel_type   (keyword (:channel_type channel))
+                                      :schedule_type  (keyword (:schedule_type channel))
+                                      :schedule_frame (keyword (:schedule_frame channel))
+                                      :pulse_id       (u/the-id notification-or-id)
+                                      ;; for "new channels" we assign it with an negative id so that
+                                      ;; row-diff will treat it as :to-create
+                                      :id             (or
+                                                       (:id channel)
+                                                       ;; new channel
+                                                       (- (inc idx)))))
+                             channels)
+        {:keys [to-create
+                to-update
+                to-delete]} (u/row-diff existing-channels
+                                        channels
+                                        {:to-compare #(dissoc % :created_at :updated_at)})]
+    (doseq [channel to-create]
+      (pulse-channel/create-pulse-channel! channel))
+    (doseq [channel to-update]
+      (assert (:id channel) "Cannot update a PulseChannel without an :id")
+      (pulse-channel/update-pulse-channel! channel))
+    (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
+      (when (seq to-delete)
+        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+        (pulse.db/delete-pulse-channels! (map :id to-delete))))))
+
+(mu/defn- create-notification-and-add-cards-and-channels!
+  "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
+  add the Notification to `channels`. Returns the `id` of the newly created Notification."
+  [notification :- ::pulse.schema/pulse.update
+   card-refs    :- [:maybe [:sequential CardRef]]
+   channels     :- [:sequential PulseChannelInput]]
+  (t2/with-transaction [_conn]
+    (let [notification (pulse.db/insert-pulse! notification)]
+      (update-notification-cards! notification card-refs)
+      (update-notification-channels! notification channels)
+      (u/the-id notification))))
+
+(mu/defn create-pulse!
+  "Create a new Pulse by inserting it into the database along with all associated pieces of data such as:
+  PulseCards, PulseChannels, and PulseChannelRecipients.
+
+  Returns the newly created Pulse, or throws an Exception."
+  [cards    :- [:sequential CardRef]
+   channels :- [:sequential PulseChannelInput]
+   kvs      :- [:map {:closed true}
+                [:name                                 ms/NonBlankString]
+                [:creator_id                           ms/PositiveInt]
+                [:skip_if_empty       {:optional true} [:maybe :boolean]]
+                [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+                [:collection_position {:optional true} [:maybe ms/PositiveInt]]
+                [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
+                [:parameters          {:optional true} [:maybe [:sequential ::pulse.schema/pulse.parameter]]]
+                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
+  (let [pulse-id (events/with-batched-events
+                   (create-notification-and-add-cards-and-channels! kvs cards channels))]
+    (retrieve-pulse pulse-id)))
+
+(defn create-alert!
+  "Creates a pulse with the correct fields specified for an alert"
+  [alert creator-id card-id channels]
+  (let [id (events/with-batched-events
+             (-> alert
+                 (assoc :skip_if_empty true, :creator_id creator-id)
+                 (create-notification-and-add-cards-and-channels! [card-id] channels)))]
+    (retrieve-alert id)))
+
+(mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
+  [notification-or-id :- NotificationOrId]
+  (pulse.db/pulse-card-refs (u/the-id notification-or-id)))
+
+(mu/defn- card-refs-have-changed? :- :boolean
+  [notification-or-id :- NotificationOrId
+   new-card-refs      :- [:sequential CardRef]]
+  (not= (notification-or-id->existing-card-refs notification-or-id)
+        new-card-refs))
+
+(mu/defn- update-notification-cards-if-changed!
+  [notification-or-id :- NotificationOrId
+   new-card-refs      :- [:sequential CardRef]]
+  (when (card-refs-have-changed? notification-or-id new-card-refs)
+    (update-notification-cards! notification-or-id new-card-refs)))
+
+(mu/defn update-notification!
+  "Update the supplied keys in a `notification`."
+  [notification :- UpdateNotificationInput]
+  (pulse.db/update-pulse! (u/the-id notification)
+                          (u/select-keys-when notification
+                                              :present [:collection_id :collection_position :archived]
+                                              :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+  ;; update Cards if the 'refs' have changed
+  (when (contains? notification :cards)
+    (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
+  ;; update channels as needed
+  (when (contains? notification :channels)
+    (update-notification-channels! notification (:channels notification))))
+
+(defn update-pulse!
+  "Update an existing Pulse, including all associated data such as: PulseCards, PulseChannels, and
+  PulseChannelRecipients.
+
+  Returns the updated Pulse or throws an Exception."
+  [pulse]
+  (events/with-batched-events
+    (update-notification! pulse))
+  (retrieve-pulse (u/the-id pulse)))
+
+(defn- alert->notification
+  "Convert an 'Alert` back into the generic 'Notification' format."
+  [{:keys [card cards], :as alert}]
+  (let [card  (or card (first cards))
+        cards (when card [(card->ref card)])]
+    (cond-> (-> (assoc alert :skip_if_empty true)
+                (dissoc :card))
+      (seq cards) (assoc :cards cards))))
+
+;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT? (#40016)
+(defn update-alert!
+  "Updates the given `alert` and returns it"
+  [alert]
+  (events/with-batched-events
+    (update-notification! (alert->notification alert)))
+  (retrieve-alert (u/the-id alert)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

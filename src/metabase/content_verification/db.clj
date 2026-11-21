@@ -64,9 +64,3 @@
   "Insert the ModerationReview `row` and return the inserted instance."
   [row :- (mut/select-keys ::content-verification.schema/moderation-review.update [:moderated_item_id :moderated_item_type :moderator_id :status :text :most_recent])]
   (t2/insert-returning-instance! :model/ModerationReview row))
-
-(mu/defn moderated-item-exists?
-  "Whether the `model`, a Card or Dashboard, has a row with `item-id`."
-  [model   :- [:enum :model/Card :model/Dashboard]
-   item-id :- ms/PositiveInt]
-  (t2/exists? model :id item-id))

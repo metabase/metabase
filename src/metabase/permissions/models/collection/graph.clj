@@ -1,13 +1,23 @@
 (ns metabase.permissions.models.collection.graph
-  "Code for generating the Collection permissions graph; [[metabase.permissions.write/update-graph!]] updates it."
+  "Code for generating and updating the Collection permissions graph. See [[metabase.permissions.models.permissions]]
+  for more details and for the code for generating and updating the *data* permissions graph."
   (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.util :as perms.u]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PERMISSIONS GRAPH                                                |
@@ -16,20 +26,26 @@
 ;; PostgreSQL limits prepared statements to 65,535 bind parameters.
 (def ^:private max-in-clause-size 20000)
 
+(defn- chunked
+  "Applies `f` (a function from a set of IDs to a set of IDs) to `ids`, chunking large ID sets to avoid exceeding the
+  bind parameter limit."
+  [ids f]
+  (if (<= (count ids) max-in-clause-size)
+    (f (set ids))
+    (into #{} (mapcat #(f (set %))) (partition-all max-in-clause-size ids))))
+
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
-(def CollectionPermissions
-  "The access a group has to a Collection in the graph."
+(def ^:private CollectionPermissions
   [:enum :write :read :none])
 
-(def GroupPermissionsGraph
+(def ^:private GroupPermissionsGraph
   "collection-id -> status"
   ; when doing a delta between old graph and new graph root won't always
   ; be present, which is why it's *optional*
   [:map-of [:or [:= :root] ms/PositiveInt] CollectionPermissions])
 
-(def PermissionsGraph
-  "The Collection permissions graph: a revision and, per group, the access to each Collection."
+(def ^:private PermissionsGraph
   [:map {:closed true}
    [:revision {:optional true} [:maybe :int]]
    [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
@@ -125,3 +141,159 @@
                   init chunks)
           collection-permission-graph
           modify-instance-analytics-for-admins))))
+
+;;; -------------------------------------------------- Update Graph --------------------------------------------------
+
+(mu/defn- update-collection-permissions!
+  "Update the permissions for group ID with `group-id` on collection with ID
+  `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
+  [collection-namespace :- [:maybe ms/KeywordOrString]
+   group-id :- ms/PositiveInt
+   collection-id :- [:or [:= :root] ms/PositiveInt]
+   new-collection-perms :- CollectionPermissions]
+  (let [collection-id (if (= collection-id :root)
+                        (assoc collection.root/root-collection :namespace collection-namespace)
+                        collection-id)]
+    ;; remove whatever entry is already there (if any) and add a new entry if applicable
+    (perms/revoke-collection-permissions! group-id collection-id)
+    (case new-collection-perms
+      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
+      :read (perms/grant-collection-read-permissions! group-id collection-id)
+      :none nil)))
+
+(mu/defn- update-group-permissions!
+  [collection-namespace :- [:maybe ms/KeywordOrString]
+   group-id :- ms/PositiveInt
+   new-group-perms :- GroupPermissionsGraph]
+  (doseq [[collection-id new-perms] new-group-perms]
+    (update-collection-permissions! collection-namespace group-id collection-id new-perms)))
+
+(defenterprise update-audit-collection-permissions!
+  "OSS implementation of `audit-db/update-audit-collection-permissions!`, which is an enterprise feature, so does nothing in the OSS
+  version. Returns the changes map unchanged."
+  metabase-enterprise.audit-app.permissions [_ changes] changes)
+
+(defn create-perms-revision!
+  "Increments the current revision number and writes it to the database. This lets us track the permissions graph
+  revision number, which is used for consistency checks when updating the graph."
+  [current-revision-number]
+  (when api/*current-user-id*
+    (permissions.db/insert-collection-permission-graph-revision-returning-instance!
+     {:id      (inc current-revision-number)
+      :user_id api/*current-user-id*
+      :before  ""
+      :after   ""})))
+
+(defn fill-revision-details!
+  "Updates perm revision, this is used for logging/auditing purposes, and can be quite expensive, so in practice is
+   called after the revision number is updated."
+  [revision-id before changes]
+  (future (permissions.db/update-collection-graph-revision! revision-id {:before before :after changes})))
+
+(defn- personal-collection-ids
+  "Return a set of IDs from `collection-ids` that are personal Collections or descendants of personal Collections.
+  These should never appear in permission graphs or be editable via the graph API."
+  [collection-ids]
+  (when-let [ids (seq (disj collection-ids :root))]
+    (chunked ids permissions.db/personal-or-descendant-collection-ids)))
+
+(defn- remove-personal-collections-from-graph
+  "Remove any personal collection IDs from the graph. Personal collections cannot be edited via the graph API."
+  [graph collection-ids]
+  (let [personal-ids (personal-collection-ids collection-ids)]
+    (cond-> graph
+      (seq personal-ids) (update :groups update-vals #(apply dissoc % personal-ids)))))
+
+(defn- remove-collections-from-other-namespaces
+  "Remove any collection IDs from the graph that belong to another namespace from the graph being updated."
+  [graph collection-ids namespace]
+  (let [ids          (disj collection-ids :root)
+        other-ns-ids (when (seq ids)
+                       (chunked ids #(permissions.db/collection-ids-in-other-namespace % namespace)))]
+    (cond-> graph
+      (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
+
+(defn- check-data-analyst-library-permissions
+  "Check that we're not modifying library collection permissions for the Data Analysts group.
+   Data Analysts always have full read-write access to library collections."
+  [changes]
+  (let [data-analyst-group-id (u/the-id (perms-group/data-analyst))
+        library-collection-ids (permissions.db/library-collection-ids)]
+    (when-let [group-changes (get changes data-analyst-group-id)]
+      (let [changed-collection-ids (set (keys group-changes))
+            library-changes (set/intersection changed-collection-ids library-collection-ids)]
+        (when (seq library-changes)
+          (throw (ex-info (str "You cannot modify library collection permissions for the '"
+                               (:name (perms-group/data-analyst))
+                               "' group.")
+                          {:status-code 400})))))))
+
+(def ^:private admin-only-write-namespaces
+  "The Collection namespaces only admins can write, so no group can be granted write on them."
+  #{"data-actions" "data-apps"})
+
+(defn- check-no-admin-only-namespace-write
+  "Throws a 400 when `changes` to the Collections of `collection-namespace` grant write in an admin-only namespace."
+  [collection-namespace changes]
+  (when (and (contains? admin-only-write-namespaces (some-> collection-namespace name))
+             (some #{:write} (mapcat vals (vals changes))))
+    (throw (ex-info (tru "You cannot grant write permissions on collections only admins can write.")
+                    {:status-code 400}))))
+
+(mu/defn update-graph!
+  "Update the Collections permissions graph for Collections of `collection-namespace` (default `nil`, the 'default'
+  namespace). This works just like [[metabase.models.permission/update-data-perms-graph!]], but for Collections;
+  refer to that function's extensive documentation to get a sense for how this works.
+
+  **Automatic Filtering:**
+  The following collection IDs are automatically filtered from `new-graph` before processing:
+  - Personal collections and their descendants (cannot be edited via the graph API)
+  - Collections belonging to namespaces other than `collection-namespace` (prevents cross-namespace edits)
+
+  This filtering ensures that:
+  1. Attempts to modify personal collection permissions are silently ignored
+  2. Namespace isolation is maintained
+  3. Only valid, permissioned collections are processed
+
+  **Permissions Values:**
+  Each group/collection pair in the graph can have one of three values:
+  - `:write` - Full read and write access
+  - `:read` - Read-only access
+  - `:none` - No access (revokes existing permissions)
+
+  **Return Value:**
+  - Returns `nil` if there are no changes to apply
+  - Returns a `Future` if changes were made (used to populate revision details asynchronously)
+  - To run synchronously, deref the non-nil return value: `@(update-graph! ...)`
+
+  **Revision Tracking:**
+  All changes are tracked in `CollectionPermissionGraphRevision` for auditing purposes. The revision number
+  is checked to prevent concurrent modification conflicts (unless `force?` is true)."
+  ([new-graph :- PermissionsGraph]
+   (update-graph! nil new-graph false))
+
+  ([collection-namespace :- [:maybe ms/KeywordOrString]
+    new-graph :- PermissionsGraph
+    force? :- [:maybe boolean?]]
+   (let [new-group-ids (-> new-graph :groups keys set)
+         new-collection-ids (->> new-graph :groups vals (mapcat keys) set)
+         filtered-new-graph (-> (remove-personal-collections-from-graph new-graph new-collection-ids)
+                                (remove-collections-from-other-namespaces new-collection-ids collection-namespace))
+         old-graph (graph collection-namespace new-collection-ids new-group-ids)
+         ;; the new graph requires permissions to be included explicitly -- it's a fragment rather than a sparse graph
+         ;; once we've removed illegal collections like personal collections or collections from other namespaces
+         [diff-old changes] (data/diff (:groups old-graph) (->> (:groups filtered-new-graph)
+                                                                (filter (comp seq second))
+                                                                (into {})))]
+     (check-data-analyst-library-permissions changes)
+     (check-no-admin-only-namespace-write collection-namespace changes)
+     (when-not force? (perms.u/check-revision-numbers old-graph filtered-new-graph))
+     (when (seq changes)
+       (let [revision-id (t2/with-transaction [_conn]
+                           (doseq [[group-id changes] changes]
+                             (let [changes (update-audit-collection-permissions! group-id changes)]
+                               (update-group-permissions! collection-namespace group-id changes)))
+                           (:id (create-perms-revision! (:revision old-graph))))]
+         ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
+         (perms.u/log-permissions-changes diff-old changes)
+         (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))

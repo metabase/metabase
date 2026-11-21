@@ -9,7 +9,6 @@
   Namespaces outside of src/metabase/app_db/ should not use any metabase.app-db.* namespace but use this api namespace."
   (:refer-clojure :exclude [compile])
   (:require
-   [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
@@ -184,23 +183,6 @@
    (vary-meta
     (fn [& args] (apply f args))
     assoc ::memoize/args-fn (fn [args] (cons (unique-identifier) args)))))
-
-(defn memoize-hits-for-application-db
-  "Like [[memoize-for-application-db]], but never caches a nil result, so a lookup of a row that does not exist yet
-  runs again on the next call."
-  [f]
-  (let [memoized (memoize-for-application-db f)
-        cache    (::memoize/cache (meta memoized))]
-    (with-meta
-     (fn [& args]
-       (let [k (cons (unique-identifier) args)]
-         (if-some [hit (some-> (cache/lookup @cache k) deref)]
-           hit
-           (let [result (apply f args)]
-             (when (some? result)
-               (memoize/memo-swap! memoized cache/miss k result))
-             result))))
-     (meta memoized))))
 
 (defn increment-app-db-unique-indentifier!
   "Increment the [[unique-identifier]] of the application DB this thread sees.

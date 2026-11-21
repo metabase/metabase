@@ -150,6 +150,9 @@
       (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
             validated    (cache/validate-bundle! bundle-bytes)
             identifier   (get-in validated [:manifest :name])
+            _            (api/check-400
+                          (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
+                          (format "A custom visualization with identifier \"%s\" already exists." identifier))
             plugin       (cache/insert-bundle! identifier validated)]
         (plugin->response (dissoc plugin :bundle)))
       (finally
@@ -175,6 +178,9 @@
                                          {:status-code 400})))
         _            (when-let [error (manifest/identifier-error identifier)]
                        (throw (ex-info error {:status-code 400})))
+        _            (api/check-400
+                      (not (custom-viz-plugin.db/plugin-identifier-exists? identifier))
+                      (format "A custom visualization with identifier \"%s\" already exists." identifier))
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])

@@ -26,7 +26,7 @@
 
 (t2/define-before-update :model/TransformDagRun
   [run]
-  (cond-> (transforms.models.u/derive-is-active-on-update run)
+  (cond-> run
     (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
 (t2/deftransforms :model/TransformDagRun
@@ -36,10 +36,10 @@
 (t2/define-before-insert :model/TransformDagRun
   [{:keys [source_transform_id] :as run}]
   (if-let [transform (some-> source_transform_id transforms.db/transform-snapshot)]
-    (assoc (transforms.models.u/with-run-defaults run)
+    (assoc run
            :source_transform_name      (:name transform)
            :source_transform_entity_id (:entity_id transform))
-    (transforms.models.u/with-run-defaults run)))
+    run))
 
 (mu/defn start-dag-run! :- ::transforms.schema/transform-dag-run
   "Start a DAG-reprocess run seeded from `source-transform-id`, traversing `direction`
@@ -55,7 +55,8 @@
                                   :direction           direction
                                   :transform_count     transform-count
                                   :user_id             user-id
-                                  :status              :started}))
+                                  :status              :started
+                                  :is_active           true}))
 
 (mu/defn running-run-for-source-transform-id :- [:maybe ::transforms.schema/transform-dag-run]
   "Return the single active DAG run seeded from `source-transform-id`, or nil."

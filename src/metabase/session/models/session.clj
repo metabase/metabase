@@ -6,7 +6,6 @@
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
    [environ.core :as env]
-   [java-time.api :as t]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -90,28 +89,23 @@
     (throw (RuntimeException. "You cannot change a Session that has ended.")))
   session)
 
-(defn- earliest-expiry
-  "The earlier of the expiry a Session was given, if any, and the expiry of its AuthIdentity."
-  [given identity-expiry]
-  (if (and given (t/before? (t/instant given) (t/instant identity-expiry)))
-    given
-    identity-expiry))
-
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
   (when (or (uuid? (:id session)) (u/uuid-string? (:id session)))
     (throw (ex-info "Session id should not be stored plaintext in the session table." {})))
   (when (or (uuid? (:key_hashed session)) (u/uuid-string? (:key_hashed session)))
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
-  (let [auth-identity (some-> (:auth_identity_id session) session.db/auth-identity-provider-and-expiry)]
-    (when (and (= "password" (:provider auth-identity))
-               (not (session.settings/enable-password-login)))
-      (throw (ex-info (str (tru "Password login is disabled for this instance."))
-                      {:status-code 400})))
+  ;; Check auth identity provider if provided
+  (when-let [auth-identity-id (:auth_identity_id session)]
+    (when-let [auth-identity (session.db/auth-identity-provider auth-identity-id)]
+      (when (and (= "password" (:provider auth-identity))
+                 (not (session.settings/enable-password-login)))
+        (throw (ex-info (str (tru "Password login is disabled for this instance."))
+                        {:status-code 400})))))
+  (let [key-hashed (or (:key_hashed session) (hash-session-key session-key))]
     (cond-> (-> session
                 (dissoc :session_key)
-                (assoc :key_hashed (or (:key_hashed session) (hash-session-key session-key))))
-      (:expires_at auth-identity) (assoc :expires_at (earliest-expiry (:expires_at session) (:expires_at auth-identity)))
+                (assoc :key_hashed key-hashed))
       ;; on mysql if the id is not supplied insert-returning-instance(s)! returns nil
       ;; this is here to handle transitioning some tests
       (not (:id session)) (assoc :id (generate-session-id))

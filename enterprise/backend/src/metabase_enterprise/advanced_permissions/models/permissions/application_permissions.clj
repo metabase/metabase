@@ -1,11 +1,13 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions
-  "Code for generating the Application Permission graph; [[metabase-enterprise.advanced-permissions.write/update-graph!]]
-  updates it."
+  "Code for generating and updating the Application Permission graph. See [[metabase.permissions.models.permissions]]
+  for more details and for the code for generating and updating the *data* permissions graph."
   (:require
+   [clojure.data :as data]
    [metabase-enterprise.advanced-permissions.db :as advanced-permissions.db]
    [metabase.permissions.core :as perms]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -20,8 +22,7 @@
    [:force {:optional true} [:maybe :boolean]]
    [:groups [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
-(def ApplicationPermissionsGraphUpdate
-  "An update of the application permissions graph: per group, whether it holds each application permission."
+(def ^:private ApplicationPermissionsGraphUpdate
   [:map {:closed true}
    [:revision {:optional true} [:maybe :int]]
    [:force    {:optional true} [:maybe :boolean]]
@@ -58,3 +59,37 @@
   {:revision (perms/latest-application-permissions-revision-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]
                         {group-id (permissions-set->application-perms perms)}))})
+
+;;; -------------------------------------------------- Update Graph --------------------------------------------------
+
+(defn update-application-permissions!
+  "Perform update application permissions for a group-id."
+  [group-id changes]
+  (doseq [[perm-type perm-value] changes]
+    (case perm-value
+      :yes
+      (perms/grant-application-permissions! group-id perm-type)
+
+      :no
+      (perms/revoke-application-permissions! group-id perm-type))))
+
+(mu/defn update-graph!
+  "Update the application Permissions graph.
+  This works just like [[metabase.permissions-rest.data-permissions.graph/update-data-perms-graph!]], but for
+  Application permissions; refer to that function's extensive documentation to get a sense for how this works."
+  ([new-graph :- ApplicationPermissionsGraphUpdate]
+   (update-graph! new-graph false))
+
+  ([new-graph :- ApplicationPermissionsGraphUpdate
+    force?     :- :boolean]
+   (let [old-graph          (graph)
+         old-perms          (:groups old-graph)
+         new-perms          (:groups new-graph)
+         [diff-old changes] (data/diff old-perms new-perms)]
+     (perms/log-permissions-changes diff-old changes)
+     (when-not force? (perms/check-revision-numbers old-graph new-graph))
+     (when (seq changes)
+       (t2/with-transaction [_conn]
+         (doseq [[group-id changes] changes]
+           (update-application-permissions! group-id changes))
+         (perms/save-perms-revision! :model/ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes))))))

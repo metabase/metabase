@@ -1,7 +1,6 @@
 (ns metabase.warehouse-schema.models.table-user-settings-test
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
@@ -131,49 +130,3 @@
       (table-user-settings/upsert-table-user-settings! table {:data_layer :hidden})
       (is (=? {:visibility_type :cruft :data_layer :hidden :visibility_type_set true :data_layer_set true}
               (t2/select-one :model/TableUserSettings :table_id table-id))))))
-
-(deftest plain-write-reaches-table-row-test
-  (testing "plain insert and update of settings write user values to Table row"
-    (mt/with-temp [:model/Table {table-id :id} {:display_name "Sync Name" :description "sync description"}]
-      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "User Name"})
-      (is (=? {:display_name "User Name" :description "sync description"} (user-table table-id)))
-      (t2/update! :model/TableUserSettings :table_id table-id {:description nil :description_set true})
-      (is (=? {:display_name "User Name" :description nil} (user-table table-id)))
-      (testing "taking value back leaves Table row as it is"
-        (t2/update! :model/TableUserSettings :table_id table-id {:display_name nil})
-        (is (= "User Name" (:display_name (user-table table-id))))))))
-
-(deftest plain-write-of-visibility-pair-reaches-table-row-test
-  (testing "plain writes of either half of visibility choice reach Table row whole"
-    (mt/with-temp [:model/Table {table-id :id} {:visibility_type nil :data_layer :final}]
-      (t2/insert! :model/TableUserSettings {:table_id table-id :visibility_type :technical})
-      (is (=? {:visibility_type :technical :data_layer :hidden} (user-table table-id)))
-      (t2/update! :model/TableUserSettings :table_id table-id {:data_layer :final})
-      (is (=? {:visibility_type nil :data_layer :final} (user-table table-id)))
-      (t2/update! :model/TableUserSettings :table_id table-id {:data_layer :internal})
-      (is (=? {:visibility_type nil :data_layer :internal} (user-table table-id))))))
-
-(deftest plain-write-refused-by-table-rolls-back-settings-test
-  (testing "plain update of settings that Table refuses leaves settings as they were"
-    (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
-      (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "User Name"})
-      (is (thrown-with-msg? Exception #"Cannot change data_source from metabase-transform"
-                            (t2/update! :model/TableUserSettings :table_id table-id {:data_source :ingested})))
-      (is (nil? (t2/select-one-fn :data_source :model/TableUserSettings :table_id table-id)))
-      (is (= :metabase-transform (:data_source (user-table table-id)))))))
-
-(deftest refused-settings-update-leaves-tables-unchanged-test
-  (testing "settings update over two rows whose second Table refuses it writes neither Table"
-    (mt/test-helpers-set-global-values!
-      (mt/with-temp [:model/Database          {db-id :id}     {}
-                     :model/Table             {accepted :id}  {:db_id db-id :display_name "Accepted"}
-                     :model/Table             {refused :id}   {:db_id db-id :display_name "Refused"
-                                                               :data_authority :authoritative}
-                     :model/TableUserSettings {first-id :id}  {:table_id accepted :display_name "Accepted"}
-                     :model/TableUserSettings {second-id :id} {:table_id refused :display_name "Refused"}]
-        (is (nil? (mdb/transaction-state)))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set data_authority back to unconfigured"
-                              (t2/update! :model/TableUserSettings :id [:in [first-id second-id]]
-                                          {:display_name "Renamed" :data_authority :unconfigured})))
-        (is (= {accepted "Accepted" refused "Refused"}
-               (t2/select-pk->fn :display_name :model/Table :id [:in [accepted refused]])))))))

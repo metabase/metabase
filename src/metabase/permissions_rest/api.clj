@@ -1,14 +1,14 @@
 (ns metabase.permissions-rest.api
   "/api/permissions endpoints."
   (:require
+   [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
-   [metabase.permissions-rest.write :as permissions-rest.write]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -49,6 +49,18 @@
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
   (data-perms.graph/api-graph {:group-id group-id}))
 
+(defenterprise upsert-sandboxes!
+  "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
+  metabase-enterprise.sandbox.models.sandbox
+  [_sandboxes]
+  (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
+
+(defenterprise insert-impersonations!
+  "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
+  metabase-enterprise.impersonation.models
+  [_impersonations]
+  (throw (premium-features/ee-feature-error (tru "Connection impersonation"))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -76,12 +88,28 @@
    new-graph :- ::permissions-rest.schema/graph-update-request]
   (api/check-superuser)
   (perms/check-tenant-groups-visible (keys (:groups new-graph)))
-  (let [{:keys [sandboxes impersonations]} (permissions-rest.write/update-graph! new-graph (boolean force))
-        group-ids                          (-> new-graph :groups keys)]
-    (merge {:revision (perms/latest-permissions-revision-id)}
-           (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
-           (when sandboxes {:sandboxes sandboxes})
-           (when impersonations {:impersonations impersonations}))))
+  (t2/with-transaction [_conn]
+    (let [group-ids (-> new-graph :groups keys)
+          old-graph (data-perms.graph/api-graph {:group-ids group-ids})
+          [old new] (data/diff (:groups old-graph)
+                               (:groups new-graph))
+          old       (or old {})
+          new       (or new {})]
+      (perms/log-permissions-changes old new)
+      (when-not force (perms/check-revision-numbers old-graph new-graph))
+      (data-perms.graph/update-data-perms-graph! {:groups new})
+      (perms/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+      (let [sandbox-updates        (:sandboxes new-graph)
+            sandboxes              (when sandbox-updates
+                                     (upsert-sandboxes! sandbox-updates))
+            impersonation-updates  (:impersonations new-graph)
+            impersonations         (when impersonation-updates
+                                     (insert-impersonations! impersonation-updates))
+            group-ids (-> new-graph :groups keys)]
+        (merge {:revision (perms/latest-permissions-revision-id)}
+               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
+               (when sandboxes {:sandboxes sandboxes})
+               (when impersonations {:impersonations impersonations}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |

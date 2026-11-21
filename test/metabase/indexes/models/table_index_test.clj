@@ -26,40 +26,6 @@
         (is (= :btree (get-in back [:structured :kind])) "kind re-keywordized on read")
         (is (= :asc (get-in back [:structured :columns 0 :direction])))))))
 
-(deftest insert-derives-index-name-test
-  (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]
-    (testing "named kind takes its :name"
-      (let [{:keys [id]} (t2/insert-returning-instance! :model/TableIndex
-                                                        {:transform_id transform-id
-                                                         :index_name   "other"
-                                                         :structured   {:kind :btree :name "by_cat"
-                                                                        :columns [{:name "category"}]}})]
-        (is (= "by_cat" (t2/select-one-fn :index_name :model/TableIndex :id id)))))
-    (testing "unnamed inline kind takes its :kind"
-      (let [{:keys [id]} (t2/insert-returning-instance! :model/TableIndex
-                                                        {:transform_id transform-id
-                                                         :structured   {:kind :sortkey :style :compound
-                                                                        :columns [{:name "category"}]}})]
-        (is (= "sortkey" (t2/select-one-fn :index_name :model/TableIndex :id id)))))))
-
-(deftest update-keeps-index-name-test
-  (mt/with-temp [:model/Transform  {transform-id :id} (temp-transform-spec)
-                 :model/TableIndex {index-id :id}     {:transform_id transform-id
-                                                       :structured   {:kind :btree :name "by_cat"
-                                                                      :columns [{:name "category"}]}}]
-    (testing "index_name alone"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"name cannot be changed"
-                            (t2/update! :model/TableIndex :id index-id {:index_name "by_price"}))))
-    (testing "structured under another name"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"name cannot be changed"
-                            (t2/update! :model/TableIndex :id index-id
-                                        {:structured {:kind :btree :name "by_price" :columns [{:name "price"}]}}))))
-    (testing "structured under same name"
-      (t2/update! :model/TableIndex :id index-id
-                  {:structured {:kind :btree :name "by_cat" :columns [{:name "price"}]}})
-      (is (=? {:index_name "by_cat" :structured {:columns [{:name "price"}]}}
-              (t2/select-one :model/TableIndex :id index-id))))))
-
 (deftest invalid-structured-rejected-test
   (testing "the :structured transform validates against the schema on write"
     (mt/with-temp [:model/Transform {transform-id :id} (temp-transform-spec)]

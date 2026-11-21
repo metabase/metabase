@@ -269,10 +269,9 @@
               (is (changes? #(t2/update! :model/Field :id field-id {:display_name "Cost"}))))
             (mt/with-temp [:model/FieldUserSettings _ {:field_id field-id :display_name "Cost"}]
               (is (changes? (fn [] (t2/update! :model/FieldUserSettings :field_id field-id {:display_name "Price"})))))
-            (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
-              (is (changes? #(t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Places"})))
-              (is (changes? #(t2/update! :model/TableUserSettings :table_id table-id {:display_name "Spots"})))
-              (is (changes? #(t2/delete! :model/TableUserSettings :table_id table-id))))
+            (is (changes? #(t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Places"})))
+            (is (changes? #(t2/update! :model/TableUserSettings :table_id table-id {:display_name "Spots"})))
+            (is (changes? #(t2/delete! :model/TableUserSettings :table_id table-id)))
             (let [dimension-id (atom nil)]
               (is (changes? #(reset! dimension-id (t2/insert-returning-pk! :model/Dimension
                                                                            {:field_id field-id :name "Price"
@@ -383,41 +382,3 @@
           (t2/update! :model/Dimension :id dim-id {:name "Cost"})
           (is (deps.test/result-metadata-pending? card-id)
               "after a Dimension rename the card's result metadata status should be stale"))))))
-
-(defn- write-call-count!
-  "The number of app-DB statements `write!` runs with the dependencies feature, the jobs it triggers left out."
-  [write!]
-  (mt/with-premium-features #{:dependencies}
-    (mt/with-dynamic-fn-redefs [grouper/submit! (fn [_queue _write])]
-      (t2/with-call-count [call-count]
-        (write!)
-        (call-count)))))
-
-(deftest dimension-writes-read-field-table-once-test
-  (testing "second Dimension update on same Field reads nothing about Field"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Field     {field-id :id} {:table_id (mt/id :venues) :name "dimension_probe"}
-                     :model/Dimension {dim-id :id}   {:field_id field-id :name "Probe" :type :internal}]
-        (is (= 1 (- (write-call-count! #(t2/update! :model/Dimension :id dim-id {:name "First"}))
-                    (write-call-count! #(t2/update! :model/Dimension :id dim-id {:name "Second"})))))))))
-
-(deftest field-user-settings-writes-read-field-table-once-test
-  (testing "second FieldUserSettings update on same Field reads nothing about Field"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Field             {field-id :id} {:table_id (mt/id :venues) :name "settings_probe"}
-                     :model/FieldUserSettings _              {:field_id field-id :description "Probe"}]
-        (is (= 1 (- (write-call-count! #(t2/update! :model/FieldUserSettings :field_id field-id {:description "First"}))
-                    (write-call-count! #(t2/update! :model/FieldUserSettings :field_id field-id {:description "Second"})))))))))
-
-(deftest dashcard-series-writes-read-dashcard-once-test
-  (testing "second series added to same dashboard card reads nothing about dashboard card"
-    (mt/with-premium-features #{}
-      (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                     :model/Card          {card-id :id}      {:dataset_query (table-query :products)}
-                     :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id}]
-        (let [insert-series! (fn [position]
-                               #(t2/insert! :model/DashboardCardSeries {:dashboardcard_id dashcard-id
-                                                                        :card_id          card-id
-                                                                        :position         position}))]
-          (is (= 1 (- (write-call-count! (insert-series! 0))
-                      (write-call-count! (insert-series! 1))))))))))

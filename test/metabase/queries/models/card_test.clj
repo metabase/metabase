@@ -14,14 +14,13 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.write :as perms]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card :as card]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
-   [metabase.queries.write :as queries.write]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -821,11 +820,11 @@
     (f {:model-id model-id :implicit implicit :query query :archived archived})))
 
 (defn- update-model!
-  "Updates the model Card with `model-id` through [[queries.write/update-card!]], as the API does."
+  "Updates the model Card with `model-id` through [[card/update-card!]], as the API does."
   [model-id changes]
   (mt/with-test-user :crowberto
-    (queries.write/update-card! {:card-before-update (t2/select-one :model/Card :id model-id)
-                                 :card-updates       changes})))
+    (card/update-card! {:card-before-update (t2/select-one :model/Card :id model-id)
+                        :card-updates       changes})))
 
 (defn- filtered-venues-query
   "A venues query with a filter, which does not support implicit actions."
@@ -1335,7 +1334,7 @@
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
-                                               (#'queries.write/breakouts->identifier->action
+                                               (#'card/breakouts->identifier->action
                                                 (map lib/normalize b1)
                                                 (map lib/normalize b2)))
     [[:field {:temporal-unit :day} 10]]
@@ -1368,7 +1367,7 @@
 (deftest ^:parallel update-for-dashcard-fn-test
   (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
        (= expected-quasi-dashcards
-          (#'queries.write/updates-for-dashcards indetifier->action quasi-dashcards))
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
 
     {[:field 10] [:update [:field {:temporal-unit :month, :lib/uuid "00000000-0000-0000-0000-000000000000"} 10]]}
     [{:parameter_mappings []}]
@@ -1439,25 +1438,25 @@
     (mt/with-test-user :rasta
       (testing "Can't update the collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
-                              (queries.write/update-card! {:card-before-update card
-                                                           :card-updates {:collection_id other-coll-id}}))))
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_id other-coll-id}}))))
       (testing "CAN 'update' the collection_id"
-        (is (queries.write/update-card! {:card-before-update card
-                                         :card-updates {:collection_id coll-id}})))
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_id coll-id}})))
       (testing "Can't update the collection_position"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `collection_position` on a Dashboard Question"
-                              (queries.write/update-card! {:card-before-update card
-                                                           :card-updates {:collection_position 5}}))))
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:collection_position 5}}))))
       (testing "CAN 'update' the collection_position"
-        (is (queries.write/update-card! {:card-before-update card
-                                         :card-updates {:collection_position nil}})))
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:collection_position nil}})))
       (testing "Can't update the type"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot set `type` on a Dashboard Question"
-                              (queries.write/update-card! {:card-before-update card
-                                                           :card-updates {:type :model}}))))
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates {:type :model}}))))
       (testing "CAN 'update' the type"
-        (is (queries.write/update-card! {:card-before-update card
-                                         :card-updates {:type :question}}))))))
+        (is (card/update-card! {:card-before-update card
+                                :card-updates {:type :question}}))))))
 
 (deftest updating-dashboard-internal-card-used-on-other-dashboards-test
   ;; #82237
@@ -1469,12 +1468,12 @@
     (mt/with-test-user :rasta
       (testing "re-sending the unchanged dashboard_id alongside an edit succeeds"
         (is (= "edited"
-               (:name (queries.write/update-card! {:card-before-update card
-                                                   :card-updates       {:name "edited" :dashboard_id home-dash-id}})))))
+               (:name (card/update-card! {:card-before-update card
+                                          :card-updates       {:name "edited" :dashboard_id home-dash-id}})))))
       (testing "moving it into a different dashboard is still rejected"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
-                              (queries.write/update-card! {:card-before-update card
-                                                           :card-updates       {:dashboard_id third-dash-id}})))))))
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id third-dash-id}})))))))
 
 (deftest moving-collection-card-into-dashboard-while-on-other-dashboards-test
   ;; Model-level guard for the narrowed check above; the API layer covers the same moves in
@@ -1486,13 +1485,13 @@
     (mt/with-test-user :rasta
       (testing "without delete-old-dashcards? the move is rejected"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can't move question into dashboard"
-                              (queries.write/update-card! {:card-before-update card
-                                                           :card-updates       {:dashboard_id dash-id}}))))
+                              (card/update-card! {:card-before-update card
+                                                  :card-updates       {:dashboard_id dash-id}}))))
       (testing "with delete-old-dashcards? the other dashcards are removed and the move succeeds"
         (is (= dash-id
-               (:dashboard_id (queries.write/update-card! {:card-before-update    card
-                                                           :card-updates          {:dashboard_id dash-id}
-                                                           :delete-old-dashcards? true}))))
+               (:dashboard_id (card/update-card! {:card-before-update    card
+                                                  :card-updates          {:dashboard_id dash-id}
+                                                  :delete-old-dashcards? true}))))
         (is (not (t2/exists? :model/DashboardCard :card_id (:id card) :dashboard_id other-dash-id)))))))
 
 (deftest update-does-not-break
@@ -1751,7 +1750,7 @@
       (is (thrown-with-msg?
            Throwable
            #"(?i)normaliz|MBQL|legacy query"
-           (queries.write/create-card!
+           (card/create-card!
             {:name                   "Bad card"
              :display                "table"
              :visualization_settings {}
@@ -1801,13 +1800,13 @@
                                        :type                    :external}]
       (let [mp (mt/metadata-provider)
             query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-            card (queries.write/create-card! {:database_id (mt/id),
-                                              :display :table,
-                                              :visualization_settings {},
-                                              :type :model
-                                              :name "orders model"
-                                              :dataset_query query}
-                                             @api/*current-user*)]
+            card (card/create-card! {:database_id (mt/id),
+                                     :display :table,
+                                     :visualization_settings {},
+                                     :type :model
+                                     :name "orders model"
+                                     :dataset_query query}
+                                    @api/*current-user*)]
         (try
           (testing "a created card stores the remapped columns of a run"
             (is (= 2 (count (filter :remapped_from (:result_metadata card))))))
@@ -1823,14 +1822,14 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-model-cleanup [:model/Card]
           (let [metadata    (qp.preprocess/query->expected-cols (mt/mbql-query orders))
-                card        (queries.write/create-card! {:database_id            (mt/id)
-                                                         :display                :table
-                                                         :visualization_settings {}
-                                                         :type                   :model
-                                                         :name                   "Native Orders Model for external remap test"
-                                                         :dataset_query          (mt/native-query {:query "SELECT * FROM ORDERS"})
-                                                         :result_metadata        metadata}
-                                                        @api/*current-user*)
+                card        (card/create-card! {:database_id            (mt/id)
+                                                :display                :table
+                                                :visualization_settings {}
+                                                :type                   :model
+                                                :name                   "Native Orders Model for external remap test"
+                                                :dataset_query          (mt/native-query {:query "SELECT * FROM ORDERS"})
+                                                :result_metadata        metadata}
+                                               @api/*current-user*)
                 mp          (mt/metadata-provider)
                 model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
                                 (lib/aggregate (lib/count))
@@ -1857,13 +1856,13 @@
         (mt/with-model-cleanup [:model/Card]
           (let [mp    (mt/metadata-provider)
                 query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                card  (queries.write/create-card! {:database_id            (mt/id)
-                                                   :display                :table
-                                                   :visualization_settings {}
-                                                   :type                   :model
-                                                   :name                   "Orders Model for remap test"
-                                                   :dataset_query          query}
-                                                  @api/*current-user*)]
+                card  (card/create-card! {:database_id            (mt/id)
+                                          :display                :table
+                                          :visualization_settings {}
+                                          :type                   :model
+                                          :name                   "Orders Model for remap test"
+                                          :dataset_query          query}
+                                         @api/*current-user*)]
             (testing "model result_metadata includes the remap column of a run, marked as remapped"
               (is (=? [{:remapped_from "QUANTITY"}]
                       (filter #(re-find #"(?i)remap" (:name %)) (:result_metadata card)))))
@@ -1913,11 +1912,11 @@
       (mt/with-dynamic-fn-redefs [queries.db/cards-queries-info
                                   (comp reverse (mt/original-fn #'queries.db/cards-queries-info))]
         (mt/with-test-user :crowberto
-          (queries.write/update-card! {:card-before-update model
-                                       :card-updates       {:dataset_query {:lib/type :mbql/query
-                                                                            :database db2-id
-                                                                            :stages   [{:lib/type :mbql.stage/native
-                                                                                        :native   "SELECT 1"}]}}})))
+          (card/update-card! {:card-before-update model
+                              :card-updates       {:dataset_query {:lib/type :mbql/query
+                                                                   :database db2-id
+                                                                   :stages   [{:lib/type :mbql.stage/native
+                                                                               :native   "SELECT 1"}]}}})))
       (doseq [question [question1 question2 question3 question4 question5]]
         (is (=? {:database_id   db2-id
                  :dataset_query {:database db2-id}}
@@ -2361,8 +2360,8 @@
                                                     (fn [& _] (throw (ex-info "after-update failed" {})))]
                           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"after-update failed"
                                                 (mt/with-test-user :crowberto
-                                                  (queries.write/update-card! {:card-before-update (t2/select-one :model/Card :id card-id)
-                                                                               :card-updates       {:display :table}}))))))]
+                                                  (card/update-card! {:card-before-update (t2/select-one :model/Card :id card-id)
+                                                                      :card-updates       {:display :table}}))))))]
           (is (t2/exists? :model/Notification :id (:id notification)))
           (is (= :line (t2/select-one-fn :display :model/Card :id card-id)))
           (is (empty? emails)))))))
@@ -2382,45 +2381,3 @@
                         (t2/select [:model/Card :archived_directly] :id [:in [collection-card dashboard-card]])))
             (is (t2/exists? :model/Notification :id (:id in-collection)))
             (is (t2/exists? :model/Notification :id (:id in-dashboard)))))))))
-
-(deftest card-collection-move-reads-collection-once-test
-  (testing "second Card moved to same Collection reads only whether Collection is archived"
-    (mt/with-temp [:model/Collection {from-id :id}   {}
-                   :model/Collection {to-id :id}     {}
-                   :model/Card       {first-id :id}  {:collection_id from-id}
-                   :model/Card       {second-id :id} {:collection_id from-id}]
-      (let [move-call-count (fn [id]
-                              (t2/with-call-count [call-count]
-                                (t2/update! :model/Card :id id {:collection_id to-id})
-                                (call-count)))]
-        (is (= 1 (- (move-call-count first-id) (move-call-count second-id))))))))
-
-(deftest card-insert-without-card-sourced-parameter-skips-parameter-cards-test
-  (testing "inserted Card whose parameters take no values from Card runs no ParameterCard statement"
-    (mt/with-temp [:model/Card {source-id :id} {}]
-      (let [parameter         {:id "_CATEGORY_NAME_", :name "Category Name", :slug "category_name", :type "category"}
-            insert-call-count (fn [parameters]
-                                (t2/with-call-count [call-count]
-                                  (mt/with-temp [:model/Card _ {:parameters parameters}]
-                                    (call-count))))]
-        (is (= 3 (- (insert-call-count [(assoc parameter
-                                               :values_source_type   "card"
-                                               :values_source_config {:card_id source-id})])
-                    (insert-call-count [parameter]))))))))
-
-(deftest field-filter-database-check-reads-cached-field-database-test
-  (testing "Field filter Database check of Field whose Database is cached runs no statement"
-    (let [mp    (mt/metadata-provider)
-          card  {:dataset_query (-> (lib/native-query mp "SELECT COUNT(*) FROM VENUES WHERE {{FILTER}}")
-                                    (lib/with-template-tags
-                                      {"FILTER" {:id           "_FILTER_"
-                                                 :name         "FILTER"
-                                                 :display-name "Filter"
-                                                 :type         :dimension
-                                                 :field-id     (mt/id :venues :name)
-                                                 :widget-type  :string/=}}))}
-          check #'card/check-field-filter-fields-are-from-correct-database]
-      (check card)
-      (t2/with-call-count [call-count]
-        (check card)
-        (is (= 0 (call-count)))))))

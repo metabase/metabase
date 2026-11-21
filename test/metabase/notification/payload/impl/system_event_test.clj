@@ -3,13 +3,13 @@
    [clojure.test :refer :all]
    [metabase.channel.urls :as urls]
    [metabase.events.core :as events]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.notification.write :as notification.write]
    [metabase.session.settings :as session.settings]
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.users.write :as users.write]
+   [metabase.users.models.user :as user]
    [toucan2.core :as t2]))
 
 (use-fixtures
@@ -35,7 +35,7 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (notification.write/create-notification!
+          (models.notification/create-notification!
            {:payload_type :notification/system-event}
            [{:type       :notification-subscription/system-event
              :event_name :event/user-invited}]
@@ -72,7 +72,7 @@
                      :model/PermissionsGroupMembership _ {:group_id group-id
                                                           :user_id user-id}]
         (let [rasta (mt/fetch-user :rasta)]
-          (notification.write/create-notification!
+          (models.notification/create-notification!
            {:payload_type :notification/system-event}
            [{:type       :notification-subscription/system-event
              :event_name :event/user-invited}]
@@ -194,10 +194,10 @@
       (let [join-url-html (fn [invite-target]
                             (mt/with-temporary-setting-values [site-url "https://metabase.com"]
                               (-> (notification.tu/with-captured-channel-send!
-                                    (users.write/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                         {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
-                                                                         false
-                                                                         invite-target))
+                                    (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                  {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
+                                                                  false
+                                                                  invite-target))
                                   :channel/email first :message first :content)))]
         (testing "dashboard"
           (is (re-find #"/auth/reset_password/.*redirect(&#x3D;|=)/dashboard/42.*#new"
@@ -214,10 +214,10 @@
         (let [join-url-html (fn [invite-target]
                               (mt/with-temporary-setting-values [site-url "https://metabase.com"]
                                 (-> (notification.tu/with-captured-channel-send!
-                                      (users.write/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                           {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
-                                                                           false
-                                                                           invite-target))
+                                      (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                    {:id (mt/user->id :crowberto) :first_name "Admin" :email "admin@metabase.com"}
+                                                                    false
+                                                                    invite-target))
                                     :channel/email first :message first :content)))]
           (testing "dashboard"
             (is (re-find #"/auth/login\?redirect(&#x3D;|=)/dashboard/42"
@@ -233,10 +233,10 @@
                            (mt/with-temporary-setting-values [site-url  "https://metabase.com"
                                                               site-name "SuperStar"]
                              (-> (notification.tu/with-captured-channel-send!
-                                   (users.write/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
-                                                                        {:id (mt/user->id :crowberto) :first_name "Ngoc" :email "ngoc@metabase.com"}
-                                                                        false
-                                                                        invite-target))
+                                   (user/create-and-invite-user! {:first_name "Newbie" :email (mt/random-email)}
+                                                                 {:id (mt/user->id :crowberto) :first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 false
+                                                                 invite-target))
                                  :channel/email first)))
             body         (fn [email] (-> email :message first :content))]
         (testing "dashboard"

@@ -20,22 +20,6 @@
     (and (contains? terminal-statuses (keyword (:status changes)))
          (not (contains? changes :end_time)))))
 
-(defn derive-is-active
-  "Set `is_active` on `run` from its status: true while the run is not terminal, nil once it ended."
-  [run]
-  (assoc run :is_active (when-not (contains? terminal-statuses (keyword (:status run))) true)))
-
-(defn with-run-defaults
-  "Fill the status of a new `run` with `:started` when it has none and derive its `is_active`."
-  [run]
-  (derive-is-active (cond-> run (nil? (:status run)) (assoc :status :started))))
-
-(defn derive-is-active-on-update
-  "Clear `is_active` of the updated `run` when its status changes to a terminal one; an ended run never becomes active again."
-  [run]
-  (cond-> run
-    (contains? terminal-statuses (keyword (:status (t2/changes run)))) (assoc :is_active nil)))
-
 (mu/defn timestamp-range :- [:tuple [:maybe ms/TemporalInstant] [:maybe ms/TemporalInstant]]
   "Parse `date-string` (in the same format as the query-processor date parameter, e.g. \"2025-01\",
   \"past7days\") into a `[start end]` pair of instants (either may be nil)."

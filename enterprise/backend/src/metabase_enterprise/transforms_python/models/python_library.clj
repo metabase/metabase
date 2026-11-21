@@ -56,7 +56,8 @@
 ;;; ---------------------------------------------------- Library -----------------------------------------------------
 
 (def builtin-entity-id
-  "The entity_id of the built-in common.py PythonLibrary created by migration, which a new common.py row reuses."
+  "The entity_id of the built-in common.py PythonLibrary created by migration.
+   Used to protect it from deletion during remote-sync import."
   "cWWH9qJPvHNB3rP2vLZrK")
 
 (defn get-python-library-by-path

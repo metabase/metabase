@@ -26,9 +26,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
+   [metabase.notification.api.notification :as notification-api]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
-   [metabase.notification.write :as notification.write]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -418,7 +418,7 @@
 (defn- bulk-update!
   "Apply `update-map` to all card-type notifications in `ids` in a single SQL update. Returns the
   hydrated before-state so the caller can drive post-commit side effects via
-  [[notification.write/publish-notification-update!]]."
+  [[notification-api/publish-notification-update!]]."
   [update-map ids]
   ;; Guard empty `ids`: `[:in :id []]` is degenerate SQL, and there's nothing to select/update or
   ;; publish side effects for. (The endpoint schema also enforces `:min 1`.)
@@ -435,7 +435,7 @@
   "Bulk-archive or -change-creator a set of notifications. The per-notification `:active` flip goes
   through `:model/Notification`'s `before-update` hook, which creates / tears down the Quartz
   triggers. Recipient emails and `:event/notification-update` audit events are
-  published via the shared [[notification.write/publish-notification-update!]] helper so this
+  published via the shared [[notification-api/publish-notification-update!]] helper so this
   endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action creator_id]} :-
@@ -452,5 +452,5 @@
     (doseq [b    before
             :let [a (get after (:id b))]
             :when a]
-      (notification.write/publish-notification-update! a b))
+      (notification-api/publish-notification-update! a b))
     {:updated (count before)}))

@@ -4,8 +4,8 @@
    [metabase-enterprise.audit-app.permissions-test :as ee-perms-test]
    [metabase.audit-app.core :as audit]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))

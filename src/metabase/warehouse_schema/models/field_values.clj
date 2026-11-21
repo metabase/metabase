@@ -116,8 +116,8 @@
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- check-human-readable-values-cover-values
-  "Throws a 400 unless `field-values`, as inserted or as an update leaves it, has no human-readable values or one for
-  each of its values."
+  "Throws a 400 unless `field-values`, as an update leaves it with its stored columns, has no human-readable values or
+  one for each of its values."
   [{values :values, human-readable-values :human_readable_values}]
   (when (and (seq human-readable-values) (not= (count human-readable-values) (count values)))
     (throw (ex-info (tru "If remapped values are specified, they must be specified for all field values")
@@ -165,7 +165,6 @@
   [{:keys [field_id] :as field-values}]
   (u/prog1 (update field-values :type #(keyword (or % :full)))
     (assert-valid-type-hash-combo <>)
-    (check-human-readable-values-cover-values <>)
     ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
     (when (= :full (:type <>))
       (clear-advanced-field-values-for-field! field_id))))

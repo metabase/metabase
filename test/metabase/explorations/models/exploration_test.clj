@@ -199,28 +199,3 @@
     (let [hydrated (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :threads)]
       (is (= 2 (count (:threads hydrated))))
       (is (= [0 1] (mapv :position (:threads hydrated)))))))
-
-(deftest exploration-collection-move-moves-summary-documents-test
-  (testing "a plain update of the collection moves the Summary Documents of the exploration with it"
-    (mt/with-temp [:model/Collection src  {}
-                   :model/Collection dest {}
-                   :model/Exploration e   {:name          "move"
-                                           :creator_id    (mt/user->id :crowberto)
-                                           :collection_id (:id src)}
-                   :model/Document summary {:name           "Summary"
-                                            :document       {:type "doc" :content []}
-                                            :content_type   "application/json+vnd.prose-mirror"
-                                            :creator_id     (mt/user->id :crowberto)
-                                            :collection_id  (:id src)
-                                            :exploration_id (:id e)}
-                   :model/Document other   {:name          "Other"
-                                            :document      {:type "doc" :content []}
-                                            :content_type  "application/json+vnd.prose-mirror"
-                                            :creator_id    (mt/user->id :crowberto)
-                                            :collection_id (:id src)}]
-      (t2/update! :model/Exploration :id (:id e) {:collection_id (:id dest)})
-      (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id summary))))
-      (is (= (:id src) (t2/select-one-fn :collection_id :model/Document :id (:id other))))
-      (testing "an update of another column leaves them in place"
-        (t2/update! :model/Exploration :id (:id e) {:name "renamed"})
-        (is (= (:id dest) (t2/select-one-fn :collection_id :model/Document :id (:id summary))))))))

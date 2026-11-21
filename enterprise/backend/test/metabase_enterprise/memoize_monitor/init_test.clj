@@ -21,7 +21,7 @@
     (testing "one stat per monitored cache, keyed by the var's fully-qualified symbol"
       (is (= (count @#'memoize-monitor/monitored-cache-vars)
              (count stats)))
-      (is (contains? by-cache "metabase.warehouse-schema.models.field/field-id->immutable-info"))
+      (is (contains? by-cache "metabase.warehouse-schema.models.field/field-id->table-id"))
       (is (contains? by-cache "metabase-enterprise.serialization.dump/serialization-sorted-map")))
     (testing "entry counts are always reported"
       (doseq [{:keys [cache entries]} stats]

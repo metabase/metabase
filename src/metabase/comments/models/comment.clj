@@ -11,7 +11,6 @@
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -45,7 +44,7 @@
    {:default {}}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Comment :reactions]
-  "Hydrate the reactions of each comment that is not deleted."
+  "Hydrate the creator (user) of a comment based on the creator_id."
   [_model k comments]
   (mi/instances-with-hydrated-data
    comments k
@@ -55,37 +54,6 @@
          (comment-reaction/reactions-for-comments api/*current-user-id*))
    :id
    {:default {}}))
-
-;;; ------------------------------------------------------ Hooks -------------------------------------------------------
-
-(defn- same-target?
-  "Whether `parent` is on the same entity and thread as `comment`."
-  [parent comment]
-  (and (= (some-> (:target_type parent) name) (some-> (:target_type comment) name))
-       (= (:target_id parent) (:target_id comment))
-       (= (:child_target_id parent) (:child_target_id comment))))
-
-(defn- check-parent-target!
-  "Throw unless the parent of `comment`, when it has one, is on the same entity and thread."
-  [{:keys [parent_comment_id] :as comment}]
-  (when parent_comment_id
-    (when-let [parent (comments.db/comment-by-id parent_comment_id)]
-      (when-not (same-target? parent comment)
-        (throw (ex-info (tru "Parent comment doesn''t belong to the same entity") {:status-code 400}))))))
-
-(t2/define-before-insert :model/Comment
-  [comment]
-  (check-parent-target! comment)
-  comment)
-
-(t2/define-before-update :model/Comment
-  [comment]
-  (let [changes (t2/changes comment)]
-    (when (and (contains? changes :content) (:deleted_at (t2/original comment)))
-      (throw (ex-info (tru "Cannot edit content of a deleted comment") {:status-code 400})))
-    (when (some #(contains? changes %) [:parent_comment_id :target_type :target_id :child_target_id])
-      (check-parent-target! comment))
-    comment))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

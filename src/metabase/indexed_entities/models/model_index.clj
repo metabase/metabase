@@ -58,17 +58,6 @@
   [model-index]
   (task/delete-trigger! (trigger-key (:id model-index))))
 
-(defn default-schedule
-  "Default sync schedule for indexed values. Defaults to randomly once a day."
-  []
-  (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
-
-(t2/define-before-insert :model/ModelIndex
-  [model-index]
-  (merge {:schedule (default-schedule)
-          :state    "initial"}
-         model-index))
-
 (t2/define-before-delete :model/ModelIndex
   [model-index]
   (remove-indexing-job model-index))
@@ -202,6 +191,11 @@
 
 ;;;; creation
 
+(defn default-schedule
+  "Default sync schedule for indexed values. Defaults to randomly once a day."
+  []
+  (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
+
 (defn create
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]}]
@@ -209,6 +203,8 @@
                                             ;; todo: sanitize these?
                                             :pk_ref     pk-ref
                                             :value_ref  value-ref
+                                            :schedule   (default-schedule)
+                                            :state      "initial"
                                             :creator_id creator-id}))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------

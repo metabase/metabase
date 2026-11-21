@@ -158,38 +158,6 @@
    changes :- ::queries.schema/card.update]
   (t2/update! :model/Card :id card-id changes))
 
-(mu/defn delete-card!
-  "Delete the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Card :id card-id))
-
-(mu/defn max-collection-position
-  "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
-
-(mu/defn cards-to-move-to-collection
-  "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
-  `new-collection-id-or-nil`."
-  [card-ids :- [:set ::lib.schema.id/card]
-   new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
-              :entity_id :result_metadata :dimensions :dimension_mappings]
-             {:where [:and [:in :id card-ids]
-                      [:or [:not= :collection_id new-collection-id-or-nil]
-                       (when new-collection-id-or-nil
-                         [:= :collection_id nil])]]}))
-
-(mu/defn card-public-uuid
-  "The `:public_uuid` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :public_uuid [:model/Card :public_uuid] :id card-id))
-
-(mu/defn card-exists-with-public-link?
-  "Whether the unarchived Card with `card-id` has a public link."
-  [card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false))
-
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
 (mu/defn dashcard-counts-by-card

@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions-rest.write :as perms-rest.write]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -18,62 +17,62 @@
 (deftest resolve-api-value-db-level-test
   (testing "DB-level keyword values"
     (is (= {nil {:perm_value :unrestricted :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data :unrestricted 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :view-data :unrestricted 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :blocked :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data :blocked 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :view-data :blocked 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :query-builder-and-native :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :create-queries :query-builder-and-native 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :create-queries :query-builder-and-native 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :no :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :create-queries :no 1 tables-by-db-schema)))))
+           (#'data-perms.graph/resolve-api-value :create-queries :no 1 tables-by-db-schema)))))
 
 (deftest resolve-api-value-download-wrapper-test
   (testing "Download and data-model unwrap the :schemas key"
     (is (= {nil {:perm_value :one-million-rows :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :download {:schemas :full} 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :download {:schemas :full} 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :no :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :download {:schemas :none} 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :download {:schemas :none} 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :yes :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :data-model {:schemas :all} 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :data-model {:schemas :all} 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :no :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :data-model {:schemas :none} 1 tables-by-db-schema)))))
+           (#'data-perms.graph/resolve-api-value :data-model {:schemas :none} 1 tables-by-db-schema)))))
 
 (deftest resolve-api-value-schema-level-test
   (testing "Schema-level keyword expands to all tables in that schema"
     (is (= {10 {:perm_value :unrestricted :schema_name "PUBLIC"}
             11 {:perm_value :unrestricted :schema_name "PUBLIC"}}
-           (#'perms-rest.write/resolve-api-value :view-data {"PUBLIC" :unrestricted} 1 tables-by-db-schema))))
+           (#'data-perms.graph/resolve-api-value :view-data {"PUBLIC" :unrestricted} 1 tables-by-db-schema))))
   (testing "Multiple schemas"
     (is (= {10 {:perm_value :unrestricted :schema_name "PUBLIC"}
             11 {:perm_value :unrestricted :schema_name "PUBLIC"}
             12 {:perm_value :blocked :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data {"PUBLIC" :unrestricted "" :blocked}
+           (#'data-perms.graph/resolve-api-value :view-data {"PUBLIC" :unrestricted "" :blocked}
                                                  1 tables-by-db-schema)))))
 
 (deftest resolve-api-value-table-level-test
   (testing "Table-level values produce per-table entries"
     (is (= {10 {:perm_value :query-builder :schema_name "PUBLIC"}
             11 {:perm_value :no :schema_name "PUBLIC"}}
-           (#'perms-rest.write/resolve-api-value :create-queries {"PUBLIC" {10 :query-builder 11 :no}}
+           (#'data-perms.graph/resolve-api-value :create-queries {"PUBLIC" {10 :query-builder 11 :no}}
                                                  1 tables-by-db-schema)))))
 
 (deftest resolve-api-value-empty-schema-test
   (testing "Empty string schema maps to nil (null schema in DB)"
     (is (= {12 {:perm_value :unrestricted :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data {"" :unrestricted} 1 tables-by-db-schema)))))
+           (#'data-perms.graph/resolve-api-value :view-data {"" :unrestricted} 1 tables-by-db-schema)))))
 
 (deftest resolve-api-value-translation-test
   (testing "API values are translated to DB values"
     (is (= {nil {:perm_value :unrestricted :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data :impersonated 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :view-data :impersonated 1 tables-by-db-schema)))
     (is (= {nil {:perm_value :unrestricted :schema_name nil}}
-           (#'perms-rest.write/resolve-api-value :view-data :sandboxed 1 tables-by-db-schema)))
+           (#'data-perms.graph/resolve-api-value :view-data :sandboxed 1 tables-by-db-schema)))
     (is (= {10 {:perm_value :one-million-rows :schema_name "PUBLIC"}
             11 {:perm_value :no :schema_name "PUBLIC"}}
-           (#'perms-rest.write/resolve-api-value :download {:schemas {"PUBLIC" {10 :full 11 :none}}}
+           (#'data-perms.graph/resolve-api-value :download {:schemas {"PUBLIC" {10 :full 11 :none}}}
                                                  1 tables-by-db-schema)))
     (is (= {10 {:perm_value :yes :schema_name "PUBLIC"}
             11 {:perm_value :no :schema_name "PUBLIC"}}
-           (#'perms-rest.write/resolve-api-value :data-model {:schemas {"PUBLIC" {10 :all 11 :none}}}
+           (#'data-perms.graph/resolve-api-value :data-model {:schemas {"PUBLIC" {10 :all 11 :none}}}
                                                  1 tables-by-db-schema)))))
 
 ;;; ================================ add-implications ================================
@@ -82,7 +81,7 @@
   (testing "create-queries non-:no at db-level implies view-data :unrestricted and transforms :no"
     (let [desired {}
           entries {nil {:perm_value :query-builder :schema_name nil}}
-          result  (#'perms-rest.write/add-implications desired 1 1 :perms/create-queries entries)]
+          result  (#'data-perms.graph/add-implications desired 1 1 :perms/create-queries entries)]
       (is (= {nil {:perm_value :unrestricted :schema_name nil}}
              (get result [1 1 :perms/view-data])))
       (is (= {nil {:perm_value :no :schema_name nil}}
@@ -90,21 +89,21 @@
   (testing "create-queries :query-builder-and-native implies view-data but NOT transforms :no"
     (let [desired {}
           entries {nil {:perm_value :query-builder-and-native :schema_name nil}}
-          result  (#'perms-rest.write/add-implications desired 1 1 :perms/create-queries entries)]
+          result  (#'data-perms.graph/add-implications desired 1 1 :perms/create-queries entries)]
       (is (= {nil {:perm_value :unrestricted :schema_name nil}}
              (get result [1 1 :perms/view-data])))
       (is (nil? (get result [1 1 :perms/transforms])))))
   (testing "create-queries :no implies transforms :no but NOT view-data"
     (let [desired {}
           entries {nil {:perm_value :no :schema_name nil}}
-          result  (#'perms-rest.write/add-implications desired 1 1 :perms/create-queries entries)]
+          result  (#'data-perms.graph/add-implications desired 1 1 :perms/create-queries entries)]
       (is (nil? (get result [1 1 :perms/view-data])))
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get result [1 1 :perms/transforms]))))))
 
 (deftest add-implications-view-data-db-level-test
   (testing "view-data :blocked implies create-queries :no, download :no, and transforms :no"
-    (let [result (#'perms-rest.write/add-implications {} 1 1 :perms/view-data
+    (let [result (#'data-perms.graph/add-implications {} 1 1 :perms/view-data
                                                       {nil {:perm_value :blocked :schema_name nil}})]
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get result [1 1 :perms/create-queries])))
@@ -113,7 +112,7 @@
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get result [1 1 :perms/transforms])))))
   (testing "view-data :unrestricted has no implications"
-    (let [result (#'perms-rest.write/add-implications {} 1 1 :perms/view-data
+    (let [result (#'data-perms.graph/add-implications {} 1 1 :perms/view-data
                                                       {nil {:perm_value :unrestricted :schema_name nil}})]
       (is (empty? result)))))
 
@@ -121,20 +120,20 @@
   (testing "Table-level create-queries non-:no implies view-data for those tables only"
     (let [entries {10 {:perm_value :query-builder :schema_name "PUBLIC"}
                    11 {:perm_value :no :schema_name "PUBLIC"}}
-          result  (#'perms-rest.write/add-implications {} 1 1 :perms/create-queries entries)]
+          result  (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries entries)]
       (is (= {10 {:perm_value :unrestricted :schema_name "PUBLIC"}}
              (get result [1 1 :perms/view-data])))
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get result [1 1 :perms/transforms]))
           "Table-level create-queries revokes transforms on the whole database")))
   (testing "Table-level create-queries all native keeps transforms"
-    (let [result (#'perms-rest.write/add-implications {} 1 1 :perms/create-queries
+    (let [result (#'data-perms.graph/add-implications {} 1 1 :perms/create-queries
                                                       {10 {:perm_value :query-builder-and-native :schema_name "PUBLIC"}})]
       (is (nil? (get result [1 1 :perms/transforms])))))
   (testing "Table-level view-data :blocked implies create-queries :no and download :no for those tables"
     (let [entries {10 {:perm_value :blocked :schema_name "PUBLIC"}
                    11 {:perm_value :unrestricted :schema_name "PUBLIC"}}
-          result  (#'perms-rest.write/add-implications {} 1 1 :perms/view-data entries)]
+          result  (#'data-perms.graph/add-implications {} 1 1 :perms/view-data entries)]
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
              (get result [1 1 :perms/create-queries])))
       (is (= {10 {:perm_value :no :schema_name "PUBLIC"}}
@@ -146,13 +145,13 @@
   (testing "Implications override existing entries (later perm-type side effects take precedence)"
     (let [desired {[1 1 :perms/transforms] {nil {:perm_value :yes :schema_name nil}}}
           entries {nil {:perm_value :query-builder :schema_name nil}}
-          result  (#'perms-rest.write/add-implications desired 1 1 :perms/create-queries entries)]
+          result  (#'data-perms.graph/add-implications desired 1 1 :perms/create-queries entries)]
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get result [1 1 :perms/transforms]))
           "create-queries :query-builder implies transforms :no, overriding earlier :yes")))
   (testing "Protection from overriding explicit API values comes from processing order, not add-implications"
     (let [graph   {1 {1 {:create-queries :query-builder :view-data :blocked}}}
-          desired (#'perms-rest.write/compute-desired-state graph tables-by-db-schema)]
+          desired (#'data-perms.graph/compute-desired-state graph tables-by-db-schema)]
       (is (= {nil {:perm_value :blocked :schema_name nil}}
              (get desired [1 1 :perms/view-data]))
           "Explicit view-data :blocked overrides create-queries's implication because view-data is processed last"))))
@@ -162,18 +161,18 @@
 (deftest compute-desired-state-ordering-test
   (testing "Transforms :yes is overridden by create-queries implication of transforms :no"
     (let [graph   {1 {1 {:transforms :yes :create-queries :query-builder}}}
-          desired (#'perms-rest.write/compute-desired-state graph tables-by-db-schema)]
+          desired (#'data-perms.graph/compute-desired-state graph tables-by-db-schema)]
       (is (= {nil {:perm_value :no :schema_name nil}}
              (get desired [1 1 :perms/transforms])))))
   (testing "Explicit view-data overrides create-queries implication"
     (let [graph   {1 {1 {:create-queries :query-builder :view-data :blocked}}}
-          desired (#'perms-rest.write/compute-desired-state graph tables-by-db-schema)]
+          desired (#'data-perms.graph/compute-desired-state graph tables-by-db-schema)]
       (is (= {nil {:perm_value :blocked :schema_name nil}}
              (get desired [1 1 :perms/view-data]))))))
 
 (deftest compute-desired-state-details-test
   (testing "Details and transforms produce db-level entries"
-    (let [desired (#'perms-rest.write/compute-desired-state {1 {1 {:details :yes :transforms :no}}} tables-by-db-schema)]
+    (let [desired (#'data-perms.graph/compute-desired-state {1 {1 {:details :yes :transforms :no}}} tables-by-db-schema)]
       (is (= {nil {:perm_value :yes :schema_name nil}}
              (get desired [1 1 :perms/manage-database])))
       (is (= {nil {:perm_value :no :schema_name nil}}
@@ -188,7 +187,7 @@
 
 (deftest finalize-tuple-pure-db-level-test
   (testing "Pure db-level entry produces one db-level row"
-    (let [result (#'perms-rest.write/finalize-tuple 1 1 :perms/view-data
+    (let [result (#'data-perms.graph/finalize-tuple 1 1 :perms/view-data
                                                     {nil {:perm_value :unrestricted :schema_name nil}}
                                                     [] all-tables-db1)]
       (is (= [{:perm_type :perms/view-data :group_id 1 :perm_value :unrestricted :db_id 1}]
@@ -196,7 +195,7 @@
 
 (deftest finalize-tuple-table-level-empty-current-test
   (testing "Table-level entries with no current state produce table-level rows"
-    (let [result (#'perms-rest.write/finalize-tuple 1 1 :perms/create-queries
+    (let [result (#'data-perms.graph/finalize-tuple 1 1 :perms/create-queries
                                                     {10 {:perm_value :query-builder :schema_name "PUBLIC"}}
                                                     [] all-tables-db1)]
       (is (= [{:perm_type :perms/create-queries :group_id 1 :perm_value :query-builder
@@ -207,7 +206,7 @@
   (testing "Table-level entries that all match current db-level value coalesce (no-op)"
     (let [current [{:id 99 :perm_type :perms/view-data :group_id 1 :perm_value :unrestricted
                     :db_id 1 :table_id nil :schema_name nil}]
-          result  (#'perms-rest.write/finalize-tuple 1 1 :perms/view-data
+          result  (#'data-perms.graph/finalize-tuple 1 1 :perms/view-data
                                                      {10 {:perm_value :unrestricted :schema_name "PUBLIC"}}
                                                      current all-tables-db1)]
       (is (= [{:perm_type :perms/view-data :group_id 1 :perm_value :unrestricted :db_id 1}]
@@ -217,7 +216,7 @@
   (testing "When current is db-level and change differs, expands to table-level"
     (let [current [{:id 99 :perm_type :perms/view-data :group_id 1 :perm_value :unrestricted
                     :db_id 1 :table_id nil :schema_name nil}]
-          result  (#'perms-rest.write/finalize-tuple 1 1 :perms/view-data
+          result  (#'data-perms.graph/finalize-tuple 1 1 :perms/view-data
                                                      {10 {:perm_value :blocked :schema_name "PUBLIC"}}
                                                      current all-tables-db1)]
       (is (= 3 (count result)))
@@ -228,14 +227,14 @@
 
 (deftest finalize-tuple-mixed-level-coalesces-test
   (testing "Mixed db-level + table overrides coalesces when all values same"
-    (let [result (#'perms-rest.write/finalize-tuple 1 1 :perms/view-data
+    (let [result (#'data-perms.graph/finalize-tuple 1 1 :perms/view-data
                                                     {nil {:perm_value :unrestricted :schema_name nil}
                                                      10  {:perm_value :unrestricted :schema_name "PUBLIC"}}
                                                     [] all-tables-db1)]
       (is (= [{:perm_type :perms/view-data :group_id 1 :perm_value :unrestricted :db_id 1}]
              result))))
   (testing "Mixed db-level + table overrides stays table-level when values differ"
-    (let [result (#'perms-rest.write/finalize-tuple 1 1 :perms/view-data
+    (let [result (#'data-perms.graph/finalize-tuple 1 1 :perms/view-data
                                                     {nil {:perm_value :unrestricted :schema_name nil}
                                                      10  {:perm_value :blocked :schema_name "PUBLIC"}}
                                                     [] all-tables-db1)]
@@ -246,7 +245,7 @@
   (testing ":query-builder-and-native becomes :query-builder when expanding to table-level"
     (let [current [{:id 99 :perm_type :perms/create-queries :group_id 1
                     :perm_value :query-builder-and-native :db_id 1 :table_id nil :schema_name nil}]
-          result  (#'perms-rest.write/finalize-tuple 1 1 :perms/create-queries
+          result  (#'data-perms.graph/finalize-tuple 1 1 :perms/create-queries
                                                      {10 {:perm_value :no :schema_name "PUBLIC"}}
                                                      current all-tables-db1)]
       (is (= :no (:perm_value (first (filter #(= 10 (:table_id %)) result)))))
@@ -257,15 +256,15 @@
 
 (deftest rows-match?-test
   (testing "Matching rows"
-    (is (#'perms-rest.write/rows-match?
+    (is (#'data-perms.graph/rows-match?
          [{:perm_type :perms/view-data :perm_value :unrestricted :table_id nil :schema_name nil}]
          [{:perm_type :perms/view-data :perm_value :unrestricted :table_id nil :schema_name nil}])))
   (testing "Different values don't match"
-    (is (not (#'perms-rest.write/rows-match?
+    (is (not (#'data-perms.graph/rows-match?
               [{:perm_type :perms/view-data :perm_value :unrestricted :table_id nil :schema_name nil}]
               [{:perm_type :perms/view-data :perm_value :blocked :table_id nil :schema_name nil}]))))
   (testing "Different formats (db-level vs table-level) don't match"
-    (is (not (#'perms-rest.write/rows-match?
+    (is (not (#'data-perms.graph/rows-match?
               [{:perm_type :perms/view-data :perm_value :unrestricted :table_id nil :schema_name nil}]
               [{:perm_type :perms/view-data :perm_value :unrestricted :table_id 10 :schema_name "PUBLIC"}])))))
 
@@ -278,7 +277,7 @@
                                                   :perm_value :unrestricted :db_id 1
                                                   :table_id nil :schema_name nil}]}
           tables-by-db  {1 all-tables-db1}
-          result        (#'perms-rest.write/compute-diff desired-state current-index tables-by-db)]
+          result        (#'data-perms.graph/compute-diff desired-state current-index tables-by-db)]
       (is (empty? (:to-delete result)))
       (is (empty? (:to-insert result))))))
 
@@ -289,7 +288,7 @@
                                                   :perm_value :unrestricted :db_id 1
                                                   :table_id nil :schema_name nil}]}
           tables-by-db  {1 all-tables-db1}
-          result        (#'perms-rest.write/compute-diff desired-state current-index tables-by-db)]
+          result        (#'data-perms.graph/compute-diff desired-state current-index tables-by-db)]
       (is (= [99] (:to-delete result)))
       (is (= [{:perm_type :perms/view-data :group_id 1 :perm_value :blocked :db_id 1}]
              (:to-insert result))))))
@@ -297,7 +296,7 @@
 (deftest compute-diff-new-perms-test
   (testing "Inserts without deletes when no current state exists"
     (let [desired-state {[1 1 :perms/view-data] {nil {:perm_value :unrestricted :schema_name nil}}}
-          result        (#'perms-rest.write/compute-diff desired-state {} {1 all-tables-db1})]
+          result        (#'data-perms.graph/compute-diff desired-state {} {1 all-tables-db1})]
       (is (empty? (:to-delete result)))
       (is (= [{:perm_type :perms/view-data :group_id 1 :perm_value :unrestricted :db_id 1}]
              (:to-insert result))))))
@@ -376,7 +375,7 @@
               ;; rows last) + 1 native-access lookup per database-level create-queries or transforms row, 10 for this
               ;; graph. Tables must not add queries: more is very likely an N+1 query in one of these dimensions!
               query-count (t2/with-call-count [call-count]
-                            (perms-rest.write/update-data-perms-graph!* graph)
+                            (data-perms.graph/update-data-perms-graph!* graph)
                             (call-count))]
           (is (<= query-count 10)
               (format "Expected constant query count but got %d — possible N+1 regression" query-count)))

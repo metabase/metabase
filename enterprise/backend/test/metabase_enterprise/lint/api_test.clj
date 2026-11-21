@@ -14,7 +14,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -25,14 +25,14 @@
 
 (defn- create-card!
   [user card-name card-type query]
-  (queries/create-card! {:name                   card-name
-                         :database_id            (mt/id)
-                         :display                :table
-                         :query_type             :query
-                         :type                   card-type
-                         :dataset_query          query
-                         :visualization_settings {}}
-                        user))
+  (card/create-card! {:name                   card-name
+                      :database_id            (mt/id)
+                      :display                :table
+                      :query_type             :query
+                      :type                   card-type
+                      :dataset_query          query
+                      :visualization_settings {}}
+                     user))
 
 (defn- create-card-filtering-total!
   "A question on `source-card` that filters on its TOTAL column, which only the orders table has."
@@ -44,7 +44,7 @@
 (defn- update-card-query!
   [card query]
   (lib-be/with-metadata-provider-cache
-    (queries/update-card! {:card-before-update card :card-updates {:dataset_query query}})))
+    (card/update-card! {:card-before-update card :card-updates {:dataset_query query}})))
 
 (defn- do-with-broken-model!
   "Call `f` with a model of the orders table and what `create-dependents!` builds on it, once the model is pointed at
@@ -167,7 +167,7 @@
        [(create-card-filtering-total! user model-card "Lint archived")
         (create-card-filtering-total! user model-card "Lint internal")])
      (fn [_model-card [archived-card internal-card]]
-       (queries/update-card! {:card-before-update archived-card :card-updates {:archived true}})
+       (card/update-card! {:card-before-update archived-card :card-updates {:archived true}})
        (t2/update! :model/Card :id (:id internal-card) {:creator_id config/internal-mb-user-id})
        (let [report (lint-report)]
          (doseq [card [archived-card internal-card]]

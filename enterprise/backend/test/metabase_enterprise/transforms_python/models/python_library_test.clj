@@ -77,9 +77,6 @@
     (is (true? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
   (testing "while changing its source makes it no longer the default one"
     (python-library/update-python-library-source! "common" "def f(): pass")
-    (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py"))))
-  (testing "and it stays so when its source becomes blank again"
-    (python-library/update-python-library-source! "common" "")
     (is (false? (t2/select-one-fn :is_default :model/PythonLibrary :path "common.py")))))
 
 (deftest recreated-library-is-the-built-in-one-test

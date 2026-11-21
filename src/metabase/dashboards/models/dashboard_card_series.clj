@@ -1,7 +1,6 @@
 (ns metabase.dashboards.models.dashboard-card-series
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
-   [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -53,5 +52,5 @@
    :parent {:model :model/DashboardCard :key :dashboardcard_id}})
 
 (defmethod dependencies/spec :model/DashboardCardSeries [_model]
-  {:part-of      {:type :dashboard :key :dashboardcard_id :via dashboard-card/dashboard-card-id->dashboard-id}
+  {:part-of      {:type :dashboard :key :dashboardcard_id :via [:model/DashboardCard :dashboard_id]}
    :part-columns #{:card_id :dashboardcard_id}})

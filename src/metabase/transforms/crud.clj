@@ -1,8 +1,8 @@
-(ns metabase.transforms.write
-  "Every user-facing write of a Transform: the best-effort checks that are not hook invariants, the statements and
-  the tag links."
+(ns metabase.transforms.crud
+  "CRUD operations for transforms. Extracted from `metabase.transforms-rest.api.transform`
+   so that non-REST modules (e.g. metabot-v3) can use them without depending
+   on the `-rest` module."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
@@ -13,13 +13,13 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.transforms-base.interface :as transforms-base.i]
-   [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
    [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -92,29 +92,6 @@
                            (deferred-tru "A lookback window on a date checkpoint column must use days or a coarser unit.")))))))
   nil)
 
-(mu/defn check-incremental-table-tag :- :nil
-  "Throws a 400 when `transform` writes an incremental table from a native query that has no table variable for the
-  incremental range filter, a variable of the table of its checkpoint Field when there is one."
-  [{:keys [source target]} :- ::transforms.schema/transform.definition]
-  (let [transform {:source source :target target}]
-    (when (and (transforms-base.u/incremental-target? transform)
-               (transforms-base.u/native-query-transform? transform))
-      (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])]
-        (when-not (transforms-base.u/table-template-tag-name (:query source)
-                                                             (some-> field-id transforms.db/field :table_id))
-          (throw (ex-info (tru "Incremental transform with a native query requires a table variable. Please add a table variable to the query and update the checkpoint field.")
-                          {:status-code 400}))))))
-  nil)
-
-(mu/defn check-cycle :- :nil
-  "Throws a 400 when the query transform `transform` is part of a cycle of transforms feeding one another."
-  [transform :- :map]
-  (when (transforms-base.u/query-transform? transform)
-    (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle transform)]
-      (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                      {:status-code 400}))))
-  nil)
-
 (mu/defn check-references :- :nil
   "Throws a 400 unless what `definition` refers to outside the transform allows it: a target database with the features
   the transform needs and without DB routing, and for the parts the request writes, `written`, a query that
@@ -136,14 +113,9 @@
   (when (contains? written :source)
     (validate-incremental-column-type! definition))
   (when (seq written)
-    (check-incremental-table-tag definition)
+    (transform.model/check-incremental-table-tag definition)
     (validate-lookback! definition))
   nil)
-
-(defn- definition-changed?
-  "Whether `new` has a source or a target other than that of `old`."
-  [old new]
-  (not= (select-keys old [:source :target]) (select-keys new [:source :target])))
 
 (defn- written-parts
   "The source and target of a transform that the request `body` writes, as a set."
@@ -199,37 +171,6 @@
         (assoc :table target-table)
         transforms.u/add-source-readable)))
 
-(mu/defn update-transform-tags! :- :nil
-  "Replace the tags of a transform with `tag-ids` in that order, deleting the links of removed tags, moving those that
-  stay and inserting the new ones; duplicate and unknown ids are dropped."
-  [transform-id :- [:maybe ::lib.schema.id/transform]
-   tag-ids      :- [:sequential ms/PositiveInt]]
-  (when transform-id
-    (t2/with-transaction [_conn]
-      (let [deduped-tag-ids      (vec (distinct tag-ids))
-            current-associations (transforms.db/transform-tag-links [transform-id])
-            current-tag-ids      (mapv :tag_id current-associations)
-            valid-tag-ids        (when (seq deduped-tag-ids)
-                                   (into #{} (transforms.db/existing-tag-ids deduped-tag-ids)))
-            new-tag-ids          (if valid-tag-ids
-                                   (filterv valid-tag-ids deduped-tag-ids)
-                                   [])
-            current-set          (set current-tag-ids)
-            new-set              (set new-tag-ids)
-            to-delete            (set/difference current-set new-set)
-            to-insert            (set/difference new-set current-set)
-            new-positions        (zipmap new-tag-ids (range))]
-        (when (seq to-delete)
-          (transforms.db/delete-transform-tag-links! transform-id to-delete))
-        (doseq [tag-id (filter current-set new-tag-ids)]
-          (transforms.db/set-transform-tag-position! transform-id tag-id (get new-positions tag-id)))
-        (when (seq to-insert)
-          (transforms.db/insert-transform-tag-links! (for [tag-id to-insert]
-                                                       {:transform_id transform-id
-                                                        :tag_id       tag-id
-                                                        :position     (get new-positions tag-id)})))))
-    nil))
-
 (mu/defn create-transform! :- ::transforms.schema/transform
   "Create new transform in the appdb.
    Optionally accepts a creator-id to use instead of the current user."
@@ -253,7 +194,7 @@
                                                   :owner_user_id owner-user-id))]
                         ;; Add tag associations if provided
                         (when (seq tag-ids)
-                          (update-transform-tags! (:id transform) tag-ids))
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
                         ;; Return with hydrated tag_ids
                         (t2/hydrate transform :transform_tag_ids :creator :owner :can_read :can_write :can_execute)))]
      transform)))
@@ -272,8 +213,6 @@
                       ;; we must validate on a full transform object
                       (check-feature-enabled! definition)
                       (check-references definition (written-parts body))
-                      (when (definition-changed? old new)
-                        (check-cycle (dissoc new :tag_ids)))
                       (transforms.db/update-transform! id (dissoc body :tag_ids))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/planned-target-table-exists? new)))
@@ -281,17 +220,10 @@
                                  (deferred-tru "A table with that name already exists.")))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
-                      (update-transform-tags! id (:tag_ids body)))
+                      (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
     (-> transform
         transforms.u/add-source-readable)))
-
-(mu/defn reset-checkpoint! :- :nil
-  "Clear the stored checkpoint value of the transform with `id`, which the current user must be able to write."
-  [id :- ::lib.schema.id/transform]
-  (api/write-check :model/Transform id)
-  (transforms.db/update-transform! id {:last_checkpoint_value nil})
-  nil)
 
 (mu/defn delete-transform! :- :nil
   "Delete a transform."

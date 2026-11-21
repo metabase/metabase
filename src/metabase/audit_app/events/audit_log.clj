@@ -6,7 +6,6 @@
    [metabase.audit-app.spec :as audit.spec]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -452,7 +451,7 @@
     :model/Segment      (let [table-id (:table_id object)]
                           (assoc (select-keys object [:name :description :revision_message])
                                  :table_id    table-id
-                                 :database_id (when table-id (database/table-id->database-id table-id))))
+                                 :database_id (when table-id (audit-app.db/table-database-id table-id))))
     :model/Transform    {:source (-> (:source object)
                                      (dissoc :body)
                                      (update :query #(select-keys % [:database])))}

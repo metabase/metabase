@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -28,25 +27,6 @@
    [:id         ms/PositiveInt]
    [:term       ::glossary.schema/glossary.term]
    [:definition ::glossary.schema/glossary.definition]])
-
-;;; ----------------------------------------------------- Hooks ------------------------------------------------------
-
-(defn- check-term-free
-  "Throws unless no other Glossary entry than the one with `id`, nil for a new entry, has `term`."
-  [term id]
-  (when (glossary.db/term-taken? term id)
-    (throw (ex-info (tru "A glossary entry with that term already exists.") {:status-code 400}))))
-
-(t2/define-before-insert :model/Glossary
-  [{:keys [term] :as entry}]
-  (check-term-free term nil)
-  entry)
-
-(t2/define-before-update :model/Glossary
-  [{:keys [id term] :as entry}]
-  (when (contains? (t2/changes entry) :term)
-    (check-term-free term id))
-  entry)
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 

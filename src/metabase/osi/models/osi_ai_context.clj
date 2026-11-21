@@ -38,6 +38,18 @@
   {:ai_context {:in  (comp mi/json-in osi.schema/normalize-ai-context)
                 :out mi/json-out-with-keywordization}})
 
+;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
+;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
+;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
+(t2/define-before-insert :model/OsiAiContext
+  [row]
+  (update row :entity_type entity-retrieval/normalize-entity-type))
+
+(t2/define-before-update :model/OsiAiContext
+  [row]
+  (cond-> row
+    (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type)))
+
 ;;; Each write nudges a targeted reconcile of just this entity's index slice (fire-and-forget: no-op in
 ;;; OSS, error-swallowing in EE), so appdb writes never fail or slow down because of the mirror. The nudge
 ;;; is deferred until *after* the surrounding transaction commits, so the reconcile future always reads
@@ -51,20 +63,8 @@
   (u/prog1 row
     (app-db/do-after-commit #(mirror/request-entity-sync! entity_type entity_local_id))))
 
-;;; Card-backed entities (question/metric/model) store their `entity_type` as the canonical `card`, so one
-;;; ai_context row survives a type relabel and keys on a stable `(card, entity_local_id)`. The CRUD and tool
-;;; APIs still speak the real types; only the stored key is normalized. Non-card types pass through.
-(t2/define-before-insert :model/OsiAiContext
-  [row]
-  (nudge-entity-sync! (update row :entity_type entity-retrieval/normalize-entity-type)))
-
-(t2/define-before-update :model/OsiAiContext
-  [row]
-  (let [row (cond-> row
-              (contains? (t2/changes row) :entity_type) (update :entity_type entity-retrieval/normalize-entity-type))]
-    (cond-> row
-      (seq (t2/changes row)) nudge-entity-sync!)))
-
+(t2/define-after-insert :model/OsiAiContext [row] (nudge-entity-sync! row))
+(t2/define-after-update :model/OsiAiContext [row] (nudge-entity-sync! row))
 (t2/define-before-delete :model/OsiAiContext [row] (nudge-entity-sync! row))
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------

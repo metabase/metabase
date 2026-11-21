@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.channel.impl.http-test :as channel.http-test]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.permissions.write :as perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.test :as mt]))
 
 (comment

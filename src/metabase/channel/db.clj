@@ -23,11 +23,10 @@
   []
   (t2/select :model/Channel :active true))
 
-(mu/defn other-channel-named?
-  "Whether a Channel other than the one with `channel-id` (nil for none) is named `channel-name`."
-  [channel-name :- :string
-   channel-id   :- [:maybe ms/PositiveInt]]
-  (t2/exists? :model/Channel :name [:auto/param channel-name] :id [:not= [:auto/param channel-id]]))
+(mu/defn channel-name-exists?
+  "Whether a Channel named `channel-name` exists."
+  [channel-name :- :string]
+  (t2/exists? :model/Channel :name channel-name))
 
 (mu/defn insert-channel!
   "Insert the Channel `row` and return the inserted instance."

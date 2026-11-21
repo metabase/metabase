@@ -8,7 +8,6 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -99,17 +98,6 @@
     (is (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "0 * * * * ? *")))
     (is (not (mr/validate ::models.notification/NotificationSubscription (assoc subscription :cron_schedule "not a cron"))))))
 
-(deftest notification-card-id-is-frozen-test
-  (notification.tu/with-card-notification [notification {}]
-    (mt/with-temp [:model/Card {other-card-id :id} {}]
-      (let [{payload-id :id card-id :card_id} (:payload notification)]
-        (testing "Changing card_id is refused"
-          (is (= 400 (:status-code (ex-data (try (t2/update! :model/NotificationCard :id payload-id {:card_id other-card-id})
-                                                 (catch Exception e e))))))
-          (is (= card-id (t2/select-one-fn :card_id :model/NotificationCard :id payload-id))))
-        (testing "Writing the same card_id and other columns is allowed"
-          (is (= 1 (t2/update! :model/NotificationCard :id payload-id {:card_id card-id :send_once true}))))))))
-
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"
     (notification.tu/with-card-notification [notification {}]
@@ -125,13 +113,13 @@
     (notification.tu/with-notification-cleanup!
       (mt/with-temp [:model/Card {card-id :id} {:name          "alert cleanup test card"
                                                 :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
-        (let [active-notification   (notification.write/create-notification!
+        (let [active-notification   (models.notification/create-notification!
                                      {:payload_type :notification/card
                                       :payload      {:card_id card-id}
                                       :creator_id   (mt/user->id :crowberto)}
                                      []
                                      [])
-              inactive-notification (notification.write/create-notification!
+              inactive-notification (models.notification/create-notification!
                                      {:payload_type :notification/card
                                       :payload      {:card_id card-id}
                                       :active       false
@@ -201,7 +189,7 @@
                    :model/PermissionsGroupMembership _ {:group_id (:id group)
                                                         :user_id (mt/user->id :lucky)}]
       (testing "create a notification with 2 subscriptions with 2 handlers that has 2 recipients"
-        (let [noti (notification.write/create-notification!
+        (let [noti (models.notification/create-notification!
                     default-system-event-notification
                     [default-user-invited-subscription
                      default-card-created-subscription]
@@ -257,7 +245,7 @@
     (mt/with-model-cleanup [:model/Notification]
       (mt/with-temp [:model/Channel         chn-1   (assoc api.channel-test/default-test-channel :name "Channel 1")
                      :model/ChannelTemplate tmpl-1 {:channel_type (:type chn-1)}]
-        (let [noti (notification.write/create-notification!
+        (let [noti (models.notification/create-notification!
                     default-system-event-notification
                     [default-user-invited-subscription]
                     [{:channel_type (:type chn-1)

@@ -97,7 +97,7 @@
   "The `:state` column of a CacheConfig, decoded."
   [:map {:closed true}])
 
-(defn check-target
+(defn- check-target
   "Returns `row`, a CacheConfig, or throws a 400 when it holds a `model_id` that does not fit its `model`: 0 for the root
   config, a positive id otherwise."
   [{:keys [model model_id] :as row}]
@@ -106,7 +106,7 @@
     (throw (ex-info (tru "model_id must be 0 for the root config and positive otherwise.") {:status-code 400})))
   row)
 
-(defn check-strategy
+(defn- check-strategy
   "Returns `row`, a CacheConfig, or throws a 400 when it holds a `strategy` and a `config` that, with its
   `refresh_automatically`, do not form a valid strategy."
   [{:keys [strategy config] :as row}]

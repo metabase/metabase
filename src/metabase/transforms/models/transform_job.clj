@@ -77,13 +77,8 @@
     job
     (merge job (translated-name-and-description job))))
 
-(def ^:private definition-columns
-  "The columns of a job whose change makes it no longer built-in."
-  #{:name :description :schedule :ui_display_type})
-
 (t2/define-before-update :model/TransformJob [job]
-  (if (or (nil? (:built_in_type job))
-          (not-any? #(contains? (t2/changes job) %) definition-columns))
+  (if (nil? (:built_in_type job))
     job
     (-> (merge job
                (translated-name-and-description job)

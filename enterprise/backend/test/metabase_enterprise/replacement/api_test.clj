@@ -12,7 +12,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.util :as u]
@@ -212,69 +211,11 @@
           ;; Insert a fake active run to simulate one already running
           (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
             (replacement-run/start-run! (:id run)))
-          (let [run-count (t2/count :model/ReplacementRun)]
-            (is (= "A source replacement is already running"
-                   (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
-                                         {:source_entity_id   old-id
-                                          :source_entity_type :card
-                                          :target_entity_id   new-id
-                                          :target_entity_type :card})))
-            (testing "refused request leaves no run behind"
-              (is (= run-count (t2/count :model/ReplacementRun)))))
-          (testing "run started at same time is refused with nothing left behind"
-            (let [run-count  (t2/count :model/ReplacementRun)
-                  calls      (atom 0)
-                  active-run (dynamic-redefs/original-fn #'replacement-run/active-run)]
-              (mt/with-dynamic-fn-redefs [replacement-run/active-run (fn []
-                                                                       (when (> (swap! calls inc) 2)
-                                                                         (active-run)))]
-                (is (= "A source replacement is already running"
-                       (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
-                                             {:source_entity_id   old-id
-                                              :source_entity_type :card
-                                              :target_entity_id   new-id
-                                              :target_entity_type :card}))))
-              (is (= run-count (t2/count :model/ReplacementRun))))))))))
-
-(deftest ^:mb/driver-tests replace-model-with-transform-concurrent-run-returns-409-test
-  (testing "POST /replace-model-with-transform — returns 409 when another run is already active"
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
-        (mt/with-premium-features #{:dependencies}
-          (let [mp     (mt/metadata-provider)
-                schema (t2/select-one-fn :schema :model/Table :id (mt/id :orders))]
-            (mt/with-temp [:model/Card {model-id :id} {:database_id   (mt/id)
-                                                       :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                       :type          :model
-                                                       :name          "Model"}]
-              (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-                (let [run     (replacement-run/create-run! :card model-id :card model-id (mt/user->id :crowberto))
-                      request {:card_id          model-id
-                               :transform_name   "Refused Transform"
-                               :transform_target {:type     "table"
-                                                  :schema   schema
-                                                  :name     "refused_transform"
-                                                  :database (mt/id)}}]
-                  (replacement-run/start-run! (:id run))
-                  (let [run-count       (t2/count :model/ReplacementRun)
-                        transform-count (t2/count :model/Transform)]
-                    (is (= "A source replacement is already running"
-                           (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-model-with-transform" request)))
-                    (testing "refused request leaves no run and no transform behind"
-                      (is (= run-count (t2/count :model/ReplacementRun)))
-                      (is (= transform-count (t2/count :model/Transform)))))
-                  (testing "run started at same time is refused with nothing left behind"
-                    (let [run-count       (t2/count :model/ReplacementRun)
-                          transform-count (t2/count :model/Transform)
-                          calls           (atom 0)
-                          active-run      (dynamic-redefs/original-fn #'replacement-run/active-run)]
-                      (mt/with-dynamic-fn-redefs [replacement-run/active-run (fn []
-                                                                               (when (> (swap! calls inc) 2)
-                                                                                 (active-run)))]
-                        (is (= "A source replacement is already running"
-                               (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-model-with-transform" request))))
-                      (is (= run-count (t2/count :model/ReplacementRun)))
-                      (is (= transform-count (t2/count :model/Transform))))))))))))))
+          (mt/user-http-request :crowberto :post 409 "ee/replacement/replace-source"
+                                {:source_entity_id   old-id
+                                 :source_entity_type :card
+                                 :target_entity_id   new-id
+                                 :target_entity_type :card}))))))
 
 ;;; ------------------------------------------------ GET /runs/:id ------------------------------------------------
 

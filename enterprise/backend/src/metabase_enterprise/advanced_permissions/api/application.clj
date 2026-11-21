@@ -4,7 +4,6 @@
   features like access Setting pages, access monitoring tools ... etc"
   (:require
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
-   [metabase-enterprise.advanced-permissions.write :as advanced-permissions.write]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.permissions.core :as perms]
@@ -79,7 +78,7 @@
       (api/check-no-dropped-entries (get raw-groups (keyword group-id)) perm-type->perm)))
   (-> body
       dejsonify-graph
-      (advanced-permissions.write/update-graph! force?))
+      (a-perms/update-graph! force?))
   (if skip-graph?
     {:revision (perms/latest-application-permissions-revision-id)}
     (a-perms/graph)))

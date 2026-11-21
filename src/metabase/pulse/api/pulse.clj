@@ -19,11 +19,18 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.schema :as pulse.schema]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.write :as pulse.write]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn email-channel
+  "Get email channel from an alert."
+  [alert]
+  (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -77,6 +84,55 @@
                                                                 :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
+(defn- without-collection-for-dashboard-subscription
+  "Set `:collection_id` and `:collection_position` in `pulse-data` to nil when it is a dashboard subscription.
+
+  `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, the
+  permission check would demand write access to the collection in the request, even when it is the collection of the
+  dashboard. A user with view access only would get a 403. `check-dashboard-subscription-collection-keys!` rejects
+  any other collection."
+  [{:keys [dashboard_id] :as pulse-data}]
+  (cond-> pulse-data
+    dashboard_id (assoc :collection_id nil :collection_position nil)))
+
+(defn- check-dashboard-subscription-collection-keys!
+  "Throw a 400 when the request is a dashboard subscription with a `:collection_position`, or with a non-nil
+  `:collection_id` that is not the collection of its dashboard."
+  [{:keys [dashboard_id collection_id collection_position]}]
+  (when dashboard_id
+    (api/check-400 (nil? collection_position)
+                   (tru "A dashboard subscription cannot have a collection position."))
+    (when (some? collection_id)
+      (let [dashboard-collection-id (pulse.db/dashboard-collection-id dashboard_id)]
+        (api/check-400 (= collection_id dashboard-collection-id)
+                       (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
+                            dashboard-collection-id
+                            collection_id))))))
+
+(defn create-pulse-with-perm-checks!
+  "Create a new Pulse with permissions checks.
+
+  A dashboard subscription goes in the collection of its dashboard, and it has no pin position. After the permission
+  checks, throw a 400 when `requested` has a `:collection_position`, or a non-nil `:collection_id` that is not the
+  dashboard's. View access to the dashboard is enough to subscribe to it:
+  https://github.com/metabase/metabase/pull/17722"
+  [cards channels requested]
+  (perms/check-has-application-permission :subscription false)
+  (let [pulse-data (without-collection-for-dashboard-subscription requested)]
+    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+    ;; Check after the permission checks, so the error tells a caller nothing about a dashboard they cannot read.
+    ;; Check `requested`, not `pulse-data`: for a dashboard subscription, `pulse-data` has both collection keys set
+    ;; to nil.
+    (check-dashboard-subscription-collection-keys! requested)
+    (t2/with-transaction [_conn]
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      ;; ok, now create the Pulse
+      (let [pulse (api/check-500
+                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
+        pulse))))
+
 (def ^:private PulseChannelRecipient
   [:map {:closed true}
    [:id    {:optional true} [:maybe ms/PositiveInt]]
@@ -108,7 +164,7 @@
    [:schedule_frame {:optional true}   [:maybe ::pulse.schema/pulse-channel.schedule-frame]]])
 
 (def ^:private PulseChannel
-  "The fields [[metabase.pulse.write/create-pulse-channel!]] reads off a channel."
+  "The fields [[metabase.pulse.models.pulse-channel/create-pulse-channel!]] reads off a channel."
   (into [:map {:closed true :decode/normalize {:leave pulse.schema/check-schedule}}]
         (drop 2 TestPulseChannel)))
 
@@ -135,7 +191,7 @@
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]
    request]
-  (pulse.write/create-pulse-with-perm-checks!
+  (create-pulse-with-perm-checks!
    cards
    channels
    {:name                name
@@ -163,6 +219,103 @@
         models.pulse/maybe-strip-sensitive-metadata
         (t2/hydrate :can_write))))
 
+(defn- maybe-add-recipients
+  "Merge back the recipients the current user was not allowed to see before writing `pulse-updates`.
+
+  The `:channels` submitted to an update are authoritative — [[metabase.pulse.models.pulse/update-notification-channels!]]
+  deletes any recipient not present — so every recipient hidden on the read path must be restored on
+  the write path, or a caller who reads a pulse and submits it back silently deletes recipients it
+  never saw. Two read filters hide recipients, and each is compensated here:
+
+  * sandboxed and connection-impersonated users see only themselves
+    (see [[metabase.pulse.models.pulse/maybe-filter-pulses-recipients]]);
+  * tenant-scoped users see only same-tenant users
+    (see [[metabase.pulse.models.pulse/hidden-cross-tenant-recipients]]).
+
+  Only Metabase-user recipients are merged back. Raw email addresses stay visible to these users
+  under both filters, so they remain the caller's to add or remove."
+  [pulse-updates pulse-before-update]
+  (let [existing-recipients (:recipients (email-channel pulse-before-update))
+        recipients-to-add   (concat
+                             (when (perms/sandboxed-or-impersonated-user?)
+                               (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                                       existing-recipients))
+                             (models.pulse/hidden-cross-tenant-recipients existing-recipients))]
+    (if (and (seq recipients-to-add) (seq (:channels pulse-updates)))
+      (assoc pulse-updates :channels
+             (for [channel (:channels pulse-updates)]
+               ;; normalize like [[email-channel]]: :channel_type is a string over REST but a
+               ;; keyword when this is called directly with a hydrated pulse
+               (if (= :email (keyword (:channel_type channel)))
+                 (assoc channel :recipients
+                        (m/distinct-by (some-fn :id :email)
+                                       (concat (:recipients channel) recipients-to-add)))
+                 channel)))
+      pulse-updates)))
+
+(defn check-card-read-permissions
+  "Users can only create a pulse for `cards` they have access to."
+  [cards]
+  (let [card-ids (mapv u/the-id cards)]
+    (doseq [card-id card-ids]
+      (assert (integer? card-id)))
+    (let [id->card (into {} (map (juxt :id identity)) (t2/hydrate (pulse.db/cards card-ids) :can_read))]
+      (doseq [card-id card-ids]
+        (api/read-check (get id->card card-id))))))
+
+(defn- drop-unchanged-collection-keys
+  "Remove `:collection_id` and `:collection_position` from `pulse-updates` of a dashboard subscription.
+
+  Throw a 400 when either key differs from its stored value in `pulse`."
+  [pulse pulse-updates]
+  (doseq [k [:collection_id :collection_position]
+          :when (and (contains? pulse-updates k)
+                     (not= (get pulse-updates k) (get pulse k)))]
+    (throw (ex-info (tru "A dashboard subscription cannot change its {0}." (name k))
+                    {:status-code 400})))
+  (dissoc pulse-updates :collection_id :collection_position))
+
+(defn update-pulse-with-perm-checks!
+  "Apply `pulse-updates` to the Pulse with `id`, running the same permission checks `PUT /api/pulse/:id`
+  runs: the subscription/monitoring application permission, `api/update-check` on the Pulse (write access and the
+  advanced-permissions gate on adding recipients), read checks on any `:cards`, and the collection-change check.
+  Returns the updated Pulse.
+
+  A dashboard subscription stays in the collection of its dashboard, and it has no pin position. Throw a 400 when
+  `pulse-updates` has a different `:collection_id` or `:collection_position`. Values equal to the stored ones are
+  accepted and ignored."
+  [id {:keys [cards] :as pulse-updates}]
+  ;; Validate `:cards` up front so a bad card ref is a clean 400, not a 500. This fn is called
+  ;; directly (e.g. from the agent API), not only through the PUT endpoint whose schema already
+  ;; coerces `:cards` — without this, `check-card-read-permissions`'s `(assert (integer? card-id))`
+  ;; throws a bare AssertionError (no :status-code) on a string id and surfaces as a 500.
+  (when (some? cards)
+    (when-not (mr/validate [:sequential models.pulse/CoercibleToCardRef] cards)
+      (throw (ex-info (tru "Invalid :cards: each entry must be a card reference.")
+                      {:status-code 400}))))
+  (try
+    (perms/check-has-application-permission :monitoring)
+    (catch clojure.lang.ExceptionInfo _e
+      (perms/check-has-application-permission :subscription false)))
+  (let [pulse-before-update (api/check-404 (models.pulse/retrieve-pulse id))]
+    (api/update-check pulse-before-update pulse-updates)
+    (let [;; Drop the unchanged keys before every check below: the collection check would demand write access to the old
+          ;; and the requested collection, and `before-update` throws on any change to `:collection_id`.
+          pulse-updates (cond->> pulse-updates
+                          (:dashboard_id pulse-before-update) (drop-unchanged-collection-keys pulse-before-update))]
+      (check-card-read-permissions cards)
+      (let [pulse-updates (maybe-add-recipients pulse-updates pulse-before-update)]
+        (t2/with-transaction [_conn]
+          ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+          ;; depending on what changed.
+          (api/maybe-reconcile-collection-position! (select-keys pulse-before-update [:collection_id :collection_position]) (select-keys pulse-updates [:collection_id :collection_position]))
+          ;; ok, now update the Pulse
+          (models.pulse/update-pulse!
+           (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                              :archived :parameters])
+                  :id id))))))
+  (models.pulse/retrieve-pulse id))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -181,7 +334,7 @@
                      [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                      [:archived      {:default false} [:maybe :boolean]]
                      [:parameters    {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]]]
-  (pulse.write/update-pulse-with-perm-checks! id pulse-updates))
+  (update-pulse-with-perm-checks! id pulse-updates))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -246,7 +399,7 @@
    request]
   (perms/check-has-application-permission :subscription false)
   ;; Check permissions on cards that exist. Placeholders and iframes don't matter.
-  (pulse.write/check-card-read-permissions
+  (check-card-read-permissions
    (remove (fn [{:keys [id display]}]
              (and (nil? id)
                   (or (= "placeholder" display)

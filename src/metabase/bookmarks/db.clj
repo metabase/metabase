@@ -164,14 +164,6 @@
   [rows :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
   (t2/insert! :model/BookmarkOrdering rows))
 
-(mu/defn replace-bookmark-orderings!
-  "Replace the BookmarkOrderings of the User with `user-id` with `rows` in one transaction."
-  [user-id :- ::lib.schema.id/user
-   rows    :- [:sequential (mut/select-keys ::bookmarks.schema/bookmark-ordering.update [:user_id :type :item_id :ordering])]]
-  (t2/with-transaction [_conn]
-    (delete-bookmark-orderings-for-user! user-id)
-    (insert-bookmark-orderings! rows)))
-
 (defn- bookmarks-union-query
   [user-id]
   (let [as-null      (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
@@ -227,14 +219,6 @@
                                                  :created_at]
                                         :from   [:exploration_bookmark]
                                         :where  [:= :user_id user-id]})}))
-
-(mu/defn bookmarked-items :- [:set [:tuple :string ms/PositiveInt]]
-  "The type and item id of each bookmark of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (into #{}
-        (map (juxt :type :item_id))
-        (mdb/query {:select [:type :item_id]
-                    :from   [[(bookmarks-union-query user-id) :bookmark]]})))
 
 (mr/def ::bookmark-row
   "A bookmark row left joined against the Card, Dashboard, Collection, Document, and Exploration tables."

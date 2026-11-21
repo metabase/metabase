@@ -26,8 +26,8 @@
   - `:analysis-columns`, the columns whose update has the analysis job analyze the entity again.
   - `:output-columns`, the columns whose update changes what the entities depending on the entity read.
   - `:part-of`, for a model whose rows are parts of an entity, `{:type entity-type :key column}`: the entity of the type
-    whose id the column holds, or with `:via f` the one whose id `f` returns for the column's value, nil when there is
-    none.
+    whose id the column holds, or with `:via [model column]` the one whose id that column holds of the row of that
+    model whose id the column holds.
   - `:part-columns`, with `:part-of`, the columns whose update changes the entity the row is a part of."
   (:require
    [toucan2.model :as t2.model]))
@@ -50,7 +50,7 @@
    [:part-of            {:optional true} [:map {:closed true}
                                           [:type :keyword]
                                           [:key  :keyword]
-                                          [:via  {:optional true} ifn?]]]
+                                          [:via  {:optional true} [:tuple :keyword :keyword]]]]
    [:part-columns       {:optional true} [:set :keyword]]])
 
 (defmulti spec

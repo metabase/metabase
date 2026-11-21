@@ -33,7 +33,7 @@
 (def ^:private monitored-cache-vars
   "The vars holding the memoization caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed
   function (see the namespace docstring)."
-  [#'schema.field/field-id->immutable-info
+  [#'schema.field/field-id->table-id
    #'database/table-id->database-id
    #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*

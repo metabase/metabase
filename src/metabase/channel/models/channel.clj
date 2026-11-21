@@ -117,25 +117,10 @@
     (when-not (and schema (mr/validate (if (= channel-type :channel/email) [:maybe schema] schema) details))
       (throw (ex-info (tru "The details of a channel must fit its type.") {:status-code 400})))))
 
-(defn- check-name-unused
-  "Throws a 409 when another Channel already has the name of `channel`."
-  [{channel-name :name, channel-id :id}]
-  (when (channel.db/other-channel-named? channel-name channel-id)
-    (throw (ex-info (tru "Channel with that name already exists")
-                    {:status-code 409
-                     :errors      {:name (tru "Channel with that name already exists")}}))))
-
-(t2/define-before-insert :model/Channel
-  [channel]
-  (check-name-unused channel)
-  channel)
-
 (t2/define-before-update :model/Channel
   [channel]
   (let [changes       (t2/changes channel)
         deactivation? (false? (:active changes))]
-    (when (contains? changes :name)
-      (check-name-unused channel))
     (when (not= (contains? changes :type) (contains? changes :details))
       (check-type-and-details channel))
     (when deactivation?
@@ -173,13 +158,16 @@
   (when (some-> (:channel_type (t2/changes instance)) keyword (not= (keyword (:channel_type (t2/original instance)))))
     (throw (ex-info (tru "You cannot change the channel type of a channel template.") {:status-code 400})))
   (check-valid-channel-template instance)
-  (when (seq (t2/changes instance))
-    (log-template-change! :update instance))
   instance)
 
 (t2/define-after-insert :model/ChannelTemplate
   [instance]
   (log-template-change! :create instance)
+  instance)
+
+(t2/define-after-update :model/ChannelTemplate
+  [instance]
+  (log-template-change! :update instance)
   instance)
 
 ;; Currently only email channel has templates, but this is extensible

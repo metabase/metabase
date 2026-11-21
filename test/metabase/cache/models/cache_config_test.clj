@@ -73,55 +73,6 @@
       (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:model "dashboard"})))))
     (is (=? {:model "question" :model_id card-id} (t2/select-one :model/CacheConfig :id config-id)))))
 
-(deftest insert-refuses-model-id-not-fitting-model-test
-  (mt/with-temp [:model/Card {card-id :id} {}]
-    (testing "root config with positive model_id"
-      (is (= 400 (status-code #(t2/insert! :model/CacheConfig {:model "root" :model_id card-id
-                                                               :strategy :nocache :config {}})))))
-    (testing "question config with model_id 0"
-      (is (= 400 (status-code #(t2/insert! :model/CacheConfig {:model "question" :model_id 0
-                                                               :strategy :nocache :config {}})))))
-    (is (not (t2/exists? :model/CacheConfig :model_id card-id)))))
-
-(deftest insert-refuses-missing-target-test
-  (mt/with-temp [:model/Card      {card-id :id}      {}
-                 :model/Dashboard {dashboard-id :id} {}
-                 :model/Database  {database-id :id}  {}]
-    (t2/delete! :model/Card :id card-id)
-    (t2/delete! :model/Dashboard :id dashboard-id)
-    (t2/delete! :model/Database :id database-id)
-    (doseq [[model target-id] [["question" card-id] ["dashboard" dashboard-id] ["database" database-id]]]
-      (testing model
-        (is (= 400 (status-code #(t2/insert! :model/CacheConfig {:model model :model_id target-id
-                                                                 :strategy :nocache :config {}}))))
-        (is (not (t2/exists? :model/CacheConfig :model model :model_id target-id)))))))
-
-(deftest insert-refuses-invalid-strategy-test
-  (mt/with-temp [:model/Card {card-id :id} {}]
-    (doseq [[row message] [[{:strategy :ttl :config {:multiplier 10}} "ttl without min_duration_ms"]
-                           [{:strategy :duration :config {:duration 1 :unit "weeks"}} "unknown duration unit"]
-                           [{:strategy :schedule :config {:schedule "not a cron"}} "invalid cron schedule"]]]
-      (testing message
-        (is (= 400 (status-code #(t2/insert! :model/CacheConfig (merge {:model "question" :model_id card-id} row)))))))
-    (is (not (t2/exists? :model/CacheConfig :model "question" :model_id card-id)))))
-
-(deftest update-refuses-invalid-strategy-test
-  (mt/with-temp [:model/Card        {card-id :id}   {}
-                 :model/CacheConfig {config-id :id} {:model "question" :model_id card-id
-                                                     :strategy :ttl :config {:multiplier 10 :min_duration_ms 100}}]
-    (testing "config that does not fit stored strategy"
-      (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:config {:duration 1 :unit "hours"}})))))
-    (testing "strategy that does not fit stored config"
-      (is (= 400 (status-code #(t2/update! :model/CacheConfig :id config-id {:strategy :schedule})))))
-    (testing "strategy and config changed together"
-      (t2/update! :model/CacheConfig :id config-id {:strategy :duration :config {:duration 1 :unit "hours"}
-                                                    :refresh_automatically false})
-      (is (=? {:strategy :duration :config {:duration 1 :unit "hours"}}
-              (t2/select-one :model/CacheConfig :id config-id))))
-    (testing "column outside strategy is not checked"
-      (t2/update! :model/CacheConfig :id config-id {:next_run_at nil})
-      (is (t2/exists? :model/CacheConfig :id config-id)))))
-
 (deftest delete-card-deletes-its-cache-config-test
   (mt/with-temp [:model/Card        {card-id :id}   {}
                  :model/CacheConfig {config-id :id} {:model "question" :model_id card-id}]

@@ -157,24 +157,6 @@
   [row :- ::users.schema/user.update]
   (t2/insert-returning-instance! :model/User row))
 
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number of rows updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
-
-(mu/defn other-user-with-email-exists?
-  "Whether a User other than the one with `user-id` has a lower-cased email equal to `lower-case-email`."
-  [lower-case-email :- :string
-   user-id          :- ::lib.schema.id/user]
-  (t2/exists? :model/User :%lower.email lower-case-email :id [:not= user-id]))
-
-(mu/defn rename-collection!
-  "Set the name of the Collection with `collection-id`."
-  [collection-id   :- ::lib.schema.id/collection
-   collection-name :- :string]
-  (t2/update! :model/Collection :id collection-id {:name collection-name}))
-
 (mu/defn same-groups-user-ids
   "The `:user_id`s of the Users sharing a PermissionsGroup other than the one with `all-users-group-id` with the User
   with `user-id`."

@@ -28,7 +28,7 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.permissions-rest.write :as perms-rest.write]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
@@ -1399,7 +1399,7 @@
       (perms.test-util/with-no-data-perms-for-all-users!
         (perms.test-util/with-restored-perms!
           (perms.test-util/with-restored-data-perms!
-            (perms-rest.write/update-data-perms-graph!* {all-users-group-id graph})
+            (data-perms.graph/update-data-perms-graph!* {all-users-group-id graph})
             (f)))))))
 
 (defmacro with-all-users-data-perms-graph!

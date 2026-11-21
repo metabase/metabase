@@ -9,7 +9,6 @@
    [metabase.actions.hierarchy]
    [metabase.actions.models]
    [metabase.actions.scope]
-   [metabase.actions.write]
    [potemkin :as p]))
 
 (comment
@@ -18,8 +17,7 @@
   metabase.actions.execution/keep-me
   metabase.actions.hierarchy/keep-me
   metabase.actions.models/keep-me
-  metabase.actions.scope/keep-me
-  metabase.actions.write/keep-me)
+  metabase.actions.scope/keep-me)
 
 (p/import-vars
  [metabase.actions.actions
@@ -56,15 +54,15 @@
   fetch-values]
  [metabase.actions.models
   adhoc-action
+  check-action-databases-enabled
+  check-implicit-action-table-pk
+  check-implicit-actions-supported
   dashcard->action
+  insert!
   select-action
   select-actions
-  select-actions-for-ids]
- [metabase.actions.write
-  create-action!
-  insert!
-  update!
-  update-action!]
+  select-actions-for-ids
+  update!]
  [metabase.actions.events
   publish-action-success!]
  [metabase.actions.scope

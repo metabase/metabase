@@ -162,34 +162,38 @@
    query-hash :- [:maybe :string]]
   (t2/update! :model/PersistedInfo :id id {:definition      definition
                                            :query_hash      query-hash
+                                           :active          false
+                                           :refresh_end     nil
                                            :state           "refreshing"}))
 
 (mu/defn end-persisted-info-refresh!
-  "Record the outcome of the refresh of the PersistedInfo with `id`: `state` (\"persisted\" or \"error\") and the
-  `error` message, ended now. Returns the number updated."
+  "Record the outcome of the refresh of the PersistedInfo with `id`: `state` (\"persisted\" or \"error\"), whether
+  it is now `active?`, and the `error` message, ended now. Returns the number updated."
   [id      :- ms/PositiveInt
+   active? :- :boolean
    state   :- [:enum "persisted" "error"]
    error   :- [:maybe :string]]
-  (t2/update! :model/PersistedInfo :id id {:state state
-                                           :error error}))
+  (t2/update! :model/PersistedInfo :id id {:active active?
+                                           :state  state
+                                           :error  error}))
 
 (mu/defn deactivate-all-persisted-infos!
   "Deactivate every PersistedInfo and move it to `state`, returning the number updated."
   [state :- :string]
-  (t2/update! :model/PersistedInfo {} {:state state}))
+  (t2/update! :model/PersistedInfo {} {:active false, :state state, :state_change_at :%now}))
 
 (mu/defn deactivate-persisted-info!
   "Deactivate the PersistedInfo with `id` and move it to `state`, returning the number updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/PersistedInfo :id id {:state state}))
+  (t2/update! :model/PersistedInfo :id id {:active false, :state state, :state_change_at :%now}))
 
 (mu/defn deactivate-persisted-infos-for-database!
   "Deactivate the PersistedInfos of the Database with `database-id` and move them to `state`, returning the
   number updated."
   [database-id :- ::lib.schema.id/database
    state       :- :string]
-  (t2/update! :model/PersistedInfo :database_id database-id {:state state}))
+  (t2/update! :model/PersistedInfo :database_id database-id {:active false, :state state, :state_change_at :%now}))
 
 (mu/defn invalidate-persisted-infos-for-cards!
   "Deactivate the active PersistedInfos of the Cards with `card-ids` and move them back to creating, returning
@@ -197,18 +201,25 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/update! :model/PersistedInfo
               {:active true, :card_id [:in card-ids]}
-              {:state "creating"}))
+              {:active false, :state "creating", :state_change_at :%now}))
 
 (mu/defn reset-persisted-info-to-creating!
   "Deactivate the PersistedInfo with `id` and move it back to creating, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/PersistedInfo :id id {:state "creating"}))
+  (t2/update! :model/PersistedInfo :id id {:active false, :state "creating", :state_change_at :%now}))
 
 (mu/defn ready-deletable-persisted-infos!
   "Move the deletable PersistedInfos of the Database with `database-id` to `state`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    state       :- :string]
-  (t2/update! :model/PersistedInfo :database_id [:auto/param database-id] :state "deletable" {:state state}))
+  (t2/query-one
+   {:update [:persisted_info]
+    :where [:and
+            [:= :database_id database-id]
+            [:= :state "deletable"]]
+    :set {:active false,
+          :state state,
+          :state_change_at :%now}}))
 
 (mu/defn delete-persisted-info!
   "Delete the PersistedInfo with `id`, returning the number deleted."

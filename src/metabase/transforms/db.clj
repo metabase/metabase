@@ -533,9 +533,10 @@
   (t2/update! :model/TransformRun
               :id [:in run-ids]
               :is_active true
-              {:status   :canceled
-               :end_time :%now
-               :message  "Canceled by user but could not guarantee run stopped."}))
+              {:status    :canceled
+               :end_time  :%now
+               :is_active nil
+               :message   "Canceled by user but could not guarantee run stopped."}))
 
 (mu/defn mark-run-canceling!
   "Set the status of the TransformRun with `run-id` to canceling."

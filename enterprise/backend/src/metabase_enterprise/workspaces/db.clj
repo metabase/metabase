@@ -19,8 +19,8 @@
    [:workspace_id     ms/PositiveInt]
    [:database_id      ::lib.schema.id/database]
    [:input_schemas    [:sequential :string]]
-   [:database_details {:optional true} ::warehouses.schema/database.connection-details]
-   [:output_namespace {:optional true} :string]
+   [:database_details ::warehouses.schema/database.connection-details]
+   [:output_namespace :string]
    [:status           {:optional true} ::status]
    [:updated_at       {:optional true} (ms/InstanceOfClass java.time.OffsetDateTime)]])
 
@@ -218,6 +218,11 @@
   "Delete the WorkspaceDatabase with `workspace-database-id`."
   [workspace-database-id :- ms/PositiveInt]
   (t2/delete! :model/WorkspaceDatabase :id workspace-database-id))
+
+(mu/defn delete-workspace-databases!
+  "Delete the WorkspaceDatabases with ids in `workspace-database-ids`."
+  [workspace-database-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/WorkspaceDatabase :id [:in workspace-database-ids]))
 
 (mu/defn workspace-has-active-databases?
   "Whether the Workspace with `workspace-id` has a WorkspaceDatabase that is not `:unprovisioned`."

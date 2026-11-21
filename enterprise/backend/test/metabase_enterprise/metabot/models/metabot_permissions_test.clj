@@ -48,12 +48,6 @@
                  (lib/normalize ::metabot-ee.schema/metabot-permissions.update
                                 {:group_id admin-id :perm_type "permission/metabot-nlq" :perm_value "yes"}
                                 {:throw? true}))))
-        (testing "insert"
-          (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
-            (mt/with-temporary-setting-values [metabot-advanced-permissions true]
-              (is (= 400 (insert-status! {:group_id group-id :perm_type :permission/metabot-nlq :perm_value :maybe})))
-              (is (not (t2/exists? :model/MetabotPermissions :group_id group-id)))
-              (is (= :inserted (insert-status! {:group_id group-id :perm_type :permission/metabot-nlq :perm_value :yes}))))))
         (testing "update"
           (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Test Group"}]
             (mt/with-temporary-setting-values [metabot-advanced-permissions true]

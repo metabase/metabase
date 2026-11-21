@@ -8,8 +8,8 @@
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.write :as perms]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 

@@ -34,6 +34,12 @@
    provider :- :string]
   (t2/select-one-pk :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
+(mu/defn auth-identity-expiry
+  "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id (long user-id) :provider [:auto/param provider]))
+
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
   [user-id  :- ::lib.schema.id/user
@@ -131,7 +137,7 @@
   (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))
 
 (mu/defn insert-session!
-  "Insert a Session and return the inserted instance; the Session model's hook takes its expiry from the AuthIdentity.
+  "Insert a Session and return the inserted instance.
 
   `opts` carries provider-specific extras. The `:saml-*` keys come from a SAML login assertion and
   are stored so single logout can name the session and subject the IdP knows."
@@ -139,6 +145,7 @@
    user-id              :- ::lib.schema.id/user
    auth-identity-id     :- [:maybe ms/PositiveInt]
    session-key          :- :string
+   expires-at           :- [:maybe ms/TemporalInstant]
    mfa-auth-identity-id :- [:maybe ms/PositiveInt]
    opts                 :- [:map {:closed true}
                             [:saml-session-index  {:optional true} [:maybe :string]]
@@ -152,6 +159,7 @@
                                  :user_id (long user-id)
                                  :auth_identity_id (some-> auth-identity-id long)
                                  :session_key session-key
+                                 :expires_at [:auto/param expires-at]
                                  :mfa_auth_identity_id (some-> mfa-auth-identity-id long)
                                  :saml_session_index [:auto/param (:saml-session-index opts)]
                                  :saml_name_id [:auto/param (:saml-name-id opts)]

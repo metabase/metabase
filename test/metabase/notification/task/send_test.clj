@@ -9,7 +9,6 @@
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.notification.write :as notification.write]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -38,7 +37,7 @@
             (let [captured-messages (atom [])]
               (with-redefs [channel/send! (fn [& args]
                                             (swap! captured-messages conj args))]
-                (let [noti (notification.write/create-notification!
+                (let [noti (models.notification/create-notification!
                             {:payload_type :notification/testing}
                             [{:type :notification-subscription/cron
                               :cron_schedule every-second}]
@@ -89,7 +88,7 @@
                                                                            :dataset_query          (mt/native-query {:query "SELECT 1"})
                                                                            :visualization_settings {}
                                                                            :creator_id             (mt/user->id :crowberto)})
-                  notification (notification.write/create-notification!
+                  notification (models.notification/create-notification!
                                 {:payload_type :notification/card
                                  :payload      {:card_id (:id card)}
                                  :creator_id   (mt/user->id :crowberto)}
@@ -135,7 +134,7 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
-      (let [notification          (notification.write/create-notification!
+      (let [notification          (models.notification/create-notification!
                                    {:payload_type :notification/testing}
                                    [{:type :notification-subscription/cron
                                      :cron_schedule "0 0 * 1/1 * ? *"}]
@@ -166,7 +165,7 @@
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!
       (task/init! ::task.notification/SendNotifications)
-      (let [notification          (notification.write/create-notification!
+      (let [notification          (models.notification/create-notification!
                                    {:payload_type :notification/testing
                                     :active       true}
                                    [{:type :notification-subscription/cron
@@ -192,7 +191,7 @@
     (mt/with-temporary-setting-values [driver/report-timezone "UTC"]
       (mt/with-temp-scheduler!
         (task/init! ::task.notification/SendNotifications)
-        (let [notification    (notification.write/create-notification!
+        (let [notification    (models.notification/create-notification!
                                {:payload_type :notification/testing}
                                [{:type :notification-subscription/cron
                                  :cron_schedule "0 0 * 1/1 * ? *"}]

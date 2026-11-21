@@ -1,7 +1,6 @@
 (ns metabase.bookmarks.models.bookmark-test
   (:require
    [clojure.test :refer :all]
-   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmark]
    [metabase.bookmarks.schema :as bookmarks.schema]
    [metabase.permissions.core :as perms]
@@ -63,56 +62,3 @@
   (testing "BookmarkOrdering type is bookmarkable model"
     (is (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "dashboard"}))
     (is (not (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "table"})))))
-
-(defn- orderings
-  "The type, item id and position of each BookmarkOrdering of `user-id`, by position."
-  [user-id]
-  (t2/select-fn-vec (juxt :type :item_id :ordering) :model/BookmarkOrdering
-                    :user_id user-id {:order-by [[:ordering :asc]]}))
-
-(deftest save-ordering-keeps-bookmarked-items-only-test
-  (mt/with-temp [:model/Card {card-id :id}           {}
-                 :model/Dashboard {dashboard-id :id} {}
-                 :model/Card {unbookmarked-id :id}   {}]
-    (mt/with-model-cleanup [:model/BookmarkOrdering :model/CardBookmark :model/DashboardBookmark]
-      (let [rasta    (mt/user->id :rasta)
-            crowberto (mt/user->id :crowberto)]
-        (t2/insert! :model/CardBookmark {:user_id rasta :card_id card-id})
-        (t2/insert! :model/DashboardBookmark {:user_id rasta :dashboard_id dashboard-id})
-        (t2/insert! :model/BookmarkOrdering {:user_id crowberto :type "card" :item_id card-id :ordering 0})
-        (testing "stale orderings are replaced and unbookmarked items get none"
-          (bookmark/save-ordering! rasta [{:type "card" :item_id unbookmarked-id}
-                                          {:type "dashboard" :item_id dashboard-id}
-                                          {:type "card" :item_id card-id}])
-          (is (= [["dashboard" dashboard-id 0] ["card" card-id 1]]
-                 (orderings rasta))))
-        (testing "orderings of other users are untouched"
-          (is (= [["card" card-id 0]] (orderings crowberto))))))))
-
-(deftest save-ordering-is-atomic-test
-  (mt/with-temp [:model/Card {card-id :id}           {}
-                 :model/Dashboard {dashboard-id :id} {}]
-    (mt/with-model-cleanup [:model/BookmarkOrdering :model/CardBookmark :model/DashboardBookmark]
-      (let [rasta (mt/user->id :rasta)]
-        (t2/insert! :model/CardBookmark {:user_id rasta :card_id card-id})
-        (t2/insert! :model/DashboardBookmark {:user_id rasta :dashboard_id dashboard-id})
-        (bookmark/save-ordering! rasta [{:type "card" :item_id card-id}
-                                        {:type "dashboard" :item_id dashboard-id}])
-        (testing "a failed insert keeps the previous ordering"
-          (mt/with-dynamic-fn-redefs [bookmarks.db/insert-bookmark-orderings! (fn [_rows] (throw (ex-info "Insert failed" {})))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Insert failed"
-                                  (bookmark/save-ordering! rasta [{:type "dashboard" :item_id dashboard-id}
-                                                                  {:type "card" :item_id card-id}]))))
-          (is (= [["card" card-id 0] ["dashboard" dashboard-id 1]]
-                 (orderings rasta))))))))
-
-(deftest collection-bookmark-reads-collection-once-test
-  (testing "second bookmark of same Collection reads nothing about Collection"
-    (mt/with-temp [:model/Collection {coll-id :id} {}]
-      (mt/with-model-cleanup [:model/CollectionBookmark]
-        (let [insert-call-count (fn [user]
-                                  (t2/with-call-count [call-count]
-                                    (t2/insert! :model/CollectionBookmark {:user_id       (mt/user->id user)
-                                                                           :collection_id coll-id})
-                                    (call-count)))]
-          (is (= 1 (- (insert-call-count :rasta) (insert-call-count :crowberto)))))))))

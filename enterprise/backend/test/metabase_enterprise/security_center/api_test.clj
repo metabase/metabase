@@ -6,13 +6,11 @@
    [metabase-enterprise.security-center.matching :as matching]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
-   [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.i18n :refer [deferred-tru]]
-   [methodical.core :as methodical]))
+   [metabase.util.i18n :refer [deferred-tru]]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -135,27 +133,6 @@
         (testing "non-superuser gets 403"
           (mt/user-http-request :rasta :post 403
                                 "ee/security-center/advisories/SC-0000-001/acknowledge"))))))
-
-(def ^:private ^:dynamic *acknowledge-events* nil)
-
-(events/derive! ::acknowledge-test-event :metabase/event)
-(events/derive! :event/security-advisory-acknowledge ::acknowledge-test-event)
-
-(methodical/defmethod events/publish-event! ::acknowledge-test-event
-  [_topic event]
-  (when *acknowledge-events*
-    (swap! *acknowledge-events* conj event)))
-
-(deftest acknowledge-event-carries-acknowledged-advisory-test
-  (mt/with-premium-features #{:admin-security-center}
-    (with-test-advisories!
-      (binding [*acknowledge-events* (atom [])]
-        (mt/user-http-request :crowberto :post 200 "ee/security-center/advisories/SC-0000-001/acknowledge")
-        (is (=? [{:object  {:advisory_id     "SC-0000-001"
-                            :acknowledged_by (mt/user->id :crowberto)
-                            :acknowledged_at some?}
-                  :user-id (mt/user->id :crowberto)}]
-                @*acknowledge-events*))))))
 
 (deftest acknowledge-advisories-test
   (testing "POST /api/ee/security-center/advisories/acknowledge"

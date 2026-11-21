@@ -83,6 +83,9 @@
     (when-not grant
       (throw (ex-info (tru "Grant not found")
                       {:status-code 404})))
+    (when (:revoked_at grant)
+      (throw (ex-info (tru "Grant is already revoked")
+                      {:status-code 400})))
     (let [now (t/instant)]
       (support-access-grants.db/update-grant! grant-id
                                               {:revoked_at now

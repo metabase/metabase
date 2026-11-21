@@ -1,27 +1,27 @@
 (ns metabase.collections.core
   "Main namespace for interacting with collections"
   (:require
+   [metabase.collections.create]
    [metabase.collections.models.collection]
+   [metabase.collections.update]
    [metabase.collections.util]
-   [metabase.collections.write]
    [potemkin :as p]))
 
 (comment
-  metabase.collections.write/keep-me
+  metabase.collections.create/keep-me
   metabase.collections.models.collection/keep-me
+  metabase.collections.update/keep-me
   metabase.collections.util/keep-me)
 
 (p/import-vars
- [metabase.collections.write
-  clear-remote-synced-collection!
-  create-collection!
-  create-library-collection!
-  delete-collection!
-  move-collection!
-  set-remote-synced!
+ [metabase.collections.create
+  create-collection!]
+ [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection
   has-remote-synced-collection?
+  clear-remote-synced-collection!
+  create-library-collection!
   descendant-ids
   instance-analytics-collection-type
   library-collection
@@ -32,6 +32,7 @@
   location-path
   location-path->ids
   root-collection-type-by-id
+  set-remote-synced!
   shared-tenant-collection?
   slugify
   transforms-ns

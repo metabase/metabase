@@ -697,38 +697,12 @@
                (is (t/after? post-delete post-insert)
                    "delete bumped invalidated_at past its post-insert value")))))))))
 
-(deftest cache-invalidation-on-update-test
-  (testing "repointing a TableRemapping bumps cache_config.invalidated_at for the database"
-    (clean-db-fixture!
-     (mt/id)
-     (fn []
-       (ws.table-remapping/add-mapping!
-        (mt/id)
-        {:schema "PUBLIC" :table "ORDERS"}
-        {:schema "ws_schema" :table "orders_copy"})
-       (with-database-cache-config!
-         (mt/id)
-         (fn [initial-invalidated-at]
-           (t2/update! :model/TableRemapping
-                       :database_id (mt/id)
-                       {:to_table_name "orders_other"})
-           (is (t/after? (cache-config-invalidated-at (mt/id)) initial-invalidated-at))))
-       (testing "an update that changes no routing column leaves the cache alone"
-         (with-database-cache-config!
-           (mt/id)
-           (fn [initial-invalidated-at]
-             (t2/update! :model/TableRemapping
-                         :database_id (mt/id)
-                         {:to_table_name "orders_other"})
-             (is (= (t/instant initial-invalidated-at)
-                    (t/instant (cache-config-invalidated-at (mt/id))))))))))))
-
 (deftest cache-invalidation-only-affects-target-database-test
   (testing "inserting a remap on db A doesn't invalidate db B's cache config"
     (clean-db-fixture!
      (mt/id)
      (fn []
-       (mt/with-temp [:model/Database {other-db-id :id} {}]
+       (let [other-db-id 999999]
          (with-database-cache-config!
            (mt/id)
            (fn [_]
@@ -1086,16 +1060,3 @@
              "pk-side schema rewrites to canonical (denormalized nil)")
          (is (= "users" (:pk-table-name out))
              "pk-side name rewrites to canonical"))))))
-
-(deftest insert-reads-no-rows-back-test
-  (testing "an insert of a TableRemapping runs the INSERT and the cache invalidation, and no SELECT of the row"
-    (mt/with-temp [:model/Database {db-id :id} {}]
-      (try
-        (t2/with-call-count [call-count]
-          (t2/insert! :model/TableRemapping {:database_id     db-id
-                                             :from_schema     "PUBLIC"
-                                             :from_table_name "ORDERS"
-                                             :to_schema       "ws_schema"
-                                             :to_table_name   "orders_copy"})
-          (is (= 2 (call-count))))
-        (finally (t2/delete! :model/TableRemapping :database_id db-id))))))

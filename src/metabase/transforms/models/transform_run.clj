@@ -33,7 +33,7 @@
 
 (t2/define-before-update :model/TransformRun
   [run]
-  (cond-> (transforms.models.u/derive-is-active-on-update run)
+  (cond-> run
     (transforms.models.u/ended-without-end-time? run) (assoc :end_time (mi/now))))
 
 (t2/deftransforms :model/TransformRun
@@ -43,11 +43,11 @@
 (t2/define-before-insert :model/TransformRun
   [{:keys [transform_id] :as run}]
   (if-let [transform (some-> transform_id transforms.db/transform-snapshot)]
-    (assoc (transforms.models.u/with-run-defaults run)
+    (assoc run
            :transform_name      (:name transform)
            :transform_entity_id (:entity_id transform)
            :metered_as          (premium-features/transform-metered-as (:source_type transform)))
-    (transforms.models.u/with-run-defaults run)))
+    run))
 
 ;; a run is only readable if its transform is; orphaned runs (transform deleted) are superuser-only
 (methodical/defmethod t2/simple-hydrate [:model/TransformRun :can_read]
@@ -106,7 +106,8 @@
     properties   :- ::transforms.schema/transform-run.update]
    (let [run (transforms.db/insert-run! (assoc properties
                                                :transform_id transform-id
-                                               :status :started))]
+                                               :status :started
+                                               :is_active true))]
      ;; Pass user_id to the event so audit log properly attributes the run
      (events/publish-event! :event/transform-run-start
                             (cond-> {:object run}
@@ -119,14 +120,20 @@
    (succeed-started-run! run-id {}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :succeeded}))
+   (u/prog1 (transforms.db/finish-active-run! run-id
+                                              (merge properties
+                                                     {:status    :succeeded
+                                                      :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
 (mu/defn fail-started-run! :- :int
   "Mark the started active run as failed and inactive."
   [run-id     :- ms/PositiveInt
    properties :- ::transforms.schema/transform-run.update]
-  (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :failed}))
+  (u/prog1 (transforms.db/finish-active-run! run-id
+                                             (merge properties
+                                                    {:status    :failed
+                                                     :is_active nil}))
     (cancel/delete-cancelation! run-id)))
 
 (mu/defn cancel-run! :- :int
@@ -135,7 +142,10 @@
    (cancel-run! run-id {:message "Canceled by user"}))
   ([run-id     :- ms/PositiveInt
     properties :- ::transforms.schema/transform-run.update]
-   (u/prog1 (transforms.db/finish-active-run! run-id (merge properties {:status :canceled}))
+   (u/prog1 (transforms.db/finish-active-run! run-id
+                                              (merge properties
+                                                     {:status    :canceled
+                                                      :is_active nil}))
      (cancel/delete-cancelation! run-id))))
 
 (mu/defn- publish-timeout-event! :- :nil
@@ -158,8 +168,9 @@
     properties :- ::transforms.schema/transform-run.update]
    (u/prog1 (transforms.db/finish-active-run! run-id
                                               (merge properties
-                                                     {:message "Timed out"
-                                                      :status  :timeout}))
+                                                     {:message   "Timed out"
+                                                      :status    :timeout
+                                                      :is_active nil}))
      (cancel/delete-cancelation! run-id)
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})

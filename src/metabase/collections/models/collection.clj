@@ -28,6 +28,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -164,6 +165,19 @@
   [collection]
   (= (:type collection) library-dashboards-collection-type))
 
+(defn- set-remote-synced-by-depth!
+  "Set `:is_remote_synced` to `remote-synced?` on `collections`, a parent in a statement before its children, since the
+  update hook of each checks the flag of its stored parent."
+  [collections remote-synced?]
+  (t2/with-transaction [_conn]
+    (doseq [[_depth level] (sort-by key (group-by #(count (filter #{\/} (:location %))) collections))]
+      (collections.db/set-collections-remote-synced! (mapv :id level) remote-synced?))))
+
+(defn clear-remote-synced-collection!
+  "Marks any remote-synced-collection as non-remote-synced"
+  []
+  (set-remote-synced-by-depth! (collections.db/remote-synced-collection-locations) false))
+
 (defn has-remote-synced-collection?
   "Return true if any collections are marked remote-sync"
   []
@@ -227,12 +241,10 @@
   "The entity_id for the Library collection."
   "librarylibrarylibrary")
 
-(def library-data-entity-id
-  "The entity id of the Library's Data collection."
+(def ^:private library-data-entity-id
   "librarylibrarydatadat")
 
-(def library-metrics-entity-id
-  "The entity id of the Library's Metrics collection."
+(def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
 (def ^:private library-dashboards-entity-id
@@ -244,6 +256,32 @@
     library-data-entity-id
     library-metrics-entity-id
     library-dashboards-entity-id})
+
+(defn- grant-library-collection-permissions!
+  "Gives All Users read and Data Analysts read-write access to the Library `collection`."
+  [collection]
+  (collections.db/delete-permissions-for-collection! (:id collection))
+  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+  (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
+
+(defn create-library-collection!
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
+  []
+  (let [library       (collections.db/insert-collection! {:name      "Library"
+                                                          :type      library-collection-type
+                                                          :location  "/"
+                                                          :entity_id library-entity-id})
+        base-location (str "/" (:id library) "/")
+        data          (collections.db/insert-collection! {:name      "Data"
+                                                          :type      library-data-collection-type
+                                                          :location  base-location
+                                                          :entity_id library-data-entity-id})
+        metrics       (collections.db/insert-collection! {:name      "Metrics"
+                                                          :type      library-metrics-collection-type
+                                                          :location  base-location
+                                                          :entity_id library-metrics-entity-id})]
+    (run! grant-library-collection-permissions! [library data metrics])
+    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -609,7 +647,7 @@
           (or (empty? ids)
               (apply distinct? ids))))))
 
-(def LocationPath
+(def ^:private LocationPath
   "Schema for a directory-style 'path' to the location of a Collection."
   [:fn #'valid-location-path?])
 
@@ -739,41 +777,21 @@
     (when-not (allowed-content-types content-type)
       (throw (ex-info error-message {:status-code 400})))))
 
-(def ^{:arglists '([collection-id])} collection-id->immutable-info
-  "The `:id`, `:namespace` and `:type` of the Collection with `collection-id`, cached once found since the Collection
-  before-update hook refuses a change of `namespace` or `type`."
-  (mdb/memoize-hits-for-application-db
-   (fn [collection-id]
-     (collections.db/collection-immutable-columns collection-id))))
-
-(defn- missing-collection-error
-  "The 404 for content put in a Collection that does not exist."
-  []
-  (let [msg (tru "Collection does not exist.")]
-    (ex-info msg {:status-code 404, :errors {:collection_id msg}})))
-
 (defn content-parent
   "The Collection with `collection-id` as the checks of the content put in it read it, nil for the root; throws a 404
   when it does not exist."
   [collection-id]
   (when collection-id
     (or (collections.db/collection-for-content-checks collection-id)
-        (throw (missing-collection-error)))))
-
-(defn- immutable-content-parent
-  "The `:id`, `:namespace` and `:type` of the Collection with `collection-id`, nil for the root; throws a 404 when it
-  does not exist."
-  [collection-id]
-  (when collection-id
-    (or (collection-id->immutable-info collection-id)
-        (throw (missing-collection-error)))))
+        (let [msg (tru "Collection does not exist.")]
+          (throw (ex-info msg {:status-code 404, :errors {:collection_id msg}}))))))
 
 (defn- content-parent-or-nil
-  "`collection`, a Collection row, or the frozen columns of the one with that id, nil when there is none."
+  "`collection`, a Collection [[content-parent]] loaded, or the one with that id, nil when there is none."
   [collection]
   (if (map? collection)
     collection
-    (some-> collection collection-id->immutable-info)))
+    (some-> collection collections.db/collection-for-content-checks)))
 
 (defn- check-library-content
   "Throws a 400 when the collection `parent` can't hold content of `content-type`; with the Library feature, tables go
@@ -1390,6 +1408,14 @@
 
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
+(defn set-remote-synced!
+  "Marks `collection` and its descendants as remote-synced, or as not remote-synced when `remote-synced?` is false."
+  [collection remote-synced?]
+  (set-remote-synced-by-depth! (collections.db/subtree-locations-to-flag (:id collection)
+                                                                         (children-location collection)
+                                                                         remote-synced?)
+                               remote-synced?))
+
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [_model k items]
@@ -1616,6 +1642,25 @@
   metabase-enterprise.data-studio.api.table
   [_seed-table-ids]
   nil)
+
+(mu/defn move-collection!
+  "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
+  [collection :- CollectionWithLocationAndIDOrRoot
+   new-location :- LocationPath]
+  (let [orig-children-location (children-location collection)
+        new-children-location  (children-location (assoc collection :location new-location))]
+    (when (= (:type collection) tenant-specific-root-collection-type)
+      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
+    ;; first move this Collection
+    (log/infof "Moving Collection %s and its descendants from %s to %s"
+               (u/the-id collection) (:location collection) new-location)
+    (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
+    (t2/with-transaction [_conn]
+      (collections.db/update-collection! (u/the-id collection) {:location new-location})
+      ;; we need to update all the descendant collections as well...
+      (collections.db/move-descendant-collections! orig-children-location
+                                                   new-children-location
+                                                   (boolean (collections.db/collection-remote-synced? (u/the-id collection)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1949,7 +1994,7 @@
   (let [change-keys (set (keys (t2/changes row)))]
     (when (and (library-root-collection? row)
                (seq (set/intersection change-keys
-                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :is_sample})))
+                                      #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
       (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400})))
     (when (and (contains? library-collection-types (:type (t2/original row)))
                (contains? change-keys :location)
@@ -1971,8 +2016,6 @@
                  (some changes [:type :personal_owner_id :is_sample :archive_operation_id]))
              (perms/data-app-collection? (:id collection-before-updates))))
    [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
-  (when (and (:archived changes) (= transforms-ns (keyword (:namespace collection-before-updates))))
-    (throw (ex-info (tru "A transforms folder cannot be archived. Delete it instead.") {:status-code 400})))
   (when (or (:personal_owner_id collection-before-updates)
             (and (not *allow-modifying-tenant-root-collections?*)
                  (= (:type collection-before-updates) tenant-specific-root-collection-type)))
@@ -2002,30 +2045,49 @@
     :else
     row))
 
-(defn- archive-layer!
-  "Archives the child Collections of `row`, a Collection being archived with an archive operation, and the items in it,
-  as followers of that operation; each child archives its own layer in turn."
-  [{:keys [id type archive_operation_id] :as row}]
-  (events/with-event-context {:archived-with [:model/Collection id]}
-    (collections.db/archive-collections-at-location! (children-location row) archive_operation_id)
-    (run! #(collections.db/archive-items-in-collections! % [id]) archivable-item-models)
-    (collections.db/archive-pulses-in-collections! [id])
-    (collections.db/archive-items-in-collections! :model/Action [id])
-    (when (= type library-data-collection-type)
-      (let [published-table-ids (collections.db/published-table-ids-in-collections [id])]
-        (collections.db/unpublish-tables-in-collections! [id])
-        (unpublish-downstream-fk-tables! published-table-ids)))))
+(defn- archive-subtree!
+  "Archives the Collections under `row` and the items in them, along with `row`, and unpublishes the tables of its
+  library Data collections."
+  [row]
+  (let [operation-id (:archive_operation_id row)
+        descendants  (collections.db/unarchived-collection-ids-with-location-like (str (children-location row) "%"))
+        ids          (vec (cons (:id row) descendants))]
+    (when (seq descendants)
+      (collections.db/archive-collections! (vec descendants) operation-id))
+    (run! #(collections.db/archive-items-in-collections! % ids) archivable-item-models)
+    (collections.db/archive-pulses-in-collections! ids)
+    (collections.db/archive-items-in-collections! :model/Action ids)
+    (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
+      (when (seq library-data-ids)
+        (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
+          (collections.db/unpublish-tables-in-collections! library-data-ids)
+          (unpublish-downstream-fk-tables! published-table-ids))))))
 
-(defn- restore-layer!
-  "Restores the child Collections of `row`, a Collection being restored, that the archive operation `operation-id` took
-  down, and the items in it that were archived along with it; each child restores its own layer in turn."
-  [{:keys [id] :as row} operation-id]
-  (events/with-event-context {:archived-with [:model/Collection id]}
-    (when operation-id
-      (collections.db/restore-collections-at-location! (children-location row) operation-id))
-    (run! #(collections.db/restore-items-in-collections! % [id]) restorable-item-models)
-    (collections.db/restore-pulses-in-collections! [id])
-    (collections.db/restore-actions-in-collections! [id])))
+(defn- restore-subtree!
+  "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
+  them, along with `row`."
+  [row]
+  (let [descendants (when-let [operation-id (:archive_operation_id row)]
+                      (collections.db/archived-collection-ids-in-operation-with-location-like
+                       (str (children-location row) "%")
+                       operation-id))
+        ids         (vec (cons (:id row) descendants))]
+    (when (seq descendants)
+      (collections.db/restore-collections! (vec descendants)))
+    (run! #(collections.db/restore-items-in-collections! % ids) restorable-item-models)
+    (collections.db/restore-pulses-in-collections! ids)
+    (collections.db/restore-actions-in-collections! ids)))
+
+(defmethod mi/after-archived-change :model/Collection
+  [_model rows changes]
+  (doseq [before rows]
+    (events/with-event-context {:archived-with [:model/Collection (:id before)]}
+      (if (:archived changes)
+        (let [row (collections.db/collection (:id before))]
+          (when (:archived_directly row)
+            (archive-subtree! row)))
+        (when (or (:archived_directly before) (not (contains? changes :archive_operation_id)))
+          (restore-subtree! before))))))
 
 (defn- archived-columns
   "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that
@@ -2056,28 +2118,19 @@
                (not (namespace-equals? (:namespace collection-before-updates) (:namespace changes))))
       (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
         (throw (ex-info msg {:status-code 400, :errors {:namespace msg}}))))
-    (when (and (contains? changes :type)
-               (not (namespace-equals? (:type collection-before-updates) (:type changes))))
-      (let [msg (tru "You cannot change the type of a Collection once it has been created.")]
-        (throw (ex-info msg {:status-code 400, :errors {:type msg}}))))
     (check-namespace-columns (merge (select-keys collection-before-updates [:namespace]) changes))
     (when moved?
       (check-parent-namespace row parent)
       (check-parent-not-archived row parent))
-    (when moved?
+    (when (or moved? (contains? changes :type))
       (check-placement row parent))
     (check-library-update row parent)
     (when moved?
       (update-perms-when-moving-across-personal-boundry! collection-before-updates changes)
       (update-perms-for-tenant-specific-namespace-change! collection-before-updates changes))
-    (let [row (cond-> (remote-synced-after-update row changes parent)
-                (:name changes)               (assoc :slug (slugify (:name changes)))
-                (contains? changes :archived) archived-columns)]
-      (when (contains? changes :archived)
-        (cond
-          (not (:archived row))         (restore-layer! row (:archive_operation_id collection-before-updates))
-          (:archive_operation_id row)   (archive-layer! row)))
-      row)))
+    (cond-> (remote-synced-after-update row changes parent)
+      (:name changes)                     (assoc :slug (slugify (:name changes)))
+      (contains? changes :archived)       archived-columns)))
 
 (defn- remote-synced-type->flag-on-update
   "`row`, an update, with the `remote-synced` type turned into the `is_remote_synced` flag."
@@ -2092,13 +2145,15 @@
         changes   (t2/changes row)
         moved?    (contains? changes :location)
         _         (when moved? (check-valid-location row))
-        ancestors (when (some #(contains? changes %) [:location :is_remote_synced])
+        ancestors (when (some #(contains? changes %) [:location :is_remote_synced :type])
                     (location-ancestors row))]
     (when moved?
       (check-ancestors-exist row ancestors))
     (when (and (contains? changes :type) (= library-collection-type (:type row)))
       (check-single-library row))
     (before-update-row row ancestors)))
+
+(mi/define-update-in-transaction :model/Collection)
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2233,7 +2288,7 @@
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
   (when collection
-    (let [collection           (if (map? collection) collection (immutable-content-parent collection))
+    (let [collection           (if (map? collection) collection (content-parent collection))
           collection-namespace (keyword (:namespace collection))
           allowed-namespaces   (allowed-namespaces model)]
       (when-not (contains? allowed-namespaces collection-namespace)
@@ -2249,11 +2304,9 @@
 
 (defn check-collection-for
   "Throws unless the Collection of `row`, if any, can hold `model`, is in an allowed namespace, and is not archived
-  unless `row` is; an archived `row` reads only the frozen columns of its Collection."
+  unless `row` is."
   [model {:keys [collection_id archived]}]
-  (when-let [parent (if archived
-                      (immutable-content-parent collection_id)
-                      (content-parent collection_id))]
+  (when-let [parent (content-parent collection_id)]
     (check-allowed-content model parent)
     (check-collection-namespace model parent)
     (check-collection-not-archived archived parent)))

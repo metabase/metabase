@@ -516,16 +516,6 @@
   [tab-id :- ms/PositiveInt]
   (t2/select-one :model/DashboardTab :id tab-id))
 
-(mu/defn dashboard-card-immutable-columns
-  "The ID and Dashboard ID of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ms/PositiveInt]
-  (t2/select-one [:model/DashboardCard :id :dashboard_id] :id [:auto/param dashcard-id]))
-
-(mu/defn dashboard-tab-immutable-columns
-  "The ID and Dashboard ID of the DashboardTab with `tab-id`, or nil."
-  [tab-id :- ms/PositiveInt]
-  (t2/select-one [:model/DashboardTab :id :dashboard_id] :id [:auto/param tab-id]))
-
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
   [rows :- [:sequential

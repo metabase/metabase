@@ -9,9 +9,9 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.transforms.models.job-run :as transforms.job-run]
+   [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.models.transform-run :as transform-run]
-   [metabase.transforms.write :as transforms.write]
    [toucan2.core :as t2]))
 
 ;; Use the default test fixture which sets up the test database
@@ -96,22 +96,22 @@
           (testing "Transform created without creator_id defaults to internal user"
             (is (= config/internal-mb-user-id (:creator_id transform))))
           (testing "Initial tag order is preserved"
-            (transforms.write/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
+            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag1) (:id tag3)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag1) (:id tag3)] (:tag_ids hydrated))
                   "Tags should be in the order specified")))
           (testing "Reordering tags preserves new order"
-            (transforms.write/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
+            (transform.model/update-transform-tags! transform-id [(:id tag3) (:id tag1) (:id tag2)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag3) (:id tag1) (:id tag2)] (:tag_ids hydrated))
                   "Tags should be reordered correctly")))
           (testing "Adding and removing tags preserves order"
-            (transforms.write/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
+            (transform.model/update-transform-tags! transform-id [(:id tag1) (:id tag4)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag1) (:id tag4)] (:tag_ids hydrated))
                   "Should have only the specified tags in order")))
           (testing "Duplicate tags are deduplicated while preserving order"
-            (transforms.write/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
+            (transform.model/update-transform-tags! transform-id [(:id tag2) (:id tag3) (:id tag2) (:id tag1)])
             (let [hydrated (t2/hydrate (t2/select-one :model/Transform :id transform-id) :transform_tag_ids)]
               (is (= [(:id tag2) (:id tag3) (:id tag1)] (:tag_ids hydrated))
                   "Duplicates removed, order preserved"))))))))
@@ -448,45 +448,3 @@
           (is (nil? (t2/select-one-fn :end_time model :id run-id)))
           (t2/update! model :id run-id {:status :succeeded :is_active nil})
           (is (some? (t2/select-one-fn :end_time model :id run-id))))))))
-
-(deftest runs-get-status-and-activity-on-insert-test
-  (mt/with-temp [:model/Transform    {transform-id :id} {}
-                 :model/TransformJob {job-id :id} {}]
-    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
-      (testing model
-        (testing "status defaults to started and the run is active"
-          (mt/with-temp [model {run-id :id} (assoc attributes :status nil :is_active nil)]
-            (is (=? {:status :started, :is_active true}
-                    (t2/select-one model :id run-id)))))
-        (testing "ended run is not active"
-          (mt/with-temp [model {run-id :id} (assoc attributes :status :failed :is_active true)]
-            (is (=? {:status :failed, :is_active nil}
-                    (t2/select-one model :id run-id)))))))))
-
-(deftest runs-lose-activity-when-they-end-test
-  (mt/with-temp [:model/Transform    {transform-id :id} {}
-                 :model/TransformJob {job-id :id} {}]
-    (doseq [[model attributes] (started-run-attributes transform-id job-id)]
-      (testing model
-        (mt/with-temp [model {run-id :id} attributes]
-          (t2/update! model :id run-id {:status :canceling})
-          (is (true? (t2/select-one-fn :is_active model :id run-id)))
-          (t2/update! model :id run-id {:status :canceled})
-          (is (=? {:status :canceled, :is_active nil}
-                  (t2/select-one model :id run-id))))))))
-
-(deftest ended-run-drops-cancelation-test
-  (mt/with-temp [:model/Transform    {transform-id :id} {}
-                 :model/TransformRun {run-id :id} (get (started-run-attributes transform-id nil) :model/TransformRun)]
-    (t2/insert! :model/TransformRunCancelation {:run_id run-id})
-    (t2/update! :model/TransformRun :id run-id {:status :canceling})
-    (is (t2/exists? :model/TransformRunCancelation :run_id run-id))
-    (transform-run/cancel-run! run-id)
-    (is (not (t2/exists? :model/TransformRunCancelation :run_id run-id)))))
-
-(deftest run-message-update-statement-count-test
-  (mt/with-temp [:model/Transform    {transform-id :id} {}
-                 :model/TransformRun {run-id :id} (get (started-run-attributes transform-id nil) :model/TransformRun)]
-    (t2/with-call-count [call-count]
-      (t2/update! :model/TransformRun :id run-id {:message "progress"})
-      (is (= 2 (call-count))))))
