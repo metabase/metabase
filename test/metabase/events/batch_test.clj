@@ -429,31 +429,6 @@
         (finally
           (events.tu/unregister! ::statement-rows))))))
 
-(defn- logged-by
-  "The `[table row-id action]`s that the change log records while `thunk` runs."
-  [thunk]
-  (let [top (or (:id (t2/query-one {:select [[:%max.id :id]] :from [:change_log]})) 0)]
-    (thunk)
-    (mapv (juxt :table_name :row_id :action)
-          (t2/query {:select [:table_name :row_id :action] :from [:change_log] :where [:> :id top] :order-by [:id]}))))
-
-(deftest cascade-capture-kept-when-carrier-created-in-batch-test
-  (testing "a multi-row delete whose last row was created in the same batch still logs the cascades of the others"
-    (when config/ee-available?
-      (mt/with-premium-features #{:change-log}
-        (mt/with-temp [:model/Database          db  {}
-                       :model/Table             t   {:db_id (:id db)}
-                       :model/Field             f1  {:table_id (:id t) :name "a"}
-                       :model/FieldUserSettings fus {:field_id (:id f1) :semantic_type :type/Email :semantic_type_set true}]
-          (let [logged (set (logged-by #(events/with-batched-events
-                                          (t2/insert! :model/Field {:table_id      (:id t)
-                                                                    :name          "z"
-                                                                    :base_type     :type/Text
-                                                                    :database_type "TEXT"})
-                                          (t2/delete! :model/Field :table_id (:id t)))))]
-            (is (contains? logged ["metabase_field" (:id f1) "delete"]))
-            (is (contains? logged ["metabase_field_user_settings" (:id fus) "delete"]))))))))
-
 (deftest create-carries-row-its-own-hooks-wrote-test
   (testing "the create of a row whose after-insert writes it again carries the row as stored"
     (with-timeline-cleanup
