@@ -20,7 +20,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.core :as qp.core]
@@ -1784,7 +1784,7 @@
           ;; Stub the perms check (the EQ has no inline dataset_query here) and force `create-card!`
           ;; to blow up *after* the composite StoredResult has been inserted, exercising the rollback.
           (mt/with-dynamic-fn-redefs [query-perms/check-run-permissions-for-query (fn [_] nil)
-                                      queries/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
+                                      queries.card/create-card!                        (fn [& _] (throw (ex-info "boom" {})))]
             (is (thrown? Throwable
                          (eqr/create-ephemeral-card-for-exploration-queries!
                           [qid] doc-id (:collection_id doc) u

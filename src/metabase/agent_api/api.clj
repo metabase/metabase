@@ -39,6 +39,7 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card :as qp.card]
@@ -828,7 +829,7 @@
   `:display`), and optional `:validate-query!` (a metric-shape check run before the permission
   checks).
 
-  Mirror REST `POST /api/card/` pre-checks before calling `queries/create-card!`. `create-card!`
+  Mirror REST `POST /api/card/` pre-checks before calling `queries.card/create-card!`. `create-card!`
   itself does NOT run permissions checks; without these mirroring the REST endpoint, an LLM caller
   could (a) save a card whose query references data the user cannot run, and (b) plant the card in a
   collection they cannot write to.
@@ -856,7 +857,7 @@
                 :collection_id          collection_id
                 :visualization_settings (or visualization_settings {})}]
       (api/create-check :model/Card card)
-      (create-card-response (queries/create-card! card {:id api/*current-user-id*})))))
+      (create-card-response (queries.card/create-card! card {:id api/*current-user-id*})))))
 
 (defn- apply-agent-card-patch!
   "Shared body for `update_question` / `update_metric`. `card-before-update` is the card the caller
@@ -907,13 +908,13 @@
     (api/update-check card-before-update card-updates)
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
-    ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
+    ;; they cannot query. `queries.card/update-card!` does NOT run this check itself, so we run it here.
     (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates)))
-    (queries/update-card! {:card-before-update    card-before-update
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+    (queries.card/update-card! {:card-before-update    card-before-update
+                                :card-updates          card-updates
+                                :actor                 @api/*current-user*
+                                :delete-old-dashcards? false})
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request

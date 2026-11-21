@@ -571,6 +571,11 @@
   [id _user-id snapshot]
   (update-transforms! {id (select-keys snapshot revision-columns)}))
 
+(defn- update-replaced-transform!
+  "Apply `changes`, a write of a source replacement, to the Transform with `id`, as any other update of it."
+  [id changes]
+  (update-transforms! {id changes}))
+
 (defn- update-imported-transforms!
   "Update the Transforms of an import with `rows`, each its id and changed columns, returning `rows`."
   [rows]
@@ -659,7 +664,8 @@
 
 (defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
-   :swap-source        transforms.replacement/swap-source})
+   :swap-source        transforms.replacement/swap-source
+   :update!            update-replaced-transform!})
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})

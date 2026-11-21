@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.interface :as qp.i]
@@ -26,8 +25,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.memory :as u.mem]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
-   [metabase.warehouse-schema.user-settings :as warehouse-schema.user-settings]
    [metabase.warehouses.models.database :as database]
    [toucan2.realize :as t2.realize])
   (:import

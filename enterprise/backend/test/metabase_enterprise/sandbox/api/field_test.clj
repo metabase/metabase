@@ -191,8 +191,7 @@
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
-            (t2/update! :model/FieldValues :id fv-id
-                        {:values new-values})
+            (field-values/update-field-values! [{:id fv-id :values new-values}])
             (mt/with-dynamic-fn-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                                   :has_more_values false})]
               (is (= (map vector new-values)

@@ -122,11 +122,10 @@
   (data-testing.models/delete-saved-tests! :segment :model/SegmentTest [id]))
 
 (defenterprise delete-segment-tests!
-  "Deletes the tests of the segment `segment-id` whatever the token says, since the
-  rows outlive the feature."
+  "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
-  [segment-id]
-  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id [segment-id]))
+  [segment-ids]
+  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
 
 (defn- update-imported-segment-tests!
   "Update the SegmentTests of an import with `rows`, each its id and changed columns, returning `rows`."

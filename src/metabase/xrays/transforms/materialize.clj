@@ -5,6 +5,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.malli :as mu]
@@ -48,7 +49,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (xrays.db/delete-cards-in-collection! collection-id)
+    (card/delete-cards! (xrays.db/card-ids-in-collection collection-id))
     (create-collection! name description)))
 
 (mu/defn make-card-for-step! :- ::queries.schema/card
@@ -65,4 +66,6 @@
           :visualization_settings {}
           :display                :table}
          queries/populate-card-query-fields
-         xrays.db/insert-card!)))
+         vector
+         card/create-cards!
+         first)))

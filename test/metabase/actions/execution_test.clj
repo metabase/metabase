@@ -80,7 +80,7 @@
                                         "a second, sensitive primary key"                  two-pk-id}]
           (testing description
             (let [action-id            (action/create-action! {:type :implicit :name description :kind :row/update
-                                                        :table_id table-id})
+                                                               :table_id table-id})
                   build-implicit-query #'actions.execution/build-implicit-query]
               (is (=? {:row-parameters {}}
                       (build-implicit-query (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))

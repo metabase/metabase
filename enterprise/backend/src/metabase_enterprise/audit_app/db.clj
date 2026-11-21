@@ -2,12 +2,10 @@
   "Application database queries for the audit-app module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for transactions and connections."
   (:require
-   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.notification.models :as models.notification]
    [metabase.pulse.models.pulse :as pulse]
    [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -145,12 +143,6 @@
   (t2/query {:select-distinct [:table_id]
              :from            [(t2/table-name :model/Card)]
              :where           [:in :table_id table-ids]}))
-
-(mu/defn update-card!
-  "Apply `changes` to the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card
-   changes :- (mut/select-keys ::queries.schema/card.update [:dataset_query :result_metadata])]
-  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn first-superuser
   "The `:id` and `:email` of the oldest superuser, or nil."

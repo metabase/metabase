@@ -118,9 +118,9 @@
        (sandboxes-allow-segment-update? segment changes)))
 
 (defenterprise delete-segment-tests!
-  "Delete the tests of the segment `segment-id` through Toucan, so that each test's delete hook runs. No-op in OSS."
+  "Delete the tests of the segments with `segment-ids`. No-op in OSS."
   metabase-enterprise.data-testing.models.segment-test
-  [_segment-id]
+  [_segment-ids]
   nil)
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
@@ -200,7 +200,7 @@
   [ids :- [:sequential ::lib.schema.id/segment]]
   (when (seq ids)
     (events/with-batched-events
-      (run! delete-segment-tests! ids)
+      (delete-segment-tests! ids)
       (segments.db/delete-segments! ids))))
 
 (def ^:private revision-columns
@@ -298,7 +298,8 @@
 
 (defmethod replacement/spec :model/Segment [_model]
   {:upgrade-field-refs segments.replacement/upgrade-field-refs
-   :swap-source        segments.replacement/swap-source})
+   :swap-source        segments.replacement/swap-source
+   :update!            update-segment!})
 
 (defmethod eid-translation/spec :model/Segment [_model]
   {:names [:segment]})

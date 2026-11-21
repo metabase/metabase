@@ -35,6 +35,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -429,7 +430,7 @@
     {:copied     (into {} (for [[id to-copy] copy]
                             [id (queries/with-copy-source-card to-copy
                                   (api/create-check :model/Card (assoc to-copy :collection_id dest-coll-id))
-                                  (queries/create-card!
+                                  (queries.card/create-card!
                                    (cond-> to-copy
                                      true                    (assoc :collection_id dest-coll-id)
                                      same-collection?        (update :name #(str % " - " (tru "Duplicate")))

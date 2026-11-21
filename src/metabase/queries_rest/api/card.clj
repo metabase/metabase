@@ -25,6 +25,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries-rest.db :as queries-rest.db]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -499,7 +500,7 @@
     (check-parameter-permissions (:parameters card) query)
     (queries/with-copy-source-card source-card
       (queries/check-allowed-to-create-card! card card-type))
-    (let [created-card (queries/create-card! card @api/*current-user*)]
+    (let [created-card (queries.card/create-card! card @api/*current-user*)]
       (when (and (some? (:result_metadata card))
                  (= (name (:type created-card)) "question"))
         (events/publish-event! :event/card-create-with-result-metadata
@@ -522,7 +523,7 @@
         new-card  (assoc orig-card :name new-name)]
     (queries/with-copy-source-card orig-card
       (api/create-check :model/Card new-card))
-    (-> (queries/create-card! new-card @api/*current-user*)
+    (-> (queries.card/create-card! new-card @api/*current-user*)
         hydrate-card-details
         (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
 
@@ -601,10 +602,10 @@
                                                  metadata
                                                  (assoc :result_metadata           metadata
                                                         :verified-result-metadata? true))
-            card                               (-> (queries/update-card! {:card-before-update    card-before-update
-                                                                          :card-updates          card-updates
-                                                                          :actor                 @api/*current-user*
-                                                                          :delete-old-dashcards? delete-old-dashcards?})
+            card                               (-> (queries.card/update-card! {:card-before-update    card-before-update
+                                                                               :card-updates          card-updates
+                                                                               :actor                 @api/*current-user*
+                                                                               :delete-old-dashcards? delete-old-dashcards?})
                                                    hydrate-card-details
                                                    (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))]
         ;; We expose the search results for models and metrics directly in FE grids, from which items can be archived.
@@ -620,7 +621,7 @@
                                  [search-model [:= :this.id id]])))
         (when metadata-future
           (log/infof "Metadata not available soon enough. Saving card %s and asynchronously updating metadata" id)
-          (queries/save-metadata-async! metadata-future card))
+          (queries.card/save-metadata-async! metadata-future card))
         card))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -663,7 +664,7 @@
                     [:id ms/PositiveInt]]]
   (let [card (api/write-check :model/Card id)]
     (api/check-403 (queries/can-delete? card))
-    (queries-rest.db/delete-card! id))
+    (queries.card/delete-cards! [id]))
   api/generic-204-no-content)
 
 ;;; -------------------------------------------- Bulk Collections Update ---------------------------------------------
@@ -681,21 +682,22 @@
         starting-position   (inc (get max-position-result :max_position 0))]
     ;; This is using `map` but more like a `doseq` with multiple seqs. Wrapping this in a `doall` as we don't want it
     ;; to be lazy and we're just going to discard the results
-    (doall
-     (map (fn [idx {:keys [collection_id collection_position] :as card}]
-            ;; We are removing this card from `collection_id` so we need to reconcile any
-            ;; `collection_position` entries left behind by this move
-            (api/reconcile-position-for-collection! collection_id collection_position nil)
-            ;; Now we can update the card with the new collection and a new calculated position
-            ;; that appended to the end
-            (queries-rest.db/update-card! (u/the-id card)
-                                          {:collection_position idx
-                                           :collection_id       new-collection-id-or-nil}))
-          ;; These are reversed because of the classic issue when removing an item from array. If we remove an
-          ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
-          ;; can avoid changing the index of cards we haven't yet updated
-          (reverse (range starting-position (+ (count sorted-cards) starting-position)))
-          (reverse sorted-cards)))))
+    (queries.card/update-cards!
+     (doall
+      (map (fn [idx {:keys [collection_id collection_position] :as moved-card}]
+             ;; We are removing this card from `collection_id` so we need to reconcile any
+             ;; `collection_position` entries left behind by this move
+             (api/reconcile-position-for-collection! collection_id collection_position nil)
+             ;; Now we can update the card with the new collection and a new calculated position
+             ;; that appended to the end
+             {:id                  (u/the-id moved-card)
+              :collection_position idx
+              :collection_id       new-collection-id-or-nil})
+           ;; These are reversed because of the classic issue when removing an item from array. If we remove an
+           ;; item at index 1, everything above index 1 will get decremented. By reversing our processing order we
+           ;; can avoid changing the index of cards we haven't yet updated
+           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
+           (reverse sorted-cards))))))
 
 (defn- write-check-collection-or-root [collection-id-or-nil]
   (if collection-id-or-nil
@@ -725,9 +727,10 @@
           ;; are gone and update the position in the new collection
           (when-let [cards-with-position (seq (filter :collection_position cards))]
             (update-collection-positions! new-collection-id-or-nil cards-with-position))
-          (doseq [card  cards
-                  :when (not (:collection_position card))]
-            (queries-rest.db/update-card! (u/the-id card) {:collection_id new-collection-id-or-nil}))))
+          (queries.card/update-cards! (into []
+                                            (comp (remove :collection_position)
+                                                  (map #(hash-map :id (u/the-id %) :collection_id new-collection-id-or-nil)))
+                                            cards))))
       nil))
 
   (when new-collection-id-or-nil
@@ -862,10 +865,9 @@
     (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
           uuid (or existing-public-uuid
                    (u/prog1 new-uuid
-                     (t2/with-transaction [_conn]
-                       (queries-rest.db/update-card! card-id
-                                                     {:public_uuid       <>
-                                                      :made_public_by_id api/*current-user-id*}))))]
+                     (queries.card/update-cards! [{:id                card-id
+                                                   :public_uuid       <>
+                                                   :made_public_by_id api/*current-user-id*}])))]
       {:uuid uuid})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -878,10 +880,9 @@
   (api/update-check (api/check-404 (queries-rest.db/card card-id)) {:public_uuid nil, :made_public_by_id nil})
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Card :id card-id, :public_uuid [:not= nil], :archived false)
-  (t2/with-transaction [_conn]
-    (queries-rest.db/update-card! card-id
-                                  {:public_uuid       nil
-                                   :made_public_by_id nil}))
+  (queries.card/update-cards! [{:id                card-id
+                                :public_uuid       nil
+                                :made_public_by_id nil}])
   {:status 204, :body nil})
 
 (api.macros/defendpoint :post "/pivot/:card-id/query"

@@ -4,7 +4,6 @@
   (:require
    [java-time.api :as t]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -23,13 +22,6 @@
   [card-id     :- [:maybe ::lib.schema.id/card]
    dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
   (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
-
-(mu/defn set-card-result-metadata!
-  "Set the result metadata of the Card with `card-id` without touching `updated_at`."
-  [card-id         :- ::lib.schema.id/card
-   result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."

@@ -1603,7 +1603,7 @@
   (testing "Returns 403 when swapping :query to one referencing data the caller cannot run"
     ;; Guard against the gap retro identified in branch review:
     ;; collection write on a card does NOT grant the right to repoint it at forbidden data.
-    ;; REST's `check-allowed-to-modify-query` runs in the REST wrapper above `queries/update-card!`;
+    ;; REST's `check-allowed-to-modify-query` runs in the REST wrapper above `queries.card/update-card!`;
     ;; the agent endpoint calls `update-card!` directly, so we have to gate it ourselves.
     (mt/with-restored-data-perms!
       (mt/with-non-admin-groups-no-root-collection-perms

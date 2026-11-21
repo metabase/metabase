@@ -7,6 +7,7 @@
    [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -58,7 +59,7 @@
       (data-testing.models.segment-test/delete-segment-test! segment-test-id)
       (is (= #{[:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a segment removes the members of its tests"
-      (t2/delete! :model/Segment :id segment-id)
+      (segment/delete-segments! [segment-id])
       (is (= #{} (members suite-2))))))
 
 (deftest test-suite-audit-events-test

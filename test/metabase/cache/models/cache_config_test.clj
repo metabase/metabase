@@ -6,6 +6,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -77,7 +78,7 @@
 (deftest delete-card-deletes-its-cache-config-test
   (mt/with-temp [:model/Card        {card-id :id}   {}
                  :model/CacheConfig {config-id :id} {:model "question" :model_id card-id}]
-    (t2/delete! :model/Card :id card-id)
+    (card/delete-cards! [card-id])
     (is (not (t2/exists? :model/CacheConfig :id config-id)))))
 
 (deftest delete-dashboard-deletes-its-cache-config-test

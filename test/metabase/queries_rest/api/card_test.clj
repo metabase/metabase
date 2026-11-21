@@ -24,6 +24,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.native-query-snippets.models.native-query-snippet :as snippet]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.custom-values :as custom-values]
@@ -5562,22 +5563,11 @@
 (deftest cannot-create-new-card-with-cyclic-snippets-test
   (testing "Cannot create a new card that references snippets with existing cycles"
     ;; Create two snippets that reference each other in a cycle
-    (mt/with-temp [:model/NativeQuerySnippet snippet-1 {:name          "snippet-1"
-                                                        :content       "WHERE category = 'Electronics'"
-                                                        :template_tags {"snippet:snippet-2"
-                                                                        {:type         :snippet
-                                                                         :snippet-name "snippet-2"
-                                                                         :name         "snippet:snippet-2"
-                                                                         :display-name "Snippet 2"}}}
-                   :model/NativeQuerySnippet _snippet-2 {:name          "snippet-2"
-                                                         :content       "AND price > 100 {{snippet: snippet-1}}"
-                                                         :template_tags {"snippet: snippet-1"
-                                                                         {:type         :snippet
-                                                                          :snippet-name "snippet-1"
-                                                                          :name         "snippet:snippet-1"
-                                                                          :display-name "Snippet 1"}}}]
-      (t2/update! :model/NativeQuerySnippet :id (:id snippet-1)
-                  {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
+    (mt/with-temp [:model/NativeQuerySnippet snippet-1   {:name    "snippet-1"
+                                                          :content "WHERE category = 'Electronics'"}
+                   :model/NativeQuerySnippet _snippet-2 {:name    "snippet-2"
+                                                         :content "AND price > 100 {{snippet: snippet-1}}"}]
+      (snippet/update-snippet! (:id snippet-1) {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
       ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
       ;; This should fail even though the card doesn't exist yet
       (is (= "Cannot save card with cycles."

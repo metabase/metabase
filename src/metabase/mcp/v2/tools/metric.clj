@@ -24,6 +24,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]))
 
@@ -148,7 +149,7 @@
         collection-id (v2.resolve/resolve-collection-id-or-personal (:collection_id args))]
     (check-metric-shape! dataset-query)
     (queries/check-allowed-to-create-card! {:dataset_query dataset-query :collection_id collection-id} :metric)
-    (-> (queries/create-card!
+    (-> (queries.card/create-card!
          (u/remove-nils
           {:name                   name
            :type                   :metric
@@ -202,10 +203,10 @@
                        new-query                             (assoc :dataset_query new-query))
         card-updates (api/updates-without-collection-when-archiving card-before raw-updates)]
     (queries/check-allowed-to-update-card! card-before card-updates)
-    (queries/update-card! {:card-before-update    card-before
-                           :card-updates          card-updates
-                           :actor                 @api/*current-user*
-                           :delete-old-dashcards? false})
+    (queries.card/update-card! {:card-before-update    card-before
+                                :card-updates          card-updates
+                                :actor                 @api/*current-user*
+                                :delete-old-dashcards? false})
     (write-result (mcp.db/select-one-by-id :model/Card card-id))))
 
 ;;; -------------------------------------------------- The tool ----------------------------------------------------

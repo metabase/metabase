@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.timeline.models.timeline :as timeline]
@@ -173,16 +174,16 @@
                                                :archived_directly false :collection_id (u/the-id archived)}))))
     (testing "a row that is not archived cannot be moved into an archived collection"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (t2/update! :model/Card :id (u/the-id card) {:collection_id (u/the-id archived)})))
+                            (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (t2/update! :model/Collection :id (u/the-id live)
                                         {:location (collection/children-location archived)}))))
     (testing "a row that is archived can be moved into an archived collection"
       (archive! :model/Card (u/the-id card) true)
-      (is (= 1 (t2/update! :model/Card :id (u/the-id card) {:collection_id (u/the-id archived)}))))
+      (is (= 1 (count (#'card/update-cards* [{:id (u/the-id card) :collection_id (u/the-id archived)}])))))
     (testing "a card that is not archived cannot be put in an archived dashboard"
       (archive! :model/Dashboard (u/the-id dashboard) true)
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Dashboard"
-                            (t2/insert! :model/Card (-> (t2/select-one :model/Card :id (u/the-id in-dash))
-                                                        (dissoc :id :entity_id :created_at :updated_at)
-                                                        (assoc :archived false))))))))
+                            (first (#'card/create-cards* [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
+                                                              (dissoc :id :entity_id :created_at :updated_at)
+                                                              (assoc :archived false))])))))))

@@ -117,8 +117,8 @@
          Exception
          #"does not exist"
          (segment/create-segment! {:name       "Bad Segment"
-                                       :creator_id (mt/user->id :rasta)
-                                       :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
+                                   :creator_id (mt/user->id :rasta)
+                                   :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
     (is (not (t2/exists? :model/Segment :name "Bad Segment")))))
 
 (deftest insert-segment-referencing-segment-test
@@ -258,7 +258,7 @@
 (deftest revert-goes-through-update-test
   (mt/with-temp [:model/Segment {id :id} {:name "Reverted" :definition (price-definition)}]
     (let [snapshot (select-keys (t2/select-one :model/Segment :id id) [:name :description :definition :archived :table_id
-                                                                     :caveats :points_of_interest :show_in_getting_started])]
+                                                                       :caveats :points_of_interest :show_in_getting_started])]
       (segment/update-segment! id {:name "Changed"})
       (is (= "Changed" (t2/select-one-fn :name :model/Segment :id id)))
       (#'segment/revert-segment! id (mt/user->id :rasta) snapshot)

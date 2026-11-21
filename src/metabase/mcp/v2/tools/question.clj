@@ -22,6 +22,7 @@
    [metabase.mcp.v2.write :as v2.write]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -344,7 +345,7 @@
                             (resolve-result-metadata dataset-query
                                                      {:type (keyword (or card_type "question"))}
                                                      column_metadata))
-          card (queries/create-card!
+          card (queries.card/create-card!
                 (cond-> (u/remove-nils
                          {:name                   name
                           :type                   (keyword (or card_type "question"))
@@ -460,10 +461,10 @@
                                                        (or new-query (:dataset_query card-before))
                                                        card-before
                                                        column_metadata)))]
-      (queries/update-card! {:card-before-update    card-before
-                             :card-updates          card-updates
-                             :actor                 @api/*current-user*
-                             :delete-old-dashcards? false}))
+      (queries.card/update-card! {:card-before-update    card-before
+                                  :card-updates          card-updates
+                                  :actor                 @api/*current-user*
+                                  :delete-old-dashcards? false}))
     (update-card-response (mcp.db/select-one-by-id :model/Card card-id))))
 
 (def ^:private question-write-args-schema
