@@ -12,6 +12,7 @@
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
+   [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
@@ -47,29 +48,21 @@
              settings
              user-settings/field-set-flags))
 
-(defn- delete-when-empty!
-  "Delete `settings` when it holds no user value and no true flag, returning it either way."
-  [settings]
-  (when (and (every? #(nil? (get settings %)) user-settings/user-settable-field-columns)
-             (not-any? #(get settings %) (vals user-settings/field-set-flags)))
-    (warehouse-schema.db/delete-field-user-settings! [(:field_id settings)]))
-  settings)
-
 (t2/define-before-insert :model/FieldUserSettings
   [settings]
   (with-set-flags settings settings))
-
-(t2/define-after-insert :model/FieldUserSettings
-  [settings]
-  (delete-when-empty! settings))
 
 (t2/define-before-update :model/FieldUserSettings
   [settings]
   (with-set-flags settings (t2/changes settings)))
 
-(t2/define-after-update :model/FieldUserSettings
-  [settings]
-  (delete-when-empty! settings))
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- delete-empty!
+  "Delete the settings, among those of the Fields with `field-ids`, that hold no user value and no true flag."
+  [field-ids]
+  (when (seq field-ids)
+    (warehouse-schema.db/delete-empty-field-user-settings! (vec field-ids))))
 
 (defn- fk-semantic-type?
   "Whether `semantic-type` marks a foreign key."
@@ -93,9 +86,48 @@
     (when (and (fk-semantic-type? semantic_type)
                (not (fk-semantic-type? (:semantic_type settings))))
       (warehouse-schema.db/unset-user-settings-fk-target! id)
-      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :external))
+      (delete-empty! [id])
+      (dimension/delete-dimensions-of-type-for-field! id :external))
     (when-not (internal-remapping-allowed? base_type (:semantic_type settings))
-      (warehouse-schema.db/delete-dimensions-of-type-for-field! id :internal))))
+      (dimension/delete-dimensions-of-type-for-field! id :internal))))
+
+(defn- mirror-onto-fields!
+  "Write the columns each of the settings `rows` says a user set onto its Field."
+  [rows]
+  (field/update-fields! (into []
+                              (keep (fn [{:keys [field_id] :as settings}]
+                                      (when-let [changes (not-empty
+                                                          (select-keys settings (user-settings/user-set-field-columns settings)))]
+                                        (assoc changes :id field_id))))
+                              rows)))
+
+(mu/defn create-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings]
+  "Insert the FieldUserSettings `rows`, write the columns they say a user set onto their Fields, and return the
+  inserted instances; a row that holds no user value is deleted again."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (u/prog1 (vec (warehouse-schema.db/insert-field-user-settings-returning-instances! rows))
+        (delete-empty! (map :field_id <>))
+        (mirror-onto-fields! <>)))))
+
+(mu/defn update-field-user-settings-rows! :- [:sequential [:map [:id pos-int?]]]
+  "Apply each of `rows`, the id of a FieldUserSettings and the columns to change, write the columns the updated
+  settings say a user set onto their Fields, and return the rows of the settings that exist: one read and one
+  statement per distinct set of changes."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update-row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [stored (u/index-by :id (warehouse-schema.db/field-user-settings-by-ids (mapv :id rows)))
+            rows   (filterv #(contains? stored (:id %)) rows)]
+        (doseq [[changes rows] (group-by #(dissoc % :id) rows)
+                :when (seq changes)]
+          (warehouse-schema.db/update-field-user-settings-by-ids! (mapv :id rows) changes))
+        (delete-empty! (map (comp :field_id stored :id) rows))
+        (mirror-onto-fields! (map #(merge (stored (:id %)) %) rows))
+        rows))))
 
 (mu/defn upsert-field-user-settings!
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
@@ -104,16 +136,17 @@
    settings               :- ::warehouse-schema.schema/field.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
-      (t2/with-transaction [_]
+      (events/with-batched-events
         (remove-remappings-ended-by! field settings)
         (warehouse-schema.db/update-or-insert-field-user-settings!
          id (fn [existing] (cond->> settings existing (with-set-flags settings))))
-        (warehouse-schema.db/update-field! id settings)))))
+        (delete-empty! [id])
+        (field/update-field! id settings)))))
 
 (mu/defn set-custom-positions!
   "Record `field-id->position` as the Fields' user `custom_position`s, in their settings and their rows."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
-  (t2/with-transaction [_]
+  (events/with-batched-events
     (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->position))
           missing  (remove existing (keys field-id->position))]
       (when (seq missing)
@@ -121,7 +154,7 @@
          (mapv (fn [id] {:field_id id :custom_position (field-id->position id)}) missing)))
       (when (seq existing)
         (warehouse-schema.db/update-field-user-settings-custom-positions! (select-keys field-id->position existing)))
-      (warehouse-schema.db/update-field-custom-positions! field-id->position))))
+      (field/set-custom-positions! field-id->position))))
 
 (mu/defn unset-field-user-settings!
   "Drop the user values of the Field columns `ks` for `field` from its settings, leaving its row as it is for sync to
@@ -129,18 +162,36 @@
   [{:keys [id]} :- ::warehouse-schema.schema/field
    ks           :- [:sequential (into [:enum] user-settings/user-settable-field-columns)]]
   (when (warehouse-schema.db/field-user-settings id)
-    (warehouse-schema.db/update-field-user-settings!
-     id
-     (into {} (mapcat (fn [k]
-                        (cond-> [[k nil]]
-                          (user-settings/field-set-flags k) (conj [(user-settings/field-set-flags k) false]))))
-           ks))))
+    (events/with-batched-events
+      (warehouse-schema.db/update-field-user-settings!
+       id
+       (into {} (mapcat (fn [k]
+                          (cond-> [[k nil]]
+                            (user-settings/field-set-flags k) (conj [(user-settings/field-set-flags k) false]))))
+             ks))
+      (delete-empty! [id]))))
+
+(mu/defn clear-fk-targets-to-fields!
+  "Unset the user-set foreign keys to the Fields with `field-ids` in the settings of the Fields that target them,
+  deleting the settings left without a user value."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (let [targeting (warehouse-schema.db/field-ids-with-user-settings-targeting field-ids)]
+      (when (seq targeting)
+        (warehouse-schema.db/clear-user-settings-fk-targets-to-fields! field-ids)
+        (delete-empty! targeting)))))
 
 (mu/defn delete-field-user-settings!
   "Delete the settings of the Fields with `field-ids`, leaving their rows as they are for sync to take over."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (doseq [batch (partition-all 1000 field-ids)]
     (warehouse-schema.db/delete-field-user-settings! batch)))
+
+(defn- delete-field-user-settings-rows!
+  "Delete the FieldUserSettings with `ids`, as remote sync and an import delete them."
+  [ids]
+  (when (seq ids)
+    (warehouse-schema.db/delete-field-user-settings-by-ids! (vec ids))))
 
 (mu/defn delete-field-user-settings-for-table!
   "[[delete-field-user-settings!]] for every Field of the Table with `table-id`."
@@ -178,8 +229,9 @@
    :transform     {:fk_target_field_id serialization/field-transform
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
-   :before-load   warehouse-schema.serialization/field-user-settings-before-load
-   :after-load    warehouse-schema.serialization/field-user-settings-after-load
+   :insert!       create-field-user-settings!
+   :update!       update-field-user-settings-rows!
+   :delete!       delete-field-user-settings-rows!
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 
 (defmethod remote-sync/spec :model/FieldUserSettings

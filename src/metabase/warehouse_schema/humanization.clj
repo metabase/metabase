@@ -40,13 +40,15 @@
 
 (mu/defn re-humanize-table-and-field-names!
   "Re-humanize every Table and Field display name that is neither user-set nor different from `old-strategy`'s
-  humanization."
-  [old-strategy :- :keyword]
+  humanization, writing them by `set-table-display-name!` and `set-field-display-name!`, fns of an id and a name."
+  [old-strategy            :- :keyword
+   set-table-display-name! :- fn?
+   set-field-display-name! :- fn?]
   (letfn [(custom? [{internal-name :name, display-name :display_name
                      user-display-name :user_display_name}]
             (or (some? user-display-name)
                 (not= (name->human-readable-name old-strategy internal-name) display-name)))]
     (re-humanize-names! :model/Table warehouse-schema.db/table-names-reducible
-                        warehouse-schema.db/set-table-display-name! custom?)
+                        set-table-display-name! custom?)
     (re-humanize-names! :model/Field warehouse-schema.db/field-names-reducible
-                        warehouse-schema.db/set-field-display-name! custom?)))
+                        set-field-display-name! custom?)))

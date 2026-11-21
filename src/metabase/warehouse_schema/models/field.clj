@@ -10,6 +10,7 @@
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -24,6 +25,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.dependencies :as warehouse-schema.dependencies]
    [metabase.warehouse-schema.humanization :as humanization]
+   [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
@@ -190,14 +192,6 @@
            (not (types/is-coercible-from? coercion (keyword base_type))))
       {:coercion_strategy nil, :effective_type base_type})))
 
-(defn- check-fk-target
-  "Throws a 400 unless the `:fk_target_field_id` of `field` is a Field of the Database of its Table."
-  [{:keys [table_id fk_target_field_id]}]
-  (let [target-database-id (get (warehouse-schema.db/field-database-ids #{fk_target_field_id}) fk_target_field_id)]
-    (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
-    (api/checkp (= target-database-id (warehouse-schema.db/table-database-id table_id))
-                :fk_target_field_id (tru "Target field must belong to the same database"))))
-
 (defn nested-fields-pattern
   "The SQL LIKE pattern matching the NFC paths of the Fields nested in the JSON Field named `field-name`."
   [field-name]
@@ -208,36 +202,15 @@
   (let [field (merge field
                      {:display_name (:display_name field (humanization/name->human-readable-name (:name field)))}
                      (coercion-changes field field))]
-    (when (:fk_target_field_id field)
-      (check-fk-target field))
     (enforce-effective-type-invariant field)))
 
 (t2/define-before-update :model/Field
-  [{:keys [id table_id] :as field}]
+  [field]
   (let [changes (t2/changes field)
         field   (merge field (coercion-changes field changes))]
     (when (contains? changes :table_id)
       (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
-    (when (and (contains? changes :fk_target_field_id) (:fk_target_field_id field))
-      (check-fk-target field))
-    (when (false? (:active changes))
-      (warehouse-schema.db/clear-user-settings-fk-targets-to-field! id)
-      (warehouse-schema.db/clear-fk-targets-to-field! id)
-      (warehouse-schema.db/delete-dimensions-reading-field! id))
-    (when (:display_name changes)
-      (warehouse-schema.db/rename-dimension-for-field! id (:display_name field)))
-    (when (contains? changes :json_unfolding)
-      (warehouse-schema.db/set-nested-fields-active! table_id
-                                                     (nested-fields-pattern (:name field))
-                                                     (boolean (:json_unfolding field))))
     (enforce-effective-type-invariant field)))
-
-(t2/define-before-delete :model/Field
-  [field]
-  ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
-  ;; because parent_id contributes to a generated column, and MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-child-fields! (:id field)))
 
 (defn- check-permission-keys
   "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
@@ -459,6 +432,177 @@
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
 
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-fk-targets
+  "Throws a 400 unless the `:fk_target_field_id` of each of `fields` is a Field of the Database of its Table, the
+  Databases of all of them read in two queries."
+  [fields]
+  (when (seq fields)
+    (let [target-database-ids (warehouse-schema.db/field-database-ids (into #{} (map :fk_target_field_id) fields))
+          table-database-ids  (warehouse-schema.db/table-database-ids (into #{} (map :table_id) fields))]
+      (doseq [{:keys [table_id fk_target_field_id]} fields]
+        (let [target-database-id (target-database-ids fk_target_field_id)]
+          (api/checkp target-database-id :fk_target_field_id (tru "Invalid target field"))
+          (api/checkp (= target-database-id (table-database-ids table_id))
+                      :fk_target_field_id (tru "Target field must belong to the same database")))))))
+
+(mu/defn create-fields! :- [:sequential ::lib.schema.id/field]
+  "Insert the Field `rows` and return their ids, refusing a foreign key target outside the Database of a Field's Table."
+  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-fk-targets (filter :fk_target_field_id rows))
+      (vec (warehouse-schema.db/insert-fields! rows)))))
+
+(mu/defn create-field! :- ::lib.schema.id/field
+  "Insert the Field `row` and return its id, as [[create-fields!]] does."
+  [row :- ::warehouse-schema.schema/field.create]
+  (first (create-fields! [row])))
+
+(defn- create-field-instances!
+  "Insert the Field `rows` and return the inserted instances, as an import loads them."
+  [rows]
+  (let [ids (create-fields! rows)]
+    (if (seq ids) (warehouse-schema.db/fields (set ids)) [])))
+
+(def ^:private stored-columns
+  "The columns of an update whose effects depend on the stored row."
+  [:display_name :json_unfolding :fk_target_field_id])
+
+(defn- clear-user-settings-fk-targets!
+  "Unset the user-set foreign keys to the Fields with `field-ids` in the settings of the Fields that target them."
+  [field-ids]
+  ((requiring-resolve 'metabase.warehouse-schema.models.field-user-settings/clear-fk-targets-to-fields!) field-ids))
+
+(defn- deactivated!
+  "Clear what points at the deactivated Fields with `field-ids`: the foreign keys to them, in the Fields' settings and
+  rows, and the remappings that read them."
+  [field-ids]
+  (when (seq field-ids)
+    (clear-user-settings-fk-targets! field-ids)
+    (warehouse-schema.db/clear-fk-targets-to-fields! field-ids)
+    (dimension/delete-dimensions-reading-fields! field-ids)))
+
+(defn- json-unfolding-changed!
+  "Set the nested Fields of each of the JSON `fields` active when it now unfolds, and inactive when it no longer does."
+  [fields]
+  (doseq [[[table-id unfolding?] fields] (group-by (juxt :table_id (comp boolean :json_unfolding)) fields)
+          {field-name :name} fields]
+    (warehouse-schema.db/set-nested-fields-active! table-id (nested-fields-pattern field-name) unfolding?)))
+
+(defn- update-fields-by-change!
+  "Apply each of `rows`, the id of a Field and the columns to change, with one statement per distinct set of changes,
+  returning the number updated."
+  [rows]
+  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) rows)
+                    :when (seq changes)]
+                (if (= 1 (count rows))
+                  (warehouse-schema.db/update-field! (:id (first rows)) changes)
+                  (warehouse-schema.db/update-fields! (mapv :id rows) changes)))))
+
+(defn- apply-field-updates!
+  "Apply each of `rows`, the id of a Field and the columns to change, and the changes that follow them, returning the
+  number of Fields updated. The stored rows are read once, only for the rows changing a column whose effects depend on
+  them."
+  [rows]
+  (if (empty? rows)
+    0
+    (events/with-batched-events
+      (let [stored   (when-let [ids (not-empty (into #{} (keep (fn [row] (when (some #(contains? row %) stored-columns) (:id row)))) rows))]
+                       (u/index-by :id (warehouse-schema.db/fields ids)))
+            changes? (fn [{:keys [id] :as row} k]
+                       (and (contains? row k)
+                            (contains? stored id)
+                            (not= (get row k) (get-in stored [id k]))))
+            merged   (fn [row] (merge (get stored (:id row)) row))]
+        (check-fk-targets (for [row rows
+                                :when (and (:fk_target_field_id row) (changes? row :fk_target_field_id))]
+                            (merged row)))
+        (deactivated! (into [] (comp (filter #(false? (:active %))) (map :id)) rows))
+        (dimension/rename-dimensions-for-fields!
+         (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
+        (json-unfolding-changed! (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))
+        (update-fields-by-change! rows)))))
+
+(mu/defn update-fields! :- [:sequential [:map [:id ::lib.schema.id/field]]]
+  "Apply each of `rows`, the id of a Field and the columns to change, and return them. Deactivating a Field clears
+  the foreign keys to it and the remappings that read it, a new display name renames its Dimension, and a change of
+  `json_unfolding` sets its nested Fields active or inactive."
+  [rows :- [:sequential ::warehouse-schema.schema/field.update-row]]
+  (apply-field-updates! rows)
+  (vec rows))
+
+(mu/defn update-field! :- :int
+  "Apply `changes` to the Field with `field-id` and return the number updated, as [[update-fields!]] does."
+  [field-id :- ::lib.schema.id/field
+   changes  :- ::warehouse-schema.schema/field.update]
+  (apply-field-updates! [(assoc changes :id field-id)]))
+
+(mu/defn update-fields-where! :- :int
+  "Apply `changes`, values or HoneySQL expressions, to the Fields matching `conditions` and return the number updated:
+  one statement, unless `changes` set a column whose effects [[update-fields!]] carries, which updates the matching
+  Fields as it does."
+  [conditions :- ::warehouse-schema.schema/conditions
+   changes    :- ::warehouse-schema.schema/sql-changes]
+  (if (or (false? (:active changes)) (some #(contains? changes %) stored-columns))
+    (apply-field-updates! (mapv #(assoc changes :id %) (warehouse-schema.db/field-ids-where conditions)))
+    (events/with-batched-events
+      (warehouse-schema.db/update-fields-where! conditions changes))))
+
+(mu/defn set-positions!
+  "Set the `position` of each Field in `field-id->position`, in one statement."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (when (seq field-id->position)
+    (warehouse-schema.db/update-field-positions! field-id->position)))
+
+(mu/defn set-custom-positions!
+  "Set the `custom_position` of each Field in `field-id->position`, in one statement."
+  [field-id->position :- [:map-of ::lib.schema.id/field :int]]
+  (when (seq field-id->position)
+    (warehouse-schema.db/update-field-custom-positions! field-id->position)))
+
+(mu/defn set-display-name!
+  "Set the display name of the Field with `field-id`, renaming its Dimension when it changes."
+  [field-id     :- ::lib.schema.id/field
+   display-name :- :string]
+  (update-field! field-id {:display_name display-name}))
+
+(defn- delete-field-levels!
+  "Delete the Fields in `levels`, a sequence of sets of ids each holding the children of the one before, the deepest
+  level first, with one statement per level."
+  [levels]
+  (doseq [ids (reverse levels)
+          :when (seq ids)]
+    (warehouse-schema.db/delete-fields! (vec ids))))
+
+(mu/defn delete-fields!
+  "Delete the Fields with `ids` and the Fields nested under them, which a foreign key cannot cascade to: one read per
+  level of nesting and one statement per level."
+  [ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq ids)
+    (events/with-batched-events
+      (delete-field-levels!
+       (loop [levels [(set ids)]]
+         (let [children (warehouse-schema.db/child-field-ids (last levels))]
+           (if (empty? children)
+             levels
+             (recur (conj levels (set children))))))))))
+
+(mu/defn delete-fields-for-tables!
+  "Delete the Fields of the Tables with `table-ids`, nested Fields first: one read and one statement per level of
+  nesting."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (when (seq table-ids)
+    (events/with-batched-events
+      (let [parent-ids (into {} (map (juxt :id :parent_id)) (warehouse-schema.db/field-parent-ids-for-tables table-ids))
+            depth      (fn depth [id] (if-let [parent-id (parent-ids id)] (inc (depth parent-id)) 0))]
+        (delete-field-levels! (->> (keys parent-ids)
+                                   (group-by depth)
+                                   (sort-by key)
+                                   (mapv (comp set val))))))))
+
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod events/spec :model/Field
@@ -503,6 +647,9 @@
                    :preview_display            true}
    :entity-ref    warehouse-schema.serialization/field-entity-ref
    :storage-paths warehouse-schema.serialization/field-storage-paths
+   :insert!       create-field-instances!
+   :update!       update-fields!
+   :delete!       delete-fields!
    :rows-by-refs  serialization/field-rows-by-refs})
 
 (defmethod dependencies/spec :model/Field [_model]

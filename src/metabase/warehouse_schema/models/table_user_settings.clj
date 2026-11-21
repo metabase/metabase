@@ -80,40 +80,101 @@
   [explicit]
   (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
 
-(defn- completed-settings
-  "`settings` merged with `explicit`, its two-column pairs completed from its Table, with its flags set."
-  [settings explicit]
-  (let [completed (cond-> explicit
-                    (pair-columns-written? explicit)
-                    (complete-pairs (warehouse-schema.db/table (:table_id settings))))]
-    (-> (merge settings completed)
-        (with-set-flags completed explicit))))
-
-(defn- delete-when-empty!
-  "Delete `settings` when it holds no user value and no true flag, returning it either way."
-  [settings]
-  (when (and (every? #(nil? (get settings %)) user-settings/user-settable-table-columns)
-             (not-any? #(get settings %) (vals user-settings/table-set-flags)))
-    (warehouse-schema.db/delete-table-user-settings! [(:table_id settings)]))
-  settings)
-
 (t2/define-before-insert :model/TableUserSettings
   [settings]
-  (completed-settings settings settings))
-
-(t2/define-after-insert :model/TableUserSettings
-  [settings]
-  (delete-when-empty! settings))
+  (with-set-flags settings settings settings))
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (completed-settings settings (t2/changes settings)))
-
-(t2/define-after-update :model/TableUserSettings
-  [settings]
-  (delete-when-empty! settings))
+  (let [changes (t2/changes settings)]
+    (with-set-flags settings changes changes)))
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- completed-changes
+  "`explicit`, the columns a write sets, with its two-column pairs completed from `table` and the flags of what it
+  sets."
+  [explicit table]
+  (let [completed (cond-> explicit
+                    (pair-columns-written? explicit) (complete-pairs table))]
+    (with-set-flags completed completed explicit)))
+
+(defn- changed-columns
+  "The columns of `row` whose values differ from those of `stored`."
+  [row stored]
+  (into {} (remove (fn [[k v]] (= v (get stored k)))) row))
+
+(defn- tables-for
+  "The Tables, by id, of those of the settings `rows` that write a column of a two-column pair, read in one query."
+  [rows]
+  (if-let [ids (not-empty (into #{} (comp (filter pair-columns-written?) (keep :table_id)) rows))]
+    (u/index-by :id (warehouse-schema.db/tables ids))
+    {}))
+
+(defn- delete-empty!
+  "Delete the settings, among those of the Tables with `table-ids`, that hold no user value and no true flag."
+  [table-ids]
+  (when (seq table-ids)
+    (warehouse-schema.db/delete-empty-table-user-settings! (vec table-ids))))
+
+(defn- without-derived-half
+  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
+  [{:keys [visibility_type data_layer] :as changes}]
+  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
+    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
+      (dissoc changes :data_layer)
+      (dissoc changes :visibility_type))
+    changes))
+
+(defn- mirror-onto-tables!
+  "Write the columns each of the settings `rows` says a user set onto its Table."
+  [rows]
+  (table/update-tables! (into []
+                              (keep (fn [{:keys [table_id] :as settings}]
+                                      (when-let [changes (not-empty
+                                                          (without-derived-half
+                                                           (select-keys settings (user-settings/user-set-table-columns settings))))]
+                                        (assoc changes :id table_id))))
+                              rows)))
+
+(defn- update-settings!
+  "Apply to each of the `stored` settings rows its `row` of changes, with its two-column pairs completed from its Table
+  among `tables` and its flags set, with one statement per distinct set of changes."
+  [stored+rows tables]
+  (doseq [[changes pairs] (group-by (fn [[stored row]]
+                                      (merge row (completed-changes (changed-columns row stored) (tables (:table_id stored)))))
+                                    stored+rows)
+          :when (seq changes)]
+    (warehouse-schema.db/update-table-user-settings-by-ids! (mapv (comp :id first) pairs) changes)))
+
+(mu/defn create-table-user-settings! :- [:sequential ::warehouse-schema.schema/table-user-settings]
+  "Insert the TableUserSettings `rows`, their two-column pairs completed from their Tables, write the columns they say a
+  user set onto their Tables, and return the inserted instances; a row that holds no user value is deleted again."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [tables (tables-for rows)]
+        (u/prog1 (vec (warehouse-schema.db/insert-table-user-settings-returning-instances!
+                       (mapv #(completed-changes % (tables (:table_id %))) rows)))
+          (delete-empty! (map :table_id <>))
+          (mirror-onto-tables! <>))))))
+
+(mu/defn update-table-user-settings-rows! :- [:sequential [:map [:id pos-int?]]]
+  "Apply each of `rows`, the id of a TableUserSettings and the columns to change, their two-column pairs completed from
+  their Tables, write the columns the updated settings say a user set onto their Tables, and return the rows of the
+  settings that exist: one read per kind and one statement per distinct set of changes."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update-row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [stored (u/index-by :id (warehouse-schema.db/table-user-settings-by-ids (mapv :id rows)))
+            rows   (filterv #(contains? stored (:id %)) rows)
+            tables (tables-for (map #(merge (dissoc % :table_id) (select-keys (stored (:id %)) [:table_id])) rows))]
+        (update-settings! (map (fn [row] [(stored (:id row)) (dissoc row :id)]) rows) tables)
+        (delete-empty! (map (comp :table_id stored :id) rows))
+        (mirror-onto-tables! (map #(merge (stored (:id %)) %) rows))
+        rows))))
 
 (mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
@@ -122,10 +183,16 @@
    settings     :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (seq settings)
-      (t2/with-transaction [_]
-        (warehouse-schema.db/update-or-insert-table-user-settings!
-         id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
-        (warehouse-schema.db/update-table! id settings)))))
+      (events/with-batched-events
+        (let [table (when (pair-columns-written? settings) (warehouse-schema.db/table id))]
+          (warehouse-schema.db/update-or-insert-table-user-settings!
+           id (fn [existing]
+                (let [row (cond-> settings existing (with-set-flags settings settings))]
+                  (if existing
+                    (merge row (completed-changes (changed-columns row existing) table))
+                    (completed-changes row table))))))
+        (delete-empty! [id])
+        (table/update-table! id settings)))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
@@ -135,13 +202,20 @@
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (events/with-batched-events
-        (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
+        (let [tables   (if (pair-columns-written? settings)
+                         (u/index-by :id (warehouse-schema.db/tables table-ids))
+                         {})
+              existing (u/index-by :table_id (warehouse-schema.db/table-user-settings-for-tables table-ids))]
           (when-let [missing (not-empty (remove existing table-ids))]
-            (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
-          (when (seq existing)
-            (warehouse-schema.db/update-table-user-settings-for-tables!
-             existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids settings)))))
+            (warehouse-schema.db/insert-table-user-settings!
+             (mapv #(completed-changes (assoc settings :table_id %) (tables %)) missing)))
+          (update-settings! (for [table-id table-ids
+                                  :let [stored (existing table-id)]
+                                  :when stored]
+                              [stored (with-set-flags settings settings settings)])
+                            tables))
+        (delete-empty! table-ids)
+        (table/update-tables-with-changes! table-ids settings)))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -153,7 +227,7 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
-  (t2/with-transaction [_]
+  (events/with-batched-events
     (upsert-table-user-settings! table {:field_order :custom})
     (field-user-settings/set-custom-positions! (zipmap field-order (range)))
     (table/update-field-positions! (warehouse-schema.db/table (u/the-id table)))))
@@ -163,19 +237,45 @@
   take over."
   [{:keys [id]} :- ::warehouse-schema.schema/table
    ks           :- [:sequential (into [:enum] user-settings/user-settable-table-columns)]]
-  (when (warehouse-schema.db/table-user-settings id)
-    (warehouse-schema.db/update-table-user-settings!
-     id
-     (into {} (mapcat (fn [k]
-                        (cond-> [[k nil]]
-                          (user-settings/table-set-flags k) (conj [(user-settings/table-set-flags k) false]))))
-           ks))))
+  (when-let [stored (warehouse-schema.db/table-user-settings id)]
+    (events/with-batched-events
+      (let [row (into {} (mapcat (fn [k]
+                                   (cond-> [[k nil]]
+                                     (user-settings/table-set-flags k) (conj [(user-settings/table-set-flags k) false]))))
+                      ks)]
+        (update-settings! [[stored row]] (tables-for [(assoc row :table_id id)])))
+      (delete-empty! [id]))))
 
 (mu/defn delete-table-user-settings!
   "Delete the settings of the Tables with `table-ids`, leaving their rows as they are for sync to take over."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (doseq [batch (partition-all 1000 table-ids)]
     (warehouse-schema.db/delete-table-user-settings! batch)))
+
+(defn- delete-table-user-settings-rows!
+  "Delete the TableUserSettings with `ids`, as remote sync deletes them."
+  [ids]
+  (when (seq ids)
+    (warehouse-schema.db/delete-table-user-settings-by-ids! (vec ids))))
+
+(defn- load-legacy-fields!
+  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
+  FieldUserSettings of their Tables."
+  [items]
+  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
+    (let [kept (into #{} (map :field_id)
+                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
+      (field-user-settings/delete-field-user-settings!
+       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
+
+(defn- after-load
+  "Loads the FieldUserSettings that the loaded TableUserSettings `items` of an older export carry, then sets the
+  positions of the Fields of the Tables whose field order they load."
+  [items]
+  (load-legacy-fields! items)
+  (doseq [{{:keys [table_id field_order]} :instance} items
+          :when field_order]
+    (table/update-field-positions! (warehouse-schema.db/table table_id))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -205,7 +305,10 @@
                          :table_id      serialization/table-transform}
    :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
    :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
-   :after-load          warehouse-schema.serialization/table-user-settings-after-load
+   :insert!             create-table-user-settings!
+   :update!             update-table-user-settings-rows!
+   :delete!             delete-table-user-settings-rows!
+   :after-load          after-load
    :rows-by-refs        serialization/table-user-settings-rows-by-refs})
 
 (defmethod remote-sync/spec :model/TableUserSettings

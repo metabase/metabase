@@ -5,7 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
-   [metabase.sync.util :as sync-util]
+   [metabase.sync.updates :as sync.updates]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field :as field]
@@ -390,23 +390,23 @@
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {:semantic_type :type/Category}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK :fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-field! target-id {:active false})
       (is (nil? (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field also drops a user-set FK semantic type whose target sync set"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/FK})
-      (t2/update! :model/Field :id source-id {:fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-field! source-id {:fk_target_field_id target-id})
+      (field/update-field! target-id {:active false})
       (is (not (t2/select-one-fn :semantic_type_set :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type nil :fk_target_field_id nil} (t2/select-one :model/Field :id source-id)))))
   (testing "retiring Field keeps a user-set semantic type other than FK on a Field sync pointed at it"
     (mt/with-temp [:model/Field {target-id :id} {}
                    :model/Field {source-id :id :as source} {}]
       (field-user-settings/upsert-field-user-settings! source {:semantic_type :type/Category})
-      (t2/update! :model/Field :id source-id {:fk_target_field_id target-id})
-      (t2/update! :model/Field :id target-id {:active false})
+      (field/update-field! source-id {:fk_target_field_id target-id})
+      (field/update-field! target-id {:active false})
       (is (=? {:semantic_type :type/Category :semantic_type_set true}
               (t2/select-one :model/FieldUserSettings :field_id source-id)))
       (is (=? {:semantic_type :type/Category :fk_target_field_id nil} (t2/select-one :model/Field :id source-id))))))
@@ -423,12 +423,12 @@
                                                     :semantic_type :type/FK :fk_target_field_id pk-id}
                    :model/Dimension _              {:field_id fk-id :type :external :name "Product"
                                                     :human_readable_field_id title-id}]
-      (sync-util/update-field-unless-user-set! fk-id {:base_type           :type/BigInteger
-                                                      :effective_type      :type/BigInteger
-                                                      :coercion_strategy   nil
-                                                      :fingerprint_version 0
-                                                      :fingerprint         nil
-                                                      :semantic_type       nil})
+      (sync.updates/update-field-unless-user-set! fk-id {:base_type           :type/BigInteger
+                                                         :effective_type      :type/BigInteger
+                                                         :coercion_strategy   nil
+                                                         :fingerprint_version 0
+                                                         :fingerprint         nil
+                                                         :semantic_type       nil})
       (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))
       (is (t2/exists? :model/Dimension :field_id fk-id :type "external")))))
 
@@ -438,5 +438,5 @@
                    :model/Table     {table-id :id} {:db_id db-id :name "ORDERS"}
                    :model/Field     {field-id :id} {:table_id table-id :name "RATING" :base_type :type/Integer}
                    :model/Dimension _              {:field_id field-id :type :internal :name "Rating"}]
-      (sync-util/update-field-unless-user-set! field-id {:semantic_type :type/Score})
+      (sync.updates/update-field-unless-user-set! field-id {:semantic_type :type/Score})
       (is (t2/exists? :model/Dimension :field_id field-id :type "internal")))))

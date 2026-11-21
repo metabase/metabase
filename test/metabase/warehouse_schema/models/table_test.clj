@@ -15,6 +15,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
@@ -540,7 +541,7 @@
     (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
                    :model/Field {f-b :id} {:table_id table-id :name "b" :database_position 0 :position 0}
                    :model/Field {f-a :id} {:table_id table-id :name "a" :database_position 1 :position 1}]
-      (t2/update! :model/Table :id table-id {:field_order :alphabetical})
+      (table/update-table! table-id {:field_order :alphabetical})
       (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
 (deftest is-published-and-collection-id-test

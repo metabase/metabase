@@ -18,7 +18,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.field :as field]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,7 +28,7 @@
   [field :- i/FieldInstance]
   (sync-util/with-error-handling (format "Error scoring interestingness for %s" (sync-util/name-for-logging field))
     (let [dim-score (interestingness/dimension-interestingness field)]
-      (sync.db/update-field! (u/the-id field) {:dimension_interestingness dim-score}))))
+      (field/update-field! (u/the-id field) {:dimension_interestingness dim-score}))))
 
 (mu/defn- fields-to-score :- [:maybe [:sequential i/FieldInstance]]
   "Return Fields in `table` with fresh fingerprints that haven't completed analysis yet."

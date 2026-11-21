@@ -20,6 +20,7 @@
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -195,15 +196,14 @@
   (let [existing-dimension (warehouse-schema-rest.db/dimension-for-field id)]
     (check-can-point-at-field human-readable-field-id (:human_readable_field_id existing-dimension))
     (if-let [dimension existing-dimension]
-      (warehouse-schema-rest.db/update-dimension! (u/the-id dimension)
-                                                  {:type                    dimension-type
-                                                   :name                    dimension-name
-                                                   :human_readable_field_id human-readable-field-id})
-      (warehouse-schema-rest.db/insert-dimension!
-       {:field_id                id
-        :type                    dimension-type
-        :name                    dimension-name
-        :human_readable_field_id human-readable-field-id})))
+      (dimension/update-dimensions! [{:id                      (u/the-id dimension)
+                                      :type                    dimension-type
+                                      :name                    dimension-name
+                                      :human_readable_field_id human-readable-field-id}])
+      (dimension/create-dimension! {:field_id                id
+                                    :type                    dimension-type
+                                    :name                    dimension-name
+                                    :human_readable_field_id human-readable-field-id})))
   (warehouse-schema-rest.db/dimension-for-field id))
 
 (api.macros/defendpoint :delete "/:id/dimension" :- ::api/generic-204-no-content
@@ -211,7 +211,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
-  (warehouse-schema-rest.db/delete-dimensions-for-field! id)
+  (dimension/delete-dimensions-for-field! id)
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -242,7 +242,7 @@
                          "`has_field_values` is `list` or whose 'base_type' is 'type/Boolean'.")])
     (let [values                (map first value-pairs)
           human-readable-values (not-empty (into [] (comp (filter #(= 2 (count %))) (map second)) value-pairs))
-          updated-pk            (warehouse-schema-rest.db/update-or-insert-full-field-values!
+          updated-pk            (field-values/update-or-create-full-field-values!
                                  (u/the-id field) values human-readable-values)]
       (api/check-500 (pos? updated-pk))))
   {:status :success})

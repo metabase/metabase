@@ -7,10 +7,13 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
@@ -42,21 +45,9 @@
   (when (and (= :external (some-> dimension-type keyword)) (nil? human_readable_field_id))
     (throw (ex-info (tru "Foreign key based remappings require a human readable field id") {:status-code 400}))))
 
-(defn- check-human-readable-field
-  "Throws a 400 unless the `:human_readable_field_id` of `dimension` is a Field of the Database of its Field."
-  [{:keys [field_id human_readable_field_id]}]
-  (let [field-id->database-id (warehouse-schema.db/field-database-ids
-                               (into #{} (remove nil?) [field_id human_readable_field_id]))
-        target-database-id    (field-id->database-id human_readable_field_id)]
-    (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
-    (api/checkp (= target-database-id (field-id->database-id field_id))
-                :human_readable_field_id (tru "Target field must belong to the same database"))))
-
 (t2/define-before-insert :model/Dimension
   [dimension]
   (check-external-needs-field dimension)
-  (when (:human_readable_field_id dimension)
-    (check-human-readable-field dimension))
   dimension)
 
 (t2/define-before-update :model/Dimension
@@ -66,9 +57,87 @@
       (throw (ex-info (tru "You cannot move a Dimension to another Field.") {:status-code 400})))
     (when (some #(contains? changes %) [:type :human_readable_field_id])
       (check-external-needs-field dimension))
-    (when (:human_readable_field_id changes)
-      (check-human-readable-field dimension))
     dimension))
+
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-human-readable-fields
+  "Throws a 400 unless the `:human_readable_field_id` of each of `dimensions` is a Field of the Database of its Field,
+  the Databases of all of them read in one query."
+  [dimensions]
+  (when (seq dimensions)
+    (let [field-id->database-id (warehouse-schema.db/field-database-ids
+                                 (into #{} (comp (mapcat (juxt :field_id :human_readable_field_id)) (remove nil?))
+                                       dimensions))]
+      (doseq [{:keys [field_id human_readable_field_id]} dimensions]
+        (let [target-database-id (field-id->database-id human_readable_field_id)]
+          (api/checkp target-database-id :human_readable_field_id (tru "Invalid target field"))
+          (api/checkp (= target-database-id (field-id->database-id field_id))
+                      :human_readable_field_id (tru "Target field must belong to the same database")))))))
+
+(mu/defn create-dimensions! :- [:sequential ::warehouse-schema.schema/dimension]
+  "Insert the Dimension `rows` and return the inserted instances, refusing a human-readable Field outside the Database
+  of the Dimension's Field."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-human-readable-fields (filter :human_readable_field_id rows))
+      (vec (warehouse-schema.db/insert-dimensions! rows)))))
+
+(mu/defn create-dimension! :- ::warehouse-schema.schema/dimension
+  "Insert the Dimension `row` and return it, as [[create-dimensions!]] does."
+  [row :- ::warehouse-schema.schema/dimension.create]
+  (first (create-dimensions! [row])))
+
+(mu/defn update-dimensions! :- [:sequential [:map [:id ::lib.schema.id/dimension]]]
+  "Apply each of `rows`, the id of a Dimension and the columns to change, and return the rows of the Dimensions that
+  exist, refusing a new human-readable Field outside the Database of the Dimension's Field: one read and one statement
+  per distinct set of changes."
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.update-row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [stored (u/index-by :id (warehouse-schema.db/dimensions-by-ids (mapv :id rows)))
+            rows   (filterv #(contains? stored (:id %)) rows)]
+        (check-human-readable-fields
+         (for [{:keys [id human_readable_field_id]} rows
+               :when (and human_readable_field_id
+                          (not= human_readable_field_id (:human_readable_field_id (stored id))))]
+           (assoc (stored id) :human_readable_field_id human_readable_field_id)))
+        (doseq [[changes rows] (group-by #(dissoc % :id) rows)
+                :when (seq changes)]
+          (warehouse-schema.db/update-dimensions! (mapv :id rows) changes))
+        rows))))
+
+(mu/defn delete-dimensions!
+  "Delete the Dimensions with `ids`."
+  [ids :- [:sequential ::lib.schema.id/dimension]]
+  (when (seq ids)
+    (warehouse-schema.db/delete-dimensions! ids)))
+
+(mu/defn delete-dimensions-for-field!
+  "Delete the Dimensions of the Field with `field-id`."
+  [field-id :- ::lib.schema.id/field]
+  (warehouse-schema.db/delete-dimensions-for-field! field-id))
+
+(mu/defn delete-dimensions-of-type-for-field!
+  "Delete the `dimension-type` Dimensions of the Field with `field-id`."
+  [field-id       :- ::lib.schema.id/field
+   dimension-type :- ::warehouse-schema.schema/dimension.type]
+  (warehouse-schema.db/delete-dimensions-of-type-for-field! field-id dimension-type))
+
+(mu/defn delete-dimensions-reading-fields!
+  "Delete the Dimensions whose human-readable values come from the Fields with `field-ids`."
+  [field-ids :- [:sequential ::lib.schema.id/field]]
+  (when (seq field-ids)
+    (warehouse-schema.db/delete-dimensions-reading-fields! field-ids)))
+
+(mu/defn rename-dimensions-for-fields!
+  "Name the Dimension of each Field in `field-id->name` after it, in one statement."
+  [field-id->name :- [:map-of ::lib.schema.id/field :string]]
+  (when (seq field-id->name)
+    (warehouse-schema.db/rename-dimensions-for-fields! field-id->name)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -89,6 +158,9 @@
    :transform     {:human_readable_field_id serialization/field-transform
                    :field_id                warehouse-schema.serialization/dimension-field-id-transform}
    :storage-paths warehouse-schema.serialization/dimension-storage-paths
+   :insert!       create-dimensions!
+   :update!       update-dimensions!
+   :delete!       delete-dimensions!
    :rows-by-refs  serialization/dimension-rows-by-refs})
 
 (defmethod remote-sync/spec :model/Dimension

@@ -15,7 +15,8 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -58,12 +59,18 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (sync.db/mark-incomplete-fields-analyzed-for-table! (:id table) i/*latest-fingerprint-version*))
+  (field/update-fields-where! {:table_id            (:id table)
+                               :fingerprint_version i/*latest-fingerprint-version*
+                               :last_analyzed       nil}
+                              {:last_analyzed :%now}))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database :- i/DatabaseInstance]
-  (sync.db/mark-incomplete-fields-analyzed-for-database! (:id database) i/*latest-fingerprint-version*))
+  (field/update-fields-where! {:table_id            [:in (sync.db/synced-table-ids-query (:id database))]
+                               :fingerprint_version i/*latest-fingerprint-version*
+                               :last_analyzed       nil}
+                              {:last_analyzed :%now}))
 
 (mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."

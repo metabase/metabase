@@ -9,7 +9,6 @@
    [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -91,11 +90,6 @@
                                                                         [:= :table.schema nil]]]
                                                                       [:= :self_table.name [:lower :table.name]]]}]]]})))
 
-(mu/defn downcase-tables!
-  "Move the Tables with `table-ids` to the `public` schema and lower-case their names."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table :id [:in table-ids] {:schema "public" :name [:lower :name]}))
-
 (mu/defn field-ids-to-downcase
   "The IDs of the Fields of the Metabase-managed Tables of the Database with `database-id` that have no
   lower-cased counterpart yet."
@@ -123,42 +117,12 @@
                                                                                 [:= :table.schema nil]]]
                                                                               [:= :self_field.name [:lower :field.name]]]}]]]})))
 
-(mu/defn downcase-fields!
-  "Lower-case the names of the Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field :id [:in field-ids] {:name [:lower :name]}))
-
-(mu/defn clear-table-schemas!
-  "Clear the schema of the Tables of the Database with `database-id`."
+(mu/defn table-ids-of-database-query :- :map
+  "The query of the ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/update! :model/Table {:db_id database-id} {:schema nil}))
-
-(mu/defn upcase-tables!
-  "Upper-case the schemas and names of the Tables of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/update! :model/Table {:db_id database-id} {:schema [:upper :schema] :name [:upper :name]}))
-
-(mu/defn upcase-fields!
-  "Upper-case the names of the Fields of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/update! :model/Field
-              {:table_id
-               [:in
-                ^:allow-subquery {:select [:id]
-                                  :from   [(t2/table-name :model/Table)]
-                                  :where  [:= :db_id database-id]}]}
-              {:name [:upper :name]}))
-
-(mu/defn update-table!
-  "Apply `changes` to the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table
-   changes  :- (mut/select-keys ::warehouse-schema.schema/table.update [:active :name :schema :is_defective_duplicate])]
-  (t2/update! :model/Table :id table-id changes))
-
-(mu/defn delete-table!
-  "Delete the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/delete! :model/Table :id table-id))
+  ^:allow-subquery {:select [:id]
+                    :from   [(t2/table-name :model/Table)]
+                    :where  [:= :db_id database-id]})
 
 (mu/defn field-names-of-table
   "The `:id` and `:name` of the Fields of the Table with `table-id`."

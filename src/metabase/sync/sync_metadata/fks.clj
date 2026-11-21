@@ -5,18 +5,23 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.updates :as sync.updates]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field :as field]))
 
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]
-  (u/prog1 (sync.db/mark-fk! (:id database)
-                             (:fk-table-schema metadata) (:fk-table-name metadata) (:fk-column-name metadata)
-                             (:pk-table-schema metadata) (:pk-table-name metadata) (:pk-column-name metadata))
+  (u/prog1 (if-let [[fk-id changes] (sync.db/fk-target-changes
+                                     (:id database)
+                                     (:fk-table-schema metadata) (:fk-table-name metadata) (:fk-column-name metadata)
+                                     (:pk-table-schema metadata) (:pk-table-name metadata) (:pk-column-name metadata))]
+             (field/update-field! fk-id changes)
+             0)
     (when (= <> 1)
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                 (sync-util/table-name-for-logging :name (:fk-table-name metadata)
@@ -68,4 +73,4 @@
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).
-    (sync-util/set-initial-table-sync-complete-for-db! database)))
+    (sync.updates/set-initial-table-sync-complete-for-db! database)))
