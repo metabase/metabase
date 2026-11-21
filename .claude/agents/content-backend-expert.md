@@ -41,10 +41,10 @@ read it when a collection-wide change must cover every item type.
   live at its `location` plus its own id. `move-collection!` rewrites every descendant's `location` in one
   transaction.
 - Archive is a move into the Trash collection, not a flag flip. `move-collection!` throws if the target is in
-  the Trash; archive with `(t2/update! :model/Collection :id id {:archived true})`. Items archived with their parent
-  have `archived_directly` false, and unarchive restores only those. A new item type in collections is written from
-  `mi/after-archived-change :model/Collection`, through its own model, and the skill `backend-model-rules` covers the
-  archive rules.
+  the Trash; archive through Collection's update write function. Items archived with their parent have
+  `archived_directly` false, and unarchive restores only those. A new item type in collections implements Collection's
+  cascade multimethods in its own model file with its bulk write functions, and the skill `backend-model-rules` covers
+  the archive rules.
 - Snippet collections are a separate collection `namespace` (`:snippets`). Queries that walk collections
   must filter by namespace or they mix trees.
 - Moving a collection into or out of a remote-synced parent flips `is_remote_synced` and runs dependency
@@ -67,14 +67,14 @@ read it when a collection-wide change must cover every item type.
 
 1. Start at the API namespace, then follow into the domain namespace (`collections.update`,
    `dashboards.write`, `queries.card-write-checks`). The REST and MCP tool paths share these.
-2. Read the model's Toucan 2 hooks (`t2/define-before-insert`, `t2/define-before-update`, `t2/define-before-delete`)
-   before blaming the API layer.
-3. For side effects, find the consumers of the model's lifecycle topics: `events/spec` on the model names them,
-   consumers live in `<module>/events.clj`, and `rg "derive! :event/<topic>"` finds the subscribers.
+2. Read the model's write functions (the `Writes` section of its model file) and its Toucan 2 hooks before blaming
+   the API layer. The hooks hold only what the row alone answers; everything else is in the write functions.
+3. For side effects, find the consumers of the events the write functions publish: consumers live in
+   `<module>/events.clj`, and `rg "derive! :event/<topic>"` finds the subscribers.
 4. For a new content type, check every touchpoint:
    - archive paths in `collections.models.collection`
-   - the model's `<feature>/spec` methods (the Specs table of the backend-model-rules skill), and `:hook/events` plus
-     `events/spec` on the model
+   - the model's `<feature>/spec` methods (the Specs table of the backend-model-rules skill), and the events its
+     write functions publish
    - bookmarks
    - the search spec (search-backend-expert)
    - serdes in `metabase.models.serialization` (enterprise-backend-expert)
