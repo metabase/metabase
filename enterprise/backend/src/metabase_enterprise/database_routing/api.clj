@@ -86,7 +86,7 @@
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
     (if (database-routing.db/router-for-database db-id)
       (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.models/create-router! db-id user-attribute))))
+      (database-routing.models/create-database-router! {:database_id db-id :user_attribute user-attribute}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

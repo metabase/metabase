@@ -3,6 +3,7 @@
    [metabase-enterprise.database-routing.audit :as database-routing.audit]
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.driver.util :as driver.u]
@@ -12,6 +13,7 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -72,12 +74,11 @@
   (when (database-routing.db/destination-database? database-id)
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
-(defn create-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`; a destination Database is
-  a 400."
-  [database-id user-attribute]
-  (check-not-destination database-id)
-  (database-routing.db/insert-router! database-id user-attribute))
+(mu/defn create-database-router!
+  "Insert the DatabaseRouter `row`; a destination Database is a 400."
+  [{:keys [database_id user_attribute]} :- ::database-routing.schema/database-router.create]
+  (check-not-destination database_id)
+  (database-routing.db/insert-router! database_id user_attribute))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

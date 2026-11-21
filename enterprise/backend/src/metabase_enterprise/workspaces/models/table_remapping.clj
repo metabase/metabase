@@ -19,6 +19,8 @@
    [metabase.app-db.core :as app-db]
    [metabase.cache.core :as cache]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -103,37 +105,42 @@
     ;; write, and would cache that after an early drop. The writing transaction's own reads bypass the cache.
     (app-db/do-after-commit invalidate-database-ids!)))
 
-(defn upsert-table-remapping!
+(mu/defn upsert-table-remapping!
   "Make the TableRemapping of the Database with `database-id` from `from-spec` point at `to-spec`."
-  [database-id from-spec to-spec]
+  [database-id :- ms/PositiveInt
+   from-spec   :- ::ws.db/table-spec
+   to-spec     :- ::ws.db/table-spec]
   (t2/with-transaction [_conn]
     (u/prog1 (ws.db/upsert-table-remapping! database-id from-spec to-spec)
       (invalidate! [database-id]))))
 
-(defn delete-table-remapping!
+(mu/defn delete-table-remapping!
   "Delete the TableRemapping of the Database with `database-id` whose source is `from-spec`, returning the number of
   rows deleted."
-  [database-id from-spec]
+  [database-id :- ms/PositiveInt
+   from-spec   :- ::ws.db/table-spec]
   (t2/with-transaction [_conn]
     (u/prog1 (ws.db/delete-table-remapping! database-id from-spec)
       (when (pos? <>) (invalidate! [database-id])))))
 
-(defn delete-table-remappings-of-database!
+(mu/defn delete-table-remappings-of-database!
   "Delete the TableRemappings of the Database with `database-id`, returning the number of rows deleted."
-  [database-id]
+  [database-id :- ms/PositiveInt]
   (t2/with-transaction [_conn]
     (u/prog1 (ws.db/delete-table-remappings-of-database! database-id)
       (when (pos? <>) (invalidate! [database-id])))))
 
-(defn delete-table-remappings-into!
+(mu/defn delete-table-remappings-into!
   "Delete the TableRemappings of the Database with `database-id` whose target is in the `(to-db, to-schema)`
   namespace, returning the number of rows deleted."
-  [database-id to-db to-schema]
+  [database-id :- ms/PositiveInt
+   to-db       :- :string
+   to-schema   :- :string]
   (t2/with-transaction [_conn]
     (u/prog1 (ws.db/delete-table-remappings-into! database-id to-db to-schema)
       (when (pos? <>) (invalidate! [database-id])))))
 
-(defn delete-all-table-remappings!
+(mu/defn delete-all-table-remappings!
   "Delete every TableRemapping."
   []
   (t2/with-transaction [_conn]
