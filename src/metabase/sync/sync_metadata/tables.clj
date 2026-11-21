@@ -25,7 +25,8 @@
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouses.models.database :as database]
-   [metabase.workspaces.table-remapping :as ws.table-remapping])
+   [metabase.workspaces.table-remapping :as ws.table-remapping]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ITransientSet)))
 
@@ -262,7 +263,7 @@
     (log/info "Found new table:"
               (sync-util/name-for-logging (mi/instance :model/Table table-metadata))))
   (let [field-order (some-> (:engine database) driver/default-field-order)]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (mapv (fn [table-metadata]
               (insert-table! database (m/assoc-some table-metadata :field_order field-order) options))
             (sort-by (juxt :schema :name) new-table-metadatas)))))

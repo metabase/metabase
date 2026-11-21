@@ -1562,7 +1562,7 @@
   "[[create-cards!]] without checking `rows` against their schema, which the hooks of the model check: creates the Cards
   as [[insert-cards*]] does and publishes the events of the writes, returning the Cards."
   [rows]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [{:keys [cards events]} (insert-cards* rows)]
       (events/publish-lifecycle! events)
       cards)))
@@ -1841,7 +1841,7 @@
   ([updates]
    (update-cards* updates nil))
   ([updates context]
-   (events/with-batched-events
+   (t2/with-transaction [_conn]
      (let [{:keys [cards events]} (update-cards-with-events* updates)]
        (events/publish-lifecycle! events {:context context})
        cards))))
@@ -1864,7 +1864,7 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (let [card-ids (vec (distinct card-ids))]
     (when (seq card-ids)
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (let [cards (vec (queries.db/cards card-ids))]
           (delete-card-tests! card-ids)
           (actions.models/delete-actions-of-models! card-ids)
@@ -1952,7 +1952,7 @@
   [collection-id   :- [:maybe ::lib.schema.id/collection]
    position-clause :- vector?
    plus-or-minus   :- [:enum :+ :-]]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [previous (vec (queries.db/cards-at-positions collection-id position-clause))
           shifted  (u/prog1 (queries.db/shift-card-positions! collection-id position-clause plus-or-minus)
                      (events/publish-lifecycle!
@@ -1973,7 +1973,7 @@
   that the cached results stored before it are not served, publishing their updates; returns the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]
    invalidated-at :- ms/TemporalInstant]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [card-ids (vec card-ids)
           previous (if (seq card-ids) (vec (queries.db/cards card-ids)) [])]
       (u/prog1 (queries.db/set-cards-cache-invalidated-at! card-ids invalidated-at)
@@ -2360,7 +2360,7 @@
   included, otherwise the metadata will be saved to the database asynchronously."
   [{:keys [card-before-update card-updates actor delete-old-dashcards?]}]
   (let [notifications (pulse/alerts-of-card-being-changed card-before-update card-updates)]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (events/publish-lifecycle! (update-card-in-db! card-before-update card-updates actor delete-old-dashcards?)))
     ;; Fetch the updated Card from the DB
     (let [card (queries.db/card (:id card-before-update))]

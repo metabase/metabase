@@ -212,24 +212,19 @@
 
 (derive :model/Revision :metabase/model)
 
-;; Not `:hook/events`: that trait would hook every Revision delete, which selects and deserializes each row it removes
-;; when a Revision is pruned, and every update and insert. The create event is published by [[publish-created!]].
-(defmethod events/spec :model/Revision
-  [_model]
-  {:create :event/revision-create})
-
 (defn publish-created!
-  "Publish the create event of a Revision, within the batch of the write that caused it.
-  The event names the entity that the Revision records, by `:model` and `:model_id`, and nothing else: a Dashboard and
-  a Card take their last editor and edit time from their latest Revision, which no write of their own rows may have
-  changed. Its `:id` is that of the entity, so a batch delivers one event per entity, whichever the order or the number
-  of the Revisions inserted."
-  [{:keys [model model_id user_id]}]
-  (events/collect! {:model     :model/Revision
-                    :operation :create
-                    :id        (str model ":" model_id)
-                    :user-id   user_id
-                    :object    {:model model :model_id model_id}}))
+  "Publish the create event of the Revisions `rows`, one change per entity that they record, named by `:model` and
+  `:model_id` and nothing else: a Dashboard and a Card take their last editor and edit time from their latest Revision,
+  which no write of their own rows may have changed."
+  [rows]
+  (when (seq rows)
+    (events/publish-lifecycle! [(events/created :event/revision-create
+                                                (into []
+                                                      (comp (map #(select-keys % [:model :model_id]))
+                                                            (distinct)
+                                                            (map #(t2/instance :model/Revision %)))
+                                                      rows))]
+                               {:user-id (some :user_id rows)})))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
@@ -410,11 +405,9 @@
                                                    :object       serialized-instance
                                                    :is_creation  false
                                                    :is_reversion true})
-                                          (publish-created! <>)))
-            in-batch                 (events/with-event-context {:reverting? true}
-                                       (events/with-batched-events
-                                         (revert-to-revision! entity id user-id serialized-instance)
-                                         [(revisions.db/latest-revision model-name id) (record-reversion!)]))
+                                          (publish-created! [<>])))
+            in-batch                 (do (revert-to-revision! entity id user-id serialized-instance)
+                                         [(revisions.db/latest-revision model-name id) (record-reversion!)])
             [last-revision new-revision] (or in-batch
                                              [(revisions.db/latest-revision model-name id) (record-reversion!)])]
         (if new-revision

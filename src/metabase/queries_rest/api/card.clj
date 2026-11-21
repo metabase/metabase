@@ -721,7 +721,7 @@
       ;; here. We are querying for the max card position for a given collection, then using that to base our position
       ;; changes if the cards are moving to a different collection. Without repeatable read here, it's possible we'll
       ;; get duplicates
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (t2/with-transaction [_conn]
           ;; If any of the cards have a `:collection_position`, we'll need to fixup the old collection now that the cards
           ;; are gone and update the position in the new collection

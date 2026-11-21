@@ -8,7 +8,8 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]))
 
 (def ^:private entity-types
   "The entity type of the findings of each model that has them."
@@ -36,7 +37,7 @@
 (defn- invalidate-batch!
   "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
   collections with the subtrees of those archived directly, logging the error of that statement, which fails the write on Postgres, where an error aborts the transaction."
-  [_owner events _all-events]
+  [events _all-events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
         collection-ids (into (set (map :id collections))
@@ -51,4 +52,9 @@
         (log/errorf "Failed to invalidate content-diagnostics findings of %d entities: %s"
                     (count invalidations) (ex-message e))))))
 
-(events/register-owned-consumer! ::invalidate owner invalidate-batch!)
+(events/derive! :metabase/lifecycle-event ::invalidate)
+
+(methodical/defmethod events/publish-event! ::invalidate
+  [topic event]
+  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
+    (invalidate-batch! events events)))

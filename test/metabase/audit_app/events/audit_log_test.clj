@@ -284,8 +284,7 @@
   (testing :segment-delete
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Segment segment]
-        (events/with-event-context {:revision-message "deleted"}
-          (segment/delete-segments! [(:id segment)]))
+        (segment/delete-segments! [(:id segment)])
         (is (= {:topic       :segment-delete
                 :user_id     (mt/user->id :rasta)
                 :model       "Segment"
@@ -676,7 +675,7 @@
               (mt/latest-audit-log-entry :table-data-edit)))))))
 
 (deftest batch-of-audited-writes-is-one-insert-test
-  (testing "the audit rows of a batch of writes by a user are inserted by one statement, in the order of the writes"
+  (testing "the audit rows of the rows of one write by a user are inserted by one statement, in the order of the rows"
     (mt/with-temp [:model/Card {a :id} {:name "A"}
                    :model/Card {b :id} {:name "B"}
                    :model/Card {c :id} {:name "C"}]
@@ -685,10 +684,7 @@
         (mt/with-dynamic-fn-redefs [audit-app.db/insert-audit-logs! (let [f (mt/original-fn #'audit-app.db/insert-audit-logs!)]
                                                                       (fn [rows] (swap! inserts inc) (f rows)))]
           (mt/with-current-user (mt/user->id :rasta)
-            (events/with-batched-events
-              (card/update-cards! [{:id b :name "B2"}])
-              (card/update-cards! [{:id c :name "C2"}])
-              (card/update-cards! [{:id a :name "A2"}]))))
+            (card/update-cards! [{:id b :name "B2"} {:id c :name "C2"} {:id a :name "A2"}])))
         (is (= 1 @inserts))
         (is (= [["card-update" b] ["card-update" c] ["card-update" a]]
                (mapv (juxt :topic :model_id)

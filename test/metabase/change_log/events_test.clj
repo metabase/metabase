@@ -257,39 +257,6 @@
                        (column-types [(name (t2/table-name model)) (u/lower-case-en (name (first pks)))]))
             (str model "'s key is not an integer column"))))))
 
-(def ^:private published-by-hand
-  "The models whose write functions publish their events, in place of the events trait."
-  #{:model/Glossary :model/Dashboard :model/DashboardCard :model/DashboardTab :model/DashboardCardSeries
-    :model/Pulse :model/PulseCard :model/PulseChannel :model/PulseChannelRecipient
-    :model/Notification :model/NotificationCard :model/NotificationSubscription :model/NotificationHandler
-    :model/NotificationRecipient :model/Channel :model/ChannelTemplate
-    :model/User :model/PermissionsGroup :model/PermissionsGroupMembership :model/ApiKey :model/Tenant :model/Sandbox
-    :model/DatabaseRouter
-    :model/Segment :model/Measure :model/MetabotConversation :model/Transform :model/TransformJob
-    :model/TransformTag :model/DataApp :model/CustomVizPlugin :model/PythonLibrary :model/TransformTest
-    :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember
-    :model/Database :model/Table :model/Field :model/FieldValues :model/Dimension :model/FieldUserSettings
-    :model/TableUserSettings
-    :model/Card :model/CacheConfig :model/ModerationReview :model/ModelIndex
-    :model/Collection :model/Document :model/Exploration :model/Timeline :model/TimelineEvent
-    :model/NativeQuerySnippet :model/Comment :model/Action :model/QueryAction :model/ImplicitAction})
-
-(deftest tracked-models-derive-events-test
-  (testing "each tracked model derives the events trait, which collects the writes the change log records"
-    (spec-test-util/load-models!)
-    (doseq [model (vals (change-log.cascade/tracked-models))
-            :when (not (published-by-hand model))]
-      (is (isa? model :hook/events) (str model " does not derive :hook/events")))))
-
-(deftest cascade-sources-derive-events-test
-  (testing "a model whose delete cascades to a tracked table derives the events trait, so the delete is captured"
-    (let [models  (spec-test-util/load-models!)
-          fks     (change-log.cascade/foreign-keys)
-          sources (set (filter #(seq (change-log.cascade/referenced-columns fks (name (t2/table-name %)))) models))]
-      (doseq [model sources
-              :when (not (published-by-hand model))]
-        (is (isa? model :hook/events) (str model " does not derive :hook/events"))))))
-
 (defn- startup-namespaces
   "The Metabase namespaces that the startup namespaces require in their `ns` forms, at any depth. EE's startup
   namespaces are those that `metabase.core.init` and `metabase.api-routes.routes` load."

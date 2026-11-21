@@ -471,7 +471,7 @@
   [rows :- [:sequential ::users.schema/user.create]]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (check-sso-setup rows)
       (check-user-limit rows)
       (let [users (vec (sort-by :id (users.db/insert-users! rows)))]
@@ -572,7 +572,7 @@
   "Apply `changes` to the Users matching `conditions` as [[update-users*]] does, publishing the events of the writes with
   `context`, and return the number updated."
   [conditions changes context]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [{:keys [count events]} (update-users* conditions changes)]
       (events/publish-lifecycle! events {:context context})
       count)))

@@ -32,7 +32,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -122,7 +123,7 @@
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
-              (events/with-batched-events
+              (t2/with-transaction [_conn]
                 (reduce (fn [state field]
                           (let [result (classify! field state)]
                             (cond-> state

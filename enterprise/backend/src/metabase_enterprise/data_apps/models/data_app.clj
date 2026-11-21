@@ -253,7 +253,7 @@
         (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                         {:status-code 400})))
       (check-resource-collections! (zipmap given (repeat nil)))
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (let [missing        (filterv (comp nil? :resource_collection_id) rows)
               new-collection (zipmap (map :slug missing)
                                      (when (seq missing)
@@ -308,7 +308,7 @@
   events, publishing their delete event. The collection's own hooks delete what it holds."
   [data-app-ids :- [:sequential ms/PositiveInt]]
   (when (seq data-app-ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [apps           (data-apps.db/data-apps-by-ids (vec data-app-ids))
             collection-ids (into [] (keep :resource_collection_id) apps)]
         (when (seq collection-ids)

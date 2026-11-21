@@ -7,7 +7,8 @@
    [metabase.change-log.spec :as change-log.spec]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util.events :as u.events]))
+   [metabase.util.events :as u.events]
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,11 +34,16 @@
         :delete [[table [id] "delete"]]))))
 
 (defn- log-events!
-  [_owner events _all]
+  [events _all]
   (when (premium-features/enable-change-log?)
     (change-log.log/log! (mapcat (fn [event]
                                    (concat (own-changes event) (get-in event [:captures :change-log])))
                                  events))))
 
 (events/register-statement-capture! :change-log capture-cascade)
-(events/register-owned-consumer! :change-log (constantly :log) log-events!)
+(events/derive! :metabase/lifecycle-event ::change-log)
+
+(methodical/defmethod events/publish-event! ::change-log
+  [topic event]
+  (when-let [events (not-empty (filterv (constantly true) (events/row-events topic event)))]
+    (log-events! events events)))

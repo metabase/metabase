@@ -10,6 +10,7 @@
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.util.events :as u.events]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +54,7 @@
 (defn- sync-subscriptions!
   "Update the names and Collection ids of the Pulses of the Dashboards that the row `events` change, and sync their
   PulseCards with the dashcards those Dashboards have, with a number of reads that does not grow with the Dashboards."
-  [_owner events _all-events]
+  [events _all-events]
   (when-let [dashboard-ids (not-empty (into [] (comp (keep dashboard-of) (distinct)) events))]
     (when-let [subscriptions (not-empty (pulse.db/subscriptions-for-dashboards dashboard-ids))]
       (let [dashboards    (into {} (map (juxt :id identity))
@@ -86,4 +87,9 @@
                               (pulse-card/append-pulse-cards* new-cards))]
                 (events/publish-lifecycle! (into (vec (:events renamed)) (:events created)))))))))))
 
-(events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)
+(events/derive! :metabase/lifecycle-event ::dashboard-subscriptions)
+
+(methodical/defmethod events/publish-event! ::dashboard-subscriptions
+  [topic event]
+  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
+    (sync-subscriptions! events events)))

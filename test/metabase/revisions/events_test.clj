@@ -41,10 +41,10 @@
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                    :model/Card      {card-id :id}      {}]
       (let [before (count (revisions-of "Dashboard" dashboard-id))]
-        (events/with-event-context {:revision-message "add two"}
-          (dashboard-card/create-dashboard-cards!
-           (for [i (range 2)]
-             {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4})))
+        (dashboard-card/create-dashboard-cards!
+         (for [i (range 2)]
+           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4})
+         {:revision-message "add two"})
         (is (= (inc before) (count (revisions-of "Dashboard" dashboard-id))))
         (is (=? {:message "add two" :object {:cards [{} {}]}}
                 (last (revisions-of "Dashboard" dashboard-id))))))))

@@ -163,7 +163,7 @@
   delivers them before the outermost one commits."
   [thunk]
   (t2/with-transaction [_]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (thunk))))
 
 (defn do-in-repeatable-read-transaction

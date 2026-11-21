@@ -250,7 +250,7 @@
   concurrent first save of the same target makes one of them retry as an update."
   [_user-id {:keys [model model_id] :as config}]
   (let [save! (fn []
-                (events/with-batched-events
+                (t2/with-transaction [_conn]
                   (let [data    (config->row config)
                         current (cache.db/lock-cache-config model model_id)
                         context {:details (caching-change current data)}]
@@ -271,7 +271,7 @@
 (defn delete-cache-configs!
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
   [_user-id model model-ids]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (doseq [item (cache.db/cache-configs-for model model-ids)]
       (let [event (events/deleted :event/cache-config-delete :model/CacheConfig [item])]
         (cache.db/delete-cache-configs! model [(:model_id item)])
@@ -282,7 +282,7 @@
   "Deletes the CacheConfigs targeting the `model` entities with `model-ids`, which are being deleted."
   [model model-ids]
   (when (seq model-ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [items (cache.db/cache-configs-for model (vec model-ids))
             event (events/deleted :event/cache-config-delete :model/CacheConfig items)]
         (cache.db/delete-cache-configs! model (vec model-ids))

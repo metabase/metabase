@@ -341,7 +341,7 @@
          rows   (filterv #(contains? stored (:id %)) rows)]
      (if (empty? rows)
        rows
-       (events/with-batched-events
+       (t2/with-transaction [_conn]
          (let [archiving            (filterv #(contains? % :archived) rows)
                archived-collections (collection/archived-collection-ids
                                      (map #(if (contains? % :collection_id)
@@ -556,7 +556,7 @@
        [:collection_id {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]]]
-  (let [created-document (events/with-batched-events
+  (let [created-document (t2/with-transaction [_conn]
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
@@ -617,7 +617,7 @@
         target-collection-id (if (contains? body :collection_id)
                                collection_id
                                (:collection_id existing-document))]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when collection_position
         (api/maybe-reconcile-collection-position! (select-keys existing-document [:collection_id :collection_position])
                                                   {:collection_id       target-collection-id

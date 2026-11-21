@@ -466,12 +466,16 @@
          :events    (into [(events/created :event/dashboard-card-create inserted)] (:events series))}))))
 
 (mu/defn create-dashboard-cards! :- [:sequential :map]
-  "Create new DashboardCards as [[create-dashboard-cards*]] does, publishing the events of the writes, and return them."
-  [dashboard-cards :- [:sequential NewDashboardCard]]
-  (t2/with-transaction [_conn]
-    (let [{:keys [dashcards events]} (create-dashboard-cards* dashboard-cards)]
-      (events/publish-lifecycle! events)
-      dashcards)))
+  "Create new DashboardCards as [[create-dashboard-cards*]] does, publishing the events of the writes with `context`,
+  and return them."
+  ([dashboard-cards :- [:sequential NewDashboardCard]]
+   (create-dashboard-cards! dashboard-cards nil))
+  ([dashboard-cards :- [:sequential NewDashboardCard]
+    context         :- [:maybe :metabase.events.schema/context]]
+   (t2/with-transaction [_conn]
+     (let [{:keys [dashcards events]} (create-dashboard-cards* dashboard-cards)]
+       (events/publish-lifecycle! events {:context context})
+       dashcards))))
 
 (mu/defn delete-dashboard-cards* :- [:map {:closed true} [:events events/Events]]
   "Delete the DashboardCards with `dashboard-card-ids`, with their PulseCards and DashboardCardSeries, returning the
@@ -489,7 +493,7 @@
   "Delete the DashboardCards with `dashboard-card-ids` as [[delete-dashboard-cards*]] does, publishing the events of the
   writes."
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (events/publish-lifecycle! (:events (delete-dashboard-cards* dashboard-card-ids))))
   nil)
 

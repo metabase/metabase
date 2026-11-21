@@ -553,7 +553,7 @@
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
         dashboard      (t2/with-transaction [_conn]
-                         (events/with-batched-events
+                         (t2/with-transaction [_conn]
                            ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                            ;; collection to change position, check that and fix up if needed
                            (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))

@@ -60,7 +60,7 @@
   "Persist an embed for `card-id` into document `document-id`, re-reading the document inside the
   transaction so a concurrent edit cannot be overwritten. Returns the updated row, unchecked."
   [document-id card-id position extra-attrs]
-  (let [updated (events/with-batched-events
+  (let [updated (t2/with-transaction [_conn]
                   (let [document (api/check-404 (documents.db/document document-id))
                         updated  (prose-mirror/insert-card-embed document card-id position extra-attrs)
                         updates  (cond-> (select-keys updated [:document])
@@ -206,7 +206,7 @@
                        :creator_id          api/*current-user-id*
                        :collection_id       collection_id
                        :collection_position collection_position}
-        new-document (events/with-batched-events
+        new-document (t2/with-transaction [_conn]
                        (when collection_position
                          (api/maybe-reconcile-collection-position! (select-keys document-data [:collection_id :collection_position])))
                        (let [new-document-id (:id (m.document/create-document! document-data))

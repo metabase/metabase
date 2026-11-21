@@ -194,7 +194,7 @@
   "Apply `changes` to the ApiKey with `id` as [[update-api-key!]] does, publishing the events of the writes with
   `context`."
   [id changes context]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [{user-id :user_id :as stored} (api-keys.db/api-key id)
           new-name                      (:name changes)
           new-group-id                  (::api-keys/group-id changes)]
@@ -240,7 +240,7 @@
 (defn- delete-api-key-and-publish!
   "Delete the ApiKey with `id` as [[delete-api-key!]] does, publishing the events of the writes with `context`."
   [id context]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (when-let [{user-id :user_id :as stored} (api-keys.db/api-key id)]
       (let [deactivated (deactivate-key-users* [user-id])
             event       (events/deleted :event/api-key-delete :model/ApiKey [stored])]
@@ -260,7 +260,7 @@
   "Delete every ApiKey with `scope`, deactivating the Users created for them and publishing the events of the writes,
   and return the number deleted."
   [scope :- ::api-keys.schema/scope]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [api-keys (api-keys.db/api-keys-with-scope scope)]
       (if (empty? api-keys)
         0

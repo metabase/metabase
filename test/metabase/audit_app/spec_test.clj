@@ -77,9 +77,7 @@
   (into #{}
         (mapcat (fn [model]
                   (let [{:keys [topics parent moments]} (audit.spec/spec model)]
-                    (concat (when (and (nil? topics) (nil? parent))
-                              (map (comp keyword name) (vals (events/spec model))))
-                            (filter keyword? (vals topics))
+                    (concat (filter keyword? (vals topics))
                             (vals (:topics parent))
                             (map :topic moments)))))
         models))

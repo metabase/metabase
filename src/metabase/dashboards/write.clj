@@ -114,7 +114,7 @@
                           (some? auto_apply_filters) (assoc :auto_apply_filters auto_apply_filters))
          _              (api/create-check :model/Dashboard dashboard-data)
          _              (check-new-references (constantly no-references) {:parameters parameters})
-         dash           (events/with-batched-events
+         dash           (t2/with-transaction [_conn]
                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                           ;; collection to change position, check that and fix up if needed
                           (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))
@@ -334,7 +334,7 @@
   [dashboard parent-collection-id]
   (queries/check-parameter-source-card-permissions
    (lib/normalize [:maybe [:sequential :metabase.parameters.schema/parameter]] (:parameters dashboard)))
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [{dashcards      :dashcards
            tabs           :tabs
            :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
@@ -514,7 +514,7 @@
           dash-updates                       (api/updates-without-collection-when-archiving current-dash dash-updates)]
       (api/update-check current-dash dash-updates)
       (check-embedding-enabled current-dash dash-updates)
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (let [events (volatile! [])]
           ;; If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
           ;; adjust the collection position of other dashboards in the collection
@@ -794,7 +794,7 @@
                         :collection_id       collection_id
                         :collection_position collection_position
                         :width               (:width existing-dashboard)}
-        dashboard      (events/with-batched-events
+        dashboard      (t2/with-transaction [_conn]
                          ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
                          ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! (select-keys dashboard-data [:collection_id :collection_position]))

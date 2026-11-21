@@ -58,7 +58,7 @@
   [rows :- [:sequential ::metabot.schema/metabot-prompt.create]]
   (if (seq rows)
     (let [card-types (card-types-of rows)]
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (metabot.db/insert-prompts! (mapv #(assoc % :model (card-types (:card_id %))) rows))))
     []))
 
@@ -72,7 +72,7 @@
                             (map (fn [[id {:keys [card_id] :as changes}]]
                                    [id (cond-> changes (contains? changes :card_id) (assoc :model (card-types card_id)))]))
                             changes-by-id)]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (doseq [[changes pairs] (group-by val changes-by-id)
               :when           (seq changes)]
         (metabot.db/update-prompts! (mapv key pairs) changes)))))
@@ -81,7 +81,7 @@
   "Delete the MetabotPrompts with `prompt-ids`."
   [prompt-ids :- [:sequential ms/PositiveInt]]
   (when (seq prompt-ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (metabot.db/delete-prompts! (vec prompt-ids))))
   nil)
 

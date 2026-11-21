@@ -684,7 +684,7 @@
   "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them."
   [ids :- [:sequential ::lib.schema.id/table]]
   (when (seq ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [tables (warehouse-schema.db/tables (vec ids))]
         (field/delete-fields-for-tables! (vec ids))
         (actions.models/delete-implicit-actions-of-tables! (vec ids))

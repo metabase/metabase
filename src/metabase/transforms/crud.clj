@@ -183,7 +183,7 @@
      (check-references definition (written-parts body))
      (check-target-table-free definition))
    (let [creator-id (or creator-id api/*current-user-id*)
-         transform  (events/with-batched-events
+         transform  (t2/with-transaction [_conn]
                       (let [tag-ids       (:tag_ids body)
                             ;; Set owner_user_id to current user if not explicitly provided
                             owner-user-id (when-not (:owner_email body)
@@ -206,7 +206,7 @@
   associations hydrated."
   [id   :- ::lib.schema.id/transform
    body :- ::transforms.schema/transform.create]
-  (let [transform (events/with-batched-events
+  (let [transform (t2/with-transaction [_conn]
                     (let [old           (api/read-check :model/Transform id)
                           new           (merge old body)
                           definition    (transforms.u/->definition new)

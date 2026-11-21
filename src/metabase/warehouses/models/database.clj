@@ -944,7 +944,7 @@
   accepted it."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (when (seq database-ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when-let [databases (not-empty (warehouses.db/databases (vec (distinct database-ids))))]
         (delete-followers! refusing-follower-models databases)
         (run! unschedule-tasks! databases)

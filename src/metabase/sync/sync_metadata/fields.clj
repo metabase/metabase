@@ -52,6 +52,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -94,7 +95,7 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
          ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
          ;; Re-fetch our metadata because there might be some things that have changed after calling

@@ -192,9 +192,8 @@
                 (reset! marks [])
                 (reset! submitted [])
                 (deps.test/do-with-immediate-hook-writes
-                 #(events/with-batched-events
-                    (field/update-field! (mt/id :venues :price) {:position 0})
-                    (field/update-field! (mt/id :venues :name) {:position 1})))
+                 #(field/update-fields! [{:id (mt/id :venues :price) :position 0}
+                                         {:id (mt/id :venues :name) :position 1}]))
                 (is (= [[:table #{(mt/id :venues)}]] @marks))
                 (is (= [{:dependency-jobs true}] @submitted))
                 (is (deps.test/result-metadata-pending? card-id))))))))))

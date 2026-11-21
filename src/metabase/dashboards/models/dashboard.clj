@@ -396,7 +396,7 @@
    (update-dashboards! rows nil))
   ([rows    :- [:sequential ::dashboards.schema/dashboard.update-row]
     context :- [:maybe :metabase.events.schema/context]]
-   (events/with-batched-events
+   (t2/with-transaction [_conn]
      (let [result (update-dashboards* rows)]
        (events/publish-lifecycle! (:events result) {:context context})
        (:rows result)))))
@@ -434,7 +434,7 @@
 (mu/defn delete-dashboards! :- :nil
   "Delete the Dashboards with `dashboard-ids` as [[delete-dashboards*]] does, publishing the events of the writes."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (events/publish-lifecycle! (:events (delete-dashboards* dashboard-ids))))
   nil)
 
@@ -474,7 +474,7 @@
 (mu/defn delete-dashcards! :- :nil
   "Delete the DashboardCards with `dashboard-card-ids` as [[delete-dashcards*]] does, publishing the events of the writes."
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (events/publish-lifecycle! (:events (delete-dashcards* dashboard-card-ids))))
   nil)
 

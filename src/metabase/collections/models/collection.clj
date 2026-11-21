@@ -2690,7 +2690,7 @@
   (let [updates (vec updates)]
     (if (empty? updates)
       []
-      (events/with-batched-events
+      (t2/with-transaction [_conn]
         (let [stored  (collections.db/collections-by-id (mapv :id updates))
               updates (filterv #(contains? stored (:id %)) updates)
               entries (into [] (comp (map #(update-entry (get stored (:id %)) %))
@@ -2719,7 +2719,7 @@
                                      entries)]
               (when-let [roots (seq (concat archiving restoring))]
                 (let [root-id (:id (:before (first roots)))]
-                  (events/with-event-context {:archived-with [:model/Collection root-id]}
+                  (do
                     (when (seq archiving)
                       (archive-subtrees! archiving by-id root-id))
                     (when (seq restoring)
@@ -2768,7 +2768,7 @@
   them, publishing the delete event of the Collections."
   [collection-ids :- [:sequential ms/PositiveInt]]
   (when (seq collection-ids)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [stored (collections.db/collections-by-id (vec (distinct collection-ids)))]
         (run! check-deletable (vals stored))
         (when (seq stored)

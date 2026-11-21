@@ -93,15 +93,13 @@
           (is (= [false false] (archived-states [[:model/Document doc] [:model/Card dc]]))))))))
 
 (deftest cascade-revisions-are-one-insert-test
-  (testing "the Revisions of a batch are written by one statement"
+  (testing "the Revisions of the rows of one write are written by one statement"
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card {a :id} {}
                      :model/Card {b :id} {}]
         (let [inserts (atom 0)]
           (mt/with-dynamic-fn-redefs [revisions.db/insert-revisions! (let [f (mt/original-fn #'revisions.db/insert-revisions!)]
                                                                        (fn [rows] (swap! inserts inc) (f rows)))]
-            (events/with-batched-events
-              (card/update-cards! [{:id a :name "A2"}])
-              (card/update-cards! [{:id b :name "B2"}])))
+            (card/update-cards! [{:id a :name "A2"} {:id b :name "B2"}]))
           (is (= 1 @inserts))
           (is (= 2 (t2/count :model/Revision :model "Card" :model_id [:in [a b]] :is_creation false))))))))

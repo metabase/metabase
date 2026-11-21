@@ -195,7 +195,7 @@
 (mu/defn create-model-index!
   "Create a model index"
   [{:keys [model-id pk-ref value-ref creator-id]} :- ::indexed-entities.schema/model-index.create]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (u/prog1 (indexed-entities.db/insert-model-index! {:model_id   model-id
                                                        ;; todo: sanitize these?
                                                        :pk_ref     pk-ref
@@ -208,7 +208,7 @@
 (mu/defn delete-model-index!
   "Remove the indexing job of the model index with `id` and delete the model index, publishing its delete."
   [id :- ms/PositiveInt]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (remove-indexing-job {:id id})
     (if-let [model-index (indexed-entities.db/model-index id)]
       (let [event (events/deleted :event/model-index-delete :model/ModelIndex [model-index])]

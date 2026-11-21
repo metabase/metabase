@@ -112,7 +112,7 @@
   "Insert `tenant` with a new Collection of its own and return it, publishing the event of the write; the name or slug
   of an existing Tenant is a 400."
   [{tenant-name :name :keys [slug] :as tenant} :- ::tenants.schema/tenant.create]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
       (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
     (let [collection-id (:id (first (collection/create-collections!
@@ -128,7 +128,7 @@
   it."
   [tenant-id :- ms/PositiveInt
    changes   :- ::tenants.schema/tenant.update]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [stored        (tenants.db/tenant tenant-id)
           changes-name? (and (contains? changes :name) (not= (:name changes) (:name stored)))
           active        (:is_active changes)]
@@ -153,7 +153,7 @@
   so that reactivating a Tenant brings them back."
   :feature :none
   []
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [tenants (tenants.db/active-tenants)]
       (when (seq tenants)
         (tenants.db/deactivate-tenants! (mapv :id tenants)))

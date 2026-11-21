@@ -800,7 +800,7 @@
         updates' (api/updates-without-collection-when-archiving existing allowed)]
     (api/update-check existing updates')
     (check-destination-collection-perms! existing updates')
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when (seq updates')
         (expl.model/update-exploration! id updates')
         (when (contains? updates' :collection_id)

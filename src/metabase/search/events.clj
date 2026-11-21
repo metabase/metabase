@@ -8,6 +8,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -94,8 +95,13 @@
     (when (seq steps)
       (apply search/after-commit! "delete" steps))))
 
+(defn- wanted?
+  "Whether the row `event` changes a search document."
+  [{:keys [model operation] :as event}]
+  (or (feeds-index? model operation) (revised-model event)))
+
 (defn- handle!
-  [_owner events _all]
+  [events _all]
   (when-not search.ingestion/*disable-updates*
     (let [revised (filter revised-model events)
           events  (filter #(feeds-index? (:model %) (:operation %)) events)
@@ -115,8 +121,9 @@
         (handle-deleted! deleted)))))
 
 (events/register-capture! :search capture-dependents)
-(events/register-owned-consumer! :search
-                                 (fn [{:keys [model operation] :as event}]
-                                   (when (or (feeds-index? model operation) (revised-model event)) :search))
-                                 handle!
-                                 {:last? true})
+(events/derive! :metabase/lifecycle-event ::search)
+
+(methodical/defmethod events/publish-event! ::search
+  [topic event]
+  (when-let [events (not-empty (filterv wanted? (events/row-events topic event)))]
+    (handle! events events)))

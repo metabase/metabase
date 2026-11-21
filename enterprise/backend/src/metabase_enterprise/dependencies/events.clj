@@ -347,7 +347,7 @@
 (defn- mark-batch!
   "Mark what the `events` of a batch make stale, once per entity, with a number of statements that does not grow with
   the events, and trigger the jobs once the transaction commits."
-  [_owner events _all-events]
+  [events _all-events]
   (when (premium-features/has-feature? :dependencies)
     (let [lookups (lookups events)
           batched (atom {})
@@ -356,7 +356,12 @@
       (when marked?
         (trigger-jobs!)))))
 
-(events/register-owned-consumer! ::dependencies owner mark-batch!)
+(events/derive! :metabase/lifecycle-event ::dependencies)
+
+(methodical/defmethod events/publish-event! ::dependencies
+  [topic event]
+  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
+    (mark-batch! events events)))
 
 (events/derive! ::transform-run :metabase/event)
 (events/derive! :event/transform-run-complete ::transform-run)

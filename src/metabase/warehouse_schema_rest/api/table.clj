@@ -241,7 +241,7 @@
     (run! api/write-check (t2/hydrate existing-tables :can_write))
     (when collection_id
       (check-can-publish-tables-to-collection! existing-tables collection_id))
-    (let [updated-tables (events/with-batched-events (mapv #(update-table!* % body) existing-tables))
+    (let [updated-tables (t2/with-transaction [_conn] (mapv #(update-table!* % body) existing-tables))
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync/sync-tables-in-background! newly-unhidden)

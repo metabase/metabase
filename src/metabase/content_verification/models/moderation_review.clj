@@ -84,7 +84,7 @@
   those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, publishing the events of the three
   writes together as the last step."
   [row :- ::content-verification.schema/moderation-review.create]
-  (events/with-batched-events
+  (t2/with-transaction [_conn]
     (let [{:keys [id moderated_item_id moderated_item_type] :as review}
           (content-verification.db/insert-moderation-review! row)
           unmarked (vec (content-verification.db/most-recent-moderation-reviews-except

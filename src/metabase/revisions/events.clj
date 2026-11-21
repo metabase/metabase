@@ -9,7 +9,8 @@
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.util.events :as u.events]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
@@ -140,7 +141,7 @@
 
 (defn- push!
   "Write, in one statement, the Revision of each entity that `events` change, as it is now."
-  [_owner events _all-events]
+  [events _all-events]
   (when (some :user-id events)
     (let [entity    (entity-of (parent-links (into #{} (keep parent-ref) events)))
           by-entity (dissoc (group-by entity events) nil)
@@ -153,8 +154,13 @@
                      (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))
                      false)))
         (try
-          (run! revision/publish-created! rows)
+          (revision/publish-created! rows)
           (catch Throwable e
             (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e))))))))
 
-(events/register-owned-consumer! ::revisions owner push!)
+(events/derive! :metabase/lifecycle-event ::revisions)
+
+(methodical/defmethod events/publish-event! ::revisions
+  [topic event]
+  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
+    (push! events events)))

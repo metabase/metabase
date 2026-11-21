@@ -1,10 +1,12 @@
 (ns metabase.events.publish
-  "The functions that a write function calls to publish the lifecycle events of its rows by hand, inside its own
-  transaction and as its last step: [[publish-lifecycle!]] for the events of one user action, [[delete-changes]] for the
-  changes of a delete."
+  "The functions that a write function calls to publish the lifecycle events of its rows, inside its own transaction
+  and as its last step: [[publish-lifecycle!]] for the events of one user action, [[delete-changes]] for the changes of
+  a delete; and those that a consumer calls to hear of them: [[register-action-consumer!]] for one call per action,
+  [[register-capture!]] and [[register-statement-capture!]] to read what a delete removes before it does."
   (:require
    [clojure.set :as set]
-   [metabase.events.batch :as events.batch]
+   [metabase.events.hierarchy :as events.hierarchy]
+   [metabase.events.impl :as events.impl]
    [metabase.events.schema :as events.schema]
    [metabase.models.interface :as mi]
    [metabase.util.events :as u.events]
@@ -13,6 +15,58 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(events.hierarchy/derive! :metabase/lifecycle-event :metabase/event)
+
+(defonce ^:private capturers
+  (atom {}))
+
+(defonce ^:private statement-capturers
+  (atom {}))
+
+(mu/defn register-capture!
+  "Have `capture`, a function of the vector of the delete row events of the rows of one model that a write function is
+  about to delete, called once per [[delete-changes]], so that it can read the rows that the delete cascades to, a
+  non-nil value it returns being attached under `consumer-key` in `:captures` to one of those events."
+  [consumer-key :- :keyword
+   capture      :- ifn?]
+  (swap! capturers assoc consumer-key capture)
+  nil)
+
+(mu/defn register-statement-capture!
+  "Have `capture`, a function of a model and of `select-rows`, a function of columns selecting them from the rows that a
+  write function is about to delete, called once per [[delete-changes]], and attach a non-nil value it returns as
+  [[register-capture!]] attaches one."
+  [consumer-key :- :keyword
+   capture      :- ifn?]
+  (swap! statement-capturers assoc consumer-key capture)
+  nil)
+
+(defn- delete-captures
+  "What the captures read for a delete of `rows`, full rows of `model`, as `{consumer-key value}`."
+  [model rows]
+  (let [pk     (first (t2/primary-keys model))
+        select (fn [columns] (mapv #(select-keys % (distinct (cons pk columns))) rows))
+        events (mapv (fn [row] {:model model :operation :delete :previous-object row}) rows)]
+    (into {}
+          (concat (keep (fn [[consumer-key capture]]
+                          (when-some [value (capture model select)]
+                            [consumer-key value]))
+                        @statement-capturers)
+                  (keep (fn [[consumer-key capture]]
+                          (when-some [value (capture events)]
+                            [consumer-key value]))
+                        @capturers)))))
+
+(defn- ensure-topic!
+  "Have `topic` be an event topic with the lifecycle schema that derives `:metabase/lifecycle-event`, the topic that a
+  consumer of the lifecycle events of every model derives its own from."
+  [topic]
+  (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
+    (locking capturers
+      (when-not (events.hierarchy/isa? topic :metabase/lifecycle-event)
+        (events.hierarchy/derive! topic :metabase/lifecycle-event))))
+  (events.schema/register-lifecycle-topic! topic))
 
 (defn- operation-of
   "The operation of a change: a create has only `:object`, a delete only `:previous-object`."
@@ -32,7 +86,7 @@
     (conj :updated_at)))
 
 (defn- row-event
-  "The row event that the `change` of the lifecycle event `topic` is to the consumers."
+  "The row event that the `change` of the lifecycle event `topic` is to a consumer."
   [topic user-id context {:keys [object previous-object captures] :as change}]
   (let [row       (or object previous-object)
         model     (or (t2/model row)
@@ -62,26 +116,29 @@
            [:user-id {:optional true} [:maybe pos-int?]]
            [:context {:optional true} [:maybe ::events.schema/context]]]])
 
-(mu/defn publish-lifecycle!
-  "Publish the lifecycle events of one user action, `events`, as `[topic changes]` pairs such as
-  `[:event/card-update [{:object card :previous-object old-card}]]`, every change of one model's rows an instance:
-  a create has only `:object`, an update both, a delete only `:previous-object`, with its `:captures` from
-  [[delete-changes]].
+(mu/defn row-events :- [:sequential :map]
+  "The changes of the lifecycle `event` of `topic`, each merged with what the event says of all of them, as
+  `{:topic :model :operation :id :user-id :context :object :previous-object :changed :captures}`, for a consumer that
+  works row by row: `:changed` is the set of columns an update changed."
+  [topic                             :- qualified-keyword?
+   {:keys [changes user-id context]} :- :map]
+  (mapv #(row-event topic user-id context %) changes))
 
-  Call it once per action, as the last step of the write function, in its transaction, after every statement and
-  cascade, so that consumers read the database as the action leaves it, and with all the topics of the action in one
-  call, so that a consumer that makes one record per owner, such as a Revision of a Dashboard, sees its parts together.
-  `:user-id` is the current user and `:context` is empty unless given. A consumer that throws fails the write."
+(mu/defn publish-lifecycle!
+  "Publish the lifecycle events of one user action, `events`, as `[topic changes]` pairs, one event per topic, by the
+  current user unless `:user-id` is given, with `:context`."
   ([events :- Events]
    (publish-lifecycle! events nil))
   ([events                    :- Events
     {:keys [user-id context]} :- ::options]
-   (let [user-id (if (some? user-id) user-id (mi/current-user-id))]
-     (when-let [row-events (not-empty (into []
-                                            (mapcat (fn [[topic changes]]
-                                                      (map #(row-event topic user-id context %) changes)))
-                                            events))]
-       (events.batch/collect-published! row-events)))
+   (let [user-id (if (some? user-id) user-id (mi/current-user-id))
+         context (not-empty context)]
+     (doseq [topic (distinct (map first events))
+             :let [changes (into [] (comp (filter #(= topic (first %))) (mapcat second)) events)]
+             :when (seq changes)]
+       (ensure-topic! topic)
+       (events.impl/publish-event! topic (cond-> {:changes changes :user-id user-id}
+                                           context (assoc :context context)))))
    nil))
 
 (mu/defn delete-changes :- [:sequential ::events.schema/lifecycle.change]
@@ -92,7 +149,7 @@
   again as one the cascade removes."
   [model :- :keyword
    rows  :- [:sequential :map]]
-  (let [captures (events.batch/delete-captures model rows)
+  (let [captures (delete-captures model rows)
         changes  (mapv (fn [row] {:previous-object row}) rows)]
     (cond-> changes
       (seq captures) (assoc-in [0 :captures] captures))))

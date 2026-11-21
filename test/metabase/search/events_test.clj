@@ -800,13 +800,11 @@
           (is (= 0 (indexed-count "action" action-id))))))))
 
 (deftest batch-enqueues-one-ingestion-test
-  (testing "the writes of one batch hand one ingestion call to the index"
+  (testing "the rows of one write hand one ingestion call to the index"
     (search.tu/with-appdb-search-if-available-without-fallback
       (let [ids (atom [])
             calls (capture-enqueues!
-                   #(events/with-batched-events
-                      (dotimes [_ 3]
-                        (swap! ids conj (:id (first (#'queries.card/create-cards* [(mt/with-temp-defaults :model/Card)])))))))]
+                   #(reset! ids (mapv :id (#'queries.card/create-cards* (vec (repeatedly 3 (fn [] (mt/with-temp-defaults :model/Card))))))))]
         (try
           (is (= 1 (count calls)))
           (finally

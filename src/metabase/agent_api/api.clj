@@ -1596,7 +1596,7 @@
                          (api/check-not-archived current-dash))
                        (api/check (not (true? (:archived updates)))
                                   [400 "Can't modify dashcards while archiving the dashboard."]))
-        _            (events/with-batched-events
+        _            (t2/with-transaction [_conn]
                        (when (seq updates)
                          (dashboard/update-dashboard! id updates)
                          ;; Fire :event/collection-touch with the *target* collection id so the

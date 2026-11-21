@@ -126,7 +126,7 @@
                      (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (when (seq updates)
         (collection/update-collections! [(assoc updates :id id)]))
       (if archived-change?
