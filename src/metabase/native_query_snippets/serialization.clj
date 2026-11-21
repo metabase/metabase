@@ -110,15 +110,19 @@
                        (serialization/export-mbql-dependencies template_tags))))
         snippets))
 
-(defn before-load
-  "The NativeQuerySnippet load `items`, each renamed with ` (copy)` suffixes until no other snippet holds its name."
-  [items]
-  (let [taken (when-let [names (seq (distinct (keep (comp :name :row) items)))]
+(defn with-free-names
+  "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name. `entity-id-of` gives
+  the entity id of the snippet a row writes. Rows without a name are left alone."
+  [rows entity-id-of]
+  (let [taken (when-let [names (seq (distinct (keep :name rows)))]
                 (into {} (map (juxt :name :entity_id)) (native-query-snippets.db/snippet-names-and-entity-ids (vec names))))]
     (first
-     (reduce (fn [[items taken] {{:keys [entity_id] snippet-name :name} :row :as item}]
-               (let [free? #(let [owner (get taken %)] (or (nil? owner) (= owner entity_id)))
-                     n     (first (filter free? (iterate #(str % " (copy)") snippet-name)))]
-                 [(conj items (assoc-in item [:row :name] n)) (assoc taken n entity_id)]))
+     (reduce (fn [[rows taken] row]
+               (if-let [snippet-name (:name row)]
+                 (let [entity-id (entity-id-of row)
+                       free?     #(let [owner (get taken %)] (or (nil? owner) (= owner entity-id)))
+                       n         (first (filter free? (iterate #(str % " (copy)") snippet-name)))]
+                   [(conj rows (assoc row :name n)) (assoc taken n entity-id)])
+                 [(conj rows row) taken]))
              [[] taken]
-             items))))
+             rows))))

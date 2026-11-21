@@ -9,6 +9,7 @@
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.request.session :as session]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -115,9 +116,9 @@
     (is (thrown-with-msg?
          Exception
          #"does not exist"
-         (t2/insert! :model/Segment {:name       "Bad Segment"
-                                     :creator_id (mt/user->id :rasta)
-                                     :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
+         (segment/create-segment! {:name       "Bad Segment"
+                                       :creator_id (mt/user->id :rasta)
+                                       :definition (segment-filter-definition (mt/id :venues) Integer/MAX_VALUE)})))
     (is (not (t2/exists? :model/Segment :name "Bad Segment")))))
 
 (deftest insert-segment-referencing-segment-test
@@ -135,14 +136,14 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) 99999)})))))
+           (segment/update-segment! segment-id {:definition (segment-filter-definition (mt/id :venues) 99999)})))))
   (testing "Updating a segment to reference itself should fail"
     (mt/with-temp [:model/Segment {segment-id :id} {:name "Segment"
                                                     :definition (price-definition)}]
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-id {:definition (segment-filter-definition (mt/id :venues) segment-id)})))))
+           (segment/update-segment! segment-id {:definition (segment-filter-definition (mt/id :venues) segment-id)})))))
   (testing "Updating a segment to create an indirect cycle should fail"
     (mt/with-temp [:model/Segment {segment-1-id :id} {:name "Segment 1"
                                                       :definition (price-definition)}
@@ -151,7 +152,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Segment :id segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)}))))))
+           (segment/update-segment! segment-1-id {:definition (segment-filter-definition (mt/id :venues) segment-2-id)}))))))
 
 ;;; ------------------------------------------------ Permission Tests ------------------------------------------------
 
@@ -239,3 +240,26 @@
     (mt/with-test-user :rasta
       (is (false? (mi/can-create? :model/Segment {:name "Test Segment"
                                                   :definition (price-definition)}))))))
+
+(deftest update-segments-runs-fixed-statements-test
+  (letfn [(archiving [n]
+            (let [segments (doall (for [i (range n)]
+                                    (segment/create-segment! {:name (str "archived " i) :creator_id (mt/user->id :rasta)
+                                                              :definition (price-definition)})))
+                  ids      (mapv :id segments)]
+              (try
+                (t2/with-call-count [call-count]
+                  (segment/update-segments! (mapv (fn [id] {:id id :archived true}) ids))
+                  (call-count))
+                (finally
+                  (segment/delete-segments! ids)))))]
+    (is (= (archiving 2) (archiving 6)))))
+
+(deftest revert-goes-through-update-test
+  (mt/with-temp [:model/Segment {id :id} {:name "Reverted" :definition (price-definition)}]
+    (let [snapshot (select-keys (t2/select-one :model/Segment :id id) [:name :description :definition :archived :table_id
+                                                                     :caveats :points_of_interest :show_in_getting_started])]
+      (segment/update-segment! id {:name "Changed"})
+      (is (= "Changed" (t2/select-one-fn :name :model/Segment :id id)))
+      (#'segment/revert-segment! id (mt/user->id :rasta) snapshot)
+      (is (= "Reverted" (t2/select-one-fn :name :model/Segment :id id))))))

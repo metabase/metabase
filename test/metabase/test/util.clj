@@ -28,6 +28,7 @@
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.notification.models :as models.notification]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -585,6 +586,28 @@
   (next-method model explicit-attributes (fn [temp-user]
                                            (#'user/add-to-default-groups! [temp-user])
                                            (f temp-user))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/NativeQuerySnippet
+  "Gives a temporary NativeQuerySnippet the template tags of its content, as `create-snippet!` does, unless the
+  attributes name them."
+  [model explicit-attributes f]
+  (if (contains? explicit-attributes :template_tags)
+    (next-method model explicit-attributes f)
+    (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)
+          ids        (#'native-query-snippet/name->id [attributes])]
+      (next-method model
+                   (assoc explicit-attributes :template_tags (#'native-query-snippet/snippet-template-tags attributes ids))
+                   f))))
+
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/Action
+  "Files a temporary Action of a model in the Collection of its model, as `create-actions!` does."
+  [model explicit-attributes f]
+  (let [model-id (:model_id explicit-attributes)]
+    (next-method model
+                 (cond-> explicit-attributes
+                   (and model-id (not (contains? explicit-attributes :collection_id)))
+                   (assoc :collection_id (t2/select-one-fn :collection_id :model/Card :id model-id)))
+                 f)))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
   "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."

@@ -11,6 +11,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
@@ -63,27 +64,20 @@
     (throw (ex-info (tru "Segment definition must be a full query with a source table.") {:status-code 400})))
   (mu/validate-throw ::segments.schema/definition (lib-be/normalize-query definition)))
 
-(defn- check-referenced-segments-exist
-  "Throws unless every Segment that `definition`, a new Segment's, refers to exists."
-  [definition]
-  (lib/check-segment-overwrite nil (lib-be/normalize-query definition)))
-
 (t2/define-before-insert :model/Segment
   [{:keys [definition] :as segment}]
   (check-definition definition)
-  (check-referenced-segments-exist definition)
   (assoc segment :table_id (definition-table-id definition)))
 
 (t2/define-before-update :model/Segment
-  [{:keys [id definition] :as segment}]
+  [{:keys [definition] :as segment}]
   (let [changes (t2/changes segment)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a Segment.") {:status-code 400})))
     (when (and (contains? changes :table_id) (not (contains? changes :definition)))
       (throw (ex-info (tru "The table of a Segment follows its definition; change the definition instead.") {:status-code 400})))
     (when (contains? changes :definition)
-      (check-definition definition)
-      (lib/check-segment-overwrite id (lib-be/normalize-query definition)))
+      (check-definition definition))
     (cond-> segment
       (contains? changes :definition) (assoc :table_id (definition-table-id definition)))))
 
@@ -129,11 +123,6 @@
   [_segment-id]
   nil)
 
-(t2/define-before-delete :model/Segment
-  [{:keys [id] :as segment}]
-  (delete-segment-tests! id)
-  segment)
-
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
@@ -150,6 +139,78 @@
   [_model _key segments]
   (for [segment segments]
     (assoc segment :definition_description (definition-description segment))))
+
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
+
+(defn- check-definitions-of-new-segments
+  "Throws unless every Segment that the definition of each of the new Segment `rows` refers to exists."
+  [rows]
+  (run! #(lib/check-segment-overwrite nil (lib-be/normalize-query (:definition %))) rows))
+
+(mu/defn create-segments! :- [:sequential (ms/InstanceOf :model/Segment)]
+  "Insert the Segment `rows` and return the inserted instances, in one transaction and one batch of events. A
+  definition that refers to a Segment that does not exist throws."
+  [rows :- [:sequential ::segments.schema/segment.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (check-definitions-of-new-segments rows)
+      (vec (segments.db/insert-segments! rows)))))
+
+(mu/defn create-segment! :- (ms/InstanceOf :model/Segment)
+  "Insert the Segment `row` and return the inserted instance, as [[create-segments!]] does."
+  [row :- ::segments.schema/segment.create]
+  (first (create-segments! [row])))
+
+(defn- check-changed-definitions
+  "Throws when the new definition of one of `rows`, updates of the Segments `stored`, differs from the stored one and
+  refers to the Segment itself or to a Segment that makes a cycle."
+  [rows stored]
+  (doseq [{:keys [id definition] :as row} rows
+          :when                           (and (contains? row :definition)
+                                               (not= (lib-be/normalize-query definition)
+                                                     (some-> (get stored id) :definition lib-be/normalize-query)))]
+    (lib/check-segment-overwrite id (lib-be/normalize-query definition))))
+
+(mu/defn update-segments! :- [:sequential ::segments.schema/segment.row]
+  "Apply the changes in each of `rows`, the id of a Segment and the columns to change, with one statement per distinct
+  set of changes, in one transaction and one batch of events. A new definition that makes a cycle of Segments throws.
+  Returns `rows`."
+  [rows :- [:sequential ::segments.schema/segment.row]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (when (some #(contains? % :definition) rows)
+        (check-changed-definitions rows (segments.db/segments-by-id (mapv :id rows))))
+      (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+        (when (seq changes)
+          (segments.db/update-segments! (mapv :id group) changes)))
+      (vec rows))))
+
+(mu/defn update-segment!
+  "Apply `changes` to the Segment with `id`, as [[update-segments!]] does."
+  [id      :- ::lib.schema.id/segment
+   changes :- ::segments.schema/segment.update]
+  (update-segments! [(assoc changes :id id)])
+  nil)
+
+(mu/defn delete-segments!
+  "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction and one batch of
+  events."
+  [ids :- [:sequential ::lib.schema.id/segment]]
+  (when (seq ids)
+    (events/with-batched-events
+      (run! delete-segment-tests! ids)
+      (segments.db/delete-segments! ids))))
+
+(def ^:private revision-columns
+  "The columns of a Segment that its Revisions track and a revert restores."
+  [:name :description :definition :archived :table_id :caveats :points_of_interest :show_in_getting_started])
+
+(defn- revert-segment!
+  "Return the Segment with `id` to the tracked columns of `snapshot`."
+  [id _user-id snapshot]
+  (update-segment! id (select-keys snapshot revision-columns)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -170,7 +231,10 @@
                          :definition serialization/mbql-transform}
    :defaults            {:archived false :show_in_getting_started false}
    :import-dependencies segments.serialization/import-dependencies
-   :storage-paths       segments.serialization/storage-paths})
+   :storage-paths       segments.serialization/storage-paths
+   :insert!             create-segments!
+   :update!             update-segments!
+   :delete!             delete-segments!})
 
 (defmethod remote-sync/spec :model/Segment
   [_model]
@@ -178,10 +242,10 @@
    :synced-filter-clause segments.db/synced-segments-clause})
 
 (defmethod revisions/spec :model/Segment [_model]
-  {:track        [:name :description :definition :archived :table_id :caveats :points_of_interest
-                  :show_in_getting_started]
+  {:track        revision-columns
    :skip         [:entity_id :creator_id]
    :same?        {:definition revisions/same-definition?}
+   :revert!      revert-segment!
    :diff-columns [:name :description :definition]})
 
 (defmethod audit/spec :model/Segment [_model]

@@ -237,6 +237,87 @@
   "Schema for the REST API body that updates an Action, without the columns the server populates."
   (action-schema :update true))
 
+(def ^:private action-write-entries
+  "The Action columns a caller gives when it writes the Action row alone, without its QueryAction or ImplicitAction."
+  [[:model_id               {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id          {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived               {:optional true} :boolean]
+   [:archived_directly      {:optional true} :boolean]
+   [:description            {:optional true} [:maybe :string]]
+   [:parameters             {:optional true} [:maybe [:sequential ::action.parameter]]]
+   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
+   [:visualization_settings {:optional true} [:maybe ::lib.schema.visualization/visualization-settings]]
+   [:public_uuid            {:optional true} [:maybe ms/UUIDString]]
+   [:made_public_by_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:creator_id             {:optional true} [:maybe ::lib.schema.id/user]]
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:public_uuid_prefix     {:optional true} [:maybe :string]]
+   [:created_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+   [:updated_at             {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])
+
+(mr/def ::action.create
+  "What a caller gives to create the row of an Action, without its QueryAction or ImplicitAction."
+  (into [:map {:closed true}
+         [:name :string]
+         [:type ::type]]
+        action-write-entries))
+
+(mr/def ::action.changes
+  "The Action columns an update of the Action row alone changes."
+  (into [:map {:closed true}
+         [:name {:optional true} :string]
+         [:type {:optional true} ::type]]
+        action-write-entries))
+
+(mr/def ::action.row
+  "An Action id and the Action columns to change, as an update of several Actions takes it."
+  [:merge
+   ::action.changes
+   [:map {:closed true}
+    [:id ::id]]])
+
+(mr/def ::query-action.create
+  "What a caller gives to create a QueryAction."
+  [:map {:closed true}
+   [:action_id     ::lib.schema.id/action]
+   [:dataset_query ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::query-action.changes
+  "The columns an update of a QueryAction changes."
+  [:map {:closed true}
+   [:dataset_query {:optional true} ::query-action.dataset-query]
+   [:database_id   {:optional true} [:maybe ::lib.schema.id/database]]
+   [:legacy_query  {:optional true} [:maybe :string]]])
+
+(mr/def ::query-action.row
+  "A QueryAction's Action id and the columns to change, as an update of several QueryActions takes it."
+  [:merge
+   ::query-action.changes
+   [:map {:closed true}
+    [:action_id ::lib.schema.id/action]]])
+
+(mr/def ::implicit-action.create
+  "What a caller gives to create an ImplicitAction."
+  [:map {:closed true}
+   [:action_id ::lib.schema.id/action]
+   [:kind      {:optional true} ::implicit-action.kind]
+   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::implicit-action.changes
+  "The columns an update of an ImplicitAction changes."
+  [:map {:closed true}
+   [:kind      {:optional true} ::implicit-action.kind]
+   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
+
+(mr/def ::implicit-action.row
+  "An ImplicitAction's Action id and the columns to change, as an update of several ImplicitActions takes it."
+  [:merge
+   ::implicit-action.changes
+   [:map {:closed true}
+    [:action_id ::lib.schema.id/action]]])
+
 (mr/def ::implicit-action
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}

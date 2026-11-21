@@ -79,7 +79,7 @@
         (doseq [[description table-id] {"a name that clashes only with a sensitive column" clash-id
                                         "a second, sensitive primary key"                  two-pk-id}]
           (testing description
-            (let [action-id            (action/insert! {:type :implicit :name description :kind :row/update
+            (let [action-id            (action/create-action! {:type :implicit :name description :kind :row/update
                                                         :table_id table-id})
                   build-implicit-query #'actions.execution/build-implicit-query]
               (is (=? {:row-parameters {}}

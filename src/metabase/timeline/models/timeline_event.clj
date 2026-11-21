@@ -10,6 +10,7 @@
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -61,7 +62,7 @@
 (t2/define-before-insert :model/TimelineEvent
   [row]
   (cond-> row
-    (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
+    (nil? (:icon row)) (assoc :icon default-icon)))
 
 (t2/define-before-update :model/TimelineEvent
   [event]
@@ -153,6 +154,68 @@
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
 
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
+(defn- with-timeline-icons
+  "`rows` of new TimelineEvents, those without an icon given the icon of their Timeline."
+  [rows]
+  (let [timeline-ids (into [] (comp (remove :icon) (map :timeline_id) (distinct)) rows)
+        timelines    (when (seq timeline-ids) (timeline.db/timelines-by-id timeline-ids))]
+    (mapv (fn [{:keys [icon timeline_id] :as row}]
+            (cond-> row
+              (nil? icon) (assoc :icon (or (:icon (get timelines timeline_id)) default-icon))))
+          rows)))
+
+(mu/defn create-timeline-events! :- [:sequential (ms/InstanceOf :model/TimelineEvent)]
+  "Insert the TimelineEvent `rows` and return the inserted instances, an event without an icon getting the icon of its
+  Timeline, in one transaction and one batch of events."
+  [rows :- [:sequential ::timeline.schema/timeline-event.create]]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (vec (timeline.db/insert-timeline-events! (with-timeline-icons rows))))))
+
+(mu/defn create-timeline-event! :- (ms/InstanceOf :model/TimelineEvent)
+  "Insert the TimelineEvent `row` and return the inserted instance, as [[create-timeline-events!]] does."
+  [row :- ::timeline.schema/timeline-event.create]
+  (first (create-timeline-events! [row])))
+
+(mu/defn update-timeline-events! :- [:sequential ::timeline.schema/timeline-event]
+  "Apply the changes in each of `rows`, the id of a TimelineEvent and the columns to change, with one statement per
+  distinct set of changes, in one transaction and one batch of events. Returns `rows`."
+  [rows :- [:sequential ::timeline.schema/timeline-event]]
+  (events/with-batched-events
+    (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+      (when (seq changes)
+        (timeline.db/update-timeline-events! (mapv :id group) changes)))
+    (vec rows)))
+
+(mu/defn update-timeline-event!
+  "Apply `changes` to the TimelineEvent with `id`."
+  [id      :- ms/PositiveInt
+   changes :- ::timeline.schema/timeline-event.update]
+  (update-timeline-events! [(assoc changes :id id)])
+  nil)
+
+(mu/defn set-timeline-events-archived!
+  "Set the archived flag of the TimelineEvents of the Timelines with `timeline-ids`, in one statement."
+  [timeline-ids :- [:sequential ms/PositiveInt]
+   archived     :- :boolean]
+  (when (seq timeline-ids)
+    (timeline.db/set-events-archived! timeline-ids archived)))
+
+(mu/defn delete-timeline-events!
+  "Delete the TimelineEvents with `ids`, in one statement."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (events/with-batched-events
+      (timeline.db/delete-timeline-events! ids))))
+
+(mu/defn delete-timeline-event!
+  "Delete the TimelineEvent with `id`."
+  [id :- ms/PositiveInt]
+  (delete-timeline-events! [id]))
+
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 
 (defmethod events/spec :model/TimelineEvent
@@ -171,7 +234,10 @@
    :transform {:timeline_id serialization/import-only-transform
                :creator_id serialization/user-transform
                :timestamp  serialization/date-transform}
-   :defaults  {:archived false}})
+   :defaults  {:archived false}
+   :insert!   create-timeline-events!
+   :update!   update-timeline-events!
+   :delete!   delete-timeline-events!})
 
 (defmethod remote-sync/spec :model/TimelineEvent
   [_model]
