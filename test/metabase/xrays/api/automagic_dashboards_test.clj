@@ -698,6 +698,30 @@
             (is (=? {:dashcards seq}
                     (mt/user-http-request :crowberto :get 200 url)))))))))
 
+(deftest ^:parallel cell-comparison-applies-cell-query-test
+  (testing "Comparing a cell with the rest compares the rows the cell query selects against all rows"
+    (let [mp           (mt/metadata-provider)
+          source-field (lib.metadata/field mp (mt/id :people :source))
+          adhoc-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                           (lib/aggregate (lib/count))
+                           (lib/breakout source-field))
+          cell-query   (first (lib/filters (lib/filter adhoc-query (lib/= source-field "Affiliate"))))]
+      (doseq [template [(str "adhoc/%s/cell/%s/compare/table/" (mt/id :people))
+                        (str "adhoc/%s/cell/%s/rule/example/indepth/compare/table/" (mt/id :people))]]
+        (testing template
+          (let [dashboard (mt/user-http-request :crowberto :get 200
+                                                (format (str "automagic-dashboards/" template)
+                                                        (magic.util/encode-base64-json adhoc-query)
+                                                        (magic.util/encode-base64-json cell-query)))]
+            (testing "the dashboard is named after the cell"
+              (is (= "Comparison of Number of People where Source is Affiliate and All People"
+                     (:name dashboard))))
+            (testing "the cards on the cell's side are filtered by the cell query"
+              (is (some (fn [dashcard]
+                          (let [[[tag _opts _field value]] (-> dashcard :card :dataset_query :stages first :filters)]
+                            (= ["=" "Affiliate"] [tag value])))
+                        (:dashcards dashboard))))))))))
+
 (deftest adhoc-query-decode-strips-extra-keys-test
   (testing "adhoc queries are validated and stripped of the query processor's internal keys"
     ;; `:qp/stage-had-source-card` is a key the QP adds to a stage while a query runs and that permissions later read,
