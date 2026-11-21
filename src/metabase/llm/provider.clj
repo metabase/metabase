@@ -47,8 +47,8 @@
   secret everywhere: it is masked on the way out of the API and preserved when a client echoes the mask back."
   [{:type          "anthropic"
     :label         (deferred-tru "Anthropic")
-    :default-model "claude-sonnet-4-6"
-    :mini-model    "claude-haiku-4-5-20251001"
+    :default-model "claude-haiku-5-5"
+    :mini-model    "claude-haiku-5-5"
     :fields        [{:key         :api-key
                      :label       (deferred-tru "API key")
                      :type        :password
@@ -328,7 +328,7 @@
    {:type          "bedrock"
     :label         (deferred-tru "Amazon Bedrock")
     :default-model "anthropic.claude-opus-4-8"
-    :mini-model    "anthropic.claude-haiku-4-5"
+    :mini-model    "anthropic.claude-haiku-5-5"
     ;; A connection with a model ID serves that model instead of the catalog.
     :model-fields  [:model-id]
     ;; Both keys together select explicit credentials, neither selects the AWS default credentials chain, and one
@@ -440,6 +440,8 @@
     :label         (deferred-tru "Metabase AI service")
     :managed?      true
     :singleton?    true
+    ;; Usage reporting and the free-tier limit read the token meter named after this model, so it changes only
+    ;; together with the metering.
     :default-model "anthropic/claude-sonnet-4-6"
     ;; The proxy serves one benchmarked model rather than a listable catalog, so the models are fixed here instead
     ;; of fetched. This is also the allow-list `llm-metabot-provider` is validated against.
