@@ -50,7 +50,7 @@
 
 (def ^:private max-string-input-chars
   "Limit the length of input names and type hints, in characters."
-  255)
+  256)
 
 (def ^:private max-formula-tokens
   ;; a formula needs a few dozen tokens, but reasoning models spend this budget before the forced tool call
