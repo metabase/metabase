@@ -1534,6 +1534,7 @@
            session
            settings
            sso.auth-identity
+           startup
            system
            task
            users
