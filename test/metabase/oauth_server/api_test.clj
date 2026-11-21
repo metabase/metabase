@@ -3218,3 +3218,19 @@
           (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed)))
           (testing "the next refresh narrows to the resource the new token carries"
             (is (= v2-scope-set (token-scope-set (refresh-with-scope! client refreshed all-v2-scopes))))))))))
+
+;; Unregistered scopes are dropped before the default checks the rest, as [[scope-to-grant]] drops them before
+;; narrowing, so an unregistered scope next to MCP scopes doesn't turn the request into a REST one.
+(deftest unregistered-scope-does-not-stop-the-mcp-default-test
+  (testing "BOT-2689: a refresh with no resource asking for MCP scopes and an unregistered one is defaulted to MCP"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client        (register-app-client! "Copilot Studio" "https://example.com/callback")
+              refresh-token (str (random-uuid))
+              _             (insert-token! :model/OAuthRefreshToken :crowberto (:client_id client) v2-scope-set
+                                           :token (oidc-util/hash-token refresh-token))
+              refreshed     (refresh-with-scope! client {:refresh_token refresh-token}
+                                                 (str all-v2-scopes " bogus:scope"))]
+          (is (=? {:resource [(mcp-resource-uri)]} refreshed))
+          (is (= v2-scope-set (token-scope-set refreshed) (access-token-scopes refreshed))))))))

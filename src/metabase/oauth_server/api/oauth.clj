@@ -165,10 +165,13 @@
   "None of the requested scopes were granted to this refresh token. Omit scope to refresh with the original grant.")
 
 (defn- narrowed-away-scope-description
-  "The `error_description` for an authorization request in which no requested scope is accepted by the resource."
+  "The `error_description` for an authorization or refresh request in which no requested scope is accepted by the
+  resource."
   []
   ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
-  ;; A request naming no resource never gets here: one asking only for MCP scopes is given the MCP resource by
+  ;; A refresh that names no resource narrows to its token's resource, so it gets here when that resource accepts none
+  ;; of the requested scopes, whether an MCP-bound token asks for REST scopes or the reverse. With no resource from
+  ;; either, a request whose registered scopes are all MCP scopes is given the MCP resource by
   ;; [[with-default-mcp-resource]], and any other keeps its non-MCP scopes. The provider cannot be built without a
   ;; Site URL, so the URL is always there.
   (str "The requested scopes are not accepted by the requested resource. "
@@ -687,8 +690,10 @@
                                                        (cond-> query-params
                                                          (str/blank? (:scope query-params)) (dissoc :scope)))
         ;; Defaulted and narrowed before signing, so the signature binds the resource and the granted scope through
-        ;; the consent form round-trip, and the decision endpoint needs neither rule of its own. The resource goes on
-        ;; the request rather than only shaping the scope, so the code and every token it yields carry it.
+        ;; the consent form round-trip, and the decision endpoint takes the resource from the form without defaulting
+        ;; it. The decision endpoint still narrows again, because the user can re-sign the form (see
+        ;; [[scope-to-grant]]). The resource goes on the request rather than only shaping the scope, so the code and
+        ;; every token it yields carry it.
         parsed       (with-default-mcp-resource parsed)
         parsed       (assoc parsed :scope (scope-to-grant parsed))
         client       (proto/get-client (:client-store provider) (:client_id parsed))
