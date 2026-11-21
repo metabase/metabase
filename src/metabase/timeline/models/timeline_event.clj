@@ -61,7 +61,7 @@
 (t2/define-before-insert :model/TimelineEvent
   [row]
   (cond-> row
-    (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon))))
+    (nil? (:icon row)) (assoc :icon default-icon)))
 
 (t2/define-before-update :model/TimelineEvent
   [event]
@@ -152,6 +152,15 @@
   (let [timelines (timeline.db/timelines-for-collection collection_id false)]
     (->> (t2/hydrate timelines :creator [:collection :can_write])
          (map #(include-events-singular % {:events/all? true})))))
+
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
+(defn create-timeline-event!
+  "Insert the TimelineEvent `row` and return it; an event without an icon takes the icon of its Timeline."
+  [row]
+  (timeline.db/insert-timeline-event!
+   (cond-> row
+     (nil? (:icon row)) (assoc :icon (or (some-> (:timeline_id row) timeline.db/timeline-icon) default-icon)))))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 

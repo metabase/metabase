@@ -31,14 +31,16 @@
 
 (t2/define-before-insert :model/RemoteSyncTask
   [task]
-  (when-let [existing (current-task)]
-    (throw (ex-info "A running task exists" {:existing-task existing})))
   (merge {:started_at (mi/now)} task))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn create-sync-task!
   "Creates a RemoteSyncTask of `sync-task-type` for the user with `user-id`, throwing when another task is running."
   [sync-task-type :- ::remote-sync-task-type
    user-id        :- [:maybe pos-int?]]
+  (when-let [existing (current-task)]
+    (throw (ex-info "A running task exists" {:existing-task existing})))
   (remote-sync.db/insert-task! {:sync_task_type sync-task-type
                                 :initiated_by   user-id
                                 :progress       0}))

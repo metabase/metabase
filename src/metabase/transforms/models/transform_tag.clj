@@ -41,22 +41,7 @@
     tag
     (merge tag (translate-name tag))))
 
-(defn- check-name-free
-  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
-  [{tag-name :name, :keys [id]}]
-  (when-let [tag-name (not-empty (str tag-name))]
-    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
-      (when (and taken-by (not= taken-by id))
-        (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
-
-(t2/define-before-insert :model/TransformTag
-  [tag]
-  (check-name-free tag)
-  tag)
-
 (t2/define-before-update :model/TransformTag [tag]
-  (when (contains? (t2/changes tag) :name)
-    (check-name-free tag))
   (if (or (nil? (:built_in_type tag))
           (empty? (dissoc (t2/changes tag) :updated_at)))
     tag
@@ -113,6 +98,28 @@
     tags
     (let [tag-id->can-run (tag-id->writable (into #{} (map :id) tags))]
       (mapv #(assoc % :can_run (get tag-id->can-run (:id %) true)) tags))))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defn- check-name-free
+  "Throws a 400 when the `:name` of `tag` belongs to another TransformTag."
+  [{tag-name :name, :keys [id]}]
+  (when-let [tag-name (not-empty (str tag-name))]
+    (let [taken-by (transforms.db/tag-id-by-name tag-name)]
+      (when (and taken-by (not= taken-by id))
+        (throw (ex-info (i18n/tru "A tag with the name ''{0}'' already exists." tag-name) {:status-code 400}))))))
+
+(defn create-transform-tag!
+  "Insert a TransformTag named `tag-name` and return it; a name another tag has is a 400."
+  [tag-name]
+  (check-name-free {:name tag-name})
+  (transforms.db/insert-tag! tag-name))
+
+(defn update-transform-tag!
+  "Set the name of the TransformTag with `tag-id` to `tag-name`; a name another tag has is a 400."
+  [tag-id tag-name]
+  (check-name-free {:id tag-id :name tag-name})
+  (transforms.db/update-tag-name! tag-id tag-name))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

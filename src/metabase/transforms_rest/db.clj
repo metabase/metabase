@@ -33,17 +33,6 @@
   [tag-id :- ms/PositiveInt]
   (t2/select-one :model/TransformTag :id tag-id))
 
-(mu/defn insert-tag!
-  "Insert a TransformTag named `name` and return the inserted instance."
-  [name :- :string]
-  (t2/insert-returning-instance! :model/TransformTag {:name name}))
-
-(mu/defn update-tag!
-  "Set the name of the TransformTag with `tag-id`."
-  [tag-id :- ms/PositiveInt
-   name   :- :string]
-  (t2/update! :model/TransformTag :id tag-id {:name name}))
-
 (mu/defn delete-tag!
   "Delete the TransformTag with `tag-id`."
   [tag-id :- ms/PositiveInt]

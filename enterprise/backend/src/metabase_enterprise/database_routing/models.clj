@@ -24,17 +24,6 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
-(defn- check-not-destination
-  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
-  [database-id]
-  (when (database-routing.db/destination-database? database-id)
-    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
-
-(t2/define-before-insert :model/DatabaseRouter
-  [{:keys [database_id] :as router}]
-  (check-not-destination database_id)
-  router)
-
 (t2/define-before-update :model/DatabaseRouter
   [router]
   (let [changes (t2/changes router)]
@@ -74,6 +63,21 @@
   (boolean (or (database-routing.db/router-exists? (:id db))
                (some->> (:router-database-id db)
                         database-routing.db/router-exists?))))
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defn- check-not-destination
+  "Throws a 400 when the Database with `database-id` is a destination, since a destination cannot be a router."
+  [database-id]
+  (when (database-routing.db/destination-database? database-id)
+    (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
+
+(defn create-router!
+  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`; a destination Database is
+  a 400."
+  [database-id user-attribute]
+  (check-not-destination database-id)
+  (database-routing.db/insert-router! database-id user-attribute))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

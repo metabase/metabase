@@ -5,6 +5,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
    [metabase.transforms-rest.db :as transforms-rest.db]
+   [metabase.transforms.core :as transforms.core]
    [metabase.util.i18n :refer [LocalizedString]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -33,7 +34,7 @@
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag")
   (api/create-check :model/TransformTag {:name name})
-  (let [tag (transforms-rest.db/insert-tag! name)]
+  (let [tag (transforms.core/create-transform-tag! name)]
     tag))
 
 (api.macros/defendpoint :put "/:tag-id" :- TransformTagResponse
@@ -45,7 +46,7 @@
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
   (api/update-check (api/check-404 (transforms-rest.db/tag tag-id)) {:name name})
-  (transforms-rest.db/update-tag! tag-id name)
+  (transforms.core/update-transform-tag! tag-id name)
   (let [tag (transforms-rest.db/tag tag-id)]
     tag))
 
