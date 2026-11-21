@@ -14,7 +14,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
-   [metabase.queries.schema :as queries.schema]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -631,27 +630,6 @@
                         [:< :sr.created_at created-before]]
              :order-by [[:sr.id :asc]]
              :limit    limit}))
-
-(mu/defn insert-stored-result!
-  "Insert `stored-result` and return its ID."
-  [stored-result :- ::queries.schema/stored-result.update]
-  (first (t2/insert-returning-pks! :model/StoredResult stored-result)))
-
-(mu/defn insert-stored-result-use!
-  "Insert `stored-result-use`."
-  [stored-result-use :- [:map {:closed true}
-                         [:id                {:optional true} ms/PositiveInt]
-                         [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
-                         [:exploration_id     {:optional true} [:maybe ms/PositiveInt]]
-                         [:created_at         {:optional true} [:maybe ms/TemporalInstant]]
-                         [:updated_at         {:optional true} [:maybe ms/TemporalInstant]]
-                         [:card_id            {:optional true} [:maybe ::lib.schema.id/card]]]]
-  (t2/insert! :model/StoredResultUse stored-result-use))
-
-(mu/defn delete-stored-results!
-  "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
-  [stored-result-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
 
 ;;; ------------------------------------------------ Timelines ------------------------------------------------
 

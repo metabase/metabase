@@ -30,6 +30,18 @@
    [:most_recent      {:optional true} [:maybe :boolean]]
    [:metabase_version {:optional true} [:maybe :string]]])
 
+;; `:timestamp`, `:most_recent` and `:metabase_version` are set when a Revision is stored
+(mr/def ::revision.create
+  "What a caller gives to create a Revision: the entity it records, its editor, and the stored state of the entity."
+  [:map {:closed true}
+   [:model        :string]
+   [:model_id     ms/PositiveInt]
+   [:user_id      ::lib.schema.id/user]
+   [:object       ::revision.object]
+   [:is_creation  :boolean]
+   [:is_reversion :boolean]
+   [:message      {:optional true} [:maybe :string]]])
+
 ;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
 (mr/def ::last-edit-info
   "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."

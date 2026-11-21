@@ -2,7 +2,9 @@
   "Application database queries for the embedding module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
+   [metabase.embedding.schema :as embedding.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -32,3 +34,24 @@
                            (if existing
                              {:last_seen_at [:greatest :last_seen_at seen-at]}
                              {:last_seen_at seen-at}))))
+
+(mu/defn insert-embedding-theme!
+  "Insert the EmbeddingTheme `row` and return the inserted instance."
+  [row :- ::embedding.schema/embedding-theme.create]
+  (t2/insert-returning-instance! :model/EmbeddingTheme row))
+
+(mu/defn insert-embedding-themes!
+  "Insert the EmbeddingTheme `rows`."
+  [rows :- [:sequential ::embedding.schema/embedding-theme.create]]
+  (t2/insert! :model/EmbeddingTheme rows))
+
+(mu/defn update-embedding-theme!
+  "Apply `changes` to the EmbeddingTheme with `id`."
+  [id      :- ms/PositiveInt
+   changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
+  (t2/update! :model/EmbeddingTheme :id id changes))
+
+(mu/defn delete-embedding-theme!
+  "Delete the EmbeddingTheme with `id`."
+  [id :- ms/PositiveInt]
+  (t2/delete! :model/EmbeddingTheme :id id))

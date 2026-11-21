@@ -16,6 +16,9 @@
    [clojure.set :as set]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration-block :as block]
+   [metabase.explorations.models.exploration-page :as exploration-page]
+   [metabase.explorations.models.exploration-query :as exploration-query]
+   [metabase.explorations.models.exploration-thread :as exploration-thread]
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.query-plan.mechanical :as qp.mechanical]
    [metabase.explorations.query-plan.planner :as planner]
@@ -96,11 +99,11 @@
   only because [[lock-thread-for-planning!]] keeps them out — see there."
   [[block-id card-id dim-id query-type] position]
   (or (explorations.db/page-id-for-key block-id card-id dim-id query-type)
-      (explorations.db/insert-page! {:exploration_block_id block-id
-                                     :card_id              card-id
-                                     :dimension_id         dim-id
-                                     :query_type           query-type
-                                     :position             position})))
+      (exploration-page/create-page! {:exploration_block_id block-id
+                                      :card_id              card-id
+                                      :dimension_id         dim-id
+                                      :query_type           query-type
+                                      :position             position})))
 
 (defn- reconcile-pages!
   "Find-or-create a page per distinct [[page-key]] in `rows` (first-seen order within a
@@ -159,7 +162,7 @@
                              (pages-with-queries orphans))
         deletable (remove retained orphans)]
     (when (seq deletable)
-      (explorations.db/delete-pages! deletable))))
+      (exploration-page/delete-pages! deletable))))
 
 (defn- lock-thread-for-planning!
   "Take a row lock on `thread-id`'s `exploration_thread` row (call inside a transaction) so at most
@@ -227,7 +230,7 @@
                                      (assoc :page_id (key->page (page-key %)))
                                      (dissoc :block_id))
                                 rows)]
-            (explorations.db/insert-queries! (map-indexed (fn [i r] (assoc r :position i)) rows*))
+            (exploration-query/create-queries! (map-indexed (fn [i r] (assoc r :position i)) rows*))
             (gc-orphan-pages! thread-id (vals key->page))
             (count rows*)))))))
 
@@ -241,8 +244,8 @@
   doesn't deadlock."
   [thread-id]
   (let [now (OffsetDateTime/now)]
-    (explorations.db/update-thread! thread-id {:analysis_started_at now
-                                               :completed_at        now})))
+    (exploration-thread/update-thread! thread-id {:analysis_started_at now
+                                                  :completed_at        now})))
 
 ;; ---------------------------------------------------------------------------
 ;; Transcript persistence
@@ -258,7 +261,7 @@
 (defn- save-transcript!
   [thread-id transcript]
   (try
-    (explorations.db/update-thread! thread-id {:query_plan_transcript transcript})
+    (exploration-thread/update-thread! thread-id {:query_plan_transcript transcript})
     (catch Throwable e
       (when (schema-violation? e)
         (throw e))

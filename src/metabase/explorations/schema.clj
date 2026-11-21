@@ -17,6 +17,10 @@
    [:map {:closed true}
     [:id                  ms/PositiveInt]]])
 
+(mr/def ::exploration.create
+  "What a caller gives to create an Exploration."
+  ::exploration.update)
+
 (mr/def ::exploration.update
   "What an update (or insert) of a Exploration accepts: every column of `:exploration` except `id`, all optional."
   [:map {:closed true}
@@ -70,6 +74,10 @@
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
+(mr/def ::exploration-block.create
+  "What a caller gives to create an ExplorationBlock."
+  ::exploration-block.update)
+
 (mr/def ::exploration-block.update
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
   [:map {:closed true}
@@ -86,6 +94,10 @@
    ::exploration-page.update
    [:map {:closed true}
     [:id                   ms/PositiveInt]]])
+
+(mr/def ::exploration-page.create
+  "What a caller gives to create an ExplorationPage."
+  ::exploration-page.update)
 
 (mr/def ::exploration-page.update
   "What an update (or insert) of a ExplorationPage accepts: every column of `:exploration_page` except `id`, all optional."
@@ -131,6 +143,10 @@
    [:map {:closed true}
     [:id                     ms/PositiveInt]]])
 
+(mr/def ::exploration-query.create
+  "What a caller gives to create an ExplorationQuery."
+  ::exploration-query.update)
+
 (mr/def ::exploration-query.update
   "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."
   [:map {:closed true}
@@ -175,6 +191,10 @@
    ::exploration-query-result.update
    [:map {:closed true}
     [:id                               ms/PositiveInt]]])
+
+(mr/def ::exploration-query-result.create
+  "What a caller gives to create an ExplorationQueryResult."
+  ::exploration-query-result.update)
 
 (mr/def ::exploration-query-result.update
   "What an update (or insert) of a ExplorationQueryResult accepts: every column of `:exploration_query_result` except `id`, all optional."
@@ -256,6 +276,10 @@
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
 
+(mr/def ::exploration-thread.create
+  "What a caller gives to create an ExplorationThread."
+  ::exploration-thread.update)
+
 (mr/def ::exploration-thread.update
   "What an update (or insert) of a ExplorationThread accepts: every column of `:exploration_thread` except `id`, all optional."
   [:map {:closed true}
@@ -282,6 +306,10 @@
    ::exploration-thread-timeline.update
    [:map {:closed true}
     [:id                    ms/PositiveInt]]])
+
+(mr/def ::exploration-thread-timeline.create
+  "What a caller gives to create an ExplorationThreadTimeline."
+  ::exploration-thread-timeline.update)
 
 (mr/def ::exploration-thread-timeline.update
   "What an update (or insert) of a ExplorationThreadTimeline accepts: every column of `:exploration_thread_timeline` except `id`, all optional."

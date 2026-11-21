@@ -20,6 +20,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -57,10 +58,6 @@
   trigger without reaching into [[metabase.indexed-entities.task.index-values]], which reads this namespace."
   [model-index]
   (task/delete-trigger! (trigger-key (:id model-index))))
-
-(t2/define-before-delete :model/ModelIndex
-  [model-index]
-  (remove-indexing-job model-index))
 
 (def max-indexed-values
   "Maximum number of values we will index. Actually take one more than this to test if there are more than the
@@ -151,6 +148,8 @@
     {:additions (set/difference source current)
      :deletions (set/difference current source)}))
 
+;;; ------------------------------------------------------ Writes ------------------------------------------------------
+
 (mu/defn add-values!
   "Add indexed values to the model_index_value table."
   [model-index :- ::indexed-entities.schema/model-index]
@@ -189,16 +188,14 @@
                       (:id model-index) (:model_id model-index) (ex-message e))
           (indexed-entities.db/mark-model-index-error! (:id model-index) (ex-message e)))))))
 
-;;;; creation
-
 (defn default-schedule
   "Default sync schedule for indexed values. Defaults to randomly once a day."
   []
   (u.cron/schedule-map->cron-string (sync.schedules/randomly-once-a-day)))
 
-(defn create
+(mu/defn create-model-index!
   "Create a model index"
-  [{:keys [model-id pk-ref value-ref creator-id]}]
+  [{:keys [model-id pk-ref value-ref creator-id]} :- ::indexed-entities.schema/model-index.create]
   (indexed-entities.db/insert-model-index! {:model_id   model-id
                                             ;; todo: sanitize these?
                                             :pk_ref     pk-ref
@@ -206,6 +203,12 @@
                                             :schedule   (default-schedule)
                                             :state      "initial"
                                             :creator_id creator-id}))
+
+(mu/defn delete-model-index!
+  "Remove the indexing job of the model index with `id` and delete the model index."
+  [id :- ms/PositiveInt]
+  (remove-indexing-job {:id id})
+  (indexed-entities.db/delete-model-index! id))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 

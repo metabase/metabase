@@ -1,12 +1,16 @@
 (ns metabase.explorations.models.exploration-query
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -64,6 +68,46 @@
       (when (seq seg-ids)
         (explorations.db/segment-names seg-ids)))
    :segment_id))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-queries!
+  "Insert the ExplorationQuery `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-query.create]]
+  (explorations.db/insert-queries! rows))
+
+(mu/defn update-query!
+  "Apply `changes` to the ExplorationQuery with `query-id`."
+  [query-id :- ms/PositiveInt
+   changes  :- [:and
+                (mut/select-keys ::explorations.schema/exploration-query.update
+                                 [:dataset_query :name :data_access_token :resolved_source_ids
+                                  :status :started_at :finished_at])
+                ::explorations.schema/exploration-query.update.stamped-together]]
+  (explorations.db/update-query! query-id changes))
+
+(mu/defn fail-pending-query!
+  "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number
+  of rows updated."
+  [query-id    :- ms/PositiveInt
+   message     :- :string
+   finished-at :- ms/TemporalInstant]
+  (explorations.db/fail-pending-query! query-id message finished-at))
+
+(mu/defn cancel-pending-queries-for-thread!
+  "Mark the pending ExplorationQueries of the ExplorationThread with `thread-id` canceled."
+  [thread-id :- ms/PositiveInt]
+  (explorations.db/cancel-pending-queries-for-thread! thread-id))
+
+(mu/defn cancel-queries!
+  "Mark the ExplorationQueries with `query-ids` canceled, returning the affected-row count in a one-element vector."
+  [query-ids :- [:sequential ms/PositiveInt]]
+  (explorations.db/cancel-queries! query-ids))
+
+(mu/defn delete-queries-for-thread!
+  "Delete the ExplorationQueries of the ExplorationThread with `thread-id`."
+  [thread-id :- ms/PositiveInt]
+  (explorations.db/delete-queries-for-thread! thread-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

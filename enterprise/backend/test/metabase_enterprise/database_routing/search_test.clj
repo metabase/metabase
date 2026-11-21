@@ -70,10 +70,10 @@
                      :model/DatabaseRouter _     {:database_id (mt/id) :user_attribute "db_name"}]
         (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
                                                        :create-queries :query-builder-and-native}}
-          (let [model-index (model-index/create (mt/$ids {:model-id   (:id model)
-                                                          :pk-ref     $municipality.id
-                                                          :value-ref  $municipality.name
-                                                          :creator-id (mt/user->id :crowberto)}))
+          (let [model-index (model-index/create-model-index! (mt/$ids {:model-id   (:id model)
+                                                                       :pk-ref     $municipality.id
+                                                                       :value-ref  $municipality.name
+                                                                       :creator-id (mt/user->id :crowberto)}))
                 search!     (fn [user]
                               (->> (mt/user-http-request user :get 200 "search" :q "rome" :models "indexed-entity")
                                    :data
@@ -103,10 +103,10 @@
                                                               :create-queries :query-builder-and-native}
                                                 (:id router) {:view-data      :blocked
                                                               :create-queries :no}}
-            (let [model-index (model-index/create (mt/$ids {:model-id   (:id model)
-                                                            :pk-ref     $municipality.id
-                                                            :value-ref  $municipality.name
-                                                            :creator-id (mt/user->id :crowberto)}))]
+            (let [model-index (model-index/create-model-index! (mt/$ids {:model-id   (:id model)
+                                                                         :pk-ref     $municipality.id
+                                                                         :value-ref  $municipality.name
+                                                                         :creator-id (mt/user->id :crowberto)}))]
               (mt/with-test-user :crowberto (model-index/add-values! model-index))
               (met/with-user-attributes! :rasta {}
                 (is (= #{"Rome"}

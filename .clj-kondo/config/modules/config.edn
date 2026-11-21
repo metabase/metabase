@@ -149,7 +149,6 @@
                     :model/DashboardCard
                     :model/Database
                     :model/Field
-                    :model/QueryExecution
                     :model/Table}}
 
   actions.rest
@@ -175,6 +174,7 @@
    :api  #{metabase.activity-feed.api
            metabase.activity-feed.core
            metabase.activity-feed.init
+           metabase.activity-feed.models.recent-views
            metabase.activity-feed.recent-views.render
            metabase.activity-feed.recent-views.spec}
    :uses #{api
@@ -485,7 +485,7 @@
 
   bookmarks
   {:team "UX West"
-   :api  #{metabase.bookmarks.api metabase.bookmarks.db metabase.bookmarks.models.bookmark}
+   :api  #{metabase.bookmarks.api metabase.bookmarks.models.bookmark}
    :uses #{api
            app-db
            collections
@@ -520,7 +520,8 @@
   {:team "UX West"
    :api  #{metabase.cache.api
            metabase.cache.core
-           metabase.cache.init}
+           metabase.cache.init
+           metabase.cache.models.cache-config}
    :uses #{api
            app-db
            audit-app
@@ -1189,7 +1190,6 @@
                     :model/Document
                     :model/Segment
                     :model/StoredResult
-                    :model/StoredResultUse
                     :model/Timeline
                     :model/User}}
 
@@ -1877,7 +1877,10 @@
 
   model-persistence
   {:team "Gadget"
-   :api  #{metabase.model-persistence.api metabase.model-persistence.core metabase.model-persistence.init}
+   :api  #{metabase.model-persistence.api
+           metabase.model-persistence.core
+           metabase.model-persistence.init
+           metabase.model-persistence.models.persisted-info}
    :uses #{api
            app-db
            driver
@@ -2305,7 +2308,11 @@
    :api  #{metabase.queries.card-schema
            metabase.queries.core
            metabase.queries.init
-           metabase.queries.models.query ; TODO FIXME
+           metabase.queries.models.parameter-card
+           metabase.queries.models.query
+           metabase.queries.models.query-execution
+           metabase.queries.models.stored-result
+           metabase.queries.models.stored-result-use
            metabase.queries.schema}
    :uses #{activity-feed
            analytics
@@ -2514,7 +2521,6 @@
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
-                    :model/QueryExecution
                     :model/Table}}
 
   query-processor.cache-backend
@@ -2604,6 +2610,7 @@
    :api  #{metabase.revisions.api
            metabase.revisions.core
            metabase.revisions.init
+           metabase.revisions.models.revision
            metabase.revisions.sql}
    :uses #{api
            app-db

@@ -1,7 +1,7 @@
 (ns metabase.documents.recent-views-test
   (:require
    [clojure.test :refer :all]
-   [metabase.activity-feed.core :as activity-feed]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
@@ -168,7 +168,7 @@
                    :model/Document {doc-id :id} {:name "Test Document"
                                                  :collection_id coll-id
                                                  :archived false}]
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document doc-id :view)
       (let [response (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views])]
         (is (some #(and (= (:model %) "document")
                         (= (:id %) doc-id)
@@ -189,8 +189,8 @@
                                                        :exploration_id expl-id
                                                        :archived false}]
       ;; Bypass the write-time filter to simulate historical rows already present in recent_views.
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
-      (activity-feed/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document plain-id :view)
+      (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Document expl-doc :view)
       (let [recents (:recents (mt/user-http-request :rasta :get 200 "activity/recents" :context [:views]))
             ids    (set (map :id (filter #(= (:model %) "document") recents)))]
         (is (contains? ids plain-id)

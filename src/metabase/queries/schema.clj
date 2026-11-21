@@ -282,6 +282,10 @@
     [:id                          ms/PositiveInt]
     [:row_count                   {:optional true} :int]]])
 
+(mr/def ::query-execution.create
+  "What a caller gives to create a QueryExecution."
+  ::query-execution.update)
+
 (mr/def ::query-execution.update
   "What an update (or insert) of a QueryExecution accepts: every column of `:query_execution` except `id`, all optional."
   [:map {:closed true}
@@ -355,6 +359,10 @@
    [:map {:closed true}
     [:id                ms/PositiveInt]]])
 
+(mr/def ::stored-result.create
+  "What a caller gives to create a StoredResult."
+  ::stored-result.update)
+
 (mr/def ::stored-result.update
   "What an update (or insert) of a StoredResult accepts: every column of `:stored_result` except `id`, all optional."
   [:map {:closed true}
@@ -374,6 +382,10 @@
    ::stored-result-use.update
    [:map {:closed true}
     [:id               ms/PositiveInt]]])
+
+(mr/def ::stored-result-use.create
+  "What a caller gives to create a StoredResultUse: exactly one of `card_id` and `exploration_id`."
+  ::stored-result-use.update)
 
 (mr/def ::stored-result-use.update
   "What an update (or insert) of a StoredResultUse accepts: every column of `:stored_result_use` except `id`, all optional."

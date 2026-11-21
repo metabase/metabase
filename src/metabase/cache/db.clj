@@ -205,3 +205,14 @@
   "Whether any CacheConfig exists."
   []
   (t2/exists? :model/CacheConfig))
+
+(mu/defn update-cache-config!
+  "Apply `changes` to the CacheConfig with `cache-config-id`."
+  [cache-config-id :- ms/PositiveInt
+   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
+  (t2/update! :model/CacheConfig {:id cache-config-id} changes))
+
+(mu/defn delete-query-caches!
+  "Delete the QueryCache entries with `query-hashes`."
+  [query-hashes :- [:sequential bytes?]]
+  (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))

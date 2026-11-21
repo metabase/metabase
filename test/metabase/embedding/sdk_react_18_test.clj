@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.embedding.db :as embedding.db]
+   [metabase.embedding.models.sdk-react-18-host :as sdk-react-18-host]
    [metabase.embedding.sdk-react-18 :as embedding.sdk-react-18]
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]
@@ -73,8 +73,8 @@
   (let [saved   (atom [])
         earlier (t/offset-date-time "2026-10-13T10:00:00Z")
         later   (t/offset-date-time "2026-10-13T10:00:30Z")]
-    (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
-                                embedding.db/save-sdk-react-18-host!                     #(swap! saved conj [%1 %2])]
+    (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+                                sdk-react-18-host/save-sdk-react-18-host!                     #(swap! saved conj [%1 %2])]
       (testing "saves each host once, with the newest time it was seen"
         (#'embedding.sdk-react-18/save-hosts! [{:host "a.example.com", :timestamp later}
                                                {:host "a.example.com", :timestamp earlier}
@@ -85,8 +85,8 @@
   (let [now   (t/offset-date-time)
         saved (atom [])]
     (testing "a failed delete logs a warning, and the hosts are still saved"
-      (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (fn [_] (throw (ex-info "boom" {})))
-                                  embedding.db/save-sdk-react-18-host!                     (fn [host _] (swap! saved conj host))]
+      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (fn [_] (throw (ex-info "boom" {})))
+                                  sdk-react-18-host/save-sdk-react-18-host!                     (fn [host _] (swap! saved conj host))]
         (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
           (#'embedding.sdk-react-18/save-hosts! [{:host "app.example.com", :timestamp now}])
           (is (= ["app.example.com"] @saved))
@@ -94,11 +94,11 @@
                   (messages))))))
     (testing "a host that fails to save does not stop the other hosts"
       (reset! saved [])
-      (mt/with-dynamic-fn-redefs [embedding.db/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
-                                  embedding.db/save-sdk-react-18-host!                     (fn [host _]
-                                                                                             (when (= host "bad.example.com")
-                                                                                               (throw (ex-info "boom" {})))
-                                                                                             (swap! saved conj host))]
+      (mt/with-dynamic-fn-redefs [sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (constantly nil)
+                                  sdk-react-18-host/save-sdk-react-18-host!                     (fn [host _]
+                                                                                                  (when (= host "bad.example.com")
+                                                                                                    (throw (ex-info "boom" {})))
+                                                                                                  (swap! saved conj host))]
         (mt/with-log-messages-for-level [messages [metabase.embedding.sdk-react-18 :warn]]
           (#'embedding.sdk-react-18/save-hosts! [{:host "bad.example.com", :timestamp now}
                                                  {:host "good.example.com", :timestamp now}])

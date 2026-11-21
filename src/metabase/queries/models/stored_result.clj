@@ -10,7 +10,11 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -25,6 +29,18 @@
 (doto :model/StoredResult
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-stored-result! :- ms/PositiveInt
+  "Insert the StoredResult `row` and return its id."
+  [row :- ::queries.schema/stored-result.create]
+  (queries.db/insert-stored-result! row))
+
+(mu/defn delete-stored-results!
+  "Delete the StoredResults with `stored-result-ids`."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (queries.db/delete-stored-results! stored-result-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

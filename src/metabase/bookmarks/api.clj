@@ -61,7 +61,7 @@
                           [:model Models]
                           [:id    ms/PositiveInt]]]
   ;; todo: allow admins to include an optional user id to delete for so they can delete other's bookmarks.
-  (bookmarks.db/delete-bookmark! model id api/*current-user-id*)
+  (bookmark/delete-bookmark! model id api/*current-user-id*)
   api/generic-204-no-content)
 
 (api.macros/defendpoint :put "/ordering" :- ::api/generic-204-no-content

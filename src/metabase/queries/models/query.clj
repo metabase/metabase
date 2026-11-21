@@ -40,6 +40,43 @@
   {:pre [(instance? (Class/forName "[B") query-hash)]}
   (queries.db/average-execution-time query-hash))
 
+(mr/def ::database-and-table-ids
+  [:map
+   [:database-id ::lib.schema.id/database]
+   [:table-id    [:maybe ::lib.schema.id/table]]])
+
+(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
+
+  Expects MBQL 5 queries."
+  [{database-id :database, :as query} :- [:or ::lib.schema/query ::lib-be.schema/empty-query]]
+  (when (seq query)
+    (if-let [source-card-id (lib/primary-source-card-id query)]
+      (let [card (or (lib.metadata/card query source-card-id)
+                     ;; Card may belong to a different Database; fetch from the app DB
+                     (queries.db/card-database-and-table-ids source-card-id))]
+        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
+      (let [table-id (lib/primary-source-table-id query)]
+        {:database-id database-id
+         :table-id    table-id}))))
+
+(mu/defn query-is-native? :- :boolean
+  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
+  regardless of whether the Card has a native query or not."
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
+  (boolean (some-> query not-empty lib/native-only-query?)))
+
+(mu/defn supports-implicit-actions? :- :boolean
+  "Whether a model with `query` supports implicit actions: every stage is MBQL with no clauses, so it is a raw table."
+  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
+  (boolean (and (seq query)
+                (every? (fn [stage-number]
+                          (and (lib/mbql-stage? query stage-number)
+                               (not (lib/has-clauses? query stage-number))))
+                        (range 0 (count (:stages query)))))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
 (def ^:private smoothing-factor
   "The weight of the latest execution time in the exponential rolling average formula:
 
@@ -153,41 +190,6 @@
             (insert-query-entries! new-entry))
           (catch Throwable e
             (log/tracef "Error inserting concurrently created Query entries: %s" (ex-message e))))))))
-
-(mr/def ::database-and-table-ids
-  [:map
-   [:database-id ::lib.schema.id/database]
-   [:table-id    [:maybe ::lib.schema.id/table]]])
-
-(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
-
-  Expects MBQL 5 queries."
-  [{database-id :database, :as query} :- [:or ::lib.schema/query ::lib-be.schema/empty-query]]
-  (when (seq query)
-    (if-let [source-card-id (lib/primary-source-card-id query)]
-      (let [card (or (lib.metadata/card query source-card-id)
-                     ;; Card may belong to a different Database; fetch from the app DB
-                     (queries.db/card-database-and-table-ids source-card-id))]
-        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
-      (let [table-id (lib/primary-source-table-id query)]
-        {:database-id database-id
-         :table-id    table-id}))))
-
-(mu/defn query-is-native? :- :boolean
-  "Whether this query (MBQL 5 or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
-  regardless of whether the Card has a native query or not."
-  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
-  (boolean (some-> query not-empty lib/native-only-query?)))
-
-(mu/defn supports-implicit-actions? :- :boolean
-  "Whether a model with `query` supports implicit actions: every stage is MBQL with no clauses, so it is a raw table."
-  [query :- [:maybe [:or ::lib.schema/query ::lib-be.schema/empty-query]]]
-  (boolean (and (seq query)
-                (every? (fn [stage-number]
-                          (and (lib/mbql-stage? query stage-number)
-                               (not (lib/has-clauses? query stage-number))))
-                        (range 0 (count (:stages query)))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

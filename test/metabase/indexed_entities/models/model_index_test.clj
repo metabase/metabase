@@ -104,7 +104,7 @@
                   (is (= {"model-index-id" (:id model-index)}
                          (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
-                (t2/delete! :model/ModelIndex :id (u/the-id model-index))
+                (model-index/delete-model-index! (u/the-id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
 
 (def ^:private empty-changes "empty state map for find changes"

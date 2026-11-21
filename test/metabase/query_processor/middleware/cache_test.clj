@@ -522,10 +522,10 @@
   (testing (str "a fast query is not cached when a stored `:ttl` config sets `min_duration_ms` above its runtime "
                 "(regression for #78340)")
     (mt/with-model-cleanup [:model/CacheConfig]
-      (cache-config/store! (mt/user->id :crowberto)
-                           {:model    "root"
-                            :model_id 0
-                            :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
+      (cache-config/save-cache-config! (mt/user->id :crowberto)
+                                       {:model    "root"
+                                        :model_id 0
+                                        :strategy {:type :ttl :multiplier 60 :min_duration_ms 20000}})
       (with-mock-cache! [save-chan]
         (let [strategy (-> (cache-config/root-strategy)
                            cache-config/row->config

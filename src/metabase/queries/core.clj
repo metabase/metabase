@@ -91,9 +91,3 @@
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
 
 (p/import-def metabase.query-processor.card/template-tag-parameters card-template-tag-parameters)
-
-(p/import-def metabase.queries.models.parameter-card/delete-all-for-parameterized-object!
-              delete-all-parameter-cards-for-parameterized-object!)
-
-(p/import-def metabase.queries.models.parameter-card/upsert-or-delete-from-parameters!
-              upsert-or-delete-parameter-cards-from-parameters!)

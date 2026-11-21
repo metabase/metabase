@@ -34,6 +34,14 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
 
+(mr/def ::model-index.create
+  "What a caller gives to create a ModelIndex: its model, the refs of its primary key and value, and its creator."
+  [:map {:closed true}
+   [:model-id   ms/PositiveInt]
+   [:pk-ref     ::model-index.pk-ref]
+   [:value-ref  ::model-index.value-ref]
+   [:creator-id ::lib.schema.id/user]])
+
 (mr/def ::model-index-value
   "A ModelIndexValue as selected from the app DB: every column of `:model_index_value`."
   [:merge
