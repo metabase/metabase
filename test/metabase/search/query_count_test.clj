@@ -13,6 +13,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
@@ -48,7 +49,13 @@
 (def ^:private search-row-factories
   "Per search model, a function of the collection to put rows in, the names of the rows to make and the extra
   attributes of those rows. A factory that cannot use the attributes names that argument `_row-attrs`."
-  {"collection"     (insert-rows :model/Collection (fn [c] {:location (collection/children-location c)}))
+  {"collection"     (fn [c names row-attrs]
+                      (#'collection/create-collections*
+                       (vec (for [n names]
+                              (merge (mt/with-temp-defaults :model/Collection)
+                                     {:location (collection/children-location c)}
+                                     row-attrs
+                                     {:name n})))))
    "dashboard"      (insert-rows :model/Dashboard (in-collection {}))
    "card"           (insert-rows :model/Card (in-collection {:type :question}))
    "dataset"        (insert-rows :model/Card (in-collection {:type :model}))
@@ -58,7 +65,10 @@
    "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
    "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
    "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
-   "database"       (insert-rows :model/Database)
+   "database"       (fn [_collection names row-attrs]
+                      (database/create-databases!
+                       (vec (for [n names]
+                              (merge (mt/with-temp-defaults :model/Database) row-attrs {:name n})))))
    "action"         (fn [collection names row-attrs]
                       (let [model   (insert-model! collection)
                             action! (insert-rows :model/Action (fn [_] {:model_id (:id model), :type :query}))]
@@ -66,7 +76,8 @@
    "data-app"       (fn [_collection names _row-attrs]
                       (doseq [n names]
                         (let [defaults (mt/with-temp-defaults :model/DataApp)
-                              app      (t2/insert-returning-instance! :model/DataApp (assoc defaults :name n))]
+                              create!  (requiring-resolve 'metabase-enterprise.data-apps.models.data-app/create-data-apps!)
+                              app      (first (create! [(assoc defaults :name n)]))]
                           (perms/grant-collection-read-permissions! (perms/all-users-group)
                                                                     (:resource_collection_id app)))))
    "indexed-entity" (fn [collection names _row-attrs]

@@ -3,8 +3,10 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (deftest allowed-content-doesnt-block-regular-collections
@@ -12,8 +14,8 @@
     (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection" :type nil}]
       (testing "Regular collections can add anything"
         (is (some? (collection/create-collections! [(merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id regular-collection) "/")})])))
-        (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id regular-collection)}))))
-        (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric, :collection_id (:id regular-collection)}))))
+        (is (some? (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id regular-collection)})])))
+        (is (some? (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :metric, :collection_id (:id regular-collection)})])))
         (is (some? (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id regular-collection)})))))))
 
 (deftest library-completely-locked-down
@@ -23,9 +25,9 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (collection/create-collections! [(merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id no-allowed-content) "/")})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id no-allowed-content)}))))
+                              (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :model, :collection_id (:id no-allowed-content)})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)}))))
+                              (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id no-allowed-content)})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add anything to the semantic layer"
                               (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id no-allowed-content)})))))))
 
@@ -37,9 +39,9 @@
                                            :is_published  true}]
           (is (some? table)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-tables)}))))
+                              (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-tables)})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-tables)}))))
+                              (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-tables)})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id allow-tables)}))))
       (testing "Can add collections iff they have the same :type"
@@ -63,7 +65,7 @@
                                          :type          :metric}]
           (is (some? card)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                              (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-metrics)}))))
+                              (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-metrics)})])))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id allow-metrics)}))))
       (testing "Can add collections iff they have the same :type"
@@ -88,7 +90,7 @@
                                                  :entity_id "librarylibrarydashbrd"}]
       (testing "Holds cards, dashboards, and Dashboards subcollections"
         (doseq [card-type [:question :model :metric]]
-          (is (some? (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id dashboards)})))
+          (is (some? (#'card/create-cards* [(merge (mt/with-temp-defaults :model/Card) {:type card-type :collection_id (:id dashboards)})]))
               (name card-type)))
         (is (some? (dashboard/create-dashboard! {:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id (:id dashboards)})))
         (is (some? (collection/create-collections! [(merge (mt/with-temp-defaults :model/Collection)
@@ -105,7 +107,7 @@
       (testing "Rejects published tables"
         (mt/with-temp [:model/Table table {}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                                (t2/update! :model/Table :id (:id table) {:collection_id (:id dashboards) :is_published true})))))
+                                (table/update-table! (:id table) {:collection_id (:id dashboards) :is_published true})))))
       (testing "Stays a locked Library section"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                               (collection/update-collections! [{:id (:id dashboards) :name "Old dashboards"}])))))))
@@ -118,14 +120,14 @@
                                                    :is_published  true}]
       (testing "Cannot insert a published table into a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table)
-                                                              {:collection_id (:id regular)
-                                                               :is_published  true})))))
+                              (table/create-table! (merge (mt/with-temp-defaults :model/Table)
+                                                          {:collection_id (:id regular)
+                                                           :is_published  true})))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/update! :model/Table :id (:id table) {:collection_id (:id regular)}))))
+                              (table/update-table! (:id table) {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (t2/update! :model/Table :id (:id table) {:collection_id nil})))))))
+        (is (some? (table/update-table! (:id table) {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
