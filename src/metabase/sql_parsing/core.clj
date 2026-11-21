@@ -464,25 +464,6 @@
   [parser dialect sql table-name]
   (protocol/add-insert-clause parser dialect sql table-name))
 
-(defn join-steps
-  "The row-count queries of each join in `sql`, a SELECT, taken one join at a time, for a caller that will run them.
-
-   Returns `{:status \"ok\", :from <source>, :base_sql <sql>, :steps [<step> ...]}`.
-   A source is `{:source \"table\" | \"cte\" | \"derived\", :table [catalog schema table] or nil, :alias ...}`.
-   A step is a source with its `:sql` and a `:strategy`, the string `inner`, `left`, `right`, `full` or `cross`.
-   The `:base_sql` counts the rows of the FROM source alone.
-   A step's `:sql` counts the rows of the FROM source joined with every join up to and including that step.
-   Both keep any WITH clause and leave out the WHERE clause and everything else outside FROM and JOIN.
-   For an outer join the step query returns a second count in the same row, of the same chain with that join made INNER.
-
-   Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
-   SQL whose literal lists are too large to parse safely is refused as `\"large-literal-list\"`."
-  [parser dialect sql]
-  ;; The queries are generated from `sql` itself, never from a copy with its literal lists collapsed.
-  (if (not= sql (strip-large-literal-lists sql executable-literal-list-ceiling))
-    {:status "unsupported", :reason "large-literal-list"}
-    (protocol/join-steps parser dialect sql)))
-
 (def ^{:arglists '([cache k compute])} cached-by-identity!
   "Same as [[results/cached-by-identity!]]."
   results/cached-by-identity!)
@@ -627,6 +608,44 @@
   string that was checked."
   [parser dialect sql stmt-type]
   (classify-single-stmt parser dialect sql stmt-type gate-limits))
+
+;; A transform can be long, so there is no length cap; the queries run, so the literal-list ceiling is an executing
+;; caller's; and H2 has no sqlglot dialect, so none is required.
+(def ^:private join-steps-limits
+  "Limits for the statement check of [[join-steps]]."
+  {:max-sql-chars        nil
+   :literal-list-ceiling executable-literal-list-ceiling
+   :require-dialect?     false})
+
+(def ^:private join-steps-statement-reasons
+  "The statement checks whose refusal [[join-steps]] reports under the checker's own reason."
+  #{"large-literal-list"
+    "multiple-statements"
+    "not-a-select"
+    "unparseable"})
+
+(defn join-steps
+  "The row-count queries of each join in `sql`, a SELECT, taken one join at a time, for a caller that will run them.
+
+   Returns `{:status \"ok\", :from <source>, :base_sql <sql>, :steps [<step> ...]}`.
+   A source is `{:source \"table\" | \"cte\" | \"derived\", :table [catalog schema table] or nil, :alias ...}`.
+   A step is a source with its `:sql` and a `:strategy`, the string `inner`, `left`, `right`, `full` or `cross`.
+   The `:base_sql` counts the rows of the FROM source alone.
+   A step's `:sql` counts the rows of the FROM source joined with every join up to and including that step.
+   Both keep any WITH clause and leave out the WHERE clause and everything else outside FROM and JOIN.
+   For an outer join the step query returns a second count in the same row, of the same chain with that join made INNER.
+
+   Anything else is `{:status \"unsupported\", :reason <reason>}`, with a reason from `join_steps` in `sql_tools.py`.
+   SQL that is not a read-only SELECT is refused as `\"not-read-only\"`, and SQL whose literal lists are too large to
+   parse safely as `\"large-literal-list\"`."
+  [parser dialect sql]
+  ;; Every generated query keeps the WITH clause, so a data-modifying CTE would run once per query. The check reads
+  ;; `sql` itself, never a copy with its literal lists collapsed.
+  (let [{:keys [verdict reason]} (classify-single-stmt parser dialect sql "read-only" join-steps-limits)]
+    (cond
+      (= :allowed verdict)                  (protocol/join-steps parser dialect sql)
+      (join-steps-statement-reasons reason) {:status "unsupported", :reason reason}
+      :else                                 {:status "unsupported", :reason "not-read-only"})))
 
 ;;;; Transpile sql
 

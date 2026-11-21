@@ -145,6 +145,27 @@
       :strategy "left",
       :sql
       "SELECT w.n, m.n FROM (SELECT COUNT(*) AS n FROM PUBLIC.ORDERS AS o LEFT JOIN PUBLIC.PEOPLE AS p ON p.ID = o.USER_ID) AS w CROSS JOIN (SELECT COUNT(*) AS n FROM PUBLIC.ORDERS AS o JOIN PUBLIC.PEOPLE AS p ON p.ID = o.USER_ID) AS m"}]}}
+  {:name "a bracketed SELECT is read as the SELECT inside",
+   :dialect "postgres",
+   :sql "(SELECT * FROM a JOIN b ON a.id = b.id)",
+   :expected
+   {:status "ok",
+    :from {:source "table", :table [nil nil "a"], :alias "a"},
+    :base_sql "SELECT COUNT(*) AS n FROM a",
+    :steps
+    [{:source "table",
+      :table [nil nil "b"],
+      :alias "b",
+      :strategy "inner",
+      :sql "SELECT COUNT(*) AS n FROM a JOIN b ON a.id = b.id"}]}}
+  {:name "a data-modifying CTE is refused: every count query would run it",
+   :dialect "postgres",
+   :sql "WITH gone AS (DELETE FROM t RETURNING *) SELECT * FROM a JOIN b ON a.id = b.id",
+   :expected {:status "unsupported", :reason "not-read-only"}}
+  {:name "a locking SELECT is refused",
+   :dialect "postgres",
+   :sql "SELECT * FROM a JOIN b ON a.id = b.id FOR UPDATE",
+   :expected {:status "unsupported", :reason "not-read-only"}}
   {:name "a comma join is refused: its condition is in the WHERE clause",
    :dialect "postgres",
    :sql "SELECT * FROM a, b WHERE a.id = b.id",
@@ -220,4 +241,4 @@
   {:name "empty SQL is refused",
    :dialect "postgres",
    :sql "",
-   :expected {:status "unsupported", :reason "unparseable"}}]}
+   :expected {:status "unsupported", :reason "not-a-select"}}]}

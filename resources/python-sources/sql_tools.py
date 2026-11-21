@@ -579,7 +579,7 @@ def join_steps(sql: str, dialect: str = None) -> str:
             raise _JoinStepsUnsupported("unparseable")
         if len(stmts) != 1:
             raise _JoinStepsUnsupported("multiple-statements" if stmts else "unparseable")
-        stmt = stmts[0]
+        stmt = _unbracketed(stmts[0])
         if isinstance(stmt, exp.SetOperation):
             raise _JoinStepsUnsupported("set-operation")
         if not isinstance(stmt, exp.Select):

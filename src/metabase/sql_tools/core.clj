@@ -321,6 +321,7 @@
 
   A query whose joins cannot be rebuilt this way returns `{:unsupported reason}`.
   A comma join is refused as `:comma-join`, since its join condition would be in the WHERE clause.
+  A query that writes, locks or otherwise is not a read-only SELECT is refused as `:not-read-only`.
   The other reasons are `:set-operation`, `:not-a-select`, `:multiple-statements`, `:no-from`, `:nested-join`,
   `:unsupported-join`, `:unsupported-source`, `:parameters`, `:large-literal-list`, `:unparseable` and
   `:unsupported-dialect`.

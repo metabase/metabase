@@ -3,6 +3,7 @@
   (:require
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.sql-parsing.sqlglot-java.references :as references]
+   [metabase.sql-parsing.sqlglot-java.statements :as statements]
    [metabase.util :as u])
   (:import
    (com.metabase.sqlglot.ast Expr Expressions$Identifier Expressions$Parameter Expressions$Placeholder
@@ -173,7 +174,7 @@
     inner))
 
 (defn- parse-statement
-  "The one statement in `sql`.
+  "The one statement in `sql`, without brackets around the whole of it.
   Throws an `unparseable` or `multiple-statements` refusal otherwise."
   [dialect sql]
   (let [stmts (try
@@ -182,7 +183,7 @@
                   (throw (unsupported "unparseable"))))]
     (case (count stmts)
       0 (throw (unsupported "unparseable"))
-      1 (first stmts)
+      1 (statements/unbracketed (first stmts))
       (throw (unsupported "multiple-statements")))))
 
 (defn- statement-refusal
