@@ -50,11 +50,6 @@
   []
   (t2/delete! :model/Database :is_audit true))
 
-(mu/defn delete-permissions-for-database!
-  "Delete the Permissions rows on the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Permissions {:where [:like :object (str "%/db/" database-id "/%")]}))
-
 (mu/defn tables-of-database-named
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database

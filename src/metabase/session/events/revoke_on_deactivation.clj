@@ -3,7 +3,7 @@
    cookie. (SEC-863)"
   (:require
    [metabase.events.core :as events]
-   [metabase.session.db :as session.db]
+   [metabase.session.models.session :as session]
    [metabase.util.events :as u.events]
    [methodical.core :as methodical]))
 
@@ -13,4 +13,4 @@
 (methodical/defmethod events/publish-event! ::event
   [_topic {:keys [object user-id] :as event}]
   (when (and (false? (:is_active object)) (u.events/changed? event :is_active))
-    (session.db/end-sessions! {:user_id (:id object)} "user-deactivated" user-id)))
+    (session/end-sessions! {:user_id (:id object)} "user-deactivated" user-id)))

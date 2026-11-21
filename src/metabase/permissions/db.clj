@@ -487,8 +487,12 @@
   [objects :- [:sequential :string]]
   (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
 
-(defn- related-permission-objects-where
-  [group-id path also-under-paths]
+(mu/defn related-permissions-where
+  "The HoneySQL `where` clause matching the Permissions rows held by the group with `group-id` that are ancestors or
+  descendants of `path` (also checking each of `also-under-paths`, e.g. a v2-equivalent path)."
+  [group-id          :- ms/PositiveInt
+   path              :- :string
+   also-under-paths  :- [:sequential :string]]
   [:and
    [:= :group_id group-id]
    (into [:or [:like path (h2x/concat :object (h2x/literal "%"))]]
@@ -502,16 +506,17 @@
    path              :- :string
    also-under-paths  :- [:sequential :string]]
   (t2/select-fn-set :object :model/Permissions
-                    {:where (related-permission-objects-where group-id path also-under-paths)}))
+                    {:where (related-permissions-where group-id path also-under-paths)}))
 
-(mu/defn delete-related-permissions!
-  "Delete the Permissions rows held by the group with `group-id` that are ancestors or descendants of `path` (also
-  checking each of `also-under-paths`, e.g. a v2-equivalent path)."
-  [group-id          :- ms/PositiveInt
-   path              :- :string
-   also-under-paths  :- [:sequential :string]]
-  (t2/delete! :model/Permissions
-              {:where (related-permission-objects-where group-id path also-under-paths)}))
+(mu/defn permissions-group-ids-where :- [:set ms/PositiveInt]
+  "The ids of the groups holding a Permissions row matching the HoneySQL `where` clause."
+  [where :- vector?]
+  (set (t2/select-fn-set :group_id :model/Permissions {:where where})))
+
+(mu/defn delete-permissions! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the Permissions rows matching the HoneySQL `where` clause, returning the number deleted."
+  [where :- vector?]
+  (t2/delete! :model/Permissions {:where where}))
 
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`."

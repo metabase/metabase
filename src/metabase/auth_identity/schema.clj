@@ -62,6 +62,18 @@
    [:map {:closed true}
     [:id           ms/PositiveInt]]])
 
+(mr/def ::auth-identity.create
+  "What [[metabase.auth-identity.models.auth-identity/create-auth-identity!]] takes: the columns of a new AuthIdentity
+  a caller gives."
+  [:map {:closed true}
+   [:user_id      ::lib.schema.id/user]
+   [:provider     [:or :keyword :string]]
+   [:credentials  {:optional true} [:maybe ::auth-identity.credentials]]
+   [:metadata     {:optional true} [:maybe ::auth-identity.metadata]]
+   [:provider_id  {:optional true} [:maybe :string]]
+   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
 (mr/def ::auth-identity.update
   "What an update (or insert) of a AuthIdentity accepts: every column of `:auth_identity` except `id`, all optional."
   [:map {:closed true}

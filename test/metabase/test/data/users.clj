@@ -241,9 +241,9 @@
       ;; transaction around the Session would also discard every app DB write made by the request. Delete only
       ;; the Session explicitly instead.
       ;;
-      ;; Write the row rather than the model. `:model/Session`'s after-insert hook publishes `:event/user-login`,
-      ;; which stamps `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the
-      ;; Session does not undo either, so they leak into whatever runs next.
+      ;; Write the row rather than call `create-session!`, which publishes `:event/user-login`, stamping
+      ;; `User.last_login`, and `:event/user-joined` for a User that has never logged in. Deleting the Session
+      ;; does not undo either, so they leak into whatever runs next.
       (t2/insert! :core_session {:id         session-id
                                  :key_hashed (session/hash-session-key session-key)
                                  :user_id    user-id

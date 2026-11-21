@@ -201,6 +201,19 @@
              (t2/select-fn-set :object :model/Permissions :group_id normal-group-id
                                :object [:in ["/application/setting/" (format "/collection/%d/" coll-id)]]))))))
 
+(deftest delete-permissions-test
+  (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                 :model/Collection       {coll-id :id}  {}]
+    (perms/create-permissions! [{:group_id group-id :object (format "/collection/%d/read/" coll-id)}])
+    (testing "matching row of Admin group is refused and nothing is deleted"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot create or revoke permissions for the 'Admin' group"
+                            (perms/delete-permissions! [:in :group_id [group-id (u/the-id (perms-group/admin))]])))
+      (is (t2/exists? :model/Permissions :group_id group-id))
+      (is (t2/exists? :model/Permissions :group_id (u/the-id (perms-group/admin)) :object "/")))
+    (testing "rows of other groups are deleted"
+      (is (= 1 (perms/delete-permissions! [:= :group_id group-id])))
+      (is (not (t2/exists? :model/Permissions :group_id group-id))))))
+
 (deftest permissions-row-update-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                  :model/Collection       {coll-id :id}  {}]

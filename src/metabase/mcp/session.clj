@@ -12,11 +12,13 @@
   query-handle lifecycle management."
   (:require
    [clojure.string :as str]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.models.mcp-query-handle :as mcp-query-handle]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr])
@@ -373,7 +375,9 @@
     ;; colliding rows arbitrarily. Cross-user UUID collisions are an unaddressed risk
     ;; across the whole session model (cookie sessions included) — it belongs in the
     ;; auth layer, not here, and no constraint shape at this call site can fix it.
-    (mcp.db/get-or-create-core-session! key-hashed user-id)))
+    (models.session/get-or-create-mcp-session!
+     key-hashed user-id
+     (:id (models.auth-identity/get-or-create-auth-identity! user-id session/mcp-provider)))))
 
 (defn owned-by-user?
   "Return true if no `core_session` has been materialized for this session yet (i.e. no ownership to violate), or if
@@ -480,4 +484,4 @@
   (assert-session-id! session-id)
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (mcp-query-handle/delete-mcp-query-handles-of-session! session-id key-hashed user-id)
-    (mcp.db/delete-session-for-user! key-hashed user-id)))
+    (models.session/delete-mcp-session! key-hashed user-id)))
