@@ -3,10 +3,12 @@
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
    [malli.util :as mut]
+   [metabase.agent-api.schema :as agent-api.schema]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (mu/defn collection-breadcrumb-columns
@@ -84,3 +86,13 @@
   "The active User with `email`, compared case-insensitively, or nil."
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email) :is_active true))
+
+(mu/defn insert-call-log!
+  "Insert the AgentApiCallLog `row`."
+  [row :- ::agent-api.schema/agent-api-call-log.update]
+  (t2/insert! :model/AgentApiCallLog row))
+
+(mu/defn delete-call-logs-created-before!
+  "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
+  [cutoff :- ms/TemporalInstant]
+  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]}))

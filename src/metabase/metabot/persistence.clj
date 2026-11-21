@@ -8,6 +8,8 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
+   [metabase.metabot.models.metabot-message :as metabot-message]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.self.core :as self.core]
@@ -227,13 +229,13 @@
   must be non-empty — an empty map would match every message."
   [conditions deleted-by-user-id]
   {:pre [(seq conditions)]}
-  (metabot.db/soft-delete-messages-where! conditions deleted-by-user-id))
+  (metabot-message/soft-delete-metabot-messages! conditions deleted-by-user-id))
 
 (defn- insert-assistant-placeholder!
   "Insert a turn's in-flight assistant row (`:finished` nil until
   [[finalize-assistant-turn!]] resolves it); returns its pk."
   [conversation-id profile-id external-id ai-proxy? & {:keys [user-id channel-id]}]
-  (metabot.db/insert-message-returning-pk!
+  (metabot-message/create-metabot-message!
    (cond-> {:conversation_id conversation-id
             :data            []
             :data_version    schema.v2/current-data-version
@@ -301,7 +303,7 @@
     (t2/with-transaction [_conn]
       (when (seq delete-message-ids)
         (soft-delete-messages! {:id delete-message-ids} originator-id))
-      (metabot.db/upsert-conversation!
+      (metabot-conversation/upsert-metabot-conversation!
        conversation-id
        (fn [existing]
          ;; `:user_id` is the originator — set on insert, never overwritten.
@@ -324,18 +326,18 @@
            (assoc :slack_channel_id channel-id)
            (and slack-thread-ts (nil? (:slack_thread_ts existing)))
            (assoc :slack_thread_ts slack-thread-ts))))
-      (metabot.db/insert-messages!
-       (cond-> {:conversation_id conversation-id
-                :data            [{:type "text" :text (:content user-message)}]
-                :data_version    schema.v2/current-data-version
-                :role            :user
-                :profile_id      profile-id
-                :external_id     user-external-id
-                :total_tokens    0
-                :ai_proxied      (boolean ai-proxy?)}
-         originator-id (assoc :user_id originator-id)
-         channel-id    (assoc :channel_id channel-id)
-         slack-msg-id  (assoc :slack_msg_id slack-msg-id)))
+      (metabot-message/create-metabot-messages!
+       [(cond-> {:conversation_id conversation-id
+                 :data            [{:type "text" :text (:content user-message)}]
+                 :data_version    schema.v2/current-data-version
+                 :role            :user
+                 :profile_id      profile-id
+                 :external_id     user-external-id
+                 :total_tokens    0
+                 :ai_proxied      (boolean ai-proxy?)}
+          originator-id (assoc :user_id originator-id)
+          channel-id    (assoc :channel_id channel-id)
+          slack-msg-id  (assoc :slack_msg_id slack-msg-id))])
       (let [pk (insert-assistant-placeholder! conversation-id profile-id assistant-external-id ai-proxy?
                                               :user-id user-id
                                               :channel-id channel-id)]
@@ -439,7 +441,7 @@
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
-    (metabot.db/update-message! assistant-msg-id
+    (metabot-message/update-metabot-message! assistant-msg-id
                                 (cond-> {:data           content
                                          :data_version   schema.v2/current-data-version
                                          :usage          usage
@@ -599,13 +601,13 @@
   "Backfill slack_msg_id on a MetabotMessage by primary key."
   [msg-id slack-msg-id]
   (when (and msg-id slack-msg-id)
-    (metabot.db/update-message! msg-id {:slack_msg_id slack-msg-id})))
+    (metabot-message/update-metabot-message! msg-id {:slack_msg_id slack-msg-id})))
 
 (defn set-conversation-title-if-missing!
   "Set a conversation title only when it has not already been generated."
   [conversation-id title]
   (when (and conversation-id (not (str/blank? title)))
-    (metabot.db/set-conversation-title-if-missing! conversation-id title)))
+    (metabot-conversation/set-metabot-conversation-title-if-missing! conversation-id title)))
 
 (defn conversation-title
   "Return the current persisted title for a conversation."
@@ -904,8 +906,8 @@
       (let [to-clone            (conj (vec before) target)
             new-conversation-id (str (random-uuid))]
         (t2/with-transaction [_conn]
-          (metabot.db/insert-conversation! new-conversation-id
+          (metabot-conversation/create-metabot-conversation! new-conversation-id
                                            {:user_id                     user-id
                                             :forked_from_conversation_id conversation-id})
-          (metabot.db/insert-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
+          (metabot-message/create-metabot-messages! (mapv #(forked-message-row new-conversation-id user-id %) to-clone)))
         new-conversation-id))))

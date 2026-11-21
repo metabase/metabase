@@ -269,6 +269,25 @@
    [:cache_creation_tokens {:optional true} [:maybe :int]]
    [:cache_read_tokens     {:optional true} [:maybe :int]]])
 
+(mr/def ::ai-usage-log.create
+  "What recording an AiUsageLog takes: the source, model and token counts of one LLM call, and who it was made for."
+  [:map {:closed true}
+   [:source                [:maybe [:or :keyword :string]]]
+   [:model                 [:maybe [:or :keyword :string]]]
+   [:provider              [:maybe :string]]
+   [:model_name            [:maybe :string]]
+   [:prompt_tokens         [:maybe :int]]
+   [:completion_tokens     [:maybe :int]]
+   [:total_tokens          [:maybe :int]]
+   [:user_id               [:maybe ::lib.schema.id/user]]
+   [:tenant_id             [:maybe ms/PositiveInt]]
+   [:conversation_id       [:maybe :string]]
+   [:profile_id            [:maybe :string]]
+   [:request_id            [:maybe :string]]
+   [:ai_proxied            [:maybe :boolean]]
+   [:cache_creation_tokens [:maybe :int]]
+   [:cache_read_tokens     [:maybe :int]]])
+
 (mr/def ::metabot
   "A Metabot as selected from the app DB: every column of `:metabot`."
   [:merge
@@ -308,6 +327,12 @@
    [:embedding_path              {:optional true} [:maybe :string]]
    [:user_agent                  {:optional true} [:maybe :string]]
    [:sanitized_user_agent        {:optional true} [:maybe :string]]
+   [:forked_from_conversation_id {:optional true} [:maybe :string]]])
+
+(mr/def ::metabot-conversation.create
+  "What creating a MetabotConversation under a given id takes: its user, and the conversation it was forked from."
+  [:map {:closed true}
+   [:user_id                                      ::lib.schema.id/user]
    [:forked_from_conversation_id {:optional true} [:maybe :string]]])
 
 (mr/def ::metabot-feedback
@@ -380,6 +405,40 @@
    [:finish_reason          {:optional true} [:maybe :string]]
    [:context_window_full    {:optional true} [:maybe :boolean]]])
 
+(mr/def ::metabot-message.soft-delete-conditions
+  "Which MetabotMessages a soft delete matches: at least one of an id or ids, a channel, a Slack message and a role."
+  [:and
+   [:map {:closed true}
+    [:id           {:optional true} [:maybe [:or ms/PositiveInt [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]]
+    [:channel_id   {:optional true} [:maybe :string]]
+    [:slack_msg_id {:optional true} [:maybe :string]]
+    [:role         {:optional true} [:maybe [:or :keyword :string]]]]
+   [:fn {:error/message "must have at least one condition"} seq]])
+
+(mr/def ::metabot-message.create
+  "What creating a MetabotMessage takes: its conversation and role, and any of its other columns but its timestamps
+  and deletion."
+  [:map {:closed true}
+   [:profile_id             {:optional true} [:maybe :string]]
+   [:role                                    [:or :keyword :string]]
+   [:data                   {:optional true} [:maybe [:sequential ::metabot-message.data-part]]]
+   [:usage                  {:optional true} [:maybe ::metabot-message.usage]]
+   [:total_tokens           {:optional true} [:maybe :int]]
+   [:conversation_id                         :string]
+   [:slack_msg_id           {:optional true} [:maybe :string]]
+   [:channel_id             {:optional true} [:maybe :string]]
+   [:user_id                {:optional true} [:maybe ::lib.schema.id/user]]
+   [:ai_proxied             {:optional true} [:maybe :boolean]]
+   [:external_id            {:optional true} [:maybe :string]]
+   [:finished               {:optional true} [:maybe :boolean]]
+   [:error                  {:optional true} [:maybe :string]]
+   [:data_version           {:optional true} [:maybe :int]]
+   [:state                  {:optional true} [:maybe ::metabot-message.state]]
+   [:forked_from_message_id {:optional true} [:maybe ms/PositiveInt]]
+   [:context_tokens         {:optional true} [:maybe :int]]
+   [:finish_reason          {:optional true} [:maybe :string]]
+   [:context_window_full    {:optional true} [:maybe :boolean]]])
+
 (mr/def ::metabot-prompt
   "A MetabotPrompt as selected from the app DB: every column of `:metabot_prompt`."
   [:merge
@@ -429,6 +488,12 @@
    [:message_id {:optional true} [:maybe ms/PositiveInt]]
    [:table_id   {:optional true} [:maybe ::lib.schema.id/table]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::metabot-used-table.create
+  "What recording a MetabotUsedTable takes: the message that used the table, and the table."
+  [:map {:closed true}
+   [:message_id ms/PositiveInt]
+   [:table_id   ::lib.schema.id/table]])
 
 (mr/def ::external-metabot
   "A Metabot as serialization writes it, with portable references in place of ids."

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.mcp.test-util
   "Helpers for tests that change the `mcp_group_permission` rows, which also record the permission mode."
   (:require
-   [metabase-enterprise.mcp.db :as mcp.db]
+   [metabase.mcp.models.mcp-group-permission :as mcp-group-permission]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
@@ -30,7 +30,7 @@
   "Run `body` in group-level mode, with the rows of All Users and All tenant users deleted, then restore every row."
   [& body]
   `(with-mcp-group-permissions-snapshot
-     (mcp.db/delete-hidden-group-permissions! true)
+     (mcp-group-permission/delete-hidden-mcp-group-permissions! true)
      ~@body))
 
 (defn store-stale-tool-access!
