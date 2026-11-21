@@ -120,6 +120,15 @@
    [:created_at  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at  {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::channel.create
+  "What a caller gives to create a Channel."
+  [:map {:closed true}
+   [:name                         :string]
+   [:type                         ::channel.type]
+   [:description {:optional true} [:maybe :string]]
+   [:details     {:optional true} [:maybe ::channel.details]]
+   [:active      {:optional true} [:maybe :boolean]]])
+
 (def channel-template-details-types
   "The `:type`s an email template's details can have: a Handlebars template written inline, or one shipped as a resource."
   #{:email/handlebars-text

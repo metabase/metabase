@@ -95,21 +95,23 @@
   [transform-id :- ::lib.schema.id/transform]
   (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id [:auto/param transform-id]))
 
-(mu/defn insert-transform!
-  "Insert `transform` and return the new instance."
-  [transform :- ::transforms.schema/transform.update]
-  (t2/insert-returning-instance! :model/Transform transform))
+(mu/defn insert-transforms! :- [:sequential ::transforms.schema/transform]
+  "Insert the Transform `rows` and return the new instances."
+  [rows :- [:sequential {:min 1} ::transforms.schema/transform.update]]
+  (t2/insert-returning-instances! :model/Transform rows))
 
-(mu/defn update-transform!
-  "Apply `changes` to the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform :id transform-id changes))
+(mu/defn update-transforms! :- :nil
+  "Apply `changes` to the Transforms with `transform-ids`."
+  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]
+   changes       :- ::transforms.schema/transform.update]
+  (t2/update! :model/Transform :id [:in [:auto/param transform-ids]] changes)
+  nil)
 
-(mu/defn delete-transform!
-  "Delete the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform :id transform-id))
+(mu/defn delete-transforms! :- :nil
+  "Delete the Transforms with `transform-ids`."
+  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
+  (t2/delete! :model/Transform :id [:in [:auto/param transform-ids]])
+  nil)
 
 (mu/defn transforms-in-collections
   "The Transforms in the Collections with `collection-ids`."
@@ -138,15 +140,37 @@
   [tag-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :id :model/TransformTag :id [:in tag-ids]))
 
-(mu/defn tag-id-by-name :- [:maybe ms/PositiveInt]
-  "The id of the TransformTag named `tag-name`, or nil."
-  [tag-name :- :string]
-  (t2/select-one-pk :model/TransformTag :name tag-name))
+(mu/defn tag-names-to-ids :- [:map-of :string ms/PositiveInt]
+  "The map from the stored name of every TransformTag to its id, as the unique index on the name sees it, not as a
+  built-in tag translates it on its way out."
+  []
+  (into {}
+        (map (juxt :name :id))
+        (t2/query {:select [:id :name]
+                   :from   [(t2/table-name :model/TransformTag)]})))
 
-(mu/defn tag-entity-id-by-name :- [:maybe :string]
-  "The entity id of the TransformTag named `tag-name`, or nil."
-  [tag-name :- :string]
-  (t2/select-one-fn :entity_id :model/TransformTag :name [:auto/param tag-name]))
+(mu/defn tags-by-ids :- [:sequential ::transforms.schema/transform-tag]
+  "The TransformTags with `tag-ids`."
+  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TransformTag :id [:in [:auto/param tag-ids]]))
+
+(mu/defn insert-tags! :- [:sequential ::transforms.schema/transform-tag]
+  "Insert the TransformTag `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ::transforms.schema/transform-tag.create]]
+  (t2/insert-returning-instances! :model/TransformTag rows))
+
+(mu/defn update-tags! :- :nil
+  "Apply `changes` to the TransformTags with `tag-ids`."
+  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- ::transforms.schema/transform-tag.update]
+  (t2/update! :model/TransformTag :id [:in [:auto/param tag-ids]] changes)
+  nil)
+
+(mu/defn delete-tags! :- :nil
+  "Delete the TransformTags with `tag-ids`."
+  [tag-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TransformTag :id [:in [:auto/param tag-ids]])
+  nil)
 
 (mu/defn transform-tag-links
   "The tag links of the Transforms with `transform-ids`, ordered by position."
@@ -223,6 +247,29 @@
   "The IDs of the inactive TransformJobs."
   []
   (t2/select-pks-set :model/TransformJob :active false))
+
+(mu/defn jobs-by-ids :- [:sequential ::transforms.schema/transform-job]
+  "The TransformJobs with `job-ids`."
+  [job-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TransformJob :id [:in [:auto/param job-ids]]))
+
+(mu/defn insert-jobs! :- [:sequential ::transforms.schema/transform-job]
+  "Insert the TransformJob `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} ::transforms.schema/transform-job.update]]
+  (t2/insert-returning-instances! :model/TransformJob rows))
+
+(mu/defn update-jobs! :- :nil
+  "Apply `changes` to the TransformJobs with `job-ids`."
+  [job-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- ::transforms.schema/transform-job.update]
+  (t2/update! :model/TransformJob :id [:in [:auto/param job-ids]] changes)
+  nil)
+
+(mu/defn delete-jobs! :- :nil
+  "Delete the TransformJobs with `job-ids`."
+  [job-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TransformJob :id [:in [:auto/param job-ids]])
+  nil)
 
 (mu/defn job-snapshot
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
@@ -917,10 +964,18 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn active-field-ids-by-name
-  "A map of name to ID for the active Fields of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name :id [:model/Field :name :id] :table_id table-id :active true))
+(mu/defn databases-by-ids :- [:sequential :map]
+  "The Databases with `database-ids`."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
+
+(mu/defn active-field-ids-by-names :- [:map-of ::lib.schema.id/table [:map-of :string ::lib.schema.id/field]]
+  "A map of Table id to a map of name to ID for the active Fields of the Tables with `table-ids`."
+  [table-ids :- [:sequential {:min 1} ::lib.schema.id/table]]
+  (reduce (fn [acc {:keys [table_id id], field-name :name}]
+            (assoc-in acc [table_id field-name] id))
+          {}
+          (t2/select [:model/Field :table_id :name :id] :table_id [:in [:auto/param table-ids]] :active true)))
 
 (mu/defn active-users
   "The active Users with `user-ids`."

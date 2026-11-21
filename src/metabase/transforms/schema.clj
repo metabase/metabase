@@ -252,6 +252,17 @@
    [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
    [:active          {:optional true} [:maybe :boolean]]])
 
+(mr/def ::transform-job.create
+  "What creating a TransformJob takes: its name and schedule, and optionally its description and display type, and for
+  an import its entity id and built-in type."
+  [:map {:closed true}
+   [:name            [:or :string mu/localized-string-schema]]
+   [:schedule        ::transform-job.schedule]
+   [:description     {:optional true} [:maybe [:or :string mu/localized-string-schema]]]
+   [:ui_display_type {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:entity_id       {:optional true} [:maybe :string]]
+   [:built_in_type   {:optional true} [:maybe :string]]])
+
 (mr/def ::transform-job-run
   "A TransformJobRun as selected from the app DB: every column of `:transform_job_run`."
   [:merge
@@ -352,6 +363,13 @@
    [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
    [:built_in_type {:optional true} [:maybe [:string {:decode/normalize lib.schema.common/normalize-string-key}]]]])
+
+(mr/def ::transform-tag.create
+  "What creating a TransformTag takes: its name, and for an import its entity id and built-in type."
+  [:map {:closed true}
+   [:name          :string]
+   [:entity_id     {:optional true} [:maybe :string]]
+   [:built_in_type {:optional true} [:maybe :string]]])
 
 (mr/def ::transform-transform-tag
   "A TransformTransformTag as selected from the app DB: every column of `:transform_transform_tag`."

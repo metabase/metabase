@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
 
@@ -112,14 +113,14 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "d"}]}}]
-      (table-index/mark-for-revalidation! transform-id)
+      (table-index/mark-for-revalidation! [transform-id])
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id failed-id)))
       (is (nil? (t2/select-one-fn :error_message :model/TableIndex :id failed-id)) "stale error cleared")
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id)) "pending deletion not revived")))
   (testing "a nil transform-id is a no-op"
-    (is (nil? (table-index/mark-for-revalidation! nil)))))
+    (is (nil? (table-index/mark-for-revalidation! [nil])))))
 
 (deftest pending-changes-for-transform?-test
   (testing "any unsettled request forces the transform's next run to be a full rebuild"
@@ -193,7 +194,7 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "c"}]}}]
-      (t2/update! :model/Transform :id transform-id {:target (assoc (:target transform) :name (mt/random-name))})
+      (transform/update-transforms! {transform-id {:target (assoc (:target transform) :name (mt/random-name))}})
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id))))))

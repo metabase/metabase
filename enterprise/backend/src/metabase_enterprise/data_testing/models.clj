@@ -63,14 +63,14 @@
    :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
    :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
-(mu/defn remove-deleted-test-from-suites!
-  "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing on an instance where
-  remote sync keeps synced content read-only, since that instance cannot push the changed suites; a run then reports
-  the test as missing."
-  [test-type :- ::data-testing.schema/test-type
-   entity-id :- :string]
-  (when-not (remote-sync/read-only?)
-    (data-testing.db/delete-suite-members-of-test! test-type entity-id)))
+(mu/defn- remove-deleted-tests-from-suites!
+  "Remove the deleted `test-type` tests with `entity-ids` from every suite. Does nothing on an instance where remote sync
+  keeps synced content read-only, since that instance cannot push the changed suites; a run then reports the tests as
+  missing."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential :string]]
+  (when-not (or (remote-sync/read-only?) (empty? entity-ids))
+    (data-testing.db/delete-suite-members-of-tests! test-type (vec entity-ids))))
 
 (defn with-last-runs
   "`tests`, saved tests of `test-type`, each with its newest run, or nil, under `:last_run`."
@@ -87,13 +87,6 @@
   "Add the newest run, or nil, to each transform test."
   [_model _k transform-tests]
   (with-last-runs :transform transform-tests))
-
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/TransformTest [transform-test]
-  (data-testing.models.data-test-run/clear-test-id-of-runs! :transform (:id transform-test))
-  (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
-  transform-test)
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -198,33 +191,110 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
+(def saved-test-row
+  "The columns of a saved test an import adds to what a client creates it with: its creator and its entity id."
+  [:map {:closed true}
+   [:creator_id ::lib.schema.id/user]
+   [:entity_id  {:optional true} [:maybe :string]]])
+
+(mu/defn create-saved-tests! :- [:sequential ::data-testing.schema/saved-test]
+  "Insert the `rows` of the saved tests of `model` in one batch of events and return the inserted tests."
+  [model :- :keyword
+   rows  :- [:sequential :map]]
+  (if (seq rows)
+    (events/with-batched-events
+      (data-testing.db/insert-saved-tests! model rows))
+    []))
+
+(mu/defn update-saved-tests! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a saved test of `model` to its changes, in one batch of
+  events with one statement per distinct change set."
+  [model         :- :keyword
+   changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (events/with-batched-events
+    (doseq [[changes pairs] (group-by val changes-by-id)
+            :when           (seq changes)]
+      (data-testing.db/update-saved-tests! model (mapv key pairs) changes)))
+  nil)
+
+(mu/defn- delete-saved-test-rows! :- :nil
+  "Delete the tests of `model` among `tests`, rows of an id and an entity id, in one batch of events: set the test id of
+  their runs to nil and remove them from the suites first."
+  [test-type :- ::data-testing.schema/test-type
+   model     :- :keyword
+   tests     :- [:sequential :map]]
+  (when (seq tests)
+    (events/with-batched-events
+      (data-testing.models.data-test-run/clear-test-ids-of-runs! test-type (mapv :id tests))
+      (remove-deleted-tests-from-suites! test-type (mapv :entity_id tests))
+      (data-testing.db/delete-saved-tests! model (mapv :id tests))))
+  nil)
+
+(mu/defn delete-saved-tests! :- :nil
+  "Delete the saved tests of `model`, a `test-type` test, with `ids`, in one batch of events. A run of a deleted test
+  no longer names it, and a suite no longer holds it."
+  [test-type :- ::data-testing.schema/test-type
+   model     :- :keyword
+   ids       :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (delete-saved-test-rows! test-type model (data-testing.db/saved-test-keys model (vec ids)))))
+
+(mu/defn delete-saved-tests-of-subjects! :- :nil
+  "Delete the saved tests of `model`, a `test-type` test, whose `subject-column` holds one of `subject-ids` (see
+  [[delete-saved-tests!]])."
+  [test-type      :- ::data-testing.schema/test-type
+   model          :- :keyword
+   subject-column :- :keyword
+   subject-ids    :- [:sequential ms/PositiveInt]]
+  (when (seq subject-ids)
+    (delete-saved-test-rows! test-type model
+                             (data-testing.db/saved-test-keys-of-subjects model subject-column (vec subject-ids)))))
+
+(mu/defn create-transform-tests! :- [:sequential ::data-testing.schema/transform-test]
+  "Insert the TransformTests `rows`, returning the inserted tests. The column transforms of the model normalize and
+  validate each row."
+  [rows :- [:sequential :map]]
+  (create-saved-tests! :model/TransformTest rows))
+
 (mu/defn create-transform-test! :- ::data-testing.schema/transform-test
   "Insert the TransformTest `transform-test` returning the inserted test."
-  [transform-test :- [:merge
-                      ::data-testing.schema/transform-test.create
-                      [:map {:closed true}
-                       [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-transform-test! transform-test))
+  [transform-test :- [:merge ::data-testing.schema/transform-test.create saved-test-row]]
+  (first (create-transform-tests! [transform-test])))
+
+(mu/defn update-transform-tests! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a TransformTest to its changes, which the column
+  transforms of the model normalize and validate."
+  [changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (update-saved-tests! :model/TransformTest changes-by-id))
 
 (mu/defn update-transform-test! :- :nil
   "Apply `changes` to the TransformTest with `id`."
   [id      :- ms/PositiveInt
    changes :- ::data-testing.schema/transform-test.update]
-  (data-testing.db/update-transform-test! id changes)
-  nil)
+  (update-transform-tests! {id changes}))
 
 (mu/defn delete-transform-test! :- :nil
   "Delete the TransformTest with `id`."
   [id :- ms/PositiveInt]
-  (data-testing.db/delete-transform-test! id)
-  nil)
+  (delete-saved-tests! :transform :model/TransformTest [id]))
 
 (defenterprise delete-transform-tests!
-  "Deletes the tests of the transform `transform-id` whatever the token says,
+  "Deletes the tests of the transforms with `transform-ids` whatever the token says,
   since the rows outlive the feature."
   :feature :none
-  [transform-id]
-  (data-testing.db/delete-transform-tests! transform-id))
+  [transform-ids]
+  (delete-saved-tests-of-subjects! :transform :model/TransformTest :transform_id transform-ids))
+
+(defn- update-imported-transform-tests!
+  "Update the TransformTests of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-transform-tests! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
+
+(defn- delete-transform-tests-by-id!
+  "Delete the TransformTests with `ids`."
+  [ids]
+  (delete-saved-tests! :transform :model/TransformTest ids))
 
 (defmethod data-testing.test-type/spec :transform [_test-type]
   {:model      :model/TransformTest
@@ -294,6 +364,9 @@
 
 (defmethod serialization/spec :model/TransformTest [_]
   {:schema              ::data-testing.schema/external-transform-test
+   :insert!             create-transform-tests!
+   :update!             update-imported-transform-tests!
+   :delete!             delete-transform-tests-by-id!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:transform_id (serialization/fk-transform :model/Transform)
                          :creator_id   serialization/user-transform

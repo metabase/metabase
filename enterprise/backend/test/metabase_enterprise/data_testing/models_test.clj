@@ -4,9 +4,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-testing.expectations.protocol :as expectations.protocol]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase.events.core :as events]
+   [metabase.events.test-util :as events.tu]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -202,7 +205,7 @@
                                                               :inputs       []
                                                               :expectations []}]
         (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-          (t2/delete! :model/Transform :id transform-id))
+          (transform/delete-transforms! [transform-id]))
         (testing "the rows are gone"
           (is (false? (t2/exists? :model/TransformTest :id test-id)))
           (is (false? (t2/exists? :model/TransformTest :id other-id))))
@@ -296,7 +299,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (data-testing.run-tracking/start-run! :transform transform-test-id)]
-      (t2/delete! :model/TransformTest :id transform-test-id)
+      (data-testing.models/delete-transform-test! transform-test-id)
       (is (nil? (t2/select-one-fn :test_id :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
@@ -312,7 +315,7 @@
   (mt/with-temp [:model/Transform   {transform-id :id} {}
                  :model/TransformTest {test-id :id} {:transform_id transform-id}
                  :model/DataTestRun {card-run :id} {:test_type :card, :test_id test-id}]
-    (t2/delete! :model/TransformTest :id test-id)
+    (data-testing.models/delete-transform-test! test-id)
     (is (= test-id (t2/select-one-fn :test_id :model/DataTestRun :id card-run)))))
 
 (deftest deleting-run-initiator-preserves-run-test
@@ -324,3 +327,26 @@
       (is (nil? (t2/select-one-fn :initiated_by :model/DataTestRun :id run-id)))
       (is (= 1 (data-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/DataTestRun :id run-id))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Transform {transform-id :id} {}]
+    (let [created (atom [])
+          create! (fn [n]
+                    (events.tu/statement-count! (fn [] (swap! created into
+                                                              (map :id (data-testing.models/create-transform-tests!
+                                                                        (vec (repeat n (valid-row transform-id [])))))))))]
+      (try
+        (testing "creating transform tests"
+          (is (= (create! 2) (create! 6))))
+        (testing "updating transform tests"
+          (let [ids @created]
+            (is (= (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (zipmap (take 2 ids) (repeat {:description "same"})))))
+                   (events.tu/statement-count! (fn [] (data-testing.models/update-transform-tests! (zipmap (take 6 (drop 2 ids)) (repeat {:description "same"})))))))))
+        (testing "deleting a transform deletes its tests in a fixed number of statements"
+          (is (= (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id])))
+                 (do (swap! created into
+                            (map :id (data-testing.models/create-transform-tests!
+                                      (vec (repeat 6 (valid-row transform-id []))))))
+                     (events.tu/statement-count! (fn [] (data-testing.models/delete-transform-tests! [transform-id])))))))
+        (finally
+          (t2/delete! :model/TransformTest :transform_id transform-id))))))

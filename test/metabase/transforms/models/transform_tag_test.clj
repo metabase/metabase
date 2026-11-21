@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.transforms.models.transform-tag :as transform-tag]
@@ -83,3 +84,37 @@
       (is (= {(:id tag) true} (transform-tag/tag-id->writable #{(:id tag)}))))
     (testing "no tags answer an empty map"
       (is (= {} (transform-tag/tag-id->writable #{}))))))
+
+(defn- tag-names
+  "`n` distinct tag names."
+  [n]
+  (vec (repeatedly n #(str "tag " (mt/random-name)))))
+
+(deftest write-functions-refuse-taken-names-test
+  (mt/with-temp [:model/TransformTag tag {}
+                 :model/TransformTag other {}]
+    (testing "creating a tag with a taken name is a 400"
+      (is (= 400 (:status-code (ex-data (try (transform-tag/create-transform-tags! [{:name (:name tag)}])
+                                             (catch clojure.lang.ExceptionInfo e e)))))))
+    (testing "creating two tags with one name is a 400"
+      (let [tag-name (str "tag " (mt/random-name))]
+        (is (= 400 (:status-code (ex-data (try (transform-tag/create-transform-tags! [{:name tag-name} {:name tag-name}])
+                                               (catch clojure.lang.ExceptionInfo e e))))))))
+    (testing "renaming a tag to a taken name is a 400, and to its own name is not"
+      (is (= 400 (:status-code (ex-data (try (transform-tag/update-transform-tag! (:id other) {:name (:name tag)})
+                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (nil? (transform-tag/update-transform-tag! (:id other) {:name (:name other)}))))))
+
+(deftest write-function-statement-counts-do-not-grow-with-rows-test
+  (let [created (atom [])
+        count-of (fn [n]
+                   (events.tu/statement-count! (fn [] (swap! created into (map :id (transform-tag/create-transform-tags! (mapv #(hash-map :name %) (tag-names n))))))))]
+    (try
+      (testing "creating tags"
+        (is (= (count-of 2) (count-of 6))))
+      (testing "deleting tags"
+        (let [ids @created]
+          (is (= (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! (take 2 ids))))
+                 (events.tu/statement-count! (fn [] (transform-tag/delete-transform-tags! (take 6 (drop 2 ids)))))))))
+      (finally
+        (t2/delete! :model/TransformTag :id [:in @created])))))

@@ -4,7 +4,6 @@
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
    [metabase-enterprise.data-testing.models :as data-testing.models]
-   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
@@ -49,17 +48,6 @@
   [_model _k card-tests]
   (data-testing.models/with-last-runs :card card-tests))
 
-;;; ---------------------------------------------------- Hooks -----------------------------------------------------
-
-(t2/define-before-delete :model/CardTest [card-test]
-  ;; No foreign key keeps a run's test id valid, so the hook sets the test id of the test's runs to null, in the
-  ;; delete's transaction. Toucan 2 has no after-delete hook. A delete that skips model hooks (a Database deleted by
-  ;; raw SQL; a Dashboard or Document whose cards go by database cascade) leaves the runs' test id naming no test; such
-  ;; runs are never listed or shown as `last_run`.
-  (data-testing.models.data-test-run/clear-test-id-of-runs! :card (:id card-test))
-  (data-testing.models/remove-deleted-test-from-suites! :card (:entity_id card-test))
-  card-test)
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (defn- card-allows?
@@ -103,33 +91,51 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
+(mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
+  "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
+  validate each row."
+  [rows :- [:sequential :map]]
+  (data-testing.models/create-saved-tests! :model/CardTest rows))
+
 (mu/defn create-card-test! :- ::data-testing.schema/card-test
   "Insert the CardTest `card-test` returning the inserted test."
-  [card-test :- [:merge
-                 ::data-testing.schema/card-test.create
-                 [:map {:closed true}
-                  [:creator_id ::lib.schema.id/user]]]]
-  (data-testing.db/insert-card-test! card-test))
+  [card-test :- [:merge ::data-testing.schema/card-test.create data-testing.models/saved-test-row]]
+  (first (create-card-tests! [card-test])))
+
+(mu/defn update-card-tests! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a CardTest to its changes, which the column
+  transforms of the model normalize and validate."
+  [changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (data-testing.models/update-saved-tests! :model/CardTest changes-by-id))
 
 (mu/defn update-card-test! :- :nil
   "Apply `changes` to the CardTest with `id`."
   [id      :- ms/PositiveInt
    changes :- ::data-testing.schema/card-test.update]
-  (data-testing.db/update-card-test! id changes)
-  nil)
+  (update-card-tests! {id changes}))
 
 (mu/defn delete-card-test! :- :nil
   "Delete the CardTest with `id`."
   [id :- ms/PositiveInt]
-  (data-testing.db/delete-card-test! id)
-  nil)
+  (data-testing.models/delete-saved-tests! :card :model/CardTest [id]))
 
 (defenterprise delete-card-tests!
   "Deletes the tests of the card `card-id` whatever the token says, since the
   rows outlive the feature."
   :feature :none
   [card-id]
-  (data-testing.db/delete-card-tests! card-id))
+  (data-testing.models/delete-saved-tests-of-subjects! :card :model/CardTest :card_id [card-id]))
+
+(defn- update-imported-card-tests!
+  "Update the CardTests of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-card-tests! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
+
+(defn- delete-card-tests-by-id!
+  "Delete the CardTests with `ids`."
+  [ids]
+  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -202,6 +208,9 @@
 
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
+   :insert!             create-card-tests!
+   :update!             update-imported-card-tests!
+   :delete!             delete-card-tests-by-id!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)
                          :creator_id serialization/user-transform

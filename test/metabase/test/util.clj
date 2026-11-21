@@ -557,6 +557,21 @@
                                                   :namespace :tenant-specific})]
       (next-method model (assoc explicit-attributes :tenant_collection_id collection-id) f))))
 
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
+  "Gives a temporary DataApp the resource Collection that `create-data-apps!` makes, unless the attributes name one, and
+  deletes it with the app."
+  [model explicit-attributes f]
+  (if (contains? explicit-attributes :resource_collection_id)
+    (next-method model explicit-attributes f)
+    (let [slug          (:slug (merge (t2.with-temp/with-temp-defaults model) explicit-attributes))
+          collection-id (t2/insert-returning-pk! :model/Collection
+                                                 {:name      (format "Data App: %s" slug)
+                                                  :namespace "data-apps"})]
+      (try
+        (next-method model (assoc explicit-attributes :resource_collection_id collection-id) f)
+        (finally
+          (t2/delete! :model/Collection :id collection-id))))))
+
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/PermissionsGroup
   "Gives a temporary PermissionsGroup the default permissions on every Database that `create-permissions-group!` gives
   it."

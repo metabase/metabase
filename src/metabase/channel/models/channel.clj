@@ -123,8 +123,6 @@
         deactivation? (false? (:active changes))]
     (when (not= (contains? changes :type) (contains? changes :details))
       (check-type-and-details channel))
-    (when deactivation?
-      (channel.db/delete-pulse-channels-for-channel! (:id channel)))
     (cond-> channel
       deactivation?
       ;; Channel.name has an unique constraint and it's a useful property for serialization
@@ -238,6 +236,36 @@
 
 ;;; ------------------------------------------------------- Writes -------------------------------------------------------
 
+(mu/defn create-channels! :- [:sequential ::channel.schema/channel]
+  "Insert the Channel `rows` and return the inserted channels."
+  [rows :- [:sequential ::channel.schema/channel.create]]
+  (if (seq rows)
+    (events/with-batched-events
+      (channel.db/insert-channels! rows))
+    []))
+
+(mu/defn update-channels! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a Channel to its changes, with one statement per distinct
+  change set. Deactivating an active Channel first deletes its PulseChannels."
+  [changes-by-id :- [:map-of ms/PositiveInt ::channel.schema/channel.update]]
+  (when (seq changes-by-id)
+    (events/with-batched-events
+      (let [deactivating (not-empty (into [] (comp (filter (comp false? :active val)) (map key)) changes-by-id))
+            active-ids   (when deactivating
+                           (into [] (comp (filter :active) (map :id)) (channel.db/channels-by-ids deactivating)))]
+        (when (seq active-ids)
+          (channel.db/delete-pulse-channels-for-channels! active-ids)))
+      (doseq [[changes pairs] (group-by val changes-by-id)
+              :when           (seq changes)]
+        (channel.db/update-channels! (mapv key pairs) changes))))
+  nil)
+
+(defn- update-imported-channels!
+  "Update the Channels of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-channels! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
+
 (mu/defn create-channel-template! :- ms/PositiveInt
   "Insert the ChannelTemplate `template` and return its id."
   [template :- ::channel.schema/channel-template.create]
@@ -265,6 +293,8 @@
    :copy          [:name :description :type :details :active]
    :defaults      {:active true}
    :storage-paths storage-paths
+   :insert!       create-channels!
+   :update!       update-imported-channels!
    :rows-by-refs  serialization/channel-rows-by-refs})
 
 (defmethod audit/spec :model/Channel [_model]

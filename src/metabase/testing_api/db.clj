@@ -27,12 +27,6 @@
    last-viewed-at :- ms/TemporalInstant]
   (t2/update! :model/Document :id document-id {:last_viewed_at last-viewed-at}))
 
-(mu/defn set-transform-created-at!
-  "Set `created_at` of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform
-   created-at   :- ms/TemporalInstant]
-  (t2/update! :model/Transform :id transform-id {:created_at created-at}))
-
 (mu/defn set-transform-run-times!
   "Set `start_time` and `end_time` of every TransformRun of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform

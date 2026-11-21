@@ -1,6 +1,9 @@
 (ns metabase-enterprise.data-testing.models.test-suite-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-testing.models :as data-testing.models]
+   [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
@@ -45,14 +48,14 @@
                  {:suite_id suite-2 :test_type :segment :test_entity_id segment-eid :position 1}
                  {:suite_id suite-2 :test_type :segment :test_entity_id cascaded-eid :position 2}])
     (testing "deleting a card test removes it from both suites, and nothing else"
-      (t2/delete! :model/CardTest :id card-test-id)
+      (data-testing.models.card-test/delete-card-test! card-test-id)
       (is (= #{[:card kept-eid] [:transform transform-eid]} (members suite-1)))
       (is (= #{[:segment segment-eid] [:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a transform test removes it"
-      (t2/delete! :model/TransformTest :id transform-test-id)
+      (data-testing.models/delete-transform-test! transform-test-id)
       (is (= #{[:card kept-eid]} (members suite-1))))
     (testing "deleting a segment test removes it"
-      (t2/delete! :model/SegmentTest :id segment-test-id)
+      (data-testing.models.segment-test/delete-segment-test! segment-test-id)
       (is (= #{[:segment cascaded-eid]} (members suite-2))))
     (testing "deleting a segment removes the members of its tests"
       (t2/delete! :model/Segment :id segment-id)

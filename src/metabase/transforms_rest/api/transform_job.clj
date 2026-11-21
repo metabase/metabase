@@ -10,6 +10,7 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform-job :as transform-job]
    [metabase.transforms.models.transform-job-transform-tag :as transform-job-transform-tag]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
@@ -127,7 +128,7 @@
                   :schedule        schedule
                   :ui_display_type ui_display_type}
         _        (api/create-check :model/TransformJob (assoc job-data :tag_ids tag_ids))
-        job      (transforms-rest.db/insert-job! job-data)]
+        job      (first (transform-job/create-transform-jobs! [job-data]))]
     (when (seq tag_ids)
       (transform-job-transform-tag/create-transform-job-transform-tags!
        (map-indexed (fn [idx tag-id]
@@ -151,7 +152,7 @@
    {:keys [active]} :- [:map {:closed true} [:active :boolean]]]
   (api/check-superuser)
   (log/info "Setting active =" active "on all transform jobs")
-  (let [op         (if active transforms.core/activate-job! transforms.core/deactivate-job!)
+  (let [op         (if active transform-job/activate-job! transform-job/deactivate-job!)
         verb       (if active "activate" "deactivate")
         candidates (transforms-rest.db/jobs-with-active-flag (not active))
         try-op     (fn [job]
@@ -189,17 +190,17 @@
                        (deferred-tru "Some tag IDs do not exist"))))
     (t2/with-transaction [_conn]
       (when (some? tag-ids)
-        (transforms.core/update-job-tags! job-id tag-ids))
+        (transform-job/update-job-tags! job-id tag-ids))
       (when-let [updates (m/assoc-some nil
                                        :name name
                                        :description description
                                        :schedule schedule
                                        :ui_display_type ui_display_type)]
-        (transforms-rest.db/update-job! job-id updates)))
+        (transform-job/update-transform-jobs! {job-id updates})))
     (when (some? active)
       (if active
-        (transforms.core/activate-job! job-id)
-        (transforms.core/deactivate-job! job-id)))
+        (transform-job/activate-job! job-id)
+        (transform-job/deactivate-job! job-id)))
     (-> (transforms-rest.db/job job-id)
         (t2/hydrate :tag_ids :last_run)
         (update :last_run transforms-base.u/present-run))))
@@ -209,7 +210,7 @@
   [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
   (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
-  (transforms-rest.db/delete-job! job-id)
+  (transform-job/delete-transform-jobs! [job-id])
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/:job-id/run" :- [:map

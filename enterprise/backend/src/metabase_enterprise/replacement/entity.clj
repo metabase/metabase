@@ -4,6 +4,7 @@
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase.dependencies.core :as dependencies]
    [metabase.replacement.spec :as replacement.spec]
+   [metabase.serialization.core :as serialization]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +54,10 @@
     row))
 
 (mu/defn apply-writes!
-  "Apply `writes`, each an update of the row of a model with an id, in order."
+  "Apply `writes`, each an update of the row of a model with an id, in order, by the `:update!` of the serialization spec
+  of the model when it has one, which is its write function."
   [writes :- replacement.spec/Writes]
   (doseq [[model id changes] writes]
-    (replacement.db/update-row! model id changes)))
+    (if-let [update! (:update! (serialization/spec model))]
+      (update! [(assoc changes :id id)])
+      (replacement.db/update-row! model id changes))))

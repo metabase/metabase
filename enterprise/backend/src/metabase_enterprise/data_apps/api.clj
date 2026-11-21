@@ -206,9 +206,8 @@
   (api/create-check :model/DataApp body)
   (api/check (not (data-apps.db/data-app-exists? (:slug body)))
              [409 (tru "A data app with this slug already exists.")])
-  (let [app (data-apps.db/data-app
-             (data-apps.db/insert-data-app-returning-pk! (merge create-defaults {:name (:slug body)} body)))]
-    (data-app-response app)))
+  (let [{:keys [id]} (first (data-app/create-data-apps! [(merge create-defaults {:name (:slug body)} body)]))]
+    (data-app-response (data-apps.db/data-app id))))
 
 (defn- update-app!
   "Apply `changes` to the data app with `slug` and return the updated app."
@@ -216,7 +215,7 @@
   (let [{:keys [id] :as app} (api/check-404 (data-apps.db/data-app-by-slug slug))]
     (api/update-check app changes)
     (when (seq changes)
-      (data-apps.db/update-data-app! id changes))
+      (data-app/update-data-apps! {id changes}))
     (let [app (data-apps.db/data-app id)]
       (data-app-response app))))
 
@@ -240,7 +239,7 @@
   "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (api/write-check (data-apps.db/data-app-by-slug slug))]
-    (data-apps.db/delete-data-app! (:id app)))
+    (data-app/delete-data-apps! [(:id app)]))
   nil)
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles

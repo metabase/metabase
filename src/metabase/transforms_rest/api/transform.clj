@@ -13,6 +13,7 @@
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms-rest.schema :as transforms-rest.schema]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.models.transform :as transform]
    [metabase.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase.transforms.schema :as transforms.schema]
    [metabase.transforms.util :as transforms.u]
@@ -347,7 +348,7 @@
   "Reset the stored checkpoint for an incremental transform."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Transform id)
-  (transforms-rest.db/reset-checkpoint! id)
+  (transform/update-transforms! {id {:last_checkpoint_value nil}})
   nil)
 
 (mu/defn- check-feature-and-lock! :- :nil

@@ -59,20 +59,6 @@
         [name description] (get values (:built_in_type job))]
     {:name name :description description}))
 
-(mu/defn- sync-trigger! :- :nil
-  "Make the Quartz trigger of the job with `job-id` match its row: scheduled while the job is active, removed otherwise."
-  [job-id :- ms/PositiveInt]
-  (let [{:keys [active schedule] :as job} (transforms.db/job job-id)]
-    (if active
-      (when-not (= schedule (:schedule (transforms.schedule/existing-trigger job-id)))
-        (transforms.schedule/initialize-job! job))
-      (transforms.schedule/delete-trigger! job-id))
-    nil))
-
-(t2/define-after-insert :model/TransformJob [job]
-  (sync-trigger! (:id job))
-  job)
-
 (t2/define-after-select :model/TransformJob [job]
   (if (nil? (:built_in_type job))
     job
@@ -88,15 +74,74 @@
         (update :name        str)
         (update :description str))))
 
-(t2/define-after-update :model/TransformJob [job]
-  (sync-trigger! (:id job))
-  job)
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(t2/define-before-delete :model/TransformJob [job]
-  (transforms.schedule/delete-job! (:id job))
-  job)
+(mu/defn- sync-triggers! :- :nil
+  "Make the Quartz trigger of each of the jobs with `job-ids` match its row: scheduled while the job is active, removed
+  otherwise."
+  [job-ids :- [:sequential ms/PositiveInt]]
+  (when (seq job-ids)
+    (doseq [{:keys [id active schedule] :as job} (transforms.db/jobs-by-ids (vec job-ids))]
+      (if active
+        (when-not (= schedule (:schedule (transforms.schedule/existing-trigger id)))
+          (transforms.schedule/initialize-job! job))
+        (transforms.schedule/delete-trigger! id))))
+  nil)
 
-;;; -------------------------------------------------- Operations --------------------------------------------------
+(mu/defn create-transform-jobs! :- [:sequential ::transforms.schema/transform-job]
+  "Insert the TransformJob `rows`, schedule the Quartz trigger of each active one, and return the inserted jobs."
+  [rows :- [:sequential ::transforms.schema/transform-job.create]]
+  (if (seq rows)
+    (events/with-batched-events
+      (let [jobs (transforms.db/insert-jobs! rows)]
+        (sync-triggers! (mapv :id jobs))
+        jobs))
+    []))
+
+(mu/defn update-transform-jobs! :- :nil
+  "Apply the changes in `changes-by-id`, a map from the id of a TransformJob to its changes, with one statement per
+  distinct change set, then make the Quartz trigger of each job match its row."
+  [changes-by-id :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.update]]
+  (when (seq changes-by-id)
+    (events/with-batched-events
+      (doseq [[changes pairs] (group-by val changes-by-id)
+              :when           (seq changes)]
+        (transforms.db/update-jobs! (mapv key pairs) changes))
+      (sync-triggers! (vec (keys changes-by-id)))))
+  nil)
+
+(mu/defn delete-transform-jobs! :- :nil
+  "Delete the Quartz jobs and then the TransformJobs with `job-ids`."
+  [job-ids :- [:sequential ms/PositiveInt]]
+  (when (seq job-ids)
+    (events/with-batched-events
+      (run! transforms.schedule/delete-job! job-ids)
+      (transforms.db/delete-jobs! (vec job-ids))))
+  nil)
+
+(defn- update-imported-jobs!
+  "Update the TransformJobs of an import with `rows`, each its id and changed columns, returning `rows`. A built-in job
+  keeps its name and description."
+  [rows]
+  (let [stored (into {} (map (juxt :id identity)) (when (seq rows) (transforms.db/jobs-by-ids (mapv :id rows))))]
+    (update-transform-jobs!
+     (into {}
+           (map (fn [{:keys [id] :as row}]
+                  [id (cond-> (dissoc row :id)
+                        (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
+                        (dissoc :name :description))]))
+           rows))
+    rows))
+
+(mu/defn- flip-active! :- :nil
+  "Run `flip!`, one of the db functions that mark a job active or inactive, for the job with `job-id`, and make its Quartz
+  trigger match when it changed the row."
+  [flip!  :- fn?
+   job-id :- ms/PositiveInt]
+  (events/with-batched-events
+    (when (pos? (flip! job-id))
+      (sync-triggers! [job-id])))
+  nil)
 
 (mu/defn- active-flip-lock-name :- :keyword
   "Per-job cluster-lock keyword used to serialize `:active` flips of the same job across the
@@ -114,8 +159,7 @@
   write."
   [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (transforms.db/activate-job! job-id)
-    nil))
+    (flip-active! transforms.db/activate-job! job-id)))
 
 (mu/defn deactivate-job! :- :nil
   "Deactivate a transform job: set `:active` to false, which removes its Quartz trigger so cron
@@ -126,8 +170,7 @@
   [[activate-job!]]."
   [job-id :- ms/PositiveInt]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
-    (transforms.db/deactivate-job! job-id)
-    nil))
+    (flip-active! transforms.db/deactivate-job! job-id)))
 
 (mu/defn update-job-tags! :- :nil
   "Update the tags associated with a job using smart diff logic.
@@ -265,6 +308,8 @@
    :transform           {:name        transforms.serialization/string-transform
                          :description transforms.serialization/string-transform}
    :children            {:job_tags :model/TransformJobTransformTag}
-   :before-load         transforms.serialization/transform-job-before-load
+   :insert!             create-transform-jobs!
+   :update!             update-imported-jobs!
+   :delete!             delete-transform-jobs!
    :storage-paths       transforms.serialization/transform-job-storage-paths
    :import-dependencies transforms.serialization/transform-job-import-dependencies})
