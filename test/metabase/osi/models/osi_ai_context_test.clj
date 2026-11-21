@@ -107,3 +107,14 @@
     (is (not (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "dashboard"})))
     (is (= {:entity_type "card"} (lib/normalize ::osi.schema/osi-ai-context.update {:entity_type "metric"})))
     (is (mr/validate ::osi.schema/osi-ai-context.update {:entity_type "table"}))))
+
+(deftest writes-read-no-rows-back-test
+  (testing "an insert and an update run no SELECT of the written row"
+    (try
+      (t2/with-call-count [call-count]
+        (t2/insert-returning-pk! :model/OsiAiContext (assoc entity :ai_context ai-context))
+        (is (= 1 (call-count))))
+      (t2/with-call-count [call-count]
+        (t2/update! :model/OsiAiContext :entity_type "table" :entity_local_id 42 {:ai_context {:instructions "changed"}})
+        (is (= 2 (call-count))))
+      (finally (t2/delete! :model/OsiAiContext :entity_type "table" :entity_local_id 42)))))

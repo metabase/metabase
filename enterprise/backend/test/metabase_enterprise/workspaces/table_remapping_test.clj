@@ -1086,3 +1086,16 @@
              "pk-side schema rewrites to canonical (denormalized nil)")
          (is (= "users" (:pk-table-name out))
              "pk-side name rewrites to canonical"))))))
+
+(deftest insert-reads-no-rows-back-test
+  (testing "an insert of a TableRemapping runs the INSERT and the cache invalidation, and no SELECT of the row"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (try
+        (t2/with-call-count [call-count]
+          (t2/insert! :model/TableRemapping {:database_id     db-id
+                                             :from_schema     "PUBLIC"
+                                             :from_table_name "ORDERS"
+                                             :to_schema       "ws_schema"
+                                             :to_table_name   "orders_copy"})
+          (is (= 2 (call-count))))
+        (finally (t2/delete! :model/TableRemapping :database_id db-id))))))

@@ -173,16 +173,13 @@
   (when (some-> (:channel_type (t2/changes instance)) keyword (not= (keyword (:channel_type (t2/original instance)))))
     (throw (ex-info (tru "You cannot change the channel type of a channel template.") {:status-code 400})))
   (check-valid-channel-template instance)
+  (when (seq (t2/changes instance))
+    (log-template-change! :update instance))
   instance)
 
 (t2/define-after-insert :model/ChannelTemplate
   [instance]
   (log-template-change! :create instance)
-  instance)
-
-(t2/define-after-update :model/ChannelTemplate
-  [instance]
-  (log-template-change! :update instance)
   instance)
 
 ;; Currently only email channel has templates, but this is extensible

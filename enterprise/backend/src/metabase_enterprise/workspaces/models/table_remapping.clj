@@ -48,7 +48,6 @@
           m
           sentinel-columns))
 
-(t2/define-before-insert :model/TableRemapping [row]    (coerce-sentinels true  row))
 (t2/define-before-select :model/TableRemapping [query]  (update query :kv-args #(coerce-sentinels false %)))
 
 ;; `:generation` counts invalidations, so a read that raced a write never caches what it read. `:read-at` is the
@@ -99,7 +98,7 @@
   "The columns whose change moves what a remapping routes."
   #{:database_id :from_db :from_schema :from_table_name :to_db :to_schema :to_table_name})
 
-(t2/define-after-insert  :model/TableRemapping [row] (invalidate! row) row)
+(t2/define-before-insert :model/TableRemapping [row] (invalidate! row) (coerce-sentinels true row))
 
 (t2/define-before-update :model/TableRemapping
   [row]

@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel] ;; ensure known-labels are loaded
    [metabase.channel.schema :as channel.schema]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -265,3 +266,15 @@
       (testing "Pulse channels and active flag are untouched after a failure"
         (is (t2/exists? :model/PulseChannel :id pc-id))
         (is (true? (t2/select-one-fn :active :model/Channel :id id)))))))
+
+(deftest channel-template-update-reads-no-rows-back-test
+  (testing "an update of a ChannelTemplate runs no SELECT of the written row before its events are delivered"
+    (mt/with-temp [:model/ChannelTemplate {id :id} {:channel_type :channel/email
+                                                    :name         "Test Template"
+                                                    :details      {:type    :email/handlebars-text
+                                                                   :subject "Hello"
+                                                                   :body    "Original body"}}]
+      (events/with-batched-events
+        (t2/with-call-count [call-count]
+          (t2/update! :model/ChannelTemplate :id id {:name "Renamed Template"})
+          (is (= 2 (call-count))))))))
