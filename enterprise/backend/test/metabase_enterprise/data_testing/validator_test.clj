@@ -245,25 +245,25 @@
   (testing "a single SELECT comes back as SQLGlot rebuilt it, the string a run executes"
     (is (= "SELECT 1 AS id /* one */"
            (single-select :postgres "SELECT 1 AS id -- one" nil))))
-  (testing "a second statement is refused, naming the SQL's source"
+  (testing "a second statement is refused, naming the SQL's source and the reason"
     (is (= {:error-type ::errors/not-a-single-select
-            :message    (str "The SQL of input public.orders must be one SELECT statement, with nothing the SQL check "
-                             "refuses: no second statement, nothing that writes or locks, no SQL hidden from the parser, "
-                             "and no function that changes the session or runs SQL text.")
+            :message    (str "The SQL of input public.orders must be one SELECT statement, and the SQL check refuses it: "
+                             "it holds more than one statement.")
             :reason     "multiple-statements"}
            (single-select :postgres "SELECT 1 AS id; RESET ROLE" [:input {:schema "public" :name "orders"}]))))
   (testing "a single statement that is not a SELECT is refused"
     (is (=? {:error-type ::errors/not-a-single-select
-             :message    #"^The SQL of the query under test must be one SELECT statement.*"}
+             :message    #"^The SQL of the query under test must be one SELECT statement.*: it is not a SELECT\.$"}
             (single-select :postgres "DELETE FROM orders" nil))))
   (testing "a SELECT whose rebuild Postgres reads as two statements is refused"
-    (is (= {:error-type ::errors/not-a-single-select
-            :reason     "rebuild-differs"}
-           (select-keys (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
-                                       [:expectation "check"])
-                        [:error-type :reason]))))
+    (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the rewrite of it that a run executes reads differently: it holds more than one statement\.$"
+             :reason     "rebuild-differs"}
+            (single-select :postgres "SELECT E'a\\\\' || $q$; RESET ROLE; --$q$ AS id"
+                           [:expectation "check"]))))
   (testing "a SELECT with a backslash before a quote, which Postgres reads as two statements with standard_conforming_strings off, is refused"
     (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: it, or its rewrite, holds a backslash before a quote, .*"
              :reason     "backslash-quote"}
             (single-select :postgres "SELECT replace(path, '\\', '/') AS p, ';' AS sep FROM files" nil))))
   (testing "control: an E'' string with an escaped quote is rebuilt so that it reads the same"
@@ -271,6 +271,7 @@
            (single-select :postgres "SELECT E'it\\'s' AS id" nil))))
   (testing "a SELECT whose rebuilt E'' string ends one quote later, running `setval` that the parser read as text, is refused"
     (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: the rewrite of it that a run executes reads differently: it writes or locks.*"
              :reason     "rebuild-differs"
              :detail     "writes-or-locks"}
             (single-select :postgres
@@ -282,6 +283,7 @@
             (single-select :postgres "WITH d AS (DELETE FROM orders RETURNING id) SELECT id FROM d" nil))))
   (testing "a SELECT calling a function that changes the session is refused"
     (is (=? {:error-type ::errors/not-a-single-select
+             :message    #".*: it calls set_config, which changes the session\.$"
              :reason     "session-function"}
             (single-select :postgres "SELECT set_config('role', 'postgres', false)" nil))))
   (testing "SQL that does not parse is refused, naming its source"
@@ -289,7 +291,8 @@
              :message    #"(?s)^The SQL of expectation \"check\" could not be parsed: .*"}
             (single-select :postgres "SELECT (" [:expectation "check"]))))
   (testing "SQL holding a list too long to parse whole is refused, not run unchecked"
-    (is (=? {:error-type ::errors/uncheckable-sql}
+    (is (=? {:error-type ::errors/uncheckable-sql
+             :message    "The SQL of the query under test holds a list of values too long for the SQL check to parse."}
             (single-select :postgres
                            (str "SELECT 1 AS id WHERE 1 IN (" (str/join ", " (range 3000)) ")")
                            nil))))
@@ -299,7 +302,11 @@
              (single-select :h2 "SELECT 1 AS id -- one" nil))))
     (testing "is refused a second statement"
       (is (=? {:error-type ::errors/not-a-single-select}
-              (single-select :h2 "SELECT 1 AS id; DROP TABLE orders" nil))))))
+              (single-select :h2 "SELECT 1 AS id; DROP TABLE orders" nil))))
+    (testing "is refused SQL too long to check"
+      (is (=? {:error-type ::errors/uncheckable-sql
+               :message    "The SQL of the query under test is too long for the SQL check to read."}
+              (single-select :h2 (str "SELECT 1 AS id" (str/join (repeat 17000 " "))) nil))))))
 
 (defn- parser-internals
   "The parser's own workings in `message`: SQLGlot's class names and terminal escape codes."

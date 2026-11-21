@@ -163,6 +163,30 @@
     :input       (tru "input {0}" (table-label x))
     :expectation (tru "expectation {0}" (pr-str x))))
 
+(defn- refusal-reason
+  "Why the statement check refused SQL, as `reason` and `detail` from the parser, in words its author can act on."
+  [reason detail]
+  (case reason
+    "multiple-statements"    (tru "it holds more than one statement")
+    "not-a-select"           (tru "it is not a SELECT")
+    "writes-or-locks"        (tru "it writes or locks, as a data-modifying CTE, SELECT ... INTO or FOR UPDATE does")
+    "session-function"       (tru "it calls {0}, which changes the session" detail)
+    "sql-executing-function" (tru "it calls {0}, which runs SQL text" detail)
+    "dynamic-function-call"  (tru "it calls a function by a name the check cannot read")
+    "external-table"         (tru "it reads a file or a URL as a table")
+    "statement-word"         (tru "it holds {0}, which the database can read as the start of another statement" detail)
+    "executable-comment"     (tru "it holds a /*! comment, whose text the database runs as SQL")
+    "bare-dash-comment"      (tru "it holds -- with no space after it, which the database does not read as a comment")
+    "lone-carriage-return"   (tru "it holds a carriage return with no newline after it, where the check and the database end a comment differently")
+    "unicode-identifier"     (tru "it holds a U&\"...\" name, whose escapes the check cannot read")
+    "backslash-quote"        (tru "it, or its rewrite, holds a backslash before a quote, where the database can end a string elsewhere than the check does")
+    "unparseable"            (tru "it does not parse")
+    "rebuild-differs"        (if detail
+                               (tru "the rewrite of it that a run executes reads differently: {0}"
+                                    (refusal-reason detail nil))
+                               (tru "the rewrite of it that a run executes changes when it is rewritten again"))
+    (tru "it holds something the check refuses")))
+
 (mu/defn ensure-single-select :- :string
   "Returns the SQL a run executes for `sql`: SQLGlot's rebuild of `sql` in `driver`'s dialect, or, for a driver with
   no SQLGlot dialect, `sql` as written (checked in SQLGlot's generic dialect). `sql` must be one SELECT that passes the
@@ -191,8 +215,8 @@
       :disallowed
       (throw (data-testing.errors/ex
               ::data-testing.errors/not-a-single-select
-              (tru "The SQL of {0} must be one SELECT statement, with nothing the SQL check refuses: no second statement, nothing that writes or locks, no SQL hidden from the parser, and no function that changes the session or runs SQL text."
-                   (sql-source-label source))
+              (tru "The SQL of {0} must be one SELECT statement, and the SQL check refuses it: {1}."
+                   (sql-source-label source) (refusal-reason reason detail))
               (cond-> {}
                 reason (assoc :reason reason)
                 detail (assoc :detail detail))))
@@ -206,8 +230,10 @@
                 {}))
         (throw (data-testing.errors/ex
                 ::data-testing.errors/uncheckable-sql
-                (tru "The SQL of {0} cannot be checked to be one SELECT statement: it holds a list of values too long to parse, or it is too long to check."
-                     (sql-source-label source))
+                (case reason
+                  "too-long" (tru "The SQL of {0} is too long for the SQL check to read." (sql-source-label source))
+                  (tru "The SQL of {0} holds a list of values too long for the SQL check to parse."
+                       (sql-source-label source)))
                 {:reason reason}))))))
 
 (mu/defn expectation-query :- :string
