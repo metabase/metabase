@@ -175,7 +175,8 @@
 }
 
 .messageContainer:hover .messageActions,
-.messageContainer:last-child.messageContainerAgent .messageActions {
+.messageContainer:last-child.messageContainerAgent .messageActions,
+.messageActions:focus-within {
   opacity: 1;
 }
 
