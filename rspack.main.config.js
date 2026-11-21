@@ -46,6 +46,14 @@ const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 
+// Entries that share the `app-common` chunk (see `appCommon` below).
+const APP_COMMON_ENTRIES = new Set([
+  "app-main",
+  "app-public",
+  "app-embed",
+  "app-embed-sdk",
+]);
+
 // Data apps are an enterprise plugin (the iframe entry + its template live in the
 // enterprise tree), so their build entries and HTML are only produced in EE builds.
 const isEEBuild = process.env.MB_EDITION === "ee";
@@ -330,6 +338,19 @@ const config = {
           name: "vendor",
           priority: -10,
         },
+        // App code shared by the main, public and embedding entries is emitted
+        // once instead of being copied into each entry. The data-app and MCP
+        // entries stay isolated, like their vendor code above. Only JS moves:
+        // a shared stylesheet would change the order of the CSS rules.
+        appCommon: {
+          type: /^javascript/,
+          chunks: (chunk) =>
+            chunk.name !== undefined && APP_COMMON_ENTRIES.has(chunk.name),
+          minChunks: APP_COMMON_ENTRIES.size,
+          name: "app-common",
+          priority: -20,
+          reuseExistingChunk: true,
+        },
         // Modules shared by two or more async chunks (e.g. CodeMirror, pulled
         // in by every lazily loaded editor) move into a shared async chunk
         // instead of being copied into each one. `vendors` above only claims
@@ -381,25 +402,25 @@ const config = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-main"],
+      chunks: ["vendor", "app-common", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-public"],
+      chunks: ["vendor", "app-common", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed"],
+      chunks: ["vendor", "app-common", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed-sdk.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed-sdk"],
+      chunks: ["vendor", "app-common", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     // Enterprise-only: data apps are an enterprise plugin, so the iframe HTML is
