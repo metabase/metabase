@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -24,14 +23,6 @@
   [card-id     :- [:maybe ::lib.schema.id/card]
    dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
   (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
-
-(mu/defn insert-query-executions!
-  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
-  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
-  [rows :- [:sequential
-            ::queries.schema/query-execution.update]]
-  (t2/with-transaction [_conn]
-    (t2/insert! :model/QueryExecution rows)))
 
 (mu/defn set-card-result-metadata!
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."

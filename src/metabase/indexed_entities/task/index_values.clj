@@ -37,9 +37,7 @@
                       (indexed-entities.db/card (:model_id model-index)))]
     (if (should-deindex? model model-index)
       (u/ignore-exceptions
-        (let [trigger-key (model-index/trigger-key model-index-id)]
-          (task/delete-trigger! trigger-key)
-          (indexed-entities.db/delete-model-index! model-index-id)))
+        (model-index/delete-model-index! model-index-id))
       (model-index/add-values! model-index))))
 
 (task/defjob ModelIndexRefresh

@@ -7,7 +7,9 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [metabase.util.malli.registry :as mr]
+   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.models.view-log-impl :as view-log-impl]
+   [metabase.view-log.schema :as view-log.schema]
    [methodical.core :as m]
    [toucan2.core :as t2]))
 
@@ -32,6 +34,13 @@
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json
    :context  mi/transform-keyword})
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-view-logs!
+  "Insert the ViewLog rows `views` in one transaction."
+  [views :- [:sequential ::view-log.schema/view-log.create]]
+  (view-log.db/insert-view-logs! views))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

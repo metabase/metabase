@@ -2,10 +2,14 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,6 +28,30 @@
   "Add whether the current user can write each ExplorationPage, which is whether they can write its parent."
   [_model k instances]
   (exploration/hydrate-can-write-from-parents k instances :exploration_block_id :model/ExplorationBlock))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-page! :- ms/PositiveInt
+  "Insert the ExplorationPage `page` and return its id."
+  [page :- ::explorations.schema/exploration-page.create]
+  (explorations.db/insert-page! page))
+
+(mu/defn update-page!
+  "Apply `changes` to the ExplorationPage with `page-id`."
+  [page-id :- ms/PositiveInt
+   changes :- (mut/select-keys ::explorations.schema/exploration-page.update [:starred])]
+  (explorations.db/update-page! page-id changes))
+
+(mu/defn update-pages!
+  "Apply `changes` to the ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]
+   changes  :- (mut/select-keys ::explorations.schema/exploration-page.update [:hidden])]
+  (explorations.db/update-pages! page-ids changes))
+
+(mu/defn delete-pages!
+  "Delete the ExplorationPages with `page-ids`."
+  [page-ids :- [:sequential ms/PositiveInt]]
+  (explorations.db/delete-pages! page-ids))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -7,9 +7,13 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.disallow :as t2.disallow]))
@@ -44,6 +48,19 @@
   [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
   (assoc query-execution :row_count (or result_rows 0)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-query-execution! :- ms/PositiveInt
+  "Insert the QueryExecution `row` and return its id."
+  [row :- ::queries.schema/query-execution.create]
+  (queries.db/insert-query-execution! row))
+
+(mu/defn create-query-executions!
+  "Insert the QueryExecution `rows` in a transaction of their own, so a row the app DB rejects does not abort the
+  transaction of the caller."
+  [rows :- [:sequential ::queries.schema/query-execution.create]]
+  (queries.db/insert-query-executions! rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

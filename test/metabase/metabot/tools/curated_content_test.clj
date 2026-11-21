@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.activity-feed.core :as activity-feed]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
@@ -744,7 +744,7 @@
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
           (verify-card! verified-model)
           (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
-            (activity-feed/update-users-recent-views! (mt/user->id :crowberto) model id :view))
+            (recent-views/update-users-recent-views! (mt/user->id :crowberto) model id :view))
           (let [items (fn [metabot]
                         (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
                                          ["metric" plain-metric]}
@@ -760,7 +760,7 @@
                        {:type "model" :uri (str "metabase://model/" verified-model)}]
                       (items nil))))
             (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
-              (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
+              (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
               (is (= #{["model" verified-model]} (pairs metabot)))
               (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
                 (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot)))))))))))

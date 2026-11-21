@@ -16,6 +16,10 @@
    [:map {:closed true}
     [:id                          ms/PositiveInt]]])
 
+(mr/def ::view-log.create
+  "What a caller gives to create a ViewLog."
+  ::view-log.update)
+
 (mr/def ::view-log.update
   "What an update (or insert) of a ViewLog accepts: every column of `:view_log` except `id`, all optional."
   [:map {:closed true}

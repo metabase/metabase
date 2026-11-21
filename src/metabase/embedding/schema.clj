@@ -28,6 +28,13 @@
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::embedding-theme.create
+  "What a caller gives to create a EmbeddingTheme: its name and settings, and whether it is a seeded default."
+  [:map {:closed true}
+   [:name       :string]
+   [:settings   ::embedding-theme.settings]
+   [:is_default {:optional true} :boolean]])
+
 (mr/def ::sdk-react-18-host.host
   "The `host` of a EmbeddingSdkReact18Host: a lowercase hostname, or an empty string when the host app page URL has no
   hostname."

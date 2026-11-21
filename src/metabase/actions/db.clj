@@ -8,7 +8,6 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.card-schema :as queries.card-schema]
-   [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -143,11 +142,6 @@
   "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/DashboardCard :action_id action-id))
-
-(mu/defn insert-query-execution!
-  "Insert the QueryExecution `row` and return its id."
-  [row :- ::queries.schema/query-execution.update]
-  (t2/insert-returning-pk! :model/QueryExecution row))
 
 (mu/defn insert-action!
   "Insert the Action `row` and return the inserted instance."

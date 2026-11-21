@@ -11,7 +11,7 @@
 
 (events/derive! ::event :metabase/event)
 
-(events/register-sink! ::rows audit-log/record-rows!)
+(events/register-sink! ::rows audit-log/create-audit-logs!)
 
 (defn- record!
   "Record the audit row of `topic` and `params` with the other rows of the batch, in their order, or at once outside a

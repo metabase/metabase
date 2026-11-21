@@ -14,6 +14,7 @@
    [metabase.models.interface :as mi]
    [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision.diff :as revision.diff :refer [diff-strings*]]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.segments.schema]
    [metabase.transforms.schema]
@@ -220,13 +221,7 @@
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})
 
-(mu/defn settle-revisions!
-  "Clear `most_recent` on the superseded Revisions of `entities`, `[model-name model-id]` pairs, and delete their
-  Revisions beyond [[max-revisions]]."
-  [entities :- [:sequential [:tuple :string pos-int?]]]
-  (when (seq entities)
-    (revisions.db/unmark-superseded-revisions! entities)
-    (revisions.db/delete-revisions-beyond! entities max-revisions)))
+(declare settle-revisions! create-revision!)
 
 (defn- settle-revisions!*
   "Settle the Revisions of the rows of `items`, `{:model :model_id}` maps, once per row."
@@ -369,7 +364,7 @@
    :message      message})
 
 (mu/defn revision-row :- [:map [:model :string]]
-  "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[revisions.db/insert-revisions!]]."
+  "The new Revision row of `entity` with `id`, whose caller knows that it changed, for [[create-revisions!]]."
   [{:keys [entity object] :as info} :- PushRevisionInput]
   (row info (snapshot entity object)))
 
@@ -388,7 +383,7 @@
                                                     (recorded entity (revisions.db/latest-revision-object model-name id))
                                                     (recorded entity serialized-instance)))
             record-reversion!        #(when-not already-in-target-state?
-                                        (u/prog1 (revisions.db/insert-revision-returning!
+                                        (u/prog1 (create-revision!
                                                   {:model        model-name
                                                    :model_id     id
                                                    :user_id      user-id
@@ -405,6 +400,32 @@
         (if new-revision
           (add-revision-details entity new-revision last-revision)
           last-revision)))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-revisions!
+  "Insert the Revision `rows` in one statement."
+  [rows :- [:sequential ::revisions.schema/revision.create]]
+  (revisions.db/insert-revisions! rows))
+
+(mu/defn create-revision! :- :map
+  "Insert the Revision `row` and return it."
+  [row :- ::revisions.schema/revision.create]
+  (revisions.db/insert-revision-returning! row))
+
+(mu/defn delete-revisions-for-entity!
+  "Delete the Revisions of the row of the model named `model-name` (e.g. \"Card\") with `model-id`."
+  [model-name :- :string
+   model-id   :- pos-int?]
+  (revisions.db/delete-revisions-for-entity! model-name model-id))
+
+(mu/defn settle-revisions!
+  "Clear `most_recent` on the superseded Revisions of `entities`, `[model-name model-id]` pairs, and delete their
+  Revisions beyond [[max-revisions]]."
+  [entities :- [:sequential [:tuple :string pos-int?]]]
+  (when (seq entities)
+    (revisions.db/unmark-superseded-revisions! entities)
+    (revisions.db/delete-revisions-beyond! entities max-revisions)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -46,32 +46,6 @@
     (when (:parameterized_object_type (t2/changes <>))
       (validate-parameterized-object-type <>))))
 
-(defn delete-all-for-parameterized-object!
-  "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional
-  `parameter-ids-still-in-use`."
-  ([parameterized-object-type parameterized-object-id]
-   (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
-
-  ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
-   (if (seq parameter-ids-still-in-use)
-     (queries.db/delete-parameter-cards-for-object-except! parameterized-object-type
-                                                           parameterized-object-id
-                                                           parameter-ids-still-in-use)
-     (queries.db/delete-parameter-cards-for-object! parameterized-object-type parameterized-object-id))))
-
-(defn- upsert-from-parameters!
-  [parameterized-object-type parameterized-object-id parameters]
-  (doseq [{:keys [values_source_config id]} parameters]
-    (let [card-id    (:card_id values_source_config)
-          conditions {:parameterized_object_id   parameterized-object-id
-                      :parameterized_object_type parameterized-object-type
-                      :parameter_id              id}]
-      ;; TODO: Maybe update! should return different values for no rows to update vs
-      ;; no changes to be made
-      (if (queries.db/parameter-card-exists? parameterized-object-type parameterized-object-id id)
-        (queries.db/set-parameter-card-card-id! parameterized-object-type parameterized-object-id id card-id)
-        (queries.db/insert-parameter-card! (merge conditions {:card_id card-id}))))))
-
 (defn values-source-card-ids
   "Returns the ids of the Cards `parameters` draw their values from."
   [parameters]
@@ -102,6 +76,34 @@
     (let [existing (queries.db/parameter-card-card-ids parameterized-object-type parameterized-object-id)]
       (read-check-cards (into #{} (remove #(contains? existing %)) wanted)))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn delete-all-for-parameterized-object!
+  "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional
+  `parameter-ids-still-in-use`."
+  ([parameterized-object-type parameterized-object-id]
+   (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id []))
+
+  ([parameterized-object-type parameterized-object-id parameter-ids-still-in-use]
+   (if (seq parameter-ids-still-in-use)
+     (queries.db/delete-parameter-cards-for-object-except! parameterized-object-type
+                                                           parameterized-object-id
+                                                           parameter-ids-still-in-use)
+     (queries.db/delete-parameter-cards-for-object! parameterized-object-type parameterized-object-id))))
+
+(defn- upsert-from-parameters!
+  [parameterized-object-type parameterized-object-id parameters]
+  (doseq [{:keys [values_source_config id]} parameters]
+    (let [card-id    (:card_id values_source_config)
+          conditions {:parameterized_object_id   parameterized-object-id
+                      :parameterized_object_type parameterized-object-type
+                      :parameter_id              id}]
+      ;; TODO: Maybe update! should return different values for no rows to update vs
+      ;; no changes to be made
+      (if (queries.db/parameter-card-exists? parameterized-object-type parameterized-object-id id)
+        (queries.db/set-parameter-card-card-id! parameterized-object-type parameterized-object-id id card-id)
+        (queries.db/insert-parameter-card! (merge conditions {:card_id card-id}))))))
+
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
@@ -114,6 +116,11 @@
         upsertable-parameters (filter upsertable? parameters)]
     (upsert-from-parameters! parameterized-object-type parameterized-object-id upsertable-parameters)
     (delete-all-for-parameterized-object! parameterized-object-type parameterized-object-id (map :id upsertable-parameters))))
+
+(mu/defn delete-parameter-cards-for-card!
+  "Delete the ParameterCards that draw their values from the Card with `card-id`."
+  [card-id :- pos-int?]
+  (queries.db/delete-parameter-cards-for-card! card-id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -90,7 +90,7 @@
       :details           (stringify-keys (merge {} (:details params)))})))
 
 (mu/defn audit-row :- [:maybe :map]
-  "The Audit Log row that [[record-rows!]] inserts for `topic` and `params`, or nil when it would insert none."
+  "The Audit Log row that [[create-audit-logs!]] inserts for `topic` and `params`, or nil when it would insert none."
   [topic :- :keyword
    params :- ::event-params]
   (when (premium-features/log-enabled?)
@@ -102,18 +102,20 @@
        :model_id model-id
        :user_id  user-id})))
 
-(defn record-rows!
-  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
-  [rows]
-  (when (seq rows)
-    (span/with-span! {:name "record-rows!" :attributes {:audit/rows (count rows)}}
-      (audit-app.db/insert-audit-logs! rows))))
-
 (t2/define-before-insert :model/AuditLog
   [activity]
   (let [defaults {:timestamp :%now
                   :details   {}}]
     (merge defaults activity)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn create-audit-logs!
+  "Insert the Audit Log `rows`, which [[audit-row]] gives, in one statement and in their order."
+  [rows]
+  (when (seq rows)
+    (span/with-span! {:name "create-audit-logs!" :attributes {:audit/rows (count rows)}}
+      (audit-app.db/insert-audit-logs! rows))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

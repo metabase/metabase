@@ -9,6 +9,7 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.queries.cached-result :as cached-result]
    [metabase.queries.db :as queries.db]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -27,6 +28,23 @@
     (throw (ex-info "stored_result_use requires exactly one of :card_id or :exploration_id to be set"
                     {:card_id (:card_id row) :exploration_id (:exploration_id row)})))
   row)
+
+(mu/defn assert-can-view-card-snapshots!
+  "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
+  from."
+  [card-id :- ms/PositiveInt]
+  (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
+    (when (empty? snapshots)
+      (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
+    (doseq [snapshot snapshots]
+      (cached-result/assert-can-view-cached-result! snapshot))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-stored-result-use!
+  "Record that the Card or Exploration of `row` uses the StoredResult of `row`."
+  [row :- ::queries.schema/stored-result-use.create]
+  (queries.db/insert-stored-result-use! row))
 
 (mu/defn carry-pairings-for-document!
   "Copy `(card_id, stored_result_id)` pairings onto newly created Cards for a document save.
@@ -47,17 +65,7 @@
                            #{})]
       (doseq [[new-card-id sr-id] distinct-pairs
               :when (contains? reachable sr-id)]
-        (queries.db/insert-stored-result-use! sr-id new-card-id)))))
-
-(mu/defn assert-can-view-card-snapshots!
-  "Throw a 403 unless the current user may be served *every* `stored_result` Card `card-id` renders
-  from."
-  [card-id :- ms/PositiveInt]
-  (let [snapshots (queries.db/stored-result-gate-inputs-for-card card-id)]
-    (when (empty? snapshots)
-      (throw (ex-info (tru "This card has no cached results.") {:status-code 404})))
-    (doseq [snapshot snapshots]
-      (cached-result/assert-can-view-cached-result! snapshot))))
+        (create-stored-result-use! {:stored_result_id sr-id :card_id new-card-id})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
@@ -582,8 +581,8 @@
                    :model/Dashboard {dash-id :id} {:name "Recent Dashboard"}]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-model-cleanup [:model/RecentViews]
-          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Card card-id :view)
-          (activity-feed/update-users-recent-views! (mt/user->id :crowberto) :model/Dashboard dash-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card card-id :view)
+          (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Dashboard dash-id :view)
           (let [{:keys [rows]} (recents-page {} :concise 50 0)
                 ids            (set (map :id rows))]
             (is (contains? ids card-id) "the card is listed with no type filter")
@@ -614,7 +613,7 @@
               cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
           (mt/with-current-user uid
             (doseq [id card-ids]
-              (activity-feed/update-users-recent-views! uid :model/Card id :view))
+              (recent-views/update-users-recent-views! uid :model/Card id :view))
             (testing "recents-page: total is capped at the per-model retention limit even though 21 were viewed"
               (is (= cap (:total (recents-page {} :concise 10 0)))
                   "total equals the retention cap, not the 21 actually viewed"))
@@ -648,7 +647,7 @@
               cap       @#'recent-views/*recent-views-stored-per-user-per-model*]
           (mt/with-current-user uid
             (doseq [id card-ids]
-              (activity-feed/update-users-recent-views! uid :model/Card id :view))
+              (recent-views/update-users-recent-views! uid :model/Card id :view))
             ;; No :limit passed — exercises the tool's own default (20), matching the cap exactly.
             (let [content (tools.search/search-tool {:recent true} {:token-scopes #{"agent:content:read"}})
                   text    (-> content :content first :text v2.tu/strip-data-boundary)]

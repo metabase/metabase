@@ -2,6 +2,8 @@
   "A model used to cache query results in the database."
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.cache.db :as cache.db]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -11,6 +13,13 @@
 (doto :model/QueryCache
   (derive :metabase/model)
   (derive :hook/updated-at-timestamped?))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn delete-query-caches!
+  "Delete the QueryCache entries with `query-hashes`."
+  [query-hashes :- [:sequential bytes?]]
+  (cache.db/delete-query-caches! query-hashes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

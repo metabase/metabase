@@ -17,7 +17,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.model-persistence.core :as model-persistence]
+   [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -748,7 +748,7 @@
                             (map :id)
                             seq)]
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage Lib.
-    (model-persistence/invalidate! model-ids)
+    (persisted-info/invalidate! model-ids)
     ;; Also refresh the metadata, so that newly added columns are visible, and types are updated.
     (doseq [id model-ids]
       (let [card     (upload.db/card-query-and-metadata id)
