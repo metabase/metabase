@@ -48,10 +48,9 @@
                                       :dashboard_card_id dashcard-id
                                       :position          position})]
           (t2/with-transaction [_conn]
-            (binding [models.pulse/*allow-moving-dashboard-subscriptions* true
-                      api/*current-user-id*                               nil]
-              (pulse.db/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
-                                                                   :collection_id (:collection_id dashboard)})
-              (pulse-card/bulk-create! new-pulse-cards))))))))
+            (binding [api/*current-user-id* nil]
+              (models.pulse/update-pulses-for-dashboard! dashboard-id {:name          (:name dashboard)
+                                                                       :collection_id (:collection_id dashboard)})
+              (pulse-card/append-pulse-cards! new-pulse-cards))))))))
 
 (events/register-owned-consumer! ::dashboard-subscriptions owner sync-subscriptions!)

@@ -393,16 +393,16 @@
       (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
              (pulse-channel-test/send-pulse-triggers pulse-id)))
       (testing "archived pulse will disable pulse channels and remove triggers"
-        (t2/update! :model/Pulse :id pulse-id {:archived true})
+        (models.pulse/update-pulses! [pulse-id] {:archived true})
         (is (false? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "re-enabled pulse will re-enable pulse channels and add triggers"
-        (t2/update! :model/Pulse :id pulse-id {:archived false})
+        (models.pulse/update-pulses! [pulse-id] {:archived false})
         (is (true? (t2/select-one-fn :enabled :model/PulseChannel :id pc-id)))
         (is (= #{(pulse-channel-test/pulse->trigger-info pulse-id pulse-channel-test/daily-at-6pm [pc-id])}
                (pulse-channel-test/send-pulse-triggers pulse-id))))
       (testing "delete pulse will remove pulse channels and triggers"
-        (t2/delete! :model/Pulse :id pulse-id)
+        (models.pulse/delete-pulses! [pulse-id])
         (is (false? (t2/exists? :model/PulseChannel :id pc-id)))
         (is (empty? (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
@@ -416,9 +416,11 @@
       (:status-code (ex-data e)))))
 
 (defn- insert-pulse!
-  "Insert a Pulse made of the defaults of one and `overrides`, and return its id."
+  "Create a Pulse named at random with `overrides`, and return its id."
   [overrides]
-  (t2/insert-returning-pk! :model/Pulse (merge (mt/with-temp-defaults :model/Pulse) overrides)))
+  (:id (models.pulse/create-pulse! [] [] (merge {:name       (mt/random-name)
+                                                 :creator_id (mt/user->id :rasta)}
+                                                overrides))))
 
 (deftest dashboard-subscription-collection-is-derived-on-insert-test
   (mt/with-temp [:model/Collection {collection-id :id}       {}
@@ -429,10 +431,9 @@
       (testing "a dashboard subscription goes in the collection of its dashboard, whatever the row names"
         (let [pulse-id (insert-pulse! {:dashboard_id dashboard-id :collection_id other-collection-id})]
           (is (= collection-id (t2/select-one-fn :collection_id :model/Pulse :id pulse-id)))))
-      (testing "one INSERT of several dashboard subscriptions files each with its own dashboard"
-        (let [ids (t2/insert-returning-pks! :model/Pulse
-                                            [(merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id dashboard-id})
-                                             (merge (mt/with-temp-defaults :model/Pulse) {:dashboard_id other-dashboard-id})])]
+      (testing "dashboard subscriptions are filed each with its own dashboard"
+        (let [ids [(insert-pulse! {:dashboard_id dashboard-id})
+                   (insert-pulse! {:dashboard_id other-dashboard-id})]]
           (is (= [collection-id other-collection-id]
                  (mapv #(t2/select-one-fn :collection_id :model/Pulse :id %) ids)))))
       (testing "a pulse without a dashboard keeps the collection of the row"
@@ -512,7 +513,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-               (t2/insert! :model/Pulse (assoc (mt/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
+               (insert-pulse! {:collection_id collection-id, :name pulse-name})))
           (finally
             (t2/delete! :model/Pulse :name pulse-name)))))
     (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
@@ -520,7 +521,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Pulse :id card-id {:collection_id collection-id})))))))
+             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |

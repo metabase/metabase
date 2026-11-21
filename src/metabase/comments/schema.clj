@@ -82,6 +82,17 @@
    [:content_html      {:optional true} [:maybe :string]]
    [:context           {:optional true} [:maybe ::comment.context]]])
 
+(mr/def ::comment.create
+  "What a caller gives to create a Comment."
+  [:map {:closed true}
+   [:target_type       [:or :keyword :string]]
+   [:target_id         ms/PositiveInt]
+   [:creator_id        ::lib.schema.id/user]
+   [:content           ::comment.content]
+   [:child_target_id   {:optional true} [:maybe :string]]
+   [:parent_comment_id {:optional true} [:maybe ms/PositiveInt]]
+   [:context           {:optional true} [:maybe ::comment.context]]])
+
 (mr/def ::comment-reaction
   "A CommentReaction as selected from the app DB: every column of `:comment_reaction`."
   [:merge
@@ -115,3 +126,10 @@
    [:user_id    {:optional true} [:maybe ::lib.schema.id/user]]
    [:emoji      {:optional true} [:maybe :string]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::comment-reaction.create
+  "What a caller gives to create a CommentReaction."
+  [:map {:closed true}
+   [:comment_id ms/PositiveInt]
+   [:user_id    ::lib.schema.id/user]
+   [:emoji      :string]])

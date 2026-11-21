@@ -3,7 +3,11 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.comments.db :as comments.db]
+   [metabase.comments.schema :as comments.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -26,27 +30,6 @@
   "Check if a reaction already exists for a given comment, user, and emoji"
   [comment-id user-id emoji]
   (comments.db/reaction-exists? comment-id user-id emoji))
-
-(defn create-reaction!
-  "Create a new reaction"
-  [comment-id user-id emoji]
-  (comments.db/insert-reaction! comment-id user-id emoji))
-
-(defn delete-reaction!
-  "Delete a specific reaction"
-  [comment-id user-id emoji]
-  (comments.db/delete-reaction! comment-id user-id emoji))
-
-(defn toggle-reaction
-  "Toggle a reaction - add it if it doesn't exist, remove it if it does"
-  [comment-id user-id emoji]
-  (if (reaction-exists? comment-id user-id emoji)
-    (do
-      (delete-reaction! comment-id user-id emoji)
-      {:reacted false})
-    (do
-      (create-reaction! comment-id user-id emoji)
-      {:reacted true})))
 
 (defn- format-user [{:keys [id first_name last_name]}]
   {:id   id
@@ -72,6 +55,32 @@
                 (let [user (format-user (:user reaction))]
                   (update-in acc [(:comment_id reaction) (:emoji reaction)] first-or-last user)))
               {} reactions))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-reaction!
+  "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
+  [{:keys [comment_id user_id emoji]} :- ::comments.schema/comment-reaction.create]
+  (comments.db/insert-reaction! comment_id user_id emoji))
+
+(mu/defn delete-reaction! :- :int
+  "Delete the CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`, returning the
+  number deleted."
+  [comment-id :- ms/PositiveInt
+   user-id    :- ::lib.schema.id/user
+   emoji      :- :string]
+  (comments.db/delete-reaction! comment-id user-id emoji))
+
+(defn toggle-reaction
+  "Toggle a reaction - add it if it doesn't exist, remove it if it does"
+  [comment-id user-id emoji]
+  (if (reaction-exists? comment-id user-id emoji)
+    (do
+      (delete-reaction! comment-id user-id emoji)
+      {:reacted false})
+    (do
+      (create-reaction! {:comment_id comment-id :user_id user-id :emoji emoji})
+      {:reacted true})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

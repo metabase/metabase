@@ -118,7 +118,7 @@
 (mu/defn delete-pulse-channel-recipients-for-user!
   "Delete every PulseChannelRecipient of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PulseChannelRecipient :user_id user-id))
+  ((requiring-resolve 'metabase.pulse.models.pulse-channel-recipient/delete-pulse-channel-recipients-for-user!) user-id))
 
 (mu/defn group-membership-exists?
   "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."

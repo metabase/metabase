@@ -398,15 +398,18 @@
   "Archive the unarchived Pulses in the Collections with `collection-ids` along with them, returning the number updated
   and skipping dashboard subscriptions, which follow their Dashboard's `archived` flag."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived false}
-              {:archived true}))
+  ((requiring-resolve 'metabase.pulse.models.pulse/update-pulses!)
+   (vec (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived false))
+   {:archived true}))
 
 (mu/defn restore-pulses-in-collections!
   "Restore the Pulses in the Collections with `collection-ids` that were archived along with them, returning the number
   updated and skipping dashboard subscriptions as [[archive-pulses-in-collections!]] does."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/update! :model/Pulse {:collection_id [:in collection-ids], :dashboard_id nil, :archived true, :archived_directly false}
-              {:archived false}))
+  ((requiring-resolve 'metabase.pulse.models.pulse/update-pulses!)
+   (vec (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids], :dashboard_id nil, :archived true
+                           :archived_directly false))
+   {:archived false}))
 
 (mu/defn restore-actions-in-collections!
   "Restore the Actions in the Collections with `collection-ids` that were archived along with them and whose model,
@@ -448,7 +451,8 @@
 (mu/defn delete-pulses-in-collections!
   "Delete the Pulses in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Pulse :collection_id [:in collection-ids]))
+  ((requiring-resolve 'metabase.pulse.models.pulse/delete-pulses!)
+   (vec (t2/select-pks-vec :model/Pulse :collection_id [:in collection-ids]))))
 
 (mu/defn delete-timelines-in-collections!
   "Delete the Timelines in the Collections with `collection-ids`, returning the number deleted."
@@ -458,7 +462,7 @@
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+  ((requiring-resolve 'metabase.notification.models/delete-notifications!) (vec notification-ids)))
 
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."

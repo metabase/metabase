@@ -11,6 +11,8 @@
    [metabase.comments.schema :as comments.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -232,6 +234,24 @@
   [document-id]
   (->> (comments.db/document-child-target-counts document-id)
        (mapv #(select-keys % [:child_target_id :comment_count]))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-comment! :- (ms/InstanceOf :model/Comment)
+  "Insert the Comment `row` and return the inserted instance."
+  [row :- ::comments.schema/comment.create]
+  (comments.db/insert-comment! row))
+
+(mu/defn update-comment! :- :int
+  "Apply `changes` to the Comment with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::comments.schema/comment.update]
+  (comments.db/update-comment! id changes))
+
+(mu/defn soft-delete-comment! :- :int
+  "Mark the Comment with `id` deleted now, returning the number updated."
+  [id :- ms/PositiveInt]
+  (comments.db/soft-delete-comment! id))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

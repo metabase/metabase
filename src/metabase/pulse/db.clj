@@ -106,6 +106,11 @@
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one :model/Pulse :id pulse-id))
 
+(mu/defn pulses-for-dashboard
+  "The Pulses of the Dashboard with `dashboard-id`, archived or not."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select :model/Pulse :dashboard_id dashboard-id))
+
 (mu/defn pulse-id
   "The id of the Pulse with `pulse-id` if it exists, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
@@ -233,6 +238,17 @@
    changes  :- ::pulse.schema/pulse.update]
   (t2/update! :model/Pulse :id pulse-id changes))
 
+(mu/defn update-pulses!
+  "Apply `changes` to the Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]
+   changes   :- ::pulse.schema/pulse.update]
+  (t2/update! :model/Pulse :id [:in pulse-ids] changes))
+
+(mu/defn delete-pulses!
+  "Delete the Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (t2/delete! :model/Pulse :id [:in pulse-ids]))
+
 (mu/defn update-pulses-for-dashboard!
   "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
   [dashboard-id :- ::lib.schema.id/dashboard
@@ -273,6 +289,11 @@
   [rows :- [:sequential ::pulse.schema/pulse-card.update]]
   (t2/insert! :model/PulseCard rows))
 
+(mu/defn delete-pulse-cards-for-dashcards!
+  "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+
 (mu/defn delete-pulse-cards-for-pulse!
   "Delete the PulseCards of the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse]
@@ -297,6 +318,11 @@
   "The id of the email PulseChannel of the Pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
   (t2/select-one-pk :model/PulseChannel :pulse_id pulse-id :channel_type "email"))
+
+(mu/defn pulse-ids-with-channels
+  "The set of ids among `pulse-ids` of the Pulses that still have a PulseChannel."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
+  (t2/select-fn-set :pulse_id :model/PulseChannel :pulse_id [:in pulse-ids]))
 
 (mu/defn pulse-channel-details
   "The details of the PulseChannel with `channel-id`, or nil."
@@ -335,12 +361,6 @@
                           [:not= :p.dashboard_id nil]
                           [:= :d.archived false]]}))
 
-(mu/defn other-pulse-channel-count
-  "The number of PulseChannels of the Pulse with `pulse-id` other than `channel-id`."
-  [pulse-id   :- ::lib.schema.id/pulse
-   channel-id :- ms/PositiveInt]
-  (t2/count :model/PulseChannel :pulse_id pulse-id, :id [:not= channel-id]))
-
 (mu/defn insert-pulse-channel!
   "Insert the PulseChannel `row` and return its id."
   [row :- ::pulse.schema/pulse-channel.update]
@@ -353,25 +373,25 @@
   (t2/update! :model/PulseChannel :id channel-id changes))
 
 (mu/defn set-pulse-channels-enabled!
-  "Set the enabled flag of the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id :- ::lib.schema.id/pulse
-   enabled? :- :boolean]
-  (t2/update! :model/PulseChannel :pulse_id pulse-id {:enabled enabled?}))
+  "Set the enabled flag of the PulseChannels of the Pulses with `pulse-ids`."
+  [pulse-ids :- [:sequential ::lib.schema.id/pulse]
+   enabled?  :- :boolean]
+  (t2/update! :model/PulseChannel :pulse_id [:in pulse-ids] {:enabled enabled?}))
 
-(mu/defn delete-pulse-channel!
-  "Delete the PulseChannel with `channel-id`."
+(mu/defn pulse-channel
+  "The PulseChannel with `channel-id`, or nil."
   [channel-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannel :id channel-id))
+  (t2/select-one :model/PulseChannel :id [:auto/param channel-id]))
+
+(mu/defn pulse-channels-with-ids
+  "The PulseChannels with `channel-ids`."
+  [channel-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/PulseChannel :id [:in channel-ids]))
 
 (mu/defn delete-pulse-channels!
   "Delete the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/PulseChannel :id [:in channel-ids]))
-
-(mu/defn delete-pulse-channels-for-pulse!
-  "Delete the PulseChannels of the Pulse with `pulse-id`."
-  [pulse-id :- ::lib.schema.id/pulse]
-  (t2/delete! :model/PulseChannel :pulse_id pulse-id))
 
 (mu/defn active-recipients-for-channels
   "The id, email, name, and PulseChannel id of the active User recipients of the PulseChannels with `channel-ids`, in
@@ -395,21 +415,34 @@
   [channel-id :- ms/PositiveInt]
   (t2/select-fn-set :user_id :model/PulseChannelRecipient, :pulse_channel_id channel-id))
 
-(mu/defn other-pulse-channel-recipient-count
-  "The number of PulseChannelRecipients of the PulseChannel with `channel-id` other than `recipient-id`."
-  [channel-id   :- ms/PositiveInt
-   recipient-id :- ms/PositiveInt]
-  (t2/count :model/PulseChannelRecipient :pulse_channel_id channel-id :id [:not= recipient-id]))
+(mu/defn pulse-channel-recipients-for-user
+  "The PulseChannelRecipients of the User with `user-id`."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select :model/PulseChannelRecipient :user_id user-id))
+
+(mu/defn pulse-channel-recipients-by-ids
+  "The PulseChannelRecipients with `recipient-ids`."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/PulseChannelRecipient :id [:in recipient-ids]))
+
+(mu/defn pulse-channel-recipient-counts
+  "A map of PulseChannel id to its number of PulseChannelRecipients, for the PulseChannels with `channel-ids`."
+  [channel-ids :- [:sequential ms/PositiveInt]]
+  (into {}
+        (map (juxt :pulse_channel_id :count))
+        (t2/select [:model/PulseChannelRecipient :pulse_channel_id [:%count.* :count]]
+                   :pulse_channel_id [:in channel-ids]
+                   {:group-by [:pulse_channel_id]})))
 
 (mu/defn insert-pulse-channel-recipients!
   "Insert the PulseChannelRecipient `rows`."
   [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.update]]
   (t2/insert! :model/PulseChannelRecipient rows))
 
-(mu/defn delete-pulse-channel-recipient!
-  "Delete the PulseChannelRecipient with `recipient-id`."
-  [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannelRecipient :id recipient-id))
+(mu/defn delete-pulse-channel-recipients!
+  "Delete the PulseChannelRecipients with `recipient-ids`."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/PulseChannelRecipient :id [:in recipient-ids]))
 
 (mu/defn delete-pulse-channel-recipients-raw!
   "Delete the PulseChannelRecipients of the Users with `user-ids` on the PulseChannel with `channel-id`, without
@@ -420,11 +453,6 @@
     (change-log/log-rows! :model/PulseChannelRecipient :delete :pulse_channel_id channel-id :user_id [:in user-ids])
     #_{:clj-kondo/ignore [:metabase/change-log-raw-write]} ; logged on the line above
     (t2/delete! (t2/table-name :model/PulseChannelRecipient) :pulse_channel_id channel-id :user_id [:in user-ids])))
-
-(mu/defn delete-notifications!
-  "Delete the Notifications with `notification-ids`."
-  [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
 
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."

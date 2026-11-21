@@ -421,7 +421,7 @@
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+  ((requiring-resolve 'metabase.notification.models/delete-notifications!) (vec notification-ids)))
 
 ;;; --------------------------------------------- ParameterCard ---------------------------------------------
 

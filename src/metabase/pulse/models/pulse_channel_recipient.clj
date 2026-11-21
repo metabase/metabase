@@ -4,7 +4,12 @@
    [metabase.audit-app.core :as audit]
    [metabase.change-log.core :as change-log]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse :as pulse]
+   [metabase.pulse.schema :as pulse.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,21 +20,46 @@
 (derive :model/PulseChannelRecipient :metabase/model)
 (derive :model/PulseChannelRecipient :hook/events)
 
-;;; ------------------------------------------------------- Hooks --------------------------------------------------------
+;;; ------------------------------------------------------ Writes --------------------------------------------------------
 
-;;; Deletes `PulseChannel` if the recipient being deleted is its last recipient. (This only applies
-;;; to PulseChannels with User subscriptions; Slack PulseChannels and ones with email address subscriptions are not
-;;; automatically deleted.
-(t2/define-before-delete :model/PulseChannelRecipient
-  [{channel-id :pulse_channel_id, pulse-channel-recipient-id :id}]
-  (let [other-recipients-count (pulse.db/other-pulse-channel-recipient-count channel-id pulse-channel-recipient-id)
-        last-recipient?        (zero? other-recipients-count)]
-    (when last-recipient?
-      ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (pulse.db/pulse-channel-details channel-id)
-            has-email-addresses? (seq (:emails details))]
-        (when-not has-email-addresses?
-          (pulse.db/delete-pulse-channel! channel-id))))))
+(defn- emptied-channel-ids
+  "The ids of the PulseChannels that lose their last recipient when `recipients` are deleted, and have no raw email
+  addresses. Slack PulseChannels and ones with email address subscriptions are never deleted with their recipients."
+  [recipients]
+  (when (seq recipients)
+    (let [channel-ids (into #{} (map :pulse_channel_id) recipients)
+          remaining   (merge (zipmap channel-ids (repeat 0))
+                             (pulse.db/pulse-channel-recipient-counts (vec channel-ids)))
+          deleting    (frequencies (map :pulse_channel_id recipients))]
+      (for [channel-id channel-ids
+            :when      (and (= (get deleting channel-id) (get remaining channel-id))
+                            (empty? (:emails (pulse.db/pulse-channel-details channel-id))))]
+        channel-id))))
+
+(defn- delete-recipients!
+  "Delete the PulseChannelRecipients `recipients`, and the PulseChannels they were the last recipients of."
+  [recipients]
+  (when (seq recipients)
+    (pulse/remove-pulse-channels! (vec (emptied-channel-ids recipients)))
+    (pulse.db/delete-pulse-channel-recipients! (mapv :id recipients))))
+
+(mu/defn create-pulse-channel-recipients!
+  "Insert the PulseChannelRecipient `rows`."
+  [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.create]]
+  (pulse.db/insert-pulse-channel-recipients! rows))
+
+(mu/defn delete-pulse-channel-recipients!
+  "Delete the PulseChannelRecipients with `recipient-ids`. A PulseChannel that loses its last recipient, and has no raw
+  email addresses, is deleted with them, and its Pulse is archived when it was the last PulseChannel of the Pulse."
+  [recipient-ids :- [:sequential ms/PositiveInt]]
+  (when (seq recipient-ids)
+    (delete-recipients! (pulse.db/pulse-channel-recipients-by-ids recipient-ids))))
+
+(mu/defn delete-pulse-channel-recipients-for-user!
+  "Delete every PulseChannelRecipient of the User with `user-id`, and the PulseChannels it was the last recipient of,
+  as [[delete-pulse-channel-recipients!]] does."
+  [user-id :- ::lib.schema.id/user]
+  (delete-recipients! (pulse.db/pulse-channel-recipients-for-user user-id)))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

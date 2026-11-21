@@ -3,6 +3,7 @@
   No-op if none of the notifications are changed.
   If a notification is changed, it will be replaced with a new one."
   (:require
+   [metabase.channel.models.channel :as models.channel]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.permissions.core :as perms]
@@ -190,9 +191,10 @@
 
 (defn- cleanup-notification!
   [internal-id existing-row]
-  (notification.db/delete-notification-by-internal-id! internal-id)
+  (when-let [notification (notification.db/notification-by-internal-id internal-id)]
+    (models.notification/delete-notifications! [(:id notification)]))
   (when-let [template-ids (->> existing-row :handlers (keep (comp :id :template)) seq)]
-    (notification.db/delete-channel-templates! template-ids)))
+    (models.channel/delete-channel-templates! (vec template-ids))))
 
 (defn- create-notification!
   [notification]
@@ -200,7 +202,7 @@
                    (if-let [template (:template handler)]
                      (-> handler
                          (dissoc :template)
-                         (assoc :template_id (notification.db/insert-channel-template! template)))
+                         (assoc :template_id (models.channel/create-channel-template! template)))
                      handler))]
     (models.notification/create-notification!
      (dissoc notification :handlers :subscriptions)
