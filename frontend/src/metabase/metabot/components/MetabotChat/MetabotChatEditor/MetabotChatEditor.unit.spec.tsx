@@ -272,6 +272,18 @@ describe("MetabotChatEditor", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should move focus to the input when the stop button hides after a response ends", async () => {
+    const { rerender } = setup({ isResponding: true });
+    const stopButton = await screen.findByRole("button", {
+      name: "Stop generating",
+    });
+    stopButton.focus();
+
+    rerender(<MetabotChatEditor {...defaultProps} isResponding={false} />);
+
+    await waitFor(async () => expect(await input()).toHaveFocus());
+  });
+
   it("should clear editor after submit", async () => {
     const onChange = jest.fn();
     const onSubmit = jest.fn();

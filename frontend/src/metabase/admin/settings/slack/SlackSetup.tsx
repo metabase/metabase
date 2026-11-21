@@ -129,8 +129,7 @@ export const SlackSetup = () => {
           </Markdown>
           <Box>
             <ButtonLink href={`https://api.slack.com${link}`}>
-              <span>{t`Create Slack App`}</span>
-              <Icon name="external" opacity={0.7} ml="lg" />
+              {t`Create Slack App`}
             </ButtonLink>
           </Box>
           <Markdown>
