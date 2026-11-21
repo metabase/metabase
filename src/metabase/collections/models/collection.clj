@@ -29,20 +29,20 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.protocols :as t2.protocols]))
 
 (set! *warn-on-reflection* true)
 
 (comment collection.root/keep-me)
 
 (p/import-vars [collection.root root-collection root-collection-with-ui-details])
+
+(declare create-collections! update-collections!)
 
 (def ^:private RootCollection
   "Schema for things that are instances of [[metabase.collections.models.collection.root.RootCollection]]."
@@ -168,11 +168,11 @@
 
 (defn- set-remote-synced-by-depth!
   "Set `:is_remote_synced` to `remote-synced?` on `collections`, a parent in a statement before its children, since the
-  update hook of each checks the flag of its stored parent."
+  write of each checks the flag of its stored parent."
   [collections remote-synced?]
   (t2/with-transaction [_conn]
     (doseq [[_depth level] (sort-by key (group-by #(count (filter #{\/} (:location %))) collections))]
-      (collections.db/set-collections-remote-synced! (mapv :id level) remote-synced?))))
+      (update-collections! (mapv (fn [{:keys [id]}] {:id id :is_remote_synced remote-synced?}) level)))))
 
 (defn clear-remote-synced-collection!
   "Marks any remote-synced-collection as non-remote-synced"
@@ -268,19 +268,19 @@
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
-  (let [library       (collections.db/insert-collection! {:name      "Library"
-                                                          :type      library-collection-type
-                                                          :location  "/"
-                                                          :entity_id library-entity-id})
-        base-location (str "/" (:id library) "/")
-        data          (collections.db/insert-collection! {:name      "Data"
-                                                          :type      library-data-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-data-entity-id})
-        metrics       (collections.db/insert-collection! {:name      "Metrics"
-                                                          :type      library-metrics-collection-type
-                                                          :location  base-location
-                                                          :entity_id library-metrics-entity-id})]
+  (let [[library]       (create-collections! [{:name      "Library"
+                                               :type      library-collection-type
+                                               :location  "/"
+                                               :entity_id library-entity-id}])
+        base-location   (str "/" (:id library) "/")
+        [data metrics]  (create-collections! [{:name      "Data"
+                                               :type      library-data-collection-type
+                                               :location  base-location
+                                               :entity_id library-data-entity-id}
+                                              {:name      "Metrics"
+                                               :type      library-metrics-collection-type
+                                               :location  base-location
+                                               :entity_id library-metrics-entity-id}])]
     (run! grant-library-collection-permissions! [library data metrics])
     library))
 
@@ -839,15 +839,6 @@
    RootCollection
    CollectionInstance])
 
-(mu/defn- parent :- CollectionWithLocationAndIDOrRoot
-  "Fetch the parent Collection of `collection`, or the Root Collection special placeholder object if this is a
-  top-level Collection. Note that the `parent` of a `collection` that's in the trash is the collection it was trashed
-  *from*."
-  [collection :- CollectionWithLocationOrRoot]
-  (if-let [new-parent-id (location-path->parent-id (:location collection))]
-    (collections.db/collection new-parent-id)
-    root-collection))
-
 (mu/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
   Collection.
@@ -992,8 +983,8 @@
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
         (try
-          (collections.db/insert-collection! {:name              (user->personal-collection-name user-or-id :site)
-                                              :personal_owner_id (u/the-id user-or-id)})
+          (first (create-collections! [{:name              (user->personal-collection-name user-or-id :site)
+                                        :personal_owner_id (u/the-id user-or-id)}]))
           ;; if an Exception was thrown why trying to create the Personal Collection, we can assume it was a race
           ;; condition where some other thread created it in the meantime; try one last time to fetch it
           (catch Throwable e
@@ -1586,11 +1577,6 @@
   Cards before the Dashboards and Documents that cascade to the Cards they hold."
   [:model/Card :model/Dashboard :model/Document :model/Exploration :model/Timeline :model/NativeQuerySnippet])
 
-(def ^:private restorable-item-models
-  "The models that follow the restore of their Collection by `collection_id`, in the order their restores run, the
-  Dashboards, Explorations and Documents before the Cards and Documents they hold, which stay archived with them."
-  [:model/Dashboard :model/Exploration :model/Document :model/Timeline :model/NativeQuerySnippet :model/Card])
-
 (defn- archive-followers-updatable?
   "Whether the current user may apply `changes`, which archive or restore `collection`, to every item the change takes
   along, the items of the Collections under it too: each kind of item loaded once, and answered once, by the selection
@@ -1644,36 +1630,11 @@
   [_seed-table-ids]
   nil)
 
-(mu/defn move-collection!
-  "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot
-   new-location :- LocationPath]
-  (let [orig-children-location (children-location collection)
-        new-children-location  (children-location (assoc collection :location new-location))]
-    (when (= (:type collection) tenant-specific-root-collection-type)
-      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; first move this Collection
-    (log/infof "Moving Collection %s and its descendants from %s to %s"
-               (u/the-id collection) (:location collection) new-location)
-    (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
-    (t2/with-transaction [_conn]
-      (collections.db/update-collection! (u/the-id collection) {:location new-location})
-      ;; we need to update all the descendant collections as well...
-      (collections.db/move-descendant-collections! orig-children-location
-                                                   new-children-location
-                                                   (boolean (collections.db/collection-remote-synced? (u/the-id collection)))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; ----------------------------------------------------- INSERT -----------------------------------------------------
-
-(defn- assert-not-personal-collection-for-api-key [collection]
-  (when-not config/is-prod?
-    (when-let [user-id (:personal_owner_id collection)]
-      (when (= :api-key (collections.db/user-type user-id))
-        (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (defn archived?
   "Whether `collection`, a Collection id or the row [[content-parent]] gives, is archived, which the root, nil, never
@@ -1682,6 +1643,11 @@
   (if (map? collection)
     (boolean (:archived collection))
     (collections.db/collection-archived? collection)))
+
+(mu/defn archived-collection-ids :- [:set ms/PositiveInt]
+  "The ids among `collection-ids`, nil for the root, of the Collections that are archived, read together."
+  [collection-ids :- [:maybe [:sequential [:maybe ms/PositiveInt]]]]
+  (collections.db/archived-collection-ids-among (into #{} (remove nil?) collection-ids)))
 
 (defn check-collection-not-archived
   "Throws a 400 when `row-archived?` is false and `collection`, a Collection id or the row [[content-parent]] gives, if
@@ -1707,14 +1673,6 @@
   (when (and personal_owner_id (not= location "/"))
     (let [msg (tru "You cannot move a Personal Collection.")]
       (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))
-
-(defn- location-ancestors
-  "The Collections the location of `row` passes through, by id."
-  [{:keys [location]}]
-  (let [ids (some-> location location-path->ids)]
-    (if (seq ids)
-      (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived] ids)
-      {})))
 
 (defn- check-ancestors-exist
   "Throws a 404 unless every Collection in the location of `row` is among `ancestors`."
@@ -1777,12 +1735,6 @@
       (check-data-app-content :collection))
     (check-library-placement (or (:type row) :collection) (:type parent))))
 
-(defn- check-single-library
-  "Throws a 400 when `row` is a second Collection of the library type."
-  [row]
-  (when (seq (disj (collections.db/collection-ids-with-type library-collection-type) (:id row)))
-    (throw (ex-info (tru "Semantic layer already exists") {:status-code 400}))))
-
 (defn- remote-synced-type->flag
   "`row`, an insert, with the `remote-synced` type turned into the `is_remote_synced` flag."
   [row]
@@ -1792,7 +1744,6 @@
 (defn- before-insert-row
   "`row`, an insert, checked and with the columns it inherits from its parent, which `ancestors` holds."
   [{collection-name :name, :as row} ancestors]
-  (assert-not-personal-collection-for-api-key row)
   (let [parent (parent-of row ancestors)
         row    (merge row (inherited-columns row parent))]
     (check-namespace-columns row)
@@ -1805,67 +1756,9 @@
 
 (t2/define-before-insert :model/Collection
   [row]
-  (let [row       (remote-synced-type->flag row)
-        located?  (contains? row :location)
-        _         (when located? (check-valid-location row))
-        ancestors (when located? (location-ancestors row))]
-    (when located?
-      (check-ancestors-exist row ancestors))
-    (when (= library-collection-type (:type row))
-      (check-single-library row))
-    (before-insert-row row ancestors)))
-
-(defn- copy-collection-permissions!
-  "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
-  and write perms for every Group with write perms for the source Collection."
-  [source-collection-or-id dest-collections-or-ids]
-  ;; figure out who has permissions for the source Collection...
-  (let [group-ids-with-read-perms  (collections.db/group-ids-with-permission-object
-                                    (perms/collection-read-path source-collection-or-id))
-        group-ids-with-write-perms (collections.db/group-ids-with-permission-object
-                                    (perms/collection-readwrite-path source-collection-or-id))]
-    ;; ...and insert corresponding rows for each destination Collection
-    (permissions/create-permissions!
-     (concat
-      ;; insert all the new read-perms records
-      (for [dest     dest-collections-or-ids
-            :let     [read-path (perms/collection-read-path dest)]
-            group-id group-ids-with-read-perms]
-        {:group_id group-id, :object read-path})
-      ;; ...and all the new write-perms records
-      (for [dest     dest-collections-or-ids
-            :let     [readwrite-path (perms/collection-readwrite-path dest)]
-            group-id group-ids-with-write-perms]
-        {:group_id group-id, :object readwrite-path})))
-    ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
-    ;; of the new permissions/collections.
-    (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
-                                              "Automatically updated permissions due to collection creation or move")))
-
-(defn- copy-parent-permissions!
-  "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
-  its parent can see it; and Groups who can 'curate' (write) its parent can 'curate' it, as a default state. (Of
-  course, admins can change these permissions after the fact.)
-
-  This does *not* apply to Collections that are created inside a Personal Collection or one of its descendants.
-  Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the
-  application database.
-
-  This also does *not* apply to Tenant Collections or their descendants. Like Personal Collections, they
-  cannot have permissions entries in the application database.
-
-  For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
-  [{:keys [location id], collection-namespace :namespace, :as collection}]
-  (when-not (or (is-personal-collection-or-descendant-of-one? collection)
-                (is-trash-or-descendant? collection))
-    (let [parent-collection-id (location-path->parent-id location)]
-      (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
-                                    [id]))))
-
-(t2/define-after-insert :model/Collection
-  [collection]
-  (u/prog1 (t2.realize/realize collection)
-    (copy-parent-permissions! <>)))
+  (when (contains? row :location)
+    (check-valid-location row))
+  (assoc row :slug (slugify (:name row))))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
@@ -1894,66 +1787,6 @@
                             first)]
       (throw
        (ex-info msg {:status-code 400 :errors {k msg}})))))
-
-;; MOVING COLLECTIONS ACROSS "PERSONAL" BOUNDARIES
-;;
-;; As mentioned elsewhere, Permissions for Collections are handled in two different, incompatible, ways, depending on
-;; whether or not the Collection is a descendant of a Personal Collection:
-;;
-;; *  Personal Collections, and their descendants, DO NOT have Permissions for different Groups recorded in the
-;;    application Database. Perms are bound dynamically, so that the Current User has read/write perms for their
-;;    Personal Collection, and for any of its descendant Collections. These CANNOT be edited.
-;;
-;; *  Collections that are NOT descendants of Personal Collections are assigned permissions on a Group-by-Group basis
-;;    using Permissions entries from the application DB, and edited via the permissions graph.
-;;
-;; Thus, When a Collection moves "across the boundary" and either becomes a descendant of a Personal Collection, or
-;; ceases to be one, we need to take steps to transition it so it plays nicely with the new way Permissions will apply
-;; to it. The steps taken in each direction are explained in more detail for in the docstrings of their respective
-;; implementing functions below.
-
-(mu/defn- grant-perms-when-moving-out-of-personal-collection!
-  "When moving a descendant of a Personal Collection into the Root Collection, or some other Collection not descended
-  from a Personal Collection, we need to grant it Permissions, since now that it has moved across the boundary into
-  impersonal-land it *requires* Permissions to be seen or 'curated'. If we did not grant Permissions when moving, it
-  would immediately become invisible to all save admins, because no Group would have perms for it. This is obviously a
-  bad experience -- we do not want a User to move a Collection that they have read/write perms for (by definition) to
-  somewhere else and lose all access for it."
-  [collection :- (ms/InstanceOf :model/Collection) new-location :- LocationPath]
-  (copy-collection-permissions! (parent {:location new-location}) (map u/the-id (cons collection (descendants collection)))))
-
-(mu/defn- revoke-perms-when-moving-into-personal-collection!
-  "When moving a `collection` that is *not* a descendant of a Personal Collection into a Personal Collection or one of
-  its descendants (moving across the boundary in the other direction), any previous Group Permissions entries for it
-  need to be deleted, so other users cannot access this newly-Personal Collection.
-
-  This needs to be done recursively for all descendants as well."
-  [collection :- (ms/InstanceOf :model/Collection)]
-  (collections.db/delete-permissions-with-objects! (for [collection (cons collection (descendants collection))
-                                                         path-fn    [perms/collection-read-path
-                                                                     perms/collection-readwrite-path]]
-                                                     (path-fn (u/the-id collection)))))
-
-(defn- update-perms-when-moving-across-personal-boundry!
-  "If a Collection is moving 'across the boundry' and will become a descendant of a Personal Collection, or will cease
-  to be one, adjust the Permissions for it accordingly."
-  [collection-before-updates collection-updates]
-  ;; first, figure out if the collection is a descendant of a Personal Collection now, and whether it will be after
-  ;; the update
-  (let [is-descendant-of-personal?      (is-personal-collection-or-descendant-of-one? collection-before-updates)
-        will-be-descendant-of-personal? (is-personal-collection-or-descendant-of-one? (merge collection-before-updates
-                                                                                             collection-updates))]
-    ;; see if whether it is a descendant of a Personal Collection or not is set to change. If it's not going to
-    ;; change, we don't need to do anything
-    (when (not= is-descendant-of-personal? will-be-descendant-of-personal?)
-      ;; if it *is* a descendant of a Personal Collection, and is about to be moved into the 'real world', we need to
-      ;; copy the new parent's perms for it and for all of its descendants
-      (if is-descendant-of-personal?
-        (grant-perms-when-moving-out-of-personal-collection! collection-before-updates (:location collection-updates))
-        ;; otherwise, if it is *not* a descendant of a Personal Collection, but is set to become one, we need to
-        ;; delete any perms entries for it and for all of its descendants, so other randos won't be able to access
-        ;; this newly privatized Collection
-        (revoke-perms-when-moving-into-personal-collection! collection-before-updates)))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!
   "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.
@@ -1989,15 +1822,15 @@
     (apply = (map std-fn namespaces))))
 
 (defn- check-library-update
-  "Throws a 400 when `row`, with its changes, is a locked section of the library or leaves it, `parent` being the
-  Collection it is in."
-  [row parent]
-  (let [change-keys (set (keys (t2/changes row)))]
+  "Throws a 400 when `row`, the Collection an update with `changes` of `before` leaves, is a locked section of the
+  library or leaves it, `parent` being the Collection it is in."
+  [row before changes parent]
+  (let [change-keys (set (keys changes))]
     (when (and (library-root-collection? row)
                (seq (set/intersection change-keys
                                       #{:name :description :archived :location :personal_owner_id :slug :namespace :type :authority_level :is_sample})))
       (throw (ex-info (tru "Cannot update properties on a semantic layer collection.") {:status-code 400})))
-    (when (and (contains? library-collection-types (:type (t2/original row)))
+    (when (and (contains? library-collection-types (:type before))
                (contains? change-keys :location)
                parent
                (not= (:type row) (:type parent)))
@@ -2015,7 +1848,7 @@
                  (some? (:authority_level changes))
                  (contains? changes :location)
                  (some changes [:type :personal_owner_id :is_sample :archive_operation_id]))
-             (perms/data-app-collection? (:id collection-before-updates))))
+             (perms/data-app-collection? collection-before-updates)))
    [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
   (when (or (:personal_owner_id collection-before-updates)
             (and (not *allow-modifying-tenant-root-collections?*)
@@ -2030,133 +1863,17 @@
   (when (str/starts-with? location (trash-path))
     (throw (ex-info (tru "You cannot move a Collection into the Trash.") {:status-code 400}))))
 
-(defn- remote-synced-after-update
-  "`row`, with `is_remote_synced` derived from `parent` when it moves, checked against it when it changes alone."
-  [row changes parent]
-  (cond
-    (contains? changes :location)
-    (do (when (contains? changes :is_remote_synced)
-          (check-remote-synced-parent row parent))
-        (assoc row :is_remote_synced (boolean (:is_remote_synced parent))))
-
-    (and parent (contains? changes :is_remote_synced))
-    (do (check-remote-synced-parent row parent)
-        row)
-
-    :else
-    row))
-
-(defn- archive-subtree!
-  "Archives the Collections under `row` and the items in them, along with `row`, and unpublishes the tables of its
-  library Data collections."
-  [row]
-  (let [operation-id (:archive_operation_id row)
-        descendants  (collections.db/unarchived-collection-ids-with-location-like (str (children-location row) "%"))
-        ids          (vec (cons (:id row) descendants))]
-    (when (seq descendants)
-      (collections.db/archive-collections! (vec descendants) operation-id))
-    (run! #(collections.db/archive-items-in-collections! % ids) archivable-item-models)
-    (collections.db/archive-pulses-in-collections! ids)
-    (collections.db/archive-items-in-collections! :model/Action ids)
-    (let [library-data-ids (collections.db/collection-ids-of-type ids library-data-collection-type)]
-      (when (seq library-data-ids)
-        (let [published-table-ids (collections.db/published-table-ids-in-collections library-data-ids)]
-          (collections.db/unpublish-tables-in-collections! library-data-ids)
-          (unpublish-downstream-fk-tables! published-table-ids))))))
-
-(defn- restore-subtree!
-  "Restores the Collections under `row` that its archive took down and the items in them that were archived along with
-  them, along with `row`."
-  [row]
-  (let [descendants (when-let [operation-id (:archive_operation_id row)]
-                      (collections.db/archived-collection-ids-in-operation-with-location-like
-                       (str (children-location row) "%")
-                       operation-id))
-        ids         (vec (cons (:id row) descendants))]
-    (when (seq descendants)
-      (collections.db/restore-collections! (vec descendants)))
-    (run! #(collections.db/restore-items-in-collections! % ids) restorable-item-models)
-    (collections.db/restore-pulses-in-collections! ids)
-    (collections.db/restore-actions-in-collections! ids)))
-
-(defmethod mi/after-archived-change :model/Collection
-  [_model rows changes]
-  (doseq [before rows]
-    (events/with-event-context {:archived-with [:model/Collection (:id before)]}
-      (if (:archived changes)
-        (let [row (collections.db/collection (:id before))]
-          (when (:archived_directly row)
-            (archive-subtree! row)))
-        (when (or (:archived_directly before) (not (contains? changes :archive_operation_id)))
-          (restore-subtree! before))))))
-
-(defn- archived-columns
-  "`row`, an update, with the `archived_directly` and `archive_operation_id` its change of `archived` gives: a write that
-  carries an archive operation is the cascade of an archive and gives an inherited archive."
-  [row]
-  (let [changes    (t2/changes row)
-        inherited? (and (:archived row) (some? (:archive_operation_id changes)))
-        row        (if inherited?
-                     (cond-> row
-                       (not (contains? changes :archived_directly)) (assoc :archived_directly false))
-                     (assoc row :archived_directly (mi/archived-directly row #(archived? (location-path->parent-id (:location row))))))]
-    (cond-> row
-      (not (contains? changes :archive_operation_id))
-      (assoc :archive_operation_id (when (and (:archived row) (:archived_directly row))
-                                     (str (random-uuid)))))))
-
-(defn- before-update-row
-  "`row`, an update, checked, with the columns derived from its new parent, which `ancestors` holds."
-  [row ancestors]
-  (let [collection-before-updates (t2/instance :model/Collection (t2/original row))
-        changes                   (or (t2/changes row) {})
-        moved?                    (contains? changes :location)
-        parent                    (parent-of row ancestors)]
-    (check-update-allowed collection-before-updates changes)
-    (when moved?
-      (check-move row))
-    (when (and (contains? changes :namespace)
-               (not (namespace-equals? (:namespace collection-before-updates) (:namespace changes))))
-      (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
-        (throw (ex-info msg {:status-code 400, :errors {:namespace msg}}))))
-    (check-namespace-columns (merge (select-keys collection-before-updates [:namespace]) changes))
-    (when moved?
-      (check-parent-namespace row parent)
-      (check-parent-not-archived row parent))
-    (when (or moved? (contains? changes :type))
-      (check-placement row parent))
-    (check-library-update row parent)
-    (when moved?
-      (update-perms-when-moving-across-personal-boundry! collection-before-updates changes)
-      (update-perms-for-tenant-specific-namespace-change! collection-before-updates changes))
-    (cond-> (remote-synced-after-update row changes parent)
-      (:name changes)                     (assoc :slug (slugify (:name changes)))
-      (contains? changes :archived)       archived-columns)))
-
-(defn- remote-synced-type->flag-on-update
-  "`row`, an update, with the `remote-synced` type turned into the `is_remote_synced` flag."
-  [row]
-  (cond-> row
-    (= (:type row) "remote-synced") (-> (assoc :is_remote_synced true)
-                                        (assoc :type (:type (t2/original row))))))
-
 (t2/define-before-update :model/Collection
   [row]
-  (let [row       (remote-synced-type->flag-on-update row)
-        changes   (t2/changes row)
-        moved?    (contains? changes :location)
-        _         (when moved? (check-valid-location row))
-        ancestors (when (some #(contains? changes %) [:location :is_remote_synced :type])
-                    (location-ancestors row))]
-    (when moved?
-      (check-ancestors-exist row ancestors))
-    (when (and (contains? changes :type) (= library-collection-type (:type row)))
-      (check-single-library row))
-    (before-update-row row ancestors)))
-
-(mi/define-update-in-transaction :model/Collection)
-
-;;; ----------------------------------------------------- DELETE -----------------------------------------------------
+  (let [changes (t2/changes row)]
+    (when (contains? changes :location)
+      (check-valid-location row))
+    (when (and (contains? changes :namespace)
+               (not (namespace-equals? (:namespace (t2/original row)) (:namespace changes))))
+      (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
+        (throw (ex-info msg {:status-code 400, :errors {:namespace msg}}))))
+    (cond-> row
+      (:name changes) (assoc :slug (slugify (:name changes))))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
@@ -2165,31 +1882,6 @@
   macros.)"}
   *allow-deleting-personal-collections*
   false)
-
-(t2/define-before-delete :model/Collection
-  [collection]
-  ;; This should never happen, but just to make sure...
-  (when (= (u/the-id collection) (trash-collection-id))
-    (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
-  ;; delete all collection children
-  (collections.db/delete-collections-at-location! (children-location collection))
-  (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))
-        published-table-ids     (collections.db/published-table-ids-in-collections affected-collection-ids)]
-    (collections.db/unpublish-tables-in-collections! affected-collection-ids)
-    (unpublish-downstream-fk-tables! published-table-ids)
-    (collections.db/delete-cards-in-collections! affected-collection-ids)
-    (collections.db/delete-dashboards-in-collections! affected-collection-ids)
-    (collections.db/delete-native-query-snippets-in-collections! affected-collection-ids)
-    (collections.db/delete-pulses-in-collections! affected-collection-ids)
-    (collections.db/delete-timelines-in-collections! affected-collection-ids)
-    (collections.db/delete-actions-in-collections! affected-collection-ids))
-  ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
-  (when-not *allow-deleting-personal-collections*
-    (when (:personal_owner_id collection)
-      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
-  ;; Delete permissions records for this Collection
-  (collections.db/delete-permissions-with-objects! [(perms/collection-readwrite-path (u/the-id collection))
-                                                    (perms/collection-read-path (u/the-id collection))]))
 
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
@@ -2528,28 +2220,518 @@
             #{[:model/Collection parent-id]}))
         collections))
 
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defn- before-load
-  "The Collection load `items`, refusing archived transforms folders and keeping the names of system collections."
-  [items]
-  (mapv (fn [{:keys [local row] :as item}]
-          ;; An import skips `update-collection!`, so an export from an older version can bring back an archived
-          ;; transforms folder.
-          (when (and (:archived row)
-                     (= transforms-ns (some-> (:namespace row) keyword)))
-            (throw (ex-info (tru "Transforms folder \"{0}\" is archived and cannot be imported. Delete it in the source, or unarchive it there, and export again."
-                                 (:name row))
-                            {:status-code 400
-                             :entity_id   (:entity_id row)})))
-          (cond-> item
-            (and local (system-collection-name local)) (update :row dissoc :name)))
-        items))
-
 (defn- export-parent-ids
   "Exports the `location` of each Collection as the entity id of its parent."
   [store _collections locations _opts]
   (serialization/column-refs store :model/Collection (map location-path->parent-id locations)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defmulti archive-in-collections!
+  "Archives the rows of `model` in the Collections with `collection-ids` along with them, which a model that follows its
+  Collection implements with its own write function."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
+(defmulti restore-in-collections!
+  "Restores the rows of `model` in the Collections with `collection-ids` that were archived along with them, which a
+  model that follows its Collection implements with its own write function."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
+(defmulti delete-in-collections!
+  "Deletes the rows of `model` in the Collections with `collection-ids`, which a model that follows its Collection
+  implements with its own write function."
+  {:arglists '([model collection-ids])}
+  (fn [model _collection-ids] model))
+
+(defn- not-a-follower
+  "Throws that `model` does not follow its Collection in the way asked."
+  [model]
+  (throw (ex-info (format "%s does not follow its Collection in this way" model) {:model model})))
+
+(defmethod archive-in-collections! :default [model _collection-ids] (not-a-follower model))
+
+(defmethod restore-in-collections! :default [model _collection-ids] (not-a-follower model))
+
+(defmethod delete-in-collections! :default [model _collection-ids] (not-a-follower model))
+
+(defn item-ids-to-archive
+  "The ids of the `model` rows in the Collections with `collection-ids` that archiving them archives along with them."
+  [model collection-ids]
+  (if (= model :model/Pulse)
+    (collections.db/pulse-ids-archived-with-collections (vec collection-ids))
+    (collections.db/item-ids-archived-with-collections model (vec collection-ids))))
+
+(defn item-ids-to-restore
+  "The ids of the `model` rows in the Collections with `collection-ids` that were archived along with them and come back
+  when they do."
+  [model collection-ids]
+  (if (= model :model/Pulse)
+    (collections.db/pulse-ids-restored-with-collections (vec collection-ids))
+    (collections.db/item-ids-restored-with-collections model (vec collection-ids))))
+
+(defn item-ids-in-collections
+  "The ids of the `model` rows, a Card, Dashboard or Pulse, in the Collections with `collection-ids`."
+  [model collection-ids]
+  (let [ids (vec collection-ids)]
+    (case model
+      :model/Card      (collections.db/card-ids-in-collections ids)
+      :model/Dashboard (collections.db/dashboard-ids-in-collections ids)
+      :model/Pulse     (collections.db/pulse-ids-in-collections ids))))
+
+(defn- each-follower!
+  "Calls `multi` for each of `models`, in order, with `collection-ids`, after loading the model."
+  [multi models collection-ids]
+  (doseq [model models]
+    (t2/resolve-model model)
+    (multi model collection-ids)))
+
+(def ^:private archive-followers
+  "The models that archive with their Collection, in the order they follow it: Cards before the Dashboards and Documents
+  that carry the Cards they hold."
+  [:model/Card :model/Dashboard :model/Document :model/Exploration :model/Timeline :model/NativeQuerySnippet
+   :model/Pulse :model/Action])
+
+(def ^:private restore-followers
+  "The models that restore with their Collection, in the order they follow it: Dashboards, Explorations and Documents
+  before the Cards and Documents they hold."
+  [:model/Dashboard :model/Exploration :model/Document :model/Timeline :model/NativeQuerySnippet :model/Card
+   :model/Pulse :model/Action])
+
+(def ^:private delete-followers
+  "The models that are deleted with their Collection, in order."
+  [:model/Card :model/Dashboard :model/NativeQuerySnippet :model/Pulse :model/Timeline :model/Action])
+
+(def ^:private unpublish-followers
+  "The models that unpublish the Tables of a Collection that is archived or deleted, in order."
+  [:model/TableUserSettings :model/Table])
+
+(defn- unpublish-tables!
+  "Unpublishes the Tables in the Collections with `collection-ids`, in their user settings too, and the Tables that
+  depend on them."
+  [collection-ids]
+  (when-let [table-ids (not-empty (collections.db/published-table-ids-in-collections collection-ids))]
+    (each-follower! archive-in-collections! unpublish-followers (vec collection-ids))
+    (unpublish-downstream-fk-tables! table-ids)))
+
+(defn- archive-followers!
+  "Archives what is in the Collections with `collection-ids` along with them, each kind with one call, and unpublishes
+  the Tables of their library Data collections."
+  [collection-ids]
+  (each-follower! archive-in-collections! archive-followers (vec collection-ids))
+  (when-let [library-data-ids (not-empty (collections.db/collection-ids-of-type (vec collection-ids) library-data-collection-type))]
+    (unpublish-tables! library-data-ids)))
+
+(defn- restore-followers!
+  "Restores what was archived along with the Collections with `collection-ids` and is in them, each kind with one call,
+  those that hold others before them."
+  [collection-ids]
+  (each-follower! restore-in-collections! restore-followers (vec collection-ids)))
+
+(defn- delete-followers!
+  "Deletes what is in the Collections with `collection-ids`, each kind with one call, after unpublishing their Tables."
+  [collection-ids]
+  (unpublish-tables! collection-ids)
+  (each-follower! delete-in-collections! delete-followers (vec collection-ids)))
+
+(defn- permission-objects
+  "The read and read-write permission paths of the Collections with `collection-ids`."
+  [collection-ids]
+  (vec (for [id        collection-ids
+             path-fn   [perms/collection-read-path perms/collection-readwrite-path]]
+         (path-fn id))))
+
+(defn- copy-collection-permissions!
+  "Grants each target Collection of `source+targets`, the pairs `[source target-id]`, the permissions of its source, a
+  Collection, an id or the root, to every group with read permissions for the source, and write permissions for
+  every group with write permissions for it, and records a new revision of the permission graph."
+  [source+targets]
+  (when (seq source+targets)
+    (let [groups (collections.db/group-ids-by-permission-object
+                  (vec (into #{} (mapcat (fn [[source _]] [(perms/collection-read-path source)
+                                                           (perms/collection-readwrite-path source)]))
+                             source+targets)))]
+      (when-let [rows (not-empty
+                       (vec (for [[source target] source+targets
+                                  path-fn         [perms/collection-read-path perms/collection-readwrite-path]
+                                  group-id        (get groups (path-fn source))]
+                              {:group_id group-id, :object (path-fn target)})))]
+        (permissions/create-permissions! rows))
+      (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
+                                                "Automatically updated permissions due to collection creation or move"))))
+
+(defn- personal-or-descendant?
+  "Whether `collection` is a Personal Collection or in one, `personal-ids` holding the personal Collections among the
+  first ones of the locations."
+  [personal-ids {:keys [personal_owner_id location]}]
+  (boolean (or personal_owner_id
+               (some->> location location-path->ids first (contains? personal-ids)))))
+
+(defn- first-location-ids
+  "The ids of the top-level Collections that the locations of `collections` start with."
+  [collections]
+  (into #{} (keep #(some-> (:location %) location-path->ids first)) collections))
+
+(defn- copy-parent-permissions!
+  "Copies the permissions of its parent, or of the root Collection, to each of `collections`, the new Collections, but
+  those in the Trash and the Personal Collections and what is in them, which have none."
+  [collections]
+  (let [personal-ids (collections.db/personal-collection-ids-among (first-location-ids collections))]
+    (copy-collection-permissions!
+     (for [{:keys [id location], collection-namespace :namespace, :as collection} collections
+           :when (not (or (personal-or-descendant? personal-ids collection)
+                          (is-trash-or-descendant? collection)))]
+       [(or (location-path->parent-id location) (assoc root-collection :namespace collection-namespace))
+        id]))))
+
+(defn- ancestors-of
+  "The Collections the locations of `rows` pass through, by id."
+  [rows]
+  (let [ids (into #{} (comp (keep :location) (mapcat location-path->ids)) rows)]
+    (if (seq ids)
+      (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived] (vec ids))
+      {})))
+
+(defn- check-owners-not-api-keys
+  "Throws when a Personal Collection of `rows` would belong to an API key, which a production instance never reaches."
+  [rows]
+  (when-not config/is-prod?
+    (when-let [owner-ids (not-empty (into #{} (keep :personal_owner_id) rows))]
+      (when-let [user-id (first (collections.db/api-key-user-ids owner-ids))]
+        (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
+
+(defn- check-single-library-rows
+  "Throws a 400 when `rows`, new Collections, hold a second Collection of the library type."
+  [rows]
+  (when-let [library-rows (seq (filter #(= library-collection-type (:type %)) rows))]
+    (when (or (next library-rows) (seq (collections.db/collection-ids-with-type library-collection-type)))
+      (throw (ex-info (tru "Semantic layer already exists") {:status-code 400})))))
+
+(defn- check-transforms-folder-not-archived
+  "Throws a 400 when `row`, with the columns of its stored Collection `stored`, if any, archives a transforms folder,
+  which an export from an older version can bring back."
+  [row stored]
+  (let [row (merge stored row)]
+    (when (and (:archived row)
+               (= transforms-ns (some-> (:namespace row) keyword)))
+      (throw (ex-info (tru "Transforms folder \"{0}\" is archived and cannot be imported. Delete it in the source, or unarchive it there, and export again."
+                           (:name row))
+                      {:status-code 400
+                       :entity_id   (:entity_id row)})))))
+
+(defn- insert-in-order!
+  "Inserts `rows` with one statement for each set of columns they have, and returns the new Collections in the order of
+  `rows`."
+  [rows]
+  (let [indexed (map-indexed vector rows)]
+    (->> (vals (group-by (comp set keys second) indexed))
+         (mapcat (fn [group]
+                   (map vector (map first group) (collections.db/insert-collections! (mapv second group)))))
+         (sort-by first)
+         (mapv second))))
+
+(defn- create-collections*
+  "[[create-collections!]] without checking `rows` against their schema."
+  [rows]
+  (if (empty? rows)
+    []
+    (events/with-batched-events
+      (let [rows      (mapv remote-synced-type->flag rows)
+            located   (filterv #(contains? % :location) rows)
+            _         (run! check-valid-location located)
+            ancestors (ancestors-of located)]
+        (run! #(check-ancestors-exist % ancestors) located)
+        (check-single-library-rows rows)
+        (check-owners-not-api-keys rows)
+        (u/prog1 (insert-in-order! (mapv #(before-insert-row % ancestors) rows))
+          (copy-parent-permissions! <>))))))
+
+(mu/defn create-collections! :- [:sequential (ms/InstanceOf :model/Collection)]
+  "Creates a Collection from each of `rows` and returns the new Collections in order, after checking that each can be
+  where it is put. A new Collection gets the permissions of its parent, unless it is in the Trash or a Personal
+  Collection, and the checks and the reads they take do not grow with the number of rows."
+  [rows :- [:sequential ::collections.schema/collection.create]]
+  (create-collections* rows))
+
+(defn- same-value?
+  "Whether `a` and `b` are the same value of the column `k`, a keyword and its name being the same."
+  [k a b]
+  (if (contains? #{:namespace :authority_level} k)
+    (= (some-> a name) (some-> b name))
+    (= a b)))
+
+(defn- changing-values
+  "The entries of `row`, an `:id` and columns, that change `stored`."
+  [stored row]
+  (into {}
+        (keep (fn [[k v]]
+                (when (and (not= k :id) (not (same-value? k (get stored k) v)))
+                  [k v])))
+        row))
+
+(defn- normalize-update
+  "`row`, an update of the stored Collection `stored`, with the `remote-synced` type turned into the flag and `archived`
+  a boolean."
+  [row stored]
+  (cond-> row
+    (= (:type row) "remote-synced") (-> (assoc :is_remote_synced true) (assoc :type (:type stored)))
+    (some? (:archived row))         (update :archived boolean)))
+
+(defn- update-entry
+  "The update `row` of the stored Collection `stored` as `{:row row :before stored :changes changes}`."
+  [stored row]
+  (let [row (normalize-update row stored)]
+    {:row row, :before stored, :changes (changing-values stored row)}))
+
+(defn- merged
+  "The Collection of `entry`, an update entry, as the update leaves it."
+  [{:keys [before changes]}]
+  (t2/instance :model/Collection (merge before changes)))
+
+(defn- parent-ids-to-read
+  "The ids of the Collections that the checks of the update `entries` read: all those a moved Collection passes through,
+  and the parent of one that changes what it depends on."
+  [entries]
+  (into #{}
+        (mapcat (fn [{:keys [changes] :as entry}]
+                  (let [{:keys [location]} (merged entry)]
+                    (cond
+                      (contains? changes :location)
+                      (location-path->ids location)
+
+                      (some #(contains? changes %) [:is_remote_synced :type :archived])
+                      (some-> location location-path->parent-id vector)))))
+        entries))
+
+(defn- check-single-library-update
+  "Throws a 400 when the update `entries` make a Collection of the library type a second one."
+  [entries]
+  (when-let [becoming (not-empty (into #{} (comp (filter #(and (contains? (:changes %) :type)
+                                                               (= library-collection-type (:type (merged %)))))
+                                                 (map (comp :id :before)))
+                                       entries))]
+    (let [existing (set (collections.db/collection-ids-with-type library-collection-type))
+          all      (into existing becoming)]
+      (when (some #(seq (disj all %)) becoming)
+        (throw (ex-info (tru "Semantic layer already exists") {:status-code 400}))))))
+
+(defn- remote-synced-columns
+  "The `is_remote_synced` a move gives `row`, the Collection an update with `changes` leaves, from `parent`, the
+  Collection it is in, checking a change of the flag alone against it."
+  [row changes parent]
+  (cond
+    (contains? changes :location)
+    (do (when (contains? changes :is_remote_synced)
+          (check-remote-synced-parent row parent))
+        {:is_remote_synced (boolean (:is_remote_synced parent))})
+
+    (and parent (contains? changes :is_remote_synced))
+    (do (check-remote-synced-parent row parent)
+        nil)))
+
+(defn- archived-columns
+  "The `archived_directly` and `archive_operation_id` that a change of `archived` gives `row`, the Collection an update
+  with `changes` leaves, in `parent`: a write that carries an archive operation is the cascade of an archive and gives
+  an inherited archive."
+  [row changes parent]
+  (let [directly (cond
+                   (contains? changes :archived_directly) (:archived_directly changes)
+                   (and (:archived row) (some? (:archive_operation_id changes))) false
+                   :else (boolean (and (:archived row) (not (:archived parent)))))]
+    (cond-> {:archived_directly directly}
+      (not (contains? changes :archive_operation_id))
+      (assoc :archive_operation_id (when (and (:archived row) directly) (str (random-uuid)))))))
+
+(defn- update-columns
+  "The columns to write for `entry`, an update entry, after checking that its changes can be made, `ancestors` holding
+  the Collections it passes through."
+  [{:keys [before changes] :as entry} ancestors]
+  (let [row    (merged entry)
+        moved? (contains? changes :location)
+        parent (parent-of row ancestors)]
+    (check-update-allowed before changes)
+    (when moved?
+      (check-move row))
+    (check-namespace-columns (merge (select-keys before [:namespace]) changes))
+    (when moved?
+      (check-parent-namespace row parent)
+      (check-parent-not-archived row parent))
+    (when (or moved? (contains? changes :type))
+      (check-placement row parent))
+    (check-library-update row before changes parent)
+    (merge changes
+           (remote-synced-columns row changes parent)
+           (when (:name changes) {:slug (slugify (:name changes))})
+           (when (contains? changes :archived) (archived-columns row changes parent)))))
+
+(defn- update-permissions-of-moves!
+  "Adjusts the permissions of the moved update `entries`: a Collection that leaves a Personal Collection gets those of
+  its new parent, with what is under it, one that moves into one loses its own, and one that crosses the tenant
+  namespace boundary gets what EE gives it."
+  [entries ancestors]
+  (let [personal-ids (collections.db/personal-collection-ids-among
+                      (first-location-ids (into [] (mapcat (juxt :before merged)) entries)))
+        crossing     (filterv #(not= (personal-or-descendant? personal-ids (:before %))
+                                     (personal-or-descendant? personal-ids (merged %)))
+                              entries)
+        below        (when (seq crossing)
+                       (collections.db/collections-below (mapv (comp children-location :before) crossing)))
+        subtree-ids  (fn [{:keys [before]}]
+                       (let [prefix (children-location before)]
+                         (cons (:id before)
+                               (into [] (comp (filter #(str/starts-with? (:location %) prefix)) (map :id)) below))))]
+    (copy-collection-permissions!
+     (for [entry  crossing
+           :when  (personal-or-descendant? personal-ids (:before entry))
+           :let   [row (merged entry)
+                   source (or (some->> (:location row) location-path->parent-id (get ancestors)) root-collection)]
+           target (subtree-ids entry)]
+       [source target]))
+    (when-let [objects (not-empty (vec (mapcat (comp permission-objects subtree-ids)
+                                               (remove #(personal-or-descendant? personal-ids (:before %)) crossing))))]
+      (permissions/delete-permissions! [:in :object objects]))
+    (doseq [{:keys [before changes]} entries]
+      (update-perms-for-tenant-specific-namespace-change! before changes))))
+
+(defn- move-descendants!
+  "Moves the Collections under the moved update `entries` with them, giving them the `is_remote_synced` of the columns
+  to write, `columns-by-id`, but not the Collections of `entries` themselves, in one statement."
+  [entries columns-by-id]
+  (collections.db/move-descendant-collections!
+   (mapv (fn [entry]
+           {:old-location    (children-location (:before entry))
+            :new-location    (children-location (merged entry))
+            :remote-synced?  (boolean (:is_remote_synced (get columns-by-id (:id (:before entry)))))})
+         entries)
+   (mapv (comp :id :before) entries)))
+
+(defn- archive-subtrees!
+  "Archives the Collections under the update `entries`, which archive their Collection on its own, with the archive
+  operation of the Collection above them, and what is in all of them."
+  [entries columns-by-id]
+  (let [roots     (mapv (fn [entry]
+                          (assoc entry :operation-id (:archive_operation_id (get columns-by-id (:id (:before entry))))))
+                        entries)
+        below     (collections.db/unarchived-collections-below (mapv (comp children-location :before) roots))
+        nearest   (fn [{:keys [location]}]
+                    (->> roots
+                         (filter #(str/starts-with? location (children-location (:before %))))
+                         (sort-by (comp - count children-location :before))
+                         first))
+        by-root   (group-by (comp :id :before nearest) below)]
+    (doseq [[root-id descendants] by-root
+            :let [operation-id (:operation-id (first (filter #(= root-id (:id (:before %))) roots)))]]
+      (collections.db/update-collections! (mapv :id descendants)
+                                          {:archived true, :archive_operation_id operation-id, :archived_directly false}))
+    (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below))))
+
+(defn- restore-subtrees!
+  "Restores the Collections under the update `entries`, which restore their Collection, that the archive of their
+  Collection took down, and what is in all of them."
+  [entries]
+  (let [below (collections.db/restorable-collections-below
+               (into [] (keep (fn [{:keys [before]}]
+                                (when-let [operation-id (:archive_operation_id before)]
+                                  [(children-location before) operation-id])))
+                     entries))]
+    (when (seq below)
+      (collections.db/update-collections! (mapv :id below) {:archived false, :archive_operation_id nil}))
+    (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below))))
+
+(defn- update-collections*
+  "[[update-collections!]] without checking `updates` against their schema."
+  [updates]
+  (let [updates (vec updates)]
+    (if (empty? updates)
+      []
+      (events/with-batched-events
+        (let [stored  (collections.db/collections-by-id (mapv :id updates))
+              updates (filterv #(contains? stored (:id %)) updates)
+              entries (into [] (comp (map #(update-entry (get stored (:id %)) %))
+                                     (filter (comp seq :changes)))
+                            updates)
+              moved   (filterv #(contains? (:changes %) :location) entries)]
+          (run! #(check-valid-location (merged %)) moved)
+          (let [parent-ids (parent-ids-to-read entries)
+                ancestors  (if (seq parent-ids)
+                             (collections.db/collection-columns-by-id [:id :namespace :type :is_remote_synced :archived]
+                                                                      (vec parent-ids))
+                             {})
+                _          (run! #(check-ancestors-exist (merged %) ancestors) moved)
+                _          (check-single-library-update entries)
+                columns    (mapv #(update-columns % ancestors) entries)
+                by-id      (zipmap (map (comp :id :before) entries) columns)]
+            (when (seq moved)
+              (update-permissions-of-moves! moved ancestors))
+            (doseq [[cols group] (group-by second (map vector entries columns))]
+              (collections.db/update-collections! (mapv (comp :id :before first) group) cols))
+            (let [archiving (filterv #(and (:archived (:changes %)) (:archived_directly (get by-id (:id (:before %))))) entries)
+                  restoring (filterv #(and (contains? (:changes %) :archived)
+                                           (not (:archived (:changes %)))
+                                           (or (:archived_directly (:before %))
+                                               (not (contains? (:row %) :archive_operation_id))))
+                                     entries)]
+              (when-let [roots (seq (concat archiving restoring))]
+                (events/with-event-context {:archived-with [:model/Collection (:id (:before (first roots)))]}
+                  (when (seq archiving)
+                    (archive-subtrees! archiving by-id))
+                  (when (seq restoring)
+                    (restore-subtrees! restoring)))))
+            (when (seq moved)
+              (move-descendants! moved by-id)
+              (doseq [{:keys [before]} moved]
+                (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*}))))
+          updates)))))
+
+(mu/defn update-collections! :- [:sequential ::collections.schema/collection.update-row]
+  "Applies the columns of each of `updates` to the Collection with its `:id` and returns those of Collections that
+  exist, after checking that each change can be made. A Collection moved takes the Collections under it along, one
+  archived on its own takes them and what is in them, and one restored brings back what its archive took down; the
+  statements do not grow with the number of Collections or what is in them."
+  [updates :- [:sequential ::collections.schema/collection.update-row]]
+  (update-collections* updates))
+
+(defn- create-imported-collections!
+  "[[create-collections!]] for the Collections an import creates, which do not bring back an archived transforms folder."
+  [rows]
+  (run! #(check-transforms-folder-not-archived % nil) rows)
+  (create-collections! rows))
+
+(defn- update-imported-collections!
+  "[[update-collections!]] for the Collections an import updates, which keep the names of the system Collections and do
+  not bring back an archived transforms folder."
+  [rows]
+  (let [stored (collections.db/collections-by-id (mapv :id rows))]
+    (run! #(check-transforms-folder-not-archived % (get stored (:id %))) rows)
+    (update-collections! (mapv #(cond-> % (system-collection-name (get stored (:id %))) (dissoc :name)) rows))))
+
+(defn- check-deletable
+  "Throws unless the stored Collection `collection` may be deleted."
+  [{:keys [personal_owner_id] :as collection}]
+  (when (= (u/the-id collection) (trash-collection-id))
+    (throw (ex-info "Fatal error: the trash collection cannot be trashed" {})))
+  (when-not *allow-deleting-personal-collections*
+    (when personal_owner_id
+      (throw (Exception. (tru "You cannot delete a Personal Collection!"))))))
+
+(mu/defn delete-collections! :- :nil
+  "Deletes the Collections with `collection-ids`, the Collections under them, what is in all of them and their
+  permissions, each kind with one call, so the statements do not grow with the number of Collections or what is in
+  them."
+  [collection-ids :- [:sequential ms/PositiveInt]]
+  (when (seq collection-ids)
+    (events/with-batched-events
+      (let [stored (collections.db/collections-by-id (vec (distinct collection-ids)))]
+        (run! check-deletable (vals stored))
+        (when (seq stored)
+          (let [ids (into (set (keys stored))
+                          (map :id)
+                          (collections.db/collections-below (mapv children-location (vals stored))))]
+            (delete-followers! ids)
+            (permissions/delete-permissions! [:in :object (permission-objects ids)])
+            (collections.db/delete-collections! (vec ids)))))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -2578,7 +2760,9 @@
    :storage-paths       storage-paths
    :import-dependencies import-dependencies
    :export-dependencies export-dependencies
-   :before-load         before-load})
+   :insert!             create-imported-collections!
+   :update!             update-imported-collections!
+   :delete!             delete-collections!})
 
 (defmethod remote-sync/spec :model/Collection
   [_model]

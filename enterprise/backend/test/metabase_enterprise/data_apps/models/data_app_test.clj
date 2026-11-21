@@ -6,6 +6,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -62,7 +63,7 @@
   (mt/with-temp [:model/DataApp    {id :id collection-id :resource_collection_id} {}
                  :model/DataApp    {taken-id :resource_collection_id} {}
                  :model/Collection {other-id :id} {:namespace :data-apps}]
-    (t2/delete! :model/Collection :id collection-id)
+    (collection/delete-collections! [collection-id])
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
@@ -196,8 +197,7 @@
                       (vec (repeatedly n #(let [slug (u/lower-case-en (mt/random-name))]
                                             {:slug slug :name slug :bundle_path "index.js"}))))
         collections (fn [n]
-                      (t2/insert-returning-pks! :model/Collection
-                                                (vec (repeatedly n #(hash-map :name (mt/random-name) :namespace "data-apps")))))
+                      (mapv :id (collection/create-collections! (vec (repeatedly n #(hash-map :name (mt/random-name) :namespace "data-apps"))))))
         create!     (fn [n]
                       (let [rows (mapv #(assoc %1 :resource_collection_id %2) (app-rows n) (collections n))]
                         (events.tu/statement-count! (fn [] (swap! created into (map :id (data-app/create-data-apps! rows)))))))]

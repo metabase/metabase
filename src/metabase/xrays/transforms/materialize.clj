@@ -32,9 +32,9 @@
   ([collection-name description]
    (create-collection! collection-name description (root-container-location)))
   ([collection-name description location]
-   (xrays.db/insert-collection-returning-pk! {:name        collection-name
-                                              :description description
-                                              :location    location})))
+   (:id (first (collection/create-collections! [{:name        collection-name
+                                                 :description description
+                                                 :location    location}])))))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."

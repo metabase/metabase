@@ -5,6 +5,7 @@
    [metabase-enterprise.data-apps.dependencies :as data-apps.dependencies]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collections.models.collection :as collection]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
@@ -257,7 +258,11 @@
         (let [missing        (filterv (comp nil? :resource_collection_id) rows)
               new-collection (zipmap (map :slug missing)
                                      (when (seq missing)
-                                       (data-apps.db/insert-resource-collections! (mapv :slug missing))))]
+                                       (mapv :id (collection/create-collections!
+                                                  (mapv (fn [{:keys [slug]}]
+                                                          {:name      (data-apps.db/resource-collection-name slug)
+                                                           :namespace "data-apps"})
+                                                        missing)))))]
           (data-apps.db/insert-data-apps!
            (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
                  rows)))))
@@ -292,7 +297,7 @@
     (events/with-batched-events
       (let [collection-ids (into [] (keep :resource_collection_id) (data-apps.db/data-apps-by-ids (vec data-app-ids)))]
         (when (seq collection-ids)
-          (data-apps.db/delete-resource-collections! collection-ids)))
+          (collection/delete-collections! collection-ids)))
       (data-apps.db/delete-data-apps! (vec data-app-ids))))
   nil)
 

@@ -21,6 +21,8 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.pulse.models.pulse-card :as pulse-card]
+   [metabase.queries.models.card :as card]
    [metabase.queries.schema :as queries.schema]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
@@ -437,7 +439,7 @@
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
   (when (seq dashboard-card-ids)
     (events/with-batched-events
-      (dashboards.db/delete-pulse-cards-for-dashcards! dashboard-card-ids)
+      (pulse-card/delete-pulse-cards-for-dashcards! dashboard-card-ids)
       (dashboards.db/delete-dashcards! dashboard-card-ids)))
   nil)
 
@@ -468,8 +470,9 @@
 (defn- set-questions-archived!
   "Sets `archived` of the Cards with `card-ids` to `archived?` when the current user may, else throws a 403."
   [card-ids archived?]
-  (api/check-403 (mi/can-update-each? :model/Card (dashboards.db/cards-to-set-archived card-ids archived?) {:archived archived?}))
-  (dashboards.db/set-cards-archived! card-ids archived?))
+  (let [cards (dashboards.db/cards-to-set-archived card-ids archived?)]
+    (api/check-403 (mi/can-update-each? :model/Card cards {:archived archived?}))
+    (card/update-cards! (mapv (fn [{:keys [id]}] {:id id :archived archived?}) cards))))
 
 (defn archive-or-unarchive-internal-dashboard-questions!
   "When updating dashboard cards, if we're removing all references to a Dashboard Question (which is internal to the

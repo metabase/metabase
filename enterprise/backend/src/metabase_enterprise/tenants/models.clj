@@ -115,9 +115,10 @@
   (t2/with-transaction [_conn]
     (when (tenants.db/tenant-name-or-slug-exists? tenant-name slug)
       (throw (ex-info (tru "This tenant name or slug is already taken.") {:status-code 400})))
-    (let [collection-id (tenants.db/insert-collection! {:type      collection/tenant-specific-root-collection-type
-                                                        :name      (format "Tenant Collection: %s" tenant-name)
-                                                        :namespace :tenant-specific})]
+    (let [collection-id (:id (first (collection/create-collections!
+                                     [{:type      collection/tenant-specific-root-collection-type
+                                       :name      (format "Tenant Collection: %s" tenant-name)
+                                       :namespace :tenant-specific}])))]
       (tenants.db/insert-tenant! (assoc tenant :tenant_collection_id collection-id)))))
 
 (mu/defn update-tenant!

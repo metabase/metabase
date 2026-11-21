@@ -26,6 +26,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
+   [metabase.queries.models.card :as queries.card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.remote-sync.core :as remote-sync]
@@ -60,20 +61,6 @@
 
 ;;; ---------- Hooks ---------------------------------------------------------------------------------------------
 
-(defn- document-parent-archived?
-  "Whether the Collection that `document` is in, or the Exploration it summarizes, is archived."
-  [{:keys [collection_id exploration_id]}]
-  (boolean (or (collection/archived? collection_id)
-               (and exploration_id (documents.db/exploration-archived? exploration_id)))))
-
-(defmethod mi/after-archived-change :model/Document
-  [_model rows changes]
-  (let [ids (mapv :id rows)]
-    (events/with-event-context {:archived-with [:model/Document (first ids)]}
-      (if (:archived changes)
-        (documents.db/archive-document-cards! ids)
-        (documents.db/restore-document-cards! ids)))))
-
 (t2/define-before-insert :model/Document
   [document]
   (public-sharing/add-public-uuid-prefix document))
@@ -85,10 +72,8 @@
                (not (contains? changes :public_uuid)))
       (throw (ex-info (tru "The public UUID prefix of a Document follows its public UUID; change the public UUID instead.")
                       {:status-code 400})))
-    (cond-> (public-sharing/add-public-uuid-prefix-if-changed document)
-      (contains? changes :archived) (assoc :archived_directly (mi/archived-directly document #(document-parent-archived? document))))))
+    (public-sharing/add-public-uuid-prefix-if-changed document)))
 
-(mi/define-update-in-transaction :model/Document)
 (t2/define-after-select :model/Document
   [document]
   (public-sharing/remove-public-uuid-if-public-sharing-is-disabled document))
@@ -307,6 +292,28 @@
                          (not (some-> (:exploration_id stored) exploration-archived?)))))
     row))
 
+(defn- move-cards!
+  "Moves the cards of the Documents of `moved`, update rows that change `collection_id`, to the Collection of their
+  Document, with one call for each Collection."
+  [moved]
+  (doseq [[collection-id moved-rows] (group-by :collection_id moved)
+          :let [card-ids (documents.db/card-ids-of-documents (mapv :id moved-rows))]
+          :when (seq card-ids)]
+    (queries.card/update-cards! (mapv (fn [id] {:id id :collection_id collection-id}) card-ids))))
+
+(defn- set-cards-archived!
+  "Archives the cards of the Documents of `rows`, update rows that change `archived`, which the Document archives, and
+  restores those that its archive took down."
+  [rows]
+  (doseq [[archived? group] (group-by (comp boolean :archived) rows)
+          :let [ids      (mapv :id group)
+                card-ids (if archived?
+                           (documents.db/card-ids-archived-with-documents ids)
+                           (documents.db/card-ids-restored-with-documents ids))]
+          :when (seq card-ids)]
+    (events/with-event-context {:archived-with [:model/Document (first ids)]}
+      (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids)))))
+
 (mu/defn update-documents! :- [:sequential ::documents.schema/document.update-row]
   "Apply the columns of each of `rows` to the Document with its `:id`, and return `rows`. A Document moved to another
   Collection moves its cards along and the new Collection must be able to hold it, and a change of `archived` gives its
@@ -317,17 +324,26 @@
     (if (empty? rows)
       rows
       (events/with-batched-events
-        (let [collection-archived? (memoize collection/archived?)
-              exploration-archived? (memoize documents.db/exploration-archived?)
-              rows                 (mapv #(with-archived-directly (get stored (:id %)) % collection-archived? exploration-archived?) rows)
+        (let [archiving            (filterv #(contains? % :archived) rows)
+              archived-collections (collection/archived-collection-ids
+                                    (map #(if (contains? % :collection_id)
+                                            (:collection_id %)
+                                            (:collection_id (get stored (:id %))))
+                                         archiving))
+              archived-explorations (documents.db/archived-exploration-ids
+                                     (into #{} (keep #(:exploration_id (get stored (:id %)))) archiving))
+              rows                 (mapv #(with-archived-directly (get stored (:id %)) %
+                                            (partial contains? archived-collections)
+                                            (partial contains? archived-explorations))
+                                         rows)
               moved                (filterv #(changed? (get stored (:id %)) % :collection_id) rows)]
           (check-collections! (for [row moved]
                                 {:collection_id (:collection_id row)
                                  :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))}))
-          (doseq [[collection-id moved-rows] (group-by :collection_id moved)]
-            (documents.db/move-document-cards! (mapv :id moved-rows) collection-id))
+          (move-cards! moved)
           (doseq [[changes group] (group-by #(dissoc % :id) rows)]
             (documents.db/update-documents! (mapv :id group) changes))
+          (set-cards-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
           rows)))))
 
 (mu/defn update-document! :- :nil
@@ -608,6 +624,16 @@
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
+
+(defmethod collection/archive-in-collections! :model/Document
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
+    (update-documents! (mapv (fn [id] {:id id :archived true}) ids))))
+
+(defmethod collection/restore-in-collections! :model/Document
+  [model collection-ids]
+  (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
+    (update-documents! (mapv (fn [id] {:id id :archived false}) ids))))
 
 ;;; ---------- Specs ---------------------------------------------------------------------------------------------
 

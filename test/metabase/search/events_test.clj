@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -219,7 +220,7 @@
         ;; type, location and authority level.
         (is (= #{"collection"}
                (enqueued-search-models
-                (capture-enqueues! #(t2/update! :model/Collection :id coll-id {:description "described"})))))))))
+                (capture-enqueues! #(collection/update-collections! [{:id coll-id :description "described"}])))))))))
 
 (deftest self-assigned-updated-at-enqueues-nothing-test
   (testing "a write that keeps `updated_at` as it is reindexes nothing when no document reads the column it sets"
@@ -317,7 +318,7 @@
         (is (= 1 (indexed-count "collection" coll-id)))
         ;; cards must go first: a collection with contents refuses deletion.
         (t2/delete! :model/Card :collection_id coll-id)
-        (t2/delete! :model/Collection :id coll-id)
+        (collection/delete-collections! [coll-id])
         (is (= 0 (indexed-count "card" c1 c2)))
         (is (= 0 (indexed-count "collection" coll-id)))))))
 

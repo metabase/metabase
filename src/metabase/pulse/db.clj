@@ -525,3 +525,8 @@
                        [:= :p.alert_condition    nil]
                        [:= :p.dashboard_id nil]
                        (collections.listing/pinned-state->clause pinned-state :p.collection_position)]}))
+
+(mu/defn pulse-channel-ids-for-channels
+  "The IDs of the PulseChannels of the Channels with `channel-ids`."
+  [channel-ids :- [:sequential ms/PositiveInt]]
+  (vec (t2/select-pks-vec :model/PulseChannel :channel_id [:in channel-ids])))

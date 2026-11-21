@@ -1840,7 +1840,7 @@
       (perms/revoke-collection-permissions! (perms/all-users-group) collection-id)
       (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
       (mt/with-current-user (mt/user->id :crowberto)
-        (t2/update! :model/Collection :id collection-id {:archived true}))
+        (collection/update-collections! [{:id collection-id :archived true}]))
       (testing "Sanity check: Lucky should not be able to write our test Collection"
         (mt/with-test-user :lucky
           (is (not (mi/can-write? (t2/hydrate (t2/select-one :model/Collection :id collection-id) :can_write))))))
@@ -2179,7 +2179,7 @@
               (is (some #(= (:id %) card-id) (:data search-results))
                   "Card should be found in search results before database deletion")))
           (testing "Card should be hidden from search after database deletion"
-            (t2/delete! :model/Database :id db-id)
+            (database/delete-database! db-id)
             (is (not (t2/exists? :model/Card :id card-id)))
             (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
               (is (not (some #{card-id}

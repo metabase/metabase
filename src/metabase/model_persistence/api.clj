@@ -136,7 +136,7 @@
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
       (database/update-database! (u/the-id db)
-                                             {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
+                                 {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
 (api.macros/defendpoint :post "/disable" :- ::api/generic-204-no-content

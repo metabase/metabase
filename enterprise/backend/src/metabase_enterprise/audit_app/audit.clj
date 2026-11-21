@@ -74,13 +74,13 @@
   (t2/with-transaction [_conn]
     (database/create-database! {:id               id
                                 :is_audit         true
-                                    :name             default-db-name
-                                    :description      "Internal Audit DB used to power metabase analytics."
-                                    :engine           engine
-                                    :is_full_sync     true
-                                    :is_on_demand     false
-                                    :creator_id       nil
-                                    :auto_run_queries true})
+                                :name             default-db-name
+                                :description      "Internal Audit DB used to power metabase analytics."
+                                :engine           engine
+                                :is_full_sync     true
+                                :is_on_demand     false
+                                :creator_id       nil
+                                :auto_run_queries true})
     ;; guard against someone manually deleting the audit-db entry, but not removing the audit-db permissions.
     (permissions/delete-permissions! [:like :object (str "%/db/" id "/%")])))
 

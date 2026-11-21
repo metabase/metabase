@@ -20,7 +20,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
-   [metabase.transforms-base.db :as transforms-base.db]
    [metabase.transforms-base.ordering :as ordering]
    [metabase.transforms.core :as transforms.core]
    [metabase.transforms.models.transform :as transform]
@@ -494,7 +493,7 @@
                                                          (Thread/sleep 1500))
                                                        (apply search-update! instance more))]
             (let [run     (future
-                            (transforms-base.db/update-transform! transform-id {:target_table_id (mt/id :venues)}))
+                            (transform/update-transforms! {transform-id {:target_table_id (mt/id :venues)}}))
                   delete  (future
                             (deref run-updated 30000 nil)
                             (t2/delete! :model/Transform :id transform-id))

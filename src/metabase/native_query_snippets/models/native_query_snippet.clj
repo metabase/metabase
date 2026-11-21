@@ -113,9 +113,7 @@
   (let [changes (t2/changes snippet)]
     (when (contains? changes :creator_id)
       (throw (ex-info (tru "You cannot change the creator of a snippet.") {:status-code 400})))
-    (cond-> snippet
-      (contains? changes :archived)
-      (assoc :archived_directly (mi/archived-directly snippet #(collection/archived? (:collection_id snippet)))))))
+    snippet))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -325,6 +323,18 @@
     (let [stored (native-query-snippets.db/snippets-by-id (mapv :id rows))]
       (update-snippets! (native-query-snippets.serialization/with-free-names
                           rows #(:entity_id (get stored (:id %))))))))
+
+(defmethod collection/archive-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids]
+  (archive-snippets-in-collections! (vec collection-ids)))
+
+(defmethod collection/restore-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids]
+  (restore-snippets-in-collections! (vec collection-ids)))
+
+(defmethod collection/delete-in-collections! :model/NativeQuerySnippet
+  [_model collection-ids]
+  (delete-snippets-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

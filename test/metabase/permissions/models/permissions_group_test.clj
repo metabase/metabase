@@ -14,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -104,8 +105,7 @@
         (perms/set-database-permission! group-id database-id :perms/create-queries :query-builder-and-native)
         (perms/set-database-permission! group-id database-id :perms/download-results :one-million-rows))
       (mt/with-model-cleanup [:model/Database]
-        (let [database-id (t2/insert-returning-pk! :model/Database
-                                                   {:name "Test" :engine "h2" :details "{}"})]
+        (let [database-id (:id (database/create-database! {:name "Test" :engine :h2 :details {}}))]
           (is (= {:perms/view-data      :blocked
                   :perms/create-queries :no}
                  (t2/select-fn->fn :perm_type :perm_value :model/DataPermissions

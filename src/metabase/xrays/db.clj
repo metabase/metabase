@@ -2,7 +2,6 @@
   "Application database queries for the x-rays module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for hydration."
   (:require
-   [metabase.collections.schema :as collections.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -209,16 +208,6 @@
                  :name "Automatically Generated Dashboards"
                  :archived false
                  :location location))
-
-(mu/defn insert-collection!
-  "Insert the Collection `row` and return the inserted instance."
-  [row :- ::collections.schema/collection.update]
-  (t2/insert-returning-instance! :model/Collection row))
-
-(mu/defn insert-collection-returning-pk!
-  "Insert the Collection `row` and return its id."
-  [row :- ::collections.schema/collection.update]
-  (t2/insert-returning-pk! :model/Collection row))
 
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."

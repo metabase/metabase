@@ -7,12 +7,14 @@
    [metabase-enterprise.serialization.core :as ee.serialization]
    [metabase.actions.models :as actions.models]
    [metabase.collections.core :as collections]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.serialization.core :as serialization]
    [metabase.test :as mt]
    [metabase.util.yaml :as yaml]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import
    (java.nio.charset StandardCharsets)
@@ -171,7 +173,7 @@
           :metrics-id (id-of collections/library-metrics-collection-type)})
       (finally
         (when-not existing
-          (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
+          (collection/delete-collections! (vec (cons (:id library) (map :id children)))))))))
 
 (defn do-with-sources!
   "Call `f` with what a data app uses from outside its collection, a venues metric in the Library and an implicit action
@@ -230,7 +232,9 @@
          (finally
            (doseq [table-id to-publish]
              (t2/update! :model/TableUserSettings :table_id table-id
-                         (get previous table-id {:collection_id nil, :is_published nil})))))))))
+                         (get previous table-id {:collection_id nil, :is_published nil})))
+           (when (seq to-publish)
+             (warehouse-schema.db/delete-empty-table-user-settings! (vec to-publish)))))))))
 
 (defmacro with-published-tables!
   "Run `body` with the Tables with `table-ids` published to the Library."

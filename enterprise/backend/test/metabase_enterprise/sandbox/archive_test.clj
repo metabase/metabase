@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.archive-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -83,7 +84,7 @@
   [& colls]
   (mt/with-test-user :crowberto
     (doseq [coll colls]
-      (t2/update! :model/Collection :id (:id coll) {:archived true}))))
+      (collection/update-collections! [{:id (:id coll) :archived true}]))))
 
 (def ^:private scenarios
   "The archives and restores that take down something a sandbox is built out of: a name, whether the scenario starts from

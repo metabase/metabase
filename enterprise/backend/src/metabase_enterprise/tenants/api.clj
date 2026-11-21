@@ -91,7 +91,7 @@
       (tenant/update-tenant! tenant-id tenant)
       (when (and collection-id (some? is_active))
         (collection/with-allow-modifying-tenant-root-collections
-          (tenants.db/set-collection-archived! collection-id (not is_active))))
+          (collection/update-collections! [{:id collection-id :archived (not is_active)}])))
       (tenants.db/tenant tenant-id))))
 
 (api.macros/defendpoint :put "/:id" :- Tenant

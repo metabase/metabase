@@ -14,12 +14,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn rename-collection!
-  "Set the name of the Collection with `collection-id`."
-  [collection-id   :- ::lib.schema.id/collection
-   collection-name :- :string]
-  (t2/update! :model/Collection :id collection-id {:name collection-name}))
-
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]

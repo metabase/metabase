@@ -678,7 +678,7 @@
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
             (let [collection-id (:collection_id (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))]
-              (t2/update! :model/Collection :id collection-id {:authority_level "official"}))
+              (collection/update-collections! [{:id collection-id :authority_level "official"}]))
             (is (= "official"
                    (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                        :collection_authority_level)))))))))

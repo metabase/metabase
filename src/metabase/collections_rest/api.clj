@@ -631,10 +631,11 @@
                    "Personal collections cannot be deleted.")
     (events/with-batched-events
       ;; First, move all children (along with their children) that were archived directly OUT of this collection
-      (doseq [child (collections-rest.db/directly-archived-descendant-collections old-children-location)]
-        (collection/move-collection! child new-children-location))
+      (collection/update-collections! (mapv (fn [child] {:id (:id child) :location new-children-location})
+                                            (collections-rest.db/directly-archived-descendant-collections old-children-location)))
       ;; Now we can safely delete this collection and anything left under it.
-      (collections-rest.db/delete-collection! id))))
+      (collection/delete-collections! [id])
+      1)))
 
 (api.macros/defendpoint :get "/:id/items" :- ::ItemsResponse
   "Fetch a specific Collection's items with the following options:

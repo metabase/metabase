@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.queries.models.card :as card]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -87,7 +88,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (t2/update! :model/Card :id (u/the-id card) card))))))))
+                (#'card/update-cards* [(assoc (select-keys card [:dataset_query]) :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-2
   (testing "Existing Card"
@@ -103,8 +104,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card :id (u/the-id card)
-                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
+                  (#'card/update-cards* [(assoc {:dataset_query (native-query-with-template-tag new-field)} :id (u/the-id card))])))))))))
 
 (deftest existing-card-test-3
   (testing "Existing Card"
@@ -118,8 +118,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (t2/update! :model/Card :id (u/the-id card)
-                            {:dataset_query (native-query-with-template-tag field)}))))))))
+                (#'card/update-cards* [(assoc {:dataset_query (native-query-with-template-tag field)} :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-4
   (testing "Existing Card"
@@ -130,7 +129,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (t2/update! :model/Card :id (u/the-id card) card))))))))
+                (#'card/update-cards* [(assoc (select-keys card [:dataset_query]) :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-5
   (testing "Existing Card"
@@ -143,8 +142,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (t2/update! :model/Card :id (u/the-id card)
-                            {:dataset_query (native-query-with-template-tag field)}))))))))
+                (#'card/update-cards* [(assoc {:dataset_query (native-query-with-template-tag field)} :id (u/the-id card))]))))))))
 
 (deftest existing-card-test-6
   (testing "Existing Card"
@@ -159,8 +157,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card :id (u/the-id card)
-                              {:dataset_query (native-query-with-template-tag new-field)})))))))))
+                  (#'card/update-cards* [(assoc {:dataset_query (native-query-with-template-tag new-field)} :id (u/the-id card))])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   DASHBOARDS                                                   |

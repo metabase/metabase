@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -562,7 +563,7 @@
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
                    :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
                    :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
+      (collection/delete-collections! [coll-id])
       (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
                                               :id [:in [table-1-id table-2-id]]))))))
 

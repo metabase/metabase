@@ -35,6 +35,13 @@
    [:created_at          {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at          {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::exploration.update-row
+  "An Exploration by its id with the columns to change."
+  [:merge
+   ::exploration.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::exploration-block.metric.explore-filter
   "One entry of a block metric selection's `:explore_filters` vector, decoded."
   [:multi {:dispatch :operator}

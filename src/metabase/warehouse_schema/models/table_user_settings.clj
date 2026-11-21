@@ -1,6 +1,7 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -276,6 +277,11 @@
   (doseq [{{:keys [table_id field_order]} :instance} items
           :when field_order]
     (table/update-field-positions! (warehouse-schema.db/table table_id))))
+
+(defmethod collection/archive-in-collections! :model/TableUserSettings
+  [_model collection-ids]
+  (when-let [ids (not-empty (warehouse-schema.db/table-user-settings-ids-of-published-tables-in-collections (vec collection-ids)))]
+    (update-table-user-settings-rows! (mapv (fn [id] {:id id :collection_id nil :is_published false}) ids))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
