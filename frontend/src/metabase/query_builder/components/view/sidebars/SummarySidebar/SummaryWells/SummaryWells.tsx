@@ -5,6 +5,7 @@ import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { SummaryFormulaInput } from "../SummaryFormulaBar";
+import type { SummaryFormulaGenerator } from "../SummaryFormulaGenerator";
 import S from "../SummarySidebar.module.css";
 import type {
   SummaryDragItem,
@@ -34,6 +35,7 @@ type SummaryWellsProps = {
   stageIndex: number;
   sections: SummaryFieldSection[];
   formulaInputs?: Partial<Record<SummaryWellId, SummaryFormulaInput>>;
+  formulaGenerator?: SummaryFormulaGenerator;
   draftFormula?:
     | (DraftFormulaChipProps & { wellId: SummaryWellId; draftKey: number })
     | null;
@@ -47,6 +49,7 @@ export function SummaryWells({
   stageIndex,
   sections,
   formulaInputs,
+  formulaGenerator,
   draftFormula,
   draggedItem,
   onPick,
@@ -93,6 +96,7 @@ export function SummaryWells({
         <SummaryWellInput
           wellId="values"
           formulaInput={formulaInputs?.values}
+          formulaGenerator={formulaGenerator}
           sections={valueSections}
           hasItems={valueItems.length > 0}
           autoFocus
@@ -127,6 +131,7 @@ export function SummaryWells({
         <SummaryWellInput
           wellId="columns"
           formulaInput={formulaInputs?.columns}
+          formulaGenerator={formulaGenerator}
           sections={columnSections}
           hasItems={dimensionItems.length > 0}
           onPick={(field) => onPick("columns", field)}
