@@ -51,8 +51,7 @@
 (doto :model/DataApp
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/timestamped?))
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
@@ -262,19 +261,26 @@
                                                   (mapv (fn [{:keys [slug]}]
                                                           {:name      (data-apps.db/resource-collection-name slug)
                                                            :namespace "data-apps"})
-                                                        missing)))))]
-          (data-apps.db/insert-data-apps!
-           (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
-                 rows)))))
+                                                        missing)))))
+              apps           (data-apps.db/insert-data-apps!
+                              (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
+                                    rows))]
+          (events/publish-lifecycle! [(events/created :event/data-app-create apps)])
+          apps)))
     []))
+
+(defn- updated-data-app
+  "The DataApp `stored` as the update `changes` leaves it, normalized as the update hook does."
+  [stored changes]
+  (events/updated-row stored (prepare ::data-apps.schema/data-app.update changes)))
 
 (mu/defn update-data-apps! :- :nil
   "Apply the changes in `changes-by-id`, a map from the id of a DataApp to its changes, which the hooks of the model
-  normalize and validate, in one batch of events, with one statement per distinct change set. Throws unless a new
-  resource collection can be one."
+  normalize and validate, in one transaction, with one statement per distinct change set, publishing their update
+  event. Throws unless a new resource collection can be one."
   [changes-by-id :- [:map-of ms/PositiveInt :map]]
   (when (seq changes-by-id)
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (vec (keys changes-by-id))))]
         (check-resource-collections!
          (into {}
@@ -286,19 +292,30 @@
                changes-by-id))
         (doseq [[changes pairs] (group-by val changes-by-id)
                 :when           (seq changes)]
-          (data-apps.db/update-data-apps! (mapv key pairs) changes)))))
+          (data-apps.db/update-data-apps! (mapv key pairs) changes))
+        (let [pairs (into []
+                          (keep (fn [[id changes]]
+                                  (when-let [previous (stored id)]
+                                    (let [object (updated-data-app previous changes)]
+                                      (when (not= (into {} previous) (into {} object))
+                                        [previous object])))))
+                          changes-by-id)]
+          (events/publish-lifecycle! [(events/updated :event/data-app-update (mapv first pairs) (mapv second pairs))])))))
   nil)
 
 (mu/defn delete-data-apps! :- :nil
   "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, in one batch of
-  events. The collection's own hooks delete what it holds."
+  events, publishing their delete event. The collection's own hooks delete what it holds."
   [data-app-ids :- [:sequential ms/PositiveInt]]
   (when (seq data-app-ids)
     (events/with-batched-events
-      (let [collection-ids (into [] (keep :resource_collection_id) (data-apps.db/data-apps-by-ids (vec data-app-ids)))]
+      (let [apps           (data-apps.db/data-apps-by-ids (vec data-app-ids))
+            collection-ids (into [] (keep :resource_collection_id) apps)]
         (when (seq collection-ids)
-          (collection/delete-collections! collection-ids)))
-      (data-apps.db/delete-data-apps! (vec data-app-ids))))
+          (collection/delete-collections! collection-ids))
+        (let [event (events/deleted :event/data-app-delete :model/DataApp apps)]
+          (data-apps.db/delete-data-apps! (vec data-app-ids))
+          (events/publish-lifecycle! [event])))))
   nil)
 
 (defn- update-imported-data-apps!
@@ -315,12 +332,6 @@
     rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/DataApp
-  [_model]
-  {:create :event/data-app-create
-   :update :event/data-app-update
-   :delete :event/data-app-delete})
 
 (defmethod app-db-copy/spec :model/DataApp [_model]
   {:skip? true})

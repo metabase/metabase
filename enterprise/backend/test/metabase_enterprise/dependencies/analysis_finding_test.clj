@@ -16,8 +16,10 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.dependencies :as queries.dependencies]
    [metabase.query-processor :as qp]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform :as transform.model]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -526,9 +528,8 @@
                                                              :target {:schema "public"
                                                                       :name "sample"
                                                                       :type :table}}]
-           (is (= 1 (t2/update! :model/Transform :id transform-id
-                                {:source {:type :query
-                                          :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})))))))))
+           (is (nil? (transform.model/update-transforms! {transform-id {:source {:type :query
+                                                                                 :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}})))))))))
 
 (deftest ^:synchronized transform-update-updates-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -542,8 +543,8 @@
                                                                       :name "sample"
                                                                       :type :table}}]
            (analyzed-by-job!)
-           (t2/update! :model/Transform :id transform-id {:source {:type :query
-                                                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}})
+           (transform.model/update-transforms! {transform-id {:source {:type :query
+                                                                       :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}}})
            (is (= #{[:transform transform-id]} (analyzed-among! [:transform transform-id])))))))))
 
 (deftest ^:synchronized transform-update-triggers-native-transforms-test
@@ -556,9 +557,8 @@
                                                            :target {:schema "public"
                                                                     :name "sample"
                                                                     :type :table}}]
-         (is (= 1 (t2/update! :model/Transform :id transform-id
-                              {:source {:type :query
-                                        :query (lib/native-query mp "select * from orders")}}))))))))
+         (is (nil? (transform.model/update-transforms! {transform-id {:source {:type :query
+                                                                               :query (lib/native-query mp "select * from orders")}}}))))))))
 
 (deftest ^:synchronized transform-run-works-with-no-analyses-test
   (deps.test/run-with-dependencies-setup!
@@ -604,8 +604,7 @@
    (fn [_]
      (testing "Segment update does not error when no analyses exist yet"
        (mt/with-temp [:model/Segment {segment-id :id} {:definition (price-segment-definition lib/>)}]
-         (is (= 1 (t2/update! :model/Segment :id segment-id
-                              {:definition (price-segment-definition lib/<)}))))))))
+         (is (nil? (segment/update-segment! segment-id {:definition (price-segment-definition lib/<)}))))))))
 
 (deftest ^:synchronized segment-update-analyzes-segment-and-dependents-test
   (deps.test/run-with-dependencies-setup!
@@ -617,7 +616,7 @@
                                                                                 (lib.metadata/segment (mt/metadata-provider)
                                                                                                       segment-id))}]
              (analyzed-by-job!)
-             (t2/update! :model/Segment :id segment-id {:definition (price-segment-definition lib/<)})
+             (segment/update-segment! segment-id {:definition (price-segment-definition lib/<)})
              (is (= #{[:segment segment-id] [:card card-id]}
                     (analyzed-among! [:segment segment-id] [:card card-id]))))))))))
 

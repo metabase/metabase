@@ -12,7 +12,10 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.lib.core :as lib]
+   [metabase.measures.models.measure :as measure]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform.model]
    [toucan2.core :as t2]))
 
 (comment
@@ -196,24 +199,22 @@
           (is (= (marked {:dependency      [:measure]
                           :analysis        [:card-d :card-e]
                           :result-metadata [:card-d :card-e]})
-                 (marks! world #(t2/update! :model/Measure :id (id-of world :measure)
-                                            {:definition (lib/aggregate (deps.test/table-query :orders)
-                                                                        (lib/count))
-                                             :name       "Renamed measure"})))))
+                 (marks! world #(measure/update-measure! (id-of world :measure) {:definition (lib/aggregate (deps.test/table-query :orders)
+                                                                                                            (lib/count))
+                                                                                 :name       "Renamed measure"})))))
         (testing "a segment definition change marks its own dependency and analysis and its direct dependents"
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
                           :result-metadata [:card-g]})
-                 (marks! world #(t2/update! :model/Segment :id (id-of world :segment)
-                                            {:definition (lib/filter (deps.test/table-query :checkins)
-                                                                     (lib/= 2 2))})))))
+                 (marks! world #(segment/update-segment! (id-of world :segment) {:definition (lib/filter (deps.test/table-query :checkins)
+                                                                                                         (lib/= 2 2))})))))
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
                  (marks! world #(t2/delete! :model/NativeQuerySnippet :id (id-of world :snippet-inner))))))
         (testing "deleting a measure marks every transitive dependent's result metadata and analysis"
           (is (= (marked {:analysis [:card-d :card-e] :result-metadata [:card-d :card-e]})
-                 (marks! world #(t2/delete! :model/Measure :id (id-of world :measure))))))))))
+                 (marks! world #(measure/delete-measures! [(id-of world :measure)])))))))))
 
 (deftest table-and-field-writes-test
   (mt/with-premium-features #{:dependencies}
@@ -342,12 +343,11 @@
       (fn [world]
         (testing "a transform source change marks its own dependency and analysis"
           (is (= (marked {:dependency [:transform] :analysis [:transform]})
-                 (marks! world #(t2/update! :model/Transform :id (id-of world :transform)
-                                            {:source {:type  :query
-                                                      :query (lib/native-query (mt/metadata-provider) "SELECT 2")}})))))
+                 (marks! world #(transform.model/update-transforms! {(id-of world :transform) {:source {:type  :query
+                                                                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}})))))
         (testing "a transform rename marks nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(t2/update! :model/Transform :id (id-of world :transform) {:name "Renamed"})))))
+                 (marks! world #(transform.model/update-transforms! {(id-of world :transform) {:name "Renamed"}})))))
         (mt/with-temp [:model/Action      {action-id :id} {:type :query :name "Marks action"}
                        :model/QueryAction _               {:action_id     action-id
                                                            :database_id   (mt/id)

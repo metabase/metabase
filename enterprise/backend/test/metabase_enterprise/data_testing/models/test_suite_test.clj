@@ -7,8 +7,10 @@
    [metabase-enterprise.data-testing.models.test-suite :as test-suite]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
+   [metabase.events.test-util :as events.tu]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime ZoneOffset)))
@@ -78,7 +80,7 @@
                   :model    "TestSuite"}
                  (mt/latest-audit-log-entry :test-suite-create suite-id))))
         (testing "update names the acting user, and the changed columns"
-          (t2/update! :model/TestSuite :id suite-id {:name "Renamed"})
+          (test-suite/update-test-suite! suite-id {:name "Renamed"})
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:previous {:name "Nightly"} :new {:name "Renamed"}}
@@ -97,7 +99,7 @@
                     :model    "TestSuite"}
                    (first (updates))))))
         (testing "delete names the acting user"
-          (t2/delete! :model/TestSuite :id suite-id)
+          (test-suite/delete-test-suite! suite-id)
           (is (= {:model_id suite-id
                   :user_id  (mt/user->id :rasta)
                   :details  {:name "Renamed" :description "abc"}
@@ -222,3 +224,37 @@
   (testing "an InterruptedException is rethrown"
     (mt/with-dynamic-fn-redefs [data-testing.run-tracking/reap-orphaned-runs! (fn [_] (throw (InterruptedException.)))]
       (is (thrown? InterruptedException (doall (data-testing.run-tracking/reap-orphaned-test-and-suite-runs! 5)))))))
+
+(defn- member-rows
+  "`n` suite members, as the `:members` of a suite takes them, naming tests that do not exist."
+  [n]
+  (vec (repeatedly n (fn [] {:test_type :card :test_entity_id (u/generate-nano-id)}))))
+
+(deftest suite-update-with-members-statement-count-does-not-grow-with-members-test
+  (mt/with-temp [:model/TestSuite {small :id} {}
+                 :model/TestSuite {large :id} {}]
+    (test-suite/update-test-suite! small {:members (member-rows 2)})
+    (test-suite/update-test-suite! large {:members (member-rows 6)})
+    (testing "replacing the members of a suite that has members"
+      (is (= (events.tu/statement-count! #(test-suite/update-test-suite! small {:name "A" :members (member-rows 2)}))
+             (events.tu/statement-count! #(test-suite/update-test-suite! large {:name "B" :members (member-rows 6)})))))))
+
+(deftest deleting-tests-that-are-members-statement-count-does-not-grow-with-tests-test
+  (mt/with-temp [:model/Card      {card-id :id} {}
+                 :model/TestSuite {suite-id :id} {}]
+    (let [make-tests! (fn [n]
+                        (let [tests (data-testing.models.card-test/create-card-tests!
+                                     (vec (repeatedly n (fn [] {:card_id      card-id
+                                                                :creator_id   (mt/user->id :rasta)
+                                                                :name         (str (random-uuid))
+                                                                :inputs       []
+                                                                :expectations []}))))]
+                          (test-suite/create-test-suite-members!
+                           (vec (map-indexed (fn [i {:keys [entity_id]}]
+                                               {:suite_id suite-id :test_type :card :test_entity_id entity_id :position i})
+                                             tests)))
+                          (mapv :id tests)))
+          small       (make-tests! 2)
+          large       (make-tests! 6)]
+      (is (= (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest small))
+             (events.tu/statement-count! #(data-testing.models/delete-saved-tests! :card :model/CardTest large)))))))

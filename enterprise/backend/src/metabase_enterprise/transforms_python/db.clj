@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
-   [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.schema :as remote-sync.schema]
    [metabase.util :as u]
@@ -47,19 +46,28 @@
   [path :- :string]
   (t2/select-one :model/PythonLibrary :path path))
 
-(mu/defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
-  `insert-values`. Returns the ID of the row."
-  [path          :- :string
-   source        :- :string
-   insert-values :- [:map {:closed true}
-                     [:entity_id  {:optional true} :string]
-                     [:is_default {:optional true} :boolean]]]
-  (mdb/update-or-insert! :model/PythonLibrary
-                         {:path path}
-                         (fn [existing]
-                           (cond-> {:path path :source source}
-                             (nil? existing) (merge insert-values)))))
+(mu/defn insert-python-libraries!
+  "Insert the PythonLibrary `rows` and return the inserted instances."
+  [rows :- [:sequential {:min 1} :map]]
+  (t2/insert-returning-instances! :model/PythonLibrary rows))
+
+(mu/defn update-python-libraries!
+  "Apply `changes` to the PythonLibraries with `library-ids`."
+  [library-ids :- [:sequential {:min 1} ms/PositiveInt]
+   changes     :- :map]
+  (t2/update! :model/PythonLibrary :id [:in [:auto/param library-ids]] changes)
+  nil)
+
+(mu/defn python-libraries-by-ids
+  "The PythonLibraries with `library-ids`."
+  [library-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/PythonLibrary :id [:in [:auto/param library-ids]]))
+
+(mu/defn delete-python-libraries!
+  "Delete the PythonLibraries with `library-ids`."
+  [library-ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/PythonLibrary :id [:in [:auto/param library-ids]])
+  nil)
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

@@ -587,7 +587,35 @@
    :model/Sandbox               {:create :event/sandbox-create
                                  :delete :event/sandbox-delete}
    :model/DatabaseRouter        {:create :event/database-router-create
-                                 :delete :event/database-router-delete}})
+                                 :delete :event/database-router-delete}
+   :model/Segment               {:create :event/segment-create
+                                 :delete :event/segment-delete}
+   :model/Measure               {:create :event/measure-create
+                                 :delete :event/measure-delete}
+   :model/MetabotConversation   {:create :event/metabot-conversation-create
+                                 :delete :event/metabot-conversation-delete}
+   :model/Transform             {:create :event/transform-create
+                                 :delete :event/transform-delete}
+   :model/TransformJob          {:create :event/transform-job-create
+                                 :delete :event/transform-job-delete}
+   :model/TransformTag          {:create :event/transform-tag-create
+                                 :delete :event/transform-tag-delete}
+   :model/DataApp               {:create :event/data-app-create
+                                 :delete :event/data-app-delete}
+   :model/CustomVizPlugin       {:create :event/custom-viz-plugin-create
+                                 :delete :event/custom-viz-plugin-delete}
+   :model/PythonLibrary         {:create :event/python-library-create
+                                 :delete :event/python-library-delete}
+   :model/TransformTest         {:create :event/transform-test-create
+                                 :delete :event/transform-test-delete}
+   :model/CardTest              {:create :event/card-test-create
+                                 :delete :event/card-test-delete}
+   :model/SegmentTest           {:create :event/segment-test-create
+                                 :delete :event/segment-test-delete}
+   :model/TestSuite             {:create :event/test-suite-create
+                                 :delete :event/test-suite-delete}
+   :model/TestSuiteMember       {:create :event/test-suite-member-create
+                                 :delete :event/test-suite-member-delete}})
 
 (defn- delete-temp-row-and-publish!
   "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."

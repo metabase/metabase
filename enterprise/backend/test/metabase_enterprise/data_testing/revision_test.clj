@@ -5,7 +5,7 @@
    [metabase-enterprise.data-testing.models :as data-testing.models]
    [metabase-enterprise.data-testing.models.card-test :as data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
-   [metabase-enterprise.data-testing.models.segment-test]
+   [metabase-enterprise.data-testing.models.segment-test :as data-testing.models.segment-test]
    [metabase-enterprise.data-testing.run-tracking :as data-testing.run-tracking]
    [metabase-enterprise.data-testing.test-util :as data-testing.test-util]
    [metabase.lib.core :as lib]
@@ -18,6 +18,7 @@
    [metabase.revisions.events]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.models.revision.diff :as revision.diff]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -126,7 +127,7 @@
                        :model/TransformTest {transform-test-id :id}
                        (merge revertible {:transform_id transform-id
                                           :now          (t/offset-date-time "2026-10-13T00:00:00Z")})]
-          (t2/update! :model/TransformTest :id transform-test-id {:now nil})
+          (data-testing.models/update-transform-test! transform-test-id {:now nil})
           (testing "an update of `now` is recorded"
             (is (= 2 (count (revisions/revisions :model/TransformTest transform-test-id)))))
           (mt/user-http-request :crowberto :post 200 "revision/revert"
@@ -253,7 +254,7 @@
                      :model/CardTest {card-test-id :id} (merge revertible
                                                                {:card_id card-id
                                                                 :now     (t/offset-date-time "2026-10-13T00:00:00Z")})]
-        (t2/update! :model/CardTest :id card-test-id {:now nil})
+        (data-testing.models.card-test/update-card-test! card-test-id {:now nil})
         (testing "an update of `now` is recorded"
           (is (= 2 (count (revisions/revisions :model/CardTest card-test-id))))
           (is (=? {:object {:now nil}} (first (revisions/revisions :model/CardTest card-test-id)))))
@@ -613,7 +614,7 @@
     (testing "a deleted segment is shown by its id, also to an admin"
       (mt/with-temp [:model/Segment {deleted :id} (data-testing.test-util/segment-on (mt/id :people) "A segment")
                      :model/Segment {visible :id} (data-testing.test-util/segment-on (mt/id :people) "From Google")]
-        (t2/delete! :model/Segment :id deleted)
+        (segment/delete-segments! [deleted])
         (mt/with-current-user (mt/user->id :crowberto)
           (is (= [(str "moved this Segment test from #" deleted " to From Google")]
                  (moved deleted visible))))))))
@@ -645,7 +646,7 @@
         (testing "creation records the initial revision"
           (is (=? [{:is_creation true :user_id (mt/user->id :crowberto) :object {:segment_id segment-id :name "Original"}}]
                   (revisions/revisions :model/SegmentTest segment-test-id))))
-        (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+        (data-testing.models.segment-test/update-segment-test! segment-test-id {:name "Renamed"})
         (testing "an update records the changed fields, and both history endpoints describe it"
           (is (=? [{:is_creation false :object {:name "Renamed"}} {:is_creation true}]
                   (revisions/revisions :model/SegmentTest segment-test-id)))
@@ -665,7 +666,7 @@
     (mt/with-temp [:model/Segment     {segment-id :id}      (data-testing.test-util/segment-on (mt/id :people) "A segment")
                    :model/SegmentTest {segment-test-id :id} (merge revertible
                                                                    {:segment_id segment-id :name "Original"})]
-      (t2/update! :model/SegmentTest :id segment-test-id {:name "Renamed"})
+      (data-testing.models.segment-test/update-segment-test! segment-test-id {:name "Renamed"})
       (check-revert-requires-the-feature :model/SegmentTest "segment-test" segment-test-id #{} #{:transforms-testing}))))
 
 (deftest segment-test-revision-history-after-the-old-segment-is-deleted-test
@@ -675,8 +676,8 @@
                      :model/Segment {new-segment :id} (data-testing.test-util/segment-on (mt/id :people) "A segment")]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/SegmentTest {segment-test-id :id} {:segment_id old-segment :name "On the old segment"}]
-            (t2/update! :model/SegmentTest :id segment-test-id {:segment_id new-segment :name "On the new segment"})
-            (t2/delete! :model/Segment :id old-segment)
+            (data-testing.models.segment-test/update-segment-test! segment-test-id {:segment_id new-segment :name "On the new segment"})
+            (segment/delete-segments! [old-segment])
             (testing "premise: the old segment is gone and the test remains"
               (is (not (t2/exists? :model/Segment :id old-segment)))
               (is (t2/exists? :model/SegmentTest :id segment-test-id)))

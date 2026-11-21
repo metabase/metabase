@@ -8,6 +8,7 @@
    [metabase.dashboards.write :as dashboards.write]
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -48,8 +49,7 @@
 (deftest segment-update-message-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment {segment-id :id} {}]
-      (events/with-event-context {:revision-message "why"}
-        (t2/update! :model/Segment :id segment-id {:name "renamed"}))
+      (segment/update-segment! segment-id {:name "renamed"} {:revision-message "why"})
       (is (=? {:message "why"} (last (revisions-of "Segment" segment-id)))))))
 
 (defn- last-object [model model-id]

@@ -255,8 +255,8 @@
     (with-redefs [events/publish-event! (fn [topic _event]
                                           (swap! events-published conj topic))]
       (mt/with-temp [:model/Transform {transform-id :id} {}]
-        (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
-        (t2/delete! :model/Transform :id transform-id)))
+        (transform/update-transforms! {transform-id {:name "Updated Name"}})
+        (transform/delete-transforms! [transform-id])))
     (is (= [:event/transform-create :event/transform-update :event/transform-delete]
            (filterv #{:event/transform-create :event/transform-update :event/transform-delete} @events-published)))))
 

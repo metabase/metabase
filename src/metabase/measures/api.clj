@@ -3,7 +3,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.measures.db :as measures.db]
    [metabase.measures.models.measure :as measure]
@@ -103,8 +102,7 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (events/with-event-context {:revision-message revision_message}
-        (measure/update-measure! id changes)))
+      (measure/update-measure! id changes {:revision-message revision_message}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

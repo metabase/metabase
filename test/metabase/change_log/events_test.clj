@@ -267,7 +267,10 @@
     :model/Notification :model/NotificationCard :model/NotificationSubscription :model/NotificationHandler
     :model/NotificationRecipient :model/Channel :model/ChannelTemplate
     :model/User :model/PermissionsGroup :model/PermissionsGroupMembership :model/ApiKey :model/Tenant :model/Sandbox
-    :model/DatabaseRouter})
+    :model/DatabaseRouter
+    :model/Segment :model/Measure :model/MetabotConversation :model/Transform :model/TransformJob
+    :model/TransformTag :model/DataApp :model/CustomVizPlugin :model/PythonLibrary :model/TransformTest
+    :model/CardTest :model/SegmentTest :model/TestSuite :model/TestSuiteMember})
 
 (deftest tracked-models-derive-events-test
   (testing "each tracked model derives the events trait, which collects the writes the change log records"

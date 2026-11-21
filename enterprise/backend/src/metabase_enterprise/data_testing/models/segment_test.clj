@@ -13,7 +13,6 @@
    [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -33,7 +32,6 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?)
-  (derive :hook/events)
   (derive ::data-testing.models/saved-test))
 
 (methodical/defmethod t2/model-for-automagic-hydration [:model/SegmentTest :segment]
@@ -106,9 +104,12 @@
 
 (mu/defn update-segment-tests! :- :nil
   "Apply the changes in `changes-by-id`, a map from the id of a SegmentTest to its changes, which the column
-  transforms of the model normalize and validate."
-  [changes-by-id :- [:map-of ms/PositiveInt :map]]
-  (data-testing.models/update-saved-tests! :model/SegmentTest changes-by-id))
+  transforms of the model normalize and validate, publishing their update event with `context`."
+  ([changes-by-id :- [:map-of ms/PositiveInt :map]]
+   (update-segment-tests! changes-by-id nil))
+  ([changes-by-id :- [:map-of ms/PositiveInt :map]
+    context       :- [:maybe :metabase.events.schema/context]]
+   (data-testing.models/update-saved-tests! :model/SegmentTest changes-by-id context)))
 
 (mu/defn update-segment-test! :- :nil
   "Apply `changes` to the SegmentTest with `id`."
@@ -183,7 +184,7 @@
 
 (defn- revert-segment-test!
   [id _user-id snapshot]
-  (update-segment-test! id (select-keys snapshot revision-columns)))
+  (update-segment-tests! {id (select-keys snapshot revision-columns)} {:reverting? true}))
 
 (defn- check-revert
   "Returns `snapshot`, after refusing it as an edit to the same state would be refused."
@@ -195,12 +196,6 @@
   snapshot)
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
-
-(defmethod events/spec :model/SegmentTest
-  [_model]
-  {:create :event/segment-test-create
-   :update :event/segment-test-update
-   :delete :event/segment-test-delete})
 
 (defmethod app-db-copy/spec :model/SegmentTest [_model]
   {:skip? false})

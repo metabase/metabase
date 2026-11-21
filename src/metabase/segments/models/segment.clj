@@ -46,8 +46,7 @@
 (doto :model/Segment
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (defn- definition-table-id
   "The id of the Table `definition`, a full query, is built on."
@@ -148,14 +147,16 @@
   (run! #(lib/check-segment-overwrite nil (lib-be/normalize-query (:definition %))) rows))
 
 (mu/defn create-segments! :- [:sequential (ms/InstanceOf :model/Segment)]
-  "Insert the Segment `rows` and return the inserted instances, in one transaction and one batch of events. A
+  "Insert the Segment `rows` and return the inserted instances, in one transaction, publishing their create event. A
   definition that refers to a Segment that does not exist throws."
   [rows :- [:sequential ::segments.schema/segment.create]]
   (if (empty? rows)
     []
-    (events/with-batched-events
+    (t2/with-transaction [_conn]
       (check-definitions-of-new-segments rows)
-      (vec (segments.db/insert-segments! rows)))))
+      (let [segments (vec (segments.db/insert-segments! rows))]
+        (events/publish-lifecycle! [(events/created :event/segment-create segments)])
+        segments))))
 
 (mu/defn create-segment! :- (ms/InstanceOf :model/Segment)
   "Insert the Segment `row` and return the inserted instance, as [[create-segments!]] does."
@@ -172,36 +173,65 @@
                                                      (some-> (get stored id) :definition lib-be/normalize-query)))]
     (lib/check-segment-overwrite id (lib-be/normalize-query definition))))
 
+(defn- updated-segment
+  "The Segment `stored` as the update `row` leaves it, with the table that the hook derives from a new definition."
+  [stored row]
+  (let [changes (dissoc row :id)]
+    (cond-> (events/updated-row stored changes)
+      (contains? changes :definition) (assoc :definition (lib-be/normalize-query (:definition changes))
+                                             :table_id   (definition-table-id (:definition changes))))))
+
 (mu/defn update-segments! :- [:sequential ::segments.schema/segment.row]
   "Apply the changes in each of `rows`, the id of a Segment and the columns to change, with one statement per distinct
-  set of changes, in one transaction and one batch of events. A new definition that makes a cycle of Segments throws.
-  Returns `rows`."
-  [rows :- [:sequential ::segments.schema/segment.row]]
-  (if (empty? rows)
-    []
-    (events/with-batched-events
-      (when (some #(contains? % :definition) rows)
-        (check-changed-definitions rows (segments.db/segments-by-id (mapv :id rows))))
-      (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-        (when (seq changes)
-          (segments.db/update-segments! (mapv :id group) changes)))
-      (vec rows))))
+  set of changes, in one transaction, publishing their update events with `context`. A new definition that makes a
+  cycle of Segments throws. Returns `rows`."
+  ([rows :- [:sequential ::segments.schema/segment.row]]
+   (update-segments! rows nil))
+  ([rows    :- [:sequential ::segments.schema/segment.row]
+    context :- [:maybe :metabase.events.schema/context]]
+   (if (empty? rows)
+     []
+     (t2/with-transaction [_conn]
+       (let [stored (segments.db/segments-by-id (mapv :id rows))
+             rows*  (filterv #(contains? stored (:id %)) rows)]
+         (check-changed-definitions rows* stored)
+         (doseq [[changes group] (group-by #(dissoc % :id) rows*)]
+           (when (seq changes)
+             (segments.db/update-segments! (mapv :id group) changes)))
+         (let [pairs (into []
+                           (keep (fn [row]
+                                   (let [previous (get stored (:id row))
+                                         object   (updated-segment previous row)]
+                                     (when (not= (into {} previous) (into {} object))
+                                       [previous object]))))
+                           rows*)]
+           (events/publish-lifecycle! [(events/updated :event/segment-update (mapv first pairs) (mapv second pairs))]
+                                      {:context context}))
+         (vec rows))))))
 
 (mu/defn update-segment!
-  "Apply `changes` to the Segment with `id`, as [[update-segments!]] does."
-  [id      :- ::lib.schema.id/segment
-   changes :- ::segments.schema/segment.update]
-  (update-segments! [(assoc changes :id id)])
-  nil)
+  "Apply `changes` to the Segment with `id`, as [[update-segments!]] does, publishing its update event with `context`."
+  ([id      :- ::lib.schema.id/segment
+    changes :- ::segments.schema/segment.update]
+   (update-segment! id changes nil))
+  ([id      :- ::lib.schema.id/segment
+    changes :- ::segments.schema/segment.update
+    context :- [:maybe :metabase.events.schema/context]]
+   (update-segments! [(assoc changes :id id)] context)
+   nil))
 
 (mu/defn delete-segments!
-  "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction and one batch of
-  events."
+  "Delete the Segments with `ids` and, with the data testing feature, their tests, in one transaction, publishing their
+  delete event."
   [ids :- [:sequential ::lib.schema.id/segment]]
   (when (seq ids)
-    (events/with-batched-events
-      (delete-segment-tests! ids)
-      (segments.db/delete-segments! ids))))
+    (t2/with-transaction [_conn]
+      (let [segments (vec (vals (segments.db/segments-by-id (vec ids))))]
+        (delete-segment-tests! ids)
+        (let [event (events/deleted :event/segment-delete :model/Segment segments)]
+          (segments.db/delete-segments! ids)
+          (events/publish-lifecycle! [event])))
+      nil)))
 
 (def ^:private revision-columns
   "The columns of a Segment that its Revisions track and a revert restores."
@@ -210,15 +240,9 @@
 (defn- revert-segment!
   "Return the Segment with `id` to the tracked columns of `snapshot`."
   [id _user-id snapshot]
-  (update-segment! id (select-keys snapshot revision-columns)))
+  (update-segment! id (select-keys snapshot revision-columns) {:reverting? true}))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Segment
-  [_model]
-  {:create :event/segment-create
-   :update :event/segment-update
-   :delete :event/segment-delete})
 
 (defmethod app-db-copy/spec :model/Segment [_model]
   {:skip? false})

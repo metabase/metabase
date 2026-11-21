@@ -1,6 +1,8 @@
 (ns metabase.metabot.models.metabot-conversation-test
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
+   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -43,3 +45,14 @@
               (t2/with-call-count [call-count]
                 (t2/hydrate rows :can_read)
                 (is (= 1 (call-count)))))))))))
+
+(deftest delete-by-ids-statement-count-does-not-grow-with-rows-test
+  (let [make! (fn [n]
+                (vec (repeatedly n (fn []
+                                     (let [id (str (random-uuid))]
+                                       (metabot-conversation/create-metabot-conversation! id {:user_id (mt/user->id :rasta)})
+                                       id)))))
+        small (make! 2)
+        large (make! 6)]
+    (is (= (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! small))
+           (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! large))))))

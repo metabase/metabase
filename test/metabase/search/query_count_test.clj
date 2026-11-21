@@ -5,6 +5,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.measures.models.measure :as measure]
    [metabase.permissions.core :as perms]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -12,6 +13,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
+   [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.warehouses.models.database :as database]
@@ -69,8 +71,18 @@
    "metric"         (insert-rows :model/Card (in-collection {:type :metric}))
    "document"       (insert-rows :model/Document (in-collection {}))
    "exploration"    (insert-rows :model/Exploration)
-   "segment"        (insert-rows :model/Segment (fn [_] {:table_id (mt/id :venues)}))
-   "measure"        (insert-rows :model/Measure (fn [_] {:table_id (mt/id :venues)}))
+   "segment"        (fn [_collection names row-attrs]
+                      (segment/create-segments!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Segment) :created_at :updated_at :entity_id)
+                                     row-attrs
+                                     {:name n})))))
+   "measure"        (fn [_collection names row-attrs]
+                      (measure/create-measures!
+                       (vec (for [n names]
+                              (merge (dissoc (mt/with-temp-defaults :model/Measure) :created_at :updated_at :entity_id)
+                                     row-attrs
+                                     {:name n})))))
    "table"          (insert-rows :model/Table (fn [_] {:db_id (mt/id)}))
    "database"       (fn [_collection names row-attrs]
                       (database/create-databases!

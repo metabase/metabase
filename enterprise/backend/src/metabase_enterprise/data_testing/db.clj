@@ -62,41 +62,75 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TestSuite :id id))
 
-(mu/defn insert-test-suite! :- ms/PositiveInt
-  "Insert the TestSuite `suite` and return its id."
-  [suite :- [:map {:closed true}
-             [:name        :string]
-             [:description {:optional true} [:maybe :string]]
-             [:creator_id  ::lib.schema.id/user]]]
-  (t2/insert-returning-pk! :model/TestSuite suite))
+(mu/defn insert-test-suites! :- [:sequential ::data-testing.schema/test-suite]
+  "Insert the TestSuite `suites` and return the inserted instances."
+  [suites :- [:sequential {:min 1}
+              [:map {:closed true}
+               [:name        :string]
+               [:description {:optional true} [:maybe :string]]
+               [:creator_id  ::lib.schema.id/user]
+               [:entity_id   {:optional true} [:maybe :string]]]]]
+  (t2/insert-returning-instances! :model/TestSuite suites))
 
-(mu/defn update-test-suite!
-  "Apply `updates` to the TestSuite with `id`."
-  [id      :- ms/PositiveInt
+(mu/defn test-suites-by-ids :- [:sequential ::data-testing.schema/test-suite]
+  "The TestSuites with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TestSuite :id [:in [:auto/param ids]]))
+
+(mu/defn test-suite-for-update :- [:maybe ::data-testing.schema/test-suite]
+  "The TestSuite with `id`, or nil, its row locked until the transaction ends."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/TestSuite :id id {:for :update}))
+
+(mu/defn update-test-suites!
+  "Apply `updates` to the TestSuites with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
    updates :- [:map {:closed true}
                [:name        {:optional true} :string]
                [:description {:optional true} [:maybe :string]]
                [:updated_at  {:optional true} [:= :%now]]]]
-  (t2/update! :model/TestSuite :id id updates))
+  (t2/update! :model/TestSuite :id [:in [:auto/param ids]] updates))
 
 (mu/defn delete-members-of-suite!
   "Delete the members of the TestSuite with `suite-id`."
   [suite-id :- ms/PositiveInt]
   (t2/delete! :model/TestSuiteMember :suite_id suite-id))
 
-(mu/defn insert-suite-members!
-  "Insert the TestSuiteMember `rows`."
+(mu/defn insert-suite-members! :- [:sequential ::data-testing.schema/test-suite.member]
+  "Insert the TestSuiteMember `rows` and return the inserted instances."
   [rows :- [:sequential [:map {:closed true}
                          [:suite_id       ms/PositiveInt]
                          [:test_type      ::data-testing.schema/test-type]
                          [:test_entity_id :string]
                          [:position       :int]]]]
-  (t2/insert! :model/TestSuiteMember rows))
+  (t2/insert-returning-instances! :model/TestSuiteMember rows))
 
-(mu/defn delete-test-suite!
-  "Delete the TestSuite with `id`, and its members."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/TestSuite :id id))
+(mu/defn suite-members-by-ids :- [:sequential ::data-testing.schema/test-suite.member]
+  "The TestSuiteMembers with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select :model/TestSuiteMember :id [:in [:auto/param ids]]))
+
+(mu/defn update-suite-members!
+  "Apply `changes` to the TestSuiteMembers with `ids`."
+  [ids     :- [:sequential {:min 1} ms/PositiveInt]
+   changes :- :map]
+  (t2/update! :model/TestSuiteMember :id [:in [:auto/param ids]] changes))
+
+(mu/defn delete-suite-members!
+  "Delete the TestSuiteMembers with `ids`."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TestSuiteMember :id [:in [:auto/param ids]]))
+
+(mu/defn suite-members-of-tests :- [:sequential ::data-testing.schema/test-suite.member]
+  "The members of the TestSuites that name the `test-type` tests with `entity-ids`."
+  [test-type  :- ::data-testing.schema/test-type
+   entity-ids :- [:sequential {:min 1} :string]]
+  (t2/select :model/TestSuiteMember :test_type (name test-type) :test_entity_id [:in [:auto/param entity-ids]]))
+
+(mu/defn delete-test-suites!
+  "Delete the TestSuites with `ids`, and their members."
+  [ids :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/delete! :model/TestSuite :id [:in [:auto/param ids]]))
 
 (mu/defn suite-members :- [:sequential ::data-testing.schema/test-suite.member]
   "The members of the TestSuites with `suite-ids`, by suite and then position."
@@ -166,6 +200,12 @@
    rows  :- [:sequential {:min 1} :map]]
   (t2/insert-returning-instances! model rows))
 
+(mu/defn saved-tests-by-ids :- [:sequential ::data-testing.schema/saved-test]
+  "The tests of `model` with `ids`."
+  [model :- saved-test-model
+   ids   :- [:sequential {:min 1} ms/PositiveInt]]
+  (t2/select model :id [:in [:auto/param ids]]))
+
 (mu/defn update-saved-tests! :- :nil
   "Apply `updates` to the tests of `model` with `ids`."
   [model   :- saved-test-model
@@ -175,17 +215,17 @@
   nil)
 
 (mu/defn saved-test-keys :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
-  "The id and entity id of the tests of `model` with `ids`."
+  "The tests of `model` with `ids`."
   [model :- saved-test-model
    ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select [model :id :entity_id] :id [:in [:auto/param ids]]))
+  (t2/select model :id [:in [:auto/param ids]]))
 
 (mu/defn saved-test-keys-of-subjects :- [:sequential [:map [:id ms/PositiveInt] [:entity_id :string]]]
-  "The id and entity id of the tests of `model` whose `subject-column` holds one of `subject-ids`."
+  "The tests of `model` whose `subject-column` holds one of `subject-ids`."
   [model          :- saved-test-model
    subject-column :- :keyword
    subject-ids    :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select [model :id :entity_id] subject-column [:in [:auto/param subject-ids]]))
+  (t2/select model subject-column [:in [:auto/param subject-ids]]))
 
 (mu/defn delete-saved-tests! :- :nil
   "Delete the tests of `model` with `ids`."

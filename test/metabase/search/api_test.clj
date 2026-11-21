@@ -16,6 +16,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.measures.models.measure :as measure]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.util :as perms-util]
@@ -2325,13 +2326,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure :id measure-id {:archived true})
+          (measure/update-measure! measure-id {:archived true})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure :id measure-id {:archived false})
+          (measure/update-measure! measure-id {:archived false})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 

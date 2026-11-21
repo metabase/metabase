@@ -5,11 +5,14 @@
    [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.permissions.core :as perms]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,7 +20,7 @@
 
 (methodical/defmethod t2/table-name :model/PythonLibrary [_model] :python_library)
 
-(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id :hook/events]]
+(doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
@@ -77,23 +80,80 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
+(mu/defn create-python-libraries!
+  "Insert the PythonLibrary `rows`, publishing their create event, and return the inserted libraries."
+  [rows :- [:sequential :map]]
+  (if (seq rows)
+    (t2/with-transaction [_conn]
+      (let [libraries (transforms-python.db/insert-python-libraries! rows)]
+        (events/publish-lifecycle! [(events/created :event/python-library-create libraries)])
+        libraries))
+    []))
+
+(defn- updated-library
+  "The PythonLibrary `stored` as the update `changes` leaves it, with what the update hook sets."
+  [stored changes]
+  (let [differing (into {} (filter (fn [[k v]] (not= v (get stored k)))) changes)]
+    (cond-> (events/updated-row stored changes)
+      (seq (dissoc differing :updated_at :is_default)) (assoc :is_default false)
+      (:path changes)                                 (update :path normalize-path))))
+
+(mu/defn update-python-libraries!
+  "Apply the changes in `changes-by-id`, a map from the id of a PythonLibrary to its changes, with one statement per
+  distinct change set, publishing their update event."
+  [changes-by-id :- [:map-of ms/PositiveInt :map]]
+  (when (seq changes-by-id)
+    (t2/with-transaction [_conn]
+      (let [stored (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (vec (keys changes-by-id))))]
+        (doseq [[changes pairs] (group-by val changes-by-id)
+                :when           (seq changes)]
+          (transforms-python.db/update-python-libraries! (mapv key pairs) changes))
+        (let [pairs (into []
+                          (keep (fn [[id changes]]
+                                  (when-let [previous (stored id)]
+                                    (let [object (updated-library previous changes)]
+                                      (when (not= (into {} previous) (into {} object))
+                                        [previous object])))))
+                          changes-by-id)]
+          (events/publish-lifecycle! [(events/updated :event/python-library-update
+                                                      (mapv first pairs)
+                                                      (mapv second pairs))])))))
+  nil)
+
+(mu/defn delete-python-libraries!
+  "Delete the PythonLibraries with `ids`, publishing their delete event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (t2/with-transaction [_conn]
+      (let [event (events/deleted :event/python-library-delete
+                                  :model/PythonLibrary
+                                  (transforms-python.db/python-libraries-by-ids (vec ids)))]
+        (transforms-python.db/delete-python-libraries! (vec ids))
+        (events/publish-lifecycle! [event]))))
+  nil)
+
+(defn- update-imported-python-libraries!
+  "Update the PythonLibraries of an import with `rows`, each its id and changed columns, returning `rows`."
+  [rows]
+  (update-python-libraries! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
+  rows)
+
 (mu/defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path   :- :string
    source :- :string]
-  (let [normalized-path (normalize-path path)
-        id              (transforms-python.db/upsert-python-library-source!
-                         normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})
-        library         (transforms-python.db/python-library id)]
-    library))
+  (let [normalized-path (normalize-path path)]
+    (mdb/with-conflict-retry
+      (t2/with-transaction [_conn]
+        (if-let [existing (transforms-python.db/python-library-by-path normalized-path)]
+          (let [changes {:path normalized-path :source source}]
+            (transforms-python.db/update-python-libraries! [(:id existing)] changes)
+            (u/prog1 (transforms-python.db/python-library (:id existing))
+              (events/publish-lifecycle! [(events/updated :event/python-library-update [existing] [<>])])))
+          (first (create-python-libraries!
+                  [{:path normalized-path :source source :entity_id builtin-entity-id :is_default (str/blank? source)}])))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/PythonLibrary
-  [_model]
-  {:create :event/python-library-create
-   :update :event/python-library-update
-   :delete :event/python-library-delete})
 
 (defmethod app-db-copy/spec :model/PythonLibrary [_model]
   {:skip? true})
@@ -102,6 +162,9 @@
   {:schema        ::transforms-python.schema/external-python-library
    :copy          [:path :source :entity_id]
    :skip          [:is_default]
+   :insert!       create-python-libraries!
+   :update!       update-imported-python-libraries!
+   :delete!       delete-python-libraries!
    :storage-paths storage-paths})
 
 (defmethod remote-sync/spec :model/PythonLibrary
