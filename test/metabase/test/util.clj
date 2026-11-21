@@ -27,6 +27,7 @@
    [metabase.config.core :as config]
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.events.core :as events]
    [metabase.global-system.mutable-component :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -536,6 +537,47 @@
                     (finally
                       (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
  ::evict-personal-collection-cache)
+
+(def with-temp-lifecycle-topics
+  "The models whose write functions publish their lifecycle events by hand, as `{model {:create topic :delete topic}}`.
+  A temporary row of such a model is inserted and deleted by plain statements, so `with-temp` publishes these events for
+  it as the events trait did: the create after the insert and the delete at cleanup. Leave `:delete` out of a model whose
+  own `do-with-temp*` method deletes through its write function. A model converted to publish by hand adds its entry
+  here."
+  {:model/Glossary              {:create :event/glossary-create
+                                 :delete :event/glossary-delete}
+   :model/Dashboard             {:create :event/dashboard-create}
+   :model/DashboardCard         {:create :event/dashboard-card-create
+                                 :delete :event/dashboard-card-delete}
+   :model/DashboardTab          {:create :event/dashboard-tab-create
+                                 :delete :event/dashboard-tab-delete}
+   :model/DashboardCardSeries   {:create :event/dashboard-card-series-create
+                                 :delete :event/dashboard-card-series-delete}})
+
+(defn- delete-temp-row-and-publish!
+  "Delete the temporary row of `model` with `id`, if the body left it, and publish its delete event."
+  [model id topic]
+  (let [pk (first (t2/primary-keys model))]
+    (when-let [row (t2/select-one model pk id)]
+      (let [event (events/deleted topic model [row])]
+        (t2/delete! model pk id)
+        (events/publish-lifecycle! [event])))))
+
+(methodical/add-aux-method-with-unique-key!
+ #'t2.with-temp/do-with-temp* :around :default
+ (fn [next-method model explicit-attributes f]
+   (if-let [{:keys [create delete]} (get with-temp-lifecycle-topics (t2/resolve-model model))]
+     (next-method model explicit-attributes
+                  (fn [temp-object]
+                    (events/publish-lifecycle! [(events/created create [temp-object])])
+                    (try
+                      (f temp-object)
+                      (finally
+                        (when delete
+                          (let [model* (t2/model temp-object)]
+                            (delete-temp-row-and-publish! model* (get temp-object (first (t2/primary-keys model*))) delete)))))))
+     (next-method model explicit-attributes f)))
+ ::publish-lifecycle-events)
 
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.

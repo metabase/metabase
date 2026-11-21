@@ -64,8 +64,7 @@
 (doto :model/Dashboard
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/events))
+  (derive :hook/entity-id))
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})
@@ -276,18 +275,32 @@
   (run! #(collection/check-collection-for :model/Dashboard %)
         (into #{} (map (fn [{:keys [collection_id archived]}] {:collection_id collection_id :archived (boolean archived)})) rows)))
 
-(mu/defn create-dashboards! :- [:sequential :map]
-  "Insert the Dashboard `rows` and return the inserted instances in the order of the rows. Each Collection must be able
-  to hold a Dashboard, and the ParameterCards of the parameters that draw values from a Card are created."
+(mu/defn create-dashboards* :- [:map {:closed true}
+                                [:dashboards [:sequential :map]]
+                                [:events events/Events]]
+  "Insert the Dashboard `rows`, returning the inserted instances in the order of the rows as `:dashboards` and the events
+  of the writes as `:events`, which the caller publishes. Each Collection must be able to hold a Dashboard, and the
+  ParameterCards of the parameters that draw values from a Card are created."
   [rows :- [:sequential ::dashboards.schema/dashboard.create]]
   (if (empty? rows)
-    []
-    (events/with-batched-events
+    {:dashboards [] :events []}
+    (do
       (check-collections! rows)
-      (u/prog1 (dashboards.db/insert-dashboards! rows)
+      (let [dashboards (dashboards.db/insert-dashboards! rows)]
         (parameter-card/sync-parameter-cards!
          "dashboard"
-         (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) <>))))))
+         (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) dashboards))
+        {:dashboards dashboards
+         :events     [(events/created :event/dashboard-create dashboards)]}))))
+
+(mu/defn create-dashboards! :- [:sequential :map]
+  "Insert the Dashboard `rows` as [[create-dashboards*]] does, publishing the events of the writes, and return the inserted
+  instances in the order of the rows."
+  [rows :- [:sequential ::dashboards.schema/dashboard.create]]
+  (t2/with-transaction [_conn]
+    (let [{:keys [dashboards events]} (create-dashboards* rows)]
+      (events/publish-lifecycle! events)
+      dashboards)))
 
 (mu/defn create-dashboard! :- :map
   "Insert the Dashboard `row` and return the inserted instance, as [[create-dashboards!]] does."
@@ -328,43 +341,65 @@
                                (dashboards.db/question-ids-archived-with-dashboards ids)
                                (dashboards.db/question-ids-restored-with-dashboards ids))]
           :when (seq question-ids)]
-    (events/with-event-context {:archived-with [:model/Dashboard (first ids)]}
-      (card/update-cards! (mapv (fn [id] {:id id :archived archived?}) question-ids)))))
+    (card/update-cards! (mapv (fn [id] {:id id :archived archived?}) question-ids)
+                        {:archived-with [:model/Dashboard (first ids)]})))
 
-(mu/defn update-dashboards! :- [:sequential ::dashboards.schema/dashboard.update-row]
-  "Apply the columns of each of `rows` to the Dashboard with its `:id`, and return `rows`. A Dashboard moved to another
-  Collection moves its dashboard questions along and the new Collection must be able to hold it, a change of
-  `parameters` updates its ParameterCards, and a change of `archived` gives its `archived_directly` and archives or
-  restores its dashboard questions. The rows with the same columns are one statement."
+(mu/defn update-dashboards* :- [:map {:closed true}
+                                [:rows   [:sequential ::dashboards.schema/dashboard.update-row]]
+                                [:events events/Events]]
+  "Apply the columns of each of `rows` to the Dashboard with its `:id`, returning `rows` as `:rows` and the events of the
+  writes as `:events`, which the caller publishes. A Dashboard moved to another Collection moves its dashboard questions
+  along and the new Collection must be able to hold it, a change of `parameters` updates its ParameterCards, and a change
+  of `archived` gives its `archived_directly` and archives or restores its dashboard questions. The rows with the same
+  columns are one statement."
   [rows :- [:sequential ::dashboards.schema/dashboard.update-row]]
   (let [rows   (mapv #(lib/normalize ::dashboards.schema/dashboard.update-row %) rows)
         stored (m/index-by :id (dashboards.db/dashboards (mapv :id rows)))
         rows   (filterv #(contains? stored (:id %)) rows)]
     (if (empty? rows)
-      rows
-      (events/with-batched-events
-        (let [archived-ids     (collection/archived-collection-ids
-                                (into [] (keep (fn [row]
-                                                 (when (contains? row :archived)
-                                                   (if (contains? row :collection_id)
-                                                     (:collection_id row)
-                                                     (:collection_id (get stored (:id row)))))))
-                                      rows))
-              parent-archived? #(contains? archived-ids %)
-              rows             (mapv #(with-archived-directly (get stored (:id %)) % parent-archived?) rows)
-              moved            (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
-              reparameterised  (filterv #(changed? (get stored (:id %)) % :parameters) rows)]
-          (check-collections! (for [row moved]
-                                {:collection_id (:collection_id row)
-                                 :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))}))
-          (move-questions! moved)
-          (when (seq reparameterised)
-            (parameter-card/sync-parameter-cards!
-             "dashboard" (mapv (juxt :id :parameters) reparameterised)))
-          (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-            (dashboards.db/update-dashboards! (mapv :id group) changes))
-          (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
-          rows)))))
+      {:rows rows :events []}
+      (let [archived-ids     (collection/archived-collection-ids
+                              (into [] (keep (fn [row]
+                                               (when (contains? row :archived)
+                                                 (if (contains? row :collection_id)
+                                                   (:collection_id row)
+                                                   (:collection_id (get stored (:id row)))))))
+                                    rows))
+            parent-archived? #(contains? archived-ids %)
+            rows             (mapv #(with-archived-directly (get stored (:id %)) % parent-archived?) rows)
+            moved            (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
+            reparameterised  (filterv #(changed? (get stored (:id %)) % :parameters) rows)]
+        (check-collections! (for [row moved]
+                              {:collection_id (:collection_id row)
+                               :archived      (if (contains? row :archived) (:archived row) (:archived (get stored (:id row))))}))
+        (move-questions! moved)
+        (when (seq reparameterised)
+          (parameter-card/sync-parameter-cards!
+           "dashboard" (mapv (juxt :id :parameters) reparameterised)))
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (dashboards.db/update-dashboards! (mapv :id group) changes))
+        (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
+        (let [pairs (into []
+                          (keep (fn [row]
+                                  (let [previous (get stored (:id row))
+                                        object   (events/updated-row previous (dissoc row :id))]
+                                    (when (not= (into {} previous) (into {} object))
+                                      [previous object]))))
+                          rows)]
+          {:rows   rows
+           :events [(events/updated :event/dashboard-update (mapv first pairs) (mapv second pairs))]})))))
+
+(mu/defn update-dashboards! :- [:sequential ::dashboards.schema/dashboard.update-row]
+  "Apply the columns of each of `rows` to its Dashboard as [[update-dashboards*]] does, publishing the events of the
+  writes with `context`, and return `rows`."
+  ([rows :- [:sequential ::dashboards.schema/dashboard.update-row]]
+   (update-dashboards! rows nil))
+  ([rows    :- [:sequential ::dashboards.schema/dashboard.update-row]
+    context :- [:maybe :metabase.events.schema/context]]
+   (events/with-batched-events
+     (let [result (update-dashboards* rows)]
+       (events/publish-lifecycle! (:events result) {:context context})
+       (:rows result)))))
 
 (mu/defn update-dashboard! :- :nil
   "Apply `changes` to the Dashboard with `dashboard-id`, as [[update-dashboards!]] does."
@@ -373,17 +408,34 @@
   (update-dashboards! [(assoc changes :id dashboard-id)])
   nil)
 
-(mu/defn delete-dashboards! :- :nil
-  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses. The
-  Pulses go through their model, so the triggers of their subscriptions are removed too."
+(mu/defn update-dashboard* :- [:map {:closed true} [:events events/Events]]
+  "Apply `changes` to the Dashboard with `dashboard-id` as [[update-dashboards*]] does, returning the events of the write
+  as `:events`, which the caller publishes."
+  [dashboard-id :- ::lib.schema.id/dashboard
+   changes      :- ::dashboards.schema/dashboard.update]
+  (select-keys (update-dashboards* [(assoc changes :id dashboard-id)]) [:events]))
+
+(mu/defn delete-dashboards* :- [:map {:closed true} [:events events/Events]]
+  "Delete the Dashboards with `dashboard-ids` along with their ParameterCards, Revisions, cache configs and Pulses,
+  returning the events of the writes as `:events`, which the caller publishes. The Pulses go through their model, so the
+  triggers of their subscriptions are removed too."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (when (seq dashboard-ids)
-    (events/with-batched-events
+  (if (empty? dashboard-ids)
+    {:events []}
+    (let [dashboards (dashboards.db/dashboards (vec dashboard-ids))]
       (parameter-card/delete-all-for-parameterized-objects! "dashboard" dashboard-ids)
       (revision/delete-revisions-for-entities! "Dashboard" dashboard-ids)
       (cache-config/delete-target-configs! "dashboard" dashboard-ids)
       (pulse/delete-pulses! (dashboards.db/pulse-ids-for-dashboards dashboard-ids))
-      (dashboards.db/delete-dashboards! dashboard-ids)))
+      (let [event (events/deleted :event/dashboard-delete :model/Dashboard dashboards)]
+        (dashboards.db/delete-dashboards! dashboard-ids)
+        {:events [event]}))))
+
+(mu/defn delete-dashboards! :- :nil
+  "Delete the Dashboards with `dashboard-ids` as [[delete-dashboards*]] does, publishing the events of the writes."
+  [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
+  (events/with-batched-events
+    (events/publish-lifecycle! (:events (delete-dashboards* dashboard-ids))))
   nil)
 
 (mu/defn delete-dashboard! :- :nil
@@ -391,31 +443,39 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (delete-dashboards! [dashboard-id]))
 
-(defn- cleanup-orphaned-inline-parameters!
-  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
+(defn- cleanup-orphaned-inline-parameters*
+  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted, returning the events of
+  the write as `:events`.
    Since inline parameters can only be referenced by a single card, all inline parameters
    from deleted cards become orphaned."
   [dashboard-card-ids]
-  (when (seq dashboard-card-ids)
-    (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
-          orphaned-param-ids  (set (mapcat :inline_parameters cards-being-deleted))
-          dashboard-ids       (set (map :dashboard_id cards-being-deleted))]
-      (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
-        (let [dashboard-id   (first dashboard-ids)
-              dashboard      (dashboards.db/dashboard dashboard-id)
-              current-params (:parameters dashboard)
-              cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %))) current-params)]
-          (when (not= (count current-params) (count cleaned-params))
-            (update-dashboard! dashboard-id {:parameters cleaned-params})))))))
+  (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
+        orphaned-param-ids  (set (mapcat :inline_parameters cards-being-deleted))
+        dashboard-ids       (set (map :dashboard_id cards-being-deleted))]
+    (or (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
+          (let [dashboard-id   (first dashboard-ids)
+                dashboard      (dashboards.db/dashboard dashboard-id)
+                current-params (:parameters dashboard)
+                cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %))) current-params)]
+            (when (not= (count current-params) (count cleaned-params))
+              (update-dashboard* dashboard-id {:parameters cleaned-params}))))
+        {:events []})))
+
+(mu/defn delete-dashcards* :- [:map {:closed true} [:events events/Events]]
+  "Delete the DashboardCards with `dashboard-card-ids` of a Dashboard, and the inline parameters they held from its
+  parameters, returning the events of the writes as `:events`, which the caller publishes."
+  [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (if (empty? dashboard-card-ids)
+    {:events []}
+    (let [cleanup (cleanup-orphaned-inline-parameters* dashboard-card-ids)
+          cards   (dashboard-card/delete-dashboard-cards* dashboard-card-ids)]
+      {:events (into (:events cleanup) (:events cards))})))
 
 (mu/defn delete-dashcards! :- :nil
-  "Delete the DashboardCards with `dashboard-card-ids` of a Dashboard, and the inline parameters they held from its
-  parameters."
+  "Delete the DashboardCards with `dashboard-card-ids` as [[delete-dashcards*]] does, publishing the events of the writes."
   [dashboard-card-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (when (seq dashboard-card-ids)
-    (events/with-batched-events
-      (cleanup-orphaned-inline-parameters! dashboard-card-ids)
-      (dashboard-card/delete-dashboard-cards! dashboard-card-ids)))
+  (events/with-batched-events
+    (events/publish-lifecycle! (:events (delete-dashcards* dashboard-card-ids))))
   nil)
 
 (def ^:private revert-dashboard!
@@ -476,12 +536,6 @@
     (delete-dashboards! ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Dashboard
-  [_model]
-  {:create :event/dashboard-create
-   :update :event/dashboard-update
-   :delete :event/dashboard-delete})
 
 (defmethod app-db-copy/spec :model/Dashboard [_model]
   {:skip? false})

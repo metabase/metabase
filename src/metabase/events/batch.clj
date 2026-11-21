@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
-   [toucan2.connection :as t2.conn]))
+   [toucan2.connection :as t2.conn]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,6 +50,7 @@
   [:map
    [:model     :keyword]
    [:operation Operation]
+   [:topic     {:optional true} qualified-keyword?]
    [:id        [:maybe [:or :int :string]]]
    [:object    {:optional true} [:maybe [:map]]]
    [:previous-object {:optional true} [:maybe [:map]]]
@@ -296,8 +298,8 @@
   one per topic, user and context, carrying the changes of its rows in their order, so that each event names the one
   user who made all of its changes and the one context they share."
   [events]
-  (let [key-of  (fn [{:keys [model operation user-id context]}]
-                  [(lifecycle-topic model operation) user-id (not-empty context)])
+  (let [key-of  (fn [{:keys [topic model operation user-id context]}]
+                  [(or topic (lifecycle-topic model operation)) user-id (not-empty context)])
         order   (distinct (map key-of events))
         by-key  (group-by key-of events)]
     (for [[topic user-id context :as k] order]
@@ -354,7 +356,7 @@
       (throw (ex-info (format "The consumers of a batch of events kept writing rows with events for %d deliveries"
                               max-deliveries)
                       {:topics (into #{}
-                                     (map #(lifecycle-topic (:model %) (:operation %)))
+                                     (map #(or (:topic %) (lifecycle-topic (:model %) (:operation %))))
                                      (get-in @state [::batch :events]))})))
     (let [[old _] (swap-batch! state assoc :events [] :captures {})
           batch   (::batch old)]
@@ -371,7 +373,7 @@
   "Collect the event of a write of a row, or deliver it at once outside a batch, when the spec of its model names a
   topic for its operation."
   [event :- CollectedEvent]
-  (when-let [topic (lifecycle-topic (:model event) (:operation event))]
+  (when-let [topic (or (:topic event) (lifecycle-topic (:model event) (:operation event)))]
     (let [event   (assoc event :context *context*)
           delete? (= :delete (:operation event))]
       (ensure-topic! topic)
@@ -426,3 +428,26 @@
   [context & body]
   `(binding [*context* (merge *context* ~context)]
      ~@body))
+
+(defn delete-captures
+  "What the captures read for a DELETE of `rows`, full rows of `model`, as `{consumer-key value}`: the statement captures
+  with `rows` as the rows the statement matches, then the delete captures with the delete events of `rows`. A write
+  function that deletes calls it once, before its first statement, so that the rows its cascades remove are still there."
+  [model rows]
+  (let [pk     (first (t2/primary-keys model))
+        select (fn [columns] (mapv #(select-keys % columns) rows))
+        events (mapv (fn [row] {:model model :operation :delete :previous-object row}) rows)]
+    (merge (run-statement-captures model pk select)
+           (capture events))))
+
+(defn collect-published!
+  "Deliver `events`, the row events of a write function that published by hand, each as [[collect!]] shapes one with its
+  `:topic` named: at once when no batch is open, else with the events of the batch, which delivers them when it ends,
+  merged with the rest. The `*context*` of the batch is merged under the context of each event."
+  [events]
+  (doseq [event events]
+    (ensure-topic! (:topic event)))
+  (let [events (mapv #(update % :context (fn [context] (not-empty (merge *context* context)))) events)]
+    (if-let [state (batch-state)]
+      (swap-batch! state update :events into events)
+      (deliver! events {}))))

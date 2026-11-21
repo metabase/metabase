@@ -9,6 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -18,7 +19,6 @@
 
 (doto :model/Glossary
   (derive :metabase/model)
-  (derive :hook/events)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
@@ -86,30 +86,31 @@
 (mu/defn create-glossary-entry! :- ::glossary.schema/glossary
   "Insert the glossary entry `row` and return it."
   [row :- ::glossary.schema/glossary.create]
-  (glossary.db/insert-glossary-entry! row))
+  (t2/with-transaction [_conn]
+    (u/prog1 (glossary.db/insert-glossary-entry! row)
+      (events/publish-lifecycle! [[:event/glossary-create [{:object <>}]]]))))
 
 (mu/defn update-glossary-entry! :- [:maybe ::glossary.schema/glossary]
   "Apply `changes` to the glossary entry with `id` and return the updated entry, or nil when no entry has `id`."
   [id      :- ms/PositiveInt
    changes :- ::glossary.schema/glossary.update]
-  (when (glossary.db/glossary-entry id)
-    (glossary.db/update-glossary-entry! id changes)
-    (glossary.db/glossary-entry id)))
+  (t2/with-transaction [_conn]
+    (when-let [previous (glossary.db/glossary-entry id)]
+      (glossary.db/update-glossary-entry! id changes)
+      (u/prog1 (glossary.db/glossary-entry id)
+        (events/publish-lifecycle! [[:event/glossary-update [{:object <> :previous-object previous}]]])))))
 
 (mu/defn delete-glossary-entry! :- [:maybe ::glossary.schema/glossary]
   "Delete the glossary entry with `id`, returning the deleted entry, or nil when no entry has `id`."
   [id :- ms/PositiveInt]
-  (when-let [entry (glossary.db/glossary-entry id)]
-    (glossary.db/delete-glossary-entry! id)
-    entry))
+  (t2/with-transaction [_conn]
+    (when-let [entry (glossary.db/glossary-entry id)]
+      (let [changes (events/delete-changes :model/Glossary [entry])]
+        (glossary.db/delete-glossary-entry! id)
+        (events/publish-lifecycle! [[:event/glossary-delete changes]])
+        entry))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
-
-(defmethod events/spec :model/Glossary
-  [_model]
-  {:create :event/glossary-create
-   :update :event/glossary-update
-   :delete :event/glossary-delete})
 
 (defmethod app-db-copy/spec :model/Glossary [_model]
   {:skip? false})

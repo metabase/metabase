@@ -1274,15 +1274,18 @@
                  {:in-transaction
                   (fn [dash]
                     (when (seq cards)
-                      (reduce (fn [placed card]
-                                (let [display  (or (:display card) :table)
-                                      position (autoplaced-position placed display nil)]
-                                  (dashboard-card/create-dashboard-cards!
-                                   [(merge position {:dashboard_id (:id dash)
-                                                     :card_id      (:id card)})])
-                                  (conj placed position)))
-                              []
-                              cards)))})]
+                      (:events
+                       (reduce (fn [{:keys [placed] :as acc} card]
+                                 (let [display  (or (:display card) :table)
+                                       position (autoplaced-position placed display nil)
+                                       created  (dashboard-card/create-dashboard-cards*
+                                                 [(merge position {:dashboard_id (:id dash)
+                                                                   :card_id      (:id card)})])]
+                                   (-> acc
+                                       (update :placed conj position)
+                                       (update :events into (:events created)))))
+                               {:placed [] :events []}
+                               cards))))})]
       {:id              (:id dash)
        :name            (:name dash)
        :url             (frontend-url (channel.urls/dashboard-path (:id dash)))

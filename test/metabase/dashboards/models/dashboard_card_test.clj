@@ -534,3 +534,25 @@
         (is (= (create-statements 2) (create-statements 6)))
         (is (= (update-statements 2) (update-statements 6)))
         (is (= (delete-statements 2) (delete-statements 6)))))))
+
+(deftest dashboard-card-row-and-series-writes-statement-count-test
+  (testing "Updating DashboardCard rows and their series takes the same number of statements for any number of them"
+    (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                   :model/Card      {card-id :id}      {}
+                   :model/Card      {series-id :id}    {}]
+      (let [dashcards!      (fn [n]
+                              (mapv :id (dashboard-card/create-dashboard-cards!
+                                         (for [i (range n)]
+                                           {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))))
+            row-statements  (fn [n]
+                              (let [ids (dashcards! n)]
+                                (t2/with-call-count [call-count]
+                                  (dashboard-card/update-dashboard-card-rows! (mapv (fn [id] {:id id :size_x 3}) ids))
+                                  (call-count))))
+            series-statements (fn [n]
+                                (let [ids (dashcards! n)]
+                                  (t2/with-call-count [call-count]
+                                    (dashboard-card/update-dashboard-cards-series! (zipmap ids (repeat [series-id])))
+                                    (call-count))))]
+        (is (= (row-statements 2) (row-statements 6)))
+        (is (= (series-statements 2) (series-statements 6)))))))

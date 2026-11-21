@@ -320,11 +320,27 @@
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
   (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
 
+(mu/defn dashcard-series-for-dashcards
+  "The DashboardCardSeries of the DashboardCards with `dashcard-ids`."
+  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
+  (t2/select :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
+
+(mu/defn dashcard-series-by-ids
+  "The DashboardCardSeries with `series-ids`."
+  [series-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/DashboardCardSeries :id [:in series-ids]))
+
+(mu/defn update-dashcard-series!
+  "Apply `changes` to the DashboardCardSeries with `series-ids`, returning the number updated."
+  [series-ids :- [:sequential ms/PositiveInt]
+   changes    :- ::dashboards.schema/dashboard-card-series.update]
+  (t2/update! :model/DashboardCardSeries :id [:in series-ids] changes))
+
 (mu/defn insert-dashcard-series!
-  "Insert the DashboardCardSeries `rows`, returning the number inserted."
+  "Insert the DashboardCardSeries `rows`, returning the inserted instances."
   [rows :- [:sequential
             (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
-  (t2/insert! :model/DashboardCardSeries rows))
+  (t2/insert-returning-instances! :model/DashboardCardSeries rows))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."
@@ -504,16 +520,22 @@
   (t2/select :model/DashboardTab :id [:in tab-ids]))
 
 (mu/defn insert-dashboard-tabs!
-  "Insert the DashboardTab `rows` and return their ids."
+  "Insert the DashboardTab `rows` and return the inserted instances, in the order of the rows."
   [rows :- [:sequential
             (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position :entity_id])]]
-  (t2/insert-returning-pks! :model/DashboardTab rows))
+  (t2/insert-returning-instances! :model/DashboardTab rows))
 
 (mu/defn update-dashboard-tab!
   "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
   [tab-id  :- ms/PositiveInt
    changes :- ::dashboards.schema/dashboard-tab.update]
   (t2/update! :model/DashboardTab :id tab-id changes))
+
+(mu/defn update-dashboard-tabs!
+  "Apply `changes` to the DashboardTabs with `tab-ids`, returning the number updated."
+  [tab-ids :- [:sequential ms/PositiveInt]
+   changes :- ::dashboards.schema/dashboard-tab.update]
+  (t2/update! :model/DashboardTab :id [:in tab-ids] changes))
 
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
@@ -704,6 +726,11 @@
   (t2/update! :model/Dashboard {:collection_id       collection-id
                                 :collection_position position-clause}
               {:collection_position [plus-or-minus :collection_position 1]}))
+
+(mu/defn dashcards-of-actions
+  "The DashboardCards of the Actions with `action-ids`."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select :model/DashboardCard :action_id [:in action-ids]))
 
 (mu/defn delete-dashcards-of-actions!
   "Delete the DashboardCards of the Actions with `action-ids`, returning the number deleted."
