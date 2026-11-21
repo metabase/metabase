@@ -2250,8 +2250,8 @@
            (can-write-collection-or-root? (:collection_id changes) {:root-namespace nil}))))
 
 (defmulti allowed-namespaces
-  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in. By default, only the
-  default namespace (namespace = `nil`)."
+  "Set of Collection namespaces (as keywords) that instances of this model are allowed to go in.
+  Models without their own method get [[default-allowed-namespaces]]."
   {:arglists '([model])}
   t2.protocols/dispatch-value)
 
@@ -2278,12 +2278,31 @@
   [_ _]
   true)
 
+(def searchable-namespaces
+  "The Collection namespaces search indexes, with the content inside them.
+  Kept apart from [[default-allowed-namespaces]]: where content may be saved and what search finds are separate
+  decisions, so a new placement namespace isn't indexed by accident."
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
+
+(defn analytics-collection-ids
+  "The subset of `collection-ids` whose Collections are in the audit app's `analytics` namespace."
+  [collection-ids]
+  (collections.db/collection-ids-in-namespace "analytics" (vec (distinct collection-ids))))
+
+(defn searchable-namespace-clause
+  "HoneySQL clause matching rows whose `namespace-column` holds one of the [[searchable-namespaces]].
+  The appdb and in-place engines also hide `analytics` content at query time unless the audit app is enabled."
+  [namespace-column]
+  (into [:or]
+        (for [collection-namespace searchable-namespaces]
+          [:= namespace-column (some-> collection-namespace name)])))
+
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
   `allowed-namespaces`), or throw an Exception.
 
-    ;; Cards can only go in Collections in the default namespace (namespace = nil)
-    (check-collection-namespace Card new-collection-id)
+    ;; Snippets can only go in Collections in the `snippets` namespace
+    (check-collection-namespace :model/NativeQuerySnippet new-collection-id)
 
   `collection` is a Collection id or the row [[content-parent]] gives."
   [model collection]
@@ -2607,10 +2626,7 @@
                    ;; results pass through `metabase.search.impl/add-collection-effective-location`.
                    ;; Keep the snake_case `location` key flowing alongside the indexed `collection_location`.
                    :location                   true}
-    :where [:or [:= :namespace nil]
-            [:= :namespace "analytics"]
-            [:= :namespace "shared-tenant-collection"]
-            [:= :namespace "tenant-specific"]]
+    :where        (searchable-namespace-clause :namespace)
     ;; depends on the current user, used for rendering and ranking
     ;; TODO not sure this is what it'll look like
     :bookmark     [:model/CollectionBookmark [:and

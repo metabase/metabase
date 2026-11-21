@@ -56,10 +56,9 @@
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
-   :where [:and [:or [:= :collection.namespace nil]
-                 [:= :collection.namespace "shared-tenant-collection"]
-                 [:= :collection.namespace "tenant-specific"]]
-           [:= :this.document_id nil]]
+   :where        [:and
+                  (collection/searchable-namespace-clause :collection.namespace)
+                  [:= :this.document_id nil]]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                   :r          [:model/Revision [:and
                                                 [:= :r.model_id :this.id]
