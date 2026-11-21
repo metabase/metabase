@@ -168,7 +168,7 @@
   ;; The wiring assertions run unconditionally so this test can never silently pass
   ;; with zero assertions; only the index round-trip below is gated on engine support.
   (testing "the exploration search-model is wired up"
-    (is (= :model/Exploration (:model (search.spec/spec "exploration"))))
+    (is (= :model/Exploration (:model (search.spec/search-model-spec "exploration"))))
     (is (contains? search.config/all-models "exploration")))
   (testing "an exploration is indexed and returned from the default search"
     (when (search/supports-index?)

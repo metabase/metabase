@@ -9,6 +9,7 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
@@ -100,3 +101,8 @@
   none of those are present."
   [dim]
   (or (:display-name dim) (:dimension-id dim) (:name dim)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/ExplorationBlock [_model]
+  {:skip? false})

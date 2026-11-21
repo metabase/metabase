@@ -4,6 +4,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.search.test-util :as search.tu]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.system.core :as system]
@@ -150,13 +151,16 @@
            (setting-test/toucan-name)))))
 
 (deftest sync-test-3
-  (mt/discard-setting-changes [site-locale]
-    (clear-cache!)
-    (system/site-locale! "en")
-    (simulate-another-instance-updating-setting! :site-locale "fr")
-    (reset-last-update-check!)
-    (is (= "fr"
-           (system/site-locale)))))
+  ;; On Postgres a `site-locale` change reindexes search in a future that reads settings; if that future holds the
+  ;; restore lock when the read below runs, the read skips the restore and returns the stale "en".
+  (search.tu/with-sync-search-indexing
+    (mt/discard-setting-changes [site-locale]
+      (clear-cache!)
+      (system/site-locale! "en")
+      (simulate-another-instance-updating-setting! :site-locale "fr")
+      (reset-last-update-check!)
+      (is (= "fr"
+             (system/site-locale))))))
 
 (deftest per-app-db-cache-test
   (testing "settings caches are per app-DB id: another id gets its own, and a copy with the root's id shares it"

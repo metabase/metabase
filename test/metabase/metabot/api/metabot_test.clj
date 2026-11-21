@@ -47,10 +47,10 @@
                                   (lib/breakout (lib/with-temporal-bucket
                                                   (lib.metadata/field mp (mt/id :products :created_at)) :week)))
           metric-data  {:description "Metric description"
-                        :dataset_query (lib/->legacy-MBQL metric-source-query)
+                        :dataset_query metric-source-query
                         :type :metric}
           model-data   {:description "Model desc"
-                        :dataset_query (lib/->legacy-MBQL model-source-query)
+                        :dataset_query model-source-query
                         :type :model}]
       (mt/with-temp [:model/Collection {coll-id :id}   {}
                      :model/Collection {child-id1 :id} {:location (collection/location-path coll-id)}

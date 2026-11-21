@@ -4,6 +4,7 @@
   (:require
    [malli.error :as me]
    [metabase.analytics.core :as analytics]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -43,3 +44,8 @@
   [{:keys [result_rows] :as query-execution}]
   ;; sadly we have 2 ways to reference the row count :(
   (assoc query-execution :row_count (or result_rows 0)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/QueryExecution [_model]
+  {:skip? true})

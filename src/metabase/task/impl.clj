@@ -34,7 +34,7 @@
    [metabase.util.malli.schema :as ms])
   (:import
    (org.quartz CronTrigger JobDetail JobExecutionContext JobExecutionException JobKey JobListener
-               JobPersistenceException ObjectAlreadyExistsException Scheduler Trigger TriggerKey
+               JobPersistenceException ObjectAlreadyExistsException Scheduler SchedulerException Trigger TriggerKey
                TriggerListener)))
 
 (set! *warn-on-reflection* true)
@@ -254,10 +254,34 @@
     (catch Throwable e
       (log/errorf "Failed to trigger immediate execution of task %s: %s" job-key (ex-message e)))))
 
+(def metrics-job-name-key
+  "The key of a job data entry that names the job in metrics in place of its job key, for jobs with a key per target."
+  "metrics-job-name")
+
+(mu/defn schedule-once! :- [:maybe :boolean]
+  "Store the one-shot `trigger` of `job` in place of a stored trigger with its key, whether that one waits or its run is
+  in progress, and return true, or nil when this node has no running scheduler or Quartz refuses the trigger."
+  [job     :- (ms/InstanceOfClass JobDetail)
+   trigger :- (ms/InstanceOfClass Trigger)]
+  (when-let [scheduler (scheduler)]
+    (when-not (.isInStandbyMode scheduler)
+      (try
+        (.scheduleJob scheduler ^JobDetail job ^java.util.Set (hash-set trigger) true)
+        true
+        (catch SchedulerException e
+          (log/warnf "Could not schedule trigger %s: %s" (.getName (.getKey ^Trigger trigger)) (ex-message e)))))))
+
+(defn- running-scheduler
+  "The scheduler, or nil when there is none or it has been shut down, which leaves nothing to remove from it."
+  ^Scheduler []
+  (when-let [^Scheduler s (scheduler)]
+    (when-not (.isShutdown s)
+      s)))
+
 (mu/defn delete-task!
   "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)
     (qs/delete-job scheduler job-key)))
 
@@ -276,7 +300,7 @@
 (mu/defn delete-trigger!
   "Remove `trigger-key` from the scheduler"
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
-  (when-let [scheduler (scheduler)]
+  (when-let [scheduler (running-scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
 
 (mu/defn delete-all-triggers-of-job!

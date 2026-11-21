@@ -349,6 +349,8 @@
                                 [:field "Products__PRICE"    {:base-type :type/Float}]]}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL)))
       (is (= [;; orders.id, from :fields
               "ID"
@@ -482,6 +484,8 @@
                                       [:value 1234 {}]]}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL))))))
 
 (deftest ^:parallel returned-columns-no-duplicates-test
@@ -510,6 +514,8 @@
                                 [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
               (-> query
                   qp.preprocess/preprocess
+                  ;; existing usage -- do not use going forward
+                  #_{:clj-kondo/ignore [:deprecated-var]}
                   lib/->legacy-MBQL)))
       (is (= ["CREATED_AT"
               "count"

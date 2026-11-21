@@ -14,6 +14,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collection-items.core :as collection-items]
    [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
@@ -154,7 +155,7 @@
   ;; Nothing projected reads the `details`/`settings` blobs, and `mi/can-read?` needs only `:id`.
   (let [rows (mcp.db/browsable-databases database-detailed-keys
                                          (schema.table/browsable-databases-honeysql-filter))
-        dbs  (filterv mi/can-read? (t2/hydrate rows :can_read))]
+        dbs  (mi/readable rows)]
     (paged-list-content args dbs {:empty-hint (message/msg [(str "No databases are visible to you. Browsing "
                                                                  "data needs query-builder or table-metadata "
                                                                  "permission on at least one database.")])}
@@ -230,8 +231,7 @@
   [{:keys [database_id] :as args}]
   (check-database! database_id)
   (let [models (->> (mcp.db/unarchived-models-in-database question-select-columns database_id)
-                    (#(t2/hydrate % :can_read))
-                    (filterv mi/can-read?))]
+                    mi/readable)]
     (paged-list-content args models {} #(project-rows :question args %))))
 
 ;;; ------------------------------------------------- get_fields ---------------------------------------------------
@@ -301,8 +301,7 @@
         related          (when (seq related-ids)
                            (->> (mcp.db/active-tables-by-ids related-ids)
                                 (filter (comp browsable-db-ids :db_id))
-                                (#(t2/hydrate % :can_read))
-                                (filter mi/can-read?)
+                                mi/readable
                                 (u/index-by :id)))
         expand-ids       (into #{}
                                (mapcat (fn [[_ target-ids]]
@@ -674,7 +673,7 @@
                                       ns-str)))
         created-by-id (when (= created_by "me") api/*current-user-id*)
         models        (if root?
-                        (collections.children/visible-model-kwds collection (root-namespace-models ns-str type))
+                        (collection-items/visible-model-kwds collection (root-namespace-models ns-str type))
                         (into #{} (map type->rest-model) type))
         trash?        (collection/is-trash? collection)
         options   {:show-dashboard-questions? false
@@ -690,7 +689,7 @@
         ;; adjudicates the gate, and the cache keeps that to once per document
         res       (request/with-limit-and-offset limit offset
                     (documents/with-content-gate-cache
-                      (collections.children/collection-children collection options)))
+                      (collection-items/collection-children collection options)))
         total     (or (:total res) 0)
         ;; the snippets-namespace root path ignores the limit/offset binding (no :limit key on
         ;; the result) and returns every row, so the page is sliced here

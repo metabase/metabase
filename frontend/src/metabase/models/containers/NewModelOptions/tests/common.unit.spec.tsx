@@ -28,6 +28,19 @@ describe("NewModelOptions (OSS)", () => {
       expect(await screen.findByText("Use a native query")).toBeInTheDocument();
     });
 
+    it("opens a new structured model on the query tab of the model editor", async () => {
+      setup({ canCreateQueries: true, canCreateNativeQueries: true });
+
+      const link = await screen.findByRole("link", {
+        name: /Use the notebook editor/,
+      });
+      const [pathname] = checkNotNull(link.getAttribute("href")).split("#");
+      expect(pathname).toBe("/model/query");
+      const card = getLinkedCard(link);
+      expect(card.type).toBe("model");
+      expect(card.dataset_query).not.toHaveProperty("native");
+    });
+
     it("opens a native model on the last used native database", async () => {
       setup({ canCreateNativeQueries: true, lastUsedDatabaseId: 2 });
 

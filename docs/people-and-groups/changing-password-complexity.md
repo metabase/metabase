@@ -2,7 +2,7 @@
 title: Passwords
 redirect_from:
   - /docs/latest/operations-guide/changing-password-complexity
-summary: Configure required password complexity for your Metabase instance. 
+summary: Configure required password complexity for your Metabase instance.
 ---
 
 # Passwords
@@ -19,14 +19,15 @@ On self-hosted Metabases, you can configure required password complexity through
 export MB_PASSWORD_COMPLEXITY=<complexity_level>
 export MB_PASSWORD_LENGTH=10
 ```
-You can set either `MB_PASSWORD_COMPLEXITY` or `MB_PASSWORD_LENGTH` independently. 
+
+You can set either [`MB_PASSWORD_COMPLEXITY`](../configuring-metabase/environment-variables.md#mb_password_complexity) or [`MB_PASSWORD_LENGTH`](../configuring-metabase/environment-variables.md#mb_password_length) independently.
 
 The options for complexity level are:
 
 - `weak`: no constraints.
 - `normal`: at least 1 digit.
 - **`strong-enough`: minimum 15 characters (default)**.
-- `strong`:  minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
+- `strong`: minimum 8 characters w/ 2 lowercase, 2 uppercase, 1 digit, and 1 special character
 
 By default, Metabase also prevents users from setting passwords that are in a list of common passwords (like `qwerty123` and
 `passw0rd`). Changing the complexity requirement to `weak` disables this behavior.
@@ -36,6 +37,8 @@ By default, Metabase also prevents users from setting passwords that are in a li
 {% include plans-blockquote.html feature="Disabling password logins" %}
 
 On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin** > **Settings** > **Authentication** > **Overview**.
+
+On self-hosted Metabases, you can also turn off password logins with the [`MB_ENABLE_PASSWORD_LOGIN`](../configuring-metabase/environment-variables.md#mb_enable_password_login) environment variable. This only takes effect once at least one SSO method is turned on; until then, people can still log in with a password.
 
 ## Change a password
 

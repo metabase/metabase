@@ -234,7 +234,6 @@
   (testing "changing a measure's definition re-derives a card using it"
     (with-dependencies-feature
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Measure"
-                                                      :table_id   (mt/id :orders)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (-> (table-query :orders) (lib/aggregate (lib/count)))}
                      :model/Card    {card-id :id}    {:dataset_query (measure-query measure-id)}]
@@ -252,11 +251,9 @@
   (testing "changing a measure's definition re-derives a card using a measure built on it"
     (with-dependencies-feature
       (mt/with-temp [:model/Measure {inner-id :id} {:name       "Inner"
-                                                    :table_id   (mt/id :orders)
                                                     :creator_id (mt/user->id :rasta)
                                                     :definition (-> (table-query :orders) (lib/aggregate (lib/count)))}]
         (mt/with-temp [:model/Measure {outer-id :id} {:name       "Outer"
-                                                      :table_id   (mt/id :orders)
                                                       :creator_id (mt/user->id :rasta)
                                                       :definition (measure-query inner-id)}
                        :model/Card    {card-id :id}  {:dataset_query (measure-query outer-id)}]
@@ -478,6 +475,21 @@
           (is (some? (column card-id "Grand total")))
           (is (= before (t2/select-one-fn :updated_at :model/Card :id card-id)))
           (is (seq @submitted)))))))
+
+(deftest storing-card-leaves-dependencies-current-test
+  (testing "storing a re-derived card leaves its dependencies current, whatever its stored schema"
+    (doseq [card-schema [nil 20]]
+      (testing (str "card_schema " (or card-schema "current"))
+        (with-dependencies-feature
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :orders)}]
+            (run-jobs!)
+            (t2/update! (t2/table-name :model/Card) :id card-id
+                        (cond-> {:result_metadata (json/encode [])}
+                          card-schema (assoc :card_schema card-schema)))
+            (reprocess! card-id)
+            (rederive!)
+            (is (some? (column card-id "TOTAL")))
+            (is (not (deps.test/dependency-pending? :card card-id)))))))))
 
 (deftest sandboxed-creator-test
   (testing "a card is re-derived as no user, so its creator's sandbox doesn't decide its columns, and the columns its
@@ -744,6 +756,28 @@
                            rederive!)
         (is (= ["Changed" "Changed"] (mapv #(:display_name (column % "NAME")) [first-id last-id])))
         (is (pending? failing-id))))))
+
+(deftest failure-while-app-db-unreachable-test
+  (testing "a re-derive failing while the app DB is unreachable fails the batch, counting against no card"
+    (with-dependencies-feature
+      (mt/with-temp [:model/Card {failing-id :id} {:dataset_query (table-query :venues)}
+                     :model/Card {other-id :id}   {:dataset_query (table-query :venues)}]
+        (run-jobs!)
+        (reprocess! failing-id other-id)
+        (let [rederive-failing! #(do-with-inference (fn [infer query card]
+                                                      (if (= failing-id (:id card))
+                                                        (throw (ex-info "connection lost" {}))
+                                                        (rename-column (infer query card) "NAME" "Changed")))
+                                                    rederive!)
+              status            #(t2/select-one :model/ResultMetadataStatus :entity_type :card :entity_id failing-id)]
+          (mt/with-dynamic-fn-redefs [dependencies.db/app-db-reachable? (constantly false)]
+            (is (thrown-with-msg? Exception #"connection lost" (rederive-failing!))))
+          (is (=? {:fail_count 0 :terminal false} (status)))
+          (is (pending? failing-id))
+          (testing "and counts against the card while the app DB answers, without blocking the rest"
+            (rederive-failing!)
+            (is (= "Changed" (:display_name (column other-id "NAME"))))
+            (is (=? {:fail_count 1 :terminal false} (status)))))))))
 
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"

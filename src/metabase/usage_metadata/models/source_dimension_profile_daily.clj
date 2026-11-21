@@ -5,6 +5,7 @@
   `Field.fingerprint` (populated by the sync fingerprinter); `source_basis` is
   `:fingerprint`."
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -17,3 +18,8 @@
    :observation_type mi/transform-keyword})
 
 (derive :model/SourceDimensionProfileDaily :metabase/model)
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/SourceDimensionProfileDaily [_model]
+  {:skip? true})

@@ -43,6 +43,11 @@
 (defn- index-hits [term]
   (count (search.index/search term)))
 
+(defn- index-names
+  "The names of the entities the index matches for `term`."
+  [term]
+  (into #{} (map second) (search.index/search term)))
+
 (defn- now []
   ;; Truncate to milliseconds as precision may be lost when roundtripping to the database.
   (t/truncate-to (t/offset-date-time) :millis))
@@ -160,6 +165,11 @@
         (is (= 1 (index-hits "satisfaction and customer")))
         (is (= 2 (index-hits "satisfaction -customer")))))))
 
+(defn- postgres-major-version
+  "The major version of the Postgres app DB."
+  []
+  (-> (t2/query-one ["SHOW server_version_num"]) :server_version_num parse-long (quot 10000)))
+
 (deftest phrase-test
   (mt/with-dynamic-fn-redefs [u.search/tsv-language (constantly "english")]
     (with-index
@@ -168,13 +178,14 @@
         (is (= #_2 3 (index-hits "projected")))
         (is (= 2 (index-hits "revenue")))
         (is (= #_1 2 (index-hits "projected revenue")))
-        (testing "Simple dictionary allows searching for unstemmed words #60649"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organ")))
-          (is (= 2 (index-hits "organi"))))
-        (testing "We get false-positive for 'Organi' here"
-          ;; those two results are "Organization Reference" and "Nobody Expects Organi"
-          (is (= 2 (index-hits "organization"))))
+        (let [organ-cards #{"Nobody Expects Organi" "Organization Reference"}]
+          (testing "Simple dictionary allows searching for unstemmed words #60649"
+            (is (= organ-cards (index-names "organ")))
+            (is (= organ-cards (index-names "organi"))))
+          (testing "Before PostgreSQL 19 we get a false positive for 'Organi' here"
+            ;; Older stemmers reduce "organization" to "organ", a prefix of "Organi". PostgreSQL 19's gives "organiz".
+            (is (= (if (< (postgres-major-version) 19) organ-cards #{"Organization Reference"})
+                   (index-names "organization")))))
         (testing "only sometimes do these occur sequentially in a phrase"
           (is (= 1 (index-hits "\"projected revenue\""))))))))
 
@@ -356,8 +367,6 @@
                                                       :authority_level "official"
                                                       ;; :archived = true
                                                       :archived true
-                                                      ;; :type = "collection"
-                                                      :type "collection"
                                                       ;; :model_created_at = yesterday
                                                       :created_at yesterday}]
         (is (=? (index-entity
@@ -445,18 +454,14 @@
   (search.tu/with-temp-index-table
     (let [segment-name (mt/random-name)
           yesterday    (t/- (now) (t/days 1))]
-      (mt/with-temp [:model/Database   {db-id :id}      {}
-                     :model/Table      {table-id :id}   {:db_id db-id}
-                     :model/Segment    {segment-id :id} {:name       segment-name
-                                                         ;; :table_id = table-id
-                                                         :table_id   table-id
-                                                         ;; :model_updated_at = yesterday
-                                                         :updated_at yesterday}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:name       segment-name
+                                                      ;; :model_updated_at = yesterday
+                                                      :updated_at yesterday}]
         (is (=? (index-entity
                  {:model            "segment"
                   :model_id         (str segment-id)
                   :name             segment-name
-                  :database_id      db-id
+                  :database_id      (mt/id)
                   :model_updated_at yesterday})
                 (ingest-then-fetch! "segment" segment-name)))))))
 

@@ -193,7 +193,12 @@
                                                   :type "notification-subscription/cron"
                                                   :event_name nil
                                                   :cron_schedule "0 0 0 * * ?"}]
-                                 :handlers [{:recipients [{:id (mt/malli=? int?)
+                                 :handlers [{:id            (mt/malli=? int?)
+                                             :channel_type  "channel/email"
+                                             :channel_id    nil
+                                             :template_id   nil
+                                             :active        true
+                                             :recipients [{:id (mt/malli=? int?)
                                                            :type "notification-recipient/user"
                                                            :user_id (mt/user->id :rasta)
                                                            :permissions_group_id nil
@@ -215,6 +220,16 @@
               slack-details (-> created :handlers first :recipients first :details)]
           (is (=? {:value "#work" :channel_id "C001"}
                   slack-details)))))))
+
+(deftest create-notification-invalid-cron-test
+  (mt/with-model-cleanup [:model/Notification]
+    (mt/with-temp [:model/Card {card-id :id}]
+      (testing "an invalid cron schedule is a 400"
+        (mt/user-http-request :crowberto :post 400 "notification"
+                              {:payload       {:card_id card-id}
+                               :payload_type  "notification/card"
+                               :subscriptions [{:type          "notification-subscription/cron"
+                                                :cron_schedule "not a cron"}]})))))
 
 (deftest create-notification-error-test
   (testing "require auth"

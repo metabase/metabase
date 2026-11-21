@@ -114,11 +114,12 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one-fn :tenant_id :model/User :id user-id))
 
-(mu/defn collection-with-archived-state
-  "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
+(mu/defn set-collection-archived!
+  "Archive the Collection with `collection-id` and what is in it when `archived?`, else restore it and what its
+  archive took down, through its model."
   [collection-id :- ::lib.schema.id/collection
    archived?     :- :boolean]
-  (t2/select-one :model/Collection :id collection-id :archived archived?))
+  (t2/update! :model/Collection :id collection-id {:archived archived?}))
 
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the Collection with `collection-id`."

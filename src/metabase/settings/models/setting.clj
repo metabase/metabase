@@ -10,12 +10,14 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.serialization.core :as serialization]
+   [metabase.settings.app-db-copy :as settings.app-db-copy]
    [metabase.settings.db :as settings.db]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.settings.schema :as settings.schema]
@@ -107,13 +109,15 @@
         :when (and (export? key) (not is_env_setting))]
     {:key key :value value}))
 
-(defmethod serialization/spec :model/Setting [_]
-  {:schema    ::settings.schema/external-setting
-   :identity  [:key]
-   :copy      [:value]
-   :skip      [:value_with_aad]
-   :transform {:key {:export (fn [_ _ ks _] (mapv name ks))
-                     :import (fn [_ _ ks _] (mapv keyword ks))}}})
+(defn- export-keys
+  "Exports the keys of Settings as strings."
+  [_store _settings ks _opts]
+  (mapv name ks))
+
+(defn- import-keys
+  "Imports the keys of Settings as keywords."
+  [_store _entities ks _opts]
+  (mapv keyword ks))
 
 (def ^:private Type
   [:fn
@@ -216,6 +220,7 @@
    [:type Type]
    ;; different getters/setters take care of parsing/unparsing
    [:getter ifn?]
+   [:custom-getter? :boolean]
    [:setter ifn?]
    ;; an init function can be used to seed initial values
    [:init [:maybe ifn?]]
@@ -389,6 +394,14 @@
   (and
    (not (allows-database-local-values? setting))
    (not (allows-user-local-values? setting))))
+
+(defn- check-site-wide-value-allowed
+  "Throws when `setting` takes no site-wide value, so that no row of the `setting` table may hold one."
+  [setting]
+  (when-not (allows-site-wide-values? setting)
+    (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
+                    {:status-code 400
+                     :setting     (:name setting)}))))
 
 (defn- user-local-value [setting-definition-or-name]
   (let [{setting-name :name, :as setting} (resolve-setting setting-definition-or-name)]
@@ -722,6 +735,35 @@
       (throw (Exception.
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
+(defn- csv-entries
+  "The entries in `row`, a parsed CSV row or a list of values, as strings without surrounding spaces or blank entries."
+  [row]
+  (into [] (comp (map (comp str/trim str)) (remove str/blank?)) row))
+
+(defn- csv-rows
+  "The rows of `csv-string`, lazily, without blank rows after the first.
+   Realizing a row that is not valid CSV throws."
+  [csv-string]
+  (let [rows (csv/read-csv csv-string)]
+    (lazy-seq
+     ;; `first` and `rest`, not destructuring, which would parse the second row too.
+     (when-let [rows (seq rows)]
+       (cons (first rows) (remove #(every? str/blank? %) (rest rows)))))))
+
+(defn- parse-string-value
+  "The value of `setting-type` that its stored string form `string-value` encodes."
+  [setting-type ^String string-value]
+  (case (keyword setting-type)
+    :boolean                     (string->boolean string-value)
+    (:integer :positive-integer) (Long/parseLong string-value)
+    :double                      (Double/parseDouble string-value)
+    :keyword                     (keyword string-value)
+    :timestamp                   (u.date/parse string-value)
+    :json                        (json/decode+kw string-value)
+    ;; Only the first line is read. [[validate-settings-formatting!]] warns about the rest of an env var.
+    :csv                         (some-> (first (csv/read-csv string-value)) csv-entries)
+    string-value))
+
 (defn- random-uuid-str []
   (str (random-uuid)))
 
@@ -740,35 +782,35 @@
 ;; * Otherwise, throw an Exception.
 (defmethod get-value-of-type :boolean
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name boolean? string->boolean))
+  (get-raw-value setting-definition-or-name boolean? (partial parse-string-value :boolean)))
 
 (defmethod get-value-of-type :integer
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name integer? #(Long/parseLong ^String %)))
+  (get-raw-value setting-definition-or-name integer? (partial parse-string-value :integer)))
 
 (defmethod get-value-of-type :positive-integer
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name pos-int? #(Long/parseLong ^String %)))
+  (get-raw-value setting-definition-or-name pos-int? (partial parse-string-value :positive-integer)))
 
 (defmethod get-value-of-type :double
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name double? #(Double/parseDouble ^String %)))
+  (get-raw-value setting-definition-or-name double? (partial parse-string-value :double)))
 
 (defmethod get-value-of-type :keyword
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name keyword? keyword))
+  (get-raw-value setting-definition-or-name keyword? (partial parse-string-value :keyword)))
 
 (defmethod get-value-of-type :timestamp
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name #(instance? Temporal %) u.date/parse))
+  (get-raw-value setting-definition-or-name #(instance? Temporal %) (partial parse-string-value :timestamp)))
 
 (defmethod get-value-of-type :json
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name coll? json/decode+kw))
+  (get-raw-value setting-definition-or-name coll? (partial parse-string-value :json)))
 
 (defmethod get-value-of-type :csv
   [_setting-type setting-definition-or-name]
-  (get-raw-value setting-definition-or-name sequential? (comp first csv/read-csv)))
+  (get-raw-value setting-definition-or-name sequential? (partial parse-string-value :csv)))
 
 (defn- default-getter-for-type [setting-type]
   (partial get-value-of-type (keyword setting-type)))
@@ -818,8 +860,6 @@
 (defn- update-setting!
   "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (assert (not= setting-name setting.cache/settings-last-updated-key)
-          (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; Toucan 2 version of `update!` will do transforms and stuff like that
   (settings.db/update-setting-value! setting-name new-value))
 
@@ -833,6 +873,8 @@
        (catch Throwable e
          (log/warnf "Error inserting a new Setting: %s. Assuming Setting already exists in DB and updating existing value."
                     (ex-message e))
+         (when-not (settings.db/setting-exists? setting-name)
+           (throw e))
          (update-setting! setting-name new-value))))
 
 (defn obfuscated-value?
@@ -886,10 +928,7 @@
           ;; site-wide value or write or read from the cache
           (set-user-local-value! setting-name new-value)
           (do
-            ;; make sure we're not trying to set the value of a Database-local-only Setting
-            (when-not (allows-site-wide-values? setting)
-              (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
-                              {:setting (:name setting)})))
+            (check-site-wide-value-allowed setting)
             ;; always update the cache entirely when updating a Setting.
             (setting.cache/restore-cache!)
             ;; write to DB
@@ -983,17 +1022,30 @@
        (u.date/format timestamp)
        (throw (ex-info "Malformed value for :timestamp setting" {:value new-value}))))))
 
-(defn- serialize-csv [value]
+(defn- serialize-csv
+  "The stored form of `value`, a list of entries or a CSV string of one line.
+   Returns nil, which stores nothing so the default applies, for nil or a value with no entries, such as `[]` or `,`.
+   Any other value is stored as printed.
+   Throws a 400 for a string that is not valid CSV or spans several lines."
+  [value]
   (cond
-    ;; if we're passed as string, assume it's already CSV-encoded
     (string? value)
-    value
+    (let [rows (try
+                 (doall (csv-rows value))
+                 (catch Exception _
+                   ;; Leave the parse error out: it can quote part of the value, which may be secret.
+                   (throw (ex-info (tru "Invalid comma-separated value.") {:status-code 400}))))]
+      (when (next rows)
+        (throw (ex-info (tru "Put comma-separated values on one line.") {:status-code 400})))
+      (serialize-csv (first rows)))
 
     (sequential? value)
-    (let [s (with-open [writer (StringWriter.)]
-              (csv/write-csv writer [value])
-              (str writer))]
-      (first (str/split-lines s)))
+    (let [entries (csv-entries value)]
+      (when (seq entries)
+        (with-open [writer (StringWriter.)]
+          ;; Write the row without its line ending. An entry with a newline in it is quoted, so it stays in this row.
+          (csv/write-csv writer [entries] :newline :lf)
+          (str/replace (str writer) #"\n\z" ""))))
 
     (nil? value)
     nil
@@ -1041,10 +1093,10 @@
           (audit-setting-change! setting previous-value (audit-value-fn))))
       (setter new-value))))
 
-(defn validate-settable!
-  "Check whether the given setting can be set, in general. For :database-local writes use [[validate-settable-for-db!]]"
+(defn validate-settable
+  "Check whether the given setting can be set, in general. For :database-local writes use [[validate-settable-for-db]]"
   ([setting]
-   (validate-settable! setting false))
+   (validate-settable setting false))
   ([setting-definition-or-name bypass-read-only?]
    (let [{:keys [setter enabled? feature] :as setting} (resolve-setting setting-definition-or-name)
          s-name (setting-name setting)]
@@ -1067,30 +1119,39 @@
        (when (= setter :none)
          (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." s-name))))))))
 
-(defn validate-settable-for-db!
-  "Check whether the given setting can be set for the given database. `database` is the database as it would be after
-  the write, so its `:settings` hold the new value; a `:string` setting refuses a non-string one."
+(defn validate-driver-feature-for-db
+  "Throws a 400 unless `database`'s driver has the driver feature the setting needs, as `driver-supports?` answers it."
   [setting-definition-or-name database driver-supports?]
   (let [{:keys [driver-feature] :as setting} (resolve-setting setting-definition-or-name)
-        s-name (setting-name setting)
-        value  (get-in database [:settings (keyword s-name)])]
-    (validate-settable! setting)
-    ;; Database-local values skip the setter, so nothing else checks their type.
-    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
-      (throw (ex-info (tru "Setting {0} must be a string." s-name)
-                      {:setting     s-name
-                       :database-id (:id database)})))
+        s-name (setting-name setting)]
     (when (and driver-feature (not (driver-supports? database driver-feature)))
       (throw (ex-info (tru "Setting {0} requires driver feature {1}, but the database does not support it" s-name driver-feature)
-                      {:setting s-name
+                      {:status-code      400
+                       :setting          s-name
                        :required-feature driver-feature
+                       :database-id      (:id database)})))))
+
+(defn validate-settable-for-db
+  "Throws a 400 unless the setting can be set on `database`, the Database as the write leaves it: a `:string` setting
+  holds a string, its driver has the setting's driver feature, and the setting's `:enabled-for-db?` gives no reason
+  against it other than warnings."
+  [setting-definition-or-name database driver-supports?]
+  (let [setting (resolve-setting setting-definition-or-name)
+        s-name  (setting-name setting)
+        value   (get-in database [:settings (keyword s-name)])]
+    (when (and (= :string (:type setting)) (some? value) (not (string? value)))
+      (throw (ex-info (tru "Setting {0} must be a string." s-name)
+                      {:status-code 400
+                       :setting     s-name
                        :database-id (:id database)})))
+    (validate-driver-feature-for-db setting database driver-supports?)
     ;; Warnings are only for display and shouldn't block writing the setting.
     ;; They imply that the setting won't work until the issue is resolved, but often it is a transient problem.
     (when-let [reasons (disabled-for-db-reasons setting database)]
-      (when (not-every? warning? (disabled-for-db-reasons setting database))
+      (when (not-every? warning? reasons)
         (throw (ex-info (tru "Setting {0} is not enabled for this database" s-name)
-                        {:setting     s-name
+                        {:status-code 400
+                         :setting     s-name
                          :database-id (:id database)
                          :reasons     reasons}))))))
 
@@ -1110,9 +1171,23 @@
         new-value                    (cond-> new-value
                                        (and (= (:type setting) :json) (coll? new-value))
                                        walk/keywordize-keys)]
-    (validate-settable! setting bypass-read-only?)
+    (validate-settable setting bypass-read-only?)
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
+
+(defn set-string!
+  "Sets `setting-definition-or-name` with [[set!]] to the value of its type that `string-value`, the stored string form
+  [[exportable-settings]] exports, encodes, unless the application database already stores `string-value`; throws when
+  an environment variable sets the setting."
+  [setting-definition-or-name string-value]
+  (let [setting      (resolve-setting setting-definition-or-name)
+        string-value (not-empty string-value)]
+    (when (not= string-value (db-stored-value setting))
+      (when-let [[env-var] (env-var-source setting)]
+        (throw (ex-info (tru "Setting {0} is set by the environment variable {1}." (setting-name setting) env-var)
+                        {:status-code 400
+                         :setting     (setting-name setting)})))
+      (metabase.settings.models.setting/set! setting (some->> string-value (parse-string-value (:type setting)))))))
 
 (defn- extract-encryption-or-default
   "Encryption is turned off or on according to (in order of preference):
@@ -1162,6 +1237,7 @@
                  :default            default
                  :on-change          nil
                  :getter             (partial (default-getter-for-type setting-type) setting-name)
+                 :custom-getter?     (contains? setting :getter)
                  :setter             (partial (default-setter-for-type setting-type) setting-name)
                  :init               nil
                  :tag                (default-tag-for-type setting-type)
@@ -1762,11 +1838,27 @@
                :parse-error parse-error
                :env-var? env-var?)))))
 
+(defn- warn-about-ignored-csv-lines!
+  "Logs a warning when `setting` is a `:csv` setting whose env var has lines after the first, which are not read."
+  [setting]
+  ;; A custom getter parses the raw value its own way, so later lines may not be ignored.
+  (when-let [[env-var value] (and (= :csv (:type setting))
+                                  (not (:custom-getter? setting))
+                                  (env-var-source setting))]
+    ;; A first line that does not parse is reported by [[validate-setting]]. Later lines are ignored whether or not
+    ;; they parse, so a parse error after the first line counts as one.
+    (let [rows               (csv-rows value)
+          first-line-parses? (try (some? (seq rows)) (catch Exception _ false))
+          more-lines?        (try (some? (next rows)) (catch Exception _ true))]
+      (when (and first-line-parses? more-lines?)
+        (log/warnf "Only the first line of %s is used. Put comma-separated values on one line." env-var)))))
+
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.
 
    Note that this will only check settings whose [[defsetting]] forms have already been evaluated."
   []
+  (run! warn-about-ignored-csv-lines! (vals @registered-settings))
   (doseq [invalid-setting (keep validate-setting (vals @registered-settings))]
     (if (:env-var? invalid-setting)
       (throw (ex-info (trs "Invalid {0} configuration for setting: {1}"
@@ -1777,6 +1869,14 @@
       (log/warnf "Unable to parse setting %s: %s"
                  (name (:name invalid-setting))
                  (ex-message (:parse-error invalid-setting))))))
+
+(defn- check-not-settings-last-updated
+  "Throws for the `settings-last-updated` row, which only [[setting.cache/update-settings-last-updated!]] writes."
+  [setting-key]
+  (when (= (name setting-key) setting.cache/settings-last-updated-key)
+    (throw (ex-info (tru "You cannot update `settings-last-updated` yourself! This is done automatically.")
+                    {:status-code 400
+                     :setting-key setting-key}))))
 
 (defn- write-setting-value
   "Store a Setting's `:value` in `:value_with_aad`, encrypted under additional authenticated data naming the setting
@@ -1793,6 +1893,8 @@
         resolved    (or (maybe-resolve-setting setting-key)
                         (throw (ex-info (tru "Unknown setting: {0}" setting-key)
                                         {:setting-key setting-key})))]
+    (check-not-settings-last-updated setting-key)
+    (check-site-wide-value-allowed resolved)
     (assoc setting
            :value          (cond-> value (encrypts? resolved) encryption/maybe-encrypt)
            :value_with_aad (some-> value (encryption/maybe-encrypt {:aad (mdb.setting/setting-aad setting-key)})))))
@@ -1833,3 +1935,19 @@
   ;; Skip aggregate results (e.g. a `count` row) that carry no `:key` to resolve the setting by.
   (cond-> setting
     (some? (:key setting)) read-setting-value))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/Setting [_model]
+  {:skip?     false
+   :transform settings.app-db-copy/transform-setting
+   :sequence  false})
+
+(defmethod serialization/spec :model/Setting [_]
+  {:schema       ::settings.schema/external-setting
+   :identity     [:key]
+   :copy         [:value]
+   :skip         [:value_with_aad]
+   :transform    {:key {:export export-keys
+                        :import import-keys}}
+   :rows-by-refs serialization/setting-rows-by-refs})

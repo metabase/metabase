@@ -1,9 +1,11 @@
 (ns metabase-enterprise.security-center.settings-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.security-center.settings :as settings]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.security-center.schema :as security-center.schema]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -75,3 +77,8 @@
     (mt/with-premium-features #{}
       (mt/user-http-request :crowberto :put 402 "setting/security-center-slack-channel"
                             {:value "#security"}))))
+
+(deftest ^:parallel default-severity-repeat-days-test
+  (testing "every severity has a default number of days between repeat notifications"
+    (is (= (set security-center.schema/severities)
+           (set (keys @#'settings/default-severity-repeat-days))))))
