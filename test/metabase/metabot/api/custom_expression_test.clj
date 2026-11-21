@@ -22,8 +22,8 @@
    (merge {:mode        "aggregation"
            :prompt      "average total"
            :columns     [{:name "[Total]" :type "number"}
-                         {:name "[Created At]" :type "date"}
-                         {:name "[User → Name]" :type "text"}]
+                         {:name "[Created At]" :type "datetime"}
+                         {:name "[User → Name]" :type "string"}]
            :metrics     ["[Revenue]"]
            :measures    ["[Total Sales]"]
            :table_name  "Orders"
@@ -187,8 +187,8 @@
                 "</table-name>\n"
                 "<columns>\n"
                 "[Total] (number)\n"
-                "[Created At] (date)\n"
-                "[User → Name] (text)\n"
+                "[Created At] (datetime)\n"
+                "[User → Name] (string)\n"
                 "</columns>\n"
                 "<metrics>\n"
                 "[Revenue]\n"
@@ -223,8 +223,8 @@
                     "</table-name>\n"
                     "<columns>\n"
                     "[Total] (number)\n"
-                    "[Created At] (date)\n"
-                    "[User → Name] (text)\n"
+                    "[Created At] (datetime)\n"
+                    "[User → Name] (string)\n"
                     "</columns>\n"
                     "<user-request>\n"
                     "average total\n"
