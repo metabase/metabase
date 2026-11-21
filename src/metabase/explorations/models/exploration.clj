@@ -79,7 +79,6 @@
     (cond-> exploration
       (contains? changes :archived) (assoc :archived_directly (mi/archived-directly exploration #(collection/archived? collection_id))))))
 
-
 (methodical/defmethod t2/batched-hydrate [:model/Exploration :can_read]
   "Whether the current user reads each of `explorations`, as the content of its Collection."
   [_model _k explorations]

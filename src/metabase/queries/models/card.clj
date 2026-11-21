@@ -1368,7 +1368,6 @@
     (assoc card :metabot_conversation_id nil :metabot_chart_id nil)
     card))
 
-
 (defn- archive-followers!
   "Deletes the Actions of `card`, which is being archived, and resets the parameters that take their values from it."
   [{:keys [id]}]

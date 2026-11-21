@@ -6,6 +6,8 @@
    [metabase-enterprise.data-testing.models.card-test]
    [metabase-enterprise.data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.models.segment-test]
+   [metabase-enterprise.data-testing.models.test-suite]
    [metabase-enterprise.data-testing.run-api]
    [metabase-enterprise.data-testing.run-tracking]
-   [metabase-enterprise.data-testing.segment-api]))
+   [metabase-enterprise.data-testing.segment-api]
+   [metabase-enterprise.data-testing.suite-api]))

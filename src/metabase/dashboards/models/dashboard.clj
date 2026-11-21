@@ -128,7 +128,6 @@
         (archive-or-restore-questions! (:id dashboard) (:archived dashboard)))
       dashboard)))
 
-
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
     ;; It was previously possible for parameters to have empty strings for :name and

@@ -57,7 +57,6 @@
       (contains? changes :archived) (-> (assoc :archived_directly (mi/archived-directly row #(collection/archived? (:collection_id row))))
                                         (doto (archive-or-restore-events! (t2/original row)))))))
 
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Timeline :can_read]

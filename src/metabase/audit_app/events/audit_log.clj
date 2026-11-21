@@ -257,6 +257,8 @@
    :event/card-test-run-timeout           [:test_type :test_id :status]
    :event/segment-test-run-start          [:test_type :test_id :status]
    :event/segment-test-run-timeout        [:test_type :test_id :status]
+   :event/test-suite-run-start            [:suite_id :status]
+   :event/test-suite-run-timeout          [:suite_id :status]
    :event/security-advisory-acknowledge   [:advisory_id :title :severity :match_status]
    :event/security-advisory-match         [:advisory_id :title :severity :match_status]
    :event/remote-sync-import              [:sync_task_type :version]
@@ -524,6 +526,14 @@
 (events/derive! :event/segment-test-run-timeout ::segment-test-event)
 
 (methodical/defmethod events/publish-event! ::segment-test-event
+  [topic event]
+  (record-manual! topic event))
+
+(events/derive! ::test-suite-event ::event)
+(events/derive! :event/test-suite-run-start ::test-suite-event)
+(events/derive! :event/test-suite-run-timeout ::test-suite-event)
+
+(methodical/defmethod events/publish-event! ::test-suite-event
   [topic event]
   (record-manual! topic event))
 

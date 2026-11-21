@@ -22,8 +22,8 @@ summary: Breaking changes to the Metabase API, listed by release.
   test whose input, given as rows, lacks a column that the transform's query reads from the input's table, with `400`
   and the `error-code` `transform-test.missing-input-columns`; the response's `columns` names the missing columns of
   each table. Such a test could be saved before, and every run of it failed with `422` and
-  `transform-test.query-failed`. Only the columns that the SQL parser places on one table are checked. The columns of
-  tables that Metabase hides, and the columns marked sensitive or retired, are not checked. On a database that keeps
+  `transform-test.transform-failed`. Only the columns that the SQL parser places on one table are checked. The columns
+  of tables that Metabase hides, and the columns marked sensitive or retired, are not checked. On a database that keeps
   the case of column names, a declared name that differs from the table's only in case is missing.
 
 - The Agent API (`/api/agent`) is deprecated and will be removed in Metabase 67. Use the MCP server for your agents
@@ -73,6 +73,12 @@ summary: Breaking changes to the Metabase API, listed by release.
 - `POST /api/revision/revert` with `entity` `transform-test` needs the Transforms Testing premium feature, as the
   `/api/ee/transform-test` endpoints do. Without it, it returns `402 Payment Required`. The revision history endpoints
   `GET /api/revision?entity=transform-test` and `GET /api/revision/transform-test/:id` do not need it.
+
+- `POST /api/revision/revert` with `entity` `transform-test` refuses a revert that an edit of the test to the same
+  state, `PUT /api/ee/transform-test/:id`, would refuse, with the status and `error-code` of that edit's refusal, such
+  as `400` and `transform-test.missing-input-columns`. Only a revert that changes the test's transform, inputs,
+  expectations or `now` is checked; a revert that changes only its name or description is not. Such a revert
+  succeeded before.
 
 - Data apps name their slug and their display name as their `data_app.yaml` does: `slug` holds the slug that
   `name` held, and `name` holds the display name that `display_name` held. The `/api/ee/apps` endpoints return `slug` and

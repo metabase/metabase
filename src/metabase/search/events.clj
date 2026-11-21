@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
+   [metabase.search.spec :as search.spec]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -18,6 +19,38 @@
   (or (search/indexed-model? model)
       (isa? model :search/indexed)
       (and (= :delete operation) (isa? model :search/indexed-deletes))))
+
+(defn- revision-readers
+  "The search models whose documents read the latest Revision of their entity, by the `:model` that a Revision names
+  the entity with, such as `{\"Card\" #{\"card\" \"dataset\" \"metric\"}}`."
+  []
+  (reduce-kv (fn [readers search-model {:keys [model joins]}]
+               (cond-> readers
+                 (some (comp #{:model/Revision} first) (vals joins))
+                 (update (name model) (fnil conj #{}) search-model)))
+             {}
+             (search.spec/specifications)))
+
+(defn- revised-model
+  "The `:model` that names the entity whose documents the `event` of the creation of a Revision refreshes, or nil for
+  any other event."
+  [{:keys [model operation object]}]
+  (when (and (= :model/Revision model)
+             (= :create operation)
+             (contains? (revision-readers) (:model object)))
+    (:model object)))
+
+(defn- reindex-revised!
+  "Reindex, by its own id, each entity that the Revision create `events` name, but only the documents that read its
+  Revision."
+  [events]
+  (let [readers (revision-readers)]
+    (doseq [[revised-model ids] (update-vals (group-by revised-model events)
+                                             #(into [] (comp (map (comp :model_id :object)) (distinct)) %))]
+      ;; The other documents that join the entity, such as a model's indexed values and actions, read none of the
+      ;; Revision, so a model's every save would re-derive them all for nothing.
+      (search/reindex-documents! (map #(t2/instance (keyword "model" revised-model) {:id %}) ids)
+                                 (readers revised-model)))))
 
 (defn- capture-dependents
   "The documents that the delete of the rows of the delete `events` of one model leaves unpurgeable, skipping the
@@ -39,13 +72,13 @@
           nil)))))
 
 (defn- updated-instance
-  "The row of an update as an instance that knows its changes."
-  [{:keys [model object previous-object]}]
-  (reduce-kv (fn [instance column value]
-               (cond-> instance
-                 (not= value (get previous-object column)) (assoc column value)))
-             (t2/instance model previous-object)
-             object))
+  "The row of an update as an instance whose changes are the columns that the update set."
+  [{:keys [model object previous-object changed]}]
+  ;; The columns come from `changed`, not from a diff of `object` against `previous-object`, because the timestamp
+  ;; hook sets `updated_at` as SQL, so `object` carries the old value and a diff misses it. The instance starts without
+  ;; those columns so that each counts as changed, whether or not its value in `object` differs.
+  (merge (t2/instance model (apply dissoc (into {} previous-object) changed))
+         (select-keys object changed)))
 
 (defn- handle-deleted!
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."
@@ -61,34 +94,29 @@
     (when (seq steps)
       (apply search/after-commit! "delete" steps))))
 
-(defn- edited-dashboard-id
-  "The id of the Dashboard whose last edit by a user the dashcard or tab `event` is, which records a Revision of the
-  Dashboard but writes no row that feeds its document."
-  [{:keys [model user-id object previous-object]}]
-  (when (and user-id (#{:model/DashboardCard :model/DashboardTab} model))
-    (:dashboard_id (or object previous-object))))
-
 (defn- handle!
   [_owner events _all]
   (when-not search.ingestion/*disable-updates*
-    (let [edited     (into #{} (keep edited-dashboard-id) events)
-          events     (filter #(feeds-index? (:model %) (:operation %)) events)
-          by-op      (group-by :operation events)
-          created    (map #(t2/instance (:model %) (:object %)) (:create by-op))
-          updated    (map updated-instance (:update by-op))
-          deleted    (:delete by-op)]
+    (let [revised (filter revised-model events)
+          events  (filter #(feeds-index? (:model %) (:operation %)) events)
+          by-op   (group-by :operation events)
+          created (map #(t2/instance (:model %) (:object %)) (:create by-op))
+          updated (map updated-instance (:update by-op))
+          deleted (:delete by-op)]
+      ;; A Revision is no row of a document: the entity it records is reindexed by its own id, whichever Revisions
+      ;; the batch inserted after it.
+      (when (seq revised)
+        (reindex-revised! revised))
       (when (seq created)
         (search/bulk-update! created))
       (when (seq updated)
         (search/update-changed! updated))
-      (when (seq edited)
-        (search/bulk-update! (map #(t2/instance :model/Dashboard {:id %}) edited)))
       (when (seq deleted)
         (handle-deleted! deleted)))))
 
 (events/register-capture! :search capture-dependents)
 (events/register-owned-consumer! :search
                                  (fn [{:keys [model operation] :as event}]
-                                   (when (or (feeds-index? model operation) (edited-dashboard-id event)) :search))
+                                   (when (or (feeds-index? model operation) (revised-model event)) :search))
                                  handle!
                                  {:last? true})

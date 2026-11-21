@@ -2100,7 +2100,6 @@
       (check-single-library row))
     (before-update-row row ancestors)))
 
-
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}

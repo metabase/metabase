@@ -2419,7 +2419,6 @@
    :uses #{api
            lib
            lib.be
-           lib.legacy-mbql
            lib.metadata
            lib.schema
            models
@@ -2712,13 +2711,12 @@
                     :model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/DashboardCard
-                    :model/DashboardTab
                     :model/DataApp
                     :model/Database
                     :model/Document
                     :model/Exploration
                     :model/Measure
+                    :model/Revision
                     :model/Segment
                     :model/Table
                     :model/Transform
@@ -4174,7 +4172,8 @@
           metabase-enterprise.data-testing.init
           metabase-enterprise.data-testing.run-api
           metabase-enterprise.data-testing.schema
-          metabase-enterprise.data-testing.segment-api}
+          metabase-enterprise.data-testing.segment-api
+          metabase-enterprise.data-testing.suite-api}
    :uses #{api
            app-db
            audit-app
@@ -4213,6 +4212,7 @@
                     :model/Database
                     :model/Document
                     :model/Segment
+                    :model/Table
                     :model/Transform
                     :model/User}}
 
@@ -4243,11 +4243,12 @@
   {:team       "Data Apps"
    :codeowners true
    :module-exports #{enterprise/dependencies.replacement}
-   :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
+   :api  #{metabase-enterprise.dependencies.api metabase-enterprise.dependencies.findings metabase-enterprise.dependencies.init metabase-enterprise.dependencies.models.dependency}
    :uses #{actions
            api
            app-db
            batch-processing
+           cloud-migration
            collections
            database-routing
            dependencies
@@ -4348,6 +4349,15 @@
                     :model/Collection
                     :model/Dashboard
                     :model/Table}}
+
+  enterprise/lint
+  {:team       "Verification"
+   :codeowners true
+   :api  #{metabase-enterprise.lint.api}
+   :uses #{api
+           lib.schema
+           util
+           enterprise/dependencies}}
 
   enterprise/mcp
   {:team    "Metabot"

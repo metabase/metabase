@@ -74,7 +74,6 @@
         (revoke-support-user-access! (:id support-user) revoked-at revoked-by)))
     grant))
 
-
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/SupportAccessGrantLog [_model]

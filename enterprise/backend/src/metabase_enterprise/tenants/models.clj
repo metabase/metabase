@@ -59,7 +59,6 @@
       (tenants.db/reactivate-tenant-users! id))
     tenant))
 
-
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn current-user-reads-tenants?
