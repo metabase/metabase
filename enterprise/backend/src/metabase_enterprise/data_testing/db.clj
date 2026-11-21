@@ -5,7 +5,6 @@
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.remote-sync.schema :as remote-sync.schema]
@@ -62,52 +61,36 @@
   [id :- ms/PositiveInt]
   (t2/select-one :model/TestSuite :id id))
 
-(def ^:private SuiteMemberRows
-  [:sequential [:map {:closed true}
-                [:test_type      ::data-testing.schema/test-type]
-                [:test_entity_id :string]]])
-
-(mu/defn- replace-suite-members!
-  "Replace the members of the TestSuite `suite-id` with `members`, positioned in their order."
-  [suite-id :- ms/PositiveInt
-   members  :- SuiteMemberRows]
-  (t2/delete! :model/TestSuiteMember :suite_id suite-id)
-  (when (seq members)
-    (t2/insert! :model/TestSuiteMember (map-indexed (fn [i member] (assoc member :suite_id suite-id :position i))
-                                                    members))))
-
 (mu/defn insert-test-suite! :- ms/PositiveInt
-  "Insert the TestSuite `suite` with `members`, positioned in their order, and return its id. The audit log records
-  the write as one create of the suite."
-  [suite   :- [:map {:closed true}
-               [:name        :string]
-               [:description {:optional true} [:maybe :string]]
-               [:creator_id  ::lib.schema.id/user]]
-   members :- SuiteMemberRows]
-  (events/with-batched-events
-    (t2/with-transaction [_conn]
-      (let [id (t2/insert-returning-pk! :model/TestSuite suite)]
-        (replace-suite-members! id members)
-        id))))
+  "Insert the TestSuite `suite` and return its id."
+  [suite :- [:map {:closed true}
+             [:name        :string]
+             [:description {:optional true} [:maybe :string]]
+             [:creator_id  ::lib.schema.id/user]]]
+  (t2/insert-returning-pk! :model/TestSuite suite))
 
 (mu/defn update-test-suite!
-  "Apply `updates` to the TestSuite with `id`, and replace its members with `members` unless `members` is nil. A change
-  of members alone also sets the suite's update time. The audit log records the write as one update of the suite."
+  "Apply `updates` to the TestSuite with `id`."
   [id      :- ms/PositiveInt
    updates :- [:map {:closed true}
                [:name        {:optional true} :string]
-               [:description {:optional true} [:maybe :string]]]
-   members :- [:maybe SuiteMemberRows]]
-  (events/with-batched-events
-    (t2/with-transaction [_conn]
-      ;; The suite row is updated first: its row lock makes a concurrent update of the same suite wait until this one
-      ;; commits, so the second replaces the members the first wrote instead of merging with them.
-      (let [updates (cond-> updates
-                      (some? members) (assoc :updated_at :%now))]
-        (when (seq updates)
-          (t2/update! :model/TestSuite :id id updates)))
-      (when (some? members)
-        (replace-suite-members! id members)))))
+               [:description {:optional true} [:maybe :string]]
+               [:updated_at  {:optional true} [:= :%now]]]]
+  (t2/update! :model/TestSuite :id id updates))
+
+(mu/defn delete-members-of-suite!
+  "Delete the members of the TestSuite with `suite-id`."
+  [suite-id :- ms/PositiveInt]
+  (t2/delete! :model/TestSuiteMember :suite_id suite-id))
+
+(mu/defn insert-suite-members!
+  "Insert the TestSuiteMember `rows`."
+  [rows :- [:sequential [:map {:closed true}
+                         [:suite_id       ms/PositiveInt]
+                         [:test_type      ::data-testing.schema/test-type]
+                         [:test_entity_id :string]
+                         [:position       :int]]]]
+  (t2/insert! :model/TestSuiteMember rows))
 
 (mu/defn delete-test-suite!
   "Delete the TestSuite with `id`, and its members."

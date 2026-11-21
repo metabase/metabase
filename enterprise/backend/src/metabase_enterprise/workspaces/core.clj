@@ -430,7 +430,7 @@
   parent may own."
   [wsd-id]
   (provisioning/with-workspace-database-lock wsd-id
-    (ws.db/delete-workspace-database! wsd-id)))
+    (workspace-database/delete-workspace-database! wsd-id)))
 
 (defn- restore-workspace-database-status!
   "Set the WorkspaceDatabase `wsd` back to the status and `updated_at` it has in `wsd`, if it is `:deprovisioning`.
@@ -438,7 +438,7 @@
   for a row a crashed instance left `:provisioning` or `:deprovisioning`: with a new one, the busy check would refuse
   the next delete."
   [wsd]
-  (ws.db/transition-workspace-database-at! (:id wsd) :deprovisioning (:status wsd) (:updated_at wsd)))
+  (workspace-database/transition-workspace-database-at! (:id wsd) :deprovisioning (:status wsd) (:updated_at wsd)))
 
 (defn- mark-workspace-databases-deprovisioning!
   "Set every WorkspaceDatabase of `workspace-id` to `:deprovisioning`, so the busy checks refuse other requests while
@@ -455,7 +455,7 @@
         now  (t/offset-date-time)]
     (assert-workspace-not-busy workspace-id)
     (reduce (fn [marked wsd]
-              (when-not (pos? (ws.db/transition-workspace-database-at! (:id wsd) (:status wsd) :deprovisioning now))
+              (when-not (pos? (workspace-database/transition-workspace-database-at! (:id wsd) (:status wsd) :deprovisioning now))
                 (run! restore-workspace-database-status! marked)
                 (throw (workspace-busy-exception workspace-id)))
               (conj marked wsd))

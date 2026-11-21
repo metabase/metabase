@@ -9,6 +9,8 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -71,6 +73,55 @@
        (remove #(or (nil? %) (= % "")))
        sort
        vec))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-workspace-databases!
+  "Insert `rows`."
+  [rows :- [:sequential ::ws.db/workspace-database.insert]]
+  (ws.db/insert-workspace-databases! rows))
+
+(mu/defn update-workspace-database!
+  "Apply `changes` to the WorkspaceDatabase with `workspace-database-id`."
+  [workspace-database-id :- ms/PositiveInt
+   changes               :- ::ws.db/workspace-database.update]
+  (ws.db/update-workspace-database! workspace-database-id changes))
+
+(mu/defn transition-workspace-database!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status` if it is `from-status`, and its
+  `updated_at` to this instance's current time. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::ws.db/status
+   to-status             :- ::ws.db/status]
+  (ws.db/transition-workspace-database! workspace-database-id from-status to-status))
+
+(mu/defn transition-workspace-database-at!
+  "Set the status of the WorkspaceDatabase with `workspace-database-id` to `to-status`, and its `updated_at` to
+  `updated-at`, if its status is `from-status`. The `UPDATE` statement carries the status condition, so of two
+  concurrent calls from the same status only one updates the row. Returns the number of rows updated."
+  [workspace-database-id :- ms/PositiveInt
+   from-status           :- ::ws.db/status
+   to-status             :- ::ws.db/status
+   updated-at            :- (ms/InstanceOfClass java.time.OffsetDateTime)]
+  (ws.db/transition-workspace-database-at! workspace-database-id from-status to-status updated-at))
+
+(mu/defn transition-workspace-databases!
+  "Set the status of every WorkspaceDatabase of the Workspace with `workspace-id` that is `from-status` to
+  `to-status`, and its `updated_at` to this instance's current time. Returns the number of rows updated."
+  [workspace-id :- ms/PositiveInt
+   from-status  :- ::ws.db/status
+   to-status    :- ::ws.db/status]
+  (ws.db/transition-workspace-databases! workspace-id from-status to-status))
+
+(mu/defn delete-workspace-database!
+  "Delete the WorkspaceDatabase with `workspace-database-id`."
+  [workspace-database-id :- ms/PositiveInt]
+  (ws.db/delete-workspace-database! workspace-database-id))
+
+(mu/defn delete-workspace-databases!
+  "Delete the WorkspaceDatabases with ids in `workspace-database-ids`."
+  [workspace-database-ids :- [:sequential ms/PositiveInt]]
+  (ws.db/delete-workspace-databases! workspace-database-ids))
 
 (defenterprise reconcile-workspace-database-refs-before-delete!
   "Enterprise impl of the `:model/Database` before-delete hook. Refuses (409) when any

@@ -3,10 +3,12 @@
    [java-time.api :as t]
    [metabase-enterprise.data-testing.db :as data-testing.db]
    [metabase-enterprise.data-testing.errors :as data-testing.errors]
+   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.runner :as data-testing.runner]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase-enterprise.data-testing.test-type :as data-testing.test-type]
+   [metabase-enterprise.data-testing.util :as data-testing.util]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
@@ -37,13 +39,6 @@
   (derive :hook/events)
   (derive ::saved-test))
 
-(mu/defn json-column :- [:map {:closed true} [:in fn?] [:out fn?]]
-  "A Toucan transform storing a value of `schema` as JSON, normalized and validated on its way in and normalized on its
-  way out."
-  [schema :- :keyword]
-  {:in  (comp mi/json-in #(mu/validate-throw schema %) #(lib/normalize schema %))
-   :out (comp #(lib/normalize schema %) mi/json-out-with-keywordization)})
-
 (def now-column
   "A Toucan transform for the `now` column of a saved test: a value of [[::data-testing.schema/now]], normalized and
   validated on its way in and normalized on its way out."
@@ -65,8 +60,8 @@
 
 (t2/deftransforms :model/TransformTest
   {:now          now-column
-   :inputs       (json-column ::data-testing.schema/inputs)
-   :expectations (json-column ::data-testing.schema/expectations)})
+   :inputs       (data-testing.util/json-column ::data-testing.schema/inputs)
+   :expectations (data-testing.util/json-column ::data-testing.schema/expectations)})
 
 (mu/defn remove-deleted-test-from-suites!
   "Remove the deleted `test-type` test with entity id `entity-id` from every suite. Does nothing on an instance where
@@ -96,7 +91,7 @@
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
 (t2/define-before-delete :model/TransformTest [transform-test]
-  (data-testing.db/clear-test-id-of-runs! :transform (:id transform-test))
+  (data-testing.models.data-test-run/clear-test-id-of-runs! :transform (:id transform-test))
   (remove-deleted-test-from-suites! :transform (:entity_id transform-test))
   transform-test)
 

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
    [metabase-enterprise.custom-viz-plugin.serialization :as custom-viz-plugin.serialization]
    [metabase.api.common :as api]
@@ -9,6 +10,8 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -75,6 +78,50 @@
   "Never include the raw bundle bytes in JSON."
   [plugin json-generator]
   (next-method (dissoc plugin :bundle) json-generator))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-custom-viz-plugin!
+  "Insert the CustomVizPlugin `row` and return it."
+  [row :- ::custom-viz-plugin.schema/custom-viz-plugin.create]
+  (custom-viz-plugin.db/insert-plugin! row))
+
+(mu/defn update-custom-viz-plugin!
+  "Apply `changes` to the CustomVizPlugin with `id`, returning the number of rows updated."
+  [id      :- ms/PositiveInt
+   changes :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
+  (custom-viz-plugin.db/update-plugin! id changes))
+
+(mu/defn delete-custom-viz-plugin!
+  "Delete the CustomVizPlugin with `id`, returning the number of rows deleted."
+  [id :- ms/PositiveInt]
+  (custom-viz-plugin.db/delete-plugin! id))
+
+(mu/defn insert-bundle!
+  "Create an enabled CustomVizPlugin with `identifier` from the validated bundle `validated` and return it."
+  [identifier :- ::custom-viz-plugin.schema/custom-viz-plugin.identifier
+   validated  :- :map]
+  (create-custom-viz-plugin!
+   (merge {:identifier identifier
+           :enabled    true}
+          (cache/derived-columns validated))))
+
+(mu/defn save-bundle!
+  "Store the validated bundle `validated` on the existing plugin, evict its stale on-disk caches, and return the
+  refreshed plugin without its bundle."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   validated    :- :map]
+  (update-custom-viz-plugin! id (cache/derived-columns validated))
+  (cache/purge-plugin-cache! {:id id})
+  (custom-viz-plugin.db/non-blob-plugin id))
+
+(mu/defn set-or-clear-dev-bundle!
+  "Set the dev bundle URL of the CustomVizPlugin with `id` to `dev-bundle-url`, or clear it when blank."
+  [id             :- ms/PositiveInt
+   dev-bundle-url :- [:maybe :string]]
+  (let [url (not-empty dev-bundle-url)]
+    (some-> url (cache/validate-url! "Dev bundle URL"))
+    (update-custom-viz-plugin! id {:dev_bundle_url url})))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

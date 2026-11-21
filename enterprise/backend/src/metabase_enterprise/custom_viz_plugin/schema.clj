@@ -47,6 +47,21 @@
    [:metabase_version {:optional true} [:maybe :string]]
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
 
+(mr/def ::custom-viz-plugin.create
+  "What creating a CustomVizPlugin takes: its identifier and the columns its bundle or dev server gives it."
+  [:map {:closed true}
+   [:identifier       ::custom-viz-plugin.identifier]
+   [:display_name     {:optional true} [:maybe :string]]
+   [:status           {:optional true} [:maybe [:or :keyword :string]]]
+   [:error_message    {:optional true} [:maybe :string]]
+   [:bundle           {:optional true} [:maybe [:or bytes? :string]]]
+   [:bundle_hash      {:optional true} [:maybe :string]]
+   [:enabled          {:optional true} [:maybe :boolean]]
+   [:icon             {:optional true} [:maybe :string]]
+   [:manifest         {:optional true} [:maybe ::custom-viz-plugin.manifest]]
+   [:metabase_version {:optional true} [:maybe :string]]
+   [:dev_bundle_url   {:optional true} [:maybe :string]]])
+
 (mr/def ::external-custom-viz-plugin
   "A CustomVizPlugin as serialization writes it, with references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

@@ -1,11 +1,8 @@
 (ns metabase-enterprise.data-testing.models.test-suite
-  "`:model/TestSuite`, a named list of saved data tests; `:model/TestSuiteMember`, one test in a suite; and
-  `:model/TestSuiteRun`, a run of a suite. A member names its test by test type and entity id, with no foreign key: a
-  suite can name a test this instance lacks."
+  "`:model/TestSuite`, a named list of saved data tests, and `:model/TestSuiteMember`, one test in a suite. A member
+  names its test by test type and entity id, with no foreign key: a suite can name a test this instance lacks."
   (:require
    [metabase-enterprise.data-testing.db :as data-testing.db]
-   [metabase-enterprise.data-testing.models :as data-testing.models]
-   [metabase-enterprise.data-testing.models.data-test-run :as data-testing.models.data-test-run]
    [metabase-enterprise.data-testing.schema :as data-testing.schema]
    [metabase-enterprise.data-testing.serialization :as data-testing.serialization]
    [metabase.api.common :as api]
@@ -15,6 +12,8 @@
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -28,25 +27,12 @@
   (derive :hook/timestamped?)
   (derive :hook/events))
 
-(methodical/defmethod t2/table-name :model/TestSuiteRun [_model] :test_suite_run)
-
 (doto :model/TestSuiteMember
   (derive :metabase/model)
   (derive :hook/events))
 
-(derive :model/TestSuiteRun :metabase/model)
-
 (t2/deftransforms :model/TestSuiteMember
   {:test_type mi/transform-keyword})
-
-(t2/deftransforms :model/TestSuiteRun
-  {:status  mi/transform-keyword
-   :members (data-testing.models/json-column ::data-testing.schema/test-suite-run.stored-members)})
-
-(methodical/defmethod t2/batched-hydrate [:model/TestSuiteRun :initiated_by_user]
-  "Add the user who started each run, or nil."
-  [_model _k runs]
-  (data-testing.models.data-test-run/with-initiated-by-users runs))
 
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
@@ -79,6 +65,48 @@
   (let [answer (may-change-suites?)]
     (mapv #(assoc % k answer) suites)))
 
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(defn- replace-suite-members!
+  "Replace the members of the TestSuite `suite-id` with `members`, positioned in their order."
+  [suite-id members]
+  (data-testing.db/delete-members-of-suite! suite-id)
+  (when (seq members)
+    (data-testing.db/insert-suite-members!
+     (into [] (map-indexed (fn [i member] (assoc member :suite_id suite-id :position i))) members))))
+
+(mu/defn create-test-suite! :- ms/PositiveInt
+  "Insert the TestSuite `suite` with its members, positioned in their order, and return its id. The audit log records
+  the write as one create of the suite."
+  [suite :- ::data-testing.schema/test-suite.create]
+  (events/with-batched-events
+    (t2/with-transaction [_conn]
+      (let [id (data-testing.db/insert-test-suite! (dissoc suite :members))]
+        (replace-suite-members! id (:members suite))
+        id))))
+
+(mu/defn update-test-suite!
+  "Apply `changes` to the TestSuite with `id`, replacing its members when `changes` has `:members`. A change of members
+  alone also sets the suite's update time. The audit log records the write as one update of the suite."
+  [id      :- ms/PositiveInt
+   changes :- ::data-testing.schema/test-suite.update]
+  (events/with-batched-events
+    (t2/with-transaction [_conn]
+      ;; The suite row is updated first: its row lock makes a concurrent update of the same suite wait until this one
+      ;; commits, so the second replaces the members the first wrote instead of merging with them.
+      (let [members? (contains? changes :members)
+            updates  (cond-> (dissoc changes :members)
+                       members? (assoc :updated_at :%now))]
+        (when (seq updates)
+          (data-testing.db/update-test-suite! id updates))
+        (when members?
+          (replace-suite-members! id (:members changes)))))))
+
+(mu/defn delete-test-suite!
+  "Delete the TestSuite with `id`, and its members."
+  [id :- ms/PositiveInt]
+  (data-testing.db/delete-test-suite! id))
+
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
 (defmethod events/spec :model/TestSuite
@@ -97,9 +125,6 @@
   {:skip? false})
 
 (defmethod app-db-copy/spec :model/TestSuiteMember [_model]
-  {:skip? false})
-
-(defmethod app-db-copy/spec :model/TestSuiteRun [_model]
   {:skip? false})
 
 (defmethod audit/spec :model/TestSuite [_model]
