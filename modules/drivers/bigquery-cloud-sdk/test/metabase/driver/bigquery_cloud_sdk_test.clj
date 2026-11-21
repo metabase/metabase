@@ -34,6 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.field-values.distinct-batch :as distinct-batch]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -1100,6 +1101,23 @@
                                                 :field_id category-field-id
                                                 :type :full)))))))))))
 
+(deftest run-distinct-batch-project-id-override-test
+  (testing "The batched field values query qualifies tables with the project-id of the database (#86111)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/with-temp [:model/Database {db-id :id} {:engine  :bigquery-cloud-sdk
+                                                  :details {:project-id                  "data-project"
+                                                            :project-id-from-credentials "creds-project"}}
+                     :model/Table    table       {:db_id db-id :schema "my_dataset" :name "my_table"}
+                     :model/Field    field       {:table_id (:id table) :name "category" :base_type :type/Text}]
+        (let [captured-sql (atom nil)]
+          (binding [bigquery/*process-native* (fn [_respond _database sql _params _cancel-chan]
+                                                (reset! captured-sql sql)
+                                                (throw (Exception. "Done.")))]
+            (try
+              (distinct-batch/run-distinct-batch table [field])
+              (catch Exception _)))
+          (is (str/includes? (str @captured-sql) "`data-project.my_dataset.my_table`")))))))
+
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"
     (mt/test-driver
@@ -1255,6 +1273,16 @@
                              {:filter [:= [:field (mt/id :taxi_trips :payment_type) nil]
                                        "Cash"]
                               :limit  1}))))))
+          (testing " for field values (#86111)"
+            (let [field-id (mt/id :taxi_trips :payment_type)
+                  table    (t2/select-one :model/Table :id (mt/id :taxi_trips))]
+              (testing "uses the batched path"
+                (is (true? (#'sync.field-values/can-batch-distinct? (lib.metadata/database (mt/metadata-provider)) table))))
+              (t2/update! :model/Field :id field-id {:has_field_values :list})
+              (t2/delete! :model/FieldValues :field_id field-id)
+              (sync.field-values/sync-fields-grouped-by-table! [(t2/select-one :model/Field :id field-id)])
+              (is (contains? (set (:values (t2/select-one :model/FieldValues :field_id field-id :type :full)))
+                             "Cash"))))
           (testing " has project-id-from-credentials set correctly"
             (is (= (bigquery-project-id) (get-in temp-db [:details :project-id-from-credentials])))))))))
 
