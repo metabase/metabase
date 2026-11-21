@@ -13,6 +13,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -393,21 +394,20 @@
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
-;;; TODO -- this doesn't seem safe in parallel tests, right? Should this be renamed `do-with-temp-copy-of-db!`?
-(defn do-with-temp-copy-of-db
+(defn do-with-temp-copy-of-db!
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
         original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings :dbms_version]))
-        {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
+        {new-db-id :id, :as new-db} (database/create-database! original-db)]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
       (test.data.impl.get-or-create/set-test-db-permissions! new-db-id)
       (binding [*db-is-temp-copy?* true]
         (do-with-db new-db f))
       (finally
-        (t2/delete! :model/Database :id new-db-id)))))
+        (database/delete-database! new-db-id)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |

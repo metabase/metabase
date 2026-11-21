@@ -8,6 +8,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (defn- status-code
@@ -93,7 +94,7 @@
                  :model/CacheConfig {db-config-id :id}   {:model "database" :model_id db-id}
                  :model/CacheConfig {card-config-id :id} {:model "question" :model_id card-id}
                  :model/CacheConfig {other-config-id :id} {:model "question" :model_id other-card-id}]
-    (t2/delete! :model/Database :id db-id)
+    (database/delete-database! db-id)
     (is (not (t2/exists? :model/CacheConfig :id db-config-id)))
     (is (not (t2/exists? :model/CacheConfig :id card-config-id)))
     (is (t2/exists? :model/CacheConfig :id other-config-id))))

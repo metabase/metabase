@@ -13,6 +13,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
@@ -119,7 +120,7 @@
                         {:database-name (:name database)})))
       (when-let [{existing-database-id :id} (advanced-config.db/database-by-name (:name database))]
         (log/info (u/format-color :blue "Deleting Database with ID %s" existing-database-id))
-        (advanced-config.db/delete-database! existing-database-id)))
+        (database/delete-database! existing-database-id)))
 
     (:is_sample database)
     (init-sample-database! database)
@@ -141,7 +142,7 @@
           (let [previous      (advanced-config.db/database (:id existing))
                 stored-schema (get-in previous [:settings :database-workspace-schema])]
             (log/info (u/format-color :blue "Updating Database %s with ID %s" (:engine database) (:id existing)))
-            (advanced-config.db/update-database! (:id existing)
+            (database/update-database! (:id existing)
                                                  (cond-> (normalize-settings database)
                                                    ;; The entry's `settings` replace the stored map. Keep the stored
                                                    ;; `database-workspace-schema` when the entry does not name the key:
@@ -157,7 +158,7 @@
               (sync-if-configured! (advanced-config.db/database (:id existing)))))
 
           :else
-          (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)
+          (let [db (database/create-database! (cond-> (normalize-settings database)
                                                           (:is_stub database) (assoc :initial_sync_status "complete")))]
             (log/info (u/format-color :green "Created new %s Database" (:engine database)))
             (if (:is_stub database)

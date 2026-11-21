@@ -23,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
    (java.nio.file FileVisitOption Files LinkOption Path)
@@ -71,8 +72,8 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (audit-app.db/insert-database! id
-                                   {:is_audit         true
+    (database/create-database! {:id               id
+                                :is_audit         true
                                     :name             default-db-name
                                     :description      "Internal Audit DB used to power metabase analytics."
                                     :engine           engine
@@ -90,7 +91,7 @@
   ;; The flip commits, so on a multi-node mysql/h2 cluster other nodes can see engine="postgres" while
   ;; the load runs — the longstanding behavior of this pipeline (only #76551's single-transaction era
   ;; briefly hid it). Resolving serialized names against an overlay instead would avoid even that.
-  (audit-app.db/set-database-engine! audit-db-id "postgres")
+  (database/update-database! audit-db-id {:engine :postgres})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -124,7 +125,7 @@
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (audit-app.db/set-database-engine! audit-db-id (name (mdb/db-type)))
+    (database/update-database! audit-db-id {:engine (mdb/db-type)})
     (case (mdb/db-type)
       :mysql
       (table/update-tables-where! {:db_id audit-db-id} {:schema nil})

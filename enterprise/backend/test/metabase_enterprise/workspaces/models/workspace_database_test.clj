@@ -17,6 +17,7 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -60,7 +61,7 @@
                                                  :input_schemas    []
                                                  :status :provisioned})]
             (track-wsd! wsd-id)
-            (let [thrown (try (t2/delete! :model/Database :id db-id) nil
+            (let [thrown (try (database/delete-database! db-id) nil
                               (catch Throwable t t))]
               (is (some? thrown)
                   "deletion of a Database with initialized workspace_database children must throw")
@@ -95,7 +96,7 @@
                                                  :input_schemas    []
                                                  :status :unprovisioned})]
             (track-wsd! wsd-id)
-            (t2/delete! :model/Database :id db-id)
+            (database/delete-database! db-id)
             (is (false? (t2/exists? :model/Database :id db-id))
                 "Database row is gone after successful delete")
             (is (false? (t2/exists? :model/WorkspaceDatabase :id wsd-id))

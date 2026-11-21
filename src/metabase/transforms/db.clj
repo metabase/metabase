@@ -113,6 +113,11 @@
   (t2/delete! :model/Transform :id [:in [:auto/param transform-ids]])
   nil)
 
+(mu/defn transform-ids-for-source-databases :- [:sequential ::lib.schema.id/transform]
+  "The ids of the Transforms reading from the Databases with `database-ids`."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (vec (t2/select-pks-vec :model/Transform :source_database_id [:in [:auto/param database-ids]])))
+
 (mu/defn transforms-in-collections
   "The Transforms in the Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]

@@ -990,20 +990,19 @@
               :perm_value perm-value
               :db_id      db-id})))))))
 
-(defn set-default-database-permissions!
-  "Bulk-sets default permissions for a newly-created database across all groups.
+(defn set-default-databases-permissions!
+  "Bulk-sets default permissions for newly-created `databases` across all `groups`, in one insert.
    For tenant groups, uses least-permissive values. For audit DBs, uses hardcoded values.
    For other groups, values are based on the group's lowest existing permission level.
    Uses batch SQL operations instead of per-row mutations."
-  [database groups]
-  (when (seq groups)
-    (let [db-id        (u/the-id database)
-          is-audit     (:is_audit database)
+  [databases groups]
+  (when (and (seq groups) (seq databases))
+    (let [all-audit    (every? :is_audit databases)
           group-ids    (map u/the-id groups)
           defaults     (least-permissive-defaults)
           ;; Batch-fetch distinct (group, perm-type, value) triples — we only need the set of unique values per
           ;; group to find the most restrictive level;
-          all-perms    (when-not is-audit
+          all-perms    (when-not all-audit
                          (permissions.db/non-audit-permission-values-for-groups
                           group-ids
                           ["perms/create-queries" "perms/download-results"]))
@@ -1014,12 +1013,10 @@
                                  {}
                                  all-perms))
           ;; Batch-fetch view-data levels for all groups at once
-          view-data-levels (when-not is-audit
+          view-data-levels (when-not all-audit
                              (new-database-view-data-permission-levels group-ids))
-          perm-rows    (mapcat
-                        (fn [group]
-                          (let [group-id (u/the-id group)
-                                perm-map
+          perm-map     (fn [group is-audit]
+                          (let [group-id (u/the-id group)]
                                 (cond
                                   ;; Tenant groups always get least-permissive
                                   (:is_tenant_group group)
@@ -1055,14 +1052,21 @@
                                              :perms/manage-database       :no}
                                       (or (not= view-data-level :unrestricted)
                                           (not= cq-level :query-builder-and-native))
-                                      (assoc :perms/transforms :no))))]
-                            (for [[perm-type perm-value] perm-map]
-                              {:perm_type  perm-type
-                               :group_id   group-id
-                               :perm_value perm-value
-                               :db_id      db-id})))
-                        groups)]
+                                      (assoc :perms/transforms :no))))))
+          perm-rows    (for [database                databases
+                             group                   groups
+                             [perm-type perm-value] (perm-map group (:is_audit database))]
+                         {:perm_type  perm-type
+                          :group_id   (u/the-id group)
+                          :perm_value perm-value
+                          :db_id      (u/the-id database)})]
       (data-permissions/create-data-permissions! perm-rows))))
+
+(defn set-default-database-permissions!
+  "Bulk-sets default permissions for a newly-created `database` across all `groups`, as
+  [[set-default-databases-permissions!]] does."
+  [database groups]
+  (set-default-databases-permissions! [database] groups))
 
 (defn- mk-perm-row [group-id perm-type perm-value db-id table-id schema]
   {:perm_type perm-type :group_id group-id :perm_value perm-value

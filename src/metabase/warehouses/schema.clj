@@ -108,6 +108,23 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::database.create
+  "What a caller gives to create a Database: its name and engine, any other column of `:metabase_database`, and an
+  `id` only for a Database whose id is fixed."
+  [:merge
+   ::database.update
+   [:map {:closed true}
+    [:id     {:optional true} ::lib.schema.id/database]
+    [:name   :string]
+    [:engine ::lib.schema.common/keyword]]])
+
+(mr/def ::database.update-row
+  "The id of a Database and the columns a bulk update changes in it."
+  [:merge
+   ::database.update
+   [:map {:closed true}
+    [:id ::lib.schema.id/database]]])
+
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."
   [:multi {:dispatch (fn [x] (if (:lib/type x) :lib-metadata :row))}

@@ -966,7 +966,7 @@
                 (t2/select-one :model/WorkspaceDatabase :id wsd-id))
             "the failed row is kept as :teardown_failed, with the identifiers of what may remain")
         (is (thrown-with-msg? ExceptionInfo #"active workspace_database rows.*force=true"
-                              (workspace-database/reconcile-workspace-database-refs-before-delete! (mt/id)))
+                              (workspace-database/reconcile-workspace-database-refs-before-delete! [(mt/id)]))
             "a :teardown_failed row blocks deleting its Database, so the record of leftovers survives")
         (testing "retrying the delete once the warehouse is reachable finishes the job"
           (with-redefs [provisioning/dispatching-provisioner (stub-provisioner)]

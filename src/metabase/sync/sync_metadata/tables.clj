@@ -24,6 +24,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.models.database :as database]
    [metabase.workspaces.table-remapping :as ws.table-remapping])
   (:import
    (clojure.lang ITransientSet)))
@@ -124,7 +125,7 @@
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
-  (sync.db/update-database! (u/the-id database)
+  (database/update-database! (u/the-id database)
                             {:details (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map

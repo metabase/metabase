@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
@@ -134,7 +135,7 @@
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (model-persistence.db/update-database! (u/the-id db)
+      (database/update-database! (u/the-id db)
                                              {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
@@ -236,7 +237,7 @@
               schema           (ddl.i/schema-name database (system/site-uuid))]
           (if success?
             ;; do secrets require special handling to not clobber them or mess up encryption?
-            (do (model-persistence.db/update-database! id {:settings (assoc (:settings database) :persist-models-enabled true)})
+            (do (database/update-database! id {:settings (assoc (:settings database) :persist-models-enabled true)})
                 (task.persist-refresh/schedule-persistence-for-database!
                  database
                  (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -252,7 +253,7 @@
   (api/let-404 [database (model-persistence.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (model-persistence.db/update-database! id {:settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (database/update-database! id {:settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
