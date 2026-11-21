@@ -1542,8 +1542,7 @@
            util
            util.config
            warehouses.schema}
-   :model-imports #{:model/AuthIdentity
-                    :model/Card
+   :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
                     :model/Database
@@ -2869,8 +2868,7 @@
            tracing
            users
            util
-           util.config}
-   :model-imports #{:model/Session}}
+           util.config}}
 
   session
   {:team "Security"
@@ -2878,6 +2876,7 @@
    :api  #{metabase.session.api
            metabase.session.core
            metabase.session.init
+           metabase.session.models.session
            metabase.session.schema
            metabase.session.settings}      ; TODO -- shouldn't be exposed as an API namespace
    :uses #{api
@@ -3018,7 +3017,7 @@
    :api #{metabase.auth-identity.core
           metabase.auth-identity.db
           metabase.auth-identity.init
-          metabase.auth-identity.schema}
+          metabase.auth-identity.models.auth-identity}
    :uses #{app-db
            channel
            events
@@ -3028,12 +3027,13 @@
            premium-features
            request
            request.schema
+           session
            session.login-history
            settings
            users.schema
            util}
    :model-exports #{:model/AuthIdentity}
-   :model-imports #{:model/Session :model/User}}
+   :model-imports #{:model/User}}
 
   sso.auth-wrapper
   {:team "Security"
@@ -3927,7 +3927,6 @@
                     :model/Database
                     :model/Field
                     :model/Notification
-                    :model/Permissions
                     :model/Pulse
                     :model/QueryExecution
                     :model/Table

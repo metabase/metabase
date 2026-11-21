@@ -261,7 +261,7 @@
 (defn- grant-library-collection-permissions!
   "Gives All Users read and Data Analysts read-write access to the Library `collection`."
   [collection]
-  (collections.db/delete-permissions-for-collection! (:id collection))
+  (permissions/delete-permissions! [:= :collection_id (:id collection)])
   (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
   (perms/grant-collection-readwrite-permissions! (perms/data-analyst-group) collection))
 

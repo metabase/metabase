@@ -561,11 +561,6 @@
   [object :- :string]
   (t2/select-fn-set :group_id :model/Permissions :object object))
 
-(mu/defn delete-permissions-for-collection!
-  "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Permissions :collection_id collection-id))
-
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects`, returning the number deleted."
   [objects :- [:sequential :string]]

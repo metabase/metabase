@@ -280,14 +280,9 @@
   [_]
   (throw (ex-info (tru "You cannot update a permissions entry! Delete it and create a new one.") {:status-code 400})))
 
-(t2/define-before-delete :model/Permissions
-  [permissions]
-  (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
-  (assert-not-admin-group permissions))
-
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
-(declare create-permissions!)
+(declare create-permissions! delete-permissions!)
 
 (mu/defn delete-related-permissions!
   "Delete all 'related' permissions for `group-or-id` (i.e., perms that grant you full or partial access to `path`).
@@ -309,7 +304,7 @@
         paths    (conj (perms.u/->v2-path path) path)]
     (when-let [revoked (permissions.db/related-permission-objects group-id path paths)]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" group-id revoked))
-      (permissions.db/delete-related-permissions! group-id path paths))))
+      (delete-permissions! (permissions.db/related-permissions-where group-id path paths)))))
 
 (defn grant-permissions!
   "Grant the permissions `path` gives to `group-or-id`, returning nil."
@@ -435,6 +430,14 @@
   (check-tenant-group-grants rows)
   (run! assert-not-admin-group rows)
   (permissions.db/insert-permissions! rows))
+
+(mu/defn delete-permissions! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the Permissions rows matching the HoneySQL `where` clause, returning the number deleted. Matching a row of
+  the Admin group is a 400 and deletes nothing."
+  [where :- vector?]
+  (t2/with-transaction [_conn]
+    (run! #(assert-not-admin-group {:group_id %}) (permissions.db/permissions-group-ids-where where))
+    (permissions.db/delete-permissions! where)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

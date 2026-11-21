@@ -5,9 +5,10 @@
    [metabase-enterprise.support-access-grants.schema :as support-access-grants.schema]
    [metabase-enterprise.support-access-grants.settings :as sag.settings]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.auth-identity.models.auth-identity :as models.auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
-   [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,8 +65,8 @@
         ;; Sessions and auth identities are still cleaned up below, preventing further access.
         (log/warnf "Could not remove superuser from support user %d: %s" support-user-id (ex-message e))))
     (when (seq auth-identity-ids)
-      (support-access-grants.db/expire-auth-identities! auth-identity-ids ended-at))
-    (session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
+      (models.auth-identity/expire-auth-identities! auth-identity-ids ended-at))
+    (models.session/end-sessions! {:user_id support-user-id} "support-grant-revoked" ended-by)))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 

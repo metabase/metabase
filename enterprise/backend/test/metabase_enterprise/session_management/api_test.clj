@@ -10,7 +10,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
-   [metabase.session.db :as session.db]
+   [metabase.session.models.session :as models.session]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
@@ -641,11 +641,11 @@
   (testing "a revoke bigger than one statement can name is still revoked in full, and counted in full"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [session-ids (vec (repeatedly 5 #(insert-session! user-id)))
-            end!        (mt/original-fn #'session/end-sessions-by-ids!)]
+            end!        (mt/original-fn #'models.session/end-sessions-by-ids!)]
         ;; a real revoke batches at 1000 ids because every id is a bind parameter; two and a half batches of two
         ;; exercises the same code, including the short final batch, without inserting thousands of rows
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
-                                                                   (end! ids reason ended-by 2))]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                          (end! ids reason ended-by 2))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 5 (:revoked response))
                 "every batch is counted, not just the last one")
@@ -658,10 +658,10 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [_matched (insert-session! user-id)
             raced    (atom nil)
-            end!     (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
-                                                                   (reset! raced (insert-session! user-id))
-                                                                   (end! ids reason ended-by))]
+            end!     (mt/original-fn #'models.session/end-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                          (reset! raced (insert-session! user-id))
+                                                                          (end! ids reason ended-by))]
           (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
             (is (= 1 (:revoked response)))
             (is (= 1 (:remaining response))
@@ -674,11 +674,11 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [kept (insert-session! user-id)
             gone (insert-session! user-id)
-            end! (mt/original-fn #'session/end-sessions-by-ids!)]
-        (mt/with-dynamic-fn-redefs [session/end-sessions-by-ids! (fn [ids reason ended-by]
-                                                                   ;; a logout between the select and the update
-                                                                   (session.db/end-sessions! {:id [gone]} "logout" :self)
-                                                                   (end! ids reason ended-by))]
+            end! (mt/original-fn #'models.session/end-sessions-by-ids!)]
+        (mt/with-dynamic-fn-redefs [models.session/end-sessions-by-ids! (fn [ids reason ended-by]
+                                                                          ;; a logout between the select and the update
+                                                                          (models.session/end-sessions! {:id [gone]} "logout" :self)
+                                                                          (end! ids reason ended-by))]
           (mt/with-log-messages-for-level [messages [metabase-enterprise.session-management.db :info]]
             (let [response (mt/user-http-request :crowberto :post 200 "ee/session-management/revoke" {:user-id user-id})]
               (is (= 1 (:revoked response)) "only the row actually ended by the revoke is counted")

@@ -108,8 +108,8 @@
                            :credentials (create-reset-token-credentials <>)
                            :metadata (create-reset-token-metadata (:email user))}]
         (if-let [auth-identity-id (auth-identity.db/auth-identity-id user-id "emailed-secret-password-reset")]
-          (auth-identity.db/update-auth-identity! auth-identity-id auth-identity)
-          (auth-identity.db/insert-auth-identity! auth-identity))))))
+          (auth-identity/update-auth-identity! auth-identity-id auth-identity)
+          (auth-identity/create-auth-identity! auth-identity))))))
 
 ;;; -------------------------------------------------- Provider Registration --------------------------------------------------
 

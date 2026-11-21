@@ -23,7 +23,7 @@
   (into [:enum] end-reasons))
 
 (mr/def ::end-conditions
-  "Which Sessions [[metabase.session.db/end-sessions!]] ends: the ones with these ids, of this user, or with this
+  "Which Sessions [[metabase.session.models.session/end-sessions!]] ends: the ones with these ids, of this user, or with this
   hashed key."
   [:map {:closed true}
    [:id         {:optional true} [:sequential :string]]
@@ -31,7 +31,7 @@
    [:key_hashed {:optional true} :string]])
 
 (mr/def ::ended-by
-  "Who ended a session, for [[metabase.session.db/end-sessions!]]: the id of the person who did, `:self` for the
+  "Who ended a session, for [[metabase.session.models.session/end-sessions!]]: the id of the person who did, `:self` for the
   session's own user (a logout), or nil when no person did (expiry, a deactivation)."
   [:maybe [:or ::lib.schema.id/user [:= :self]]])
 
@@ -44,6 +44,20 @@
     [:key                  {:optional true} :string]
     [:type                 {:optional true} [:enum :normal :full-app-embed]]
     [:mfa_auth_identity_id {:optional true} [:maybe ms/PositiveInt]]]])
+
+(mr/def ::session.create
+  "What [[metabase.session.models.session/create-session!]] takes: the columns of a new Session a caller gives. The
+  hooks store the hash of `session_key`, never the key itself."
+  [:map {:closed true}
+   [:id                   :string]
+   [:user_id              ::lib.schema.id/user]
+   [:session_key          :string]
+   [:auth_identity_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:expires_at           {:optional true} [:maybe ms/TemporalInstant]]
+   [:mfa_auth_identity_id {:optional true} [:maybe ms/PositiveInt]]
+   [:saml_session_index   {:optional true} [:maybe :string]]
+   [:saml_name_id         {:optional true} [:maybe :string]]
+   [:saml_name_id_format  {:optional true} [:maybe :string]]])
 
 (mr/def ::session.update
   "What an update (or insert) of a Session accepts: every column of `:core_session` except `id`, all optional."

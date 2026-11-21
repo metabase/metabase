@@ -8,14 +8,17 @@
    [environ.core :as env]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.events.core :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.request.core :as request]
    [metabase.session.db :as session.db]
+   [metabase.session.schema :as session.schema]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.util.string :as string]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -77,7 +80,7 @@
   (derive :hook/created-at-timestamped?))
 
 (def ^:private ending-columns
-  "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record
+  "The only columns an update of a Session may touch: the ones [[end-sessions!]] writes to record
   that the session ended. Everything else on the row is immutable."
   #{:ended_at :end_reason :ended_by_user_id :key_hashed})
 
@@ -95,13 +98,6 @@
     (throw (ex-info "Session id should not be stored plaintext in the session table." {})))
   (when (or (uuid? (:key_hashed session)) (u/uuid-string? (:key_hashed session)))
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
-  ;; Check auth identity provider if provided
-  (when-let [auth-identity-id (:auth_identity_id session)]
-    (when-let [auth-identity (session.db/auth-identity-provider auth-identity-id)]
-      (when (and (= "password" (:provider auth-identity))
-                 (not (session.settings/enable-password-login)))
-        (throw (ex-info (str (tru "Password login is disabled for this instance."))
-                        {:status-code 400})))))
   (let [key-hashed (or (:key_hashed session) (hash-session-key session-key))]
     (cond-> (-> session
                 (dissoc :session_key)
@@ -111,14 +107,114 @@
       (not (:id session)) (assoc :id (generate-session-id))
       (some-> (request/current-request) request/embedded?) (assoc :anti_csrf_token (random-anti-csrf-token)))))
 
-(t2/define-after-insert :model/Session
-  [session]
-  (when-let [user (session.db/user (:user_id session))]
+(def default-end-batch-size
+  "How many ids one `UPDATE ... WHERE id IN (...)` may name. Ending sessions by id has no upper bound on how many
+  there are, and every id is a bind parameter — pgjdbc refuses a statement with more than 65,535 of them."
+  1000)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- check-password-login-allowed
+  "Throws a 400 when the AuthIdentity with `auth-identity-id` is a password one and password login is disabled."
+  [auth-identity-id]
+  (when-let [auth-identity (some-> auth-identity-id session.db/auth-identity-provider)]
+    (when (and (= "password" (:provider auth-identity))
+               (not (session.settings/enable-password-login)))
+      (throw (ex-info (str (tru "Password login is disabled for this instance."))
+                      {:status-code 400})))))
+
+(defn- publish-login-events!
+  "Publish `:event/user-login` for the User with `user-id`, and `:event/user-joined` when they never logged in before."
+  [user-id]
+  (when-let [user (session.db/user user-id)]
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))
-        (events/publish-event! :event/user-joined event))))
-  session)
+        (events/publish-event! :event/user-joined event)))))
+
+(mu/defn create-session! :- ::session.schema/session
+  "Insert the Session `row` for a login and return it, publishing the login events of its User. A session of a password
+  AuthIdentity while password login is disabled is a 400."
+  [row :- ::session.schema/session.create]
+  (check-password-login-allowed (:auth_identity_id row))
+  (u/prog1 (session.db/insert-session! row)
+    (publish-login-events! (:user_id row))))
+
+(mu/defn get-or-create-mcp-session!
+  "The `core_session` row with `key-hashed` of the User with `user-id`, inserting one attributed to the AuthIdentity
+  with `auth-identity-id` when there is none. The row backs an MCP client rather than a login, so no login event is
+  published."
+  [key-hashed       :- :string
+   user-id          :- ::lib.schema.id/user
+   auth-identity-id :- ms/PositiveInt]
+  (session.db/select-or-insert-mcp-session!
+   key-hashed user-id
+   (fn []
+     (check-password-login-allowed auth-identity-id)
+     {:id               (generate-session-id)
+      :anti_csrf_token  nil
+      :auth_identity_id auth-identity-id
+      :created_at       :%now})))
+
+(mu/defn delete-mcp-session!
+  "Delete the MCP-backed `core_session` with `key-hashed` if it belongs to the User with `user-id`."
+  [key-hashed :- :string
+   user-id    :- ::lib.schema.id/user]
+  (session.db/delete-session-of-user! key-hashed user-id))
+
+(mu/defn end-sessions! :- ms/IntGreaterThanOrEqualToZero
+  "Record that every Session matching `conditions` (see `::session.schema/end-conditions`) has ended: `ended_at`
+  becomes now, `end_reason` becomes `reason`, `ended_by_user_id` becomes `ended-by`, and `key_hashed` is cleared so
+  the row can never authenticate a request again. A session that has already ended is left as it was. Returns the
+  number of sessions ended. See `::session.schema/ended-by` for `ended-by`."
+  [conditions :- ::session.schema/end-conditions
+   reason     :- ::session.schema/end-reason
+   ended-by   :- ::session.schema/ended-by]
+  (if (and (contains? conditions :id) (empty? (:id conditions)))
+    0
+    (session.db/end-sessions! (cond-> conditions
+                                (:id conditions) (update :id (fn [ids] [:in ids])))
+                              reason
+                              (if (= ended-by :self) :user_id ended-by))))
+
+(defn- end-sessions-in-batches!
+  [ids reason ended-by batch-size]
+  (transduce (map (fn [batch] (end-sessions! {:id batch} reason ended-by)))
+             +
+             0
+             (partition-all batch-size ids)))
+
+(mu/defn end-sessions-by-ids! :- ms/IntGreaterThanOrEqualToZero
+  "[[end-sessions!]] for the Sessions with `ids`, in batches of `batch-size` ids ([[default-end-batch-size]] by
+  default), returning the total number ended. An empty `ids` ends nothing."
+  ([ids      :- [:sequential :string]
+    reason   :- ::session.schema/end-reason
+    ended-by :- ::session.schema/ended-by]
+   (end-sessions-in-batches! ids reason ended-by default-end-batch-size))
+
+  ([ids        :- [:sequential :string]
+    reason     :- ::session.schema/end-reason
+    ended-by   :- ::session.schema/ended-by
+    batch-size :- ms/PositiveInt]
+   (end-sessions-in-batches! ids reason ended-by batch-size)))
+
+(mu/defn touch-session!
+  "Record that the Session with `key-hashed` was just used."
+  [key-hashed :- :string]
+  (session.db/touch-session! key-hashed))
+
+(mu/defn delete-sessions-ended-long-ago! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the Sessions whose recorded ending is more than `session.db/ended-session-retention-days` old, returning the
+  number deleted. A live session is never deleted, whatever its age."
+  []
+  (session.db/delete-sessions-ended-long-ago!))
+
+(mu/defn delete-expired-mcp-sessions! :- ms/IntGreaterThanOrEqualToZero
+  "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or idle longer
+  than `idle-timeout-seconds` when it is given, returning the number deleted."
+  [max-age-minutes      :- ms/PositiveInt
+   idle-timeout-seconds :- [:maybe ms/PositiveInt]]
+  (session.db/delete-expired-mcp-sessions! max-age-minutes idle-timeout-seconds))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

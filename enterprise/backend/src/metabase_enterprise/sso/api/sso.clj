@@ -13,6 +13,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -107,7 +108,7 @@
     ;; If a user doesn't have SLO setup on their IdP,
     ;; they will never hit "/handle_slo" so we must end the session here:
     (when-not (sso-settings/saml-slo-enabled)
-      (session/end-sessions! {:key_hashed metabase-session-key-hashed} "sso-logout" :self))
+      (models.session/end-sessions! {:key_hashed metabase-session-key-hashed} "sso-logout" :self))
     {:saml-logout-url
      (when (and (sso-settings/saml-slo-enabled)
                 (= sso_source "saml"))

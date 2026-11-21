@@ -6,6 +6,7 @@
    [metabase-enterprise.session-management.schema :as sm.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.session.core :as session]
+   [metabase.session.models.session :as models.session]
    [metabase.session.schema :as session.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -120,7 +121,7 @@
                                                                       exclude-current?)}))
         ;; the select is what tells us which rows (and whose) went, for the response and the audit trail; an UPDATE
         ;; over these joined criteria also has no single-statement form that works on H2, MySQL, and Postgres
-        revoked      (session/end-sessions-by-ids! (mapv :id matched) "admin" actor-id)]
+        revoked      (models.session/end-sessions-by-ids! (mapv :id matched) "admin" actor-id)]
     (when (not= revoked (count matched))
       ;; benign, and only ever fewer: the update names the matched ids, so a session that logs in after the select is
       ;; untouched (it is what `remaining` reports), while one logged out or swept by cleanup in between is a miss here

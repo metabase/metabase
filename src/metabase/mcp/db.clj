@@ -6,13 +6,11 @@
   — see [[user-id->tenant-id]]. It lives here because here is the only place that knows the value reaches
   HoneySQL."
   (:require
-   [metabase.app-db.core :as app-db]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.mcp.permissions :as mcp.perms]
    [metabase.mcp.schema :as mcp.schema]
    [metabase.metabot.usage-controls :as usage-controls]
-   [metabase.session.core :as session]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -141,7 +139,8 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-;; the AuthIdentity model's before-insert validation accept the rows [[mcp-auth-identity-id!]] creates.
+;; the AuthIdentity model's before-insert validation accept the rows [[metabase.mcp.session/get-or-create-embedding-session!]]
+;; creates.
 (auth-identity/derive! :provider/mcp :metabase.auth-identity.provider/provider)
 
 (mu/defn insert-feedback!
@@ -183,36 +182,6 @@
   [key-hashed]
   (t2/select-fn-set :user_id :core_session :key_hashed key-hashed))
 
-;; An AuthIdentity row rather than a new `core_session` column: `auth_identity.provider` is already the provider of
-;; record for a session, and the `(user_id, provider)` unique constraint makes one row per user the natural key —
-;; `select-or-insert!` leans on that constraint to settle a race between two concurrent MCP handshakes.
-(mu/defn- mcp-auth-identity-id! :- ms/PositiveInt
-  "The id of `user-id`'s `mcp` AuthIdentity, creating it if there isn't one. There is at most one per user."
-  [user-id :- ::lib.schema.id/user]
-  (:id (app-db/select-or-insert!
-        :model/AuthIdentity
-        {:user_id  user-id
-         :provider session/mcp-provider}
-        (constantly {}))))
-
-(mu/defn get-or-create-core-session!
-  "The `core_session` row for `key-hashed` and `user-id`, creating one with a freshly generated session id if none
-  exists. Uses the raw `:core_session` table (not `:model/Session`) to bypass the after-insert hook, which would
-  otherwise publish a spurious `:event/user-login` event."
-  [key-hashed :- :string
-   user-id    :- ::lib.schema.id/user]
-  (app-db/select-or-insert!
-   :core_session
-   {:key_hashed key-hashed
-    :user_id    user-id}
-   (fn []
-     {:id               (session/generate-session-id)
-      :anti_csrf_token  nil
-      ;; the `mcp` provider keeps these rows out of the `/api/sessions` list and revoke endpoints, and stops the
-      ;; key from authenticating a request through the session middleware
-      :auth_identity_id (mcp-auth-identity-id! user-id)
-      :created_at       :%now})))
-
 (mu/defn insert-query-handle!
   "Insert the McpQueryHandle `row` under the client-generated `handle-id`, returning the number inserted."
   [handle-id :- ms/UUIDString
@@ -235,15 +204,6 @@
   "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
   [cutoff]
   (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
-
-(mu/defn delete-session-for-user!
-  "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
-  [key-hashed :- :string
-   user-id    :- ::lib.schema.id/user]
-  (t2/query {:delete-from :core_session
-             :where       [:and
-                           [:= :key_hashed key-hashed]
-                           [:= :user_id user-id]]}))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any

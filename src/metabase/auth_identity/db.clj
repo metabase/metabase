@@ -2,6 +2,7 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.users.schema :as users.schema]
@@ -9,18 +10,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
-
-(def ^:private AuthIdentityRow
-  "The writable columns of an AuthIdentity row (excluding `:id`, `:created_at`, `:updated_at`)."
-  [:map {:closed true}
-   [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
-   [:provider     {:optional true} [:maybe [:or :keyword :string]]]
-   [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials]]
-   [:metadata     {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata]]
-   [:provider_id  {:optional true} [:maybe :string]]
-   [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mu/defn auth-identity
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
@@ -57,14 +46,27 @@
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
-  [row :- AuthIdentityRow]
+  [row :- ::auth-identity.schema/auth-identity.create]
   (t2/insert! :model/AuthIdentity row))
+
+(mu/defn select-or-insert-auth-identity! :- ::auth-identity.schema/auth-identity
+  "The AuthIdentity of the User with `user-id` at `provider`, inserting one with no credentials when there is none."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (mdb/select-or-insert! :model/AuthIdentity {:user_id user-id :provider provider} (constantly {})))
 
 (mu/defn update-auth-identity!
   "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
   [id      :- ms/PositiveInt
-   changes :- AuthIdentityRow]
+   changes :- ::auth-identity.schema/auth-identity.update]
   (t2/update! :model/AuthIdentity :id [:auto/param id] changes))
+
+(mu/defn expire-auth-identities!
+  "Set the expiry of the AuthIdentities with `ids`, which must not be empty, to `expires-at`, returning the number
+  updated."
+  [ids        :- [:sequential ms/PositiveInt]
+   expires-at :- ms/TemporalInstant]
+  (t2/update! :model/AuthIdentity :id [:in [:auto/param ids]] {:expires_at expires-at}))
 
 (mu/defn touch-auth-identity!
   "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
@@ -77,19 +79,6 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
   (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
-
-(mu/defn end-sessions-for-user!
-  "Record that every Session of the User with `user-id` ended because their password changed, clearing each key so
-  none can authenticate again; `ended-by` is who changed it. Returns the number ended."
-  [user-id  :- ::lib.schema.id/user
-   ended-by :- [:maybe ::lib.schema.id/user]]
-  ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
-  ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
-  (t2/update! :model/Session :user_id (long user-id) :ended_at nil
-              {:ended_at         :%now
-               :end_reason       "password-change"
-               :ended_by_user_id ended-by
-               :key_hashed       nil}))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -135,32 +124,3 @@
   "Insert the User `row` and return its id, last login, active flag, and tenant id."
   [row :- ::users.schema/user.update]
   (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))
-
-(mu/defn insert-session!
-  "Insert a Session and return the inserted instance.
-
-  `opts` carries provider-specific extras. The `:saml-*` keys come from a SAML login assertion and
-  are stored so single logout can name the session and subject the IdP knows."
-  [session-id           :- :string
-   user-id              :- ::lib.schema.id/user
-   auth-identity-id     :- [:maybe ms/PositiveInt]
-   session-key          :- :string
-   expires-at           :- [:maybe ms/TemporalInstant]
-   mfa-auth-identity-id :- [:maybe ms/PositiveInt]
-   opts                 :- [:map {:closed true}
-                            [:saml-session-index  {:optional true} [:maybe :string]]
-                            [:saml-name-id        {:optional true} [:maybe :string]]
-                            [:saml-name-id-format {:optional true} [:maybe :string]]]]
-  ;; `:id` and `:session_key` stay unmarked: the before-insert hook checks the id is not a UUID and hashes the key,
-  ;; and both need the plain string. The key itself never reaches SQL, only its hash.
-  (t2/insert-returning-instance! :model/Session
-                                 ;; Without setting the ID here we can't return an instance on MySQL
-                                 :id session-id
-                                 :user_id (long user-id)
-                                 :auth_identity_id (some-> auth-identity-id long)
-                                 :session_key session-key
-                                 :expires_at [:auto/param expires-at]
-                                 :mfa_auth_identity_id (some-> mfa-auth-identity-id long)
-                                 :saml_session_index [:auto/param (:saml-session-index opts)]
-                                 :saml_name_id [:auto/param (:saml-name-id opts)]
-                                 :saml_name_id_format [:auto/param (:saml-name-id-format opts)]))

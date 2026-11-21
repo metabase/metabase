@@ -5,8 +5,11 @@
    [java-time.api :as t]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.auth-identity.db :as auth-identity.db]
-   [metabase.auth-identity.provider :as provider]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.auth-identity.validation :as validation]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.session.models.session :as models.session]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -81,7 +84,7 @@
              (and (= provider "password")
                   (contains? auth-identity :credentials))
              (update :credentials hash-password-credentials))
-    (provider/validate (provider/provider-string->keyword provider) <>)))
+    (validation/validate (keyword "provider" provider) <>)))
 
 (t2/define-before-update :model/AuthIdentity
   [{:keys [provider] :as auth-identity}]
@@ -89,7 +92,7 @@
              (and (= provider "password")
                   (contains? (t2/changes auth-identity) :credentials))
              (update :credentials hash-password-credentials))
-    (provider/validate (provider/provider-string->keyword provider) <>)))
+    (validation/validate (keyword "provider" provider) <>)))
 
 (mi/define-batched-hydration-method add-has-used-password
   :has_used_password
@@ -116,6 +119,43 @@
           [:credentials :token_hash]))
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-auth-identity!
+  "Insert the AuthIdentity `row`, returning the number inserted."
+  [row :- ::auth-identity.schema/auth-identity.create]
+  (auth-identity.db/insert-auth-identity! row))
+
+(mu/defn get-or-create-auth-identity! :- ::auth-identity.schema/auth-identity
+  "The AuthIdentity of the User with `user-id` at `provider`, inserting one with no credentials when there is none."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (auth-identity.db/select-or-insert-auth-identity! user-id provider))
+
+(mu/defn update-auth-identity!
+  "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::auth-identity.schema/auth-identity.update]
+  (auth-identity.db/update-auth-identity! id changes))
+
+(mu/defn touch-auth-identity!
+  "Record that the AuthIdentity with `id` was just used to log in, returning the number updated. A nil `id` (no
+  matching AuthIdentity) updates nothing."
+  [id :- [:maybe ms/PositiveInt]]
+  (auth-identity.db/touch-auth-identity! id))
+
+(mu/defn expire-auth-identities!
+  "Make the AuthIdentities with `ids` expire at `expires-at`, returning the number updated."
+  [ids        :- [:sequential ms/PositiveInt]
+   expires-at :- ms/TemporalInstant]
+  (if (seq ids)
+    (auth-identity.db/expire-auth-identities! ids expires-at)
+    0))
+
+(mu/defn delete-auth-identities!
+  "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (auth-identity.db/delete-auth-identities! user-id provider))
 
 (mu/defn set-password!
   "Set `user-id`'s login password to plaintext `password`, creating or replacing their `password` AuthIdentity — the
@@ -150,10 +190,10 @@
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
        (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
-         (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
-         (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
-     (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
-     (auth-identity.db/end-sessions-for-user! user-id (:ended-by opts)))))
+         (update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (create-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
+     (delete-auth-identities! user-id "emailed-secret-password-reset")
+     (models.session/end-sessions! {:user_id user-id} "password-change" (:ended-by opts)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
