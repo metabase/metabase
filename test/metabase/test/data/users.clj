@@ -10,6 +10,7 @@
    [metabase.session.core :as session]
    [metabase.test.http-client :as client]
    [metabase.test.initialize :as initialize]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -73,13 +74,12 @@
   (or (t2/select-one :model/User :email email)
       (locking create-user-lock
         (or (t2/select-one :model/User :email email)
-            (u/prog1 (t2/insert-returning-instance! :model/User
-                                                    {:email        email
-                                                     :first_name   first-name
-                                                     :last_name    last-name
-                                                     :is_superuser superuser
-                                                     :is_qbnewb    true
-                                                     :is_active    active})
+            (u/prog1 (user/create-user! {:email        email
+                                         :first_name   first-name
+                                         :last_name    last-name
+                                         :is_superuser superuser
+                                         :is_qbnewb    true
+                                         :is_active    active})
               (auth-identity/set-password! (u/the-id <>) password))))))
 
 (mu/defn fetch-user :- (ms/InstanceOf :model/User)

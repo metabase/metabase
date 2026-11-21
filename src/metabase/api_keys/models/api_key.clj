@@ -198,7 +198,7 @@
           new-name                      (:name changes)
           new-group-id                  (::api-keys/group-id changes)]
       (when (and stored new-name (not= new-name (:name stored)))
-        (api-keys.db/rename-api-key-user! user-id new-name))
+        (user/update-users! {:id user-id :type :api-key} {:first_name new-name :last_name ""}))
       (when (and stored new-group-id)
         (assert (= (api-keys.db/user-type user-id) :api-key)
                 "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
@@ -209,12 +209,18 @@
           (api-keys.db/update-api-key! id column-changes)
           0)))))
 
+(defn- deactivate-key-user!
+  "Deactivate the api-key User with `user-id`, if any; keys without a user, such as SCIM keys, have none."
+  [user-id]
+  (when user-id
+    (user/update-users! {:id user-id :type :api-key} {:is_active false})))
+
 (mu/defn delete-api-key!
   "Delete the ApiKey with `id`, deactivating the User created for it."
   [id :- ::api-keys.schema/id]
   (t2/with-transaction [_conn]
     (when-let [{user-id :user_id} (api-keys.db/api-key id)]
-      (api-keys.db/deactivate-api-key-user! user-id)
+      (deactivate-key-user! user-id)
       (api-keys.db/delete-api-key! id))))
 
 (mu/defn delete-api-keys-with-scope!
@@ -222,7 +228,7 @@
   [scope :- ::api-keys.schema/scope]
   (t2/with-transaction [_conn]
     (let [api-keys (api-keys.db/api-keys-with-scope scope)]
-      (run! (comp api-keys.db/deactivate-api-key-user! :user_id) api-keys)
+      (run! (comp deactivate-key-user! :user_id) api-keys)
       (if (seq api-keys)
         (api-keys.db/delete-api-keys! (map :id api-keys))
         0))))
@@ -239,11 +245,10 @@
   (let [unhashed-key (key-with-unique-prefix)
         email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
     (t2/with-transaction [_conn]
-      (let [user-id (api-keys.db/insert-user!
-                     {:email      email
-                      :first_name key-name
-                      :last_name  ""
-                      :type       :api-key})]
+      (let [user-id (:id (user/create-user! {:email      email
+                                             :first_name key-name
+                                             :last_name  ""
+                                             :type       :api-key}))]
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (create-api-key!

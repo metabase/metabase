@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [malli.util :as mut]
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
@@ -1156,18 +1155,6 @@
   [user-ids :- [:set {:min 1} ::lib.schema.id/user]
    changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
   (t2/update! :model/User :id [:in user-ids] changes))
-
-(mu/defn deactivate-active-tenant-users!
-  "Deactivate every active tenant User, marking them as deactivated with their tenant."
-  []
-  (t2/update! :model/User :tenant_id [:not= nil] :is_active true {:is_active false :deactivated_with_tenant true}))
-
-(mu/defn deactivate-all-tenants!
-  "Deactivate every active Tenant, returning the number updated."
-  []
-  (if config/ee-available?
-    (t2/update! :model/Tenant :is_active true {:is_active false})
-    0))
 
 ;;; --------------------------------------------- Databases and Tables ---------------------------------------------
 

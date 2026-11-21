@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for transactions."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -63,17 +62,6 @@
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
   (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
-
-(mu/defn insert-user!
-  "Insert the User `row`, returning the number inserted."
-  [row :- ::users.schema/user.update]
-  (t2/insert! :model/User row))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`, returning the number updated."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the

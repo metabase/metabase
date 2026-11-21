@@ -13,8 +13,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
-   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.permissions.settings :as permissions.settings]
    [metabase.pulse.db :as pulse.db]
    [metabase.sync.db :as sync.db]
    [metabase.test :as mt]
@@ -206,7 +206,7 @@
         (testing "every tenant deactivated"
           (mt/with-temp [:model/Tenant tenant {}]
             (t2/with-transaction [_conn nil {:rollback-only true}]
-              (is (contains? (set (logged-by permissions.db/deactivate-all-tenants!))
+              (is (contains? (set (logged-by permissions.settings/deactivate-tenants!))
                              ["tenant" (:id tenant) "update"])))))
         (testing "`log-rows!` on a model that is not tracked throws in dev and test"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"has no `metabase.change-log.core/spec`"

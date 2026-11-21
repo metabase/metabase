@@ -206,9 +206,10 @@
     (select-by-parent-pks [_ model parent-pks columns]
       (rows-by-parent-pks model parent-pks columns))
     (insert-rows! [_ model rows]
-      (into []
-            (mapcat #(serialization.db/insert-rows! model (vec %)))
-            (partition-all serialization.util/batch-size rows)))
+      (let [insert! (or (serialization.spec/insert-rows model) #(serialization.db/insert-rows! model %))]
+        (into []
+              (mapcat #(insert! (vec %)))
+              (partition-all serialization.util/batch-size rows))))
     (update-row! [_ model pk changes]
       (serialization.db/update-row! model (serialization.spec/primary-key model) pk changes))
     (delete-rows! [_ model pks]

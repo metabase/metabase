@@ -11,6 +11,7 @@
    [metabase.setup-rest.db :as setup-rest.db]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -44,7 +45,10 @@
     (throw (ex-info
             (tru "The /api/setup route can only be used to create the first user, however a user currently exists.")
             {:status-code 403})))
-  (let [new-user   (setup-rest.db/insert-superuser! email first-name last-name)
+  (let [new-user   (user/create-user! {:email        email
+                                       :first_name   first-name
+                                       :last_name    last-name
+                                       :is_superuser true})
         user-id    (u/the-id new-user)]
     (auth-identity/set-password! user-id password)
     (let [session (auth-identity/create-session-with-auth-tracking! new-user device-info :provider/password)]

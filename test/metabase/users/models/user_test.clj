@@ -9,9 +9,13 @@
    [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
+   [metabase.premium-features.token-check :as token-check]
    [metabase.request.core :as request]
+   [metabase.serialization.protocol :as protocol]
+   [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.tenants.core :as tenants]
@@ -431,10 +435,10 @@
         (testing "Sanity check: subscription should exist"
           (is (subscription-exists?)))
         (testing "user is updated but not archived: don't delete the subscription"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active true :first_name "New name"})))
+          (is (pos? (user/update-user! user-id {:is_active true :first_name "New name"})))
           (is (subscription-exists?)))
         (testing "archive the user"
-          (is (pos? (t2/update! :model/User :id user-id {:is_active false}))))
+          (is (pos? (user/update-user! user-id {:is_active false}))))
         (testing "subscription should no longer exist"
           (is (not (subscription-exists?))))))))
 
@@ -458,6 +462,69 @@
       (mt/with-temp [:model/User {user-id :id} {}]
         (request/with-current-user user-id
           (is (= "v0.47.1" (setting/get :last-acknowledged-version))))))))
+
+(defn- group-ids-of
+  "The ids of the groups the User with `user-id` belongs to."
+  [user-id]
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+
+(deftest create-user-joins-default-groups-test
+  (let [email (mt/random-email)]
+    (try
+      (testing "personal user joins All Users only"
+        (let [{user-id :id} (user/create-user! {:email email})]
+          (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
+      (finally
+        (t2/delete! :model/User :email email))))
+  (let [email (mt/random-email)]
+    (try
+      (testing "superuser joins All Users and Administrators"
+        (let [{user-id :id} (user/create-user! {:email email :is_superuser true})]
+          (is (= #{(:id (perms-group/all-users)) (:id (perms-group/admin))} (group-ids-of user-id)))
+          (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))
+      (finally
+        (t2/delete! :model/User :email email)))))
+
+(deftest create-user-refused-over-user-limit-test
+  (let [email (mt/random-email)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly 1)]
+      (testing "personal user over limit is refused"
+        (is (thrown-with-msg? Exception #"Adding another user would exceed the maximum"
+                              (user/create-user! {:email email})))
+        (is (not (t2/exists? :model/User :email email))))
+      (testing "api-key user is not counted"
+        (try
+          (is (some? (user/create-user! {:email email :type :api-key})))
+          (finally
+            (t2/delete! :model/User :email email)))))))
+
+(deftest import-created-users-join-all-users-test
+  (let [emails [(mt/random-email) (mt/random-email)]]
+    (try
+      (let [users (protocol/insert-rows! protocol.app-db/store :model/User (mapv #(hash-map :email % :is_active false) emails))]
+        (is (= emails (map :email users)))
+        (doseq [{user-id :id} users]
+          (is (= #{(:id (perms-group/all-users))} (group-ids-of user-id)))))
+      (finally
+        (t2/delete! :model/User :email [:in emails])))))
+
+(deftest update-user-of-unguarded-columns-runs-no-membership-query-test
+  (mt/with-temp [:model/User {user-id :id} {}]
+    (t2/with-call-count [call-count]
+      (user/update-user! user-id {:first_name "Renamed"})
+      (is (= 2 (call-count))))
+    (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
+
+(deftest update-user-refuses-last-admin-test
+  (mt/with-temp [:model/User {user-id :id} {:is_superuser true}]
+    (mt/with-dynamic-fn-redefs [perms/throw-if-last-admin! (fn [_] (throw (ex-info "last admin" {:status-code 400})))]
+      (testing "deactivating"
+        (is (thrown-with-msg? Exception #"last admin" (user/update-user! user-id {:is_active false})))
+        (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))
+      (testing "demoting"
+        (is (thrown-with-msg? Exception #"last admin" (user/update-user! user-id {:is_superuser false})))
+        (is (contains? (group-ids-of user-id) (:id (perms-group/admin))))
+        (is (true? (t2/select-one-fn :is_superuser :model/User :id user-id)))))))
 
 (deftest common-name-test
   (testing "common_name should be present depending on what is selected"

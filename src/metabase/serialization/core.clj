@@ -132,6 +132,7 @@
   visualization-settings-transform]
  [serialization.spec
   columns
+  insert-rows
   spec
   spec-of]
  [serialization.transform

@@ -4,7 +4,6 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.users.schema :as users.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -44,17 +43,6 @@
   [columns :- [:sequential :keyword]
    email :- :string]
   (t2/select-one (into [:model/User] columns) :email email))
-
-(mu/defn insert-user!
-  "Insert `user` and return the new instance."
-  [user :- ::users.schema/user.update]
-  (t2/insert-returning-instance! :model/User user))
-
-(mu/defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id :- ::lib.schema.id/user
-   changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."

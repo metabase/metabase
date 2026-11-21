@@ -49,14 +49,14 @@
                        (log/info (u/format-color :blue "Updating User %d" (:id existing-user)))
                        (let [new-user (update user :login_attributes
                                               #(merge % (:login_attributes existing-user)))]
-                         (advanced-config.db/update-user! (:id existing-user) new-user))
+                         (user/update-user! (:id existing-user) new-user))
                        (:id existing-user))
                      ;; create a new user. If they are the first non-internal User, force them to be an admin.
                      (let [user (cond-> user
                                   (not (setup/has-user-setup)) (assoc :is_superuser true))]
                        (log/info (u/colorize :green "Creating the first User for this instance. The first user is always created as an admin."))
                        (log/info (u/colorize :green "Creating new User"))
-                       (u/the-id (advanced-config.db/insert-user! user))))]
+                       (u/the-id (user/create-user! user))))]
       ;; passwords live in the AuthIdentity, not on the User row
       (auth-identity/set-password! user-id password))))
 
