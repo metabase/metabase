@@ -316,25 +316,17 @@ describe("DataApp", () => {
     ]);
   });
 
-  it("ignores route changes to initialPath and reloads the iframe when its app slug changes", () => {
+  it("ignores later changes to initialPath, including a new app slug", () => {
     const { iframe, postMessage, rerender } = setup({ initialPath: "boba-hq" });
 
     message(iframe, "metabase.embed.iframeReady");
     postMessage.mockClear();
 
-    // an invalid route of the same app keeps the iframe too
-    for (const initialPath of ["boba-hq/orders", "boba-hq/100%"]) {
+    for (const initialPath of ["boba-hq/orders", "milk-tea-hq/orders"]) {
       rerender(<DataApp initialPath={initialPath} />);
       expect(screen.getByTestId("data-app-frame")).toBe(iframe);
     }
     expect(postMessage).not.toHaveBeenCalled();
-
-    rerender(<DataApp initialPath="milk-tea-hq/orders" />);
-    const newIframe = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
-    expect(newIframe).not.toBe(iframe);
-    expect(new URL(newIframe.src).pathname).toBe(
-      "/mb/embed/embedded-apps/milk-tea-hq/orders",
-    );
   });
 
   it("calls onPathChange with initialPath and never navigates the app", () => {

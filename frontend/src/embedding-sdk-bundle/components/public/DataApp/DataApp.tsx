@@ -20,8 +20,7 @@ export interface DataAppProps {
   /**
    * The page the app opens first: the app slug and optional route/query, such as `my-store/orders?active=true`.
    *
-   * Later changes to the route or query are ignored.
-   * Changing the app slug remounts the iframe with the new app.
+   * Later changes are ignored, including a new app slug. To show another app, change the component's `key`.
    *
    * Use {@link DataAppProps.path | path} instead to navigate the app from the host.
    **/
