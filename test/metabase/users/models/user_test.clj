@@ -402,14 +402,14 @@
     (testing "updating a User"
       (mt/with-temp [:model/User {user-id :id} {:locale "en_US"}]
         (testing "valid locale"
-          (user/update-user! user-id {:locale "en_GB"})
+          (t2/update! :model/User :id user-id {:locale "en_GB"})
           (is (= "en_GB"
                  (t2/select-one-fn :locale :model/User :id user-id))))
         (testing "invalid locale"
           (is (thrown-with-msg?
                Throwable
                #"Assert failed: Invalid locale: \"en_XX\""
-               (user/update-user! user-id {:locale "en_XX"}))))))))
+               (t2/update! :model/User :id user-id {:locale "en_XX"}))))))))
 
 (deftest normalize-locale-test
   (testing "`:locale` should be normalized"
@@ -418,7 +418,7 @@
         (is (= "en_US"
                (t2/select-one-fn :locale :model/User :id user-id))))
       (testing "updating a User"
-        (user/update-user! user-id {:locale "en-GB"})
+        (t2/update! :model/User :id user-id {:locale "en-GB"})
         (is (= "en_GB"
                (t2/select-one-fn :locale :model/User :id user-id)))))))
 
@@ -510,7 +510,7 @@
   (mt/with-temp [:model/User {user-id :id} {}]
     (t2/with-call-count [call-count]
       (user/update-user! user-id {:first_name "Renamed"})
-      (is (= 2 (call-count))))
+      (is (= 3 (call-count))))
     (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id user-id)))))
 
 (deftest update-user-refuses-last-admin-test
@@ -561,10 +561,10 @@
   (testing "deactivated_at is set when a user is deactivated and unset when reactivated (#51728)"
     (mt/with-temp [:model/User {user-id :id :as user} {}]
       (is (nil? (:deactivated_at user)))
-      (user/update-user! user-id {:is_active false})
+      (t2/update! :model/User :id user-id {:is_active false})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (instance? java.time.OffsetDateTime deactivated-at)))
-      (user/update-user! user-id {:is_active true})
+      (t2/update! :model/User :id user-id {:is_active true})
       (let [deactivated-at (t2/select-one-fn :deactivated_at :model/User :id user-id)]
         (is (nil? deactivated-at))))))
 
@@ -783,9 +783,9 @@
   (testing "internal user cannot be updated"
     (let [before (t2/select-one :model/User :id config/internal-mb-user-id)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
-                            (user/update-user! config/internal-mb-user-id {:first_name "Changed"})))
+                            (t2/update! :model/User :id config/internal-mb-user-id {:first_name "Changed"})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not able to modify the internal user"
-                            (user/update-user! config/internal-mb-user-id {:is_active true})))
+                            (t2/update! :model/User :id config/internal-mb-user-id {:is_active true})))
       (is (= before (t2/select-one :model/User :id config/internal-mb-user-id))))))
 
 (deftest schema-checks-type-test
@@ -861,4 +861,6 @@
          :demote     (count #(user/update-users! {:id [:in @ids]} {:is_superuser false}))}))))
 
 (deftest bulk-user-writes-run-fixed-statement-counts-test
-  (is (= (bulk-write-counts! 2) (bulk-write-counts! 6))))
+  (testing "after a first run that fills the caches"
+    (bulk-write-counts! 1)
+    (is (= (bulk-write-counts! 2) (bulk-write-counts! 6)))))

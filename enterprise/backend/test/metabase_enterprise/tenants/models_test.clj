@@ -321,5 +321,5 @@
       (is (not (t2/exists? :model/User :email "superuser-tenant-user@example.com"))))
     (testing "tenant user made superuser"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Superusers cannot be tenant users"
-                            (user/update-user! user-id {:is_superuser true})))
+                            (t2/update! :model/User :id user-id {:is_superuser true})))
       (is (false? (t2/select-one-fn :is_superuser :model/User :id user-id))))))

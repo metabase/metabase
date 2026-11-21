@@ -25,6 +25,13 @@
 
 ;;; ---------------------------------------------------- Hooks -----------------------------------------------------
 
+(t2/define-before-update :model/DatabaseRouter
+  [router]
+  (let [changes (t2/changes router)]
+    (when (contains? changes :database_id)
+      (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
+    router))
+
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
   :feature :database-routing
@@ -70,22 +77,17 @@
       (count routers))))
 
 (mu/defn update-database-router!
-  "Apply `changes` to the DatabaseRouter of the Database with `database-id`, publishing the event of the write; moving it
-  to another Database is a 400."
+  "Apply `changes` to the DatabaseRouter of the Database with `database-id`, publishing the event of the write."
   [database-id :- ::lib.schema.id/database
    changes     :- ::database-routing.schema/database-router.update]
   (t2/with-transaction [_conn]
-    (if-let [stored (database-routing.db/router-for-database database-id)]
-      (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
-        (when (contains? changed :database_id)
-          (throw (ex-info (tru "You cannot change the database of a router.") {:status-code 400})))
-        (if (empty? changed)
-          0
-          (u/prog1 (database-routing.db/update-router! database-id changed)
+    (let [stored (database-routing.db/router-for-database database-id)]
+      (u/prog1 (database-routing.db/update-router! database-id changes)
+        (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+          (when (and stored (seq changed))
             (events/publish-lifecycle! [(events/updated :event/database-router-update
                                                         [stored]
-                                                        [(events/updated-row stored changed)])]))))
-      0)))
+                                                        [(events/updated-row stored changed)])])))))))
 
 (mu/defn delete-database-router!
   "Delete the DatabaseRouter of the Database with `database-id`, publishing the event of the write."

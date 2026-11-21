@@ -17,11 +17,11 @@
   (testing "a router stays with the database it was made for"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Database {other-id :id} {}
-                   :model/DatabaseRouter _ {:database_id db-id :user_attribute "tenant"}]
+                   :model/DatabaseRouter {router-id :id} {:database_id db-id :user_attribute "tenant"}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the database of a router"
-           (database-routing.models/update-database-router! db-id {:database_id other-id}))))))
+           (t2/update! :model/DatabaseRouter :id router-id {:database_id other-id}))))))
 
 (deftest destination-cannot-be-router-test
   (testing "a destination database cannot be made a router"

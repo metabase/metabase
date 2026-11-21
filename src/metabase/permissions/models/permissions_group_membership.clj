@@ -70,6 +70,17 @@
   `(binding [*update-user-when-added-to-admin-group?* false]
      (do ~@body)))
 
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
+
+(t2/define-before-update :model/PermissionsGroupMembership
+  [membership]
+  (let [changes (t2/changes membership)]
+    (when (contains? changes :user_id)
+      (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
+    (when (contains? changes :group_id)
+      (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
+    membership))
+
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/PermissionsGroupMembership :can_read]
@@ -186,25 +197,29 @@
         (check-tenancy-matches membership member group-id->tenant?)))))
 
 (defmulti set-member-flags-of!
-  "Set `changes`, the `is_superuser` or `is_data_analyst` flag a membership implies, on the rows of `model` with
-  `user-ids`, without the cascades of an ordinary update, which the memberships keep themselves, returning the events of
-  the writes for the caller to publish. The User model, whose namespace requires this one, implements it with its own
-  write function."
-  {:arglists '([model user-ids changes])}
-  (fn [model _user-ids _changes] model))
+  "Set the flags a membership implies on the rows of `model`, `flag-changes` holding `[user-ids changes]` pairs of
+  `is_superuser` or `is_data_analyst` applied in their order, without the cascades of an ordinary update, which the
+  memberships keep themselves, returning the events of the writes for the caller to publish. The User model, whose
+  namespace requires this one, implements it with its own write function."
+  {:arglists '([model flag-changes])}
+  (fn [model _flag-changes] model))
 
 (defn- set-member-flags
   "Set the `is_superuser` flag of the Users of `memberships` in the Administrators group, and the `is_data_analyst` flag
   of those in the Data Analysts group, to `value`, returning the events of the writes."
   [memberships value]
-  (into []
-        (mapcat (fn [[group-id flag]]
-                  (let [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id)) memberships)]
-                    (when (seq user-ids)
-                      (t2/resolve-model :model/User)
-                      (set-member-flags-of! :model/User user-ids {flag value})))))
-        [[(:id (perms-group/admin)) :is_superuser]
-         [(:id (perms-group/data-analyst)) :is_data_analyst]]))
+  (let [flag-changes (into []
+                           (keep (fn [[group-id flag]]
+                                   (let [user-ids (into #{} (comp (filter #(= group-id (:group_id %))) (map :user_id))
+                                                        memberships)]
+                                     (when (seq user-ids)
+                                       [user-ids {flag value}]))))
+                           [[(:id (perms-group/admin)) :is_superuser]
+                            [(:id (perms-group/data-analyst)) :is_data_analyst]])]
+    (if (seq flag-changes)
+      (do (t2/resolve-model :model/User)
+          (set-member-flags-of! :model/User flag-changes))
+      [])))
 
 (defn- delete-memberships*
   "Delete `memberships`, keeping at least one active admin, and unset the flags their Administrators and Data Analysts
@@ -271,7 +286,10 @@
           (check-members memberships)
           (let [created (permissions.db/insert-group-memberships! (vec memberships))]
             {:events (into [(events/created :event/group-membership-create created)]
-                           (set-member-flags created true))}))))))
+                           (set-member-flags (cond->> created
+                                               (not *update-user-when-added-to-admin-group?*)
+                                               (remove #(= (:id (perms-group/admin)) (:group_id %))))
+                                             true))}))))))
 
 (mu/defn add-users-to-groups!
   "Creates permission group memberships from a sequence of maps of users, groups and is-group-manager?, publishing the
@@ -335,24 +353,18 @@
   (publish! #(delete-memberships* (permissions.db/memberships-for-user user-id))))
 
 (mu/defn update-permissions-group-membership!
-  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated; moving it to another user
-  or group, or making a tenant user or an admin a group manager, is a 400."
+  "Apply `changes` to the PermissionsGroupMembership with `id`, returning the number updated and publishing the event of
+  the write; making a tenant user or an admin a group manager is a 400."
   [id      :- ms/PositiveInt
    changes :- ::permissions.schema/permissions-group-membership.update]
   (t2/with-transaction [_conn]
-    (let [stored  (permissions.db/group-membership id)
-          changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+    (let [stored (permissions.db/group-membership id)]
       (when (and stored (:is_group_manager changes))
         (check-group-manager-member (merge stored changes)
                                     (first (permissions.db/member-flags #{(:user_id stored)}))))
-      (if-not (and stored (seq changed))
-        0
-        (do
-          (when (contains? changed :user_id)
-            (throw (ex-info (tru "You cannot move a group membership to another user.") {:status-code 400})))
-          (when (contains? changed :group_id)
-            (throw (ex-info (tru "You cannot move a group membership to another group.") {:status-code 400})))
-          (u/prog1 (permissions.db/update-group-membership! id changed)
+      (u/prog1 (permissions.db/update-group-membership! id changes)
+        (let [changed (into {} (remove (fn [[k v]] (= v (get stored k)))) changes)]
+          (when (and stored (seq changed))
             (events/publish-lifecycle! [(events/updated :event/group-membership-update
                                                         [stored]
                                                         [(events/updated-row stored changed)])])))))))
