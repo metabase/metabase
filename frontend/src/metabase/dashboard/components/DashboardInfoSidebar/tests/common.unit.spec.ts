@@ -65,6 +65,15 @@ describe("DashboardInfoSidebar", () => {
     ).toBeInTheDocument();
   });
 
+  it("should never show an Insights link in OSS, even to admins", async () => {
+    await setup({ user: { is_superuser: true } });
+
+    expect(await screen.findByRole("tab", { name: "Overview" })).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: /Insights/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should show description when clicking on overview tab", async () => {
     await setup();
     await userEvent.click(screen.getByRole("tab", { name: "History" }));

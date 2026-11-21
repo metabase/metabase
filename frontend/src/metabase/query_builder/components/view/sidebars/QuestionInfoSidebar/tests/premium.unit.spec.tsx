@@ -102,6 +102,28 @@ describe("QuestionInfoSidebar > premium", () => {
       });
     });
 
+    it("links to the usage analytics dashboard of the question", async () => {
+      await setupEnterprise({ card: createMockCard({ id: 2 }) });
+
+      expect(
+        await screen.findByRole("link", { name: /Insights/ }),
+      ).toHaveAttribute("href", "/dashboard/202?question_id=2");
+    });
+
+    it("shows no Insights link to users without access to usage analytics", async () => {
+      await setupEnterprise({
+        card: createMockCard({ id: 2 }),
+        auditInfo: {},
+      });
+
+      expect(
+        await screen.findByRole("tab", { name: "Overview" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("link", { name: /Insights/i }),
+      ).not.toBeInTheDocument();
+    });
+
     describe("for admins", () => {
       it("should show tabs for Overview, History, and Relationships, and a link for Insights", async () => {
         setupEnterprise({ user: { is_superuser: true } });
