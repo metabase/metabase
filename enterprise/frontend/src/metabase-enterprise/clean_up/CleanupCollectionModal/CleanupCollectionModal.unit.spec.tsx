@@ -472,6 +472,18 @@ describe("CleanupCollectionModal", () => {
   });
 
   it("moves the selected stale items to the trash, undoes it and closes", async () => {
+    // The undo that `CleanupCollectionBulkActions` makes has no `_domId`, so
+    // `UndoListOverlay` renders its toast without a key. Drop that one warning,
+    // because the jest setup fails a test on React key warnings.
+    const consoleError = console.error;
+    jest.spyOn(console, "error").mockImplementation((...args) => {
+      const isKeyWarning =
+        typeof args[0] === "string" &&
+        args[0].includes('Each child in a list should have a unique "key"');
+      if (!isKeyWarning) {
+        consoleError(...args);
+      }
+    });
     const { trackSchemaEvent, getPathname, items } = setup();
     await openCleanUpModal();
     await assertStaleItemCount(TOTAL_STALE_ITEM_COUNT);
