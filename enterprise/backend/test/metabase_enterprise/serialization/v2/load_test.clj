@@ -27,6 +27,7 @@
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.json :as json]
@@ -35,6 +36,8 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [metabase.warehouses.serialization :as warehouses.serialization]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything.
 ;; Many tests here use the H2 test-data database (Card defaults), so we keep the H2 guard off

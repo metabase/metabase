@@ -4,9 +4,13 @@
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.app-db :as protocol.app-db]
    [metabase.serialization.resolve :as resolve]
+   [metabase.serialization.writes :as serialization.writes]
    [metabase.test :as mt]
+   [metabase.users.models.user]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(comment metabase.users.models.user/keep-me)
 
 (defn- query-count [thunk]
   (t2/with-call-count [call-count]
@@ -126,16 +130,17 @@
                                               ["a" "b" "c"])]
         (mt/with-dynamic-fn-redefs [t2/insert-returning-instances! (fn [model rows]
                                                                      (reverse (insert-returning-instances! model rows)))]
-          (let [fields (protocol/insert-rows! store :model/Field field-rows)]
+          (let [fields (serialization.writes/insert-matched! :model/Field field-rows)]
             (testing "with generated primary keys"
               (is (= ["a" "b" "c"] (map :name fields))))
             (testing "with the primary keys the rows hold"
               (is (= ["A" "B" "C"]
                      (map :display_name
-                          (protocol/insert-rows! store :model/FieldUserSettings
-                                                 (mapv (fn [{:keys [id name]}]
-                                                         {:field_id id :display_name (u/upper-case-en name)})
-                                                       fields))))))))))))
+                          (serialization.writes/insert-matched!
+                           :model/FieldUserSettings
+                           (mapv (fn [{:keys [id name]}]
+                                   {:field_id id :display_name (u/upper-case-en name)})
+                                 fields))))))))))))
 
 (deftest select-by-refs-test
   (testing "selects the oldest row of each ref"

@@ -8,7 +8,6 @@
    [metabase.serialization.protocol :as protocol]
    [metabase.serialization.protocol.util :as protocol.util]
    [metabase.serialization.spec :as serialization.spec]
-   [metabase.serialization.util :as serialization.util]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -205,16 +204,6 @@
       (rows-by-refs model refs columns))
     (select-by-parent-pks [_ model parent-pks columns]
       (rows-by-parent-pks model parent-pks columns))
-    (insert-rows! [_ model rows]
-      (let [insert! (or (serialization.spec/insert-rows model) #(serialization.db/insert-rows! model %))]
-        (into []
-              (mapcat #(insert! (vec %)))
-              (partition-all serialization.util/batch-size rows))))
-    (update-row! [_ model pk changes]
-      (serialization.db/update-row! model (serialization.spec/primary-key model) pk changes))
-    (delete-rows! [_ model pks]
-      (let [pk (serialization.spec/primary-key model)]
-        (run! #(serialization.db/delete-rows! model pk (vec %)) (partition-all serialization.util/batch-size pks))))
     (transact [_ {:keys [isolation retries]} f]
       (let [run (fn []
                   (if (= isolation :repeatable-read)

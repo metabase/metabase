@@ -35,6 +35,14 @@
   - `:before-load`, `(fn [items])`, the load items to load (see [[metabase.serialization.load/before-load]]), by
     default all of them as they are.
   - `:after-load`, `(fn [items])`, the side effects of loading `items`, by default none.
+  - `:insert!`, `(fn [rows])`, inserts `rows` and returns the inserted instances, in any order; a row it leaves out
+    is not loaded, and neither are its children. By default one plain insert.
+  - `:update!`, `(fn [rows])`, updates rows, each of `rows` holding a primary key and the columns to change, and
+    returns the rows it updated, in any order, each with its primary key; a row it leaves out counts as not loaded.
+    By default one plain update per row.
+  - `:delete!`, `(fn [pks])`, deletes the rows with the primary keys `pks`. By default one plain delete. An import
+    deletes only child rows; remote sync deletes the rows its repository no longer holds.
+  These three are the write functions of the model, so an import writes a model the way the product does.
   - `:entity-ref`, `(fn [entity])`, the ref of `entity`, by default made of the exported values of its `:identity`.
   - `:rows-by-refs`, `(fn [refs columns])`, the map from each of the set `refs` to the oldest row of the app DB with
     that ref, with only `columns` unless nil, by default found by entity id.
@@ -61,20 +69,6 @@
       (catch Exception _ nil))
     (when-not (= (get-method spec model) (get-method spec :default))
       (spec model))))
-
-(defmulti insert-rows
-  "The fn of a sequence of rows of `model` that inserts them and returns the instances in their order, for a model
-  whose rows an import creates for references it cannot resolve and a plain insert does not make whole, or nil."
-  {:arglists '([model])}
-  identity)
-
-(defmethod insert-rows :default [model]
-  (when (and (qualified-keyword? model) (= "model" (namespace model)))
-    (try
-      (t2.model/resolve-model model)
-      (catch Exception _ nil))
-    (when-not (= (get-method insert-rows model) (get-method insert-rows :default))
-      (insert-rows model))))
 
 (mr/def ::transform
   "A transform of a column of a spec."
@@ -110,6 +104,9 @@
    [:loaded-entities     {:optional true} fn?]
    [:before-load         {:optional true} fn?]
    [:after-load          {:optional true} fn?]
+   [:insert!             {:optional true} fn?]
+   [:update!             {:optional true} fn?]
+   [:delete!             {:optional true} fn?]
    [:entity-ref          {:optional true} fn?]
    [:rows-by-refs        {:optional true} fn?]
    [:rows-by-parent-pks  {:optional true} fn?]])
