@@ -15,7 +15,7 @@
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
-   [metabase.content-verification.core :as moderation]
+   [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dependencies.core :as dependencies]
    [metabase.eid-translation.spec :as eid-translation]
@@ -1599,11 +1599,11 @@
              (changed? card (select-keys updates card-compare-keys)))
     ;; this is an enterprise feature but we don't care if enterprise is enabled here. If there is a review we need
     ;; to remove it regardless if enterprise edition is present at the moment.
-    (moderation/create-review! {:moderated_item_id   (:id card)
-                                :moderated_item_type "card"
-                                :moderator_id        (:id actor)
-                                :status              nil
-                                :text                (tru "Unverified due to edit")})))
+    (moderation-review/create-moderation-review! {:moderated_item_id   (:id card)
+                                                  :moderated_item_type "card"
+                                                  :moderator_id        (:id actor)
+                                                  :status              nil
+                                                  :text                (tru "Unverified due to edit")})))
 
 (defn- before-revert
   "The `snapshot` of a Card revision to write to the card `card-id` for the user `user-id`, after the checks that a
