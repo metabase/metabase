@@ -17,8 +17,8 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [metabase.view-log.db :as view-log.db]
    [metabase.view-log.events.view-log :as events.view-log]
+   [metabase.view-log.models.view-log :as view-log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -291,7 +291,7 @@
   (testing "when the batch fails for a reason other than a rejected row (e.g. the app DB is down), do not retry each
             row: every retry would fail too, and could wait for a connection"
     (let [calls (atom 0)]
-      (mt/with-dynamic-fn-redefs [view-log.db/insert-view-logs!
+      (mt/with-dynamic-fn-redefs [view-log/create-view-logs!
                                   (fn [_views]
                                     (swap! calls inc)
                                     (throw (java.sql.SQLTransientConnectionException. "pool checkout timed out")))]

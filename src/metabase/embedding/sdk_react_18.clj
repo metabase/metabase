@@ -6,7 +6,7 @@
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.batch-processing.core :as grouper]
-   [metabase.embedding.db :as embedding.db]
+   [metabase.embedding.models.sdk-react-18-host :as sdk-react-18-host]
    [metabase.embedding.util :as embedding.util]
    [metabase.util :as u]
    [metabase.util.log :as log]))
@@ -39,12 +39,12 @@
   (try
     ;; Delete first: an expired row of a host goes away here, so another server's delete cannot remove it between
     ;; the SELECT and the UPDATE of the upsert.
-    (embedding.db/delete-sdk-react-18-hosts-last-seen-before! (last-seen-cutoff))
+    (sdk-react-18-host/delete-sdk-react-18-hosts-last-seen-before! (last-seen-cutoff))
     (catch Throwable e
       (log/warn e "Failed to delete the expired hosts that use the React embedding SDK with React 18")))
   (doseq [[host seen] (group-by :host submitted)]
     (try
-      (embedding.db/save-sdk-react-18-host! host (apply t/max (map :timestamp seen)))
+      (sdk-react-18-host/save-sdk-react-18-host! host (apply t/max (map :timestamp seen)))
       (catch Throwable e
         (log/warn e "Failed to save a host that uses the React embedding SDK with React 18")))))
 

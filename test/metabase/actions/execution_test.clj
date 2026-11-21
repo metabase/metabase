@@ -2,11 +2,11 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.actions.execution-test]}}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.actions.db :as actions.db]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
+   [metabase.queries.models.query-execution :as query-execution]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -262,7 +262,7 @@
             (let [action (action/select-action :id action-id)
                   since  (mt/latest-query-execution-id)]
               (let [attempts (atom 0)]
-                (mt/with-dynamic-fn-redefs [actions.db/insert-query-execution!
+                (mt/with-dynamic-fn-redefs [query-execution/create-query-execution!
                                             (fn [_row]
                                               (swap! attempts inc)
                                               (throw (ex-info "app db is down" {})))]

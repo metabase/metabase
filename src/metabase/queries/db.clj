@@ -402,13 +402,6 @@
   ;; By table name, so search's delete capture skips it: these reviews only feed the Card being deleted.
   (t2/delete! (t2/table-name :model/ModerationReview) :moderated_item_type "card" :moderated_item_id card-id))
 
-(mu/defn delete-card-revisions!
-  "Delete the Revisions of the Card with `card-id`, returning the number deleted.
-  Bypasses delete capture, so the Card's search document is not re-derived: use it only when deleting the Card."
-  [card-id :- ::lib.schema.id/card]
-  ;; By table name, so search's delete capture skips it: these revisions only feed the Card being deleted.
-  (t2/delete! (t2/table-name :model/Revision) :model "Card" :model_id card-id))
-
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
@@ -576,11 +569,31 @@
                     :stored_result_id [:in stored-result-ids]))
 
 (mu/defn insert-stored-result-use!
-  "Record that the Card with `card-id` uses the StoredResult with `stored-result-id`, returning the number inserted."
-  [stored-result-id :- ms/PositiveInt
-   card-id          :- ::lib.schema.id/card]
-  (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
-                                      :card_id          card-id}))
+  "Insert the StoredResultUse `row`, returning the number inserted."
+  [row :- ::queries.schema/stored-result-use.create]
+  (t2/insert! :model/StoredResultUse row))
+
+(mu/defn insert-stored-result!
+  "Insert the StoredResult `row` and return its id."
+  [row :- ::queries.schema/stored-result.create]
+  (first (t2/insert-returning-pks! :model/StoredResult row)))
+
+(mu/defn delete-stored-results!
+  "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
+  [stored-result-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
+
+(mu/defn insert-query-execution!
+  "Insert the QueryExecution `row` and return its id."
+  [row :- ::queries.schema/query-execution.create]
+  (t2/insert-returning-pk! :model/QueryExecution row))
+
+(mu/defn insert-query-executions!
+  "Insert the QueryExecution `rows`. Runs in its own (possibly nested) transaction so that if the app DB rejects a
+  row, the failure is rolled back to a savepoint instead of aborting a caller's enclosing transaction."
+  [rows :- [:sequential ::queries.schema/query-execution.create]]
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/QueryExecution rows)))
 
 (mu/defn stored-result-gate-inputs-for-card
   "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."

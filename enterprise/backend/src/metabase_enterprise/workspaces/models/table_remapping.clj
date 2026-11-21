@@ -17,7 +17,7 @@
    [metabase-enterprise.workspaces.db :as ws.db]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as app-db]
-   [metabase.cache.core :as cache]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -100,7 +100,7 @@
   [[database-ids-with-remappings]] cache after the commit."
   [database-ids]
   (when (seq database-ids)
-    (cache/invalidate-config! {:databases (vec database-ids)})
+    (cache-config/invalidate! {:databases (vec database-ids)})
     ;; After commit, not now: another thread that reads before the commit sees the rows as they were before this
     ;; write, and would cache that after an early drop. The writing transaction's own reads bypass the cache.
     (app-db/do-after-commit invalidate-database-ids!)))

@@ -15,6 +15,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.view-log.db :as view-log.db]
+   [metabase.view-log.models.view-log :as view-log]
    [metabase.view-log.schema :as view-log.schema]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -93,14 +94,14 @@
   [views]
   (log/debugf "Recording %d views" (count views))
   (try
-    (view-log.db/insert-view-logs! views)
+    (view-log/create-view-logs! views)
     (catch Exception e
       (if (sql-errors/row-rejected? e)
         (do
           (log/warnf "Failed to record %d views as a batch, retrying individually: %s" (count views) (ex-message e))
           (doseq [view views]
             (try
-              (view-log.db/insert-view-logs! [view])
+              (view-log/create-view-logs! [view])
               (catch Exception e
                 (log/errorf "Failed to record view: %s" (ex-message e))))))
         (log/errorf "Failed to record %d views: %s" (count views) (ex-message e))))))

@@ -882,7 +882,7 @@
       (let [query (mt/mbql-query municipality)]
         (mt/with-temp [:model/Card model {:type          :model
                                           :dataset_query query}]
-          (let [model-index (model-index/create
+          (let [model-index (model-index/create-model-index!
                              (mt/$ids {:model-id   (:id model)
                                        :pk-ref     $municipality.id
                                        :value-ref  $municipality.name
@@ -915,12 +915,12 @@
                      :model/Card       sub-collection-model {:type          :model
                                                              :dataset_query query
                                                              :collection_id (u/id collection)}]
-        (let [model-index-1 (model-index/create
+        (let [model-index-1 (model-index/create-model-index!
                              (mt/$ids {:model-id   (:id root-model)
                                        :pk-ref     $municipality.id
                                        :value-ref  $municipality.name
                                        :creator-id (mt/user->id :rasta)}))
-              model-index-2 (model-index/create
+              model-index-2 (model-index/create-model-index!
                              (mt/$ids {:model-id   (:id sub-collection-model)
                                        :pk-ref     $municipality.id
                                        :value-ref  $municipality.name

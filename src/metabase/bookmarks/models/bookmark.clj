@@ -85,15 +85,6 @@
     (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)
          (map normalize-bookmark-result))))
 
-(defn save-ordering!
-  "Saves a bookmark ordering of shape `[{:type, :item_id}]`
-   Deletes all existing orderings for user so should be given a total ordering."
-  [user-id orderings]
-  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
-  (bookmarks.db/insert-bookmark-orderings! (->> orderings
-                                                (map #(select-keys % [:type :item_id]))
-                                                (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
-
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-bookmark!
@@ -105,6 +96,23 @@
   (when (= model "collection")
     (collection/check-allowed-content :model/CollectionBookmark id))
   (bookmarks.db/insert-bookmark! model id user-id))
+
+(mu/defn delete-bookmark!
+  "Delete the bookmark of the User with `user-id` on the item of bookmark type `model` with `id`. Does nothing when
+  there is none."
+  [model   :- :string
+   id      :- ms/PositiveInt
+   user-id :- ms/PositiveInt]
+  (bookmarks.db/delete-bookmark! model id user-id))
+
+(defn save-ordering!
+  "Saves a bookmark ordering of shape `[{:type, :item_id}]`
+   Deletes all existing orderings for user so should be given a total ordering."
+  [user-id orderings]
+  (bookmarks.db/delete-bookmark-orderings-for-user! user-id)
+  (bookmarks.db/insert-bookmark-orderings! (->> orderings
+                                                (map #(select-keys % [:type :item_id]))
+                                                (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

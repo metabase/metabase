@@ -96,11 +96,6 @@
    changes      :- ::dashboards.schema/dashboard.update]
   (t2/update! :model/Dashboard :id dashboard-id changes))
 
-(mu/defn delete-dashboard-revisions!
-  "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id))
-
 (mu/defn delete-pulses-for-dashboard!
   "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]

@@ -126,7 +126,7 @@
           rows      (into [] (keep #(revision-row % (get by-entity %))) (remove nil? (keys by-entity)))]
       (when (and (seq rows)
                  (try
-                   (revisions.db/insert-revisions! rows)
+                   (revision/create-revisions! rows)
                    true
                    (catch Throwable e
                      (log/warnf "Failed to record %d revisions: %s" (count rows) (ex-message e))

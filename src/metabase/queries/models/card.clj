@@ -10,7 +10,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.cache.core :as cache]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.change-log.core :as change-log]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -56,6 +56,7 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
+   [metabase.revisions.models.revision :as revision]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
@@ -1430,10 +1431,10 @@
   ;; delete any ParameterCard that the parameters on this card linked to
   (parameter-card/delete-all-for-parameterized-object! "card" id)
   ;; delete any ParameterCard linked to this card
-  (queries.db/delete-parameter-cards-for-card! id)
+  (parameter-card/delete-parameter-cards-for-card! id)
   (queries.db/delete-card-moderation-reviews! id)
-  (queries.db/delete-card-revisions! id)
-  (cache/delete-target-configs! "question" [id])
+  (revision/delete-revisions-for-entity! "Card" id)
+  (cache-config/delete-target-configs! "question" [id])
   (delete-notifications-of-card id))
 
 (defmethod mi/non-internal-filter-clause :model/Card
@@ -1766,7 +1767,7 @@
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
                                                   #(lib/normalize ::queries.schema/card.dataset-query.write %)))
-      (cache/invalidate-config! {:questions [(:id card-before-update)]
+      (cache-config/invalidate! {:questions [(:id card-before-update)]
                                  :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
     (cascade-database-change-to-dependents! card-before-update card-updates)

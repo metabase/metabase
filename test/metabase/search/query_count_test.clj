@@ -71,10 +71,10 @@
                                                                     (:resource_collection_id app)))))
    "indexed-entity" (fn [collection names _row-attrs]
                       (let [model (insert-model! collection)
-                            index (model-index/create (mt/$ids {:model-id   (:id model)
-                                                                :pk-ref     $venues.id
-                                                                :value-ref  $venues.name
-                                                                :creator-id (mt/user->id :rasta)}))
+                            index (model-index/create-model-index! (mt/$ids {:model-id   (:id model)
+                                                                             :pk-ref     $venues.id
+                                                                             :value-ref  $venues.name
+                                                                             :creator-id (mt/user->id :rasta)}))
                             values  (fn [] (t2/reducible-select :model/ModelIndexValue :model_index_id (:id index)))]
                         (doseq [[i n] (map-indexed vector names)]
                           (t2/insert! :model/ModelIndexValue {:model_index_id (:id index), :model_pk i, :name n}))

@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -8,13 +9,14 @@
    [metabase.events.core :as events]
    [metabase.explorations.collection-items :as explorations.collection-items]
    [metabase.explorations.db :as explorations.db]
-   [metabase.explorations.schema]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.models.interface :as mi]
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -133,6 +135,24 @@
 (methodical/defmethod t2/model-for-automagic-hydration [:model/Exploration :document]
   [_model _k]
   nil)
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-exploration! :- :map
+  "Insert the Exploration `exploration` and return it."
+  [exploration :- ::explorations.schema/exploration.create]
+  (explorations.db/insert-exploration! exploration))
+
+(mu/defn update-exploration!
+  "Apply `changes` to the Exploration with `exploration-id`."
+  [exploration-id :- ms/PositiveInt
+   changes        :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :collection_id :collection_position])]
+  (explorations.db/update-exploration! exploration-id changes))
+
+(mu/defn delete-exploration!
+  "Delete the Exploration with `exploration-id`."
+  [exploration-id :- ms/PositiveInt]
+  (explorations.db/delete-exploration! exploration-id))
 
 ;;; ----------------------------------------------------- Specs -----------------------------------------------------
 

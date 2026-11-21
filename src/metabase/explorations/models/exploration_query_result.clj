@@ -4,12 +4,16 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.composite :as composite]
    [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.stored-result :as stored-result]
+   [metabase.queries.models.stored-result-use :as stored-result-use]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -108,6 +112,13 @@
            (query-perms/query->resolved-source-ids (:dataset_query sr) (:resolved_source_ids sr)))
          eq-results))))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-query-result!
+  "Insert the ExplorationQueryResult `query-result`."
+  [query-result :- ::explorations.schema/exploration-query-result.create]
+  (explorations.db/insert-query-result! query-result))
+
 (defn create-ephemeral-card-for-exploration-queries!
   "Materialize an ephemeral `report_card` that represents a *composite chart* — possibly
   built from multiple `ExplorationQuery` snapshots combined into one — for a single document
@@ -159,7 +170,7 @@
       (t2/with-transaction [_conn]
         (let [stored-result-id (if single?
                                  (:id first-sr)
-                                 (explorations.db/insert-stored-result!
+                                 (stored-result/create-stored-result!
                                   {:result_data   composite-bytes
                                    :creator_id    creator-id
                                    :database_id   (or (:database_id first-sr)
@@ -188,10 +199,10 @@
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (explorations.db/insert-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
+          (stored-result-use/create-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
           (when-not single?
             (doseq [{:keys [sr]} eq-results]
-              (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
+              (stored-result-use/create-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

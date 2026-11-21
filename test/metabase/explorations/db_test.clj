@@ -1,7 +1,7 @@
 (ns metabase.explorations.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.explorations.db :as explorations.db]
+   [metabase.explorations.models.exploration-query :as exploration-query]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
@@ -14,10 +14,10 @@
     (doseq [k (keys stamp)]
       (testing (str "rejects " k " without the rest of the stamp")
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"go together"
-                              (explorations.db/update-query! Integer/MAX_VALUE (select-keys stamp [k])))))
+                              (exploration-query/update-query! Integer/MAX_VALUE (select-keys stamp [k])))))
       (testing (str "rejects the stamp without " k)
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"go together"
-                              (explorations.db/update-query! Integer/MAX_VALUE (dissoc stamp k))))))
+                              (exploration-query/update-query! Integer/MAX_VALUE (dissoc stamp k))))))
     (testing "accepts the whole stamp, or none of it"
-      (is (= 0 (explorations.db/update-query! Integer/MAX_VALUE stamp)))
-      (is (= 0 (explorations.db/update-query! Integer/MAX_VALUE {:status "done"}))))))
+      (is (= 0 (exploration-query/update-query! Integer/MAX_VALUE stamp)))
+      (is (= 0 (exploration-query/update-query! Integer/MAX_VALUE {:status "done"}))))))

@@ -12,10 +12,12 @@
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.explorations.schema :as explorations.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -101,6 +103,13 @@
   none of those are present."
   [dim]
   (or (:display-name dim) (:dimension-id dim) (:name dim)))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-blocks!
+  "Insert one ExplorationBlock map or a sequence of them."
+  [blocks :- [:or ::explorations.schema/exploration-block.create [:sequential ::explorations.schema/exploration-block.create]]]
+  (explorations.db/insert-blocks! blocks))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

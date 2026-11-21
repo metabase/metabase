@@ -2,11 +2,13 @@
   "A model representing cache configuration."
   (:require
    [java-time.api :as t]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
    [metabase.cache.db :as cache.db]
+   [metabase.cache.schema :as cache.schema]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -240,8 +242,10 @@
    id         :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (:count (cache.db/cache-config-count-row models collection id)))
 
-(defn store!
-  "Store cache configuration in DB."
+;;; ---------------------------------------------------- Writes -----------------------------------------------------
+
+(defn save-cache-config!
+  "Store the cache configuration `config` in the app DB, replacing the one for the same target."
   [_user-id {:keys [model model_id] :as config}]
   (t2/with-transaction [_tx]
     (let [data    (config->row config)
@@ -249,8 +253,8 @@
       (events/with-event-context {:details (caching-change current data)}
         (cache.db/upsert-cache-config! model model_id data)))))
 
-(defn delete!
-  "Delete cache configuration (possibly multiple), identified by a `model` and a vector of `model-ids`."
+(defn delete-cache-configs!
+  "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
   [_user-id model model-ids]
   (when-let [current (seq (cache.db/cache-configs-for model model-ids))]
     (doseq [item current]
@@ -263,7 +267,11 @@
   (when (seq model-ids)
     (cache.db/delete-cache-configs! model (vec model-ids))))
 
-;;; ------------------------------------------------- Invalidation -------------------------------------------------
+(mu/defn update-cache-config!
+  "Apply `changes` to the cache configuration with `cache-config-id`."
+  [cache-config-id :- ms/PositiveInt
+   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
+  (cache.db/update-cache-config! cache-config-id changes))
 
 (defn- invalidate-cards [databases dashboards questions]
   (let [card-ids (concat

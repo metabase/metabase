@@ -21,7 +21,6 @@
    token has, and a write scope that echoes a name is a read scope for names."
   (:require
    [metabase.api.common :as api]
-   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.bookmarks.models.bookmark :as bookmarks]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -90,7 +89,7 @@
         user-id        api/*current-user-id*]
     (if bookmarked
       (bookmarks/create-bookmark! bookmark-model (:id row) user-id)
-      (bookmarks.db/delete-bookmark! bookmark-model (:id row) user-id))
+      (bookmarks/delete-bookmark! bookmark-model (:id row) user-id))
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         {:type type :id (:id row) :name (:name row) :bookmarked bookmarked}

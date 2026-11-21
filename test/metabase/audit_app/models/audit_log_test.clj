@@ -46,12 +46,12 @@
 (defn- record-event!
   "Insert the row that [[audit-log/audit-row]] builds for `topic` and `params`."
   [topic params]
-  (audit-log/record-rows! [(audit-log/audit-row topic params)]))
+  (audit-log/create-audit-logs! [(audit-log/audit-row topic params)]))
 
 (deftest basic-record-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
-      (testing "Test that `record-rows!` succesfully records basic card events"
+      (testing "Test that `create-audit-logs!` succesfully records basic card events"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (record-event! :event/card-create {:object card :details {:name "Test card"}})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
@@ -62,7 +62,7 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-      (testing "Test that `record-rows!` succesfully records basic card events with the user, model, and model ID specified"
+      (testing "Test that `create-audit-logs!` succesfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (record-event! :event/card-create
                          {:object card
@@ -77,7 +77,7 @@
                 :model_id card-id
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
-      (testing "Test that `record-rows!` records an event with arbitrary data and no model specified"
+      (testing "Test that `create-audit-logs!` records an event with arbitrary data and no model specified"
         (record-event! :event/test-event {:details {:foo "bar"}})
         (is (partial=
              {:topic :test-event

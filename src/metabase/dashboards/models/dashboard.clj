@@ -6,7 +6,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.audit-app.core :as audit]
-   [metabase.cache.core :as cache]
+   [metabase.cache.models.cache-config :as cache-config]
    [metabase.change-log.core :as change-log]
    [metabase.collection-items.spec :as collection-items]
    [metabase.collections.models.collection :as collection]
@@ -35,12 +35,14 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.replacement.spec :as replacement]
    [metabase.revisions.core :as revisions]
+   [metabase.revisions.models.revision :as revision]
    [metabase.revisions.sql :as revisions.sql]
    [metabase.search.core :as search]
    [metabase.serialization.core :as serialization]
@@ -88,9 +90,9 @@
 (t2/define-before-delete :model/Dashboard
   [dashboard]
   (let [dashboard-id (u/the-id dashboard)]
-    (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
-    (dashboards.db/delete-dashboard-revisions! dashboard-id)
-    (cache/delete-target-configs! "dashboard" [dashboard-id])
+    (parameter-card/delete-all-for-parameterized-object! "dashboard" dashboard-id)
+    (revision/delete-revisions-for-entity! "Dashboard" dashboard-id)
+    (cache-config/delete-target-configs! "dashboard" [dashboard-id])
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
     (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
 
@@ -114,7 +116,7 @@
 (t2/define-after-insert :model/Dashboard
   [dashboard]
   (u/prog1 dashboard
-    (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
+    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))))
 
 (t2/define-before-update :model/Dashboard
   [row]
@@ -131,7 +133,7 @@
       (when (contains? changes :collection_id)
         (dashboards.db/move-dashboard-questions! (:id dashboard) (:collection_id dashboard)))
       (when (:parameters changes)
-        (queries/upsert-or-delete-parameter-cards-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
       dashboard)))
 
 (mi/define-update-in-transaction :model/Dashboard)
