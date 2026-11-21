@@ -10,6 +10,8 @@
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -27,30 +29,11 @@
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
-(defn- stored-advanced-mode?
-  "Whether the stored permission mode is group-level, read whatever the premium token says."
-  []
-  (boolean (setting/get-value-of-type :boolean :metabot-advanced-permissions)))
-
-(defn- check-visible-group
-  "Throws a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
-  group would take effect unseen on the next mode switch."
-  [group-id]
-  (when-not (usage-controls/visible-group? group-id (stored-advanced-mode?))
-    (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
-
-(t2/define-before-insert :model/MetabotPermissions
-  [{:keys [group_id] :as row}]
-  (check-visible-group group_id)
-  row)
-
 (t2/define-before-update :model/MetabotPermissions
   [row]
   (let [changes (t2/changes row)]
     (when (some #(contains? changes %) [:perm_type :perm_value])
-      (metabot-ee.schema/check-perm-value-fits-type (select-keys row [:perm_type :perm_value])))
-    (when (seq changes)
-      (check-visible-group (:group_id row))))
+      (metabot-ee.schema/check-perm-value-fits-type (select-keys row [:perm_type :perm_value]))))
   row)
 
 (defn permissions-for-group
@@ -72,6 +55,41 @@
     {:permissions (vec (mapcat (fn [{:keys [id]}]
                                  (permissions-for-group id (get by-group id [])))
                                groups))}))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(defn- stored-advanced-mode?
+  "Whether the stored permission mode is group-level, read whatever the premium token says."
+  []
+  (boolean (setting/get-value-of-type :boolean :metabot-advanced-permissions)))
+
+(defn- check-visible-group
+  "Throws a 400 unless the stored permission mode shows the group with `group-id`, since a row written for a hidden
+  group would take effect unseen on the next mode switch."
+  [group-id]
+  (when-not (usage-controls/visible-group? group-id (stored-advanced-mode?))
+    (throw (ex-info (tru "Group {0} has no AI permissions in the current permission mode." (str group-id)) {:status-code 400}))))
+
+(mu/defn set-metabot-permission!
+  "Set the permission of `perm-type` of the group with `group-id` to `perm-value`, creating its row when it has none.
+  A change for a group the stored permission mode hides is a 400."
+  [group-id   :- ms/PositiveInt
+   perm-type  :- ::metabot-ee.schema/metabot-permissions.perm-type
+   perm-value :- ::metabot-ee.schema/metabot-permissions.perm-value]
+  (if-let [stored (metabot.db/permission group-id perm-type)]
+    (when (not= perm-value (:perm_value stored))
+      (check-visible-group group-id)
+      (metabot.db/update-permission-value! group-id perm-type perm-value))
+    (do
+      (check-visible-group group-id)
+      (metabot.db/insert-permission! {:group_id   group-id
+                                      :perm_type  perm-type
+                                      :perm_value perm-value}))))
+
+(mu/defn delete-hidden-metabot-permissions!
+  "Delete the MetabotPermissions rows of the groups the mode selected by `advanced?` hides."
+  [advanced? :- :boolean]
+  (metabot.db/delete-hidden-group-permissions! advanced?))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

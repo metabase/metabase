@@ -2,6 +2,10 @@
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.models.interface :as mi]
+   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.schema :as oauth-server.schema]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -17,6 +21,19 @@
    :response_types mi/transform-json
    :scopes         mi/transform-json
    :contacts       mi/transform-json})
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn create-oauth-client!
+  "Insert the OAuthClient `row`, returning the number inserted."
+  [row :- ::oauth-server.schema/oauth-client.create]
+  (oauth-server.db/insert-oauth-client! row))
+
+(mu/defn update-oauth-client!
+  "Apply `changes` to the OAuthClient with primary key `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- ::oauth-server.schema/oauth-client.update]
+  (oauth-server.db/update-oauth-client! id changes))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

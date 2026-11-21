@@ -47,3 +47,13 @@
    [:result_query      {:optional true} [:maybe :string]]
    [:result_reason     {:optional true} [:maybe :string]]
    [:created_at        {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])
+
+(mr/def ::impersonation-query-cache.lookup
+  "The columns that look an ImpersonationQueryCache up: the hash of its native query and the inputs it was validated
+  with."
+  [:map {:closed true}
+   [:input_query_hash  :string]
+   [:input_engine      :keyword]
+   [:input_allow_write :boolean]
+   [:input_admin       :boolean]
+   [:input_version     :string]])

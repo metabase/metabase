@@ -3,7 +3,6 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [malli.util :as mut]
-   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -91,27 +90,21 @@
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
 (mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
-  "The ImpersonationQueryCache with the lookup key of `input`, or nil."
-  [{:keys [input_query input_engine input_allow_write input_admin input_version]}
-   :- ::impersonation.schema/impersonation-query-cache.update]
+  "The ImpersonationQueryCache with the lookup key `lookup`, or nil."
+  [{:keys [input_query_hash input_engine input_allow_write input_admin input_version]}
+   :- ::impersonation.schema/impersonation-query-cache.lookup]
   (t2/select-one :model/ImpersonationQueryCache
-                 :input_query_hash  (impersonation-query-cache/query-hash input_query)
+                 :input_query_hash  input_query_hash
                  :input_engine      input_engine
                  :input_allow_write input_allow_write
                  :input_admin       input_admin
                  :input_version     input_version))
 
 (mu/defn update-or-insert-query-cache! :- ms/PositiveInt
-  "Update the ImpersonationQueryCache with the lookup key of `row` to `row`, or insert `row` when there is none."
-  [{:keys [input_query input_engine input_allow_write input_admin input_version] :as row}
-   :- ::impersonation.schema/impersonation-query-cache.update]
-  (app-db/update-or-insert! :model/ImpersonationQueryCache
-                            {:input_query_hash  (impersonation-query-cache/query-hash input_query)
-                             :input_engine      input_engine
-                             :input_allow_write input_allow_write
-                             :input_admin       input_admin
-                             :input_version     input_version}
-                            (constantly row)))
+  "Update the ImpersonationQueryCache with the lookup key `lookup` to `row`, or insert `row` when there is none."
+  [lookup :- ::impersonation.schema/impersonation-query-cache.lookup
+   row    :- ::impersonation.schema/impersonation-query-cache.update]
+  (app-db/update-or-insert! :model/ImpersonationQueryCache lookup (constantly row)))
 
 (mu/defn delete-outdated-query-caches! :- :int
   "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,

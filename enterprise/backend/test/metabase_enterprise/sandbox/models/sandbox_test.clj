@@ -26,6 +26,13 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defn- create-and-delete-sandbox!
+  "Create `sandbox` through [[sandboxes/create-sandbox!]], delete it again, and return `:ok`."
+  [sandbox]
+  (let [{sandbox-id :id} (sandboxes/create-sandbox! sandbox)]
+    (t2/delete! :model/Sandbox :id sandbox-id)
+    :ok))
+
 (deftest disallow-changing-table-id-test
   (testing "You can't change the table_id of a sandbox after it has been created."
     (mt/with-temp [:model/Sandbox gtap {:table_id (mt/id :venues)
@@ -71,9 +78,11 @@
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]
                                                                           (fn [table-id] (swap! checks inc) (f table-id)))]
-            (t2/update! :model/Sandbox :id sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
+            (sandboxes/update-sandbox! sandbox-id {:attribute_remappings {"cat" "CATEGORY_ID"}})
             (is (= 0 @checks))
-            (t2/update! :model/Sandbox :id sandbox-id {:card_id other-id})
+            (sandboxes/update-sandbox! sandbox-id {:card_id card-id})
+            (is (= 0 @checks))
+            (sandboxes/update-sandbox! sandbox-id {:card_id other-id})
             (is (= 1 @checks))))))))
 
 (deftest insert-removes-native-access-of-each-group-test
@@ -84,9 +93,10 @@
     (perms/set-database-permission! group-2 (mt/id) :perms/create-queries :query-builder-and-native)
     (perms/set-database-permission! group-3 (mt/id) :perms/create-queries :no)
     (try
-      (t2/insert! :model/Sandbox [{:table_id (mt/id :venues) :group_id group-1}
-                                  {:table_id (mt/id :checkins) :group_id group-2}
-                                  {:table_id (mt/id :venues) :group_id group-3}])
+      (doseq [sandbox [{:table_id (mt/id :venues) :group_id group-1}
+                       {:table_id (mt/id :checkins) :group_id group-2}
+                       {:table_id (mt/id :venues) :group_id group-3}]]
+        (sandboxes/create-sandbox! sandbox))
       (is (= {(mt/id :venues) :query-builder}
              (perms/table-permissions-for-groups #{group-1} :perms/create-queries {(mt/id :venues) (mt/id)})))
       (is (= {(mt/id :checkins) :query-builder}
@@ -101,12 +111,11 @@
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
     (doseq [[msg f] {"Create a new GTAP"
                      (fn [query]
-                       (mt/with-temp [:model/Card                   card {:dataset_query   query
-                                                                          :result_metadata (qp.preprocess/query->expected-cols query)}
-                                      :model/Sandbox _    {:table_id (mt/id :venues)
-                                                           :group_id (u/the-id (perms-group/all-users))
-                                                           :card_id  (:id card)}]
-                         :ok))
+                       (mt/with-temp [:model/Card card {:dataset_query   query
+                                                        :result_metadata (qp.preprocess/query->expected-cols query)}]
+                         (create-and-delete-sandbox! {:table_id (mt/id :venues)
+                                                      :group_id (u/the-id (perms-group/all-users))
+                                                      :card_id  (:id card)})))
 
                      "Update an existing GTAP"
                      (fn [query]
@@ -114,7 +123,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
+                         (sandboxes/update-sandbox! (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -144,12 +153,11 @@
     (mt/with-premium-features #{:sandboxes}
       (doseq [[msg f] {"Create a new GTAP"
                        (fn [metadata]
-                         (mt/with-temp [:model/Card                   card {:dataset_query   (mt/mbql-query venues)
-                                                                            :result_metadata metadata}
-                                        :model/Sandbox _    {:table_id (mt/id :venues)
-                                                             :group_id (u/the-id (perms-group/all-users))
-                                                             :card_id  (:id card)}]
-                           :ok))
+                         (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues)
+                                                          :result_metadata metadata}]
+                           (create-and-delete-sandbox! {:table_id (mt/id :venues)
+                                                        :group_id (u/the-id (perms-group/all-users))
+                                                        :card_id  (:id card)})))
 
                        "Update an existing GTAP"
                        (fn [metadata]
@@ -157,7 +165,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
+                           (sandboxes/update-sandbox! (:id gtap) {:card_id (:id card)})
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"

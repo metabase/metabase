@@ -49,33 +49,6 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(mu/defn put!
-  "Upserts a KV-pair"
-  [user-id :- :int
-   kvp :- ::types/user-key-value]
-  (let [{:keys [namespace key value expires-at]}
-        (mc/encode ::types/user-key-value
-                   kvp
-                   (mtx/transformer
-                    (mtx/default-value-transformer)
-                    {:name :database}))]
-    (t2/with-transaction [_]
-      (if (user-key-value.db/user-key-value user-id namespace key)
-        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
-        (try
-          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
-          ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
-          (catch Exception _
-            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
-    value))
-
-(mu/defn delete!
-  "Deletes a KV-pair"
-  [user-id :- :int
-   namespace :- :string
-   k :- :string]
-  (user-key-value.db/delete-user-key-value! user-id namespace k))
-
 (mu/defn retrieve
   "Retrieves a KV-pair"
   [user-id :- :int
@@ -100,6 +73,35 @@
                                  (mtx/default-value-transformer)
                                  {:name :database}))]
       (into {} (map (juxt :key :value) parsed-kvs)))))
+
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mu/defn put-user-key-value!
+  "Store the value of `kvp` for the User with `user-id`, replacing any stored under its key, and return the value."
+  [user-id :- :int
+   kvp :- ::types/user-key-value]
+  (let [{:keys [namespace key value expires-at]}
+        (mc/encode ::types/user-key-value
+                   kvp
+                   (mtx/transformer
+                    (mtx/default-value-transformer)
+                    {:name :database}))]
+    (t2/with-transaction [_]
+      (if (user-key-value.db/user-key-value user-id namespace key)
+        (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)
+        (try
+          (user-key-value.db/insert-user-key-value! user-id namespace key value expires-at)
+          ;; in case we caught a duplicate key exception (a row was inserted between our read and write), try updating
+          (catch Exception _
+            (user-key-value.db/update-user-key-value! user-id namespace key value expires-at)))))
+    value))
+
+(mu/defn delete-user-key-value!
+  "Delete the value the User with `user-id` stores under `k` in `namespace`, returning the number deleted."
+  [user-id :- :int
+   namespace :- :string
+   k :- :string]
+  (user-key-value.db/delete-user-key-value! user-id namespace k))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

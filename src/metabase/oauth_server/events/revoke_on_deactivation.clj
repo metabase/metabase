@@ -3,7 +3,9 @@
    can't revive a pre-deactivation token. (SEC-863)"
   (:require
    [metabase.events.core :as events]
-   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.models.oauth-access-token :as oauth-access-token]
+   [metabase.oauth-server.models.oauth-authorization-code :as oauth-authorization-code]
+   [metabase.oauth-server.models.oauth-refresh-token :as oauth-refresh-token]
    [metabase.util.events :as u.events]
    [methodical.core :as methodical]))
 
@@ -14,6 +16,6 @@
   [_topic {:keys [object] :as event}]
   (when (and (false? (:is_active object)) (u.events/changed? event :is_active))
     (let [user-id (:id object)]
-      (oauth-server.db/revoke-access-tokens-for-user! user-id)
-      (oauth-server.db/revoke-refresh-tokens-for-user! user-id)
-      (oauth-server.db/delete-authorization-codes-for-user! user-id))))
+      (oauth-access-token/revoke-user-oauth-access-tokens! user-id)
+      (oauth-refresh-token/revoke-user-oauth-refresh-tokens! user-id)
+      (oauth-authorization-code/delete-user-oauth-authorization-codes! user-id))))

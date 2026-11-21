@@ -52,3 +52,11 @@
    [:table_id             {:optional true} [:maybe ::lib.schema.id/table]]
    [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
    [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
+
+(mr/def ::sandbox.create
+  "What creating a Sandbox takes: its group and Table, and the optional Card and attribute remappings."
+  [:map {:closed true}
+   [:table_id             ::lib.schema.id/table]
+   [:group_id             ms/PositiveInt]
+   [:card_id              {:optional true} [:maybe ::lib.schema.id/card]]
+   [:attribute_remappings {:optional true} [:maybe ::sandbox.attribute-remappings]]])
