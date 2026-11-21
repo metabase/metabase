@@ -105,7 +105,7 @@
         (testing "sanity check"
           (is (t2/exists? :model/NotificationCard :id notification-card-id)))
         (testing "delete notification will delete notification card"
-          (t2/delete! :model/Notification :id (:id notification))
+          (models.notification/delete-notifications! [(:id notification)])
           (is (not (t2/exists? :model/NotificationCard :id notification-card-id))))))))
 
 (deftest delete-card-cleans-up-notifications-test
@@ -262,18 +262,23 @@
                                                   :details {:channel "#general"}}
                    :model/ChannelTemplate tmpl-1 notification.tu/channel-template-email-with-handlebars-body]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (t2/insert! :model/NotificationHandler {:channel_type :channel/slack
-                                                                    :channel_id   (:id chn-1)
-                                                                    :template_id  (:id tmpl-1)})))))
+                            (models.notification/create-notification-handler! {:channel_type :channel/slack
+                                                                               :channel_id   (:id chn-1)
+                                                                               :template_id  (:id tmpl-1)})))))
   (testing "can't update a handler with a template that has different channel type"
-    (mt/with-temp [:model/ChannelTemplate     email-tmpl notification.tu/channel-template-email-with-handlebars-body
-                   :model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
+    (mt/with-temp [:model/ChannelTemplate     slack-tmpl {:channel_type :channel/slack}
                    :model/Notification        noti       {}
                    :model/NotificationHandler handler    {:channel_type    :channel/slack
                                                           :notification_id (:id noti)
                                                           :template_id     (:id slack-tmpl)}]
       (is (thrown-with-msg? Exception #"Channel type and template type mismatch"
-                            (t2/update! :model/NotificationHandler :id (:id handler) {:template_id (:id email-tmpl)}))))))
+                            (let [existing (models.notification/hydrate-notification noti)]
+                              (models.notification/update-notification!
+                               existing
+                               (assoc existing :handlers [(-> (first (:handlers existing))
+                                                              (dissoc :channel)
+                                                              (assoc :id (:id handler)
+                                                                     :channel_type :channel/email))]))))))))
 
 (deftest notification-recipient-types-test
   (mt/with-temp [:model/Notification        {n-id :id}       {}
@@ -340,42 +345,51 @@
                                           :permissions_group_id 1
                                           :details              {:value "ngoc@metabase.com"}}))))))))
 
+(defn- create-cron-subscription!
+  "Create a cron subscription on the notification `noti-id` and return its id."
+  [noti-id cron-schedule]
+  (:id (first (models.notification/create-notification-subscriptions!
+               [{:type            :notification-subscription/cron
+                 :cron_schedule   cron-schedule
+                 :notification_id noti-id}]))))
+
+(defn- set-subscriptions!
+  "Replace the subscriptions of the notification `noti-id` with `subscriptions` through its update."
+  [noti-id subscriptions]
+  (let [existing (models.notification/hydrate-notification (t2/select-one :model/Notification :id noti-id))]
+    (models.notification/update-notification! existing (assoc existing :subscriptions subscriptions))))
+
 (deftest update-subscription-trigger-test
   (mt/with-temp-scheduler!
     (task/init! ::task.notification/SendNotifications)
     (mt/with-temp [:model/Notification {noti-id :id}]
       (testing "a trigger is created when create a notification subscription"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (= [(notification.tu/subscription->trigger-info
                    sub-id
                    "0 * * * * ? *")]
                  (notification.tu/send-notification-triggers sub-id)))
           (testing "update trigger when cron schedule is changed"
-            (t2/update! :model/NotificationSubscription :id sub-id {:cron_schedule "1 * * * * ? *"})
+            (set-subscriptions! noti-id [{:id sub-id :type :notification-subscription/cron :cron_schedule "1 * * * * ? *"}])
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "1 * * * * ? *")]
                    (notification.tu/send-notification-triggers sub-id))))
           (testing "delete the trigger when type changes"
-            (t2/update! :model/NotificationSubscription :id sub-id {:type :notification-subscription/system-event
-                                                                    :cron_schedule nil
-                                                                    :event_name :event/card-create})
+            (set-subscriptions! noti-id [{:id            sub-id
+                                          :type          :notification-subscription/system-event
+                                          :cron_schedule nil
+                                          :event_name    :event/card-create}])
             (is (empty? (notification.tu/send-notification-triggers sub-id))))))
       (testing "delete the trigger when delete subscription"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/NotificationSubscription :id sub-id)
+          (set-subscriptions! noti-id [])
           (is (empty? (notification.tu/send-notification-triggers sub-id)))))
       (testing "delete notification will delete all subscription triggers"
-        (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                               :cron_schedule   "0 * * * * ? *"
-                                                                               :notification_id noti-id})]
+        (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
           (is (not-empty (notification.tu/send-notification-triggers sub-id)))
-          (t2/delete! :model/Notification :id noti-id)
+          (models.notification/delete-notifications! [noti-id])
           (is (empty? (notification.tu/send-notification-triggers sub-id))))))))
 
 (deftest subscription-trigger-timezone-is-report-timezone-test
@@ -384,9 +398,7 @@
     (mt/with-temporary-setting-values [report-timezone "Asia/Ho_Chi_Minh"]
       (mt/with-temp [:model/Notification {noti-id :id}]
         (testing "trigger timezone is report timezone"
-          (let [sub-id (t2/insert-returning-pk! :model/NotificationSubscription {:type            :notification-subscription/cron
-                                                                                 :cron_schedule   "0 * * * * ? *"
-                                                                                 :notification_id noti-id})]
+          (let [sub-id (create-cron-subscription! noti-id "0 * * * * ? *")]
             (is (= [(notification.tu/subscription->trigger-info
                      sub-id
                      "0 * * * * ? *"
@@ -405,10 +417,10 @@
       (testing "sanity check that it has a trigger to begin with"
         (is (= 2 (count (notification.tu/notification-triggers id)))))
       (testing "disabled notification should remove triggers"
-        (t2/update! :model/Notification :id id {:active false})
+        (models.notification/update-notifications! [id] {:active false})
         (is (empty? (notification.tu/notification-triggers id))))
       (testing "activate notification should restore triggers"
-        (t2/update! :model/Notification :id id {:active true})
+        (models.notification/update-notifications! [id] {:active true})
         (is (= 2 (count (notification.tu/notification-triggers id))))))))
 
 (deftest v-alerts-schedule-type-test

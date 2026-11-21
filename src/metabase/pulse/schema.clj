@@ -80,6 +80,18 @@
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
+(mr/def ::pulse-card.create
+  "What a caller gives to create a PulseCard."
+  [:map {:closed true}
+   [:pulse_id          ::lib.schema.id/pulse]
+   [:card_id           ::lib.schema.id/card]
+   [:position          ::pulse-card.position]
+   [:include_csv       {:optional true} [:maybe :boolean]]
+   [:include_xls       {:optional true} [:maybe :boolean]]
+   [:format_rows       {:optional true} [:maybe :boolean]]
+   [:pivot_results     {:optional true} [:maybe :boolean]]
+   [:dashboard_card_id {:optional true} [:maybe ::lib.schema.id/dashcard]]])
+
 (def ^:private subject-max-length
   "Inboxes truncate long before this; it bounds what a client can store."
   255)
@@ -189,3 +201,35 @@
   [:map {:closed true}
    [:pulse_channel_id {:optional true} [:maybe ms/PositiveInt]]
    [:user_id          {:optional true} [:maybe ::lib.schema.id/user]]])
+
+(mr/def ::pulse-channel-recipient.create
+  "What a caller gives to create a PulseChannelRecipient."
+  [:map {:closed true}
+   [:pulse_channel_id ms/PositiveInt]
+   [:user_id          ::lib.schema.id/user]])
+
+(mr/def ::pulse-channel.recipient
+  "A recipient of a PulseChannel: a raw email address, a User by id, or a User."
+  [:or
+   [:map {:closed true}
+    [:id    {:optional true} ms/PositiveInt]
+    [:email {:optional true} :string]]
+   :metabase.users.schema/user])
+
+(mr/def ::pulse-channel.create
+  "What a caller gives to create a PulseChannel together with its recipients."
+  [:map {:closed true}
+   [:pulse_id       ::lib.schema.id/pulse]
+   [:enabled        :boolean]
+   [:id             {:optional true} :int]
+   [:channel_type   {:optional true} [:or :keyword :string]]
+   [:channel_id     {:optional true} [:maybe ms/PositiveInt]]
+   [:details        {:optional true} ::pulse-channel.details]
+   [:entity_id      {:optional true} [:maybe :string]]
+   [:recipients     {:optional true} [:maybe [:sequential ::pulse-channel.recipient]]]
+   [:schedule_type  {:optional true} [:or :keyword :string]]
+   [:schedule_day   {:optional true} [:maybe :string]]
+   [:schedule_hour  {:optional true} [:maybe :int]]
+   [:schedule_frame {:optional true} [:maybe [:or :keyword :string]]]
+   [:created_at     {:optional true} ms/TemporalInstant]
+   [:updated_at     {:optional true} ms/TemporalInstant]])

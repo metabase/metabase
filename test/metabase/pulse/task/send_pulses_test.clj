@@ -9,6 +9,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.db :as pulse.db]
+   [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-channel-test :as pulse-channel-test]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.task.send-pulses :as task.send-pulses]
@@ -314,12 +315,13 @@
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
                                                                         :name       (mt/random-name)}))
-                  pc-ids    (t2/insert-returning-pks! :model/PulseChannel
-                                                      (for [pulse-id pulse-ids]
-                                                        (merge {:pulse_id       pulse-id
-                                                                :channel_type   :slack
-                                                                :details        {:channel "#random"}}
-                                                               daily-at-6pm)))]
+                  pc-ids    (mapv #(pulse-channel/create-pulse-channel!
+                                    (merge {:pulse_id     %
+                                            :channel_type :slack
+                                            :enabled      true
+                                            :details      {:channel "#random"}}
+                                           daily-at-6pm))
+                                  pulse-ids)]
               (testing "sanity check that we have the correct number of triggers and no channel has been sent yet"
                 (is (= pc-count (->> pulse-ids (map pulse-channel-test/send-pulse-triggers) (apply set/union) count))))
               (testing "make sure that all channels will be sent even though number of jobs exceed the thread pool"

@@ -4,6 +4,9 @@
   (:require
    [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.notification.models :as models.notification]
+   [metabase.pulse.models.pulse :as pulse]
+   [metabase.pulse.models.pulse-channel-recipient :as pulse-channel-recipient]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
@@ -208,19 +211,20 @@
 (mu/defn delete-pulse-channel-recipients-of-user!
   "Delete the PulseChannelRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PulseChannelRecipient :user_id user-id))
+  (pulse-channel-recipient/delete-pulse-channel-recipients-for-user! user-id))
 
 (mu/defn delete-notification-recipients-of-user!
   "Delete the NotificationRecipients of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/NotificationRecipient :user_id user-id))
+  (models.notification/delete-notification-recipients-for-user! user-id))
 
 (mu/defn archive-pulses-of-creator!
   "Archive the unarchived Pulses created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/Pulse {:creator_id user-id, :archived false} {:archived true}))
+  (pulse/update-pulses! (vec (t2/select-pks-vec :model/Pulse :creator_id user-id :archived false)) {:archived true}))
 
 (mu/defn deactivate-notifications-of-creator!
   "Deactivate the active Notifications created by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/Notification {:creator_id user-id :active true} {:active false}))
+  (models.notification/update-notifications! (vec (t2/select-pks-vec :model/Notification :creator_id user-id :active true))
+                                             {:active false}))

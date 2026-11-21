@@ -173,6 +173,13 @@
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
 
+(mr/def ::channel-template.create
+  "What a caller gives to create a ChannelTemplate."
+  [:map {:closed true}
+   [:channel_type                  [:or :keyword :string]]
+   [:name         {:optional true} [:maybe :string]]
+   [:details      {:optional true} [:maybe ::channel-template.details]]])
+
 (mr/def ::external-channel
   "A Channel as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

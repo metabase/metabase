@@ -236,6 +236,18 @@
           [{:label "channels"} {:label (:name channel) :key (:name channel)}])
         entities))
 
+;;; ------------------------------------------------------- Writes -------------------------------------------------------
+
+(mu/defn create-channel-template! :- ms/PositiveInt
+  "Insert the ChannelTemplate `template` and return its id."
+  [template :- ::channel.schema/channel-template.create]
+  (channel.db/insert-channel-template! template))
+
+(mu/defn delete-channel-templates!
+  "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
+  [template-ids :- [:sequential ms/PositiveInt]]
+  (channel.db/delete-channel-templates! template-ids))
+
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 
 (defmethod events/spec :model/Channel
