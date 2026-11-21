@@ -457,7 +457,7 @@
   [database]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
     (database/update-database! (u/the-id database) {:initial_sync_status "complete"
-                                                   :initial_sync_error  nil})))
+                                                    :initial_sync_error  nil})))
 
 (defn set-initial-database-sync-aborted!
   "Marks initial sync as aborted for this database, recording the message of `error` (the Throwable that aborted it)
@@ -465,7 +465,7 @@
   [database error]
   (when (not= (sync.db/database-initial-sync-status (u/the-id database)) "complete")
     (database/update-database! (u/the-id database) {:initial_sync_status "aborted"
-                                                   :initial_sync_error  (ex-message error)})))
+                                                    :initial_sync_error  (ex-message error)})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          OTHER SYNC UTILITY FUNCTIONS                                          |

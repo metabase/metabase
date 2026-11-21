@@ -29,7 +29,7 @@
   (by definition) to somewhere else and lose all access for it."
   [collection :- (ms/InstanceOf :model/Collection) new-location :- @#'collection/LocationPath]
   ;; TODO(johnswanson, 2025-11-25) fix the private bits
-  (#'collection/copy-collection-permissions! (#'collection/parent {:location new-location})
+  (#'collection/copy-collection-permissions! (collection/parent-or-root nil (collection/location-path->parent-id new-location))
                                              (cons collection (collection/descendants collection))))
 
 (defenterprise update-perms-for-tenant-specific-namespace-change!

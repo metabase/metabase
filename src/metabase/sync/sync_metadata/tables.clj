@@ -126,7 +126,7 @@
    db-metadata :- i/DatabaseMetadata]
   (log/infof "Found new version for DB: %s" (:version db-metadata))
   (database/update-database! (u/the-id database)
-                            {:details (assoc (:details database) :version (:version db-metadata))}))
+                             {:details (assoc (:details database) :version (:version db-metadata))}))
 
 (mu/defn- cruft-dependent-cols :- :map
   [{table-name :name :as table} :- TableMetadataOrInstance

@@ -1016,43 +1016,43 @@
           view-data-levels (when-not all-audit
                              (new-database-view-data-permission-levels group-ids))
           perm-map     (fn [group is-audit]
-                          (let [group-id (u/the-id group)]
-                                (cond
-                                  ;; Tenant groups always get least-permissive
-                                  (:is_tenant_group group)
-                                  defaults
+                         (let [group-id (u/the-id group)]
+                           (cond
+                             ;; Tenant groups always get least-permissive
+                             (:is_tenant_group group)
+                             defaults
 
-                                  ;; Audit DB gets hardcoded restrictive values
-                                  is-audit
-                                  {:perms/view-data             :unrestricted
-                                   :perms/create-queries        :no
-                                   :perms/download-results      :one-million-rows
-                                   :perms/manage-table-metadata :no
-                                   :perms/manage-database       :no
-                                   :perms/transforms            :no}
+                             ;; Audit DB gets hardcoded restrictive values
+                             is-audit
+                             {:perms/view-data             :unrestricted
+                              :perms/create-queries        :no
+                              :perms/download-results      :one-million-rows
+                              :perms/manage-table-metadata :no
+                              :perms/manage-database       :no
+                              :perms/transforms            :no}
 
-                                  ;; Normal: compute based on group's lowest existing perm level
-                                  :else
-                                  (let [view-data-level      (get view-data-levels group-id :unrestricted)
-                                        grp-vals             (get perms-by-grp group-id)
-                                        cq-values            (get grp-vals :perms/create-queries)
-                                        cq-level             (or (when (seq cq-values)
-                                                                   (coalesce-most-restrictive :perms/create-queries cq-values))
-                                                                 :query-builder-and-native)
-                                        download-level       (if (= view-data-level :blocked)
-                                                               :no
-                                                               (let [dl-values (get grp-vals :perms/download-results)]
-                                                                 (or (when (seq dl-values)
-                                                                       (coalesce-most-restrictive :perms/download-results dl-values))
-                                                                     :one-million-rows)))]
-                                    (cond-> {:perms/view-data             view-data-level
-                                             :perms/create-queries        cq-level
-                                             :perms/download-results      download-level
-                                             :perms/manage-table-metadata :no
-                                             :perms/manage-database       :no}
-                                      (or (not= view-data-level :unrestricted)
-                                          (not= cq-level :query-builder-and-native))
-                                      (assoc :perms/transforms :no))))))
+                             ;; Normal: compute based on group's lowest existing perm level
+                             :else
+                             (let [view-data-level      (get view-data-levels group-id :unrestricted)
+                                   grp-vals             (get perms-by-grp group-id)
+                                   cq-values            (get grp-vals :perms/create-queries)
+                                   cq-level             (or (when (seq cq-values)
+                                                              (coalesce-most-restrictive :perms/create-queries cq-values))
+                                                            :query-builder-and-native)
+                                   download-level       (if (= view-data-level :blocked)
+                                                          :no
+                                                          (let [dl-values (get grp-vals :perms/download-results)]
+                                                            (or (when (seq dl-values)
+                                                                  (coalesce-most-restrictive :perms/download-results dl-values))
+                                                                :one-million-rows)))]
+                               (cond-> {:perms/view-data             view-data-level
+                                        :perms/create-queries        cq-level
+                                        :perms/download-results      download-level
+                                        :perms/manage-table-metadata :no
+                                        :perms/manage-database       :no}
+                                 (or (not= view-data-level :unrestricted)
+                                     (not= cq-level :query-builder-and-native))
+                                 (assoc :perms/transforms :no))))))
           perm-rows    (for [database                databases
                              group                   groups
                              [perm-type perm-value] (perm-map group (:is_audit database))]
