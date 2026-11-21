@@ -99,7 +99,7 @@ export function FilterPopover({ filters, isLibraryEnabled, onSubmit }: Props) {
 
         {isLibraryEnabled && (
           <Checkbox
-            label={t`Published tables only`}
+            label={t`Published datasets only`}
             checked={form.publishedOnly === true}
             onChange={(e) =>
               setForm((form) => ({ ...form, publishedOnly: e.target.checked }))

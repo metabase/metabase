@@ -1,8 +1,12 @@
 .nodeRoot {
-  padding-left: calc(var(--tree-depth) * 1rem);
+  /* One level = chevron (14px) + icon box (24px) + name padding (4px) - the
+     icon's offset within the row (18px), so a child's icon starts where its
+     parent's label does. */
+  padding-left: calc(var(--tree-depth) * 1.5rem);
   color: var(--mb-color-text-primary);
 
-  &:has(.link:focus, .button:focus) {
+  /* Keyboard focus only: clicking a row shouldn't leave a ring on it. */
+  &:has(.link:focus-visible, .button:focus-visible) {
     outline: 2px solid var(--mb-color-input-focus);
     outline-offset: -2px;
   }

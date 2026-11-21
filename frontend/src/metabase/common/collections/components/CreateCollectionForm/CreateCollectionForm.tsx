@@ -18,13 +18,10 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useLocation, useParams } from "metabase/router";
 import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { Collection, CollectionNamespace } from "metabase-types/api";
-
-import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelField";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -53,6 +50,7 @@ export interface CreateCollectionFormOwnProps {
   showCollectionPicker?: boolean;
   pickerOptions?: EntityPickerOptions;
   namespaces?: CollectionNamespace[];
+  // PROTOTYPE: ignored; the "Collection type" field was removed from this form.
   showAuthorityLevelPicker?: boolean;
 }
 
@@ -67,7 +65,6 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   pickerOptions,
   namespaces,
-  showAuthorityLevelPicker = true,
 }: Props) {
   const location = useLocation();
   const params = useParams();
@@ -121,14 +118,6 @@ function CreateCollectionForm({
       onSubmit={handleSubmit}
     >
       {({ dirty }) => {
-        const parentCollection = selectedParentCollection ?? initialCollection;
-
-        // Hide the authority level picker if the parent is a tenant collection.
-        const isParentTenantCollection =
-          parentCollection && "namespace" in parentCollection
-            ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
-            : false;
-
         return (
           <Form>
             <Stack gap="xl">
@@ -155,11 +144,8 @@ function CreateCollectionForm({
                   filterPersonalCollections={filterPersonalCollections}
                   name="parent_id"
                   onCollectionSelect={setSelectedParentCollection}
-                  title={t`Collection it's saved in`}
+                  title={t`Where to save it`}
                 />
-              )}
-              {showAuthorityLevelPicker && !isParentTenantCollection && (
-                <FormAuthorityLevelField />
               )}
             </Stack>
             <Modal.Footer>

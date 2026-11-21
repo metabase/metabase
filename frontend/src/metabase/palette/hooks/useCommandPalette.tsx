@@ -15,6 +15,8 @@ import {
   isSettingsManagerPath,
 } from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
+import { useSyncedCollectionIds } from "metabase/nav/prototype/use-synced-collection-ids";
 import { useSelector } from "metabase/redux";
 import { queryToSearch } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -27,8 +29,11 @@ import type { SearchQuery } from "metabase/utils/browser";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getName } from "metabase/utils/name";
 import {
+  type CollectionId,
   type RecentCollectionItem,
   type RecentItem,
+  type SearchResponse,
+  type SearchResult,
   isRecentTableItem,
 } from "metabase-types/api";
 
@@ -36,12 +41,31 @@ import { METABASE_DOCS_LABELS, getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
+const SEARCH_RESULT_LIMIT = 20;
+// PROTOTYPE: official-only search filters results on the client, so it
+// over-fetches to still fill the list after filtering.
+const OFFICIAL_SEARCH_FETCH_LIMIT = 100;
+
+function isOfficialSearchResult(
+  result: SearchResult,
+  officialCollectionIds: Set<CollectionId>,
+): boolean {
+  const collectionId =
+    result.model === "collection" && typeof result.id === "number"
+      ? result.id
+      : result.collection?.id;
+  return collectionId != null && officialCollectionIds.has(collectionId);
+}
+
 export const useCommandPalette = ({
   disabled = false,
   locationQuery,
+  includeExplorations = true,
 }: {
   disabled: boolean;
   locationQuery: SearchQuery;
+  /** With git integration on, also return results outside synced collections. */
+  includeExplorations?: boolean;
 }) => {
   const getIcon = useGetIcon();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -86,8 +110,15 @@ export const useCommandPalette = ({
       : null,
   );
 
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
+  const isOfficialOnly = isGitIntegrationEnabled && !includeExplorations;
+
+  const officialCollectionIds = useSyncedCollectionIds({
+    skip: !isOfficialOnly || disabled,
+  });
+
   const {
-    currentData: searchResults,
+    currentData: allSearchResults,
     isFetching: isSearchLoading,
     error: searchError,
     requestId: searchRequestId,
@@ -96,13 +127,27 @@ export const useCommandPalette = ({
       q: debouncedSearchText,
       context: "command-palette",
       include_dashboard_questions: true,
-      limit: 20,
+      limit: isOfficialOnly ? OFFICIAL_SEARCH_FETCH_LIMIT : SEARCH_RESULT_LIMIT,
     },
     {
       skip: !debouncedSearchText || !isSearchTypeaheadEnabled || disabled,
       refetchOnMountOrArgChange: true,
     },
   );
+
+  const searchResults = useMemo<SearchResponse | undefined>(() => {
+    if (!allSearchResults || !isOfficialOnly) {
+      return allSearchResults;
+    }
+    const officialResults = allSearchResults.data.filter((result) =>
+      isOfficialSearchResult(result, officialCollectionIds),
+    );
+    return {
+      ...allSearchResults,
+      data: officialResults.slice(0, SEARCH_RESULT_LIMIT),
+      total: officialResults.length,
+    };
+  }, [allSearchResults, isOfficialOnly, officialCollectionIds]);
 
   const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery(
     undefined,

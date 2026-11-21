@@ -2,11 +2,13 @@ import { useCallback } from "react";
 
 import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useGitIntegrationEnabled } from "metabase/nav/prototype/use-git-integration-enabled";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { DATA_APPS_ROOT_ID } from "./constants";
+import { SYNCED_CONTENT_ID } from "./hooks/use-synced-content";
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -18,6 +20,7 @@ import {
 
 export const useGetEntityPickerIcon = () => {
   const getIcon = useGetIcon();
+  const { isEnabled: isGitIntegrationEnabled } = useGitIntegrationEnabled();
 
   return useCallback(
     (
@@ -36,6 +39,26 @@ export const useGetEntityPickerIcon = () => {
         icon.name = "search";
       }
 
+      // The Library (shown as "Data") always gets the nav's repository icon,
+      // even when the item lacks `is_library_root`.
+      if (item.model === "collection" && item.type === "library") {
+        icon.name = "repository";
+      }
+
+      if (item.id === SYNCED_CONTENT_ID) {
+        icon.name = "synced_collection";
+      }
+
+      // PROTOTYPE: with git integration on, the root collection is shown as
+      // "Saved" and gets the nav's Saved icon.
+      const isRootCollection =
+        item.model === "collection" &&
+        item.id === "root" &&
+        !("namespace" in item && item.namespace);
+      if (isGitIntegrationEnabled && isRootCollection) {
+        icon.name = "files";
+      }
+
       if (isSelected && !icon.color) {
         icon.color = "text-primary-inverse";
       }
@@ -50,7 +73,7 @@ export const useGetEntityPickerIcon = () => {
 
       return { ...icon, color: undefined, c: icon.color ?? "core-brand" };
     },
-    [getIcon],
+    [getIcon, isGitIntegrationEnabled],
   );
 };
 
@@ -178,6 +201,12 @@ export function getItemFunctions({
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
     if (!isValidItem(item) || isDataAppsRootItem(item)) {
+      return false;
+    }
+
+    // PROTOTYPE: "Synced content" only groups the synced collections; pick
+    // one of them instead.
+    if (item.id === SYNCED_CONTENT_ID) {
       return false;
     }
 

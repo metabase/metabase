@@ -13,6 +13,7 @@ import {
   type EntityPickerModalProps,
   type OmniPickerItem,
 } from "../EntityPicker";
+import { isRootCollectionItem } from "../EntityPicker/hooks/use-synced-content";
 import { getCollectionType } from "../EntityPicker/utils";
 
 import type { CollectionPickerValueItem } from "./types";
@@ -82,6 +83,12 @@ export const CollectionPickerModal = ({
       }
 
       if (isSelectableItemProp && !isSelectableItemProp(item)) {
+        return false;
+      }
+
+      // PROTOTYPE: content goes in one of Explorations' folders, not in
+      // Explorations itself; only new top-level collections can go there.
+      if (entityType !== "collection" && isRootCollectionItem(item)) {
         return false;
       }
 

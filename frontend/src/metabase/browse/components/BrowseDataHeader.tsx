@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { trackDataReferenceClicked } from "metabase/common/collections/analytics";
 import { Link } from "metabase/common/components/Link";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import { Flex, Group, Icon, Text, Title } from "metabase/ui";
 
@@ -43,5 +44,7 @@ const LearnAboutDataLink = () => (
       </Flex>
     </Link>
     <PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu />
+    {/* PROTOTYPE: "No top nav" puts Chat with Metabot last. */}
+    <PageMetabotButton />
   </Flex>
 );

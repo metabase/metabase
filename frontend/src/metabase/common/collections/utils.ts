@@ -417,7 +417,7 @@ export const getCollectionPathAsArray = (collection: Collection): string[] => {
 
 export function getCollectionIcon(
   collection: Partial<Collection>,
-  { tooltip = "default", isTenantUser = false } = {},
+  { tooltip = "default" }: { tooltip?: string; isTenantUser?: boolean } = {},
 ): {
   name: IconName;
   color?: ColorName;
@@ -433,11 +433,6 @@ export function getCollectionIcon(
 
   if (isRootPersonalCollection(collection)) {
     return { name: "person" };
-  }
-
-  if (isSyncedCollection(collection) && !isTenantUser) {
-    // tenant users see the normal icon, they don't know what a synced collection is
-    return { name: "synced_collection" };
   }
 
   if (collection.is_library_root) {

@@ -3,6 +3,11 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { getValidCollectionItemModels } from "metabase/common/components/Pickers/utils";
 
 import { useGetPathFromValue } from "./hooks/use-get-path-from-value";
+import {
+  getSyncedContentItem,
+  isRootCollectionItem,
+  useSyncedContent,
+} from "./hooks/use-synced-content";
 import type {
   EntityPickerProps,
   OmniPickerContextValue,
@@ -31,13 +36,29 @@ export const EntityPickerProvider = ({
     [value.namespaces, value.models],
   );
 
-  const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
+  const [rawPath, setPath, { isLoadingPath }] = useGetPathFromValue({
     value: value.value,
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
     showsDataApps: shouldShowDataApps(value),
   });
+
+  // PROTOTYPE: a value inside a synced collection opens under "Synced
+  // content" rather than "Saved", where synced collections are hidden.
+  const { showSyncedContent, isSyncedCollection } = useSyncedContent();
+  const [rootItem, firstChild] = rawPath;
+  const path =
+    showSyncedContent &&
+    rootItem &&
+    firstChild &&
+    isRootCollectionItem(rootItem) &&
+    isSyncedCollection(firstChild)
+      ? [
+          getSyncedContentItem(getValidCollectionItemModels(value.models)),
+          ...rawPath.slice(1),
+        ]
+      : rawPath;
 
   const [previousPath, setPreviousPath] = useState<OmniPickerItem[]>([]);
   const [searchScope, setSearchScope] = useState<SearchScope>(null);

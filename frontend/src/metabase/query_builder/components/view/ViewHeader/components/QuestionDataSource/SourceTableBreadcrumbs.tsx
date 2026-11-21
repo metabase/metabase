@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 
 import { skipToken, useGetTableQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { getPickerCollectionName } from "metabase/common/components/Pickers/utils";
 import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -64,7 +65,8 @@ export function SourceTableBreadcrumbs({
           to={Urls.collection(collection)}
           icon="repository"
         >
-          {collection.name}
+          {/* PROTOTYPE: the Library's sections use the nav's names. */}
+          {getPickerCollectionName(collection)}
         </HeadBreadcrumbs.Breadcrumb>,
         <HeadBreadcrumbs.Breadcrumb
           key="name"

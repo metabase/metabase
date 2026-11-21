@@ -1,7 +1,14 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
 
+import {
+  SpaceSwitcherHeading,
+  getSpaceHeading,
+} from "metabase/nav/prototype/SpaceSwitcherHeading";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { Box, Flex, Group, Text } from "metabase/ui";
+
+import { useGetCurrentApp } from "../AppSwitcher/useGetCurrentApp";
 
 import S from "./AreaLayout.module.css";
 import { ToggleActionIcon } from "./ToggleActionIcon";
@@ -21,6 +28,13 @@ export function AreaNavbarHeader({
   isNavbarOpened,
   onNavbarToggle,
 }: AreaNavbarHeaderProps) {
+  // PROTOTYPE: in "No top nav", the space's name beside the logo opens the
+  // space switcher, for areas with or without a title of their own.
+  const { variant } = useNavVariant();
+  const currentApp = useGetCurrentApp();
+  const spaceHeading =
+    typeof title === "string" ? title : getSpaceHeading(currentApp);
+
   return (
     <Flex
       align="center"
@@ -40,11 +54,18 @@ export function AreaNavbarHeader({
             />
           )}
         </Box>
-        {isNavbarOpened && title && (
-          <Text fw="bold" c="text-primary">
-            {title}
-          </Text>
-        )}
+        {isNavbarOpened &&
+          (variant === "no-top-nav" ? (
+            <Box c="text-primary" miw={0}>
+              <SpaceSwitcherHeading label={spaceHeading} />
+            </Box>
+          ) : (
+            title && (
+              <Text fw="bold" c="text-primary">
+                {title}
+              </Text>
+            )
+          ))}
         {isNavbarOpened && headerControls}
       </Group>
       {isNavbarOpened && (

@@ -4,6 +4,11 @@ import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { CollectionItem } from "metabase-types/api";
 
 import { useOmniPickerContext } from "../../context";
+import {
+  SYNCED_CONTENT_ID,
+  isRootCollectionItem,
+  useSyncedContent,
+} from "../../hooks/use-synced-content";
 import type { OmniPickerItem } from "../../types";
 
 import { ItemList } from "./ItemList";
@@ -16,6 +21,7 @@ export const CollectionItemList = ({
   pathIndex: number;
 }) => {
   const { models } = useOmniPickerContext();
+  const { isGitIntegrationEnabled, isSyncedCollection } = useSyncedContent();
 
   const {
     data: collectionItems,
@@ -32,7 +38,12 @@ export const CollectionItemList = ({
 
   const items = getCollectionItems({
     parentItem,
-    items: collectionItems?.data,
+    items: getSyncedTreeItems({
+      parentItem,
+      items: collectionItems?.data,
+      isGitIntegrationEnabled,
+      isSyncedCollection,
+    }),
   });
 
   return (
@@ -51,6 +62,37 @@ function getCollectionItemsParentId(parentItem: OmniPickerItem) {
   }
 
   return !parentItem.id ? "root" : parentItem.id;
+}
+
+/**
+ * PROTOTYPE: with git integration on, the root's synced collections are listed
+ * under "Synced content" and left out of "Saved".
+ */
+function getSyncedTreeItems({
+  parentItem,
+  items,
+  isGitIntegrationEnabled,
+  isSyncedCollection,
+}: {
+  parentItem: OmniPickerItem;
+  items?: CollectionItem[];
+  isGitIntegrationEnabled: boolean;
+  isSyncedCollection: (item: CollectionItem) => boolean;
+}): CollectionItem[] | undefined {
+  if (!items) {
+    return items;
+  }
+  if (parentItem.id === SYNCED_CONTENT_ID) {
+    return items.filter(
+      (item) =>
+        isSyncedCollection(item) &&
+        !PLUGIN_LIBRARY.isLibraryCollectionType(item.type),
+    );
+  }
+  if (isGitIntegrationEnabled && isRootCollectionItem(parentItem)) {
+    return items.filter((item) => !isSyncedCollection(item));
+  }
+  return items;
 }
 
 function getCollectionItems({

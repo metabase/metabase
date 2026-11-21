@@ -25,6 +25,8 @@ export interface PaneHeaderProps extends Omit<StackProps, "title"> {
   actions?: ReactNode;
   breadcrumbs: ReactNode;
   showAppSwitcher?: boolean;
+  /** PROTOTYPE: shown before the breadcrumbs, e.g. an open-nav button. */
+  breadcrumbsLeading?: ReactNode;
 }
 
 export const PaneHeader = ({
@@ -36,11 +38,17 @@ export const PaneHeader = ({
   actions,
   breadcrumbs,
   showAppSwitcher = true,
+  breadcrumbsLeading,
   ...rest
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xxs" {...rest}>
       <Flex mb="xl" mt="lg" w="100%" h="xxl">
+        {breadcrumbsLeading && (
+          <Box mr="sm" style={{ alignSelf: "center" }}>
+            {breadcrumbsLeading}
+          </Box>
+        )}
         {breadcrumbs}
 
         <Group ml="auto" gap="lg" className={S.ButtonGroup}>

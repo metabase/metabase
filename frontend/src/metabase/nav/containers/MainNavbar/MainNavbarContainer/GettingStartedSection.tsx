@@ -15,16 +15,45 @@ import { useCanAddData } from "./use-can-add-data";
 export const GettingStartedSection = ({
   nonEntityItem,
   onAddDataModalOpen,
+  hideHeading,
   children,
 }: PropsWithChildren<{
   nonEntityItem: SelectedItem;
   onAddDataModalOpen: () => void;
+  /** Lists the links without the collapsible "Getting Started" heading. */
+  hideHeading?: boolean;
 }>) => {
   const canAddData = useCanAddData();
   const [opened, { toggle }] = useDisclosure(true);
 
   const ONBOARDING_URL = "/getting-started";
   const isOnboardingPageSelected = nonEntityItem?.url === ONBOARDING_URL;
+
+  const links = (
+    <>
+      {canAddData && (
+        <SidebarLink icon="add_data" onClick={onAddDataModalOpen}>
+          {t`Add your data`}
+        </SidebarLink>
+      )}
+
+      <SidebarLink
+        icon="learn"
+        url={ONBOARDING_URL}
+        isSelected={isOnboardingPageSelected}
+        onClick={() => trackOnboardingChecklistOpened()}
+      >
+        {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
+        {t`How to use Metabase`}
+      </SidebarLink>
+
+      {children}
+    </>
+  );
+
+  if (hideHeading) {
+    return links;
+  }
 
   return (
     <div aria-selected={opened} role="tab">
@@ -47,23 +76,7 @@ export const GettingStartedSection = ({
         role="tabpanel"
         aria-expanded={opened}
       >
-        {canAddData && (
-          <SidebarLink icon="add_data" onClick={onAddDataModalOpen}>
-            {t`Add your data`}
-          </SidebarLink>
-        )}
-
-        <SidebarLink
-          icon="learn"
-          url={ONBOARDING_URL}
-          isSelected={isOnboardingPageSelected}
-          onClick={() => trackOnboardingChecklistOpened()}
-        >
-          {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- We only show this to non-whitelabelled instances */}
-          {t`How to use Metabase`}
-        </SidebarLink>
-
-        {children}
+        {links}
       </Collapse>
     </div>
   );

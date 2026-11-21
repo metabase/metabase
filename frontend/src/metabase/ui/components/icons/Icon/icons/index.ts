@@ -106,6 +106,7 @@ import eye_outline_component from "./eye_outline.svg?component";
 import factory_component from "./factory.svg?component";
 import field_component from "./field.svg?component";
 import fields_component from "./fields.svg?component";
+import files_component from "./files.svg?component";
 import filter_component from "./filter.svg?component";
 import filter_plus_component from "./filter_plus.svg?component";
 import find_replace_component from "./find_replace.svg?component";
@@ -409,6 +410,8 @@ export const Icons: Record<IconName, React.FC> = {
   factory: factory_component,
   field: field_component,
   fields: fields_component,
+  // PROTOTYPE: Lucide "files", used for Explorations.
+  files: files_component,
   filter: filter_component,
   filter_plus: filter_plus_component,
   find_replace: find_replace_component,

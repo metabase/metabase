@@ -57,11 +57,11 @@ export function SettingsNav() {
           path="remote-sync"
           label={
             <Flex gap="sm" align="center">
-              <span>{t`Remote sync`}</span>
+              <span>{t`Git integration`}</span>
               <UpsellGem />
             </Flex>
           }
-          icon="sync"
+          icon="git_branch"
         />
       ) : null}
       <NavDivider />

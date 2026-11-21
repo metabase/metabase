@@ -12,6 +12,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { trackMetricCreateStarted } from "metabase/common/data-studio/analytics";
 import { useDocsUrl } from "metabase/common/hooks";
 import { canUserCreateQueries } from "metabase/current-user";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { PLUGIN_CONTENT_VERIFICATION, PLUGIN_LIBRARY } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import {
@@ -56,7 +57,11 @@ export function BrowseMetrics() {
     });
 
   const newMetricLink = Urls.newMetric({
-    collectionId: libraryMetricCollection?.id,
+    // PROTOTYPE: a read-only (e.g. git-synced) Library can't take the new
+    // metric, so the save step asks where it goes instead.
+    collectionId: libraryMetricCollection?.can_write
+      ? libraryMetricCollection.id
+      : undefined,
   });
 
   const hasDataAccess = useSelector(canUserCreateQueries);
@@ -116,6 +121,8 @@ export function BrowseMetrics() {
                   setMetricFilters={setMetricFilters}
                 />
               )}
+              {/* PROTOTYPE: "No top nav" puts Chat with Metabot last. */}
+              <PageMetabotButton />
             </Group>
           </Flex>
         </Flex>

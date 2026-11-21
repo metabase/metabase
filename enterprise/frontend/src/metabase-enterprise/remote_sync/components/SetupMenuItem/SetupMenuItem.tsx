@@ -23,20 +23,20 @@ export function SetupMenuItem({
 
   return (
     <Tooltip
-      label={t`Set up remote sync`}
+      label={t`Set up git integration`}
       position="right"
       openDelay={TOOLTIP_OPEN_DELAY_MS}
       disabled={isNavbarOpened}
     >
       <UnstyledButton
         className={S.tab}
-        aria-label={t`Set up remote sync`}
+        aria-label={t`Set up git integration`}
         bdrs="sm"
         p="sm"
         onClick={onClick}
       >
         <FixedSizeIcon className={S.icon} name="git_branch" />
-        {isNavbarOpened && <Text lh="sm">{t`Set up remote sync`}</Text>}
+        {isNavbarOpened && <Text lh="sm">{t`Set up git integration`}</Text>}
       </UnstyledButton>
     </Tooltip>
   );

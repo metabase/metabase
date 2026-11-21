@@ -109,6 +109,14 @@ export function dataStudioLibrary(params: ExpandedIdsParams = {}) {
   return `${ROOT_URL}/library${getExpandedIdsQueryString(params)}`;
 }
 
+export function dataStudioLibraryMetrics() {
+  return `${dataStudioLibrary()}/metrics`;
+}
+
+export function dataStudioLibraryTables() {
+  return `${dataStudioLibrary()}/tables`;
+}
+
 export function dataStudioSnippets(params: ExpandedIdsParams = {}) {
   return `${ROOT_URL}/snippets${getExpandedIdsQueryString(params)}`;
 }

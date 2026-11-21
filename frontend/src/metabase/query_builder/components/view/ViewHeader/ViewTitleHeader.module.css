@@ -123,6 +123,15 @@
   }
 }
 
+/* PROTOTYPE: "No top nav" — at least the nav's 52px header height, so a
+   one-line header shares its center line. The padding still fits a one-line
+   header within 52px, and gives a title with breadcrumbs room to breathe. */
+.ViewHeaderContainer.alignWithNavHeader {
+  min-height: 52px;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
 .ViewHeaderIconButtonContainer {
   .ViewHeaderIconButton {
     padding: 0.25rem 0.5rem;

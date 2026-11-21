@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { Link } from "metabase/common/components/Link";
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { getUserIsAdmin } from "metabase/current-user";
+import { SpaceSwitcherHeading } from "metabase/nav/prototype/SpaceSwitcherHeading";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
@@ -33,6 +35,9 @@ export const AdminNavbar = ({
   const isPaidPlan = useSelector(getIsPaidPlan);
   const isAdmin = useSelector(getUserIsAdmin);
   const navigate = useNavigate();
+  // PROTOTYPE: in "No top nav", "Metabase Admin" opens the space switcher.
+  const { variant } = useNavVariant();
+  const hasSpaceSwitcherHeading = variant === "no-top-nav";
 
   useRegisterShortcut([
     {
@@ -67,24 +72,37 @@ export const AdminNavbar = ({
       py="0.5rem"
       style={{ zIndex: 4, flexShrink: 0 }}
     >
-      <Flex
-        component={Link}
-        to="/admin"
-        align="center"
-        justify="center"
-        miw={32}
-        maw="20rem"
-        h={32}
-        style={{ overflow: "hidden" }}
-      >
-        <LogoIcon dark />
-        <Box
-          visibleFrom="lg"
-          fw={700}
-          ml="1rem"
-          // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
-        >{t`Metabase Admin`}</Box>
-      </Flex>
+      <Group gap="xs" wrap="nowrap" miw={0}>
+        <Flex
+          component={Link}
+          to="/admin"
+          align="center"
+          justify="center"
+          miw={32}
+          maw="20rem"
+          h={32}
+          style={{ overflow: "hidden" }}
+        >
+          <LogoIcon dark />
+          {!hasSpaceSwitcherHeading && (
+            <Box
+              visibleFrom="lg"
+              fw={700}
+              ml="1rem"
+              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+            >{t`Metabase Admin`}</Box>
+          )}
+        </Flex>
+        {hasSpaceSwitcherHeading && (
+          <Box ml="sm" miw={0}>
+            <SpaceSwitcherHeading
+              // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase settings
+              label={t`Metabase Admin`}
+              isOnDarkBackground
+            />
+          </Box>
+        )}
+      </Group>
 
       <Flex visibleFrom="md" align="center" miw={0} flex="1 1 auto" ps="2rem">
         <Flex

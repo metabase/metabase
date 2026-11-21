@@ -77,6 +77,11 @@
   padding-bottom: 0.75rem;
   min-width: 0;
 
+  /* PROTOTYPE: half the top padding, for "No top nav". */
+  &.compactTop {
+    padding-top: 0.5rem;
+  }
+
   .HeaderCaptionContainer {
     top: 10px;
   }

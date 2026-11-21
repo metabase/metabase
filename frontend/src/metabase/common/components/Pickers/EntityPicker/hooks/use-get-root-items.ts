@@ -14,6 +14,7 @@ import {
   useHasTokenFeature,
 } from "metabase/common/hooks";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
+import { useTenantsEnabled } from "metabase/nav/prototype/use-tenants-enabled";
 import {
   PLUGIN_DATA_APPS,
   PLUGIN_LIBRARY,
@@ -37,6 +38,7 @@ import type {
 } from "../types";
 import { shouldShowDataApps } from "../utils";
 
+import { getSyncedContentItem, useSyncedContent } from "./use-synced-content";
 import { getDataAppsRootItem, getRootCollectionItem } from "./utils";
 
 const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
@@ -56,13 +58,17 @@ const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
 export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasTenants = useSetting("use-tenants");
+  // PROTOTYPE: the prototype controls' Tenants switch also hides tenant
+  // collections here when it's off.
+  const { isEnabled: isTenantsSimulatedOn } = useTenantsEnabled();
+  const hasTenants = useSetting("use-tenants") && isTenantsSimulatedOn;
   const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
+  const { showSyncedContent } = useSyncedContent();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
-  const tenantsEnabled = useSetting("use-tenants");
+  const tenantsEnabled = hasTenants;
   const showsDataApps = shouldShowDataApps({ options, models });
   const { data: dataApps, isLoading: isLoadingDataApps } =
     PLUGIN_DATA_APPS.useDataApps({ skip: !showsDataApps });
@@ -111,6 +117,7 @@ export const useRootItems = () => {
       currentUser,
       hasTenants,
       dispatch,
+      showSyncedContent,
     })
       .then((rootItems) => {
         setRootItems(rootItems);
@@ -135,6 +142,7 @@ export const useRootItems = () => {
     hasTenants,
     setIsLoadingCollections,
     dispatch,
+    showSyncedContent,
   ]);
 
   const isLoading =
@@ -163,6 +171,7 @@ async function getRootItems({
   currentUser,
   hasTenants,
   dispatch,
+  showSyncedContent,
 }: {
   searchQuery?: string;
   personalCollection?: Collection;
@@ -179,6 +188,7 @@ async function getRootItems({
   currentUser: User | null;
   hasTenants: boolean;
   dispatch: DispatchFn;
+  showSyncedContent: boolean;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
   const validCollectionModels = getValidCollectionItemModels(models);
@@ -191,6 +201,16 @@ async function getRootItems({
       name: t`Search results for "${searchQuery}"`,
       below: validCollectionModels,
     });
+  }
+
+  // PROTOTYPE: collections synced from git, as their own tree. Only offered
+  // when the instance can push to git, since otherwise they're read-only.
+  if (
+    showSyncedContent &&
+    options?.hasRootCollection &&
+    namespaces.includes(null)
+  ) {
+    collectionItems.push(getSyncedContentItem(validCollectionModels));
   }
 
   if (options.hasLibrary && libraryCollection && namespaces.includes(null)) {

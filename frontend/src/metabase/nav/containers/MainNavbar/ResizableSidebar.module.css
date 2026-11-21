@@ -1,0 +1,48 @@
+/* PROTOTYPE: the inner border darkens while its edge is hovered or dragged. */
+.resizableSidebar {
+  transition: border-color 150ms ease-out;
+
+  &[data-side="left"]:has(.resizeHandle:hover),
+  &[data-side="left"][data-resizing] {
+    border-inline-end-color: var(--mb-color-border-strong);
+  }
+
+  &[data-side="right"]:has(.resizeHandle:hover),
+  &[data-side="right"][data-resizing] {
+    border-inline-start-color: var(--mb-color-border-strong);
+  }
+}
+
+/* Centered on the 1px border, so it grabs a few pixels on either side. */
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+
+  @media (--breakpoint-max-sm) {
+    display: none;
+  }
+}
+
+.handleEnd {
+  inset-inline-end: -4px;
+}
+
+.handleStart {
+  inset-inline-start: -4px;
+}
+
+/* On <body> while a sidebar is being resized: no text selection, and the
+   resize cursor stays put even when the pointer leaves the handle. */
+.resizing {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: col-resize;
+
+  & * {
+    cursor: col-resize !important;
+  }
+}

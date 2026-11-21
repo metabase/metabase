@@ -1,0 +1,18 @@
+.heading {
+  min-width: 0;
+  padding: 0.25rem 0.375rem;
+  border-radius: var(--mantine-radius-sm);
+  color: inherit;
+
+  /* The same hover as the subtle icon buttons beside it (search, +New). */
+  &:hover,
+  &[data-expanded] {
+    background-color: var(--mb-color-button-subtle-neutral-hover);
+  }
+
+  /* On the dark admin bar, a light tint of its white text instead. */
+  &[data-on-dark]:hover,
+  &[data-on-dark][data-expanded] {
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+  }
+}

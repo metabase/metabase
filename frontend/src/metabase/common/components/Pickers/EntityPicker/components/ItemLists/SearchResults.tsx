@@ -7,6 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useGetIcon } from "metabase/hooks/use-icon";
+import { useRootCollectionName } from "metabase/nav/prototype/use-root-collection-name";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -24,6 +25,7 @@ import type {
   OmniPickerTableItem,
   SearchScope,
 } from "../..";
+import { getPickerCollectionName } from "../../../utils";
 import { useOmniPickerContext } from "../../context";
 import {
   useCurrentSearchScope,
@@ -155,7 +157,7 @@ const isMeasure = (item: OmniPickerItem): item is OmniPickerMeasureItem => {
   return item.model === "measure";
 };
 
-const getItemText = (item: OmniPickerItem) => {
+const getItemText = (item: OmniPickerItem, rootCollectionName: string) => {
   const isTable = isTableInDb(item);
 
   if (item.model === "schema") {
@@ -176,7 +178,9 @@ const getItemText = (item: OmniPickerItem) => {
 
   return isTable
     ? `${item.database_name}${item.schema ? ` (${item.schema})` : ""}`
-    : (item?.collection?.name ?? t`Our analytics`);
+    : item?.collection && item.collection.id !== "root"
+      ? getPickerCollectionName(item.collection)
+      : rootCollectionName;
 };
 
 const useLocationIcon = (item: OmniPickerItem) => {
@@ -207,7 +211,8 @@ const LocationInfo = ({
   item: OmniPickerItem;
   isSelected: boolean;
 }) => {
-  const itemText = getItemText(item);
+  const rootCollectionName = useRootCollectionName();
+  const itemText = getItemText(item, rootCollectionName);
   const iconProps = useLocationIcon(item);
 
   if (!itemText) {
@@ -236,15 +241,19 @@ export function SearchScopeSelector() {
   const { data: libraryCollection } = PLUGIN_LIBRARY.useGetLibraryCollection();
 
   const lastCollection = useGetLastCollection();
+  const rootCollectionName = useRootCollectionName();
 
   const options = [
     { label: t`Everywhere`, value: "all" },
     libraryCollection?.id
-      ? { label: t`Library`, value: String(libraryCollection.id) }
+      ? {
+          label: getPickerCollectionName({ name: "", type: "library" }),
+          value: String(libraryCollection.id),
+        }
       : null,
     lastCollection
       ? {
-          label: lastCollection.name,
+          label: getPickerCollectionName(lastCollection, rootCollectionName),
           value: String(lastCollection.id),
         }
       : null,

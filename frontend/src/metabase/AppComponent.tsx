@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import { AppBarContainer } from "metabase/app/nav/AppBar";
 import { Navbar } from "metabase/app/nav/Navbar";
@@ -12,6 +12,7 @@ import {
   getIsMonitorApp,
   getIsNavBarEnabled,
 } from "metabase/app/nav/selectors";
+import { useIsUsageAnalyticsContent } from "metabase/app/nav/use-is-usage-analytics-content";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import {
@@ -27,11 +28,19 @@ import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
+import { hasOwnNavOpenButton } from "metabase/nav/prototype/NavOpenButton";
+import { NavVariantPicker } from "metabase/nav/prototype/NavVariantPicker";
+import {
+  PageMetabotButtonFallback,
+  PageMetabotButtonProvider,
+} from "metabase/nav/prototype/PageMetabotButton";
+import { useSyncGitIntegrationAtStartup } from "metabase/nav/prototype/use-git-integration-enabled";
+import { useNavVariant } from "metabase/nav/prototype/use-nav-variant";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
-import { getErrorPage } from "metabase/selectors/app";
+import { getErrorPage, getIsNavbarOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
@@ -45,6 +54,12 @@ import { trackPageView } from "./analytics";
 import { Metabot } from "./metabot/components/Metabot";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
+
+const MonitorNavbar = lazy(() =>
+  import(
+    /* webpackChunkName: "monitor" */ "metabase/monitor/components/MonitorLayout"
+  ).then(({ MonitorNavbar }) => ({ default: MonitorNavbar })),
+);
 
 const getErrorComponent = ({
   status,
@@ -94,6 +109,23 @@ export function App() {
   const isNavBarEnabled = useSelector((state) =>
     getIsNavBarEnabled(state, routerProps),
   );
+  // PROTOTYPE: Usage analytics dashboards, questions and collections keep their
+  // URLs but show inside Monitor: its nav instead of the main nav and app bar.
+  const isUsageAnalyticsContent = useIsUsageAnalyticsContent();
+  // PROTOTYPE: the "No top nav" variant moves the app bar into the main nav.
+  // With the nav closed, a slim bar keeps the open button and breadcrumbs.
+  const { variant: navVariant } = useNavVariant();
+  // PROTOTYPE: keeps plugins' startup view of git integration current.
+  useSyncGitIntegrationAtStartup();
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const isNoTopNav =
+    navVariant === "no-top-nav" && isNavBarEnabled && !isAdminApp;
+  // On query builder pages the header carries the open button instead, so
+  // the nav-closed bar isn't needed there either.
+  const showAppBar =
+    isAppBarVisible &&
+    !isUsageAnalyticsContent &&
+    !(isNoTopNav && (isNavbarOpen || hasOwnNavOpenButton(location.pathname)));
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
   const { pathname } = location;
@@ -117,52 +149,71 @@ export function App() {
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <AppKBarProvider>
-          <KeyboardTriggeredErrorModal />
-          <Flex className={CS.spread} direction="column">
-            <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
-            <Flex
-              className={cx(
-                CS.overflowHidden,
-                S.printFullHeight,
-                S.printOverflowVisible,
-              )}
-              flex="1 1 auto"
-              direction={isAdminApp ? "column" : "row"}
-              pos="relative"
-              bg="background_page-primary"
-            >
-              {isNavBarEnabled && <Navbar />}
-              <Box
-                component="main"
-                ref={setViewportElement}
-                className={cx(CS.overflowAuto, S.printOverflowVisible)}
-                w="100%"
-                h="100%"
-                style={{ scrollMarginTop: APP_BAR_HEIGHT }}
+          {/* PROTOTYPE: "No top nav" moves Chat with Metabot into page headers. */}
+          <PageMetabotButtonProvider
+            isEnabled={isNoTopNav && !isUsageAnalyticsContent}
+          >
+            <KeyboardTriggeredErrorModal />
+            <Flex className={CS.spread} direction="column">
+              <AppBanner />
+              {showAppBar && <AppBarContainer isMinimal={isNoTopNav} />}
+              <Flex
+                className={cx(
+                  CS.overflowHidden,
+                  S.printFullHeight,
+                  S.printOverflowVisible,
+                )}
+                flex="1 1 auto"
+                direction={isAdminApp ? "column" : "row"}
+                pos="relative"
+                bg="background_page-primary"
               >
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
+                {/* One slot for either nav, so the page beside it isn't remounted
+                  when the choice changes. */}
+                {isUsageAnalyticsContent ? (
+                  <Suspense fallback={null}>
+                    <MonitorNavbar />
+                  </Suspense>
+                ) : (
+                  isNavBarEnabled && <Navbar />
+                )}
+                <Box
+                  component="main"
+                  ref={setViewportElement}
+                  className={cx(CS.overflowAuto, S.printOverflowVisible)}
+                  w="100%"
+                  h="100%"
+                  pos="relative"
+                  style={{ scrollMarginTop: APP_BAR_HEIGHT }}
                 >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                </ContentViewportContext.Provider>
-              </Box>
-              <UndoListing />
-              <StatusListing />
-              <NewModals />
-              <EmbedSetupModals />
-              <Metabot
-                hide={
-                  isAdminApp ||
-                  isDataStudioApp ||
-                  isMonitorApp ||
-                  isEmbeddingHubApp ||
-                  isDataApp
-                }
-              />
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                  </ContentViewportContext.Provider>
+                  <PageMetabotButtonFallback />
+                </Box>
+                <UndoListing />
+                <StatusListing />
+                <NewModals />
+                <EmbedSetupModals />
+                <Metabot
+                  hide={
+                    isAdminApp ||
+                    isDataStudioApp ||
+                    isMonitorApp ||
+                    isUsageAnalyticsContent ||
+                    isEmbeddingHubApp ||
+                    isDataApp
+                  }
+                />
+              </Flex>
             </Flex>
-          </Flex>
-          <Palette />
+            <Palette />
+            {isNavBarEnabled && !isAdminApp && !isUsageAnalyticsContent && (
+              <NavVariantPicker />
+            )}
+          </PageMetabotButtonProvider>
         </AppKBarProvider>
       </ScrollToTop>
     </ErrorBoundary>

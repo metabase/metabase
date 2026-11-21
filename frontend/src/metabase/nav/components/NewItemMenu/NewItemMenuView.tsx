@@ -26,6 +26,15 @@ export interface NewItemMenuProps {
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
+  /** PROTOTYPE: leaves out the AI exploration item. */
+  hideAIExploration?: boolean;
+  /**
+   * PROTOTYPE: turns the menu into an overflow menu — these items go above
+   * the new-item options (headed by `itemsLabel`) and `itemsAfter` below.
+   */
+  itemsBefore?: ReactNode;
+  itemsLabel?: string;
+  itemsAfter?: ReactNode;
 }
 
 export const NewItemMenuView = ({
@@ -35,6 +44,10 @@ export const NewItemMenuView = ({
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
   onCloseNavbar,
+  hideAIExploration,
+  itemsBefore,
+  itemsLabel,
+  itemsAfter,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
   const buildQuestion = useQuestionFromOptsBuilder();
@@ -50,7 +63,7 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess && hasNlqAccess) {
+    if (hasDataAccess && hasNlqAccess && !hideAIExploration) {
       items.push(<NewMenuItemAIExploration key="nlq" />);
     }
 
@@ -64,9 +77,10 @@ export const NewItemMenuView = ({
             { mode: "notebook", creationType: "custom_question" },
           )}
           onClick={onCloseNavbar}
-          leftSection={<Icon name="insight" />}
+          // PROTOTYPE: was "Question" with the insight icon.
+          leftSection={<Icon name="notebook" />}
         >
-          {t`Question`}
+          {t`GUI query`}
         </Menu.Item>,
       );
     }
@@ -128,6 +142,7 @@ export const NewItemMenuView = ({
     lastUsedDatabaseId,
     hasDatabaseWithJsonEngine,
     dispatch,
+    hideAIExploration,
     canWriteToCollections,
     hasNlqAccess,
     onCloseNavbar,
@@ -143,7 +158,12 @@ export const NewItemMenuView = ({
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+      <Menu.Dropdown>
+        {itemsBefore}
+        {itemsLabel && <Menu.Label>{itemsLabel}</Menu.Label>}
+        {menuItems}
+        {itemsAfter}
+      </Menu.Dropdown>
     </Menu>
   );
 };

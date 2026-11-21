@@ -94,7 +94,11 @@ export function SidebarLink({
       isSelected={isSelected}
       className={cx(S.nodeRoot, { [S.selected]: isSelected }, className)}
       bdrs="xxs"
-      pl="md"
+      // PROTOTYPE: nav items use the regular weight.
+      fw={400}
+      // Matches the expand toggle in collection rows (2px padding + 12px
+      // chevron), so link icons line up with collection icons.
+      pl="0.875rem"
       aria-label={children}
       aria-selected={isSelected}
       onMouseDown={disableImageDragging}
@@ -124,7 +128,7 @@ export function SidebarLink({
             w="100%"
             miw={0}
             c="inherit"
-            fw={700}
+            fw={400}
             ta="start"
             onClick={onClick}
           >

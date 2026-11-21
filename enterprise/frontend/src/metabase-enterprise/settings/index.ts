@@ -1,4 +1,5 @@
 import { isTest } from "metabase/env";
+import { isPremiumFeatureHiddenByPrototype } from "metabase/nav/prototype/hidden-premium-features";
 import MetabaseSettings from "metabase/utils/settings";
 import type { TokenFeature } from "metabase-types/api";
 
@@ -6,6 +7,10 @@ export function hasPremiumFeature(feature: TokenFeature) {
   const tokenFeatures = MetabaseSettings.get("token-features");
   if (tokenFeatures == null) {
     // This is the SDK, because settings are only loaded asynchronously after the SDK has run.
+    return false;
+  }
+  // PROTOTYPE: git integration simulates some features as gone.
+  if (isPremiumFeatureHiddenByPrototype(feature)) {
     return false;
   }
   const hasFeature = MetabaseSettings.get("token-features")?.[feature];

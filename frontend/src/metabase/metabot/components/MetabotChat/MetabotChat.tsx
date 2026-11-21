@@ -52,6 +52,8 @@ export const MetabotChat = ({
   config = defaultConfig,
   className,
   headerActions,
+  headerLeading,
+  isHeaderNavAligned = false,
   size = "md",
 }: {
   conversationId: string;
@@ -60,6 +62,10 @@ export const MetabotChat = ({
   config?: MetabotChatConfig;
   className?: string;
   headerActions?: ReactNode;
+  /** PROTOTYPE: shown before the title, e.g. an open-nav button. */
+  headerLeading?: ReactNode;
+  /** PROTOTYPE: a 52px header with a bottom border, level with the nav's. */
+  isHeaderNavAligned?: boolean;
   size?: "md" | "lg";
 }) => {
   const [
@@ -102,7 +108,7 @@ export const MetabotChat = ({
     : t`New conversation`;
   const title = hasMessages ? metabot.title || untitledLabel : undefined;
 
-  const shouldShowHeader = headerActions || title;
+  const shouldShowHeader = headerActions || title || headerLeading;
 
   return (
     <Box
@@ -110,7 +116,14 @@ export const MetabotChat = ({
       data-testid="metabot-chat"
     >
       {shouldShowHeader && (
-        <Box className={Styles.header} data-testid="metabot-chat-header">
+        <Box
+          className={cx(
+            Styles.header,
+            isHeaderNavAligned && Styles.headerNavAligned,
+          )}
+          data-testid="metabot-chat-header"
+        >
+          {headerLeading}
           {title && (
             <Text
               className={Styles.headerTitle}

@@ -1,3 +1,4 @@
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
 import { Center, Divider } from "metabase/ui";
 
@@ -106,12 +107,16 @@ export const dashboardActionButtons: Record<
       canEdit,
       openSettingsSidebar,
     }) => (
-      <DashboardActionMenu
-        canResetFilters={canResetFilters}
-        canEdit={canEdit}
-        onResetFilters={onResetFilters}
-        openSettingsSidebar={openSettingsSidebar}
-      />
+      <>
+        {/* PROTOTYPE: "No top nav" puts Chat with Metabot left of "…". */}
+        <PageMetabotButton />
+        <DashboardActionMenu
+          canResetFilters={canResetFilters}
+          canEdit={canEdit}
+          onResetFilters={onResetFilters}
+          openSettingsSidebar={openSettingsSidebar}
+        />
+      </>
     ),
     enabled: ({ isFullscreen, isEditing, isAnalyticsDashboard, dashboard }) =>
       !isFullscreen &&

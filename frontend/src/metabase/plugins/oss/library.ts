@@ -94,6 +94,8 @@ type LibraryPlugin = {
     data: undefined | LibraryCollection | CollectionItem;
     isLoading: boolean;
   };
+  /** PROTOTYPE: creates the Library if it's missing, so it exists by default. */
+  useEnsureLibrary: () => void;
   getCollectionPickerItems: ({
     parentItem,
     items,
@@ -151,6 +153,7 @@ const getDefaultPluginLibrary = (): LibraryPlugin => ({
     title: "",
     description: "",
   }),
+  useEnsureLibrary: () => undefined,
   isLibraryCollectionType: (
     _type?: string | null,
   ): _type is LibraryCollectionType => false,

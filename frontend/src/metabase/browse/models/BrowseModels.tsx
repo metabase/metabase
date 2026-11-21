@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import { useMemo, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useListRecentsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
-import { ForwardRefLink } from "metabase/common/components/Link";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/current-user";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -19,22 +20,22 @@ import {
 import { useSelector } from "metabase/redux";
 import {
   ActionIcon,
+  Alert,
   Box,
   Button,
   Flex,
   Group,
   Icon,
   Stack,
-  Text,
   Title,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import S from "../components/BrowseContainer.module.css";
 
 import { ModelsVideo } from "./EmptyStates";
-import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
 import { trackNewModelInitiated } from "./analytics";
@@ -114,6 +115,8 @@ export const BrowseModels = () => {
                   setModelFilters={setModelFilters}
                 />
               )}
+              {/* PROTOTYPE: "No top nav" puts Chat with Metabot last. */}
+              <PageMetabotButton />
             </Group>
           </Flex>
         </Flex>
@@ -121,6 +124,17 @@ export const BrowseModels = () => {
       <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
         <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="xl" gap="lg" w="100%">
+            <Alert color="core-brand" icon={<Icon name="info" />}>
+              {jt`Models are considered a legacy feature, and we'd recommend using ${(
+                <Link
+                  key="transforms"
+                  to={Urls.transformList()}
+                  variant="brand"
+                >
+                  {t`transforms`}
+                </Link>
+              )} instead.`}
+            </Alert>
             {isEmpty ? (
               <Stack gap="xl" align="center" data-testid="empty-state">
                 {showMetabaseLinks && (
@@ -128,16 +142,6 @@ export const BrowseModels = () => {
                     <ModelsVideo autoplay={0} />
                   </Box>
                 )}
-                <Stack gap="xxs" maw="28rem">
-                  <Title
-                    order={2}
-                    ta="center"
-                  >{t`Create models to clean up and combine tables to make your data easier to explore`}</Title>
-                  <Text
-                    ta="center"
-                    lh="1.25rem"
-                  >{t`Models are somewhat like virtual tables: do all your joins and custom columns once, save it as a model, then query it like a table.`}</Text>
-                </Stack>
                 {showMetabaseLinks && (
                   <Button
                     component={ExternalLink}
@@ -148,7 +152,6 @@ export const BrowseModels = () => {
               </Stack>
             ) : (
               <>
-                <ModelExplanationBanner />
                 <DelayedLoadingAndErrorWrapper
                   error={error}
                   loading={isLoading}

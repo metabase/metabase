@@ -7,6 +7,7 @@ import {
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
+import { PageMetabotButton } from "metabase/nav/prototype/PageMetabotButton";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
@@ -116,6 +117,8 @@ export const CollectionHeader = ({
             onUpdateCollection={handleUpdateCollection}
             onFilterByType={onFilterByType}
           />
+          {/* PROTOTYPE: left of the "…" menu, or last when there's none. */}
+          <PageMetabotButton />
           {showCollectionMenu && (
             <CollectionMenu
               collection={collection}

@@ -16,6 +16,7 @@ import { getUser } from "metabase/current-user";
 import { getIsSidebarOpen } from "metabase/documents/selectors";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { AppBar as AppBarView } from "metabase/nav/components/AppBar";
+import type { MinimalAppBarLayout } from "metabase/nav/components/AppBar/AppBarLarge";
 import { CollectionBreadcrumbs } from "metabase/nav/containers/CollectionBreadcrumbs";
 import { isQuestionPath } from "metabase/nav/containers/MainNavbar/getSelectedItems";
 import { getOriginalQuestion, getQuestion } from "metabase/query_builder";
@@ -46,7 +47,36 @@ export function getSearchResultSelection(
   return { type: "navigate", url: modelToUrl(result) };
 }
 
-export function AppBarContainer() {
+/**
+ * PROTOTYPE: how the "No top nav" minimal bar fits the page under it: the
+ * page's background, so the bar blends in, and — on collections and
+ * dashboards — the title its breadcrumbs line up with.
+ */
+function getMinimalAppBarLayout(pathname: string): MinimalAppBarLayout {
+  if (pathname.startsWith("/collection/")) {
+    return {
+      background: "background_page-secondary",
+      alignWithSelector: '[data-testid="collection-name-heading"]',
+    };
+  }
+  if (pathname.startsWith("/dashboard/")) {
+    return {
+      background: "background_page-primary",
+      alignWithSelector: '[data-testid="dashboard-name-heading"]',
+    };
+  }
+  const isSecondaryPage =
+    pathname === "/" ||
+    pathname.startsWith("/browse") ||
+    pathname.startsWith("/trash");
+  return {
+    background: isSecondaryPage
+      ? "background_page-secondary"
+      : "background_page-primary",
+  };
+}
+
+export function AppBarContainer({ isMinimal }: { isMinimal?: boolean }) {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -57,6 +87,9 @@ export function AppBarContainer() {
   const routerProps = { location };
   const collectionId =
     useInitialCollectionId({ location, params }) ?? undefined;
+  const minimalLayout = isMinimal
+    ? getMinimalAppBarLayout(location.pathname)
+    : undefined;
 
   const currentUser = useSelector(getUser);
   const isNavBarOpen = useSelector(getIsNavbarOpen);
@@ -149,6 +182,8 @@ export function AppBarContainer() {
         />
       }
       onSearchItemSelect={onSearchItemSelect}
+      isMinimal={isMinimal}
+      minimalLayout={minimalLayout}
     />
   );
 }

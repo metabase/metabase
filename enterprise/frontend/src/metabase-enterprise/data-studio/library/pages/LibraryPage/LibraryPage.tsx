@@ -8,17 +8,18 @@ import {
   type CollectionRowModalState,
 } from "metabase/common/collections/components/CollectionRowModal";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { getUserIsAdmin } from "metabase/current-user";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
+import { useSelector } from "metabase/redux";
 import {
   TableModal,
   type TableModalState,
 } from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 
-import { LibraryEmptyState } from "../../components/LibraryEmptyState";
 import { useLibraryCollections } from "../../hooks/use-library-collections";
 import type { LibrarySearchModel } from "../../hooks/use-library-search-results";
 
@@ -32,6 +33,11 @@ import {
 } from "./utils";
 
 const SEARCH_MODELS: LibrarySearchModel[] = ["table", "metric"];
+const TABLE_SEARCH_MODELS: LibrarySearchModel[] = ["table"];
+const METRIC_SEARCH_MODELS: LibrarySearchModel[] = ["metric"];
+
+/** One Library section on its own page, or both when omitted. */
+type LibraryPageSection = Extract<LibrarySection, "data" | "metrics">;
 
 function getTrashMessage(section: LibrarySection, count: number) {
   return section === "data"
@@ -39,17 +45,28 @@ function getTrashMessage(section: LibrarySection, count: number) {
     : undefined;
 }
 
-export function LibraryPage() {
+export function LibraryPage({ section }: { section?: LibraryPageSection }) {
   const hasLibraryFeature = useHasTokenFeature("library");
 
   if (!hasLibraryFeature) {
     return <LibraryUpsellPage />;
   }
 
-  return <LibraryPageContent />;
+  return <LibraryPageContent section={section} />;
 }
 
-function LibraryPageContent() {
+export function LibraryTablesPage() {
+  return <LibraryPage section="data" />;
+}
+
+export function LibraryMetricsPage() {
+  return <LibraryPage section="metrics" />;
+}
+
+function LibraryPageContent({ section }: { section?: LibraryPageSection }) {
+  const showTables = section !== "metrics";
+  const showMetrics = section !== "data";
+  const isAdmin = useSelector(getUserIsAdmin);
   const [searchQuery, setSearchQuery] = useState("");
   const [collectionModal, setCollectionModal] =
     useState<CollectionRowModalState>();
@@ -77,7 +94,10 @@ function LibraryPageContent() {
     error: tablesError,
     watchRows: watchTableRows,
     isChildrenLoading: isTableChildrenLoading,
-  } = useLibraryCollectionTree(tableCollection, "data");
+  } = useLibraryCollectionTree(
+    showTables ? tableCollection : undefined,
+    "data",
+  );
   const {
     tree: metricsTree,
     isLoading: isLoadingMetrics,
@@ -85,7 +105,7 @@ function LibraryPageContent() {
     watchRows: watchMetricRows,
     isChildrenLoading: isMetricChildrenLoading,
   } = useLibraryCollectionTree(
-    metricCollection,
+    showMetrics ? metricCollection : undefined,
     "metrics",
     metricCollection?.id,
   );
@@ -93,7 +113,15 @@ function LibraryPageContent() {
     tree: searchTree,
     isActive: isSearchActive,
     isLoading: isSearchLoading,
-  } = useLibrarySearch(searchQuery, libraryCollection?.id, SEARCH_MODELS);
+  } = useLibrarySearch(
+    searchQuery,
+    libraryCollection?.id,
+    section === "data"
+      ? TABLE_SEARCH_MODELS
+      : section === "metrics"
+        ? METRIC_SEARCH_MODELS
+        : SEARCH_MODELS,
+  );
   useErrorHandling(tablesError || metricsError);
 
   const tree = useMemo(
@@ -102,10 +130,13 @@ function LibraryPageContent() {
   );
   const defaultExpandedIds = useMemo(
     () =>
-      [tableCollection, metricCollection].flatMap((collection) =>
+      [
+        showTables ? tableCollection : undefined,
+        showMetrics ? metricCollection : undefined,
+      ].flatMap((collection) =>
         collection ? [`collection:${collection.id}`] : [],
       ),
-    [tableCollection, metricCollection],
+    [tableCollection, metricCollection, showTables, showMetrics],
   );
   const defaultMoveCollectionIds = useMemo(
     () => ({
@@ -144,30 +175,42 @@ function LibraryPageContent() {
 
   return (
     <LibraryTreePage
-      title={t`Semantic layer`}
+      title={
+        section === "data"
+          ? t`Published datasets`
+          : section === "metrics"
+            ? t`Metrics`
+            : t`Semantic layer`
+      }
       tree={tree}
       isLoading={
         isLoadingCollections ||
         isLoadingTables ||
         isLoadingMetrics ||
-        isSearchLoading
+        isSearchLoading ||
+        // Data Studio creates a missing Library for admins; wait for it.
+        (isAdmin && !libraryCollection)
       }
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
-      emptyMessage={t`No tables or metrics yet`}
+      emptyMessage={
+        section === "data"
+          ? t`No published tables yet`
+          : section === "metrics"
+            ? t`No metrics yet`
+            : t`No tables or metrics yet`
+      }
       defaultExpandedIds={defaultExpandedIds}
       defaultMoveCollectionIds={defaultMoveCollectionIds}
-      emptyState={
-        !libraryCollection && !isLoadingCollections ? (
-          <LibraryEmptyState />
-        ) : undefined
-      }
       createMenu={
         <CreateMenu
-          metricCollectionId={writableMetricCollection?.id}
-          canWriteToMetricCollection={!!writableMetricCollection}
-          dataCollectionId={tableCollection?.id}
-          canWriteToDataCollection={!!tableCollection?.can_write}
+          metricCollectionId={
+            showMetrics ? writableMetricCollection?.id : undefined
+          }
+          canWriteToMetricCollection={showMetrics && !!writableMetricCollection}
+          dataCollectionId={showTables ? tableCollection?.id : undefined}
+          canWriteToDataCollection={showTables && !!tableCollection?.can_write}
+          canPublishTable={showTables}
         />
       }
       emptyStateActions={emptyStateActions}
