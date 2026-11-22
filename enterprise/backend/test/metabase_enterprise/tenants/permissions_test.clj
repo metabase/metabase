@@ -157,7 +157,7 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant users cannot be made group managers"
                                 (perms-group-membership/update-permissions-group-memberships!
                                  [{:id               (t2/select-one-pk :model/PermissionsGroupMembership
-                                                   :user_id tenant-user-id :group_id tenant-group-id)
+                                                                       :user_id tenant-user-id :group_id tenant-group-id)
                                    :is_group_manager true}]))))
         (testing "removing a tenant user from All tenant users is refused"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"'All tenant users' group"

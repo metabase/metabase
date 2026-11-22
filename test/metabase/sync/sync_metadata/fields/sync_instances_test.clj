@@ -200,14 +200,14 @@
 (deftest auto-cruft-all-fields-test
   (testing "Make sure a db's settings.auto_cruft_fields mark all fields as crufty"
     (run-cruft-test! [".*"]
-                    {:details-only 12})
+                     {:details-only 12})
     (run-cruft-test! (map str (into [] "abcdefghijklmnoqprstuvwxyz"))
-                    {:details-only 12})))
+                     {:details-only 12})))
 
 (deftest auto-cruft-exact-field-name-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty for exact table names"
     (run-cruft-test! ["^details$" "^age$"]
-                    {:normal 10 :details-only 2})))
+                     {:normal 10 :details-only 2})))
 
 (deftest auto-cruft-fields-with-multiple-patterns-test
   (testing "Make sure a db's settings.auto_cruft_fields mark fields as crufty against multiple patterns"
