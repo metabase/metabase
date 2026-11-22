@@ -822,17 +822,15 @@
         (events/publish-event! :event/field-values-create (events/create-event [inserted])))
       (:id (or stored inserted)))))
 
-(mu/defn find-or-create-advanced-field-values! :- [:maybe ::warehouse-schema.schema/field-values]
-  "The advanced FieldValues of the Field with `field-id` and `hash-key`, creating the one `insert-fn` returns when it
-  has none."
-  [field-id  :- ::lib.schema.id/field
-   hash-key  :- :string
-   insert-fn :- fn?]
+(mu/defn create-advanced-field-values! :- [:maybe ::warehouse-schema.schema/field-values]
+  "Create the advanced FieldValues `row` of a Field and `:hash_key`, which the caller computed after finding none, and
+  return it, or the one another thread created meanwhile."
+  [{:keys [field_id hash_key] :as row} :- ::warehouse-schema.schema/field-values.create]
   (t2/with-transaction [_conn]
-    (or (warehouse-schema.db/advanced-field-values field-id hash-key)
-        (let [row (merge (insert-fn) {:field_id field-id, :type :advanced, :hash_key hash-key})]
+    (or (warehouse-schema.db/advanced-field-values field_id hash_key)
+        (let [row (assoc row :type :advanced)]
           (u/prog1 (or (insert-unless-concurrent! row)
-                       (warehouse-schema.db/advanced-field-values field-id hash-key)
+                       (warehouse-schema.db/advanced-field-values field_id hash_key)
                        (warehouse-schema.db/insert-field-values-row! row))
             (events/publish-event! :event/field-values-create (events/create-event [<>])))))))
 

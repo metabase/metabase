@@ -155,8 +155,8 @@
                (field-values/detached-fetch!
                 [:advanced (:id field) hash-key]
                 (fn []
-                  (field-values/find-or-create-advanced-field-values!
-                   (:id field) hash-key #(prepare-advanced-field-values field hash-key constraints extra)))))]
+                  (field-values/create-advanced-field-values!
+                   (prepare-advanced-field-values field hash-key constraints extra)))))]
     ;; If it's expired, delete then try to re-create it
     (if (some-> fv field-values/advanced-field-values-expired?)
       (do
