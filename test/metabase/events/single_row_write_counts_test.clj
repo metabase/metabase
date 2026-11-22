@@ -10,7 +10,8 @@
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.transforms.models.transform :as transform]))
+   [metabase.transforms.models.transform :as transform]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -37,7 +38,25 @@
                             (events.tu/statement-count!
                              #(segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (take n ids))))))]
             (counted 6 1)
-            (is (= (counted 2 2) (counted 6 3)))))))))
+            (is (= (counted 2 2) (counted 6 3)))))
+        (testing "with a definition on the table that some of the segments are already on"
+          (let [mp        (mt/metadata-provider)
+                on-orders (fn [total]
+                            (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                        (lib/> (lib.metadata/field mp (mt/id :orders :total)) total)))
+                on-venues (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                      (lib/= (lib.metadata/field mp (mt/id :venues :price)) 1))
+                counted   (fn [n total]
+                            (segment/update-segments! (mapv (fn [id] {:id id :definition on-venues}) (take n ids)))
+                            (let [definition (on-orders total)]
+                              (segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (take-nth 2 (take n ids)))))
+                            (let [definition (on-orders (inc total))
+                                  rows       (mapv (fn [id] {:id id :definition definition}) (take n ids))]
+                              (events.tu/statement-count! #(segment/update-segments! rows))))]
+            (counted 6 10)
+            (is (= (counted 2 20) (counted 6 30)))
+            (testing "every segment is on the table of its new definition"
+              (is (= #{(mt/id :orders)} (t2/select-fn-set :table_id :model/Segment :id [:in ids]))))))))))
 
 (deftest measure-write-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -63,6 +82,24 @@
                              #(measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (take n ids))))))]
             (counted 6 :total)
             (is (= (counted 2 :subtotal) (counted 6 :tax)))))
+        (testing "an update with a definition on the table that some of the measures are already on"
+          (let [mp        (mt/metadata-provider)
+                on-orders (fn [column]
+                            (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                           (lib/sum (lib.metadata/field mp (mt/id :orders column)))))
+                on-venues (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                         (lib/sum (lib.metadata/field mp (mt/id :venues :price))))
+                counted   (fn [n column]
+                            (measure/update-measures! (mapv (fn [id] {:id id :definition on-venues}) (take n ids)))
+                            (let [definition (on-orders :total)]
+                              (measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (take-nth 2 (take n ids)))))
+                            (let [definition (on-orders column)
+                                  rows       (mapv (fn [id] {:id id :definition definition}) (take n ids))]
+                              (events.tu/statement-count! #(measure/update-measures! rows))))]
+            (counted 6 :subtotal)
+            (is (= (counted 2 :tax) (counted 6 :discount)))
+            (testing "every measure is on the table of its new definition"
+              (is (= #{(mt/id :orders)} (t2/select-fn-set :table_id :model/Measure :id [:in ids]))))))
         (testing "setting the dimensions"
           (let [counted (fn [n]
                           (events.tu/statement-count!

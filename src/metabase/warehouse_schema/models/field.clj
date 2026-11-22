@@ -207,11 +207,9 @@
 
 (t2/define-before-update :model/Field
   [field]
-  (let [changes (t2/changes field)
-        field   (merge field (coercion-changes field changes))]
-    (when (contains? changes :table_id)
-      (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
-    (enforce-effective-type-invariant field)))
+  (when (contains? (t2/changes field) :table_id)
+    (throw (ex-info (tru "You cannot move a Field to another Table.") {:status-code 400})))
+  field)
 
 (defn- check-permission-keys
   "Throws unless `field` has its Table, hydrated or by `:table_id`, which its permission hydrations read."
@@ -535,11 +533,25 @@
           changes
           fields))
 
+(defn- with-derived-types
+  "`row`, an update of the Field `stored`, with the `:coercion_strategy` and `:effective_type` that the row it leaves
+  takes: those that follow a changed strategy or base type, and the base type as effective type of a Field with no
+  strategy whose stored effective type diverges, which only the stored row can tell."
+  [stored row]
+  (if (nil? stored)
+    row
+    (let [field   (merge stored row)
+          derived (enforce-effective-type-invariant
+                   (merge field (coercion-changes field (mi/effective-changes stored (dissoc row :id)))))]
+      (into row
+            (filter (fn [[k v]] (not= v (get field k))))
+            (select-keys derived [:coercion_strategy :effective_type])))))
+
 (defn- update-fields-by-change!
-  "Apply each of `rows`, the id of a Field and the columns to change, with one statement per distinct set of changes,
-  returning the number updated."
-  [rows]
-  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) rows)
+  "Apply each of `rows`, the id of one of the `stored` Fields, `{id row}`, and the columns to change, with the types
+  [[with-derived-types]] adds, with one statement per distinct set of changes, returning the number updated."
+  [stored rows]
+  (reduce + 0 (for [[changes rows] (group-by #(dissoc % :id) (mapv #(with-derived-types (get stored (:id %)) %) rows))
                     :when (seq changes)]
                 (if (= 1 (count rows))
                   (warehouse-schema.db/update-field! (:id (first rows)) changes)
@@ -577,7 +589,7 @@
           (dimension/rename-dimensions-for-fields!
            (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
           (let [changes (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
-            (u/prog1 (update-fields-by-change! rows)
+            (u/prog1 (update-fields-by-change! stored rows)
               (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
                                                 (if-let [previous (stored id)]
                                                   (with-change changes previous (dissoc row :id))

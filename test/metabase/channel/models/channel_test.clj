@@ -6,6 +6,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.schema :as channel.schema]
+   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.notification.test-util :as notification.tu]
@@ -64,6 +65,36 @@
         (is (not (t2/exists? :model/PulseChannel :id pc-id))))
       (testing "will change the name"
         (is (= (format "DEACTIVATED_%d New name" id) (t2/select-one-fn :name :model/Channel :id id)))))))
+
+(deftest deactivated-channels-get-their-own-names-test
+  (mt/with-model-cleanup [:model/Channel]
+    (let [long-name (apply str (repeat 250 "x"))
+          [short-ch long-ch inactive renamed]
+          (models.channel/create-channels!
+           (mapv #(merge notification.tu/default-can-connect-channel %)
+                 [{:name (mt/random-name)}
+                  {:name long-name}
+                  {:name (mt/random-name) :active false}
+                  {:name (mt/random-name)}]))
+          published (atom [])
+          expected  {(:id short-ch) (format "DEACTIVATED_%d %s" (:id short-ch) (:name short-ch))
+                     (:id long-ch)  (subs (format "DEACTIVATED_%d %s" (:id long-ch) long-name) 0 254)
+                     (:id inactive) (:name inactive)
+                     (:id renamed)  (format "DEACTIVATED_%d New name" (:id renamed))}]
+      (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]) event)]
+        (models.channel/update-channels! [{:id (:id short-ch) :active false}
+                                          {:id (:id long-ch) :active false}
+                                          {:id (:id inactive) :active false}
+                                          {:id (:id renamed) :active false :name "New name"}]))
+      (testing "each deactivated channel stores its own name, cut to 254 characters"
+        (is (= expected (t2/select-pk->fn :name :model/Channel :id [:in (keys expected)]))))
+      (testing "the update event shows the stored names of the channels it changes"
+        (is (= (dissoc expected (:id inactive))
+               (into {}
+                     (comp (filter (comp #{:event/channel-update} first))
+                           (mapcat (comp :changes second))
+                           (map (comp (juxt :id :name) :object)))
+                     @published)))))))
 
 (deftest channel-template-email-details-test
   (mt/with-model-cleanup [:model/ChannelTemplate]
@@ -246,11 +277,17 @@
       (testing "creating channels"
         (create! 1)
         (is (= (create! 2) (create! 6))))
-      (testing "deactivating channels costs one statement more per channel, its new name being its own"
-        (let [ids        @created
+      (testing "deactivating channels, some of them already inactive, each getting a name of its own"
+        (let [active     @created
+              inactive   (mapv :id (models.channel/create-channels!
+                                    (vec (repeatedly 4 #(assoc notification.tu/default-can-connect-channel
+                                                               :name (mt/random-name) :active false)))))
+              _          (swap! created into inactive)
               statements (fn [ids]
                            (events.tu/statement-count! (fn [] (models.channel/update-channels! (mapv (fn [id] {:id id :active false}) ids)))))]
-          (is (= (+ (statements (take 2 ids)) 4) (statements (take 6 (drop 2 ids)))))))
+          (statements [(first active)])
+          (is (= (statements [(nth active 1) (first inactive)])
+                 (statements (concat (take 3 (drop 2 active)) (take 3 (rest inactive))))))))
       (finally
         (t2/delete! :model/Channel :id [:in @created])))))
 

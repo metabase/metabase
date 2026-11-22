@@ -24,8 +24,7 @@
 (deftest initial-tags-translated-on-update
   (doseq [type ["hourly" "daily" "weekly" "monthly"]]
     (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-      (t2/update! :model/TransformTag :id (:id tag)
-                  {:name "default2"})
+      (transform-tag/update-transform-tags! [{:id (:id tag) :name "default2"}])
       (is (= "default2"
              (:name (t2/select-one :model/TransformTag :id (:id tag)))))
       (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag)))))))
@@ -34,7 +33,7 @@
   (testing "An update that only touches the timestamp leaves a tag built in"
     (doseq [type ["hourly" "daily" "weekly" "monthly"]]
       (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
-        (t2/update! :model/TransformTag :id (:id tag) {:updated_at (mi/now)})
+        (transform-tag/update-transform-tags! [{:id (:id tag) :updated_at (mi/current-timestamp)}])
         (is (= type (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag))))))))
 
 (deftest data-analyst-tag-access-follows-the-advanced-permissions-feature-test

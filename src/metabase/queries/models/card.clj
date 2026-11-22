@@ -65,7 +65,7 @@
    [metabase.staleness.core :as staleness]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.embed :as embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -554,13 +554,6 @@
                 (map :parameter_id)
                 set)))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:private ^:dynamic *update-baseline-select?*
-  "True when the select is being for the purposes of fetching the current baseline before diffing it in
-  [[t2/update!]]. This can be checked during [[t2/define-after-select]] to restrict certain logic to run only for
-  true, top-level `t2/select*` calls and not for the internal reads during an update."
-  false)
-
 (defn- metadata-provider-fetch?
   "Whether `card` was selected as one of the lib metadata-provider models (`:metadata/card`, `:metadata/metric`, ...)
   rather than as `:model/Card`. Those models `derive` from `:model/Card`, so this after-select runs for them too."
@@ -688,39 +681,40 @@
   (boolean (and (:id card)
                 (some #(contains? card %) card-schema/schema-governed-columns))))
 
+(defn- update-baseline-select?
+  "Whether the select in progress is the one Toucan runs before an update to read the stored rows, which must stay as
+  stored: an upgraded baseline would already read as current, and the update would drop the upgrade from its changes."
+  []
+  (contains? t2.pipeline/*parsed-args* :changes))
+
 (mu/defn- upgrade-card-schema-to-latest :- ::queries.schema/card
   "Run the schema upgrades over a Card row and normalize it."
-  ([card :- ::queries.schema/card]
-   (upgrade-card-schema-to-latest card *update-baseline-select?*))
-  ([card                    :- ::queries.schema/card
-    update-baseline-select? :- :boolean]
-   (->> (b/cond
-          ;; Nothing an upgrade could rewrite was SELECTed, so there is nothing to do and nothing to demand.
-          ;; `after-select` checks this too, to keep odd `report_card` queries out of here entirely.
-          (not (schema-governed-select? card))
-          card
+  [card :- ::queries.schema/card]
+  (->> (b/cond
+         ;; Nothing an upgrade could rewrite was SELECTed, so there is nothing to do and nothing to demand.
+         ;; `after-select` checks this too, to keep odd `report_card` queries out of here entirely.
+         (not (schema-governed-select? card))
+         card
 
-          ;; Fetching some of the "hot" parts of a card but not all of them - error!
-          :let [missing (remove #(contains? card %) card-schema/schema-upgrade-triggers)]
-          (seq missing)
-          (throw (ex-info "Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
-                          {:card-id (:id card)
-                           :missing missing}))
+         ;; Fetching some of the "hot" parts of a card but not all of them - error!
+         :let [missing (remove #(contains? card %) card-schema/schema-upgrade-triggers)]
+         (seq missing)
+         (throw (ex-info "Cannot SELECT a Card with card_schema columns without all columns needed for an upgrade"
+                         {:card-id (:id card)
+                          :missing missing}))
 
-          ;; Skip the schema updates when the select is being done as the baseline for an UPDATE.
-          update-baseline-select?
-          card
+         (update-baseline-select?)
+         card
 
-          ;; All gates passed, so run the schema upgrades.
-          :else
-          (loop [card card]
-            ;; Use >= to allow for downgrades.
-            (if (>= (:card_schema card) current-card-schema-version)
-              card
-              (let [new-version (inc (:card_schema card))]
-                (recur (assoc (upgrade-card-schema-to card new-version)
-                              :card_schema new-version))))))
-        (lib/normalize ::queries.schema/card))))
+         :else
+         (loop [card card]
+           ;; Use >= to allow for downgrades.
+           (if (>= (:card_schema card) current-card-schema-version)
+             card
+             (let [new-version (inc (:card_schema card))]
+               (recur (assoc (upgrade-card-schema-to card new-version)
+                             :card_schema new-version))))))
+       (lib/normalize ::queries.schema/card)))
 
 (defn- with-schema-governed-columns
   "`updates` of Cards, `before` the Cards read through after-select and so upgraded to the current schema, by id, each
@@ -773,29 +767,6 @@
       (analytics/set-gauge! :metabase-card/unique-cards-failed-conversion (count uniques))))
   ;; Always returns the original card.
   card)
-
-(defn- mbql5-conversion-clean-callback [untransformed-card _pre-cleaning-query _post-cleaning-query]
-  (analytics/inc! :metabase-card/conversions-requiring-cleaning)
-  (log/infof "MBQL 4->5 conversion for Card %d had real 'clean' changes"
-             (:id untransformed-card)))
-
-;; Uses [[lib/with-card-clean-hook]] to bind a callback which logs the impact of the cleaning process during
-;; `transform-out`, so that we can log whenever a card gets converted and [[lib.convert/clean]] makes material
-;; changes, which likely indicates a bug.
-(methodical/defmethod t2.pipeline/results-transform [:toucan.result-type/instances :model/Card]
-  [query-type model]
-  (let [xform     (next-method query-type model)
-        baseline? (isa? query-type :toucan.query-type/select.instances.from-update)]
-    (fn xform' [rf]
-      (let [rf' (xform rf)]
-        (fn rf''
-          ([] (rf'))
-          ([acc]
-           (rf' acc))
-          ([acc card]
-           (binding [*update-baseline-select?* baseline?]
-             (lib/with-card-clean-hook (partial mbql5-conversion-clean-callback card)
-               (rf' acc card)))))))))
 
 (t2/define-after-select :model/Card
   [card]
@@ -1243,7 +1214,6 @@
         (cond-> (contains? changes :type) derive-model-display)
         (populate-query-fields (contains? changes :dataset_query))
         (clear-metabot-origin changes)
-        maybe-populate-initially-published-at
         public-sharing/add-public-uuid-prefix-if-changed)))
 
 (defn- delete-notifications-of-cards!
@@ -1997,7 +1967,9 @@
                                      (when following?
                                        (invalidate-cached-results-of-changed-cards! entries))
                                      (delete-model-actions! entries)
-                                     (doseq [[changes group] (group-in-order #(dissoc (:update %) :id) entries)
+                                     (doseq [[changes group] (let [now (mi/current-timestamp)]
+                                                               (group-in-order #(dissoc (embed/with-initially-published-at (:before %) (:update %) now) :id)
+                                                                               entries))
                                              :when           (seq changes)]
                                        (queries.db/update-cards! (mapv (comp :id :update) group) changes))
                                      (sync-field-values! field-ids))

@@ -43,16 +43,6 @@
     tag
     (merge tag (translate-name tag))))
 
-(t2/define-before-update :model/TransformTag [tag]
-  (if (or (nil? (:built_in_type tag))
-          (empty? (dissoc (t2/changes tag) :updated_at)))
-    tag
-    (-> (merge tag
-               (translate-name tag)
-               {:built_in_type nil}
-               (t2/changes tag))
-        (update :name str))))
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (mu/defn tag-id->writable :- [:map-of ms/PositiveInt :boolean]
@@ -156,6 +146,16 @@
            tags))
        []))))
 
+(defn- with-custom-name
+  "`row`, an update of the TransformTag `stored`, with the translated name and the cleared `built_in_type` with which an
+  update that changes anything makes a built-in tag a custom one, as [[updated-tag]] shows it."
+  [stored row]
+  (if (or (nil? (:built_in_type (merge stored row)))
+          (empty? (dissoc (mi/effective-changes stored (dissoc row :id)) :updated_at)))
+    row
+    (-> (merge (translate-name stored) {:built_in_type nil} row)
+        (update :name str))))
+
 (mu/defn update-transform-tags! :- [:sequential ::transforms.schema/transform-tag.update]
   "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction, with
   one statement per distinct change set, publishing their update event. Throws a 400 when a new name is already taken;
@@ -172,9 +172,8 @@
                        (transforms.serialization/rename-taken-tag-names (without-built-in-names rows stored)
                                                                         (transforms.db/tag-names-to-ids))
                        (do (check-names-free rows) rows))]
-         (doseq [[changes group] (group-by #(dissoc % :id) changed)
-                 :when           (seq changes)]
-           (transforms.db/update-tags! (mapv :id group) changes))
+         (doseq [[changes tag-ids] (mi/group-ids-by-changes stored (mapv #(with-custom-name (stored (:id %)) %) changed))]
+           (transforms.db/update-tags! tag-ids changes))
          (events/publish-event! :event/transform-tag-update
                                 (events/update-event stored
                                                      changed

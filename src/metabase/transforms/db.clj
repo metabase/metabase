@@ -283,14 +283,18 @@
   (t2/select-pk->fn :name :model/TransformJob :id [:in job-ids]))
 
 (mu/defn activate-job!
-  "Mark the inactive TransformJob with `job-id` active, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active false} {:active true}))
+  "Mark the inactive TransformJob with `job-id` active, with the other columns of `changes`, returning the number of rows
+  updated."
+  [job-id  :- ms/PositiveInt
+   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
+  (t2/update! :model/TransformJob {:id job-id, :active false} (assoc changes :active true)))
 
 (mu/defn deactivate-job!
-  "Mark the active TransformJob with `job-id` inactive, returning the number of rows updated."
-  [job-id :- ms/PositiveInt]
-  (t2/update! :model/TransformJob {:id job-id, :active true} {:active false}))
+  "Mark the active TransformJob with `job-id` inactive, with the other columns of `changes`, returning the number of rows
+  updated."
+  [job-id  :- ms/PositiveInt
+   changes :- (mut/dissoc ::transforms.schema/transform-job.update :id)]
+  (t2/update! :model/TransformJob {:id job-id, :active true} (assoc changes :active false)))
 
 (mu/defn job-tag-ids
   "The IDs of the tags of the TransformJob with `job-id`."

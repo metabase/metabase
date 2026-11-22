@@ -1699,10 +1699,10 @@
       (is (=? {:source_card_id nil, :query_type :native}
               (t2/select-one :model/Card :id card-id))))))
 
-(deftest before-update-embedding-timestamp-test
-  (testing "maybe-populate-initially-published-at is called"
+(deftest update-cards-embedding-timestamp-test
+  (testing "enabling embedding sets initially_published_at"
     (mt/with-temp [:model/Card {card-id :id} {:enable_embedding false}]
-      (t2/update! :model/Card :id card-id {:enable_embedding true})
+      (card/update-cards! [{:id card-id :enable_embedding true}])
       (let [updated-card (t2/select-one :model/Card :id card-id)]
         (is (some? (:initially_published_at updated-card)))))))
 

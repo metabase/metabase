@@ -260,7 +260,7 @@
 ;;; ---------------------------------------- hook statement guard ----------------------------------------
 
 (doseq [model [::clean-hooks ::reading-before-insert ::reading-before-update ::reading-before-delete
-               ::reading-after-insert ::setting-reading-before-insert]]
+               ::reading-after-insert ::setting-reading-before-insert ::key-deriving-before-update]]
   (derive model :metabase/model)
   (methodical/add-primary-method! #'t2/table-name model (fn [_next-method _model] :setting))
   (methodical/add-primary-method! #'t2/primary-keys model (fn [_next-method _model] [:key])))
@@ -286,6 +286,10 @@
   [row]
   (t2/count :model/User)
   row)
+
+(t2/define-before-update ::key-deriving-before-update
+  [row]
+  (assoc row :value (str (:key row) "-derived")))
 
 (t2/define-before-delete ::reading-before-delete
   [row]
@@ -356,3 +360,21 @@
              (t2/select-one-fn :value :setting :key guard-test-key))))
     (finally
       (t2/delete! :setting :key guard-test-key))))
+
+(deftest before-update-with-different-changes-per-row-throws-test
+  (let [other-key (str guard-test-key "-other")]
+    (try
+      (t2/insert! :setting [{:key guard-test-key, :value "v"} {:key other-key, :value "v"}])
+      (testing "a multi-row update whose hook derives a different value for each row"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"before-update hook of .*key-deriving-before-update returned different changes for the rows of one update \(keys: :value\)"
+                              (t2/update! ::key-deriving-before-update :key [:in [guard-test-key other-key]] {:value "w"})))
+        (is (= #{"v"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+      (testing "a single-row update of the same hook"
+        (t2/update! ::key-deriving-before-update :key guard-test-key {:value "w"})
+        (is (= (str guard-test-key "-derived") (t2/select-one-fn :value :setting :key guard-test-key))))
+      (testing "a multi-row update whose hook gives every row the same changes"
+        (t2/update! ::clean-hooks :key [:in [guard-test-key other-key]] {:value "x"})
+        (is (= #{"x?"} (t2/select-fn-set :value :setting :key [:in [guard-test-key other-key]]))))
+      (finally
+        (t2/delete! :setting :key [:in [guard-test-key other-key]])))))

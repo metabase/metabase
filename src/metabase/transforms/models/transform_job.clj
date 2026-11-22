@@ -64,16 +64,6 @@
     job
     (merge job (translated-name-and-description job))))
 
-(t2/define-before-update :model/TransformJob [job]
-  (if (nil? (:built_in_type job))
-    job
-    (-> (merge job
-               (translated-name-and-description job)
-               {:built_in_type nil}
-               (t2/changes job))
-        (update :name        str)
-        (update :description str))))
-
 ;;; ------------------------------------------------- Permissions --------------------------------------------------
 
 (mu/defn- tags-writable? :- :boolean
@@ -187,6 +177,16 @@
           (update :name str)
           (update :description str)))))
 
+(defn- with-custom-columns
+  "`row`, an update of the TransformJob `stored`, with the translated name and description and the cleared
+  `built_in_type` with which an update makes a built-in job a custom one, as [[updated-job]] shows it."
+  [stored row]
+  (if (nil? (:built_in_type (merge stored row)))
+    row
+    (-> (merge (translated-name-and-description stored) {:built_in_type nil} row)
+        (update :name str)
+        (update :description str))))
+
 (defn- without-built-in-names
   "`rows`, the update rows of an import, without the name and description of those of a built-in job in `stored`."
   [rows stored]
@@ -210,9 +210,8 @@
              stored  (u/index-by :id (transforms.db/jobs-by-ids ids))
              changed (cond-> rows
                        (= :import (:writer opts)) (without-built-in-names stored))]
-         (doseq [[changes group] (group-by #(dissoc % :id) changed)
-                 :when           (seq changes)]
-           (transforms.db/update-jobs! (mapv :id group) changes))
+         (doseq [[changes job-ids] (mi/group-ids-by-changes stored (mapv #(with-custom-columns (stored (:id %)) %) changed))]
+           (transforms.db/update-jobs! job-ids changes))
          (sync-triggers! (transforms.db/jobs-by-ids ids))
          (events/publish-event! :event/transform-job-update
                                 (events/update-event stored
@@ -242,7 +241,7 @@
    job-id :- ms/PositiveInt]
   (t2/with-transaction [_conn]
     (when-let [previous (transforms.db/job job-id)]
-      (when (pos? (flip! job-id))
+      (when (pos? (flip! job-id (with-custom-columns previous {:active (not (:active previous))})))
         (sync-triggers! [(assoc previous :active (not (:active previous)))])
         (events/publish-event! :event/transform-job-update
                                (events/update-event {job-id previous}

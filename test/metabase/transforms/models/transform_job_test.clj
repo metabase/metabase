@@ -51,8 +51,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob :id (:id job)
-                    {:name "default2"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :name "default2"}])
         (is (= "default2"
                (str (:name (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:description translations))
@@ -64,8 +63,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob :id (:id job)
-                    {:description "default description 2"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :description "default description 2"}])
         (is (= "default description 2"
                (str (:description (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:name translations))
@@ -77,8 +75,7 @@
                       :description "default description"
                       :schedule "0 0 0 * * ?"
                       :built_in_type type}]
-        (t2/update! :model/TransformJob :id (:id job)
-                    {:schedule "0 0 1 * * ?"})
+        (transform-job/update-transform-jobs! [{:id (:id job) :schedule "0 0 1 * * ?"}])
         (is (= (str (:description translations))
                (str (:description (t2/select-one :model/TransformJob :id (:id job))))))
         (is (= (str (:name translations))
@@ -170,6 +167,32 @@
             (is (= (delete! (take 2 (drop 1 ids))) (delete! (take 6 (drop 3 ids)))))))
         (finally
           (t2/delete! :model/TransformJob :id [:in @created]))))))
+
+(deftest built-in-job-update-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp-scheduler!
+    (mt/with-model-cleanup [:model/TransformJob]
+      (let [jobs    (fn [n]
+                      (mapv :id (transform-job/create-transform-jobs!
+                                 (vec (repeatedly n #(hash-map :name (mt/random-name) :schedule "0 0 0 * * ? *"))))))
+            built   (fn [ids built-in-type]
+                      (t2/update! :model/TransformJob :id [:in ids] {:built_in_type built-in-type})
+                      ids)
+            counted (fn [ids]
+                      (let [rows (mapv (fn [id] {:id id :schedule "0 0 1 * * ? *"}) ids)]
+                        (events.tu/statement-count! #(transform-job/update-transform-jobs! rows))))
+            warm-up (jobs 1)
+            two     (into (built (jobs 1) "hourly") (jobs 1))
+            six     (into (built (jobs 3) "hourly") (jobs 3))]
+        (counted warm-up)
+        (is (= (counted two) (counted six)))
+        (testing "each built-in job becomes a custom one with its translated name and description"
+          (is (= {:name        (str (get-in values ["hourly" :name]))
+                  :description (str (get-in values ["hourly" :description]))
+                  :built_in_type nil}
+                 (-> (t2/select-one :model/TransformJob :id (first six))
+                     (select-keys [:name :description :built_in_type])
+                     (update :name str)
+                     (update :description str)))))))))
 
 (deftest create-transform-jobs-with-different-key-sets-test
   (mt/with-model-cleanup [:model/TransformJob]

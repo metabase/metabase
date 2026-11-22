@@ -51,7 +51,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.staleness.core :as staleness]
    [metabase.util :as u]
-   [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.embed :as embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -110,9 +110,7 @@
 
 (t2/define-before-update :model/Dashboard
   [row]
-  (-> row
-      maybe-populate-initially-published-at
-      public-sharing/add-public-uuid-prefix-if-changed))
+  (public-sharing/add-public-uuid-prefix-if-changed row))
 
 (mu/defn- migrate-parameter [p :- ::parameters.schema/parameter]
   (cond-> p
@@ -412,7 +410,8 @@
   instance read before, and return the rows with the `archived_directly` that a change of `archived` gives. A Dashboard
   moved to another Collection moves its dashboard questions along and the new Collection must be able to hold it, a
   change of `parameters` updates its ParameterCards, and a change of `archived` archives or restores its dashboard
-  questions. The rows with the same columns are one statement."
+  questions. The rows that get the same changes against `stored`, with the `initially_published_at` a first embedding
+  sets, are one statement."
   [stored rows]
   (let [archived-ids     (collection/archived-collection-ids
                           (into [] (keep (fn [row]
@@ -432,9 +431,9 @@
     (when (seq reparameterised)
       (parameter-card/sync-parameter-cards!
        "dashboard" (mapv (juxt :id :parameters) reparameterised)))
-    (doseq [[changes group] (group-by #(dissoc % :id) rows)
-            :when (seq changes)]
-      (dashboards.db/update-dashboards! (mapv :id group) changes))
+    (doseq [[changes ids] (let [now (mi/current-timestamp)]
+                            (mi/group-ids-by-changes stored (mapv #(embed/with-initially-published-at (get stored (:id %)) % now) rows)))]
+      (dashboards.db/update-dashboards! ids changes))
     (set-questions-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
     rows))
 

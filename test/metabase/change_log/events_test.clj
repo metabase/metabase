@@ -153,14 +153,14 @@
                 (is (not= (:updated_at @card) @updated))))))))))
 
 (deftest split-update-test
-  (testing "an update that Toucan runs as one UPDATE per row logs each row once"
+  (testing "an update whose rows get different changes, one statement for each set, logs each row once"
     (when config/ee-available?
       (mt/with-premium-features #{:change-log}
         (mt/with-temp [:model/Database db {}
                        :model/Table    t  {:db_id (:id db)}
                        :model/Field    f1 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}
                        :model/Field    f2 {:table_id (:id t), :base_type :type/Text, :effective_type :type/Text}]
-          ;; before-update moves f2's effective_type back to its base_type, so the two rows get different changes
+          ;; update-fields! moves f2's effective_type back to its base_type, so the two rows get different changes
           (t2/update! :metabase_field :id (:id f2) {:effective_type "type/Integer"})
           (is (= [["metabase_field" (:id f1) "update"]
                   ["metabase_field" (:id f2) "update"]]

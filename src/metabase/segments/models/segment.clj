@@ -165,6 +165,14 @@
     (contains? changes :definition) (assoc :definition (lib-be/normalize-query (:definition changes))
                                            :table_id   (definition-table-id (:definition changes)))))
 
+(defn- with-definition-table-id
+  "`row`, an update of the Segment `stored`, with the `table_id` that the hook derives when the update changes the
+  definition, so that rows already on that table are grouped with the others by what they change."
+  [stored row]
+  (cond-> row
+    (contains? (mi/effective-changes stored (select-keys row [:definition])) :definition)
+    (assoc :table_id (definition-table-id (:definition row)))))
+
 (mr/def ::write-opts
   "The options of the update of Segments: `:writer`, who writes when it matters, and the context of the events."
   [:maybe
@@ -186,9 +194,8 @@
        (let [stored (segments.db/segments-by-id (mapv :id rows))
              rows*  (filterv #(contains? stored (:id %)) rows)]
          (check-changed-definitions rows* stored)
-         (doseq [[changes group] (group-by #(dissoc % :id) rows*)]
-           (when (seq changes)
-             (segments.db/update-segments! (mapv :id group) changes)))
+         (doseq [[changes ids] (mi/group-ids-by-changes stored (mapv #(with-definition-table-id (stored (:id %)) %) rows*))]
+           (segments.db/update-segments! ids changes))
          (events/publish-event! :event/segment-update
                                 (events/update-event stored
                                                      rows*

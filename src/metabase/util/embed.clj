@@ -41,3 +41,12 @@
   (cond-> card-or-dashboard
     (and (true? enable_embedding) (nil? initially_published_at))
     (assoc :initially_published_at :%now)))
+
+(defn with-initially-published-at
+  "`changes`, an update of the Card or Dashboard `stored`, with `now` as its `initially_published_at` when the row they
+  leave is embedded and was never published, which only the stored row can tell."
+  [stored changes now]
+  (let [{:keys [enable_embedding initially_published_at]} (merge stored changes)]
+    (cond-> changes
+      (and (true? enable_embedding) (nil? initially_published_at))
+      (assoc :initially_published_at now))))

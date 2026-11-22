@@ -2,6 +2,7 @@
   "Tests for specific behavior related to the Field model."
   (:require
    [clojure.test :refer :all]
+   [metabase.events.test-util :as events.tu]
    [metabase.models.interface :as mi]
    [metabase.permissions.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
@@ -149,8 +150,8 @@
                                                 :name "broken_on_update"
                                                 :base_type :type/Number
                                                 :effective_type :type/Number}]
-      (t2/update! :model/Field :id field-id {:effective_type    :type/Text
-                                             :coercion_strategy nil})
+      (field/update-fields! [{:id field-id :effective_type    :type/Text
+                              :coercion_strategy nil}])
       (is (=? {:base_type      :type/Number
                :effective_type :type/Number}
               (t2/select-one :model/Field :id field-id))))))
@@ -164,8 +165,8 @@
                                                 :name "with_coercion"
                                                 :base_type :type/Text
                                                 :effective_type :type/Text}]
-      (t2/update! :model/Field :id field-id {:effective_type    :type/Number
-                                             :coercion_strategy :Coercion/String->Float})
+      (field/update-fields! [{:id field-id :effective_type    :type/Number
+                              :coercion_strategy :Coercion/String->Float}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Number
                :coercion_strategy :Coercion/String->Float}
@@ -182,7 +183,7 @@
                                                 :effective_type    :type/Number
                                                 :coercion_strategy :Coercion/String->Float}]
       ;; user clears the coercion but doesn't reset effective_type — guard catches this
-      (t2/update! :model/Field :id field-id {:coercion_strategy nil})
+      (field/update-fields! [{:id field-id :coercion_strategy nil}])
       (is (=? {:base_type         :type/Text
                :effective_type    :type/Text
                :coercion_strategy nil}
@@ -229,7 +230,7 @@
                          :effective_type    :type/Integer
                          :position          0
                          :database_position 0})))]
-             ["t2/update! sets effective_type to differ from base_type without coercion"
+             ["update-fields! sets effective_type to differ from base_type without coercion"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -241,9 +242,9 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:effective_type :type/Text})
+                  (field/update-fields! [{:id id :effective_type :type/Text}])
                   id))]
-             ["t2/update! clears coercion_strategy but leaves effective_type stale"
+             ["update-fields! clears coercion_strategy but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -256,9 +257,9 @@
                                   :coercion_strategy :Coercion/String->Float
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:coercion_strategy nil})
+                  (field/update-fields! [{:id id :coercion_strategy nil}])
                   id))]
-             ["t2/update! changes base_type but leaves effective_type stale"
+             ["update-fields! changes base_type but leaves effective_type stale"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -270,9 +271,9 @@
                                   :effective_type    :type/Text
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:base_type :type/Number})
+                  (field/update-fields! [{:id id :base_type :type/Number}])
                   id))]
-             ["t2/update! sets both effective_type AND coercion_strategy=nil to mismatched values"
+             ["update-fields! sets both effective_type AND coercion_strategy=nil to mismatched values"
               (fn [table-id]
                 (let [id (first (t2/insert-returning-pks!
                                  :model/Field
@@ -284,14 +285,35 @@
                                   :effective_type    :type/Number
                                   :position          0
                                   :database_position 0}))]
-                  (t2/update! :model/Field :id id {:effective_type    :type/Text
-                                                   :coercion_strategy nil})
+                  (field/update-fields! [{:id id :effective_type    :type/Text
+                                          :coercion_strategy nil}])
                   id))]]]
       (testing label
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table {table-id :id} {:db_id db-id}]
           (let [field-id (op table-id)]
             (assert-coercion-effective-type-invariant! field-id label)))))))
+
+(deftest update-fields-repairing-effective-types-statement-counts-do-not-grow-with-rows-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table    {table-id :id} {:db_id db-id}]
+    (mt/with-model-cleanup [:model/Field]
+      (let [fields  (fn [n]
+                      (vec (for [_ (range n)]
+                             (first (t2/insert-returning-pks! :model/Field {:table_id       table-id
+                                                                            :name           (mt/random-name)
+                                                                            :base_type      :type/Text
+                                                                            :effective_type :type/Text
+                                                                            :database_type "TEXT" :position 0 :database_position 0})))))
+            counted (fn [ids]
+                      (t2/update! :metabase_field :id [:in (vec (take-nth 2 ids))] {:effective_type "type/Integer"})
+                      (let [rows (mapv (fn [id] {:id id :description "x"}) ids)]
+                        (events.tu/statement-count! #(field/update-fields! rows))))
+            six     (fields 6)]
+        (counted (fields 1))
+        (is (= (counted (fields 2)) (counted six)))
+        (testing "every Field without a coercion has its base type as effective type"
+          (is (= #{:type/Text} (t2/select-fn-set :effective_type :model/Field :id [:in six]))))))))
 
 (deftest data-sensitivity-transform-round-trip-test
   (testing "data_sensitivity is stored as the enum string and read back as a keyword"

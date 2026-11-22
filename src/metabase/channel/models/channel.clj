@@ -118,16 +118,10 @@
 
 (t2/define-before-update :model/Channel
   [channel]
-  (let [changes       (t2/changes channel)
-        deactivation? (false? (:active changes))]
+  (let [changes (t2/changes channel)]
     (when (not= (contains? changes :type) (contains? changes :details))
       (check-type-and-details channel))
-    (cond-> channel
-      deactivation?
-      ;; Channel.name has an unique constraint and it's a useful property for serialization
-      ;; We rename deactivated channels so that new channels can reuse the name
-      ;; Limit to 254 characters to avoid hitting character limit
-      (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id channel) (:name channel)) 254)))))
+    channel))
 
 (defn- check-valid-channel-template
   "Throws unless `channel-template` matches [[::ChannelTemplate]]."
@@ -245,6 +239,12 @@
   [:maybe [:map {:closed true}
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
+(defn- deactivated-name
+  "The name of the Channel with `id` and `channel-name` once deactivated, which frees its unique name for a new Channel,
+  cut to 254 characters."
+  [id channel-name]
+  (u/truncate (format "DEACTIVATED_%d %s" id channel-name) 254))
+
 (def ^:private ChannelUpdate
   "What [[update-channels!]] takes for one Channel: its `:id` and the columns to set."
   [:merge ::channel.schema/channel.update [:map [:id ms/PositiveInt]]])
@@ -252,7 +252,7 @@
 (mu/defn update-channels! :- [:sequential ChannelUpdate]
   "Apply the changes in `rows`, each the `:id` of a Channel and the columns to set, with one statement per distinct
   change set, publishing the events of the writes, and return `rows`. Deactivating an active Channel first deletes its
-  PulseChannels."
+  PulseChannels and renames it with [[deactivated-name]]."
   ([rows :- [:sequential ChannelUpdate]]
    (update-channels! rows nil))
   ([rows :- [:sequential ChannelUpdate]
@@ -261,26 +261,32 @@
      (t2/with-transaction [_conn]
        (let [changes-by-id (into {} (map (fn [row] [(:id row) (dissoc row :id)])) rows)
              previous      (m/index-by :id (channel.db/channels-by-ids (vec (keys changes-by-id))))
-             active-ids    (not-empty (into [] (comp (filter (comp false? :active val))
+             deactivated   (not-empty (into [] (comp (filter (comp false? :active val))
                                                      (map key)
                                                      (filter #(:active (get previous %))))
-                                            changes-by-id))]
-         (when active-ids
+                                            changes-by-id))
+             names         (into {} (map (fn [id]
+                                           [id (deactivated-name id (:name (merge (get previous id) (get changes-by-id id))))]))
+                                 deactivated)]
+         (when deactivated
            (t2/resolve-model :model/PulseChannel)
-           (delete-for-channels! :model/PulseChannel active-ids opts))
-         (doseq [[changes pairs] (group-by val changes-by-id)
-                 :when           (seq changes)]
-           (channel.db/update-channels! (mapv key pairs) changes))
-         (let [deactivated (not-empty (into [] (comp (filter (fn [[id changes]]
-                                                               (and (false? (:active changes))
-                                                                    (:active (get previous id)))))
-                                                     (map key))
-                                            changes-by-id))]
-           (events/publish-event! :event/channel-update
-                                  (events/update-event previous
-                                                       rows
-                                                       (assoc opts :objects (when deactivated
-                                                                              (m/index-by :id (channel.db/channels-by-ids deactivated))))))))))
+           (delete-for-channels! :model/PulseChannel deactivated opts))
+         (doseq [[changes ids] (mi/group-ids-by-changes previous
+                                                        (map (fn [[id changes]]
+                                                               (assoc (cond-> changes (contains? names id) (dissoc :name))
+                                                                      :id id))
+                                                             changes-by-id))]
+           (let [renamed (filterv #(contains? names %) ids)
+                 plain   (filterv #(not (contains? names %)) ids)]
+             (when (seq renamed)
+               (channel.db/update-channels-with-names! (select-keys names renamed) changes))
+             (when (seq plain)
+               (channel.db/update-channels! plain changes))))
+         (events/publish-event! :event/channel-update
+                                (events/update-event previous
+                                                     rows
+                                                     (assoc opts :objects (when deactivated
+                                                                            (m/index-by :id (channel.db/channels-by-ids deactivated)))))))))
    rows))
 
 (mu/defn delete-channels! :- :nil

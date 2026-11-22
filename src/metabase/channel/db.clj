@@ -55,6 +55,17 @@
   (t2/update! :model/Channel :id [:in [:auto/param ids]] changes)
   nil)
 
+(mu/defn update-channels-with-names!
+  "Apply `changes` and the new name of each Channel in `names`, a map from id to name, to those Channels in one statement."
+  [names   :- [:map-of {:min 1} ms/PositiveInt :string]
+   changes :- ChannelRow]
+  (t2/update! :model/Channel :id [:in [:auto/param (vec (keys names))]]
+              (assoc changes :name (into [:case]
+                                         (mapcat (fn [[id channel-name]]
+                                                   [[:= :id [:auto/param id]] [:auto/param channel-name]]))
+                                         names)))
+  nil)
+
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."
   []

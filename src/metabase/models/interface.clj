@@ -38,6 +38,7 @@
    [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
+   [toucan2.pipeline :as t2.pipeline]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.after :as t2.after]
    [toucan2.tools.before-delete :as t2.before-delete]
@@ -587,8 +588,39 @@
          (check-hook-runs-no-statement model phase #(row-fn row)))))
    ::hook-statement-guard))
 
+(defn- differing-change-keys
+  "The keys whose value is not the same in every one of `change-maps`, sorted."
+  [change-maps]
+  (into (sorted-set)
+        (filter (fn [k] (apply not= (map #(get % k ::absent) change-maps))))
+        (into #{} (mapcat keys) change-maps)))
+
+(defn- check-uniform-update-changes
+  "Returns `changes->pk-maps`, what Toucan's before-update step makes of the rows of one update of `model`, and throws
+  when it holds more than one set of changes, for which Toucan runs one UPDATE per row."
+  [model changes->pk-maps]
+  (when (> (count changes->pk-maps) 1)
+    (let [ks (differing-change-keys (keys changes->pk-maps))]
+      (throw (ex-info (format (str "The before-update hook of %s returned different changes for the rows of one update "
+                                   "(keys: %s), which makes Toucan run one UPDATE per row; derive it in the write "
+                                   "function and group the rows by the changes they get")
+                              model (str/join ", " ks))
+                      {:model model, :keys ks, :change-sets (count changes->pk-maps)}))))
+  changes->pk-maps)
+
+(defn- install-uniform-update-guard!
+  "Wraps the select with which Toucan runs the before-update hooks of an update of a `:metabase/model` in
+  [[check-uniform-update-changes]]."
+  []
+  (methodical/add-aux-method-with-unique-key!
+   #'t2.pipeline/transduce-query :around [::t2.before-update/select-for-before-update :metabase/model :default]
+   (fn [next-method rf query-type model parsed-args resolved-query]
+     (check-uniform-update-changes model (next-method rf query-type model parsed-args resolved-query)))
+   ::uniform-update-guard))
+
 (when (or config/is-dev? config/is-test?)
-  (install-hook-statement-guard!))
+  (install-hook-statement-guard!)
+  (install-uniform-update-guard!))
 
 ;; --- helper fns
 (defn changes-with-pk
@@ -597,6 +629,24 @@
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
                                         (t2.protocols/changes row))))
+
+(defn effective-changes
+  "The columns of `changes` whose value differs from the one in `stored`, the row as read, compared as Toucan compares
+  them before an update."
+  [stored changes]
+  (into {} (remove (fn [[k v]] (= (get stored k ::absent) v))) changes))
+
+(defn group-ids-by-changes
+  "The `rows` to update, each an `:id` and the columns to set, as `[changes ids]` pairs in the order the changes first
+  appear, where the changes of a row are its [[effective-changes]] against its row in `stored`, a map from id to the row
+  as read; rows left with no change are dropped. Toucan runs one UPDATE for each pair."
+  [stored rows]
+  (let [pairs (into [] (keep (fn [{:keys [id] :as row}]
+                               (when-let [changes (not-empty (effective-changes (get stored id) (dissoc row :id)))]
+                                 [changes id])))
+                    rows)
+        ids   (reduce (fn [m [changes id]] (update m changes (fnil conj []) id)) {} pairs)]
+    (into [] (comp (map first) (distinct) (map (fn [changes] [changes (get ids changes)]))) pairs)))
 
 (defn do-after-select
   "Do [[toucan2.tools.after-select]] stuff for row map `object` using methods for `modelable`."
