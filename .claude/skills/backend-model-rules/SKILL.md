@@ -302,8 +302,18 @@ required by its module's `init.clj`.
   `(mt/with-model-cleanup [:model/Card] (let [[card] (card/create-cards! [{...}])] ...))`.
 - No manual deletes. One exception: a test that syncs nested Fields ends with `database/delete-databases!`, since on
   MySQL the Field parent reference is ON DELETE RESTRICT and a plain delete cannot remove them.
-- Pin statement counts with consumers off, `(metabase.events.test-util/statement-count! thunk)`, so the number does
-  not depend on test order, and assert the same count at two sizes.
+- **Every write function has a statement-count test.** Call it with 2 rows and with 6 rows and assert the same number
+  of statements, counted by Toucan's own hook `t2/with-call-count` through
+  `(metabase.events.test-util/statement-count! thunk)`, which turns consumers off so the number does not depend on
+  test order. Take one discarded measurement first so one-time cache reads do not count. A function that fails has an
+  N+1: fix the function, never the test.
+
+      (deftest write-function-statement-counts-do-not-grow-with-rows-test
+        (mt/with-model-cleanup [:model/TransformTag]
+          (let [create! #(transform-tag/create-transform-tags! (mapv (fn [_] {:name (mt/random-name)}) (range %)))
+                counted (fn [n] (events.tu/statement-count! #(create! n)))]
+            (counted 1)
+            (is (= (counted 2) (counted 6))))))
 - Call a failure order-dependent only if the test passes alone on the branch and alone on the base.
 - Locally, run single namespaces with a 10-minute timeout (`./bin/test-agent :only '[...]'`); bigger runs go to CI.
   Before handing off: `./bin/mage kondo <file>` and `./bin/mage fix-modules-config`.
