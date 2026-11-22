@@ -893,6 +893,7 @@
                     :model/ModerationReview
                     :model/ParameterCard
                     :model/Pulse
+                    :model/PulseCard
                     :model/Revision}}
 
   dashboards.rest

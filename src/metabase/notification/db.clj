@@ -228,7 +228,7 @@
   "Insert `notification-card` and return the inserted instance."
   [notification-card :- NotificationCardRow]
   (u/prog1 (t2/insert-returning-instance! :model/NotificationCard notification-card)
-    (change-log/log-rows! :model/NotificationCard :insert :id (:id <>))))
+    (change-log/log-changes! :model/NotificationCard :insert [<>])))
 
 (mu/defn delete-notification-cards!
   "Delete the NotificationCards with `notification-card-ids`, returning the number deleted."
@@ -278,7 +278,7 @@
   "Insert the NotificationSubscription `subscriptions`, returning the inserted instances."
   [subscriptions :- [:sequential NotificationSubscriptionRow]]
   (u/prog1 (t2/insert-returning-instances! :model/NotificationSubscription subscriptions)
-    (change-log/log-rows! :model/NotificationSubscription :insert :id [:in (mapv :id <>)])))
+    (change-log/log-changes! :model/NotificationSubscription :insert <>)))
 
 ;;; ------------------------------------ NotificationHandler / Recipient ------------------------------------
 
@@ -308,7 +308,7 @@
   "Insert the NotificationHandler `handlers`, returning the inserted instances in their order."
   [handlers :- [:sequential {:min 1} NotificationHandlerRow]]
   (u/prog1 (t2/insert-returning-instances! :model/NotificationHandler handlers)
-    (change-log/log-rows! :model/NotificationHandler :insert :id [:in (mapv :id <>)])))
+    (change-log/log-changes! :model/NotificationHandler :insert <>)))
 
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
@@ -332,7 +332,7 @@
   "Insert the NotificationRecipient `recipients`, returning the inserted instances."
   [recipients :- [:sequential {:min 1} NotificationRecipientRow]]
   (u/prog1 (t2/insert-returning-instances! :model/NotificationRecipient recipients)
-    (change-log/log-rows! :model/NotificationRecipient :insert :id [:in (mapv :id <>)])))
+    (change-log/log-changes! :model/NotificationRecipient :insert <>)))
 
 (mu/defn recipient
   "The NotificationRecipient with `recipient-id`, or nil."

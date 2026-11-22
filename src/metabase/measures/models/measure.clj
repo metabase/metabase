@@ -314,7 +314,7 @@
 (defmethod replacement/spec :model/Measure [_model]
   {:upgrade-field-refs measures.replacement/upgrade-field-refs
    :swap-source        measures.replacement/swap-source
-   :update!            (fn [id changes] (update-measures! [(assoc changes :id id)]))})
+   :update!            update-measures!})
 
 (defmethod eid-translation/spec :model/Measure [_model]
   {:names [:measure]})

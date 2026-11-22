@@ -3,6 +3,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.queries.models.card :as card]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
@@ -31,23 +33,20 @@
       @updated-field-names)))
 
 (defn- basic-native-query []
-  {:database (data/id)
-   :type     "native"
-   :native   {:query "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"}})
+  (lib/native-query (mt/metadata-provider) "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"))
 
 (defn- native-query-with-template-tag [field-or-id]
-  {:database (field/field-id->database-id (u/the-id field-or-id))
-   :type     "native"
-   :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
-              :template-tags {:category {:name         "category"
-                                         :display-name "Category"
-                                         :id           "_category_"
-                                         :type         "dimension"
-                                         :field-id     (u/the-id field-or-id)
-                                         :widget-type  "category"
-                                         :default      "Widget"}}}})
+  (let [mp (lib-be/application-database-metadata-provider (field/field-id->database-id (u/the-id field-or-id)))]
+    (-> (lib/native-query mp "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}")
+        (lib/with-template-tags {"category" {:name         "category"
+                                             :display-name "Category"
+                                             :id           "_category_"
+                                             :type         :dimension
+                                             :field-id     (u/the-id field-or-id)
+                                             :widget-type  :category
+                                             :default      "Widget"}}))))
 
-(defn- do-with-updated-fields-for-card! [options & [f]]
+(defn- do-with-tracked-field-values! [options f]
   (mt/with-temp [:model/Database db    (:db options)
                  :model/Table    table (merge {:db_id (u/the-id db)}
                                               (:table options))
@@ -55,17 +54,33 @@
                                               (:field options))]
     (do-with-mocked-field-values-updating!
      (fn [updated-field-names]
-       (mt/with-temp [:model/Card card (merge {:dataset_query (native-query-with-template-tag field)}
-                                              (:card options))]
-         (when f
-           (f {:db db :table table :field field :card card :updated-field-names updated-field-names})))))))
+       (f {:db db :table table :field field :updated-field-names updated-field-names})))))
+
+(defn- do-with-updated-fields-for-card! [options & [f]]
+  (do-with-tracked-field-values!
+   options
+   (fn [{:keys [field] :as objects}]
+     (mt/with-temp [:model/Card card (merge {:dataset_query (native-query-with-template-tag field)}
+                                            (:card options))]
+       (when f
+         (f (assoc objects :card card)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     CARDS                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- field-values-were-updated-for-new-card?! [options]
-  (boolean (seq (do-with-updated-fields-for-card! options))))
+  (boolean (seq (do-with-tracked-field-values!
+                 options
+                 (fn [{:keys [field]}]
+                   (mt/with-model-cleanup [:model/Card]
+                     (mt/with-current-user (mt/user->id :crowberto)
+                       (card/create-cards! [{:name                   "On-demand card"
+                                             :creator_id             (mt/user->id :crowberto)
+                                             :database_id            (field/field-id->database-id (u/the-id field))
+                                             :display                :table
+                                             :visualization_settings {}
+                                             :dataset_query          (native-query-with-template-tag field)}]))))))))
 
 (deftest newly-created-card-test
   (testing "Newly created Card with param referencing Field"

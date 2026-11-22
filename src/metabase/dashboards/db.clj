@@ -549,6 +549,15 @@
    changes :- ::dashboards.schema/dashboard-tab.update]
   (t2/update! :model/DashboardTab :id [:in tab-ids] changes))
 
+(mu/defn pulse-cards-in-tabs
+  "The PulseCards of the DashboardCards on the DashboardTabs with `tab-ids`, which the delete of the tabs deletes with
+  them."
+  [tab-ids :- [:sequential ms/PositiveInt]]
+  (t2/select :model/PulseCard
+             :dashboard_card_id [:in ^:allow-subquery {:select [:id]
+                                                       :from   [:report_dashboardcard]
+                                                       :where  [:in :dashboard_tab_id tab-ids]}]))
+
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]

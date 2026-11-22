@@ -285,6 +285,22 @@
             (is (= (t2/count :model/DashboardCard :dashboard_id (u/the-id saved-dashboard))
                    (-> dashboard :dashcards count)))))))))
 
+(deftest transient-dashboard-save-records-two-revisions-test
+  (testing "Saving an x-ray creates the bare Dashboard, then its cards, then its parts: two Revisions, one audit row for the cards"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/Card :model/Dashboard :model/DashboardCard :model/Revision :model/AuditLog]
+        (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
+          (mt/with-current-user (test.users/user->id :rasta)
+            (let [dashboard       (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {})
+                  saved-dashboard (dashboards.write/save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))
+                  dashboard-id    (u/the-id saved-dashboard)
+                  revisions       (t2/select :model/Revision :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]})
+                  topics          (map :topic (t2/select :model/AuditLog :model "Dashboard" :model_id dashboard-id {:order-by [[:id :asc]]}))]
+              (is (=? [{:is_creation true :object {:cards empty?}}
+                       {:is_creation false :object {:cards #(= (count %) (t2/count :model/DashboardCard :dashboard_id dashboard-id))}}]
+                      revisions))
+              (is (= [:dashboard-create :dashboard-add-cards] topics)))))))))
+
 (deftest validate-collection-namespace-test
   (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"

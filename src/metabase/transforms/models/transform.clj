@@ -704,7 +704,7 @@
 (defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
    :swap-source        transforms.replacement/swap-source
-   :update!            (fn [id changes] (update-transforms! [(assoc changes :id id)]))})
+   :update!            update-transforms!})
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})

@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.change-log.core :as change-log]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -110,9 +111,11 @@
     rows))
 
 (mu/defn delete-dashboard-tabs! :- :nil
-  "Delete the DashboardTabs with `ids`."
+  "Delete the DashboardTabs with `ids`, logging to the change log the PulseCards that the database deletes with their
+  DashboardCards."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
+    (change-log/log-changes! :model/PulseCard :delete (dashboards.db/pulse-cards-in-tabs (vec ids)))
     (dashboards.db/delete-dashboard-tabs! (vec ids)))
   nil)
 

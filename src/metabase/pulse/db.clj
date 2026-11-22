@@ -317,7 +317,7 @@
   "Insert the PulseCard `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-card.update]]
   (u/prog1 (t2/insert-returning-instances! :model/PulseCard rows)
-    (change-log/log-rows! :model/PulseCard :insert :id [:in (mapv :id <>)])))
+    (change-log/log-changes! :model/PulseCard :insert <>)))
 
 (mu/defn pulse-cards-for-dashcards
   "The PulseCards of the DashboardCards with `dashcard-ids`."
@@ -407,7 +407,7 @@
   "Insert the PulseChannel `row` and return the inserted instance."
   [row :- ::pulse.schema/pulse-channel.update]
   (u/prog1 (t2/insert-returning-instance! :model/PulseChannel row)
-    (change-log/log-rows! :model/PulseChannel :insert :id (:id <>))))
+    (change-log/log-changes! :model/PulseChannel :insert [<>])))
 
 (mu/defn update-pulse-channel!
   "Apply `changes` to the PulseChannel with `channel-id`."
@@ -485,7 +485,7 @@
   "Insert the PulseChannelRecipient `rows`, returning the inserted instances."
   [rows :- [:sequential ::pulse.schema/pulse-channel-recipient.update]]
   (u/prog1 (t2/insert-returning-instances! :model/PulseChannelRecipient rows)
-    (change-log/log-rows! :model/PulseChannelRecipient :insert :id [:in (mapv :id <>)])))
+    (change-log/log-changes! :model/PulseChannelRecipient :insert <>)))
 
 (mu/defn delete-pulse-channel-recipients!
   "Delete the PulseChannelRecipients with `recipient-ids`."

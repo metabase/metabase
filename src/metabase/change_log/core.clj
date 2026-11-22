@@ -50,7 +50,8 @@
   `untracked-models`, the two lists in `metabase.change-log.events-test`, the first being the models with a spec.
 
   A direct table write skips the model: raw SQL, `t2/query`, `t2/update!` on the table name. It logs its rows with
-  [[log-rows!]]. The `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
+  [[log-rows!]], or, for a plain write of the parts of an entity that has the rows in hand, [[log-changes!]]. The
+  `:metabase/change-log-raw-write` lint reports such a write when the call names the table. A write
   that needs no entry opts out with an ignore of that lint and its reason.
 
   Not captured:
@@ -90,6 +91,7 @@
 
 (p/import-vars
  [metabase.change-log.log
+  log-changes!
   log-rows!]
  [metabase.change-log.spec
   spec])

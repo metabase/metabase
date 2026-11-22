@@ -55,3 +55,17 @@
       (log! [[(table-of model) (change-log.db/matching-pks model (vec conditions)) (name action)]])
       (throw-or-log (format "Not logging %s on %s to the change log: the model has no `metabase.change-log.core/spec`."
                             (name action) model)))))
+
+(mu/defn log-changes!
+  "Logs `action` on `rows`, the rows of `model` that a plain write of a part of an entity inserted, updated or deleted,
+  each holding its primary key, doing nothing while the log is off and sending a model that is not tracked to
+  [[throw-or-log]] while it is on, and not logging what a delete cascades to."
+  [model  :- :keyword
+   action :- [:enum :insert :update :delete]
+   rows   :- [:maybe [:sequential :map]]]
+  (when (and (seq rows) (premium-features/enable-change-log?))
+    (if (change-log.spec/tracked? model)
+      (let [pk (first (t2/primary-keys model))]
+        (log! [[(table-of model) (mapv pk rows) (name action)]]))
+      (throw-or-log (format "Not logging %s on %s to the change log: the model has no `metabase.change-log.core/spec`."
+                            (name action) model)))))

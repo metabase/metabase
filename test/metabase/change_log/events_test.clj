@@ -568,8 +568,10 @@
                      :model/PulseCard     pc    {:pulse_id (:id pulse), :card_id (:id card)
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
-          (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(dashboard/update-dashboards! [{:id (:id dash) :tabs []}]))))
+          (is (= [["pulse_card" (:id pc) "delete"]
+                  ["pulse" (:id pulse) "update"]]
+                 (logged-by #(dashboard/update-dashboards! [{:id (:id dash) :tabs []}])))
+              "and the subscription, which takes the name of its dashboard")
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (defn- call-counts!

@@ -53,10 +53,11 @@
     row))
 
 (mu/defn apply-writes!
-  "Apply `writes`, each an update of the row of a model with an id, in order, by the `:update!` of the replacement spec
-  of the model, the write function of its module."
+  "Apply `writes`, each an update of the row of a model with an id, by the `:update!` of the replacement spec of the
+  model, the write function of its module, in one call for all the writes of a model, in the order of the first write
+  of each model."
   [writes :- replacement.spec/Writes]
-  (doseq [[model id changes] writes]
+  (doseq [model (distinct (map first writes))]
     (if-let [update! (:update! (replacement.spec/spec model))]
-      (update! id changes)
+      (update! (into [] (comp (filter #(= model (first %))) (map (fn [[_model id changes]] (assoc changes :id id)))) writes))
       (throw (ex-info (format "%s has no :update! in its replacement spec" model) {:model model})))))

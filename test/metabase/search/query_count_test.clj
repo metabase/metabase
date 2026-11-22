@@ -115,7 +115,9 @@
                               (merge (mt/with-temp-defaults :model/Database) row-attrs {:name n})))))
    "action"         (fn [collection names row-attrs]
                       (let [model   (insert-model! collection)
-                            action! (insert-rows :model/Action (fn [_] {:model_id (:id model), :type :query}))]
+                            action! (insert-rows :model/Action (fn [_] {:model_id      (:id model)
+                                                                        :type          :query
+                                                                        :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")}))]
                         (action! collection names row-attrs)))
    "data-app"       (fn [_collection names _row-attrs]
                       (doseq [n names]

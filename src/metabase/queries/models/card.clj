@@ -2520,7 +2520,7 @@
    :hydrate            queries.replacement/hydrate
    :upgrade-field-refs queries.replacement/upgrade-field-refs
    :swap-source        queries.replacement/swap-source
-   :update!            #(update-cards! [(assoc %2 :id %1)] {:writer :replacement})})
+   :update!            #(update-cards! % {:writer :replacement})})
 
 (defmethod collection-items/spec :model/Card [_model]
   {"card"    {:rank    5

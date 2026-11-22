@@ -4,7 +4,6 @@
   - more than one subscriptions
   - more than one handlers where each handler has a channel, optionally a template, and more than one recpients."
   (:require
-   [clojure.set :as set]
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
@@ -988,52 +987,18 @@
                                         (notification.db/recipients-for-handlers (mapv :id handlers)))}
      #(m/index-by :id (map (fn [row] (into {} row)) %)))))
 
-(defn- missing-ids
-  "The ids of the `existing` rows that the `new` rows do not list."
-  [existing new]
-  (set/difference (into #{} (keep :id) existing) (into #{} (keep :id) new)))
-
-(defn- dropped-ids
-  "The ids of the parts of `existing-notification` that `new-notification` does not list, by model: the rows that the
-  update spec deletes, a handler taking its recipients along."
-  [existing-notification new-notification]
-  (let [new-handlers (m/index-by :id (:handlers new-notification))
-        replaced?    (and (contains? new-notification :payload)
-                          (some? (:payload_id existing-notification))
-                          (not= (:payload_id existing-notification) (:id (:payload new-notification))))
-        handlers     (when (contains? new-notification :handlers) (:handlers existing-notification))
-        dropped      (remove (comp new-handlers :id) handlers)]
-    {:model/NotificationCard         (when replaced? #{(:payload_id existing-notification)})
-     :model/NotificationSubscription (when (contains? new-notification :subscriptions)
-                                       (missing-ids (:subscriptions existing-notification) (:subscriptions new-notification)))
-     :model/NotificationHandler      (into #{} (map :id) dropped)
-     :model/NotificationRecipient    (into (into #{} (comp (mapcat :recipients) (map :id)) dropped)
-                                           (mapcat (fn [{:keys [id recipients]}]
-                                                     (when-let [new-handler (get new-handlers id)]
-                                                       (when (contains? new-handler :recipients)
-                                                         (missing-ids recipients (:recipients new-handler))))))
-                                           handlers)}))
-
-(defn- log-dropped-parts!
-  "Log to the change log the deletes of the rows of `dropped`, by model, before the update that makes them."
-  [dropped]
-  (doseq [[model ids] dropped
-          :when       (seq ids)]
-    (change-log/log-rows! model :delete :id [:in (vec ids)])))
-
-(defn- log-changed-parts!
-  "Log to the change log the rows that an update of a Notification inserted and updated, from the `before` and `after`
-  [[parts]] of the Notification."
+(defn- log-part-changes!
+  "Log to the change log the rows that an update of a Notification inserted, updated and deleted, from the `before` and
+  `after` [[parts]] of the Notification."
   [before after]
   (doseq [model part-models
-          :let  [old      (get before model)
-                 new      (get after model)
-                 inserted (vec (remove #(contains? old %) (keys new)))
-                 updated  (vec (filter #(and (contains? old %) (not= (get old %) (get new %))) (keys new)))]]
-    (when (seq inserted)
-      (change-log/log-rows! model :insert :id [:in inserted]))
-    (when (seq updated)
-      (change-log/log-rows! model :update :id [:in updated]))))
+          :let  [old (get before model)
+                 new (get after model)]]
+    (change-log/log-changes! model :insert (vals (apply dissoc new (keys old))))
+    (change-log/log-changes! model :update (for [[id row] new
+                                                 :when    (and (contains? old id) (not= row (get old id)))]
+                                             row))
+    (change-log/log-changes! model :delete (vals (apply dissoc old (keys new))))))
 
 (mu/defn update-notification! :- :nil
   "Update an existing notification with `new-notification`, publishing its update event last, or its touch when only its
@@ -1047,9 +1012,7 @@
             active-before?      (:active notification-before)
             parts-before        (parts notification-before)
             subscriptions-old   (get parts-before :model/NotificationSubscription)
-            handlers-old        (get parts-before :model/NotificationHandler)
-            dropped             (dropped-ids existing-notification new-notification)]
-        (log-dropped-parts! dropped)
+            handlers-old        (get parts-before :model/NotificationHandler)]
         (models.u.spec-update/do-update! existing-notification new-notification notification-update-spec)
         (let [notification-after (notification.db/notification notification-id)
               parts-after        (parts notification-after)
@@ -1057,7 +1020,7 @@
               subscriptions-new  (get parts-after :model/NotificationSubscription)
               handlers-new       (vals (get parts-after :model/NotificationHandler))
               handler-key        (juxt :channel_type :channel_id :template_id)]
-          (log-changed-parts! parts-before parts-after)
+          (log-part-changes! parts-before parts-after)
           (check-handler-templates! (remove #(= (handler-key %) (some-> (get handlers-old (:id %)) handler-key))
                                             handlers-new))
           (when (not= (boolean active-before?) (boolean active-after?))

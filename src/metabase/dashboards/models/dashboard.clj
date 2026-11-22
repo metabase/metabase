@@ -821,13 +821,13 @@
    :written-with-parts? true})
 
 (defmethod replacement/spec :model/DashboardCard [_model]
-  {:update! #(update-dashcards! [(assoc %2 :id %1)] {:writer :replacement})})
+  {:update! #(update-dashcards! % {:writer :replacement})})
 
 (defmethod replacement/spec :model/Dashboard [_model]
   {:hydrate            dashboards.replacement/hydrate
    :upgrade-field-refs dashboards.replacement/upgrade-field-refs
    :swap-source        dashboards.replacement/swap-source
-   :update!            #(update-dashboards! [(assoc %2 :id %1)] {:writer :replacement})})
+   :update!            #(update-dashboards! % {:writer :replacement})})
 
 (defmethod collection-items/spec :model/Dashboard [_model]
   {"dashboard" {:rank    1

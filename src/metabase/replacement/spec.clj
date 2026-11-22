@@ -12,11 +12,11 @@
   - `:upgrade-field-refs`, a pure fn of a hydrated row returning the writes that upgrade its field refs.
   - `:swap-source`, a pure fn of a hydrated row, the old source and the new source, each as `[entity-type id]`,
     returning the writes that swap the old source for the new one, or nil when the row has no query to swap.
-  - `:update!`, a fn of the id of a row and its changes, which applies a write to a row of the model by its write
-    function; a model whose rows a replacement writes must have one.
+  - `:update!`, a fn of a vector of rows, each the `:id` of a row of the model with its changes, which applies them
+    together by its write function; a model whose rows a replacement writes must have one.
 
-  The writes are a vector of `[model id changes]`, each applied as an update of the row of `model` with `id`, in
-  order, and empty when nothing changes."
+  The writes are a vector of `[model id changes]`, each an update of the row of `model` with `id`, and empty when
+  nothing changes. The writes of one model are applied together, in the order of the first write of each model."
   (:require
    [toucan2.model :as t2.model]))
 
