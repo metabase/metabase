@@ -6,7 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.data-permissions :as data-perms]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -531,9 +531,9 @@
   (testing "POST /api/field/:id/values"
     (testing "attempting to updated values should throw when human readable values are present but not for every value"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test", :base_type :type/Integer, :has_field_values "list"}]
-        (is (= "If remapped values are specified, they must be specified for all field values"
-               (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
-                                     {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
+        (is (=? {:specific-errors {:values [#".*must be specified for all field values.*"]}}
+                (mt/user-http-request :crowberto :post 400 (format "field/%d/values" field-id)
+                                      {:values [[1 "$"] [2 "$$"] [3] [4]]})))))))
 
 (defn- dimension-for-field [field-id]
   (-> (t2/select-one :model/Field :id field-id)
@@ -640,7 +640,7 @@
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test 1"}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "field/%d/dimension" field-id)
-                                     {:name "some dimension name", :type "external"})))))))
+                                     {:name "some dimension name", :type "internal"})))))))
 
 (deftest fk-target-field-cross-database-test
   (testing "PUT /api/field/:id rejects fk_target_field_id from a different database"
@@ -1006,9 +1006,8 @@
                             and json unfolding is alread enabled for the DB"
                     (set-json-unfolding-for-field! false)
                     (set-json-unfolding-for-db! true)
-                    (set-json-unfolding-for-field! true)
-                    ;; Wait for the sync to finish
-                    (Thread/sleep 500)
+                    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
+                      (set-json-unfolding-for-field! true))
                     (is (seq (nested-fields))))
                   (testing "nested fields are added when json unfolding is enabled for the DB"
                     (set-json-unfolding-for-db! true)

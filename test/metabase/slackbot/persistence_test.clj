@@ -1,6 +1,7 @@
 (ns metabase.slackbot.persistence-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.test :as mt]
@@ -16,15 +17,16 @@
     (let [conv-id (str (random-uuid))]
       (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
         (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
-        (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :slack_msg_id    "1709567890.000099"
-                     :role            "assistant"
-                     :profile_id      "test"
-                     :total_tokens    0
-                     ;; invalid v2: a tool part with no :state to dispatch on
-                     :data            [{:type "tool-search" :toolCallId "z"}]
-                     :data_version    2})
+        (with-redefs [config/is-test? false]
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :slack_msg_id    "1709567890.000099"
+                       :role            "assistant"
+                       :profile_id      "test"
+                       :total_tokens    0
+                       ;; invalid v2: a tool part with no :state to dispatch on
+                       :data            [{:type "tool-search" :toolCallId "z"}]
+                       :data_version    2}))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid slack history replay metabot_message.data"
                               (slackbot.persistence/message-history conv-id #{"1709567890.000099"})))))))

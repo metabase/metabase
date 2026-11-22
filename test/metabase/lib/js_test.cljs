@@ -37,8 +37,10 @@
 
 (deftest ^:parallel query=-test-2
   (testing "explicit fields vs. implied fields"
-    (let [q1 #js {"query" #js {"source-table" 1}}
-          q2 #js {"query" #js {"source-table" 1
+    (let [q1 #js {"type"  "query"
+                  "query" #js {"source-table" 1}}
+          q2 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 1 nil]
                                              #js ["field" 2 nil]
                                              #js ["field" 3 nil]
@@ -59,16 +61,19 @@
 
 (deftest ^:parallel query=-test-3
   (testing "missing and extra fields"
-    (let [q1 #js {"query" #js {"source-table" 1
+    (let [q1 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 1 nil]
                                              #js ["field" 2 nil]]}}
 
           ;; Same fields, different order.
-          q2 #js {"query" #js {"source-table" 1
+          q2 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 2 nil]
                                              #js ["field" 1 nil]]}}
           ;; Different fields
-          q3 #js {"query" #js {"source-table" 1
+          q3 #js {"type"  "query"
+                  "query" #js {"source-table" 1
                                "fields" #js [#js ["field" 3 nil]
                                              #js ["field" 1 nil]]}}]
       (is (lib.js/query= q1 q2))
@@ -78,11 +83,13 @@
 (deftest ^:parallel query=-test-4
   (testing "lib/uuids are ignored for query="
     (testing "sanity check: legacy queries should be equal"
-      (let [q1 #js {"query" #js {"source-table" 1
+      (let [q1 #js {"type"  "query"
+                    "query" #js {"source-table" 1
                                  "aggregation"  #js [#js ["count"]]
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}
-            q2 #js {"query" #js {"source-table" 1
+            q2 #js {"type"  "query"
+                    "query" #js {"source-table" 1
                                  "aggregation"  #js [#js ["count"]]
                                  "breakout"     #js [#js ["field" 3 nil]]
                                  "expressions"  #js {"some_expr" #js ["field" 12 nil]}}}]
@@ -155,27 +162,26 @@
 
 (defn- add-undefined-params
   "This simulates the FE setting some parameters to js/undefined."
-  [template-tags param-name]
-  (doto (gobject/get template-tags param-name)
-    (gobject/add "options" js/undefined)
-    (gobject/add "default" js/undefined))
+  [template-tags]
+  (doseq [tag template-tags]
+    (doto tag
+      (gobject/add "options" js/undefined)
+      (gobject/add "default" js/undefined)))
   template-tags)
 
 (deftest ^:parallel template-tags-test
   (testing "Snippets in template tags round trip correctly (#33546)"
-    (let [db meta/database
-          snippet-name "snippet: my snippet"
-          snippets {snippet-name
-                    {:type :snippet
-                     :name "snippet: my snippet"
-                     :id "fd5e96f7-08f8-486b-9919-b2ab72857db4"
+    (let [db       meta/database
+          snippets [{:type         :snippet
+                     :name         "snippet: my snippet"
+                     :id           "fd5e96f7-08f8-486b-9919-b2ab72857db4"
                      :display-name "Snippet: My Snippet"
                      :snippet-name "my snippet"
-                     :snippet-id 1}}
-          query (lib.js/with-template-tags
-                  (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
-                  (add-undefined-params (clj->js snippets) snippet-name))]
-      (is (= (vals snippets)
+                     :snippet-id   1}]
+          query    (lib.js/with-template-tags
+                     (lib.js/native-query (:id db) meta/metadata-provider "select * from foo {{snippet: my snippet}}")
+                     (add-undefined-params (clj->js snippets)))]
+      (is (= snippets
              (get-in query [:stages 0 :template-tags])))
       (is (test.js/= (clj->js snippets)
                      (lib.js/template-tags query))))))
@@ -205,10 +211,10 @@
              (mapv :name roundtripped-tags))))))
 
 (deftest ^:parallel template-tags-js->cljs-test
-  (testing "Should use map key as :name"
-    (is (= [{:name "tag", :display-name "Tag", :type :number}]
+  (testing "Should convert tag keys and types to keywords"
+    (is (= [{:name "tag", :display-name "Tag", :type :number, :widget-type :number/=}]
            (#'lib.js/template-tags-js->cljs
-            #js {"tag" #js {"display-name" "Tag", "type" "number"}})))))
+            #js [#js {"name" "tag", "display-name" "Tag", "type" "number", "widget-type" "number/="}])))))
 
 (deftest ^:parallel column-metadata?-test
   (is (true? (lib.js/column-metadata? (meta/field-metadata :venues :id))))
@@ -272,6 +278,8 @@
         (-> (lib.tu/venues-query)
             (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
             (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+            ;; existing usage -- do not use going forward
+            #_{:clj-kondo/ignore [:deprecated-var]}
             lib.convert/->legacy-MBQL)
 
         metadata-provider
@@ -688,7 +696,90 @@
     (doseq [[q1-type q1] queries
             [q2-type q2] queries]
       (testing (str "q1 = " q1-type ", q2 = " q2-type)
-        (lib.js/query= q1 q2)))))
+        (is (lib.js/query= q1 q2))))))
+
+(deftest ^:parallel query=-legacy-vs-mbql5-test
+  (let [mbql5  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/expression "some_expr" (lib/+ (meta/field-metadata :orders :subtotal) 1))
+                   (lib/filter (lib/> (meta/field-metadata :orders :total) 10))
+                   (lib/aggregate (lib/count))
+                   (lib/breakout (meta/field-metadata :orders :product-id))
+                   (as-> query (lib/order-by query (lib/aggregation-ref query 0))))
+        legacy #js {"database" (meta/id)
+                    "type"     "query"
+                    "query"    #js {"source-table" (meta/id :orders)
+                                    "expressions"  #js {"some_expr" #js ["+" #js ["field" (meta/id :orders :subtotal) nil] 1]}
+                                    "filter"       #js [">" #js ["field" (meta/id :orders :total) nil] 10]
+                                    "aggregation"  #js [#js ["count"]]
+                                    "breakout"     #js [#js ["field" (meta/id :orders :product-id) nil]]
+                                    "order-by"     #js [#js ["asc" #js ["aggregation" 0]]]}}]
+    (testing "a legacy query equals the same query in MBQL 5"
+      (is (lib.js/query= mbql5 legacy))
+      (is (lib.js/query= legacy mbql5)))
+    (testing "a different filter value is a different query"
+      (let [other (js/JSON.parse (js/JSON.stringify legacy))]
+        (aset other "query" "filter" 2 11)
+        (is (not (lib.js/query= mbql5 other)))
+        (is (not (lib.js/query= other mbql5)))))))
+
+(defn- mbql5-query-with-expression [expression-name]
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+      (lib/expression expression-name (lib/+ (meta/field-metadata :orders :subtotal) 1))))
+
+(deftest ^:parallel query=-expression-name-test
+  (testing "renaming an expression makes a different query"
+    (is (lib.js/query= (mbql5-query-with-expression "a")
+                       (mbql5-query-with-expression "a")))
+    (is (not (lib.js/query= (mbql5-query-with-expression "a")
+                            (mbql5-query-with-expression "b"))))))
+
+(deftest ^:parallel query=-mbql5-fields-test
+  (let [query      (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        with-cols  (fn [& col-keys]
+                     (lib/with-fields query (for [k col-keys]
+                                              (meta/field-metadata :venues k))))]
+    (testing "the order of :fields does not matter"
+      (is (lib.js/query= (with-cols :id :name :price)
+                         (with-cols :price :id :name))))
+    (testing "different :fields"
+      (is (not (lib.js/query= (with-cols :id :name)
+                              (with-cols :id :price)))))
+    (testing "a query without :fields defaults to field-ids"
+      (let [ids (to-array (map #(meta/id :venues %) [:price :name :id]))]
+        (is (not (lib.js/query= query (with-cols :id :name :price))))
+        (is (lib.js/query= query (with-cols :id :name :price) ids))
+        (is (not (lib.js/query= query (with-cols :id :name) ids)))))))
+
+(deftest ^:parallel query=-invalid-clause-test
+  (testing "queries that differ only in a clause that fails schema validation are not equal"
+    (let [query-with-join-alias (fn [join-alias]
+                                  #js {"type"  "query"
+                                       "query" #js {"joins" #js [#js {"alias"     join-alias
+                                                                      "condition" #js ["=" #js ["field" 7 nil] #js ["field" 19 nil]]}]}})]
+      (is (lib.js/query= (query-with-join-alias "Products")
+                         (query-with-join-alias "Products")))
+      (is (not (lib.js/query= (query-with-join-alias "Products")
+                              (query-with-join-alias "People")))))))
+
+(deftest ^:parallel query=-native-test
+  (let [native-query (fn [sql native-extras]
+                       #js {"database" 1
+                            "type"     "native"
+                            "native"   (js/Object.assign #js {"query" sql} native-extras)})]
+    (testing "no :template-tags is the same as empty :template-tags"
+      (is (lib.js/query= (native-query "SELECT 1" #js {})
+                         (native-query "SELECT 1" #js {"template-tags" #js {}})))
+      (is (lib.js/query= (native-query "SELECT 1" #js {})
+                         #js {"database" 1
+                              "lib/type" "mbql/query"
+                              "stages"   #js [#js {"lib/type" "mbql.stage/native", "native" "SELECT 1"}]})))
+    (testing "different SQL"
+      (is (not (lib.js/query= (native-query "SELECT 1" #js {})
+                              (native-query "SELECT 2" #js {})))))
+    (testing ":info is ignored"
+      (let [with-info (native-query "SELECT 1" #js {})]
+        (aset with-info "info" #js {"card-entity-id" "abc"})
+        (is (lib.js/query= with-info (native-query "SELECT 1" #js {})))))))
 
 (deftest ^:parallel card-metadata-test
   (let [mp   (lib.tu/metadata-provider-with-mock-cards)
@@ -767,3 +858,50 @@
               (js->clj (lib.js/xray-cell-query query))))))
   (testing "returns nil without filter"
     (is (nil? (lib.js/xray-cell-query (lib/query meta/metadata-provider (meta/table-metadata :venues)))))))
+
+(deftest ^:parallel parameter-field-info-test
+  (let [mp (lib.tu/merged-mock-metadata-provider
+            meta/metadata-provider
+            {:fields [{:id (meta/id :categories :id), :name-field (meta/id :categories :name)}]})]
+    (testing "FK searched by name Field of its target"
+      (is (= {:id                     (meta/id :venues :category-id)
+              :displayName            "Category ID"
+              :searchFieldDisplayName "Name"
+              :isString               false
+              :isBoolean              false
+              :isDate                 false
+              :isNumeric              true
+              :settings               nil
+              :hasFieldValues         "none"
+              :hasRemappedValues      true}
+             (js->clj (lib.js/parameter-field-info mp (lib.metadata/field mp (meta/id :venues :category-id)))
+                      :keywordize-keys true))))
+    (testing "column without Field"
+      (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2)))
+            expr  (m/find-first #(= "double price" (:name %)) (lib/visible-columns query))]
+        (is (nil? (lib.js/parameter-field-info query expr)))))))
+
+(deftest ^:parallel picker-info-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (testing "table returns its ID"
+      (is (= {:id (meta/id :orders)}
+             (js->clj (lib.js/picker-info query (meta/table-metadata :orders)) :keywordize-keys true))))
+    (testing "card returns its ID"
+      (let [card (:orders (lib.tu/mock-cards))]
+        (is (= {:id (:id card)}
+               (js->clj (lib.js/picker-info query card) :keywordize-keys true)))))))
+
+(deftest ^:parallel picker-info-column-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "double total" (lib/* (meta/field-metadata :orders :total) 2)))
+        cols  (lib/visible-columns query)
+        total (m/find-first #(= "TOTAL" (:name %)) cols)
+        expr  (m/find-first #(= "double total" (:name %)) cols)]
+    (testing "column backed by Field returns its ID and table ID"
+      (is (= {:id      (meta/id :orders :total)
+              :tableId (meta/id :orders)}
+             (js->clj (lib.js/picker-info query total) :keywordize-keys true))))
+    (testing "expression column returns nil IDs"
+      (is (= {:id nil, :tableId nil}
+             (js->clj (lib.js/picker-info query expr) :keywordize-keys true))))))

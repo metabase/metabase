@@ -1,0 +1,167 @@
+;; The hand-curated part of `docs/databases/feature-support.md`: only what the source code can't supply. The drivers
+;; supply the columns, their names, and the cells. See [[metabase.cmd.driver-feature-dox]].
+{;; Facts about drivers, keyed by driver. Each official driver (`driver.u/official-drivers`) is a column, unless it
+ ;; has an `:exclude`.
+ ;;   - `:exclude`: why the driver isn't a column.
+ ;;   - `:columns`: one column per entry, for a driver that serves more than one database.
+ ;;   - `:dbms-version`: what sync stores in `:dbms-version` besides the version.
+ ;;   - `:editions`: the deployments to ask about, when the driver answers differently for them. Notes name them by
+ ;;     `:label`.
+ ;;   - `:oldest-version`: the oldest version that Metabase supports, when the driver checks for an older one. Without
+ ;;     it, notes give versions that no one runs.
+ ;;   - `:version-shape :map`: the driver keeps the version as `{:major :minor}`, not `[major minor]`.
+ ;;   - `:version-names`: the names that people know versions by, keyed by `[major minor]`. Notes use them in place of
+ ;;     the number.
+ :drivers
+ {:clickhouse {:version-shape :map
+               :editions      [{:label "ClickHouse Cloud" :dbms-version {:cloud true}}
+                               {:label        "self-managed single-node deployments"
+                                :dbms-version {:cloud false :single-node true}}
+                               {:label        "self-managed clusters"
+                                :dbms-version {:cloud false :single-node false}}]}
+  :druid      {:exclude "no longer a driver: `:druid-jdbc` replaced it"}
+  :h2         {:exclude "Metabase doesn't support H2 connections"}
+  :motherduck {:exclude "not yet in the list of supported databases in `docs/databases/connecting.md`"}
+  ;; `docs/databases/connections/mongodb.md`: Metabase supports the oldest version that MongoDB supports. That is 7.0
+  ;; until August 31, 2027: https://www.mongodb.com/legal/support-policy/lifecycles
+  :mongo      {:oldest-version [7 0]}
+  ;; sync stores the `:flavor`
+  :mysql      {:columns [{:label "MariaDB" :dbms-version {:flavor "MariaDB"}}
+                         {:label "MySQL" :dbms-version {:flavor "MySQL"}}]}
+  ;; SQL Server 16.0 is SQL Server 2022
+  :sqlserver  {:version-names {[16 0] "2022"}}}
+
+ ;; The tables, in page order. A row's `:feature` is a keyword, or a vector of keywords that the page shows as one
+ ;; feature. `:doc` paths are relative to `docs/databases/`.
+ ;;
+ ;; Give a feature a row only when the product reads its flag to offer or block the feature. Some flags only select
+ ;; the drivers that the tests run on, for example `:now`, `:date-arithmetics`, `:temporal-extract`,
+ ;; `:native-parameter-card-reference`, `:parameters/table-reference`, and `:native-temporal-units`. For these, a ❌
+ ;; means only that the tests skip the driver.
+ :sections
+ [{:title    "Query builder"
+   :features [{:feature :nested-queries
+               :label   "Saved questions and models as data sources"
+               :doc     "../questions/query-builder/editor.md#pick-data"}
+              {:feature :left-join  :label "Left outer join"  :doc "../questions/query-builder/join.md"}
+              {:feature :right-join :label "Right outer join" :doc "../questions/query-builder/join.md"}
+              {:feature :inner-join :label "Inner join"       :doc "../questions/query-builder/join.md"}
+              {:feature :full-join  :label "Full outer join"  :doc "../questions/query-builder/join.md"}
+              {:feature :expressions
+               :label   "Custom expressions in columns and filters"
+               :doc     "../questions/query-builder/expressions.md"}
+              {:feature :expression-aggregations
+               :label   "Custom expressions in summaries"
+               :doc     "../questions/query-builder/expressions.md#aggregations"}
+              {:feature :binning
+               :label   "Binning numbers and coordinates"
+               :doc     "../questions/query-builder/summarizing-and-grouping.md#grouping-your-metrics"}
+              {:feature :case-sensitivity-string-filter-options
+               :label   "Case-sensitive text filters"}]}
+
+  {:title    "Aggregations"
+   :features [{:feature :basic-aggregations
+               :label   "Count, Sum, Average, Min, and Max"
+               :doc     "../questions/query-builder/expressions-list.md#aggregations"}
+              {:feature :standard-deviation-aggregations
+               :label   "StandardDeviation and Variance"
+               :doc     "../questions/query-builder/expressions-list.md#standarddeviation"}
+              {:feature :percentile-aggregations
+               :label   "Percentile and Median"
+               :doc     "../questions/query-builder/expressions-list.md#percentile"}
+              {:feature :distinct-where
+               :label   "DistinctIf"
+               :doc     "../questions/query-builder/expressions-list.md#distinctif"}
+              ;; no row for `:window-functions/cumulative`: without it, Metabase calculates cumulative sums itself, so
+              ;; CumulativeCount and CumulativeSum work on every database
+              {:feature :window-functions/offset
+               :label   "Offset"
+               :doc     "../questions/query-builder/expressions/offset.md"}]}
+
+  {:title    "Custom expression functions"
+   :features [{:feature :advanced-math-expressions
+               :label   "exp, log, power, and sqrt"
+               :doc     "../questions/query-builder/expressions-list.md#math-functions"}
+              {:feature :regex
+               :label   "regexExtract"
+               :doc     "../questions/query-builder/expressions/regexextract.md"}
+              ;; the URL and email functions are what need lookaheads and lookbehinds
+              {:feature :regex/lookaheads-and-lookbehinds
+               :label   "domain, subdomain, host, and path"
+               :doc     "../questions/query-builder/expressions-list.md#domain"}
+              {:feature :split-part
+               :label   "splitPart"
+               :doc     "../questions/query-builder/expressions-list.md#splitpart"}
+              ;; no `:doc` until expressions-list.md documents `collate`
+              {:feature :collate
+               :label   "collate"}
+              {:feature :expressions/integer
+               :label   "integer"
+               :doc     "../questions/query-builder/expressions-list.md#integer"}
+              {:feature :expressions/float
+               :label   "float"
+               :doc     "../questions/query-builder/expressions-list.md#float"}
+              {:feature :expressions/text
+               :label   "text"
+               :doc     "../questions/query-builder/expressions-list.md#text"}
+              {:feature :expressions/date
+               :label   "date"
+               :doc     "../questions/query-builder/expressions-list.md#date"}
+              {:feature :expressions/datetime
+               :label   "datetime"
+               :doc     "../questions/query-builder/expressions-list.md#datetime"}
+              {:feature :datetime-diff
+               :label   "datetimeDiff"
+               :doc     "../questions/query-builder/expressions/datetimediff.md"}
+              {:feature :convert-timezone
+               :label   "convertTimezone"
+               :doc     "../questions/query-builder/expressions/converttimezone.md"}
+              {:feature :expressions/today
+               :label   "today"
+               :doc     "../questions/query-builder/expressions-list.md#today"}]}
+
+  {:title    "Data modeling"
+   :features [{:feature :persist-models
+               :label   "Model persistence"
+               :doc     "../data-modeling/models/model-persistence.md"}
+              ;; BigQuery records and MongoDB documents unfold through `:nested-fields`, JSON columns through
+              ;; `:nested-field-columns`; the JSON unfolding docs cover both
+              {:feature [:nested-field-columns :nested-fields]
+               :label   "JSON unfolding"
+               :doc     "../data-modeling/metadata/json-unfolding.md"}
+              {:feature :transforms/table
+               :label   "Query transforms"
+               :doc     "../data-modeling/transforms/query.md"}
+              {:feature :transforms/python
+               :label   "Python transforms"
+               :doc     "../data-modeling/transforms/python.md"}
+              {:feature :transforms/testing
+               :label   "Transform tests"
+               :doc     "../data-modeling/transforms/tests.md"}]}
+
+  {:title    "Writing data"
+   :features [{:feature :uploads
+               :label   "CSV uploads"
+               :doc     "uploads.md"}
+              {:feature :actions
+               :label   "Actions"
+               :doc     "../data-modeling/models/actions/introduction.md"}
+              {:feature :actions/data-editing
+               :label   "Editable tables"
+               :doc     "../data-modeling/editable-tables.md"}]}
+
+  {:title    "Permissions"
+   :features [{:feature :saved-question-sandboxing
+               :label   "Custom row and column security"
+               :doc     "../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table"}
+              {:feature :connection-impersonation
+               :label   "Connection impersonation"
+               :doc     "../permissions/impersonation.md"}
+              {:feature :database-routing
+               :label   "Database routing"
+               :doc     "../permissions/database-routing.md"}]}
+
+  {:title    "Database settings"
+   :features [{:feature :set-timezone
+               :label   "Report timezone"
+               :doc     "../configuring-metabase/localization.md#set-default-instance-report-timezone"}]}]}

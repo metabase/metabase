@@ -27,6 +27,7 @@ import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/settings";
 import { Stack } from "metabase/ui";
+import { isLoopbackOrigin } from "metabase/utils/dom";
 import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
@@ -85,7 +86,7 @@ initMetaplow({
 });
 
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus({
+  const { embedSettings, parentOrigin } = useSdkIframeEmbedEventBus({
     onSettingsChanged,
     store,
   });
@@ -117,7 +118,7 @@ export const SdkIframeEmbedRoute = () => {
   }
 
   // Using API keys in production is not allowed. SSO is required.
-  if (isProduction && embedSettings.apiKey) {
+  if (embedSettings.apiKey && !isLoopbackOrigin(parentOrigin)) {
     return <SdkIframeApiKeyInProductionError />;
   }
 

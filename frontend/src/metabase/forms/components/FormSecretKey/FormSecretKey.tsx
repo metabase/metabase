@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment -- FIXME: any-typed values */
 import cx from "classnames";
 import { useField } from "formik";
 import { type Ref, forwardRef, useState } from "react";
@@ -52,7 +53,6 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
               setOpenModal(hasSecretKey ? "confirm-regenerate" : "create-key")
             }
             variant={hasSecretKey ? "default" : "filled"}
-            size="lg"
           >
             {hasSecretKey ? t`Regenerate key` : t`Set up key`}
           </Button>

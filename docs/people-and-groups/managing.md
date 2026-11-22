@@ -110,7 +110,7 @@ If you're a Metabase admin and have access to the server console, you can get Me
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
     ```
-    java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar reset-password email@example.com
+    java -jar metabase.jar reset-password email@example.com
     ```
 3.  Metabase will print out a random token like this:
 
@@ -204,6 +204,8 @@ Other than the fixed access listed above, you can assign data, collection, and a
 By default, a person in a Data Analysts group will have only read-only access to [Transforms](../data-modeling/transforms/transforms-overview.md) that use tables which the person otherwise can view. To give a Data Analyst the ability to _create_ and _run_ transforms, you'll need to give them [transform permissions](../permissions/data.md#transform-permissions) on appropriate tables.
 
 If you change to a plan that doesn't include the Data Analyst group feature, your Data Analyst group will still exist, along with the permissions you've granted to it. But Metabase pauses the group's access to Data Studio. You can remove people from the group, but you can't add anyone new, and the group disappears once you've removed the last person. If you return to a plan that includes the Data Analyst group feature, Metabase will restore your Data Analyst group, the permissions you've given it, and its access to Data Studio.
+
+If your Metabase already had a group named **Data Analysts** before Metabase added the special group, Metabase keeps your group as is and names the special group **Metabase Data Analysts** instead. Your existing group doesn't get the special group's access. You can't rename the special group.
 
 ## Creating a group
 

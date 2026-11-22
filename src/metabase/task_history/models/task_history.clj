@@ -5,6 +5,8 @@
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
+   [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -29,17 +31,25 @@
 (methodical/defmethod t2/table-name :model/TaskHistory [_model] :task_history)
 
 (doto :model/TaskHistory
-  (derive :metabase/model)
-  (derive ::mi/read-policy.full-perms-for-perms-set)
-  (derive ::mi/write-policy.full-perms-for-perms-set))
+  (derive :metabase/model))
 
 ;;; Permissions to read or write Task. If `advanced-permissions` is enabled it requires superusers or non-admins with
 ;;; monitoring permissions, Otherwise it requires superusers.
-(defmethod mi/perms-objects-set :model/TaskHistory
-  [_task _read-or-write]
-  #{(if (premium-features/enable-advanced-permissions?)
-      (perms/application-perms-path :monitoring)
-      "/")})
+(defn- can-access?
+  "Whether the current user may read and write TaskHistory rows: a superuser, or, with advanced permissions, a user with the
+  monitoring permission."
+  []
+  (if (premium-features/enable-advanced-permissions?)
+    (contains? (perms/application-permissions-for-user (api/current-user-info)) :monitoring)
+    (mi/superuser?)))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_read]
+  [_model k instance]
+  (vary-meta instance assoc k (boolean (can-access?))))
+
+(methodical/defmethod t2/simple-hydrate [:model/TaskHistory :can_write]
+  [_model k instance]
+  (assoc instance k (boolean (can-access?))))
 
 (defn cleanup-task-history!
   "Deletes older TaskHistory rows. Will order TaskHistory by `ended_at` and delete everything after `num-rows-to-keep`.
@@ -53,22 +63,6 @@
   (when-let [clean-before-date (task-history.db/nth-newest-task-history-ended-at num-rows-to-keep)]
     (task-history.db/delete-task-history-ended-before! clean-before-date)))
 
-(def ^:private task-history-status #{:started :success :failed :unknown})
-
-(defn- assert-task-history-status
-  [status]
-  (assert (task-history-status (keyword status)) "Invalid task history status"))
-
-(t2/define-after-insert :model/TaskHistory
-  [task-history]
-  (assert-task-history-status (:status task-history))
-  task-history)
-
-(t2/define-before-update :model/TaskHistory
-  [task-history]
-  (assert-task-history-status (:status task-history))
-  task-history)
-
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
    :logs         mi/transform-json
@@ -77,7 +71,7 @@
 (def FilterParams
   "Schema for filter for task history."
   [:map {:closed true}
-   [:status {:optional true} (into [:enum] task-history-status)]
+   [:status {:optional true} ::task-history.schema/task-history.status]
    [:task {:optional true} [:string {:min 1}]]])
 
 (def ^:private available-sort-columns
@@ -117,7 +111,7 @@
 
 (def ^:private TaskHistoryCallBackInfo
   [:map {:closed true}
-   [:status                        (into [:enum] task-history-status)]
+   [:status                        ::task-history.schema/task-history.status]
    [:task_details {:optional true} [:maybe :map]]])
 
 (def ^:private TaskHistoryInfo
@@ -271,3 +265,8 @@
  Throwable
  (fn [throwable json-generator]
    (json/generate-map (Throwable->map throwable) json-generator)))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod app-db-copy/spec :model/TaskHistory [_model]
+  {:skip? true})

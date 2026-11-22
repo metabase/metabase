@@ -20,6 +20,7 @@
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.visualization :as lib.schema.visualization]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -46,8 +47,8 @@
 (defn- check-destination-collection-perms!
   "When `updates` moves the exploration to a different `collection_id`, verify the current
   user has write perms on the destination (collection or root). Source-side perms are already
-  enforced by the parent `api/write-check` against the exploration itself, which via
-  `:perms/use-parent-collection-perms` requires write on the source collection."
+  enforced by the parent `api/write-check` against the exploration itself, whose write check
+  requires write on the source collection."
   [{old-coll :collection_id} updates]
   (when (and (contains? updates :collection_id)
              (not= old-coll (:collection_id updates)))
@@ -65,17 +66,6 @@
   Mirrors the dashboard-question cascade in `dashboards_rest/api.clj`."
   [exploration-id new-coll-id]
   (explorations.db/move-summary-documents! exploration-id new-coll-id))
-
-(defn- cascade-archived-to-documents!
-  "Propagate an Exploration's archive flip to its Summary document.
-  Mirrors `dashboards_rest/api.clj` (parent-archive cascade for dashboard questions):
-  on archive, flip every doc that wasn't already archived directly; on unarchive,
-  flip every doc that was cascade-archived. Docs with `archived_directly=true`
-  (user-archived) are never touched."
-  [exploration-id new-archived?]
-  (if new-archived?
-    (explorations.db/archive-summary-documents! exploration-id)
-    (explorations.db/unarchive-summary-documents! exploration-id)))
 
 (defn- insert-summary-document!
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
@@ -569,12 +559,7 @@
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private updatable-columns
-  "Columns a client may set through `PUT /api/exploration/:id`. `UpdateExploration` is an open map,
-  so extra body keys survive decoding; the request is `select-keys`'d to this set before
-  `t2/update!` to prevent mass-assignment of protected columns (`creator_id`, `entity_id`,
-  timestamps, ...). `:archived_directly` is intentionally excluded — it is derived server-side by
-  `updates-with-archived-directly`, never accepted from the client. Keep in sync with
-  `UpdateExploration`."
+  "The columns `PUT /api/exploration/:id` passes to `t2/update!`."
   #{:name :description :archived :collection_id :collection_position})
 
 ;;; ----------------------------------------- /dimensions schemas + helpers -----------------------------------------
@@ -612,6 +597,10 @@
 
 ;;; ----------------------------------------- endpoints -----------------------------------------
 
+(defn- index-by-id
+  [rows]
+  (into {} (map (juxt :id identity)) rows))
+
 (api.macros/defendpoint :post "/" :- ::HydratedExploration
   "Create a new exploration with a single thread, persist the user's selected metrics, dimensions,
   and timelines, and stamp the thread as started. Also auto-creates a placeholder Summary
@@ -628,10 +617,14 @@
   ;; Block metric-card and timeline references are persisted verbatim and read back unfiltered
   ;; (planning context, thread hydration), so attach time is the
   ;; permission boundary: every referenced id must exist (404) and be readable (403) by the creator.
-  (doseq [card-id (distinct (mapcat #(map :card_id (:metrics %)) blocks))]
-    (api/read-check :model/Card card-id))
-  (doseq [timeline-id (distinct timeline_ids)]
-    (api/read-check :model/Timeline timeline-id))
+  (let [card-ids     (vec (distinct (mapcat #(map :card_id (:metrics %)) blocks)))
+        timeline-ids (vec (distinct timeline_ids))
+        id->card     (index-by-id (t2/hydrate (explorations.db/cards-by-ids (remove nil? card-ids)) :can_read))
+        id->timeline (index-by-id (t2/hydrate (explorations.db/timelines (set timeline-ids)) :can_read))]
+    (doseq [card-id card-ids]
+      (api/read-check (get id->card card-id)))
+    (doseq [timeline-id timeline-ids]
+      (api/read-check (get id->timeline timeline-id))))
   (let [persisted
         (t2/with-transaction [_]
           (let [exploration (explorations.db/insert-exploration! {:name          name
@@ -655,8 +648,6 @@
             (explorations.db/exploration (:id exploration))))]
     ;; Published after the transaction commits (matching PUT) so listeners can never observe an
     ;; exploration that isn't visible to other connections yet.
-    (events/publish-event! :event/exploration-create
-                           {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
 (defn- drill-thread-stamp
@@ -709,9 +700,11 @@
                                     src-thread-id))
           metric-selections (:metrics block)
           metric-selection  (first metric-selections)
+          id->card      (index-by-id (t2/hydrate (explorations.db/cards-by-ids (into [] (comp (keep :card_id) (distinct)) metric-selections))
+                                                 :can_read))
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
+                                 (api/check-404 (when card_id (get id->card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -745,8 +738,6 @@
           (explorations.db/update-thread! tid {:started_at (t/offset-date-time)})
           (explorations.queues/start-thread! tid)
           (let [persisted (explorations.db/exploration id)]
-            (events/publish-event! :event/exploration-update
-                                   {:object persisted :user-id api/*current-user-id*})
             (hydrate-exploration persisted)))))))
 
 (api.macros/defendpoint :get "/dimensions" :- ::DimensionsResponse
@@ -791,30 +782,24 @@
   "Update an exploration's metadata, archive state, or move it to a different collection.
 
   When `collection_id` changes, the caller must have write perms on the destination collection
-  (or the root collection when `collection_id` is nil). Source perms are enforced by
-  `api/write-check` against the exploration itself via `:perms/use-parent-collection-perms`.
-  Moving an exploration cascades the new `collection_id` onto its Summary document; flipping
-  `archived` cascades to the same document (skipping any that were directly user-archived,
-  mirroring the dashboard / dashboard-question cascade)."
+  (or the root collection when `collection_id` is nil). The caller must pass
+  `api/update-check` on the exploration.
+  Moving an exploration cascades the new `collection_id` onto its Summary document; changing
+  `archived` archives or restores its Summary documents, except those archived on their own."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    updates :- UpdateExploration]
   (let [existing (get-exploration-or-404 id)
         allowed  (select-keys updates updatable-columns)
-        updates' (api/updates-with-archived-directly existing allowed)]
-    (api/write-check existing)
+        updates' (api/updates-without-collection-when-archiving existing allowed)]
+    (api/update-check existing updates')
     (check-destination-collection-perms! existing updates')
-    (t2/with-transaction [_]
+    (events/with-batched-events
       (when (seq updates')
         (explorations.db/update-exploration! id updates')
         (when (contains? updates' :collection_id)
-          (cascade-collection-id-to-documents! id (:collection_id updates')))
-        (when (contains? updates' :archived)
-          (cascade-archived-to-documents! id (:archived updates')))))
+          (cascade-collection-id-to-documents! id (:collection_id updates')))))
     (let [updated (explorations.db/exploration id)]
-      (when (seq updates')
-        (events/publish-event! :event/exploration-update
-                               {:object updated :user-id api/*current-user-id*}))
       (hydrate-exploration updated))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -964,8 +949,9 @@
    {:keys [page_ids hidden]} :- [:map {:closed true}
                                  [:page_ids [:sequential ms/PositiveInt]]
                                  [:hidden :boolean]]]
-  (doseq [id page_ids]
-    (api/write-check (get-exploration-page-or-404 id)))
+  (let [id->page (index-by-id (t2/hydrate (explorations.db/pages-by-ids page_ids) :can_write))]
+    (doseq [id page_ids]
+      (api/write-check (api/check-404 (get id->page id)))))
   (when (seq page_ids)
     (explorations.db/update-pages! page_ids {:hidden hidden}))
   nil)
@@ -1024,7 +1010,7 @@
    :- [:map {:closed true}
        [:exploration_query_ids  [:sequential {:min 1} ms/PositiveInt]]
        [:display                :string]
-       [:visualization_settings ms/VisualizationSettings]]]
+       [:visualization_settings ::lib.schema.visualization/visualization-settings]]]
   (api/write-check (get-exploration-or-404 id))
   (let [doc (summary-document-or-404 id)]
     (api/check-404 (exploration-query-ids-belong-to-exploration? id exploration_query_ids))
@@ -1039,13 +1025,13 @@
             chart-href      (explorations.blocks/page-url id page-id)
             ;; Snapshot onto host_data so the Summary embed can render pills without a live lookup.
             explore-filters (page-explore-filters page-id)
-            extra-attrs {"stored_result_id" stored-result-id
-                         "chart_href"       chart-href
+            extra-attrs {:stored_result_id stored-result-id
+                         :chart_href       chart-href
                          ;; Comment stream key (page id). Distinct from `_id`,
                          ;; which must stay unique per node for duplicate embeds.
-                         "child_target_id"  (str page-id)
-                         "host_data"        (cond-> {:query_ids exploration_query_ids}
-                                              explore-filters (assoc :explore_filters explore-filters))}]
+                         :child_target_id  (str page-id)
+                         :host_data        (cond-> {:query_ids exploration_query_ids}
+                                             explore-filters (assoc :explore_filters explore-filters))}]
         (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))

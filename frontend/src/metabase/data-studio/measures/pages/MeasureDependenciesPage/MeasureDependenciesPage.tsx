@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase/data-studio/common/utils/get-dataset-query-preview-url";
+import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
@@ -24,12 +25,16 @@ export function MeasureDependenciesPage({
   onRemove,
   children,
 }: MeasureDependenciesPageProps) {
+  const buildQuestion = useQuestionFromOptsBuilder();
   return (
     <PageContainer data-testid="measure-dependencies-page">
       <MeasureHeader
         measure={measure}
         tabUrls={tabUrls}
-        previewUrl={getDatasetQueryPreviewUrl(measure.definition)}
+        previewUrl={getDatasetQueryPreviewUrl(
+          measure.definition,
+          buildQuestion,
+        )}
         onRemove={onRemove}
         breadcrumbs={breadcrumbs}
       />

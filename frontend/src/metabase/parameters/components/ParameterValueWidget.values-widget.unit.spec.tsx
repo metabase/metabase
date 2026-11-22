@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getParameterFieldInfo } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import type {
   FieldValuesType,
   Parameter,
@@ -189,12 +190,14 @@ function setup({ valuesCase }: SetupOpts) {
       ...parameterSource(valuesCase),
     }),
     fields: [
-      createMockField({
-        id: 1,
-        base_type: "type/Text",
-        effective_type: "type/Text",
-        has_field_values: FIELD_VALUES_TYPES[valuesCase.adminType],
-      }),
+      getParameterFieldInfo(
+        createMockField({
+          id: 1,
+          base_type: "type/Text",
+          effective_type: "type/Text",
+          has_field_values: FIELD_VALUES_TYPES[valuesCase.adminType],
+        }),
+      ),
     ],
   };
 

@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- FIXME: any-typed values */
 import slugg from "slugg";
 
 import MetabaseSettings from "metabase/utils/settings";
-import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
   Card as SavedCard,
@@ -44,28 +44,21 @@ export function serializedQuestion(
   return urlForCard(card, { ...opts, forceUnsaved: true });
 }
 
-type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query" | "ask";
+type NewQuestionUrlBuilderOpts = {
+  mode?: "view" | "notebook" | "query";
   creationType?: string;
   objectId?: number | string;
 };
 
-export function newQuestion({
-  mode,
-  creationType,
-  objectId,
-  ...options
-}: NewQuestionUrlBuilderParams) {
-  if (mode === "ask") {
-    return `/question/ask`;
-  }
-
-  const q = Question.create(options);
-  const url = question(q, {
+export function newQuestion(
+  draft: Question,
+  { mode, creationType, objectId }: NewQuestionUrlBuilderOpts = {},
+) {
+  const url = question(draft, {
     creationType,
     query: objectId === undefined ? {} : { objectId },
   });
-  const type = q.type();
+  const type = draft.type();
 
   if (mode) {
     const pathType = type === "metric" ? "question" : type;
@@ -73,6 +66,10 @@ export function newQuestion({
   }
 
   return url;
+}
+
+export function askQuestion() {
+  return "/question/ask";
 }
 
 export function publicQuestion({

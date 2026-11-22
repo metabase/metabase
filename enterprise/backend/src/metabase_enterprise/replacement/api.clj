@@ -104,13 +104,14 @@
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
         card      (api/check-404 (replacement.db/card card_id))
-        transform (transforms/create-transform!
-                   {:name          transform_name
-                    :source        {:type  :query
-                                    :query (:dataset_query card)}
-                    :target        transform_target
-                    :collection_id target_collection_id
-                    :tag_ids       transform_tag_ids})
+        body      {:name          transform_name
+                   :source        {:type  :query
+                                   :query (:dataset_query card)}
+                   :target        transform_target
+                   :collection_id target_collection_id
+                   :tag_ids       transform_tag_ids}
+        _         (api/create-check :model/Transform body)
+        transform (transforms/create-transform! body)
         job-row   (replacement-run/create-run!
                    :card card_id
                    :transform (:id transform)

@@ -195,8 +195,8 @@
    [:parameters      {:optional true}
     [:map {:closed true}
      ["synonym_threshold" {:optional true} [:maybe number?]]
-     ["weights"           {:optional true} [:maybe ms/OpaqueJSONObject]]
-     ["embedding_model"   {:optional true} [:maybe ms/OpaqueJSONObject]]
+     ["weights"           {:optional true} [:maybe :map]]
+     ["embedding_model"   {:optional true} [:maybe :map]]
      ["text_variant"      {:optional true} [:maybe :string]]]]
    [:catalog     {:optional true} :keyword]
    [:key         {:optional true} :string]
@@ -222,7 +222,8 @@
       ["tool_name"   {:optional true} [:maybe :string]]
       ["step"        {:optional true} :int]
       ["error_class" {:optional true} :string]
-      ["error_code"  {:optional true} :string]]
+      ["error_code"  {:optional true} :string]
+      ["repairs"     {:optional true} [:sequential :string]]]
      ;; agent_turn_finished
      [:map {:closed true}
       ["finish_reason" {:optional true} :string]
@@ -248,7 +249,7 @@
    cleanup-event-data
    data-complexity-event-data
    ai-service-event-data
-   ms/OpaqueJSONObject
+   [:map-of :string :metabase.util.malli/value]
    no-payload-event-data])
 
 (defn- tracker-config

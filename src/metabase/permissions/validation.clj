@@ -7,6 +7,15 @@
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]))
 
+(defn has-application-permission?
+  "Whether `*current-user*` has application permission of type `perm-type`, which is what a superuser has when
+  `advanced-permissions` is disabled."
+  [perm-type]
+  (boolean (if (and (premium-features/enable-advanced-permissions?)
+                    config/ee-available?)
+             (perms/current-user-has-application-permissions? perm-type)
+             api/*is-superuser?*)))
+
 (defn check-has-application-permission
   "If `advanced-permissions` is enabled, check `*current-user*` has application permission of type `perm-type`.
   Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."

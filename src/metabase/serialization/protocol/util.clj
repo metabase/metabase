@@ -19,11 +19,10 @@
 
 (defn ref-columns
   "The columns whose values make the ref of a row of `model`, a model other than Table and Field: the email of a User,
-  the name of a Database, and otherwise its identity columns."
+  and otherwise its identity columns."
   [model]
-  (case model
-    :model/User     [:email]
-    :model/Database [:name]
+  (if (= :model/User model)
+    [:email]
     (serialization.spec/identity-columns model)))
 
 (defn row-ref

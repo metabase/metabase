@@ -2,7 +2,6 @@
   "Re-derives the result metadata of the MBQL cards whose ResultMetadataStatus a write marked stale, which a write of
   what they read does; native cards are left alone, since their result metadata comes from running them."
   (:require
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
@@ -20,6 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -53,7 +53,7 @@
           (into {}
                 (keep (fn [k]
                         (when-some [v (get col k)]
-                          [k (walk/postwalk #(cond-> % (keyword? %) u/qualified-name) v)])))
+                          [k (match/replace-all v #'keyword? (u/qualified-name &match))])))
                 compared-column-keys))
         cols))
 
@@ -152,6 +152,7 @@
         (dependencies.db/clear-result-metadata-status!
          card-id stale models.result-metadata-status/current-result-metadata-version)
         (catch Throwable e
+          (dependencies.db/throw-unless-app-db-reachable! e)
           (log/warnf "Failed to re-derive the result metadata of card %s: %s" card-id (ex-message e))
           (when (dependencies.db/record-result-metadata-failure! card-id (deps.settings/dependency-max-failures))
             (log/warnf "Giving up on the result metadata of card %s until it changes" card-id))

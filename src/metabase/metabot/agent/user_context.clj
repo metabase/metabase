@@ -5,18 +5,27 @@
   recent views, user time formatting, and SQL dialect extraction from context."
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.curation :as curation]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.metabot.util :as metabot.u]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.quoting :as quoting])
+   [metabase.util.quoting :as quoting]
+   [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -256,37 +265,271 @@
                                                              :with-field-values? false}))
                     llm-shape/metric->xml))
 
+(defn- with-open-tab
+  "The dashboard `details` with `:open_tab`, the tab with `tab-id`, when that tab is on the dashboard."
+  [details tab-id]
+  ;; A stale tab id from the frontend is left out, so it can't send a chart to another dashboard's tab.
+  (if-let [tab (when tab-id
+                 (m/find-first #(= tab-id (:id %)) (metabot.db/dashboard-tabs (:id details))))]
+    (assoc details :open_tab tab)
+    details))
+
 (defmethod format-entity "dashboard"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a dashboard:"
-                    #(entity-details/get-dashboard-details {:dashboard-id (:id entity)})
+                    #(update (entity-details/get-dashboard-details {:dashboard-id (:id entity)})
+                             :structured-output
+                             (fn [details] (some-> details (with-open-tab (:tab_id entity)))))
                     llm-shape/dashboard->xml))
 
 ;;; Viewing Context Formatting
 
-(defn- exported-query-text
-  "The client-supplied query rendered for the LLM, only when the current user can read its
-  database and query the tables it references. The database refusal is audited for the same
-  reason the query's card ids get the audited store: the id is the caller's own."
+(def ^:private max-listed-columns
+  "The most columns that the ad-hoc query's column list shows."
+  100)
+
+(def ^:private columns-header
+  "The text before the column list. It tells the LLM how to refer to each column."
+  (str "Columns the query can use (name, display name, type, and the portable FK of a table column). "
+       "Refer to an `[expression]` column, a custom column of this stage, as `[\"expression\", {}, name]`. "
+       "Refer to any other column by its portable FK when its line has one, and by its name otherwise. "
+       "A joined column also needs its `join-alias`:"))
+
+(defn- column-portable-fk
+  "The portable FK of `column` when it comes from a table of `query`, or nil."
+  [query column]
+  ;; In stage 0 of a table source, the construct tool resolves a field ref only by its portable FK. A
+  ;; column of a card or of an earlier stage is referred to by its name, so it gets no portable FK.
+  (when (and (#{:source/table-defaults :source/joins} (:lib/source column))
+             (nil? (:lib/card-id column)))
+    ;; Catch per column, as [[metabot.tools.u/->result-column]] does: a failed lookup drops this FK, not the list.
+    (try (metabot.tools.u/column-portable-fk query column)
+         (catch Exception _ nil))))
+
+(defn- column-ref-name
+  "The name by which a ref in the last stage of the query refers to `column`.
+
+  A string ref resolves against the column's `:lib/source-column-alias`, so a joined column of an earlier
+  stage is \"Cat__NAME\", not \"NAME\". The fallback is `:name`."
+  [column]
+  ((some-fn :lib/source-column-alias :name) column))
+
+(defn- column-line
+  "One column of `query` as a list line.
+
+    - [join \"Cat\"] \"NAME\", display name \"Cat → Name\", type/Text, portable FK [\"DB\",\"PUBLIC\",\"CATEGORIES\",\"NAME\"]
+    - [expression] \"Double\", display name \"Double\", type/Float"
+  [query column]
+  (str "- "
+       ;; Only a custom column of the last stage takes an `expression` ref. A card's or an earlier
+       ;; stage's custom column is a `field` ref by name, like any other column.
+       (when (= :source/expressions (:lib/source column))
+         "[expression] ")
+       (when-let [join-alias (lib/current-join-alias column)]
+         (str "[join " (quoting/quoted join-alias) "] "))
+       (quoting/quoted (column-ref-name column))
+       ;; The `:long` style adds the join alias, as the UI shows a joined column: "Cat → Name".
+       ", display name " (quoting/quoted (lib/display-name query -1 column :long))
+       ", " (u/qualified-name (or (:effective-type column) (:base-type column)))
+       (when-let [portable-fk (column-portable-fk query column)]
+         (str ", portable FK " (quoting/escape-code-points (json/encode portable-fk) quoting/escaped-code-point?)))))
+
+(defn- column-group
+  "The group of `column` in the column list: `[:source]`, `[:expressions]`, or `[:join alias]`."
+  [column]
+  ;; The same predicates as the marks of [[column-line]].
+  (if (= :source/expressions (:lib/source column))
+    [:expressions]
+    (if-let [join-alias (lib/current-join-alias column)]
+      [:join join-alias]
+      [:source])))
+
+(defn- fair-shares
+  "How many lines each group keeps, for groups of `sizes` that share `limit` lines.
+
+    (fair-shares [150 150 3] 100) ;=> [49 48 3]
+
+  A group smaller than an equal share keeps all its lines, and its unused lines go to the other groups. The
+  lines that do not divide evenly go to the first groups that are still cut."
+  [sizes limit]
+  (let [used        (fn [level] (reduce + (map #(min % level) sizes)))
+        level       (last (take-while #(<= (used %) limit) (range (inc limit))))
+        spare       (- limit (used level))
+        extra-line? (set (take spare (keep-indexed (fn [i size] (when (> size level) i)) sizes)))]
+    (into [] (map-indexed (fn [i size] (if (extra-line? i) (inc level) (min size level)))) sizes)))
+
+(defn- hidden-count-line
+  "The line that counts the `hidden` columns of a cut group.
+
+  One group alone gets no group name.
+
+    - ... and 9 more source columns
+    - ... and 70 more [join \"Cat\"] columns"
+  [[kind join-alias] hidden one-group?]
+  (str "- ... and " hidden " more"
+       (cond
+         one-group?            nil
+         (= kind :source)      " source columns"
+         (= kind :expressions) " [expression] columns"
+         :else                 (str " [join " (quoting/quoted join-alias) "] columns"))))
+
+(defn- column-list
+  "The column list for `columns` of `query`, at most [[max-listed-columns]] column lines.
+
+  Each run of columns with one mark (source, custom column, or one join) shares the lines fairly. Each
+  group that is cut ends with a count of its hidden columns. Nil when `columns` is empty."
+  [query columns]
+  (when (seq columns)
+    ;; Each run of one group key is a group. A metric source repeats a key: its own custom columns and joins
+    ;; come before those of this stage (`metric-visible-columns`). A repeated key gives a second group, which
+    ;; keeps the order.
+    (let [groups     (partition-by column-group columns)
+          one-group? (= 1 (count groups))
+          shares     (if (<= (count columns) max-listed-columns)
+                       (map count groups)
+                       (fair-shares (map count groups) max-listed-columns))]
+      (te/lines (map (fn [group share]
+                       (let [hidden (- (count group) share)]
+                         [(map #(column-line query %) (take share group))
+                          (when (pos? hidden)
+                            (hidden-count-line (column-group (first group)) hidden one-group?))]))
+                     groups shares)))))
+
+(defn- permitted-column-list
+  "The column list of the last stage of a cleared lib `query`, without the columns that the current user cannot see.
+
+  Nil when the columns cannot be calculated."
   [query]
-  (some-> (shared.content-store/query-for-export query true)
-          (query-export/export->text shared.content-store/audited-store)))
+  (try
+    (column-list query
+                 ;; Implicitly joinable columns are not included, so that foreign-key targets do not
+                 ;; multiply the list.
+                 (->> (lib/visible-columns query -1 {:include-implicitly-joinable?                 false
+                                                     :include-implicitly-joinable-for-source-card? false})
+                      ;; Remove the columns that table permissions or a sandbox hide.
+                      entity-details/permission-filter-columns))
+    (catch Exception e
+      (log/warn e "Omitting the column list of an ad-hoc query")
+      nil)))
+
+(defn- resource-card
+  "`card` of a cleared query, or nil when Metabot may not read it as a resource.
+
+  Throws a 404 when the card's database is not addressable as a resource."
+  [{card-id :id card-type :type :as card}]
+  ;; A readable card can clear a query on a database that the user cannot read. Check the database first:
+  ;; a failed `api/read-check` logs an error and publishes an audit event on each LLM call.
+  (when (some-> (:database-id card) metabot.db/database (t2/hydrate :can_read) mi/can-read?)
+    ;; The checks of a `read_resource` call on the card's URI, so the line never points at a read that fails.
+    (resources-tools/check-card-resource-database card-id)
+    (when (or (not (shared/curated-only?))
+              (curation/subject-curated? [(if (= :metric card-type) "metric" "card") card-id]))
+      card)))
+
+(defn- card-uris
+  "The quoted name of `card` and its numeric-id URIs.
+
+    \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
+  [{card-id :id card-type :type card-name :name}]
+  ;; `read_resource` lists the columns of a metric at `dimensions`, and of any other card at `fields`.
+  (str (quoting/quoted card-name) ": " (llm-shape/metabase-uri card-type card-id)
+       " (read its columns at "
+       (llm-shape/metabase-uri card-type card-id (if (= :metric card-type) "dimensions" "fields")) ")"))
+
+(defn- omitted-on-failure
+  "The result of `(line-fn)`, or nil when it throws. `what` names the omitted line in the log."
+  [what line-fn]
+  (try
+    (line-fn)
+    (catch Exception e
+      (if (= 404 (:status-code (ex-data e)))
+        (log/debugf "Omitting %s of an ad-hoc query: its database is not addressable as a resource" what)
+        (log/warnf e "Omitting %s of an ad-hoc query" what))
+      nil)))
+
+(defn- source-card-line
+  "The line that names the stage-0 source card of a cleared lib `query` by its numeric-id URI, or nil.
+
+    Source model \"Venues\": metabase://model/12 (read its columns at metabase://model/12/fields)"
+  [query]
+  (omitted-on-failure
+   "the source card"
+   #(when-let [card (some->> (lib/primary-source-card-id query) (lib.metadata/card query) resource-card)]
+      (str "Source " (name (:type card)) " " (card-uris card)))))
+
+(defn- metric-ids
+  "The ids of the metrics that a cleared lib `query` aggregates, sorted, without its stage-0 source card."
+  [query]
+  ;; The frontend keeps the base table or model of a metric as the source, and aggregates `[:metric {} id]`.
+  (sort (disj (set (lib/all-metric-ids query)) (lib/primary-source-card-id query))))
+
+(defn- metric-lines
+  "The lines that name each metric that a cleared lib `query` aggregates by its numeric-id URI, or nil.
+
+    Metric \"Revenue\": metabase://metric/7 (read its columns at metabase://metric/7/dimensions)"
+  [query]
+  ;; The permission check of the query already read-checked each metric: it collects the ids of `:metric`
+  ;; clauses as card ids.
+  (not-empty
+   (into []
+         (keep (fn [metric-id]
+                 (omitted-on-failure
+                  "a metric"
+                  #(let [card (lib.metadata/card query metric-id)]
+                     (when (= :metric (:type card))
+                       (some->> (resource-card card) card-uris (str "Metric ")))))))
+         (omitted-on-failure "the metrics" #(metric-ids query)))))
+
+(defn- cleared-lib-query
+  "The lib query of a cleared `query` with its metadata provider `mp`, or nil when it cannot be built."
+  [query mp]
+  (try
+    (lib/query mp query)
+    (catch Exception e
+      (log/warn e "Omitting the source card, the metrics and the column list of an ad-hoc query")
+      nil)))
+
+(defn- exported-query
+  "The client-supplied query rendered for the LLM, or nil when the current user may not see the query.
+
+  The result also holds the source-card line, the metric lines and the column list. They are present only when the
+  permission check cleared the query with a metadata provider."
+  [query]
+  ;; The database refusal is audited for the same reason that the query's card ids get the audited
+  ;; store: the id is the caller's own.
+  ;; One check per item: a refusal is not cached, and each check writes an audit entry.
+  (when-let [{:keys [mp] :as export} (shared.content-store/query-for-export query true)]
+    (when-let [text (query-export/export->text export shared.content-store/audited-store)]
+      (let [lib-query (when mp
+                        (cleared-lib-query (:query export) mp))]
+        {:text        text
+         :source-card (when lib-query
+                        (source-card-line lib-query))
+         :metrics     (when lib-query
+                        (metric-lines lib-query))
+         :columns     (when lib-query
+                        (permitted-column-list lib-query))}))))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
   [item]
   (if (native-query-item? item)
     (format-native-query item)
-    (te/lines "The user is currently in the notebook editor viewing a query."
-              (te/field "Query ID" (:id item))
-              (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (exported-query-text (:query item)))
-              (when-let [config-ids (format-chart-config-ids item)]
-                (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
-              (te/field "Tables used" (some->> (:used_tables item)
-                                               (map format-entity)
-                                               te/lines)))))
+    (let [{:keys [text source-card metrics columns]} (exported-query (:query item))]
+      (te/lines "The user is currently in the notebook editor viewing a query."
+                (te/field "Query ID" (:id item))
+                (te/field "Database ID" (get-in item [:query :database]))
+                source-card
+                metrics
+                (te/field "Query" text)
+                (when columns
+                  (te/lines columns-header columns ""))
+                (when-let [config-ids (format-chart-config-ids item)]
+                  (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
+                (te/field "Tables used" (some->> (:used_tables item)
+                                                 (map format-entity)
+                                                 te/lines))))))
 
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]

@@ -60,6 +60,17 @@
                         "Pass \"tab\" on the add op, or use \"move\" with \"tab\" for cards already placed.")]
                   (common/list-message dashcard-ids)))
 
+   :overlapping-cards
+   (fn [{:keys [dashcard-ids]}]
+     (message/msg [(str "dashcards %s would overlap, and this call gives both a position — give them positions "
+                        "that don't cover each other. Other cards are pushed down automatically.")]
+                  (common/list-message dashcard-ids)))
+
+   :past-grid-edge
+   (fn [{:keys [dashcard-id col size-x]}]
+     (message/msg ["dashcard %s would run past the 24-column grid: col %s + size_x %s is more than 24."]
+                  dashcard-id col size-x))
+
    :unknown-parameter
    (fn [{:keys [parameter-id]}] (message/msg ["no parameter with id %s on this dashboard."] parameter-id))
 

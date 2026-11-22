@@ -13,10 +13,22 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :router_database_id :model/Database :id database-id))
 
+(mu/defn router-database-ids :- [:map-of ::lib.schema.id/database ::lib.schema.id/database]
+  "A map from the id of each destination among the Databases with `database-ids` to the id of its router."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :id :router_database_id :model/Database
+                    :id [:in database-ids]
+                    :router_database_id [:not= nil]))
+
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
+
+(mu/defn database-settings-by-name
+  "The `:settings` of a Database named `database-name`, or nil."
+  [database-name :- :string]
+  (t2/select-one-fn :settings :model/Database :name database-name))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
@@ -41,8 +53,8 @@
 
 (mu/defn set-database-provider-name!
   "Set the provider name of the Database with `database-id`, returning the number updated."
-  [database-id    :- ::lib.schema.id/database
-   provider-name  :- :string]
+  [database-id   :- ::lib.schema.id/database
+   provider-name :- [:maybe :string]]
   (t2/update! :model/Database :id database-id {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
@@ -83,17 +95,12 @@
                           [:not [:exists ^:allow-subquery {:select [1]
                                                            :from   [[(t2/table-name :model/Field) :child_field]]
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
+    ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+    #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
                                  [:in :table_id table-ids-query]
                                  extra-clause]})))
-
-(mu/defn delete-cards-for-database-returning-ids-reducible
-  "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
-  [database-id :- ::lib.schema.id/database]
-  (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
-                       :returning   [:id]}))
 
 (mu/defn card-ids-for-database-reducible
   "A reducible of the `:id`s of the Cards of the Database with `database-id`."
@@ -114,11 +121,28 @@
     (t2/delete! :model/Action :id [:in action-ids])
     0))
 
-(mu/defn delete-cards-for-database!
-  "Delete the Cards of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
+;; The ids come from an earlier, unlocked scan, so keeping `database_id` in the predicate spares a card that moved to
+;; another database in between.
+(mu/defn delete-cards! :- :int
+  "Delete the Cards with `card-ids` that still belong to the Database with `database-id`, returning the number
+  deleted."
+  [database-id :- ::lib.schema.id/database
+   card-ids    :- [:sequential ::lib.schema.id/card]]
+  ;; Only a Database delete calls this. The change log's delete hook already logs what that delete cascades to.
+  #_{:clj-kondo/ignore [:metabase/change-log-raw-write]}
+  (first (t2/query {:delete-from (t2/table-name :model/Card)
+                    :where       [:and
+                                  [:= :database_id database-id]
+                                  [:in :id card-ids]]})))
+
+(mu/defn existing-card-ids :- [:set ::lib.schema.id/card]
+  "The ids among `card-ids` that still name a Card."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (into #{}
+        (map :id)
+        (t2/query {:select [:id]
+                   :from   [(t2/table-name :model/Card)]
+                   :where  [:in :id card-ids]})))
 
 (mu/defn delete-transforms-for-database! :- :int
   "Delete the Transforms reading from the Database with `database-id`, each through its own hooks, returning the number

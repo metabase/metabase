@@ -4,8 +4,8 @@
   Other methods resolve drivers using `driver/the-initialized-driver`, which calls `initialize!`; we'll wait until
   that call to do more memory-intensive things like registering a JDBC driver or loading the actual driver namespace.
 
-  See https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference for all the options allowed for a
-  plugin manifest."
+  See https://www.metabase.com/docs/latest/developers-guide/drivers/plugins#the-metabase-plugin-manifest-reference
+  for all the options allowed for a plugin manifest."
   (:require
    [clojure.java.io :as io]
    [metabase.driver :as driver]

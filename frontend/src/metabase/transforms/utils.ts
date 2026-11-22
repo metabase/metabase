@@ -171,7 +171,7 @@ export function isSameSource(
   source2: DraftTransformSource,
 ) {
   if (source1.type === "query" && source2.type === "query") {
-    return Lib.areLegacyQueriesEqual(source1.query, source2.query);
+    return Lib.areQueriesEqual(source1.query, source2.query);
   }
   if (source1.type === "python" && source2.type === "python") {
     return _.isEqual(source1, source2);
@@ -193,7 +193,7 @@ export type ValidationResult = {
 export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
-    const tags = Object.values(Lib.templateTags(query));
+    const tags = Lib.templateTags(query);
 
     const invalidResults = tags
       .map(validateTemplateTag)

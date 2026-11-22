@@ -164,7 +164,7 @@
                  :native {:query (format "SELECT * FROM {{%s}} AS x" tag-name)
                           :template-tags {tag-name
                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                           :type "card", :card card-id}}}}))))))))
+                                           :type "card", :card-id card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-2
   (testing "...but it should work if user has perms [template tag referenced query]"
@@ -215,7 +215,7 @@
                  :native {:query (format "SELECT * FROM {{%s}} AS x" tag-name)
                           :template-tags {tag-name
                                           {:id tag-name, :name tag-name, :display-name tag-name,
-                                           :type "card", :card card-id}}}}))))))))
+                                           :type "card", :card-id card-id}}}}))))))))
 
 (deftest template-tags-referenced-queries-test-4
   (testing "...but it should work if user has perms [template tag referenced query]"
@@ -272,8 +272,8 @@
                 ;; Are revoked with DB access blocked: requires EE, see test in
                 ;; enterprise/backend/test/metabase_enterprise/advanced_permissions/common_test.clj
                 (testing "are granted with access to the model"
-                  (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
-                            qp.perms/*card-id* model-id]
+                  (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+                  (binding [qp.perms/*card-id* model-id]
                     (check! query)))))))))))
 
 (deftest inactive-table-test

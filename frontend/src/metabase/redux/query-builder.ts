@@ -6,6 +6,10 @@
 import { createAction } from "redux-actions";
 
 import { createThunkAction } from "metabase/redux";
+import type {
+  MetabotCardBaseline,
+  PendingMetabotCard,
+} from "metabase/redux/store";
 import type { Card } from "metabase-types/api";
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -28,6 +32,21 @@ export const setIsNativeEditorOpen = createThunkAction(
         dispatch(setUIControls({ isNativeEditorOpen }));
       }
     },
+);
+
+export const SET_PENDING_METABOT_CARD = "metabase/qb/SET_PENDING_METABOT_CARD";
+/**
+ * Tells the next query builder init that Metabot is opening the question at `url`.
+ * That init reads and clears it.
+ */
+export const setPendingMetabotCard = createAction<PendingMetabotCard | null>(
+  SET_PENDING_METABOT_CARD,
+);
+
+export const ADD_METABOT_CARD_BASELINE =
+  "metabase/qb/ADD_METABOT_CARD_BASELINE";
+export const addMetabotCardBaseline = createAction<MetabotCardBaseline>(
+  ADD_METABOT_CARD_BASELINE,
 );
 
 export const EDIT_SUMMARY = "metabase/qb/EDIT_SUMMARY";

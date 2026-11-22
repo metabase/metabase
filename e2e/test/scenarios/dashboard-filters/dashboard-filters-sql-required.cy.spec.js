@@ -31,7 +31,7 @@ const fieldFilterQuestionDetails = {
         name: "filter",
         "display-name": "Filter",
         type: "dimension",
-        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "field-id": PRODUCTS.CATEGORY,
         "widget-type": "category",
         default: ["Gizmo", "Gadget"],
         required: true,

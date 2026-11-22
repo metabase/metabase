@@ -77,7 +77,7 @@
   [field-name]
   (let [col (m/find-first #(= (:id %) (mt/id :people field-name))
                           (lib/visible-columns (implicit-join-query)))]
-    (json/encode (lib/->legacy-MBQL (lib/ref col)))))
+    (json/encode (lib/->legacy-MBQL-ref (lib/ref col)))))
 
 (deftest ^:parallel ad-hoc-query-test
   (testing "GET /api/tiles/:zoom/:x/:y with latField and lonField query params"
@@ -86,6 +86,20 @@
                :query (json/encode (venues-query))
                :latField (encoded-lat-field-ref :mbql)
                :lonField (encoded-lon-field-ref :mbql))))))
+
+(deftest ^:parallel data-app-tiles-test
+  (testing "a data app's tile requests, which reach the server with the data-app marker, are answered"
+    (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+      (is (png? (mt/user-http-request
+                 :crowberto :get 200 "tiles/4/2/4" as-data-app
+                 :query (json/encode (venues-query))
+                 :latField (encoded-lat-field-ref :mbql)
+                 :lonField (encoded-lon-field-ref :mbql))))
+      (mt/with-temp [:model/Card card {:dataset_query (venues-query)}]
+        (is (png? (mt/user-http-request
+                   :crowberto :get 200 (format "tiles/%d/1/1/1" (u/id card)) as-data-app
+                   :latField (encoded-lat-field-ref :mbql)
+                   :lonField (encoded-lon-field-ref :mbql))))))))
 
 (deftest ^:parallel ad-hoc-query-test-2
   (testing "Works on native queries"

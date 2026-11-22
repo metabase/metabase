@@ -199,25 +199,22 @@
                                         :table_id (mt/id :venues)}))))))))
 
 (deftest ^:parallel blank-name-test
-  (testing "GHY-4153/GHY-4154: a whitespace-only `name` is refused. The REST endpoints these tools
-            delegate to take `ms/NonBlankString`, and a tool that inherits their checks must not be
-            laxer than they are — `[:string {:min 1}]` alone lets \" \" through."
+  (testing "a whitespace-only `name` is refused by the argument schema, built from the entity schema"
     (doseq [[tool definition] {"segment_write" mbql4-fragment
                                "measure_write" (count-definition (mt/id :venues))}]
       (testing tool
         (testing "create"
-          (is (= (format "\"name\" cannot be blank — pass a short descriptive name for the %s."
-                         (if (= "segment_write" tool) "segment" "measure"))
-                 (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
-                                         {:method     "create" :table_id (mt/id :venues)
-                                          :name       "   "
-                                          :definition definition})))))
-        (testing "update — refused before the id lookup, so it reads as an argument error"
-          (is (re-find #"\"name\" cannot be blank"
-                       (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
-                                               {:method           "update" :id 13371337
-                                                :name             "   "
-                                                :revision_message "x"})))))))))
+          (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
+                                                        {:method     "create" :table_id (mt/id :venues)
+                                                         :name       "   "
+                                                         :definition definition}))
+                                "Invalid arguments")))
+        (testing "update"
+          (is (str/starts-with? (tool-error (call-tool! :crowberto v2.tu/all-scopes tool
+                                                        {:method           "update" :id 13371337
+                                                         :name             "   "
+                                                         :revision_message "x"}))
+                                "Invalid arguments")))))))
 
 (deftest ^:parallel invalid-id-shape-test
   (testing "GHY-4137: an id that is neither numeric nor a 21-char entity_id teaches the two accepted shapes"
@@ -344,7 +341,6 @@
       (testing "GHY-4137: create with a single-aggregation MBQL 5 definition succeeds"
         (is (=? {:id        pos-int?
                  :entity_id string?
-                 :table_id  (mt/id :venues)
                  :name      "definitions-test measure A"
                  :archived  false}
                 created))
@@ -392,9 +388,7 @@
                                                                       :aggregation [["count"]]}}})))))
       (testing "the update path enforces the same rule"
         (mt/with-temp [:model/Measure {measure-id :id} {:name       "definitions-test mbql4 update"
-                                                        :table_id   (mt/id :venues)
-                                                        :creator_id (mt/user->id :crowberto)
-                                                        :definition {}}]
+                                                        :creator_id (mt/user->id :crowberto)}]
           (is (re-find shape-sentence
                        (tool-error (call-tool! :crowberto v2.tu/all-scopes "measure_write"
                                                {:method "update" :id measure-id :revision_message "x"
@@ -738,10 +732,8 @@
              (perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
              (perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
              (testing "precondition: venues is authorable and checkins is not"
-               (is (true? (perms/user-has-permission-for-table?
-                           analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :venues))))
-               (is (false? (perms/user-has-permission-for-table?
-                            analyst-id :perms/view-data :unrestricted (mt/id) (mt/id :checkins)))))
+               (is (true? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :venues) (mt/id)})))
+               (is (false? (perms/user-has-permission-for-tables? (perms/user-info analyst-id) :perms/view-data :unrestricted {(mt/id :checkins) (mt/id)}))))
              (let [segment (tool-result (call-tool! analyst-id v2.tu/all-scopes "segment_write"
                                                     {:method     "create" :table_id (mt/id :venues)
                                                      :name       "definitions-test move segment"
@@ -773,11 +765,14 @@
 (deftest existence-oracle-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table {table-id :id} {:db_id db-id}
-                 :model/Segment {segment-id :id} {:table_id table-id}
+                 :model/Segment {segment-id :id} {:definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/filter (lib/= 1 1))))}
                  :model/Measure {measure-id :id} {:name       "definitions-test oracle measure"
-                                                  :table_id   table-id
                                                   :creator_id (mt/user->id :crowberto)
-                                                  :definition {}}]
+                                                  :definition (let [mp (lib-be/application-database-metadata-provider db-id)]
+                                                                (-> (lib/query mp (lib.metadata/table mp table-id))
+                                                                    (lib/aggregate (lib/count))))}]
     (perms/set-database-permission! (perms/all-users-group) db-id :perms/view-data :blocked)
     (let [norm (fn [msg] (str/replace msg #"\d+" "N"))]
       (testing "GHY-4137: an unreadable id and a nonexistent id must be indistinguishable — no existence oracle"

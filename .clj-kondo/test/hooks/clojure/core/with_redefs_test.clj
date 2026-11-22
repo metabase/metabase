@@ -3,9 +3,9 @@
    [clj-kondo.core :as kondo]
    [clj-kondo.hooks-api :as hooks]
    [clj-kondo.impl.utils]
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
-   [hooks.clojure.core.with-redefs]))
+   [hooks.clojure.core.with-redefs]
+   [hooks.test-util :as test-util]))
 
 ;;; The new hook delegates the "is this LHS a regular defn?" decision to clj-kondo's own
 ;;; analysis cache via [[hooks/resolve]] and [[hooks/ns-analysis]]. In unit tests we have
@@ -185,36 +185,25 @@
                                'example.cyclic {:clj {'proxied-fn          {:ns 'example.cyclic, :name 'proxied-fn}
                                                       :proxied-namespaces '(example.ns)}}}))))))
 
-(defn- delete-tree! [^java.io.File f]
-  (when (.isDirectory f)
-    (run! delete-tree! (.listFiles f)))
-  (.delete f))
-
-(defn- kondo-findings
+(defn- kondo-findings!
   "Findings from a real kondo run over `test-files`, each a map of relative path to content.
    Lints `src-files` first to fill the cache, as `kondo --lint src test` does.
    The hook reads its decisions from the cache, which is only written after a file is analysed."
   [src-files test-files]
-  (let [tmp-dir (.toFile (java.nio.file.Files/createTempDirectory
-                          "with-redefs-smoke" (into-array java.nio.file.attribute.FileAttribute [])))
-        lint!   (fn [dir files]
-                  (doseq [[path content] files]
-                    (io/make-parents tmp-dir dir path)
-                    (spit (io/file tmp-dir dir path) content))
-                  (kondo/run! {:lint       [(str (io/file tmp-dir dir))]
-                               :cache-dir  (str (io/file tmp-dir "cache"))
-                               :config-dir ".clj-kondo"}))]
-    (try
-      (lint! "src" src-files)
-      (:findings (lint! "test" test-files))
-      (finally (delete-tree! tmp-dir)))))
+  (test-util/with-cached-sources!
+    src-files
+    (fn [cache dir]
+      (test-util/write-files! dir test-files)
+      (:findings (kondo/run! {:lint       [(str dir)]
+                              :cache-dir  cache
+                              :config-dir ".clj-kondo"})))))
 
 (deftest ^:synchronized integration-arities-iff-defn-smoke-test
   (testing "real kondo run validates the load-bearing invariant: only `defn`-style vars
             get arities recorded — `defmulti` and plain `def` do not. If a future kondo
             release breaks this, the smoke test fails here rather than the hook silently
             producing wrong nudges."
-    (let [findings   (kondo-findings
+    (let [findings   (kondo-findings!
                       {"smoke_fixture.clj" "(ns smoke-fixture)
 (defmulti the-multi {:arglists '([x])} (fn [x] x))
 (defn the-defn [x] x)
@@ -240,7 +229,7 @@
   (testing "real kondo run: only the re-exported defn (row 4) gets nudged"
     ;; Row 5 is a re-exported defmulti. Row 6 is a defmulti imported under the name of a private defn in its source.
     (is (=? [{:type :metabase/prefer-with-dynamic-fn-redefs, :row 4}]
-            (kondo-findings
+            (kondo-findings!
              {"smoke_impl.clj" "(ns smoke-impl)
 (defn the-defn [x] x)
 (defmulti the-multi {:arglists '([x])} (fn [x] x))
@@ -265,7 +254,7 @@
 
 (deftest ^:synchronized integration-deprecated-cljc-namespace-smoke-test
   (testing "real kondo run: a var in a deprecated cljc namespace is skipped without a hook error"
-    (is (= [] (kondo-findings
+    (is (= [] (kondo-findings!
                {"smoke_deprecated.cljc" "(ns smoke-deprecated {:deprecated \"use something else\"})
 (defn the-defn [x] x)
 "}

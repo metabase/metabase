@@ -7,7 +7,7 @@ import {
 } from "metabase/embedding-sdk/config";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
-import { setDataAppDevHeader } from "./lib/auth/set-data-app-dev-header";
+import { setDataAppDevHeader } from "./data-apps/set-data-app-dev-header";
 import { setEmbedPreviewHeader } from "./lib/auth/set-embed-preview-header";
 import { setReactSdkEmbedReferrerHeader } from "./lib/auth/set-react-sdk-embed-referrer-header";
 import { setRequestClientHeaders } from "./lib/auth/set-request-client-headers";
@@ -46,7 +46,7 @@ export function setIsStaticEmbedding() {
 }
 
 export function setDataApp(
-  dataAppName: string,
+  dataAppSlug: string,
   { isDev = false }: { isDev?: boolean } = {},
 ) {
   const sdkPackageVersion = getSdkPackageVersion();
@@ -55,7 +55,7 @@ export function setDataApp(
   EMBEDDING_SDK_CONFIG.isDataApp = true;
   EMBEDDING_SDK_CONFIG.isDataAppDev = isDev;
   EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader = "data-app";
-  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppName;
+  EMBEDDING_SDK_CONFIG.metabaseClientRequestIdentifier = dataAppSlug;
 
   PLUGIN_API.onBeforeRequestHandlers.setRequestClientHeaders =
     setRequestClientHeaders({

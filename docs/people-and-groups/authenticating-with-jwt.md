@@ -52,9 +52,9 @@ Go to **Admin** > **Settings** > **Authentication** > **JWT**. Fill out the form
 
 Here's a breakdown of each of the settings:
 
-- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider.
+- **JWT Identity Provider URI**: This is where Metabase will redirect login requests. It's where your users go to log in through your identity provider. On self-hosted Metabases, you can also set it with the [`MB_JWT_IDENTITY_PROVIDER_URI`](../configuring-metabase/environment-variables.md#mb_jwt_identity_provider_uri) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
-- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then generate a key or paste your own.
+- **String used by the JWT signing key**: The string used to seed the private key used to validate JWT messages. Both Metabase and your authentication app must use the same key. Click **Set up key**, then click **Create** to generate a key. Copy the key and store it somewhere safe, because Metabase won't show it to you again.
 
 Until you save your settings, the **User attribute configuration** and **Group mapping** sections stay locked. You can edit **User provisioning** before you save.
 
@@ -69,6 +69,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
+
+On self-hosted Metabases, you can also set these attribute keys with the environment variables [`MB_JWT_ATTRIBUTE_EMAIL`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_email), [`MB_JWT_ATTRIBUTE_FIRSTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_firstname), [`MB_JWT_ATTRIBUTE_LASTNAME`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_lastname), [`MB_JWT_ATTRIBUTE_GROUPS`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_groups), and [`MB_JWT_ATTRIBUTE_TENANT`](../configuring-metabase/environment-variables.md#mb_jwt_attribute_tenant), or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 ## Configure group mappings
 
@@ -152,6 +154,8 @@ If you set either `MB_JWT_GROUP_SYNC` or `MB_JWT_GROUP_MAPPINGS`, the **Group ma
 User provisioning is enabled by default. When someone logs in via JWT SSO, Metabase creates an account for them if they don't have one, and reactivates their account if it is deactivated. The switch saves on its own, so you don't need to click **Save and enable** after you change it.
 
 If you disable user provisioning, users without accounts or with deactivated accounts will not be able to log in via JWT SSO.
+
+On self-hosted Metabases, you can also turn user provisioning on or off with the [`MB_JWT_USER_PROVISIONING_ENABLED`](../configuring-metabase/environment-variables.md#mb_jwt_user_provisioning_enabled) environment variable or, on Pro and Enterprise plans, in the [config file](../configuring-metabase/config-file.md).
 
 Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase, [even if their account previously had a password login](./managing.md#signing-in-via-sso-disables-your-password-login).
 

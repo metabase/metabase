@@ -20,6 +20,7 @@ export interface MockSelectionOpts {
   blocks?: ExplorationBlock[];
   timelines?: Timeline[];
   allTimelines?: Timeline[];
+  name?: string;
 }
 
 export function mockExplorationBlock(
@@ -67,7 +68,7 @@ export function makeMockSelection(
     allTimelines,
     timelinesLoading: false,
     timelinesError: null,
-    name: "",
+    name: opts.name ?? "",
     collection: { name: "Personal collection" },
     setName: jest.fn(),
     setCollection: jest.fn(),

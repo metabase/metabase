@@ -6,11 +6,14 @@
    [java-time.api :as t]
    [malli.error :as me]
    [malli.util :as mut]
+   [metabase.api-keys.audit :as api-keys.audit]
    [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.db :as api-keys.db]
    [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
+   [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.app-db.core :as mdb]
+   [metabase.audit-app.core :as audit]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -50,6 +53,7 @@
 
 (doto :model/ApiKey
   (derive :metabase/model)
+  (derive :hook/events)
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ApiKey
@@ -99,15 +103,26 @@
       (.append sb \*))
     (str sb)))
 
+(mu/defn key-hash-salt :- :string
+  "The salt hashed in front of a key with `scope`, and checked in front of it at authentication. A `:workspace-manager`
+  key has one. A build from before that scope checks every key with no salt, so it never authenticates such a key and
+  never treats it as an unscoped key of its user. Other keys have no salt."
+  [scope :- [:maybe ::api-keys.schema/scope]]
+  (if (= scope :workspace-manager)
+    "workspace-manager:"
+    ""))
+
 (mu/defn- hash-bcrypt :- ::api-keys.schema/key.hashed
-  [k :- ::api-keys.schema/key.unhashed-or-secret]
-  (-> k expose u.password/hash-bcrypt))
+  [k     :- ::api-keys.schema/key.unhashed-or-secret
+   scope :- [:maybe ::api-keys.schema/scope]]
+  (u.password/hash-bcrypt (str (key-hash-salt scope) (expose k))))
 
 (mu/defn- add-key
-  "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in."
+  "Adds the `key` based on the `:metabase.api-keys/unhashed-qkey passed in, salted for the key's `:scope`."
   [{unhashed-key ::api-keys/unhashed-key, :as api-key} :- ApiKeyPipelineRow]
   (-> api-key
-      (cond-> (contains? api-key ::api-keys/unhashed-key) (assoc :key (some-> unhashed-key hash-bcrypt)))
+      (cond-> (contains? api-key ::api-keys/unhashed-key)
+        (assoc :key (some-> unhashed-key (hash-bcrypt (:scope api-key)))))
       (dissoc ::api-keys/unhashed-key)))
 
 (defn- validate-with-schema [api-key schema]
@@ -125,48 +140,28 @@
       add-key
       (validate-with-schema ::api-keys.schema/api-key.insert)))
 
-(t2/define-after-insert :model/ApiKey
-  [api-key]
-  (u/prog1 api-key
-    (events/publish-event!
-     :event/api-key-create
-     {:object  (t2/hydrate api-key :group :updated_by)
-      :user-id api/*current-user-id*})))
-
 (t2/define-before-update :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (t2/with-transaction [_conn]
-    ;; need to hydrate user info BEFORE making changes so we record the correct stuff for audit logging
-    (let [key-before (t2/hydrate (t2/instance :model/ApiKey (t2/original api-key)) :user :group :updated_by)]
-      ;; update the user name associated with this API key if it was created just for this API key.
-      (when-let [new-name (:name (t2/changes api-key))]
-        (api-keys.db/rename-api-key-user! user-id new-name))
-      ;; update user group as well.
-      (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
-        (assert (= (api-keys.db/user-type user-id) :api-key)
-                "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
-        (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
-      (u/prog1 (-> api-key
-                   add-prefix
-                   add-key
-                   ;; force a no-op update so the T2 code doesn't optimize this whole update out
-                   (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
-                                                                          (assoc :updated_at (t/offset-date-time))))
-                   (validate-with-schema ::api-keys.schema/api-key.update))
-        (events/publish-event!
-         :event/api-key-update
-         {:object          (t2/hydrate (t2/instance :model/ApiKey (t2/current <>)) :user :group :updated_by)
-          :previous-object key-before
-          :user-id         api/*current-user-id*})))))
+    ;; update the user name associated with this API key if it was created just for this API key.
+    (when-let [new-name (:name (t2/changes api-key))]
+      (api-keys.db/rename-api-key-user! user-id new-name))
+    ;; update user group as well.
+    (when-let [new-group-id (::api-keys/group-id (t2/changes api-key))]
+      (assert (= (api-keys.db/user-type user-id) :api-key)
+              "Cannot change the Permissions Group for the user associated with an API key that was not created alongside it")
+      (user/set-permissions-groups! user-id [(perms/all-users-group) {:id new-group-id}]))
+    (-> api-key
+        add-prefix
+        add-key
+        ;; force a no-op update so the T2 code doesn't optimize this whole update out
+        (cond-> (::api-keys/group-id (t2/changes api-key)) (-> (dissoc ::api-keys/group-id)
+                                                               (assoc :updated_at (t/offset-date-time))))
+        (validate-with-schema ::api-keys.schema/api-key.update))))
 
 (t2/define-before-delete :model/ApiKey
   [{user-id :user_id, :as api-key}]
   (u/prog1 api-key
-    (events/publish-event!
-     :event/api-key-delete
-     {:object  (-> api-key
-                   (t2/hydrate :group))
-      :user-id api/*current-user-id*})
     ;; if we created a user along with the key (type = :api-key), mark it inactive.
     (api-keys.db/deactivate-api-key-user! user-id)))
 
@@ -205,11 +200,12 @@
         (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
 
 (mu/defn create-api-key-with-new-user!
-  "Create a new API key and a new user for that key at the same time."
-  [{:keys [key-name group-id]}
+  "Create a new API key and a new user for that key at the same time, with `scope` when given."
+  [{:keys [key-name group-id scope]}
    :- [:map {:closed true}
        [:key-name ::api-keys.schema/name]
-       [:group-id {:optional true} pos-int?]]]
+       [:group-id {:optional true} pos-int?]
+       [:scope    {:optional true} ::api-keys.schema/scope]]]
   (api/checkp (not (api-keys.db/api-key-name-exists? key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
@@ -223,11 +219,12 @@
         (when group-id
           (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (api-keys.db/insert-api-key!
-             {:user_id                user-id
-              :name                   key-name
-              ::api-keys/unhashed-key unhashed-key
-              :updated_by_id          api/*current-user-id*
-              :creator_id             api/*current-user-id*})
+             (cond-> {:user_id                user-id
+                      :name                   key-name
+                      ::api-keys/unhashed-key unhashed-key
+                      :updated_by_id          api/*current-user-id*
+                      :creator_id             api/*current-user-id*}
+               scope (assoc :scope scope)))
             (assoc :unmasked_key unhashed-key))))))
 
 (mu/defn regenerate! :- [:map
@@ -240,16 +237,29 @@
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]
-      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key)
+      (api-keys.db/update-api-key! id {:key           (hash-bcrypt new-key (:scope api-key-before))
                                        :key_prefix    new-prefix
-                                       :updated_by_id api/*current-user-id*})
-      (events/publish-event! :event/api-key-regenerate
-                             (let [key-before (-> api-key-before
-                                                  (t2/hydrate :group))]
-                               {:object          (-> key-before
-                                                     (assoc :key_prefix new-prefix))
-                                :previous-object key-before
-                                :user-id         api/*current-user-id*})))
+                                       :updated_by_id api/*current-user-id*}))
     {:unmasked-key new-key
      :masked-key   (mask new-key)
      :prefix       new-prefix}))
+
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
+
+(defmethod events/spec :model/ApiKey
+  [_model]
+  {:create :event/api-key-create
+   :update :event/api-key-update
+   :delete :event/api-key-delete})
+
+(defmethod app-db-copy/spec :model/ApiKey [_model]
+  {:skip? false})
+
+(defmethod audit/spec :model/ApiKey [_model]
+  {:track          [:name :key_prefix :user_id]
+   :track-redacted [:creator_id :key :scope :updated_by_id]
+   :skip           [:last_used_at]
+   :details        api-keys.audit/details
+   :topics         {:create :api-key-create
+                    :update api-keys.audit/update-topic
+                    :delete :api-key-delete}})

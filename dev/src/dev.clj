@@ -11,7 +11,6 @@
 ;; ## Dev Environment
 ;;
 ;; - [Getting started with backend development](https://github.com/metabase/metabase/blob/master/docs/developers-guide/devenv.md#backend-development)
-;; - [Additional notes on using tools.deps](https://github.com/metabase/metabase/wiki/Migrating-from-Leiningen-to-tools.deps)
 ;; - [Use the dev-scripts repo to run various local DBs](https://github.com/metabase/dev-scripts)
 ;; - If you're on a Mac and need a VM to run Windows or Linux, [check out UTM](https://mac.getutm.app/)
 ;;
@@ -32,8 +31,6 @@
 ;;
 ;; ## Other Helpful Things
 ;;
-;; [Tips on our Github wiki](https://github.com/metabase/metabase/wiki/Metabase-Backend-Dev-Secrets)
-;;
 ;; ### The Dev Debug Page
 ;; If you want an easy way to GET/POST to an endpoint and display the results in a webpage, check out the [Dev Debug
 ;; Page](https://github.com/metabase/metabase/pull/40580). Cherry-pick the commit from that PR, modify `DevDebug.jsx` as
@@ -45,7 +42,6 @@
 ;; Dan wrote a nice guide [here](https://www.notion.so/metabase/Lifecycle-of-a-query-58e212402b7e444d937aba7757f9ec06?pvs=4)
 ;;
 ;; <hr />
-
 
 (ns dev
   "Put everything needed for REPL development within easy reach"
@@ -67,7 +63,6 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [malli.dev :as malli-dev]
-   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.env :as mdb.env]
    [metabase.channel.email :as email]
@@ -230,12 +225,6 @@
   session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
-
-(defmacro with-permissions
-  "Execute the body with the given permissions."
-  [permissions & body]
-  `(binding [api/*current-user-permissions-set* (delay ~permissions)]
-     ~@body))
 
 (defn query-jdbc-db
   "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.

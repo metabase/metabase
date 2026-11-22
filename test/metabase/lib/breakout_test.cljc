@@ -229,7 +229,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        lib/->legacy-MBQL
+                                        #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL ; existing usage -- do not use going forward
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :year))
           breakouts  (lib/breakouts query)]
@@ -238,7 +238,7 @@
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
           column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
-                                        lib/->legacy-MBQL
+                                        #_{:clj-kondo/ignore [:deprecated-var]} lib/->legacy-MBQL ; existing usage -- do not use going forward
                                         (lib/query meta/metadata-provider))
                                    (lib/with-temporal-bucket column :month))
           breakouts  (lib/breakouts query)]

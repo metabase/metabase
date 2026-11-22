@@ -15,6 +15,7 @@ import type {
   NamedSavedAggregation,
   NumericAggregationDimension,
   OrderableAggregationDimension,
+  PercentileAggregationSchema,
 } from "./types";
 
 type AggregationOptions<TName extends string> = {
@@ -99,6 +100,28 @@ export function median(
   options?: AggregationOptions<string>,
 ) {
   return fieldAggregation("median", "Median", dimension, options);
+}
+
+/** The value of `dimension` at a percentile between 0 and 1: `percentile(duration, 0.95, { name: "p95" })` */
+export function percentile<const TDimension, const TName extends string>(
+  dimension: NumericAggregationDimension<TDimension>,
+  value: number,
+  options: AggregationOptions<TName>,
+): PercentileAggregationSchema<NumericAggregationDimension<TDimension>, TName>;
+export function percentile(
+  dimension: AggregationDimension,
+  value: number,
+  options: AggregationOptions<string>,
+): PercentileAggregationSchema<AggregationDimension, string> {
+  return {
+    type: "operator",
+    operator: "percentile",
+    args: [dimension, { type: "literal", value }],
+    name: options.name,
+    columns: [
+      { name: options.name, displayName: "Percentile", jsType: "number" },
+    ],
+  };
 }
 
 export function distinct<const TDimension>(
@@ -234,5 +257,6 @@ export const aggregations = {
   measure,
   metric,
   min,
+  percentile,
   sum,
 } as const;

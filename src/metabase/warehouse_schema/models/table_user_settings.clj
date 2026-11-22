@@ -1,7 +1,11 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
+   [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.dependencies.core :as dependencies]
+   [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -9,11 +13,14 @@
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
+   [metabase.warehouse-schema.serialization :as warehouse-schema.serialization]
    [metabase.warehouse-schema.user-settings :as user-settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+;;; --------------------------------------------------- Definition ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/TableUserSettings [_model] :metabase_table_user_settings)
 
@@ -34,9 +41,9 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/dependencies))
+  (derive :hook/events))
 
-(methodical/defmethod t2/primary-keys :model/TableUserSettings [_model] [:table_id])
+;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a
@@ -68,12 +75,17 @@
              settings
              user-settings/table-set-flags))
 
-(defn- enforce-invariants
-  "Validate `explicit`, complete its two-column pairs and set its flags, merged into `settings`."
+(defn- pair-columns-written?
+  "Whether `explicit` writes a column whose pair [[complete-pairs]] completes."
+  [explicit]
+  (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
+
+(defn- completed-settings
+  "`settings` merged with `explicit`, its two-column pairs completed from its Table, with its flags set."
   [settings explicit]
-  (let [table     (warehouse-schema.db/table (:table_id settings))
-        completed (complete-pairs explicit table)]
-    (table/validate-user-changes! explicit table)
+  (let [completed (cond-> explicit
+                    (pair-columns-written? explicit)
+                    (complete-pairs (warehouse-schema.db/table (:table_id settings))))]
     (-> (merge settings completed)
         (with-set-flags completed explicit))))
 
@@ -87,7 +99,7 @@
 
 (t2/define-before-insert :model/TableUserSettings
   [settings]
-  (enforce-invariants settings settings))
+  (completed-settings settings settings))
 
 (t2/define-after-insert :model/TableUserSettings
   [settings]
@@ -95,20 +107,13 @@
 
 (t2/define-before-update :model/TableUserSettings
   [settings]
-  (enforce-invariants settings (t2/changes settings)))
+  (completed-settings settings (t2/changes settings)))
 
 (t2/define-after-update :model/TableUserSettings
   [settings]
   (delete-when-empty! settings))
 
-(defn- without-derived-half
-  "Drop from `changes` the half of a `visibility_type`/`data_layer` pair the Table's own update derives from the other."
-  [{:keys [visibility_type data_layer] :as changes}]
-  (if (and (contains? changes :visibility_type) (contains? changes :data_layer))
-    (if (= (some-> data_layer keyword) (table/visibility-type->data-layer (some-> visibility_type keyword)))
-      (dissoc changes :data_layer)
-      (dissoc changes :visibility_type))
-    changes))
+;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (mu/defn upsert-table-user-settings!
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
@@ -129,7 +134,7 @@
    settings  :- ::warehouse-schema.schema/table.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
-      (t2/with-transaction [_]
+      (events/with-batched-events
         (let [existing (warehouse-schema.db/table-ids-with-user-settings table-ids)]
           (when-let [missing (not-empty (remove existing table-ids))]
             (warehouse-schema.db/insert-table-user-settings! (mapv #(assoc settings :table_id %) missing)))
@@ -172,54 +177,43 @@
   (doseq [batch (partition-all 1000 table-ids)]
     (warehouse-schema.db/delete-table-user-settings! batch)))
 
-;;; ------------------------------------------------- Serialization -------------------------------------------------
+;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
-(def ^:private table-user-settings-slug "___tableusersettings")
+(defmethod events/spec :model/TableUserSettings
+  [_model]
+  {:create :event/table-user-settings-create
+   :update :event/table-user-settings-update
+   :delete :event/table-user-settings-delete})
+
+(defmethod app-db-copy/spec :model/TableUserSettings [_model]
+  {:skip? false})
 
 (defmethod serialization/spec :model/TableUserSettings [_]
-  {:schema    ::warehouse-schema.schema/external-table-user-settings
-   :identity  [:table_id]
-   :primary-key :table_id
-   :copy      [:display_name :description :entity_type :visibility_type :field_order :caveats :points_of_interest
-               :show_in_getting_started :data_authority :data_source :owner_email :is_published
-               :description_set :visibility_type_set :data_layer_set :data_source_set]
-   :skip      [:caveats_set :points_of_interest_set]
-   :defaults  {:description_set     false
-               :visibility_type_set false
-               :data_layer_set      false
-               :data_source_set     false}
-   :transform {:collection_id (serialization/fk-transform :model/Collection)
-               :owner_user_id serialization/user-transform
-               :data_layer    serialization/keyword-transform
-               :table_id      serialization/table-transform}})
+  {:schema              ::warehouse-schema.schema/external-table-user-settings
+   :identity            [:table_id]
+   :copy                [:display_name :description :entity_type :visibility_type :field_order :caveats
+                         :points_of_interest :show_in_getting_started :data_authority :data_source :data_layer
+                         :owner_email :is_published :description_set :visibility_type_set :data_layer_set
+                         :data_source_set]
+   :skip                [:caveats_set :points_of_interest_set]
+   :defaults            {:description_set     false
+                         :visibility_type_set false
+                         :data_layer_set      false
+                         :data_source_set     false}
+   :transform           {:collection_id (serialization/fk-transform :model/Collection)
+                         :owner_user_id serialization/user-transform
+                         :table_id      serialization/table-transform}
+   :storage-paths       warehouse-schema.serialization/table-user-settings-storage-paths
+   :import-dependencies warehouse-schema.serialization/table-user-settings-import-dependencies
+   :after-load          warehouse-schema.serialization/table-user-settings-after-load
+   :rows-by-refs        serialization/table-user-settings-rows-by-refs})
 
-(defmethod serialization/storage-paths :model/TableUserSettings [_ entities _ctx]
-  (mapv (fn [{:keys [table_id]}]
-          (conj (serialization/storage-path-prefixes table_id)
-                {:label (nth table_id 2) :suffix table-user-settings-slug}))
-        entities))
+(defmethod remote-sync/spec :model/TableUserSettings
+  [_model]
+  {:name                 (fn [{:keys [display_name table_id]}] (or display_name (last table_id)))
+   :synced-items         warehouse-schema.db/synced-table-user-settings-items
+   :synced-filter-clause warehouse-schema.db/synced-table-user-settings-clause})
 
-(defmethod serialization/import-dependencies :model/TableUserSettings [_ entities]
-  (mapv (fn [{:keys [collection_id]}]
-          (cond-> #{} collection_id (conj [:model/Collection collection_id])))
-        entities))
-
-;;; ------------------------------------------------- SerDes loading ----------------------------------------------------
-
-(defn- load-legacy-fields!
-  "Loads the FieldUserSettings that the settings `items` of an older export carry under `:fields`, deleting the other
-  FieldUserSettings of their Tables."
-  [items]
-  (doseq [{{:keys [table_id]} :instance {:keys [fields]} :entity} (filter #(contains? (:entity %) :fields) items)]
-    (let [kept (into #{} (map :field_id)
-                     (serialization/load :model/FieldUserSettings (mapv serialization/restore-identity fields)))]
-      (warehouse-schema.db/delete-field-user-settings!
-       (vec (remove kept (warehouse-schema.db/field-ids-with-user-settings-for-table table_id)))))))
-
-(defmethod serialization/after-load :model/TableUserSettings [_ items]
-  (load-legacy-fields! items)
-  (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
-    (warehouse-schema.db/update-table! table_id (without-derived-half
-                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
-    (when (:field_order entity)
-      (table/update-field-positions! (warehouse-schema.db/table table_id)))))
+(defmethod dependencies/spec :model/TableUserSettings [_model]
+  {:part-of      {:type :table :key :table_id}
+   :part-columns #{:display_name :visibility_type :data_layer :field_order}})

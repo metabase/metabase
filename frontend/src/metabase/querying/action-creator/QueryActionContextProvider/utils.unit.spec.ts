@@ -44,6 +44,11 @@ const createQuestionWithTemplateTags = (tagType: TemplateTagType) =>
     metadata,
   );
 
+const getTagTypes = (question: Question) =>
+  Object.fromEntries(
+    Lib.templateTags(question.query()).map((tag) => [tag.name, tag.type]),
+  );
+
 describe("actions > containers > ActionCreator > QueryActionContextProvider > utils", () => {
   describe("setParameterTypesFromFieldSettings", () => {
     it("should set string parameter types", () => {
@@ -139,9 +144,10 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         formSettings,
       );
 
-      const tags = Lib.templateTags(newQuestion.query());
-      expect(tags?.name.type).toEqual("text");
-      expect(tags?.price.type).toEqual("number");
+      expect(getTagTypes(newQuestion)).toEqual({
+        name: "text",
+        price: "number",
+      });
     });
 
     it("should set date template tag types", () => {
@@ -160,9 +166,10 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         formSettings,
       );
 
-      const tags = Lib.templateTags(newQuestion.query());
-      expect(tags?.name.type).toEqual("date");
-      expect(tags?.price.type).toEqual("date");
+      expect(getTagTypes(newQuestion)).toEqual({
+        name: "date",
+        price: "date",
+      });
     });
   });
 });

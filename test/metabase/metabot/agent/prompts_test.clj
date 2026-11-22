@@ -341,3 +341,31 @@
       (is (str/includes? (prompts/build-system-message-content {:prompt-template "internal.selmer"} {}
                                                                {"create_sql_query" nil} [])
                          "When writing raw SQL")))))
+
+(deftest ^:parallel dashboard-write-guidance-follows-the-tool-test
+  (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+    (let [render (fn [template tools]
+                   (prompts/build-system-message-content {:prompt-template template} {} tools []))]
+      (testing "internal Metabot is told it can build dashboards only when it has write_dashboard"
+        (let [with-tool    (render "internal.selmer" {"write_dashboard" nil})
+              without-tool (render "internal.selmer" {})]
+          (is (str/includes? with-tool "You can create, edit, trash and restore dashboards with `write_dashboard`."))
+          (is (not (str/includes? with-tool "direct the user to the dashboard builder")))
+          (is (not (str/includes? without-tool "write_dashboard")))
+          (is (str/includes? without-tool "direct the user to the dashboard builder"))))
+      (testing "internal Metabot is told to build charts for a dashboard only when it can build queries"
+        (let [with-queries    (render "internal.selmer" {"write_dashboard" nil, "construct_notebook_query" nil})
+              without-queries (render "internal.selmer" {"write_dashboard" nil})]
+          (is (str/includes? with-queries "For a dashboard about a topic, build its charts"))
+          (is (not (str/includes? without-queries "build its charts")))
+          (is (str/includes? without-queries (str "For a dashboard about a topic, search for existing questions about"
+                                                  " it and add them all in one call with `card_id`")))))
+      (doseq [template ["natural-language-querying-only.selmer" "natural-language-querying-fallback.selmer"]]
+        (testing template
+          (is (str/includes? (render template {"write_dashboard" nil})
+                             (str "\n- Dashboards: create, edit and trash them with `write_dashboard`. Build all of a"
+                                  " new dashboard's charts in a single response, one tool call per chart, since each"
+                                  " response is a step and a turn has a limited number. Changes save immediately, so"
+                                  " don't ask the user to confirm them.\n- SQL queries:")))
+          (is (str/includes? (render template {})
+                             "\n- Dashboards: direct the user to the dashboard builder.\n- SQL queries:")))))))

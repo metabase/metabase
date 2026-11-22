@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -12,7 +13,7 @@
 
 (defn- field-id-ref
   [mp field-id]
-  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL))
+  (-> (lib.metadata/field mp field-id) lib/ref lib/->legacy-MBQL-ref))
 
 (defn- dimension-field-id-ref
   ([mp field-id]
@@ -326,22 +327,19 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-      (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                      :definition query}]
+      (mt/with-temp [:model/Segment {segment-id :id} {:definition query}]
         (t2/query-one {:update :segment
                        :set    {:definition "{\"x\": \"y\"}"}
                        :where  [:= :id segment-id]})
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
-        ;; segments return nil when the query is not valid
-        (is (nil? (:definition (t2/select-one :model/Segment :id segment-id))))))))
+        (is (= {} (:definition (t2/select-one :model/Segment :id segment-id))))))))
 
 (deftest segment-upgrade-field-refs!-no-changes-test
   (testing "should not update a segment when there are no changes"
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/filter (lib/> (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-      (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
-                                                                              :definition query}]
+      (mt/with-temp [:model/Segment {segment-id :id, updated-at :updated_at} {:definition query}]
         (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Segment :id segment-id))))))))
 
@@ -352,8 +350,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
-      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                      :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                       :definition query}]
         ;; Measure schema requires :source-table (no :source-card), so no real field ref upgrade can happen.
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
@@ -366,8 +363,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/count)))]
-      (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :orders)
-                                                      :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id} {:name       "test measure"
                                                       :definition query}]
         (t2/query-one {:update :measure
                        :set    {:definition "{\"x\": \"y\"}"}
@@ -381,8 +377,7 @@
     (let [mp    (mt/metadata-provider)
           query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                     (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :id)))))]
-      (mt/with-temp [:model/Measure {measure-id :id, updated-at :updated_at} {:table_id   (mt/id :orders)
-                                                                              :name       "test measure"
+      (mt/with-temp [:model/Measure {measure-id :id, updated-at :updated_at} {:name       "test measure"
                                                                               :definition query}]
         (replacement.field-refs/upgrade-field-refs! [:measure measure-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Measure :id measure-id))))))))
@@ -449,10 +444,10 @@
    :parameterMapping
    {(json/encode target)
     {:id     (json/encode target)
-     :source {:type :column
+     :source {:type "column"
               :id   "ID"
               :name "ID"}
-     :target {:type      :dimension
+     :target {:type      "dimension"
               :id        (json/encode target)
               :dimension target}}}})
 
@@ -477,7 +472,7 @@
                         {:click_behavior (make-click-behavior target-card-id target)}}}}]
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (let [viz     (:visualization_settings (t2/select-one :model/DashboardCard :id dashcard-id))
-              viz-key (keyword (json/encode target))]
+              viz-key (json/encode target)]
           (testing "global click behavior dimension should be upgraded"
             (is (=? {:click_behavior
                      {:targetId target-card-id
@@ -508,3 +503,17 @@
         (replacement.field-refs/upgrade-field-refs! [:dashboard dashboard-id])
         (is (= dash-updated (:updated_at (t2/select-one :model/Dashboard :id dashboard-id))))
         (is (= dc-updated (:updated_at (t2/select-one :model/DashboardCard :id dashcard-id))))))))
+
+(deftest transform-upgrade-field-refs!-publishes-audit-event-test
+  (let [mp     (mt/metadata-provider)
+        query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/breakout (lib.metadata/field mp (mt/id :orders :id)))
+                   lib/append-stage
+                   (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))
+        topics (atom [])]
+    (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
+                                                        :source {:type :query :query query}
+                                                        :target {:database (mt/id) :type "table" :name "out"}}]
+      (with-redefs [events/publish-event! (fn [topic event] (swap! topics conj [topic (get-in event [:object :id])]))]
+        (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))
+      (is (= [[:event/transform-update transform-id]] @topics)))))

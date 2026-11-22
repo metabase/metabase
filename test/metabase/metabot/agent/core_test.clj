@@ -18,6 +18,7 @@
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.messages :as messages]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
@@ -36,6 +37,7 @@
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.util :as metabot.u]
    [metabase.native-query-snippets.core :as snippets]
@@ -164,6 +166,28 @@
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
+(deftest sql-reference-warning-keeps-turn-open-test
+  (let [terminal #{"create_sql_query"}
+        warned   [{:type :tool-input :id "a" :function "create_sql_query"}
+                  {:type :tool-output :id "a" :result {:output "Created, with warnings" :non-terminal? true}}]]
+    (testing "a successful terminal-tool call whose result is marked :non-terminal? does not end the turn"
+      (is (not (#'agent/terminal-tool-call? terminal warned)))
+      (is (#'agent/should-continue? 0 20 terminal warned)))
+    (testing "another successful terminal call in the same iteration does not end it either"
+      (is (not (#'agent/terminal-tool-call? terminal (into warned [{:type :tool-input :id "b" :function "create_sql_query"}
+                                                                   {:type :tool-output :id "b" :result {:output "ok"}}])))))
+    (testing "nor does a successful clarification question in the same iteration"
+      (is (not (#'agent/terminal-tool-call? (conj terminal "ask_for_sql_clarification")
+                                            (into warned [{:type :tool-input :id "c" :function "ask_for_sql_clarification"}
+                                                          {:type :tool-output :id "c" :result {:output "Asked"}}])))))
+    (testing "on the last step the turn ends as :terminal-tool, because no step is left to act on the warning"
+      (is (not (#'agent/should-continue? 20 20 terminal warned)))
+      (is (= :terminal-tool (#'agent/finish-reason 20 20 terminal warned))))
+    (testing "on the last step a failed terminal-tool call still ends the turn at the step limit"
+      (is (= :max-iterations
+             (#'agent/finish-reason 20 20 terminal
+                                    (assoc-in warned [1 :result :error] {:class :recoverable :code :test/failure})))))))
+
 (defn- tools-registered-for-request!
   ([capabilities] (tools-registered-for-request! :internal capabilities))
   ([profile-id capabilities]
@@ -209,26 +233,36 @@
   []
   (metabot-row metabot.config/internal-metabot-id))
 
+(defn- declares-show-chart?
+  "Whether the turn's `tools` declare `show_chart` on the tool named `tool-name`."
+  [tools tool-name]
+  (-> (get tools tool-name)
+      :declaration
+      deref
+      (get-in [:parameters :properties])
+      (contains? :show_chart)))
+
+(defn- init-agent-as-admin
+  "Initializes a turn with every Metabot permission, as the agent loop would for an admin. Returns its tools and
+   system message."
+  [conversation-id capabilities metabot profile-id]
+  (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+            scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+    (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                         :metabot         metabot
+                         :profile-id      profile-id
+                         :conversation-id conversation-id
+                         :context         {:capabilities capabilities}})))
+
 (defn- run-query-offered-at-turn-start
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
-   running a turn. The bindings stand in for the ones the agent loop makes."
+   running a turn."
   [conversation-id capabilities metabot profile-id]
-  (let [{:keys [tools system-msg]}
-        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
-                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
-          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :metabot         metabot
-                               :profile-id      profile-id
-                               :conversation-id conversation-id
-                               :context         {:capabilities capabilities}}))]
+  (let [{:keys [tools system-msg]} (init-agent-as-admin conversation-id capabilities metabot profile-id)]
     {:tool?       (contains? tools "run_query")
      :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
-     :show-chart? (-> (get tools "construct_notebook_query")
-                      :declaration
-                      deref
-                      (get-in [:parameters :properties])
-                      (contains? :show_chart))}))
+     :show-chart? (declares-show-chart? tools "construct_notebook_query")}))
 
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
@@ -276,6 +310,28 @@
               (testing "the embedded Metabot does not, and its prompt does not promise results"
                 (is (=? {:tool? false, :prompt? false}
                         (run-query-offered-at-turn-start own [] embedded profile-id)))))))))))
+
+(deftest sql-tools-declare-show-chart-only-where-sql-results-can-be-read-test
+  (let [rasta     (mt/user->id :rasta)
+        sql-tools ["create_sql_query" "edit_sql_query" "replace_sql_query"]
+        declared  (fn [conversation-id]
+                    (let [{:keys [tools]} (init-agent-as-admin conversation-id ["permission:write_sql_queries"]
+                                                               (internal-metabot) :internal)]
+                      (into {} (map (juxt identity #(declares-show-chart? tools %))) sql-tools)))
+        all-of    (fn [declared?] (zipmap sql-tools (repeat declared?)))]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "with SQL execution on, the user's own conversation declares show_chart on every SQL tool"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+              (is (= (all-of true) (declared own)))))
+          (testing "with SQL execution off, no SQL tool declares it"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+              (is (= (all-of false) (declared own)))))
+          (testing "without run_query, as in a conversation someone else started, no SQL tool declares it"
+            (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+              (is (= (all-of false) (declared someone))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -541,6 +597,68 @@
                         (outcome call))
                     function)))))))))
 
+(deftest sql-reference-warning-gets-one-more-iteration-test
+  (testing (str "in the :sql profile, SQL with a reference warning keeps the turn open, the model reads the warning, "
+                "and the same SQL again ends the turn")
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; The BOT-1154 shape: a bare name of a table that exists only in another schema. The query does not run, so
+        ;; the warehouse needs no `core.account` table.
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [call                               (fn [id]
+                                                     [{:type      :tool-input
+                                                       :id        id
+                                                       :function  "create_sql_query"
+                                                       :arguments {:database_id (mt/id)
+                                                                   :sql_query   "SELECT a.customer_name FROM account a"
+                                                                   :title       "Results"}}])
+                {:keys [llm-calls requests parts]} (run-turn! :sql "Fix this SQL query" [(call "t1") (call "t2")]
+                                                              :context {:capabilities    ["permission:write_sql_queries"]
+                                                                        :user_is_viewing sql-editor-viewing})
+                outputs                            (filter #(= :tool-output (:type %)) parts)
+                ;; Only the tool result holds this text: the tool arguments hold the table and column names too.
+                holds-warning?                     (fn [request]
+                                                     (some #(and (string? %)
+                                                                 (str/includes? % "checking its table references"))
+                                                           (tree-seq coll? seq (:input request))))]
+            (is (= 2 llm-calls))
+            (is (= [true nil] (map #(get-in % [:result :non-terminal?]) outputs)))
+            (testing "the second LLM request holds the warning, and the first does not"
+              (is (not (holds-warning? (first requests))))
+              (is (holds-warning? (second requests))))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest sql-reference-warning-on-the-last-step-ends-the-turn-test
+  (testing "in the :sql profile, SQL with a reference warning on the last step ends the turn with no step-limit call"
+    (mt/test-drivers #{:postgres}
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "core" :name "account" :active true}
+                       :model/Field _              {:table_id      table-id
+                                                    :name          "customer_name"
+                                                    :base_type     :type/Text
+                                                    :database_type "text"}]
+          (let [get-profile                        (mt/original-fn #'profiles/get-profile)
+                {:keys [llm-calls requests parts]} (mt/with-dynamic-fn-redefs [profiles/get-profile
+                                                                               (comp #(assoc % :max-iterations 1) get-profile)]
+                                                     (run-turn! :sql "Fix this SQL query"
+                                                                [[{:type      :tool-input
+                                                                   :id        "t1"
+                                                                   :function  "create_sql_query"
+                                                                   :arguments {:database_id (mt/id)
+                                                                               :sql_query   "SELECT a.customer_name FROM account a"
+                                                                               :title       "Results"}}]]
+                                                                :context {:capabilities    ["permission:write_sql_queries"]
+                                                                          :user_is_viewing sql-editor-viewing}))]
+            (is (= 1 llm-calls))
+            (is (not-any? #(= "none" (:tool_choice %)) requests))
+            (is (=? [{:result {:non-terminal? true}}] (filter #(= :tool-output (:type %)) parts)))
+            (is (not-any? #(and (= :text (:type %)) (str/includes? (:text %) "step limit")) parts))
+            (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
 (deftest a-turn-survives-one-undeclared-failure-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
@@ -599,6 +717,19 @@
               (is (= finish-reason (:finish-reason (last parts))))
               (is (= text (apply str (keep #(when (= :text (:type %)) (:text %)) parts)))
                   "what the user reads"))))))))
+
+(deftest run-agent-loop-binds-metabot-while-building-prompt-test
+  (testing "the viewing context is built with the turn's Metabot and profile bound, as a tool call binds them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [format-viewing-context (mt/original-fn #'user-context/format-viewing-context)
+            seen                   (atom [])]
+        (mt/with-dynamic-fn-redefs [user-context/format-viewing-context
+                                    (fn [context]
+                                      (swap! seen conj [(:id tools.shared/*metabot*) tools.shared/*profile-id*])
+                                      (format-viewing-context context))]
+          (run-turn! :internal "Hello" []))
+        (is (seq @seen))
+        (is (every? #{[(:id (internal-metabot)) :internal]} @seen))))))
 
 (deftest the-turn-stops-when-the-client-leaves-during-a-tool-call-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -994,6 +1125,28 @@
                (metabot.persistence/extract-usage parts)))
         (is (= 730 (metabot.persistence/extract-context-tokens parts)))))))
 
+(defn- llm-span-usages
+  "The `:ai/usage` of each `llm` span in `spans`, in the order of the iterations."
+  [spans]
+  (->> (map :attributes spans)
+       (sort-by :ai/iteration)
+       (map :ai/usage)))
+
+(deftest step-limit-reply-eval-usage-test
+  (testing "the last call of a turn at its step limit has its own usage on its eval span, and the turn has the sum"
+    (mt/as-admin
+      (let [reply           #(mut/mock-llm-response [{:type :text :text "The customer table has no link to orders."}
+                                                     {:type  :usage
+                                                      :usage {:promptTokens 700 :completionTokens 30}}])
+            {:keys [trace]} (ait/capturing (step-limit-turn! :document-generate-content reply))
+            turn            (first trace)]
+        (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 100 :completionTokens 20}}
+                {test-provider {:promptTokens 700 :completionTokens 30}}]
+               (llm-span-usages (:children turn))))
+        (is (= {test-provider {:promptTokens 900 :completionTokens 70}}
+               (get-in turn [:attributes :ai/usage])))))))
+
 (def ^:private partial-reply
   "The text that the last call streams before it stops."
   "I couldn't chart revenue by customer segment because")
@@ -1159,6 +1312,18 @@
           memory {:state {:queries {} :charts {}}}
           updated (#'agent/extract-queries memory parts)]
       (is (empty? (:queries (memory/get-state updated)))))))
+
+(deftest extract-charts-uses-the-query-memory-holds-test
+  (testing "a chart shows the query memory holds under its id, as edited later in the same response"
+    (let [query  (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          edited (lib/query meta/metadata-provider (meta/table-metadata :products))
+          parts  [{:type     :tool-output
+                   :id       "t1"
+                   :function "create_chart"
+                   :result   {:structured-output {:chart-id "c-456" :query-id "q-123" :query query :chart-type :bar}}}]
+          memory {:state {:queries {"q-123" edited} :charts {}}}]
+      (is (= [edited]
+             (get-in (memory/get-state (#'agent/extract-charts memory parts)) [:charts "c-456" :queries]))))))
 
 (deftest extract-charts-test
   (testing "extracts charts from tool output parts"
@@ -1572,6 +1737,12 @@
                   (is (= 2 (count llms)))
                   (is (every? #(= :llm (:type %)) llms))
                   (is (every? #(= (:id turn) (:parent-id %)) llms)))
+                (testing "each llm.call has the usage of its own call, and the turn has the sum"
+                  (is (= [{test-provider {:promptTokens 100 :completionTokens 20}}
+                          {test-provider {:promptTokens 200 :completionTokens 10}}]
+                         (llm-span-usages llms)))
+                  (is (= {test-provider {:promptTokens 300 :completionTokens 30}}
+                         (get-in turn [:attributes :ai/usage]))))
                 (testing "the search tool span nests under the llm.call it ran in"
                   (is (= :tool (:type search)))
                   ;; the decoded tool arguments are recorded on the span (metabase.metabot.self.core)

@@ -94,7 +94,6 @@
    [clojure.edn :as edn]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [environ.core :as env]
    [medley.core :as m]
    [metabase-enterprise.advanced-config.file.api-keys]
@@ -111,6 +110,7 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml]))
 
 (comment
@@ -235,11 +235,8 @@
     (str/join (map expand-template-str-part (lib/parse-parameters s)))))
 
 (defn- expand-templates [m]
-  (walk/postwalk
-   (fn [form]
-     (cond-> form
-       (string? form) expand-templates-in-str))
-   m))
+  (match/replace-all m
+    #'string? (expand-templates-in-str &match)))
 
 (defn- config-from-disk
   "Read the config file from disk."
@@ -283,6 +280,7 @@
    ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
    ;; enabling that check tho)
    (when-let [m (config parsed-config opts)]
+     (advanced-config.file.workspace/check-schemas-agree! (:config m))
      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
        ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
        ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
@@ -299,16 +297,10 @@
 
 (defenterprise boot-initialize!
   "Read the config file from disk and run [[initialize!]] on it with `{{env VAR}}` templates expanded.
-  Does nothing when there is no config file.
-  When the config contains a `:workspace` section, locks the workspace against
-  runtime mutation (see
-  [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
+  Does nothing when there is no config file, except the startup step for the removed `instance-workspace` setting
+  ([[ws/translate-instance-workspace-setting!]]). That step runs first, so that a `workspace` section naming the
+  schemas the old setting held finds them stored, and keeps their remap rows."
   :feature :none
   []
-  (let [parsed (config-from-disk)
-        result (initialize! parsed {:expand-templates? true})]
-    ;; Only the boot path locks. Runtime config uploads (POST /api/ee/advanced-config)
-    ;; call `initialize!` directly, bypassing this wrapper, so they never lock.
-    (when (get-in parsed [:config :workspace])
-      (ws/mark-locked-by-config!))
-    result))
+  (ws/translate-instance-workspace-setting!)
+  (initialize! (config-from-disk) {:expand-templates? true}))

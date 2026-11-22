@@ -71,11 +71,12 @@ function setup({
     canUseNlq: true,
   } as any);
 
+  const submitInput = jest.fn();
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt,
     setPrompt: jest.fn(),
-    submitInput: jest.fn(),
+    submitInput,
   } as any);
 
   mockMyExplorationsQuery({ isSuccess, data: myExplorations });
@@ -89,6 +90,8 @@ function setup({
       }),
     }),
   });
+
+  return { submitInput };
 }
 
 describe("NewExplorationEntry", () => {
@@ -111,6 +114,18 @@ describe("NewExplorationEntry", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create plan" }));
 
     expect(trackExplorationAgentMessageSent).toHaveBeenCalledWith("entry");
+  });
+
+  it("sends the prompt to the explorations agent profile when creating a plan", async () => {
+    const { submitInput } = setup({ prompt: "Why are signups down?" });
+
+    await userEvent.click(screen.getByRole("button", { name: "Create plan" }));
+
+    expect(submitInput).toHaveBeenCalledTimes(1);
+    expect(submitInput).toHaveBeenCalledWith("Why are signups down?", {
+      preventOpenSidebar: true,
+      profile: "explorations",
+    });
   });
 
   it("tracks manual setup clicks", async () => {
