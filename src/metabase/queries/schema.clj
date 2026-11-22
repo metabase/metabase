@@ -244,10 +244,18 @@
            [:writer  {:optional true} [:enum :import :replacement :revert]]
            [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
 
-(mr/def ::card.update-row
-  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, those of `::card.update`."
+(mr/def ::card.update.stored
+  "The changes of an update of Cards that write a stored row back, as a revert does: those of `::card.update`, but the
+  query may be the empty query of a stored row."
   [:merge
    ::card.update
+   [:map {:closed true}
+    [:dataset_query {:optional true} [:maybe ::card.dataset-query]]]])
+
+(mr/def ::card.update-row
+  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, those of `::card.update.stored`."
+  [:merge
+   ::card.update.stored
    [:map {:closed true}
     [:id ::lib.schema.id/card]]])
 

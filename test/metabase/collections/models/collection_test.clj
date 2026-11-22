@@ -14,6 +14,8 @@
    [metabase.collections.schema :as collections.schema]
    [metabase.config.core :as config]
    [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.models.card :as card]
@@ -2031,8 +2033,10 @@
         (doseq [[label insert!] [["a dashboard" #(first (dashboard/create-dashboards! [{:name "Dashboard" :creator_id (mt/user->id :rasta) :collection_id collection-id}]))]
                                  ["a collection" #(mt/with-temp [:model/Collection _ {:namespace "data-apps"
                                                                                       :location  (collection/children-location collection)}])]
-                                 ["a model" #(mt/with-temp [:model/Card _ {:type :model :collection_id collection-id}])]
-                                 ["a metric" #(mt/with-temp [:model/Card _ {:type :metric :collection_id collection-id}])]]]
+                                 ["a model" #(mt/with-model-cleanup [:model/Card]
+                                               (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:type :model :collection_id collection-id})]))]
+                                 ["a metric" #(mt/with-model-cleanup [:model/Card]
+                                                (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:type :metric :collection_id collection-id})]))]]]
           (testing label
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
         (testing "a dashboard moved in"
@@ -2109,9 +2113,8 @@
     (mt/with-temp [:model/Collection section {:type collection/library-data-collection-type}]
       (testing "Content a library section doesn't hold is refused"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
-                                                                 :type          :model
-                                                                 :collection_id (:id section))])))))
+                              (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:type          :model
+                                                                                                                                                                                                                                                                                                          :collection_id (:id section)})])))))
       (testing "A Collection can't move into a section of another type"
         (mt/with-temp [:model/Collection other {:type collection/library-metrics-collection-type}
                        :model/Collection child {:type     collection/library-metrics-collection-type

@@ -1635,8 +1635,9 @@
         all      (into [] (keep (fn [{:keys [before changes]}]
                                   (when (turned-into-question? before changes) (:id before))))
                        updates)]
-    (when-let [action-ids (seq (queries.db/implicit-action-ids-for-models implicit))]
-      (actions.models/delete-actions! (vec action-ids)))
+    (when (seq implicit)
+      (when-let [action-ids (seq (queries.db/implicit-action-ids-for-models implicit))]
+        (actions.models/delete-actions! (vec action-ids))))
     (when (seq all)
       (actions.models/delete-actions-of-models! all))))
 

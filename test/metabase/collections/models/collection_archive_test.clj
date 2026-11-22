@@ -6,6 +6,8 @@
    [metabase.documents.models.document :as document]
    [metabase.events.test-util :as events.tu]
    [metabase.explorations.models.exploration :as exploration]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
@@ -197,9 +199,9 @@
     (testing "a card that is not archived cannot be put in an archived dashboard"
       (archive! :model/Dashboard (u/the-id dashboard) true)
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Dashboard"
-                            (first (card/create-cards! [(-> (t2/select-one :model/Card :id (u/the-id in-dash))
-                                                            (dissoc :id :entity_id :created_at :updated_at)
-                                                            (assoc :archived false))])))))))
+                            (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:dashboard_id  (u/the-id dashboard)
+                                                                                                                                                                                                                                                                                                        :collection_id (u/the-id live)
+                                                                                                                                                                                                                                                                                                        :archived      false})])))))))
 
 (defn- fill-collection!
   "Puts one item of each kind a Collection archives, restores and deletes with it into the Collection with

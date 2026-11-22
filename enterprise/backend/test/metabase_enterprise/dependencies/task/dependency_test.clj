@@ -1313,33 +1313,36 @@
          (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
                         {:slug "birds" :name "Birds" :bundle_path "birds.js"}
                         :model/Collection {other-collection-id :id} {}
-                        :model/Card {card-id :id} {:dataset_query venues-query :collection_id collection-id}
                         :model/Action {action-id :id} {:type :implicit :name "Update venue" :collection_id collection-id}
                         :model/ImplicitAction _ {:action_id action-id :kind "row/update" :table_id (mt/id :venues)}]
-           (testing "an app depends on the cards and actions in its resource collection"
-             (assert-pending :data-app app-id)
-             (deps.test/synchronously-run-dependency-job!)
-             (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id))))
-           (mt/with-temp [:model/Card {added-id :id} {:dataset_query venues-query :collection_id collection-id}]
-             (testing "a card added to the collection becomes a dependency"
-               (assert-pending :data-app app-id)
-               (deps.test/synchronously-run-dependency-job!)
-               (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
-             (testing "a card moved out of the collection stops being one"
-               (card/update-cards! [(assoc {:collection_id other-collection-id} :id added-id)])
-               (assert-pending :data-app app-id)
-               (deps.test/synchronously-run-dependency-job!)
-               (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
-           (testing "a deleted action stops being one"
-             (action/delete-actions! [action-id])
-             (assert-pending :data-app app-id)
-             (deps.test/synchronously-run-dependency-job!)
-             (is (= #{[:card card-id]} (data-app-deps app-id))))
-           (testing "deleting the app removes its dependencies and status"
-             (data-app/delete-data-apps! [app-id])
-             (deps.test/synchronously-run-dependency-job!)
-             (is (empty? (data-app-deps app-id)))
-             (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))
+           (mt/with-model-cleanup [:model/Card]
+             (let [{card-id :id} (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query venues-query
+                                                                                                                                                                                               :collection_id collection-id})]))]
+               (testing "an app depends on the cards and actions in its resource collection"
+                 (assert-pending :data-app app-id)
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id))))
+               (let [{added-id :id} (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query venues-query
+                                                                                                                                                                                                  :collection_id collection-id})]))]
+                 (testing "a card added to the collection becomes a dependency"
+                   (assert-pending :data-app app-id)
+                   (deps.test/synchronously-run-dependency-job!)
+                   (is (= #{[:card card-id] [:card added-id] [:action action-id]} (data-app-deps app-id))))
+                 (testing "a card moved out of the collection stops being one"
+                   (card/update-cards! [(assoc {:collection_id other-collection-id} :id added-id)])
+                   (assert-pending :data-app app-id)
+                   (deps.test/synchronously-run-dependency-job!)
+                   (is (= #{[:card card-id] [:action action-id]} (data-app-deps app-id)))))
+               (testing "a deleted action stops being one"
+                 (action/delete-actions! [action-id])
+                 (assert-pending :data-app app-id)
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (= #{[:card card-id]} (data-app-deps app-id))))
+               (testing "deleting the app removes its dependencies and status"
+                 (data-app/delete-data-apps! [app-id])
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (empty? (data-app-deps app-id)))
+                 (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))))
 
 (deftest ^:synchronized data-app-given-a-collection-depends-on-its-cards-test
   (testing "an app that lost its collection, given one that already holds a card, depends on that card"

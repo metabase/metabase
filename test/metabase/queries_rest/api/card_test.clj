@@ -4928,6 +4928,7 @@
                  :model/Dashboard     {home-dash-id :id}  {:collection_id coll-id}
                  :model/Dashboard     {other-dash-id :id} {}
                  :model/Card          {card-id :id}       {:dashboard_id  home-dash-id
+                                                           :collection_id coll-id
                                                            :dataset_query (mt/mbql-query venues)}
                  :model/DashboardCard _                   {:card_id card-id :dashboard_id other-dash-id}]
     (let [card (t2/select-one :model/Card :id card-id)]

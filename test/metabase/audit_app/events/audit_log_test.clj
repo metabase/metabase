@@ -16,7 +16,8 @@
    [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.glossary.models.glossary :as glossary]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions-group-membership :as perms-group-membership]
    [metabase.queries.models.card :as card]
@@ -40,14 +41,16 @@
 (deftest card-create-test
   (testing ":card-create event"
     (mt/with-test-user :rasta
-      (mt/with-temp [:model/Card card {:name "My Cool Card"}]
-        (is (partial=
-             {:topic    :card-create
-              :user_id  (mt/user->id :rasta)
-              :model    "Card"
-              :model_id (:id card)
-              :details  {:name "My Cool Card", :description nil, :database_id (mt/id) :table_id nil}}
-             (mt/latest-audit-log-entry "card-create" (:id card))))))))
+      (mt/with-model-cleanup [:model/Card]
+        (let [card (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:name          "My Cool Card"
+                                                                                                                                                                                 :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")})]))]
+          (is (partial=
+               {:topic    :card-create
+                :user_id  (mt/user->id :rasta)
+                :model    "Card"
+                :model_id (:id card)
+                :details  {:name "My Cool Card", :description nil, :database_id (mt/id) :table_id nil}}
+               (mt/latest-audit-log-entry "card-create" (:id card)))))))))
 
 (deftest card-create-nested-query-test
   (testing :card-create
@@ -56,21 +59,21 @@
         (mt/with-temp [:model/Card card-1 {:name          "My Cool Card"
                                            :dataset_query {:database (mt/id)
                                                            :type     :query
-                                                           :query    {:source-table (mt/id :venues)}}}
-                       :model/Card card-2 {:name          "My Cool NESTED Card"
-                                           :dataset_query {:database lib.schema.id/saved-questions-virtual-database-id
-                                                           :type     :query
-                                                           :query    {:source-table (str "card__" (u/the-id card-1))}}}]
-          (is (partial=
-               {:topic    :card-create
-                :user_id  (mt/user->id :rasta)
-                :model    "Card"
-                :model_id (:id card-2)
-                :details  {:name        "My Cool NESTED Card"
-                           :description nil
-                           :database_id (mt/id)
-                           :table_id    (mt/id :venues)}}
-               (mt/latest-audit-log-entry "card-create" (:id card-2)))))))))
+                                                           :query    {:source-table (mt/id :venues)}}}]
+          (mt/with-model-cleanup [:model/Card]
+            (let [mp     (mt/metadata-provider)
+                  card-2 (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:name          "My Cool NESTED Card"
+                                                                                                                                                                                       :dataset_query (lib/query mp (lib.metadata/card mp (u/the-id card-1)))})]))]
+              (is (partial=
+                   {:topic    :card-create
+                    :user_id  (mt/user->id :rasta)
+                    :model    "Card"
+                    :model_id (:id card-2)
+                    :details  {:name        "My Cool NESTED Card"
+                               :description nil
+                               :database_id (mt/id)
+                               :table_id    (mt/id :venues)}}
+                   (mt/latest-audit-log-entry "card-create" (:id card-2)))))))))))
 
 (deftest card-update-event-test
   (testing :card-update

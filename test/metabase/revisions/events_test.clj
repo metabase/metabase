@@ -21,15 +21,16 @@
 
 (deftest card-revisions-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (testing "the insert records a creation"
-        (is (=? [{:is_creation true :user_id (mt/user->id :crowberto)}] (revisions-of "Card" card-id))))
-      (testing "an update records a revision"
-        (card/update-cards! [{:id card-id :name "renamed"}])
-        (is (=? [{:is_creation true} {:is_creation false :object {:name "renamed"}}] (revisions-of "Card" card-id))))
-      (testing "an update of what revisions leave out records none"
-        (card/update-cards! [{:id card-id :collection_position 3}])
-        (is (= 2 (count (revisions-of "Card" card-id))))))))
+    (mt/with-model-cleanup [:model/Card]
+      (let [{card-id :id} (first (card/create-cards! [{:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}}]))]
+        (testing "the insert records a creation"
+          (is (=? [{:is_creation true :user_id (mt/user->id :crowberto)}] (revisions-of "Card" card-id))))
+        (testing "an update records a revision"
+          (card/update-cards! [{:id card-id :name "renamed"}])
+          (is (=? [{:is_creation true} {:is_creation false :object {:name "renamed"}}] (revisions-of "Card" card-id))))
+        (testing "an update of what revisions leave out records none"
+          (card/update-cards! [{:id card-id :collection_position 3}])
+          (is (= 2 (count (revisions-of "Card" card-id)))))))))
 
 (deftest no-user-records-nothing-test
   (mt/with-temp [:model/Card {card-id :id} {}]
@@ -62,8 +63,9 @@
 
 (deftest card-revision-object-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Card {card-id :id} {:name "Card"}]
-      (let [object (last-object "Card" card-id)]
+    (mt/with-model-cleanup [:model/Card]
+      (let [{card-id :id} (first (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:name "Card"})]))
+            object        (last-object "Card" card-id)]
         (testing "the stored object is the serialized card"
           (is (=? {:name "Card" :archived false :type :question :database_id (mt/id)} object)))
         (testing "it holds nothing of the public link"
@@ -82,14 +84,12 @@
 
 (deftest dashboard-revision-object-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (let [{dashboard-id :id} (first (dashboard/create-dashboards! [{:name "Dashboard" :creator_id (mt/user->id :crowberto)}]))]
-      (try
-        (let [object (last-object "Dashboard" dashboard-id)]
-          (is (=? {:name "Dashboard" :archived false :tabs [] :cards []} object))
-          (is (empty? (set/intersection #{:public_uuid :made_public_by_id :enable_embedding}
-                                        (set (keys object))))))
-        (finally
-          (dashboard/delete-dashboards! [dashboard-id]))))))
+    (mt/with-model-cleanup [:model/Dashboard]
+      (let [{dashboard-id :id} (first (dashboard/create-dashboards! [{:name "Dashboard" :creator_id (mt/user->id :crowberto)}]))
+            object             (last-object "Dashboard" dashboard-id)]
+        (is (=? {:name "Dashboard" :archived false :tabs [] :cards []} object))
+        (is (empty? (set/intersection #{:public_uuid :made_public_by_id :enable_embedding}
+                                      (set (keys object)))))))))
 
 (deftest dashboard-touch-after-part-writes-records-revision-test
   (mt/with-current-user (mt/user->id :crowberto)

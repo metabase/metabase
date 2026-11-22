@@ -781,21 +781,23 @@
 (deftest store-updates-parameters-using-dropped-columns-test
   (testing "storing a re-derived card resets the parameters taking values from a column it no longer has"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
-                     :model/Card {card-id :id}   {:dataset_query (table-query :venues)
-                                                  :parameters    [{:id                   "price"
-                                                                   :type                 :category
-                                                                   :name                 "Price"
-                                                                   :slug                 "price"
-                                                                   :values_source_type   :card
-                                                                   :values_source_config {:card_id     source-id
-                                                                                          :value_field [:field (mt/id :venues :price) nil]}}]}]
-        (run-jobs!)
-        (reprocess! source-id)
-        (do-with-inference (fn [infer query card]
-                             (cond->> (infer query card)
-                               (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
-                           rederive!)
-        (is (nil? (column source-id "PRICE")))
-        (is (=? [{:id "price" :values_source_type nil}]
-                (t2/select-one-fn :parameters :model/Card :id card-id)))))))
+      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}]
+        (mt/with-model-cleanup [:model/Card]
+          (let [{card-id :id} (first (queries.card/create-cards!
+                                      [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :display :table :name (mt/random-name) :visualization_settings {}} {:dataset_query (table-query :venues)
+                                                                                                                                                                         :parameters    [{:id                   "price"
+                                                                                                                                                                                          :type                 :category
+                                                                                                                                                                                          :name                 "Price"
+                                                                                                                                                                                          :slug                 "price"
+                                                                                                                                                                                          :values_source_type   :card
+                                                                                                                                                                                          :values_source_config {:card_id     source-id
+                                                                                                                                                                                                                 :value_field [:field (mt/id :venues :price) nil]}}]})]))]
+            (run-jobs!)
+            (reprocess! source-id)
+            (do-with-inference (fn [infer query card]
+                                 (cond->> (infer query card)
+                                   (= source-id (:id card)) (into [] (remove #(= "PRICE" (:name %))))))
+                               rederive!)
+            (is (nil? (column source-id "PRICE")))
+            (is (=? [{:id "price" :values_source_type nil}]
+                    (t2/select-one-fn :parameters :model/Card :id card-id)))))))))
