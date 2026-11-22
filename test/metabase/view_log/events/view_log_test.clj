@@ -164,27 +164,27 @@
 (deftest table-read-ee-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-model-cleanup [:model/User]
-      (let [[user] (user/create-users! [{:email (mt/random-email)}])]
-        (let [table (t2/select-one :model/Table :id (mt/id :users))]
-          (testing "A basic table read event is recorded in EE"
-            (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-            (is (partial=
-                 {:user_id  (u/id user)
-                  :model    "table"
-                  :model_id (u/id table)
-                  :has_access nil
-                  :context    nil}
-                 (latest-view (u/id user) (u/id table)))))
-          (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
-            (mt/with-full-data-perms-for-all-users!
-              (mt/with-current-user (u/id user)
-                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-                (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
-              ;; Bind the user again to flush the perms cache
-              (mt/with-current-user (u/id user)
-                (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
-                (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-                (is (= false (:has_access (latest-view (u/id user) (u/id table)))))))))))))
+      (let [[user] (user/create-users! [{:email (mt/random-email)}])
+            table  (t2/select-one :model/Table :id (mt/id :users))]
+        (testing "A basic table read event is recorded in EE"
+          (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+          (is (partial=
+               {:user_id  (u/id user)
+                :model    "table"
+                :model_id (u/id table)
+                :has_access nil
+                :context    nil}
+               (latest-view (u/id user) (u/id table)))))
+        (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
+          (mt/with-full-data-perms-for-all-users!
+            (mt/with-current-user (u/id user)
+              (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
+            ;; Bind the user again to flush the perms cache
+            (mt/with-current-user (u/id user)
+              (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
+              (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
+              (is (= false (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
   (mt/with-premium-features #{:audit-app}

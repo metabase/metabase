@@ -1,7 +1,6 @@
 (ns metabase.serialization.db
   "Application database queries for the serialization module."
   (:require
-   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))

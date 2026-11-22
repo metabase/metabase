@@ -11,29 +11,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private context-keys
-  "The keys of an event context, by which a context given in place of the opts of a write function is told apart."
-  #{:revision-message :archived-with :details :reverting?})
-
 (defn- event
   "The lifecycle event of `changes` by the current user, with the `:context` and the `:writer` of `opts`, the opts of
   the write function that publishes it."
-  [changes opts]
-  (let [bare?   (some context-keys (keys opts))
-        context (not-empty (dissoc (if bare? opts (:context opts)) :reverting?))
-        writer  (cond
-                  (:reverting? (if bare? opts (:context opts))) :revert
-                  (not bare?)                                   (:writer opts))]
-    (cond-> {:changes changes :user-id (mi/current-user-id)}
-      context (assoc :context context)
-      writer  (assoc :writer writer))))
-
-(mu/defn context :- [:maybe ::events.schema/context]
-  "The context of the events of a write function called with `opts`: their `:context`, with `:reverting?` when their
-  `:writer` is `:revert`."
-  [opts :- [:maybe :map]]
-  (not-empty (cond-> (:context opts)
-               (= :revert (:writer opts)) (assoc :reverting? true))))
+  [changes {:keys [context writer]}]
+  (cond-> {:changes changes :user-id (mi/current-user-id)}
+    (seq context) (assoc :context context)
+    writer        (assoc :writer writer)))
 
 (mu/defn create-event :- ::events.schema/lifecycle
   "The lifecycle event of the creation of `rows`, the instances an insert returned, by the current user, to publish

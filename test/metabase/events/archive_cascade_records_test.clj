@@ -3,7 +3,6 @@
   records nothing, whatever its model."
   (:require
    [clojure.test :refer :all]
-   [metabase.events.core :as events]
    [metabase.queries.models.card :as card]
    [metabase.revisions.db :as revisions.db]
    [metabase.test :as mt]

@@ -10,7 +10,6 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.batch-processing.core :as grouper]
    [metabase.dashboards.models.dashboard :as dashboard]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.native-query-snippets.models.native-query-snippet :as snippet]

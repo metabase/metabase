@@ -162,18 +162,17 @@
 
 (mr/def ::context
   "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;
-  `:reverting?`, whether they are the writes of a revert; `:archived-with`, the `[model id]` of the entity whose archive
-  or restore carried their rows; and `:details`, a map the audit log records."
+  `:archived-with`, the `[model id]` of the entity whose archive or restore carried their rows; and `:details`, a map
+  the audit log records."
   [:map {:closed true}
    [:revision-message {:optional true} [:maybe :string]]
-   [:reverting? {:optional true} :boolean]
    [:archived-with {:optional true} [:tuple :keyword pos-int?]]
    [:details {:optional true} [:map]]])
 
 (mr/def ::lifecycle
   "A lifecycle event, such as `:event/card-update`: the `:changes` of the rows of one model that one action created,
-  updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, and the
-  `:context` they share."
+  updated or deleted, the `:user-id` of the user who made all of them, nil for a write without a user, the
+  `:writer` when it is not a user's own write, such as `:import` or `:revert`, and the `:context` they share."
   [:map {:closed true}
    [:changes [:sequential ::lifecycle.change]]
    [:user-id [:maybe pos-int?]]
