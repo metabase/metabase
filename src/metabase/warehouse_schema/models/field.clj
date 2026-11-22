@@ -466,7 +466,8 @@
   - its foreign key target, if it has one, is a Field of the Database of its Table"
   [ids]
   (when (warehouse-schema.db/fk-target-in-violation? ids)
-    (throw (ex-info (tru "Target field must belong to the same database") {:status-code 400}))))
+    (let [message (tru "Target field must belong to the same database")]
+      (throw (ex-info message {:status-code 400, :errors {:fk_target_field_id message}})))))
 
 (mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
   "Insert the Field `rows` and return the inserted instances, refusing a foreign key target outside the Database of a
@@ -621,20 +622,20 @@
                        (and (contains? row k)
                             (contains? stored id)
                             (not= (get row k) (get-in stored [id k]))))
-            merged   (fn [row] (merge (get stored (:id row)) row))]
-        (let [changes (deactivated! {} (into [] (comp (filter #(false? (:active %))) (map :id)) rows))]
-          (dimension/rename-dimensions-for-fields!
-           (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
-          (let [changes (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
-            (u/prog1 (update-fields-by-change! stored rows fresh?)
-              (when-let [ids (not-empty (into [] (comp (filter :fk_target_field_id) (map :id)) rows))]
-                (check-fk-targets ids))
-              (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
-                                                (if-let [previous (stored id)]
-                                                  (with-change changes previous (dissoc row :id))
-                                                  changes))
-                                              changes
-                                              rows)))))))))
+            merged   (fn [row] (merge (get stored (:id row)) row))
+            changes  (deactivated! {} (into [] (comp (filter #(false? (:active %))) (map :id)) rows))
+            _        (dimension/rename-dimensions-for-fields!
+                      (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
+            changes  (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
+        (u/prog1 (update-fields-by-change! stored rows fresh?)
+          (when-let [ids (not-empty (into [] (comp (filter :fk_target_field_id) (map :id)) rows))]
+            (check-fk-targets ids))
+          (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
+                                            (if-let [previous (stored id)]
+                                              (with-change changes previous (dissoc row :id))
+                                              changes))
+                                          changes
+                                          rows)))))))
 
 (mr/def ::write-opts
   "The options of an update of Fields: `:fields`, the Fields the caller already read, as the rows before it, so that it

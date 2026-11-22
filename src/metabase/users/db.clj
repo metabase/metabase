@@ -7,9 +7,11 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -177,10 +179,17 @@
     []))
 
 (mu/defn update-users!
-  "Apply `changes` to the Users with `user-ids`, returning the number updated."
+  "Apply `changes` to the Users with `user-ids`, one statement for each set of the changes that differ from the stored
+  rows, so that Users already holding one of the values do not make Toucan update row by row, returning the number
+  updated."
   [user-ids :- [:sequential ::lib.schema.id/user]
    changes  :- ::users.schema/user.update]
-  (t2/update! :model/User :id [:in user-ids] changes))
+  (let [stored (u/index-by :id (t2/select :model/User :id [:in [:auto/param (vec (distinct user-ids))]]))]
+    (transduce (map (fn [[changes ids]]
+                      (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
+               +
+               0
+               (mi/group-ids-by-changes stored (map #(assoc changes :id %) user-ids)))))
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

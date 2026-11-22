@@ -397,10 +397,13 @@
   nil)
 
 (defn- check-allowed-content!
-  "Throws unless each Collection with `collection-ids` can hold the content of Transforms."
+  "Throws unless each Collection with `collection-ids` can hold the content of Transforms, all read in one query and
+  checked in the order of their first appearance; a missing one is a 404."
   [collection-ids]
-  (doseq [collection-id (into [] (comp (remove nil?) (distinct)) collection-ids)]
-    (collection/check-allowed-content :model/Transform (collection/content-parent collection-id))))
+  (when-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks ids))]
+      (doseq [id ids]
+        (collection/check-allowed-content :model/Transform (or (collections id) (collection/content-parent id)))))))
 
 (defn- check-transforms
   "Throw a 400 unless every Transform with `ids` satisfies these rules:

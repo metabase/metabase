@@ -1640,6 +1640,8 @@
       (testing "transforms without native create-queries is refused"
         (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)])))
         (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder)
+        ;; query builder access implies a stored `transforms :no` row, which the unique key would refuse a second of
+        (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id :perm_type :perms/transforms)
         (is (=? {:status-code 400} (insert-error! [(row :perms/transforms :yes)]))))
       (testing "transforms after native create-queries is accepted"
         (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)

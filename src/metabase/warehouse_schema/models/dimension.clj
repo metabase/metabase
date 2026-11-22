@@ -4,7 +4,6 @@
   `metabase.query-processor.middleware.add-remaps`."
   (:require
    [malli.util :as mut]
-   [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.eid-translation.spec :as eid-translation]
    [metabase.events.core :as events]
@@ -67,7 +66,8 @@
   - its human-readable Field, if it has one, is a Field of the Database of its own Field"
   [ids]
   (when (warehouse-schema.db/human-readable-field-in-violation? ids)
-    (throw (ex-info (tru "Target field must belong to the same database") {:status-code 400}))))
+    (let [message (tru "Target field must belong to the same database")]
+      (throw (ex-info message {:status-code 400, :errors {:human_readable_field_id message}})))))
 
 (mu/defn create-dimensions! :- [:sequential ::warehouse-schema.schema/dimension]
   "Insert the Dimension `rows` and return the inserted instances, refusing a human-readable Field outside the Database

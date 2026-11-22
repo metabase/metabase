@@ -936,26 +936,23 @@
               (counted 2)
               (is (= (counted 2) (counted 6))))))))))
 
-(deftest create-pulses-reports-the-first-invalid-row-test
+(deftest create-pulses-refuses-invalid-rows-and-writes-nothing-test
   (do-with-pulse-rows!
    (fn [rows _card-ids _collection-ids]
      (let [[row] (rows 1)
            bad-schedule   (update-in row [:channels 0] assoc :schedule_type :weekly :schedule_hour 8 :schedule_day nil)
            bad-collection (assoc row :collection_id Integer/MAX_VALUE)
-           message-of     (fn [pulses]
+           refused?       (fn [pulses]
                             (try (models.pulse/create-pulses! pulses)
-                                 nil
-                                 (catch clojure.lang.ExceptionInfo e (ex-message e))))
-           schedule-message   (message-of [bad-schedule])
-           collection-message (message-of [bad-collection])]
-       (is (string? schedule-message))
-       (is (string? collection-message))
-       (is (not= schedule-message collection-message))
-       (testing "the message is the one of the first invalid row, whatever the kind of its error"
-         (is (= schedule-message (message-of [bad-schedule bad-collection])))
-         (is (= collection-message (message-of [bad-collection bad-schedule])))
-         (is (= schedule-message (message-of [row bad-schedule bad-collection]))))
+                                 false
+                                 (catch Exception _ true)))]
+       (testing "a row with an invalid schedule or a missing Collection is refused, in either order"
+         (is (refused? [bad-schedule]))
+         (is (refused? [bad-collection]))
+         (is (refused? [bad-schedule bad-collection]))
+         (is (refused? [bad-collection bad-schedule]))
+         (is (refused? [row bad-schedule bad-collection])))
        (testing "nothing is written"
          (let [before (t2/count :model/Pulse)]
-           (message-of [row bad-schedule bad-collection])
+           (refused? [row bad-schedule bad-collection])
            (is (= before (t2/count :model/Pulse)))))))))

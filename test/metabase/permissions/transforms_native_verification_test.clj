@@ -28,7 +28,7 @@
         stored    (database-level group-ids db-ids)
         db-level? (fn [{:keys [table_id perm_type]}] (and (nil? table_id) (= :perms/create-queries perm_type)))
         others    (remove #(= :perms/transforms (:perm_type %)) rows)
-        after     (into stored (comp (filter db-level?) (map (juxt :group_id :db_id :perm_type :perm_value))) others)]
+        after     (into (set stored) (comp (filter db-level?) (map (juxt :group_id :db_id :perm_type :perm_value))) others)]
     (boolean
      (or (some (fn [{:keys [group_id db_id perm_value] :as r}]
                  (and (db-level? r)
