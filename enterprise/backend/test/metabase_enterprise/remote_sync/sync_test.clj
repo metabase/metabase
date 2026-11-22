@@ -133,7 +133,7 @@
                      :model/Card       card   {:name "Synced card" :collection_id (:id synced)}]
         (let [{v1 :version} (remote-sync.tu/push! url nil)]
           (t2/update! :model/Card :id (:id card) {:name "Renamed locally"})
-          (testing "pull of unmoved tip reads no documents and keeps local changes"
+          (testing "pull of unmoved tip reads no local documents and keeps local changes"
             (mt/with-dynamic-fn-redefs [content/local-documents (fn [] (throw (ex-info "read local documents" {})))]
               (is (=? {:status :success :version v1 :outcome {:kind "pull-skipped"}}
                       (remote-sync.tu/pull! url v1))))

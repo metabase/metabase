@@ -22,7 +22,7 @@
                       {:branch branch}))))
 
 (defn- tip-state
-  "What a push or pull compares when `tip` is the version at the tip of the branch, as [[state]] returns it."
+  "The map [[state]] returns for a branch of `repo` whose tip is the fetched version `tip`."
   [repo tip base-version]
   (let [known? (and base-version (protocol/has-version? repo base-version))
         base   (content/tree-documents repo (when known? base-version))
@@ -130,7 +130,8 @@
                     {:kind "push-skipped"})}))))
 
 (defn- pull-tip!
-  "Pulls the content of the `tip` version of `repo` into the app DB, as [[pull!]] does."
+  "Pulls the content of `tip`, the fetched version at the tip of the branch, into the app DB with the options of
+  [[pull!]], reading the documents even when `tip` is `base-version`."
   [repo tip base-version {:keys [force? report] :or {report no-report}}]
   (let [{:keys [base ours theirs]} (tip-state repo tip base-version)
         {:keys [merged conflicts]} (if force?
@@ -158,8 +159,8 @@
 
 (defn pull!
   "Pulls the content of `branch` of `repo` into the app DB, keeping its changes since `base-version` unless `force?`,
-  and stops when the kept changes depend on content the pull removes; a pull that keeps them reads nothing when the
-  tip of the branch is still `base-version`."
+  and stops when the kept changes depend on content the pull removes; a pull that keeps them reads no documents when
+  the tip of the branch is `base-version`."
   [repo branch base-version {:keys [force?] :as options}]
   (let [tip (fetch-tip! repo branch)]
     (if (and (= tip base-version) (not force?))
