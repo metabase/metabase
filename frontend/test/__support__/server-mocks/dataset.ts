@@ -3,6 +3,7 @@ import fetchMock, { type CallLog, type UserRouteConfig } from "fetch-mock";
 import type {
   CardQueryMetadata,
   Dataset,
+  NativeDatasetResponse,
   ParameterValues,
 } from "metabase-types/api";
 import type { MockDatasetOpts } from "metabase-types/api/mocks";
@@ -62,4 +63,10 @@ export function setupCardDataset(
       name: "dataset-post",
     },
   );
+}
+
+export function setupNativeDatasetEndpoint(
+  response: NativeDatasetResponse = { query: "SELECT 1", params: null },
+) {
+  fetchMock.post("path:/api/dataset/native", response);
 }
