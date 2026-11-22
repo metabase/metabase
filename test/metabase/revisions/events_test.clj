@@ -146,6 +146,7 @@
   (testing "the update of 2 or 6 Dashboards after dashcard writes records a Revision each with the same number of statements"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Card {card-id :id} {}]
+        (revision-statement-count! card-id 1)
         (is (= (revision-statement-count! card-id 2) (revision-statement-count! card-id 6)))))))
 
 (deftest dashboard-save-is-one-revision-test
