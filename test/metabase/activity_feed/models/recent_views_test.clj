@@ -9,6 +9,7 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn- clear-test-user-recent-views
@@ -176,38 +177,38 @@
                      (recent-views (mt/user->id :rasta)))))))))
 
 (deftest simple-get-list-table-test
-  (mt/with-temp
-    [:model/Database {db-id :id} {:name "test-data"}
-     :model/Table {table-id :id} {:name "name" :db_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
-    (doseq [[read? write? expected] [[false true []]
-                                     [false false []]
-                                     [true false [{:description nil,
-                                                   :can_write false,
-                                                   :name "name",
-                                                   :parent_collection {},
-                                                   :id table-id,
-                                                   :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
-                                                   :timestamp String,
-                                                   :display_name "Name",
-                                                   :table_schema nil
-                                                   :model :table}]]
-                                     [true true [{:description nil,
-                                                  :can_write true,
-                                                  :name "name",
-                                                  :parent_collection {},
-                                                  :id table-id,
-                                                  :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
-                                                  :timestamp String,
-                                                  :table_schema nil
-                                                  :display_name "Name",
-                                                  :model :table}]]]]
-      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly read?)
-                                  mi/can-write? (constantly write?)]
-        (is (= expected
-               (mapv fixup
-                     (mt/with-test-user :rasta
-                       (recent-views (mt/user->id :rasta)))))))))
+  (mt/with-temp [:model/Database {db-id :id} {:name "test-data"}]
+    (mt/with-model-cleanup [:model/Table]
+      (let [[{table-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:name "name" :db_id db-id})])]
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
+        (doseq [[read? write? expected] [[false true []]
+                                         [false false []]
+                                         [true false [{:description nil,
+                                                       :can_write false,
+                                                       :name "name",
+                                                       :parent_collection {},
+                                                       :id table-id,
+                                                       :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
+                                                       :timestamp String,
+                                                       :display_name "Name",
+                                                       :table_schema nil
+                                                       :model :table}]]
+                                         [true true [{:description nil,
+                                                      :can_write true,
+                                                      :name "name",
+                                                      :parent_collection {},
+                                                      :id table-id,
+                                                      :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
+                                                      :timestamp String,
+                                                      :table_schema nil
+                                                      :display_name "Name",
+                                                      :model :table}]]]]
+          (mt/with-dynamic-fn-redefs [mi/can-read? (constantly read?)
+                                      mi/can-write? (constantly write?)]
+            (is (= expected
+                   (mapv fixup
+                         (mt/with-test-user :rasta
+                           (recent-views (mt/user->id :rasta)))))))))))
   (testing "non admins can see tables in recents (#47420)"
     (mt/dataset test-data
       (let [products-id (mt/id :products)]
@@ -477,94 +478,91 @@
         (let [[{collection-id   :id}] (collection/create-collections! [{:name (mt/random-name)}])
               [{collection-id-2 :id}] (collection/create-collections! [{:name (mt/random-name)}])
               [{collection-id-3 :id}] (collection/create-collections! [{:name (mt/random-name)}])]
-          (mt/with-temp [:model/Card {card-id         :id} {:type "question"}
-                         :model/Card {card-id-2       :id} {:type "question"}
-                         :model/Card {card-id-3       :id} {:type "question"}
-                         :model/Card {model-id        :id} {:type "model"}
-                         :model/Card {model-id-2      :id} {:type "model"}
-                         :model/Card {model-id-3      :id} {:type "model"}
-                         :model/Dashboard {dashboard-id    :id} {}
-                         :model/Dashboard {dashboard-id-2  :id} {}
-                         :model/Dashboard {dashboard-id-3  :id} {}
-                         :model/Database {db-id           :id} {}
-                         :model/Table {table-id        :id} {:db_id db-id, :is_upload true}
-                         :model/Table {table-id-2      :id} {:db_id db-id, :is_upload true}
-                         :model/Table {table-id-3      :id} {:db_id db-id, :is_upload true}]
-            (doseq [[model out-model model-ids] [[:model/Card :card [card-id card-id-2 card-id-3]]
-                                                 [:model/Card :dataset [model-id model-id-2 model-id-3]]
-                                                 [:model/Dashboard :dashboard [dashboard-id dashboard-id-2 dashboard-id-3]]
-                                                 [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
-                                                 [:model/Table :table [table-id table-id-2 table-id-3]]]]
-              (doseq [model-id model-ids]
-                (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
-              (testing (format "When user views %s %ss, the latest %s per model are kept. "
-                               (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
-                (is (= 2 (count (filter (comp #{out-model} :model)
+          (mt/with-temp [:model/Database {db-id           :id} {}]
+            (mt/with-model-cleanup [:model/Table]
+              (let [[{table-id        :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :is_upload true})])
+                    [{table-id-2      :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :is_upload true})])
+                    [{table-id-3      :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :is_upload true})])]
+                (mt/with-temp [:model/Card {card-id         :id} {:type "question"}
+                               :model/Card {card-id-2       :id} {:type "question"}
+                               :model/Card {card-id-3       :id} {:type "question"}
+                               :model/Card {model-id        :id} {:type "model"}
+                               :model/Card {model-id-2      :id} {:type "model"}
+                               :model/Card {model-id-3      :id} {:type "model"}
+                               :model/Dashboard {dashboard-id    :id} {}
+                               :model/Dashboard {dashboard-id-2  :id} {}
+                               :model/Dashboard {dashboard-id-3  :id} {}]
+                  (doseq [[model out-model model-ids] [[:model/Card :card [card-id card-id-2 card-id-3]]
+                                                       [:model/Card :dataset [model-id model-id-2 model-id-3]]
+                                                       [:model/Dashboard :dashboard [dashboard-id dashboard-id-2 dashboard-id-3]]
+                                                       [:model/Collection :collection [collection-id collection-id-2 collection-id-3]]
+                                                       [:model/Table :table [table-id table-id-2 table-id-3]]]]
+                    (doseq [model-id model-ids]
+                      (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view))
+                    (testing (format "When user views %s %ss, the latest %s per model are kept. "
+                                     (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
+                      (is (= 2 (count (filter (comp #{out-model} :model)
+                                              (mt/with-test-user :rasta
+                                                (mt/with-full-data-perms-for-all-users!
+                                                  (recent-views (mt/user->id :rasta))))))))))
+                  (is
+                   (= {:card recent-views/*recent-views-stored-per-user-per-model*,
+                       :dataset recent-views/*recent-views-stored-per-user-per-model*,
+                       :dashboard recent-views/*recent-views-stored-per-user-per-model*,
+                       :collection recent-views/*recent-views-stored-per-user-per-model*,
+                       :table recent-views/*recent-views-stored-per-user-per-model*}
+                      (frequencies (map :model
                                         (mt/with-test-user :rasta
                                           (mt/with-full-data-perms-for-all-users!
-                                            (recent-views (mt/user->id :rasta))))))))))
-            (is
-             (= {:card recent-views/*recent-views-stored-per-user-per-model*,
-                 :dataset recent-views/*recent-views-stored-per-user-per-model*,
-                 :dashboard recent-views/*recent-views-stored-per-user-per-model*,
-                 :collection recent-views/*recent-views-stored-per-user-per-model*,
-                 :table recent-views/*recent-views-stored-per-user-per-model*}
-                (frequencies (map :model
-                                  (mt/with-test-user :rasta
-                                    (mt/with-full-data-perms-for-all-users!
-                                      (recent-views (mt/user->id :rasta)))))))
-             "After inserting 3 views of each model, we should have 2 views PER each model.")))))))
+                                            (recent-views (mt/user->id :rasta)))))))
+                   "After inserting 3 views of each model, we should have 2 views PER each model."))))))))))
 
 (deftest table-per-user-size-shrinks-or-grows-test
   (binding [recent-views/*recent-views-stored-per-user-per-model* 30]
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
-      (mt/with-temp
-        [:model/Card       {card-id         :id} {:type "question"}
-         :model/Card       {card-id-2       :id} {:type "question"}
-         :model/Card       {card-id-3       :id} {:type "question"}
-         :model/Card       {card-id-4       :id} {:type "question"}
-
-         :model/Card       {model-id        :id} {:type "model"}
-         :model/Card       {model-id-2      :id} {:type "model"}
-         :model/Card       {model-id-3      :id} {:type "model"}
-
-         :model/Dashboard  {dashboard-id    :id} {}
-         :model/Dashboard  {dashboard-id-2  :id} {}
-         :model/Dashboard  {dashboard-id-3  :id} {}
-
-         :model/Collection {collection-id   :id} {}
-         :model/Collection {collection-id-2 :id} {}
-         :model/Collection {collection-id-3 :id} {}
-
-         :model/Database   {db-id           :id} {} ;; just needed for these temp tables
-         :model/Table      {table-id        :id} {:db_id db-id, :active true}
-         :model/Table      {table-id-2      :id} {:db_id db-id, :active true}
-         :model/Table      {table-id-3      :id} {:db_id db-id, :active false}]
-        (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
-                                   [:model/Card       [model-id model-id-2 model-id-3]]
-                                   [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
-                                   [:model/Collection [collection-id collection-id-2 collection-id-3]]
-                                   [:model/Table      [table-id table-id-2 table-id-3]]]]
-          (doseq [model-id model-ids]
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
-          (let [freqs (frequencies (map :model
-                                        (mt/with-full-data-perms-for-all-users!
-                                          (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
-            (is (= 3 (:card freqs)))
-            (is (= 3 (:dataset freqs)))
-            (is (= 3 (:dashboard freqs)))
-            (is (= 3 (:collection freqs)))
-            (is (= 2 (:table freqs))))
-          (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
-            (is (= 5
-                   (count (set (recent-views/ids-to-prune (mt/user->id :rasta) :view)))))
-            (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4 :view)
-            (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
-                   ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
-                   (frequencies (map :model
-                                     (mt/with-test-user :rasta
-                                       (recent-views (mt/user->id :rasta)))))))))))))
+      (mt/with-temp [:model/Database {db-id           :id} {}]
+        (mt/with-model-cleanup [:model/Table]
+          (let [[{table-id        :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :active true})])
+                [{table-id-2      :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :active true})])
+                [{table-id-3      :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id db-id, :active false})])]
+            (mt/with-temp [:model/Card {card-id         :id} {:type "question"}
+                           :model/Card {card-id-2       :id} {:type "question"}
+                           :model/Card {card-id-3       :id} {:type "question"}
+                           :model/Card {card-id-4       :id} {:type "question"}
+                           :model/Card {model-id        :id} {:type "model"}
+                           :model/Card {model-id-2      :id} {:type "model"}
+                           :model/Card {model-id-3      :id} {:type "model"}
+                           :model/Dashboard {dashboard-id    :id} {}
+                           :model/Dashboard {dashboard-id-2  :id} {}
+                           :model/Dashboard {dashboard-id-3  :id} {}
+                           :model/Collection {collection-id   :id} {}
+                           :model/Collection {collection-id-2 :id} {}
+                           :model/Collection {collection-id-3 :id} {}]
+              (doseq [[model model-ids] [[:model/Card       [card-id card-id-2 card-id-3]]
+                                         [:model/Card       [model-id model-id-2 model-id-3]]
+                                         [:model/Dashboard  [dashboard-id dashboard-id-2 dashboard-id-3]]
+                                         [:model/Collection [collection-id collection-id-2 collection-id-3]]
+                                         [:model/Table      [table-id table-id-2 table-id-3]]]]
+                (doseq [model-id model-ids]
+                  (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
+              (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
+                (let [freqs (frequencies (map :model
+                                              (mt/with-full-data-perms-for-all-users!
+                                                (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
+                  (is (= 3 (:card freqs)))
+                  (is (= 3 (:dataset freqs)))
+                  (is (= 3 (:dashboard freqs)))
+                  (is (= 3 (:collection freqs)))
+                  (is (= 2 (:table freqs))))
+                (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
+                  (is (= 5
+                         (count (set (recent-views/ids-to-prune (mt/user->id :rasta) :view)))))
+                  (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-4 :view)
+                  (is (= {:card 2, :dataset 2, :dashboard 2, :collection 2, :table 1}
+                         ;; The table with :active false should be pruned, but also won't be returned, hence 1 for table.
+                         (frequencies (map :model
+                                           (mt/with-test-user :rasta
+                                             (recent-views (mt/user->id :rasta))))))))))))))))
 
 (deftest dedupe-context-test
   (mt/with-temp
@@ -643,40 +641,41 @@
   (mt/with-test-user :rasta
     (mt/with-model-cleanup [:model/Collection]
       (let [[{coll-id :id}] (collection/create-collections! [{:name "my coll"}])]
-        (mt/with-temp [:model/Database {db-id :id} {}
-                       :model/Card {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}
-                       :model/Card {model-id :id} {:type "model" :name "model" :collection_id coll-id :database_id db-id}
-                       :model/Dashboard {dash-id :id} {:name "dash" :collection_id coll-id}
-                       :model/Table {table-id :id} {:name "table" :db_id db-id}]
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
-          (testing "no filter returns all model types"
-            (is (= #{:card :dataset :dashboard :table}
-                   (->> (recent-views (mt/user->id :rasta))
-                        (map :model)
-                        set))))
-          (testing "filter to only cards"
-            (is (= #{:card}
-                   (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card]})
-                        (map :model)
-                        set))))
-          (testing "filter to only models (aka datasets)"
-            (is (= #{:dataset}
-                   (->> (recent-views (mt/user->id :rasta) [:views] {:models [:dataset]})
-                        (map :model)
-                        set))))
-          (testing "filter to cards and dashboards"
-            (is (= #{:card :dashboard}
-                   (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card :dashboard]})
-                        (map :model)
-                        set))))
-          (testing "filter to only tables"
-            (is (= #{:table}
-                   (->> (recent-views (mt/user->id :rasta) [:views] {:models [:table]})
-                        (map :model)
-                        set)))))))))
+        (mt/with-temp [:model/Database {db-id :id} {}]
+          (mt/with-model-cleanup [:model/Table]
+            (let [[{table-id :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:name "table" :db_id db-id})])]
+              (mt/with-temp [:model/Card {card-id :id} {:type "question" :name "card" :collection_id coll-id :database_id db-id}
+                             :model/Card {model-id :id} {:type "model" :name "model" :collection_id coll-id :database_id db-id}
+                             :model/Dashboard {dash-id :id} {:name "dash" :collection_id coll-id}]
+                (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+                (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+                (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+                (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :view)
+                (testing "no filter returns all model types"
+                  (is (= #{:card :dataset :dashboard :table}
+                         (->> (recent-views (mt/user->id :rasta))
+                              (map :model)
+                              set))))
+                (testing "filter to only cards"
+                  (is (= #{:card}
+                         (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card]})
+                              (map :model)
+                              set))))
+                (testing "filter to only models (aka datasets)"
+                  (is (= #{:dataset}
+                         (->> (recent-views (mt/user->id :rasta) [:views] {:models [:dataset]})
+                              (map :model)
+                              set))))
+                (testing "filter to cards and dashboards"
+                  (is (= #{:card :dashboard}
+                         (->> (recent-views (mt/user->id :rasta) [:views] {:models [:card :dashboard]})
+                              (map :model)
+                              set))))
+                (testing "filter to only tables"
+                  (is (= #{:table}
+                         (->> (recent-views (mt/user->id :rasta) [:views] {:models [:table]})
+                              (map :model)
+                              set))))))))))))
 
 (deftest include-metadata-test
   (mt/with-test-user :rasta

@@ -281,7 +281,7 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
-(defn- do-with-series-dashboard
+(defn- do-with-series-dashboard!
   "Calls `f` with the ids of a dashboard whose one dashcard shows two venues cards, both connected to its `cat` filter.
    One card is in a collection the non-admin groups can't read.
    That hidden card is the dashcard's own card when `primary-hidden?`, and its series card otherwise.
@@ -317,7 +317,7 @@
 
 (deftest dropped-connections-leave-out-unreadable-cards-test
   (testing "a lost connection to a series card the user can't read isn't reported, as redaction hides its mapping"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      false
      (fn [{:keys [dash-id dc-id hidden-card]}]
        (let [args (wire {:method        "update"
@@ -335,7 +335,7 @@
 
 (deftest dropped-connections-leave-out-dashcards-with-unreadable-cards-test
   (testing "a series card's lost connection isn't reported when redaction hides the dashcard's own card"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      true
      (fn [{:keys [dash-id dc-id open-card]}]
        ;; No op can drop this connection for a user who can't read the dashcard's card, since every op that
@@ -351,7 +351,7 @@
 
 (deftest dropped-connections-leave-out-replaced-unreadable-cards-test
   (testing "a hidden card's lost connection isn't reported when replace_card puts a readable card in its place"
-    (do-with-series-dashboard
+    (do-with-series-dashboard!
      true
      (fn [{:keys [dash-id dc-id]}]
        (mt/with-temp [:model/Card {readable-card :id} {:dataset_query (venues-query)}]

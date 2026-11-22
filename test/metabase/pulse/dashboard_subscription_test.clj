@@ -1270,7 +1270,7 @@
   (testing "Dashboard subscription attachments respect dashcard viz settings."
     (mt/with-fake-inbox
       (notification.tu/with-notification-testing-setup!
-        (mt/with-temp [:model/Card {card-id :id :as c} (pulse.test-util/checkins-query-card {:breakout [!day.date]})
+        (mt/with-temp [:model/Card {card-id :id :as c} (mt/card-with-metadata (pulse.test-util/checkins-query-card {:breakout [!day.date]}))
                        :model/Dashboard {dash-id :id} {:name "just dash"}]
           (let [;; with the helper `metadata->field-ref` we turn column metadata into column field refs
                 ;; with an additional key `:enabled`. Here the 1st col is enabled, and the 2nd is disabled

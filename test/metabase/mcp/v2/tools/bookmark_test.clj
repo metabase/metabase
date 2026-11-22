@@ -70,25 +70,26 @@
 
 (deftest every-type-routes-to-its-bookmark-table-test
   (testing "GHY-4152: each type reaches the right bookmark table; the three card flavors share `card`"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Card {question-id :id} {:type :question :collection_id coll-id}
-                   :model/Card {model-id :id} {:type :model :collection_id coll-id}
-                   :model/Card {metric-id :id} {:type :metric :collection_id coll-id}
-                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                   :model/Document {doc-id :id} {:collection_id coll-id :document {}}]
-      (doseq [[type id] [["question" question-id] ["model" model-id] ["metric" metric-id]]]
-        (testing type
-          (is (=? {:bookmarked true} (tool-result (call-tool! :rasta {:type type :id id :bookmarked true}))))
-          (is (t2/exists? :model/CardBookmark :card_id id :user_id (mt/user->id :rasta)))))
-      (testing "dashboard"
-        (call-tool! :rasta {:type "dashboard" :id dash-id :bookmarked true})
-        (is (t2/exists? :model/DashboardBookmark :dashboard_id dash-id :user_id (mt/user->id :rasta))))
-      (testing "collection"
-        (call-tool! :rasta {:type "collection" :id coll-id :bookmarked true})
-        (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))
-      (testing "document"
-        (call-tool! :rasta {:type "document" :id doc-id :bookmarked true})
-        (is (t2/exists? :model/DocumentBookmark :document_id doc-id :user_id (mt/user->id :rasta)))))))
+    (mt/with-model-cleanup [:model/Collection]
+      (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name)}])]
+        (mt/with-temp [:model/Card {question-id :id} {:type :question :collection_id coll-id}
+                       :model/Card {model-id :id} {:type :model :collection_id coll-id}
+                       :model/Card {metric-id :id} {:type :metric :collection_id coll-id}
+                       :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                       :model/Document {doc-id :id} {:collection_id coll-id :document {}}]
+          (doseq [[type id] [["question" question-id] ["model" model-id] ["metric" metric-id]]]
+            (testing type
+              (is (=? {:bookmarked true} (tool-result (call-tool! :rasta {:type type :id id :bookmarked true}))))
+              (is (t2/exists? :model/CardBookmark :card_id id :user_id (mt/user->id :rasta)))))
+          (testing "dashboard"
+            (call-tool! :rasta {:type "dashboard" :id dash-id :bookmarked true})
+            (is (t2/exists? :model/DashboardBookmark :dashboard_id dash-id :user_id (mt/user->id :rasta))))
+          (testing "collection"
+            (call-tool! :rasta {:type "collection" :id coll-id :bookmarked true})
+            (is (t2/exists? :model/CollectionBookmark :collection_id coll-id :user_id (mt/user->id :rasta))))
+          (testing "document"
+            (call-tool! :rasta {:type "document" :id doc-id :bookmarked true})
+            (is (t2/exists? :model/DocumentBookmark :document_id doc-id :user_id (mt/user->id :rasta)))))))))
 
 (deftest entity-id-test
   (testing "GHY-4152: id accepts a 21-char entity_id as well as a numeric id"

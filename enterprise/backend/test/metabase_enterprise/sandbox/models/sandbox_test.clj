@@ -73,10 +73,13 @@
 
 (deftest card-columns-checked-only-when-card-changes-test
   (testing "an update checks the sandbox Card's columns against the Table only when it sets the Card"
-    (let [mp (mt/metadata-provider)]
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
-                     :model/Card             {card-id :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                     :model/Card             {other-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                     :model/Card             {card-id :id}  {:dataset_query   query
+                                                             :result_metadata (qp.preprocess/query->expected-cols query)}
+                     :model/Card             {other-id :id} {:dataset_query   query
+                                                             :result_metadata (qp.preprocess/query->expected-cols query)}
                      :model/Sandbox          {sandbox-id :id} {:table_id (mt/id :venues) :group_id group-id :card_id card-id}]
         (let [checks (atom 0)]
           (mt/with-dynamic-fn-redefs [sandboxes/table-field-names->cols (let [f (mt/original-fn #'sandboxes/table-field-names->cols)]

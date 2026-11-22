@@ -1193,8 +1193,10 @@
   (testing "GET /api/ee/dependencies/unreferenced - only unreferenced tables are returned"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Table {unreffed-table-id :id} {:name "Unreferenced Table - unreftest"}
-                       :model/Table {referenced-table-id :id} {:name "Referenced Table - unreftest"}
+        (mt/with-temp [:model/Table {unreffed-table-id :id} {:name "Unreferenced Table - unreftest"
+                                                             :display_name "Unreferenced Table - unreftest"}
+                       :model/Table {referenced-table-id :id} {:name "Referenced Table - unreftest"
+                                                               :display_name "Referenced Table - unreftest"}
                        :model/Card {card-id :id} {:name "Referencing Card"
                                                   :type :question
                                                   :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
@@ -1509,12 +1511,15 @@
   (testing "GET /api/ee/dependencies/graph/unreferenced includes inactive and hidden tables"
     (mt/with-premium-features #{:dependencies}
       (mt/with-temp [:model/Table {active-table-id :id} {:name "Active Unreferenced Table - archivedtest"
+                                                         :display_name "Active Unreferenced Table - archivedtest"
                                                          :db_id (mt/id)
                                                          :active true}
                      :model/Table {inactive-table-id :id} {:name "Inactive Unreferenced Table - archivedtest"
+                                                           :display_name "Inactive Unreferenced Table - archivedtest"
                                                            :db_id (mt/id)
                                                            :active false}
                      :model/Table {hidden-table-id :id} {:name "Hidden Unreferenced Table - archivedtest"
+                                                         :display_name "Hidden Unreferenced Table - archivedtest"
                                                          :db_id (mt/id)
                                                          :active true
                                                          :visibility_type "hidden"}]
@@ -1530,9 +1535,12 @@
 (deftest ^:synchronized unreferenced-pagination-test
   (testing "GET /api/ee/dependencies/unreferenced - should paginate results"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Table {table1-id :id} {:name "Table 1 - unreftest"}
-                     :model/Table {table2-id :id} {:name "Table 2 - unreftest"}
-                     :model/Table {table3-id :id} {:name "Table 3 - unreftest"}]
+      (mt/with-temp [:model/Table {table1-id :id} {:name "Table 1 - unreftest"
+                                                   :display_name "Table 1 - unreftest"}
+                     :model/Table {table2-id :id} {:name "Table 2 - unreftest"
+                                                   :display_name "Table 2 - unreftest"}
+                     :model/Table {table3-id :id} {:name "Table 3 - unreftest"
+                                                   :display_name "Table 3 - unreftest"}]
         (deps.test/synchronously-run-dependency-job!)
         (is (=? {:data   [{:id table1-id} {:id table2-id}]
                  :total  3
@@ -2786,9 +2794,11 @@
     (mt/with-premium-features #{:dependencies}
       (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
         (mt/with-temp [:model/Table {table1-id :id} {:name          "User Owned Table - ownertest"
+                                                     :display_name  "User Owned Table - ownertest"
                                                      :owner_user_id (mt/user->id :crowberto)}
-                       :model/Table {table2-id :id} {:name        "Email Owned Table - ownertest"
-                                                     :owner_email "external@example.com"}]
+                       :model/Table {table2-id :id} {:name         "Email Owned Table - ownertest"
+                                                     :display_name "Email Owned Table - ownertest"
+                                                     :owner_email  "external@example.com"}]
           (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :get 200
                                                "ee/dependencies/graph/unreferenced"

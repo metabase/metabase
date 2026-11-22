@@ -15,6 +15,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -162,54 +163,66 @@
                           qp/process-query
                           mt/rows))]
       (doseq [card-type [:question :model]]
-        (mt/with-temp [:model/Card {card-id :id} {:type          card-type
-                                                  :dataset_query (lib/join (lib/query mp orders) self-join)}]
-          (mt/with-test-user :crowberto
-            (testing card-type
-              (let [user-id-cols (->> (content-one {:items [{:type (name card-type) :id card-id}] :include ["fields"]})
-                                      :result_metadata
-                                      (filterv #(= (mt/id :orders :user_id) (:id %))))
-                    via          (fn [fk-name]
-                                   (by-source {:source-card card-id
-                                               :breakout    [["field" {:source-field      (mt/id :orders :user_id)
-                                                                       :source-field-name fk-name}
-                                                              (mt/id :people :source)]]}))]
-                (is (= ["USER_ID" "O2__USER_ID"] (mapv :lib/desired-column-alias user-id-cols))
-                    (pr-str user-id-cols))
-                (testing "and each name picks its own foreign key"
-                  (is (= (by-source {:source-table (mt/id :orders)
-                                     :breakout     [["field" {} (mt/id :people :source)]]})
-                         (via "USER_ID")))
-                  (is (not= (via "USER_ID") (via "O2__USER_ID"))))))))))))
+        (mt/with-model-cleanup [:model/Card]
+          (let [[{card-id :id}] (card/create-cards! [{:type                   card-type
+                                                      :name                   (mt/random-name)
+                                                      :creator_id             (mt/user->id :rasta)
+                                                      :database_id            (mt/id)
+                                                      :display                :table
+                                                      :visualization_settings {}
+                                                      :dataset_query          (lib/join (lib/query mp orders) self-join)}])]
+            (mt/with-test-user :crowberto
+              (testing card-type
+                (let [user-id-cols (->> (content-one {:items [{:type (name card-type) :id card-id}] :include ["fields"]})
+                                        :result_metadata
+                                        (filterv #(= (mt/id :orders :user_id) (:id %))))
+                      via          (fn [fk-name]
+                                     (by-source {:source-card card-id
+                                                 :breakout    [["field" {:source-field      (mt/id :orders :user_id)
+                                                                         :source-field-name fk-name}
+                                                                (mt/id :people :source)]]}))]
+                  (is (= ["USER_ID" "O2__USER_ID"] (mapv :lib/desired-column-alias user-id-cols))
+                      (pr-str user-id-cols))
+                  (testing "and each name picks its own foreign key"
+                    (is (= (by-source {:source-table (mt/id :orders)
+                                       :breakout     [["field" {} (mt/id :people :source)]]})
+                           (via "USER_ID")))
+                    (is (not= (via "USER_ID") (via "O2__USER_ID")))))))))))))
 
 (deftest card-column-error-hint-lists-the-card-columns-test
   (testing "a column the card does not return gets a hint naming the get_content call that lists the ones it does"
     (let [mp    (mt/metadata-provider)
           field #(lib.metadata/field mp (mt/id :orders %))]
-      (mt/with-temp [:model/Card {card-id :id} {:type          :model
-                                                :dataset_query (lib/with-fields
-                                                                 (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                 [(field :id) (field :total)])}]
-        (mt/with-test-user :crowberto
-          (let [e    (try
-                       (v2.queries/execute-representations-query
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type    "mbql.stage/mbql"
-                                     :source-card card-id
-                                     :aggregation [["count" {}]]
-                                     :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
-                       nil
-                       (catch clojure.lang.ExceptionInfo e e))
-                items (some->> (ex-message e)
-                               (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
-                               second
-                               json/decode+kw)]
-            (is (=? {:error :column-not-returned} (ex-data e)))
-            (is (= [{:type "model" :id card-id}] items)
-                (ex-message e))
-            (is (= ["ID" "TOTAL"]
-                   (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
-                "and that call lists the columns the model returns")))))))
+      (mt/with-model-cleanup [:model/Card]
+        (let [[{card-id :id}] (card/create-cards! [{:type                   :model
+                                                    :name                   (mt/random-name)
+                                                    :creator_id             (mt/user->id :rasta)
+                                                    :database_id            (mt/id)
+                                                    :display                :table
+                                                    :visualization_settings {}
+                                                    :dataset_query          (lib/with-fields
+                                                                              (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                              [(field :id) (field :total)])}])]
+          (mt/with-test-user :crowberto
+            (let [e    (try
+                         (v2.queries/execute-representations-query
+                          {:lib/type "mbql/query"
+                           :stages   [{:lib/type    "mbql.stage/mbql"
+                                       :source-card card-id
+                                       :aggregation [["count" {}]]
+                                       :breakout    [["field" {} (mt/id :orders :quantity)]]}]})
+                         nil
+                         (catch clojure.lang.ExceptionInfo e e))
+                  items (some->> (ex-message e)
+                                 (re-find #"Call \"get_content\" with items (\[.*?\]) and include \[\"fields\"\]")
+                                 second
+                                 json/decode+kw)]
+              (is (=? {:error :column-not-returned} (ex-data e)))
+              (is (= [{:type "model" :id card-id}] items)
+                  (ex-message e))
+              (is (= ["ID" "TOTAL"]
+                     (mapv :name (:result_metadata (content-one {:items items :include ["fields"]}))))
+                  "and that call lists the columns the model returns"))))))))
 
 (deftest get-content-dashboard-skeleton-test
   (testing "GHY-4140: a dashboard returns the editing skeleton, never the raw REST dashcards array"

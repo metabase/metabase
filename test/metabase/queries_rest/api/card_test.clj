@@ -34,6 +34,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries-rest.api.card :as api.card]
    [metabase.queries.card :as queries.card]
+   [metabase.queries.models.card :as card]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
@@ -561,33 +562,35 @@
                                                                                  :card-id      card-id}}})
                                                      :database (mt/id)}}
                  :model/Database {other-database-id :id} {}
-                 ;; database doesn't quite match, but when we save the Card we should correct it to the ID used by the
-                 ;; model
-                 :model/Card card-6 {:name          "Card 6"
-                                     :database_id   other-database-id
-                                     :dataset_query {:database other-database-id
-                                                     :type     :query
-                                                     :query    {:source-table (str "card__" model-id)}}}
                  ;; same as matching question, but archived
                  :model/Card card-7 {:name "Card 7"
                                      :archived true
                                      :dataset_query {:database (mt/id)
                                                      :type     :query
                                                      :query    {:source-table (str "card__" model-id)}}}]
-    (testing "When saving Card 6, we should correct the database_id to the same ID used by the source card"
-      (is (= (mt/id)
-             (:database_id card-6))))
-    (testing "list cards using a model"
-      (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
-        (is (= #{"Card 1"
-                 "Card 3"
-                 "Card 4"
-                 "Card 6"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_model :model_id model-id))))
-        (is (= #{"Card 1" "Card 3"}
-               (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
-                                                           :f :using_segment :model_id segment-id))))))))
+    (mt/with-model-cleanup [:model/Card]
+      (let [[card-6] (card/create-cards!
+                      [{:name                   "Card 6"
+                        :creator_id             (mt/user->id :rasta)
+                        :database_id            other-database-id
+                        :display                :table
+                        :visualization_settings {}
+                        :dataset_query          (let [mp (mt/metadata-provider)]
+                                                  (lib/query mp (lib.metadata/card mp model-id)))}])]
+        (testing "When saving Card 6, we should correct the database_id to the same ID used by the source card"
+          (is (= (mt/id)
+                 (:database_id card-6))))
+        (testing "list cards using a model"
+          (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
+            (is (= #{"Card 1"
+                     "Card 3"
+                     "Card 4"
+                     "Card 6"}
+                   (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                               :f :using_model :model_id model-id))))
+            (is (= #{"Card 1" "Card 3"}
+                   (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
+                                                               :f :using_segment :model_id segment-id))))))))))
 
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
@@ -1750,8 +1753,9 @@
 
 (deftest update-card-with-type-and-dataset-test
   (testing "can toggle model using only type"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
-                                                      {:fields [$id $subtotal $created_at]})}]
+    (mt/with-temp [:model/Card card (mt/card-with-metadata
+                                     {:dataset_query (mt/mbql-query orders
+                                                       {:fields [$id $subtotal $created_at]})})]
       (let [base-metadata [{:id    (mt/id :orders :id)
                             :name  "ID"}
                            {:id    (mt/id :orders :subtotal)
@@ -2730,11 +2734,12 @@
                                                                                 :query    query}
                                                        :visualization_settings viz-settings}
                        :model/Card {model-card-id  :id
-                                    model-metadata :result_metadata} {:type          :model
-                                                                      :dataset_query {:database (mt/id)
-                                                                                      :type     :query
-                                                                                      :query    {:source-table
-                                                                                                 (format "card__%s" base-card-id)}}}
+                                    model-metadata :result_metadata} (mt/card-with-metadata
+                                                                      {:type          :model
+                                                                       :dataset_query {:database (mt/id)
+                                                                                       :type     :query
+                                                                                       :query    {:source-table
+                                                                                                  (format "card__%s" base-card-id)}}})
                        :model/Card {meta-model-card-id :id} {:type            :model
                                                              :dataset_query   {:database (mt/id)
                                                                                :type     :query
@@ -3956,10 +3961,11 @@
 
 (deftest model-card-test-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
-    (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
-                                                       {:fields [$id $name]
-                                                        :limit 2})
-                                      :type          :model}]
+    (mt/with-temp [:model/Card model (mt/card-with-metadata
+                                      {:dataset_query (mt/mbql-query venues
+                                                        {:fields [$id $name]
+                                                         :limit 2})
+                                       :type          :model})]
       (let [updated-metadata (-> model :result_metadata vec
                                  (assoc-in [1 :visibility_type]
                                            :details-only))
@@ -4787,7 +4793,7 @@
 (deftest card-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
+      [:model/Card {card-id-1 :id} (mt/card-with-metadata {:dataset_query (mt/mbql-query products)})
        :model/Card {card-id-2 :id} {:dataset_query {:type     :query
                                                     :database (mt/id)
                                                     :query    {:source-table (str "card__" card-id-1)}}}]
@@ -5771,9 +5777,10 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Collection {source-coll :id} {}
                      :model/Collection {nested-coll :id} {}
-                     :model/Card       {source-id :id} {:collection_id source-coll
-                                                        :dataset_query (let [mp (mt/metadata-provider)]
-                                                                         (lib/query mp (lib.metadata/table mp (mt/id :orders))))}
+                     :model/Card       {source-id :id} (mt/card-with-metadata
+                                                        {:collection_id source-coll
+                                                         :dataset_query (let [mp (mt/metadata-provider)]
+                                                                          (lib/query mp (lib.metadata/table mp (mt/id :orders))))})
                      :model/Card       {nested-id :id} {:collection_id nested-coll
                                                         :dataset_query (let [mp (mt/metadata-provider)]
                                                                          (lib/query mp (lib.metadata/card mp source-id)))}]

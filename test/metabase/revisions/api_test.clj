@@ -542,10 +542,11 @@
   (testing "revision description for card are generated correctly"
     (mt/with-temp
       [:model/Collection {coll-id :id} {:name "New Collection"}
-       :model/Card       {card-id :id} {:name                   "A card"
-                                        :display                "table"
-                                        :dataset_query          (mt/mbql-query venues)
-                                        :visualization_settings {}}]
+       :model/Card       {card-id :id} (mt/card-with-metadata
+                                        {:name                   "A card"
+                                         :display                "table"
+                                         :dataset_query          (mt/mbql-query venues)
+                                         :visualization_settings {}})]
       ;; 0. create the card
       (create-card-revision! card-id true :crowberto)
       ;; 1. rename
@@ -555,8 +556,11 @@
       (t2/update! :model/Card :id card-id {:type :model})
       (create-card-revision! card-id false :crowberto)
       ;; 3. edit query and metadata
-      (t2/update! :model/Card :id card-id {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
-                                           :display       "scalar"})
+      (t2/update! :model/Card :id card-id
+                  (-> {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                      mt/card-with-metadata
+                      (select-keys [:dataset_query :result_metadata])
+                      (assoc :display "scalar")))
       (create-card-revision! card-id false :crowberto)
       ;; 4. add description
       (t2/update! :model/Card :id card-id {:description "meaningful number"})

@@ -273,14 +273,16 @@
       (binding [*supports-schemas?*                      supports-schemas?
                 sync-util/*log-exceptions-and-continue?* false]
         (mt/with-temp [:model/Database db     {:engine ::sync-test}
-                       :model/Table    movie  {:name        "movie"
-                                               :schema      (when *supports-schemas?* "default")
-                                               :db_id       (u/the-id db)
-                                               :description nil}
-                       :model/Table    studio {:name        "studio"
-                                               :schema      (when *supports-schemas?* "public")
-                                               :db_id       (u/the-id db)
-                                               :description ""}]
+                       :model/Table    movie  {:name         "movie"
+                                               :display_name "Movie"
+                                               :schema       (when *supports-schemas?* "default")
+                                               :db_id        (u/the-id db)
+                                               :description  nil}
+                       :model/Table    studio {:name         "studio"
+                                               :display_name "Studio"
+                                               :schema       (when *supports-schemas?* "public")
+                                               :db_id        (u/the-id db)
+                                               :description  ""}]
           (sync/sync-table! studio)
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select :model/Table :db_id (u/the-id db) {:order-by [:name]}))]

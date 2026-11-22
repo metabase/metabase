@@ -124,7 +124,7 @@
                                                 :ssl-key-password-id :ssl-key-password-options
                                                 :ssl-key-password-value])))))))))))
 
-(defn- with-cert-workspace
+(defn- with-cert-workspace!
   "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
   [details f]
   (mt/with-model-cleanup [:model/Database :model/Secret]
@@ -138,7 +138,7 @@
 
 (deftest build-workspace-config-drops-unresolvable-ssl-root-cert-id-test
   (testing "a root cert id with no Secret behind it is dropped: in the child it could name an unrelated Secret"
-    (with-cert-workspace
+    (with-cert-workspace!
       {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-root-cert-id Integer/MAX_VALUE}
       (fn [ws-id]
         (let [details (->> (config/build-workspace-config ws-id) :config :databases
@@ -150,7 +150,7 @@
   (testing "with :ssl off the root cert is not read or shipped, and its parent Secret id is dropped"
     ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
     (mt/with-premium-features #{}
-      (with-cert-workspace
+      (with-cert-workspace!
         {:host "h" :port 5432 :ssl false
          :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
         (fn [ws-id]
@@ -169,30 +169,30 @@
     (testing "tunnel on, known hosts stored as a Secret: they ship as their value, so the child's tunnel still
               verifies the host key"
       (mt/with-temp [:model/Secret {secret-id :id} {:name "kh" :kind "binary-blob" :source "uploaded" :value known-hosts}]
-        (with-cert-workspace
+        (with-cert-workspace!
           (assoc tunnel :tunnel-known-hosts-id secret-id)
           (fn [ws-id]
             (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
                    (select-keys (details-of ws-id) kh-keys)))))))
     (testing "tunnel on, known hosts kept as a plain value (Postgres doesn't store them as a Secret): the value ships"
-      (with-cert-workspace
+      (with-cert-workspace!
         (assoc tunnel :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts)
         (fn [ws-id]
           (is (= {:tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
                  (select-keys (details-of ws-id) kh-keys))))))
     (testing "tunnel off: the known hosts aren't read, and the parent Secret id doesn't ship"
-      (with-cert-workspace
+      (with-cert-workspace!
         {:host "h" :port 5432 :tunnel-enabled false :tunnel-known-hosts-id Integer/MAX_VALUE}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
     (testing "tunnel off: leftover -options and -value keys don't ship"
-      (with-cert-workspace
+      (with-cert-workspace!
         {:host "h" :port 5432 :tunnel-enabled false
          :tunnel-known-hosts-options "uploaded" :tunnel-known-hosts-value known-hosts}
         (fn [ws-id]
           (is (= {} (select-keys (details-of ws-id) kh-keys))))))
     (testing "tunnel on with a known-hosts id that doesn't resolve: a 422, since dropping it would skip host-key checks"
-      (with-cert-workspace
+      (with-cert-workspace!
         (assoc tunnel :tunnel-known-hosts-id Integer/MAX_VALUE)
         (fn [ws-id]
           (is (=? {:status-code 422 :database_id int?}
@@ -209,7 +209,7 @@
 (deftest build-workspace-config-refuses-ssl-client-auth-test
   (testing "a database that authenticates with an SSL client certificate is a 422: the child gets no client cert, so
             it would fail only when it connects"
-    (with-cert-workspace
+    (with-cert-workspace!
       {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-use-client-auth true
        :ssl-client-cert-options "uploaded" :ssl-client-cert-value "client-cert"
        :ssl-key-options "uploaded" :ssl-key-value "client-key"}
@@ -230,7 +230,7 @@
             file the server can read, so they don't ship, and the file is not read"
     ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
     (mt/with-premium-features #{}
-      (with-cert-workspace
+      (with-cert-workspace!
         {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
          :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
         (fn [ws-id]
@@ -807,7 +807,7 @@
       ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
       (mt/with-premium-features #{}
         (testing "control: an uploaded root certificate ships"
-          (with-cert-workspace
+          (with-cert-workspace!
             {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
              :ssl-root-cert-options "uploaded" :ssl-root-cert-value "-----BEGIN CERTIFICATE-----\nMIIBroot\n-----END CERTIFICATE-----\n"}
             (fn [ws-id]
@@ -815,7 +815,7 @@
                      (:ssl-root-cert-value (cert-dw-details (build-or-refusal ws-id))))))))
         (testing "a root certificate given as a server file path is refused with a 4xx, or the file's contents stay out
                   of config.yml"
-          (with-cert-workspace
+          (with-cert-workspace!
             {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
              :ssl-root-cert-options "local" :ssl-root-cert-path (.getAbsolutePath f)}
             (fn [ws-id]
@@ -868,7 +868,7 @@
 (deftest root-cert-survives-config-file-import-test
   (testing "the sidecar's config-file import stores the inlined root certificate as a Secret of its own"
     (mt/with-model-cleanup [:model/Database :model/Secret]
-      (with-cert-workspace
+      (with-cert-workspace!
         {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
          :ssl-root-cert-options "uploaded" :ssl-root-cert-value test-ca-pem}
         (fn [ws-id]
@@ -885,7 +885,7 @@
   (testing "a DER root certificate reaches the sidecar's Secret byte for byte"
     (mt/with-model-cleanup [:model/Database :model/Secret]
       (let [^bytes der (u/decode-base64-to-bytes test-ca-der-base64)]
-        (with-cert-workspace
+        (with-cert-workspace!
           {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
            :ssl-root-cert-options "uploaded"
            :ssl-root-cert-value   (str "data:application/octet-stream;base64," test-ca-der-base64)}
@@ -902,7 +902,7 @@
 
 (deftest build-workspace-config-client-auth-flag-without-ssl-is-not-refused-test
   (testing "a leftover :ssl-use-client-auth with :ssl off does not refuse the config"
-    (with-cert-workspace
+    (with-cert-workspace!
       {:host "h" :port 5432 :ssl false :ssl-use-client-auth true}
       (fn [ws-id]
         (is (= {:host "h" :ssl false}

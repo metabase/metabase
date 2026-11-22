@@ -835,14 +835,14 @@
 (deftest test-table-title-test
   (testing "Given the current automagic_dashboards/field/GenericTable.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO"}]
+      (mt/with-temp [:model/Table {table-name :name :as table} {:name "FOO" :display_name "Foo"}]
         (is (= (format "A look at %s" (u/capitalize-en table-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis table nil)))))))))
 
 (deftest test-field-title-test
   (testing "Given the current automagic_dashboards/field/GenericField.yaml template, produce the expected dashboard title"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL"}]
+      (mt/with-temp [:model/Field {field-name :name :as field} {:name "TOTAL" :display_name "Total"}]
         (is (= (format "A look at the %s fields" (u/capitalize-en field-name))
                (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
@@ -1632,7 +1632,7 @@
                                                                   :name            "15655"})
          ;; a wrong table_id used to be part of this repro (set by the FE, see #15655); table_id is now always
          ;; derived from the query, so this card gets table_id nil (its source is a native card)
-         :model/Card card {:table_id      (mt/id :orders) ; ignored: cleared since the query has no source table
+         :model/Card card {:table_id      nil
                            :dataset_query {:query    {:source-table (format "card__%s" native-card-id)
                                                       :aggregation  [[:count]]
                                                       :breakout     [[:field "SOURCE" {:base-type :type/Text}]]}

@@ -38,6 +38,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
@@ -734,37 +735,37 @@
 (deftest read-resource-curated-only-recents-test
   (testing "recent items (which carry keyword models) are filtered like any other list"
     (mt/with-current-user (mt/user->id :crowberto)
-      (mt/with-model-cleanup [:model/RecentViews]
-        (mt/with-temp [:model/Card {verified-model :id} {:type :model :name "verified recent model"
-                                                         :dataset_query (orders-query)}
-                       :model/Card {plain-question :id} {:type :question :name "plain recent question"
-                                                         :dataset_query (orders-query)}
-                       :model/Card {plain-metric :id} {:type :metric :name "plain recent metric"
-                                                       :dataset_query (count-metric-query (orders-query))}
-                       :model/Table {raw-table :id} {:db_id (mt/id) :name "raw_recent_table" :active true}
-                       :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (verify-card! verified-model)
-          (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
-            (recent-views/update-users-recent-views! (mt/user->id :crowberto) model id :view))
-          (let [items (fn [metabot]
-                        (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
-                                         ["metric" plain-metric]}
-                                       (juxt :type :id))
-                                 (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
-                                         [:content :structured-output :items])))
-                pairs (fn [metabot] (into #{} (map (juxt :type :id)) (items metabot)))]
-            ;; key on type and id: a temp Card's id can coincide with a temp Table's
-            (is (=? [{:type "model" :id verified-model}] (items metabot)))
-            (testing "the unrestricted Metabot lists them all, with their public types and URIs"
-              (is (=? [{:type "table" :uri (str "metabase://table/" raw-table)}
-                       {:type "question" :uri (str "metabase://question/" plain-question)}
-                       {:type "model" :uri (str "metabase://model/" verified-model)}]
-                      (items nil))))
-            (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
-              (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
-              (is (= #{["model" verified-model]} (pairs metabot)))
-              (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
-                (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot)))))))))))
+      (mt/with-model-cleanup [:model/RecentViews :model/Table]
+        (let [[{raw-table :id}] (table/create-tables! [(merge (dissoc (mt/with-temp-defaults :model/Table) :created_at :updated_at) {:db_id (mt/id) :name "raw_recent_table" :active true})])]
+          (mt/with-temp [:model/Card {verified-model :id} {:type :model :name "verified recent model"
+                                                           :dataset_query (orders-query)}
+                         :model/Card {plain-question :id} {:type :question :name "plain recent question"
+                                                           :dataset_query (orders-query)}
+                         :model/Card {plain-metric :id} {:type :metric :name "plain recent metric"
+                                                         :dataset_query (count-metric-query (orders-query))}
+                         :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+            (verify-card! verified-model)
+            (doseq [[model id] [[:model/Card verified-model] [:model/Card plain-question] [:model/Table raw-table]]]
+              (recent-views/update-users-recent-views! (mt/user->id :crowberto) model id :view))
+            (let [items (fn [metabot]
+                          (filterv (comp #{["model" verified-model] ["question" plain-question] ["table" raw-table]
+                                           ["metric" plain-metric]}
+                                         (juxt :type :id))
+                                   (get-in (first (read-uris metabot :internal "metabase://user/recent-items"))
+                                           [:content :structured-output :items])))
+                  pairs (fn [metabot] (into #{} (map (juxt :type :id)) (items metabot)))]
+              ;; key on type and id: a temp Card's id can coincide with a temp Table's
+              (is (=? [{:type "model" :id verified-model}] (items metabot)))
+              (testing "the unrestricted Metabot lists them all, with their public types and URIs"
+                (is (=? [{:type "table" :uri (str "metabase://table/" raw-table)}
+                         {:type "question" :uri (str "metabase://question/" plain-question)}
+                         {:type "model" :uri (str "metabase://model/" verified-model)}]
+                        (items nil))))
+              (testing "an uncurated metric is listed once what it's defined on is curated, as metric/{id} reads it"
+                (recent-views/update-users-recent-views! (mt/user->id :crowberto) :model/Card plain-metric :view)
+                (is (= #{["model" verified-model]} (pairs metabot)))
+                (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+                  (is (= #{["model" verified-model] ["metric" plain-metric]} (pairs metabot))))))))))))
 
 (deftest curation-subject-test
   (testing "transforms can never be curated"

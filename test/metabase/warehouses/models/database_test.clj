@@ -543,31 +543,31 @@
   (mt/with-model-cleanup [:model/Database :model/Secret]
     (let [[db] (database/create-databases! [{:engine :secret-test-driver
                                              :name "Secret Test"
-                                             :details {:keystore-value "secret"}}])]
-      (let [db-id (:id db)
-            secret-id (get-in db [:details :keystore-id])
-            expected {:keystore-id secret-id}]
-        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-        (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
-                (secret/latest-for-id secret-id)))
-        (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
-        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-        (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
-                (secret/latest-for-id secret-id)))
-        (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
-        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-        (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
-                (secret/latest-for-id secret-id)))
-        (database/update-databases! [{:id db-id :details {:keystore-options "local"
-                                                          :keystore-path "prefer-path"
-                                                          :keystore-value "ignore-value"}}])
-        (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-        (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
-                (secret/latest-for-id secret-id)))
-        (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
-        (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
-        (is (=? nil
-                (secret/latest-for-id secret-id)))))))
+                                             :details {:keystore-value "secret"}}])
+          db-id (:id db)
+          secret-id (get-in db [:details :keystore-id])
+          expected {:keystore-id secret-id}]
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+      (is (=? {:value (u/string-to-bytes "secret") :source :uploaded :version 1}
+              (secret/latest-for-id secret-id)))
+      (database/update-databases! [{:id db-id :details {:keystore-path "secret-path"}}])
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+      (is (=? {:value (u/string-to-bytes "secret-path") :source :file-path :version 2}
+              (secret/latest-for-id secret-id)))
+      (database/update-databases! [{:id db-id :details {:keystore-path "ignore-path" :keystore-value "prefer-value"}}])
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+      (is (=? {:value (u/string-to-bytes "prefer-value") :source :uploaded :version 3}
+              (secret/latest-for-id secret-id)))
+      (database/update-databases! [{:id db-id :details {:keystore-options "local"
+                                                        :keystore-path "prefer-path"
+                                                        :keystore-value "ignore-value"}}])
+      (is (= expected (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+      (is (=? {:value (u/string-to-bytes "prefer-path") :source :file-path :version 4}
+              (secret/latest-for-id secret-id)))
+      (database/update-databases! [{:id db-id :details {:keystore-value nil}}])
+      (is (= {} (t2/select-one-fn (comp json/decode+kw :details) (t2/table-name :model/Database) :id db-id)))
+      (is (=? nil
+              (secret/latest-for-id secret-id))))))
 
 (deftest secret-db-test-changes
   (mt/with-driver :secret-test-driver
@@ -727,18 +727,18 @@
       (let [[db] (database/create-databases! [{:engine             :secret-test-driver
                                                :name               "Secret Test"
                                                :details            {:host "localhost"}
-                                               :write_data_details {:keystore-value "write-secret"}}])]
-        (let [db-id             (:id db)
-              raw-write-details (t2/select-one-fn
-                                 (comp json/decode+kw :write_data_details)
-                                 (t2/table-name :model/Database) :id db-id)]
-          (testing "keystore-value replaced with keystore-id"
-            (is (contains? raw-write-details :keystore-id))
-            (is (not (contains? raw-write-details :keystore-value))))
-          (testing "Secret record created with correct value"
-            (when-let [secret-id (:keystore-id raw-write-details)]
-              (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
-                      (secret/latest-for-id secret-id))))))))))
+                                               :write_data_details {:keystore-value "write-secret"}}])
+            db-id             (:id db)
+            raw-write-details (t2/select-one-fn
+                               (comp json/decode+kw :write_data_details)
+                               (t2/table-name :model/Database) :id db-id)]
+        (testing "keystore-value replaced with keystore-id"
+          (is (contains? raw-write-details :keystore-id))
+          (is (not (contains? raw-write-details :keystore-value))))
+        (testing "Secret record created with correct value"
+          (when-let [secret-id (:keystore-id raw-write-details)]
+            (is (=? {:value (u/string-to-bytes "write-secret") :source :uploaded :version 1}
+                    (secret/latest-for-id secret-id)))))))))
 
 (deftest write-data-details-secrets-on-update-test
   (testing "handle-incoming-client-secrets! processes write_data_details on update"

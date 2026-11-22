@@ -13,7 +13,9 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.queries.models.card :as card]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
@@ -24,8 +26,7 @@
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -246,9 +247,16 @@
 
 (defn do-with-actions! [model-def f]
   (initialize/initialize-if-needed! :web-server)
-  (t2.with-temp/with-temp [:model/Card model model-def]
-    (tu/with-model-cleanup [:model/Action]
-      (f model))))
+  (tu/with-model-cleanup [:model/Card]
+    (let [[model] (card/create-cards! [(merge {:creator_id             (test.users/user->id :rasta)
+                                               :database_id            (data/id)
+                                               :display                :table
+                                               :name                   (u.random/random-name)
+                                               :visualization_settings {}}
+                                              (cond-> model-def
+                                                (:dataset_query model-def) (update :dataset_query #(lib/query (lib-be/application-database-metadata-provider (:database %)) %))))])]
+      (tu/with-model-cleanup [:model/Action]
+        (f model)))))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]]
 (defmacro with-actions

@@ -544,8 +544,9 @@
 (deftest model-index-primary-key-endpoint-does-not-expose-indexed-values-test
   (testing "GET /api/automagic-dashboards/model_index/:model-index-id/primary_key/:pk-id"
     (mt/dataset test-data
-      (mt/with-temp [:model/Card model {:type          :model
-                                        :dataset_query (mt/mbql-query products)}]
+      (mt/with-temp [:model/Card model (mt/card-with-metadata {:type          :model
+                                                               :table_id      (mt/id :products)
+                                                               :dataset_query (mt/mbql-query products)})]
         (mt/with-model-cleanup [:model/ModelIndex]
           (let [model-index  (model-index/create-model-index! {:model-id   (:id model)
                                                                :pk-ref     (mt/$ids :products $id)

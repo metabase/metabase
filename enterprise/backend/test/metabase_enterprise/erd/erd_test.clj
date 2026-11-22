@@ -99,14 +99,14 @@
       ;; an unsorted DB read would not accidentally pass. `position` is the primary
       ;; key; `lower(name)` breaks ties (and proves the sort is case-insensitive).
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {tid :id} {:db_id db-id :name "t" :schema "PUBLIC"}
-                     :model/Field _ {:table_id tid :name "zulu"   :position 2
+                     :model/Table {tid :id} {:db_id db-id :name "t" :display_name "t" :schema "PUBLIC"}
+                     :model/Field _ {:table_id tid :name "zulu"   :position 2 :display_name "zulu"
                                      :database_type "INTEGER" :base_type :type/Integer}
-                     :model/Field _ {:table_id tid :name "Bravo"  :position 1
+                     :model/Field _ {:table_id tid :name "Bravo"  :position 1 :display_name "Bravo"
                                      :database_type "INTEGER" :base_type :type/Integer}
-                     :model/Field _ {:table_id tid :name "alpha"  :position 1
+                     :model/Field _ {:table_id tid :name "alpha"  :position 1 :display_name "alpha"
                                      :database_type "INTEGER" :base_type :type/Integer}
-                     :model/Field _ {:table_id tid :name "yankee" :position 0
+                     :model/Field _ {:table_id tid :name "yankee" :position 0 :display_name "yankee"
                                      :database_type "INTEGER" :base_type :type/Integer}]
         (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                              :database-id db-id
@@ -122,23 +122,23 @@
       ;; outside the loaded node set but readable — B's FK field must still surface
       ;; C's table/field IDs so the frontend can offer to expand to it.
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {c-id :id} {:db_id db-id :name "c" :schema "PUBLIC"}
-                     :model/Field {c-pk-id :id} {:table_id c-id :name "id"
+                     :model/Table {c-id :id} {:db_id db-id :name "c" :display_name "c" :schema "PUBLIC"}
+                     :model/Field {c-pk-id :id} {:table_id c-id :name "id" :display_name "id"
                                                  :database_type "INTEGER" :base_type :type/Integer
                                                  :semantic_type :type/PK}
-                     :model/Table {b-id :id} {:db_id db-id :name "b" :schema "PUBLIC"}
-                     :model/Field {b-pk-id :id} {:table_id b-id :name "id"
+                     :model/Table {b-id :id} {:db_id db-id :name "b" :display_name "b" :schema "PUBLIC"}
+                     :model/Field {b-pk-id :id} {:table_id b-id :name "id" :display_name "id"
                                                  :database_type "INTEGER" :base_type :type/Integer
                                                  :semantic_type :type/PK}
-                     :model/Field {b-c-id :id} {:table_id b-id :name "c_id"
+                     :model/Field {b-c-id :id} {:table_id b-id :name "c_id" :display_name "c_id"
                                                 :database_type "INTEGER" :base_type :type/Integer
                                                 :semantic_type :type/FK
                                                 :fk_target_field_id c-pk-id}
-                     :model/Table {a-id :id} {:db_id db-id :name "a" :schema "PUBLIC"}
-                     :model/Field _ {:table_id a-id :name "id"
+                     :model/Table {a-id :id} {:db_id db-id :name "a" :display_name "a" :schema "PUBLIC"}
+                     :model/Field _ {:table_id a-id :name "id" :display_name "id"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/PK}
-                     :model/Field _ {:table_id a-id :name "b_id"
+                     :model/Field _ {:table_id a-id :name "b_id" :display_name "b_id"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/FK
                                      :fk_target_field_id b-pk-id}]
@@ -164,15 +164,15 @@
       ;; not be loaded as a node, but a.b_id must still carry b's table/field IDs
       ;; so the frontend can expand on click.
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {b-id :id} {:db_id db-id :name "b" :schema "erd"}
-                     :model/Field {b-pk-id :id} {:table_id b-id :name "id"
+                     :model/Table {b-id :id} {:db_id db-id :name "b" :display_name "b" :schema "erd"}
+                     :model/Field {b-pk-id :id} {:table_id b-id :name "id" :display_name "id"
                                                  :database_type "INTEGER" :base_type :type/Integer
                                                  :semantic_type :type/PK}
-                     :model/Table {a-id :id} {:db_id db-id :name "a" :schema "public"}
-                     :model/Field _ {:table_id a-id :name "id"
+                     :model/Table {a-id :id} {:db_id db-id :name "a" :display_name "a" :schema "public"}
+                     :model/Field _ {:table_id a-id :name "id" :display_name "id"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/PK}
-                     :model/Field {a-b-id :id} {:table_id a-id :name "b_id"
+                     :model/Field {a-b-id :id} {:table_id a-id :name "b_id" :display_name "b_id"
                                                 :database_type "INTEGER" :base_type :type/Integer
                                                 :semantic_type :type/FK
                                                 :fk_target_field_id b-pk-id}]
@@ -196,15 +196,15 @@
       ;; User clicks to expand to erd.b → frontend sends table-ids=[a, b]
       ;; while still in schema=public view. b must still be loaded as a node.
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {b-id :id} {:db_id db-id :name "b" :schema "erd"}
-                     :model/Field {b-pk-id :id} {:table_id b-id :name "id"
+                     :model/Table {b-id :id} {:db_id db-id :name "b" :display_name "b" :schema "erd"}
+                     :model/Field {b-pk-id :id} {:table_id b-id :name "id" :display_name "id"
                                                  :database_type "INTEGER" :base_type :type/Integer
                                                  :semantic_type :type/PK}
-                     :model/Table {a-id :id} {:db_id db-id :name "a" :schema "public"}
-                     :model/Field _ {:table_id a-id :name "id"
+                     :model/Table {a-id :id} {:db_id db-id :name "a" :display_name "a" :schema "public"}
+                     :model/Field _ {:table_id a-id :name "id" :display_name "id"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/PK}
-                     :model/Field _ {:table_id a-id :name "b_id"
+                     :model/Field _ {:table_id a-id :name "b_id" :display_name "b_id"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :semantic_type :type/FK
                                      :fk_target_field_id b-pk-id}]
@@ -222,11 +222,12 @@
   (mt/with-premium-features #{:schema-viewer}
     (testing "self-referential FK produces edge from table to itself"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table    {tid :id}   {:db_id db-id :name "categories" :schema "PUBLIC"}
-                     :model/Field    {pk-id :id} {:table_id tid :name "id"
+                     :model/Table    {tid :id}   {:db_id db-id :name "categories"
+                                                  :display_name "categories" :schema "PUBLIC"}
+                     :model/Field    {pk-id :id} {:table_id tid :name "id" :display_name "id"
                                                   :database_type "INTEGER" :base_type :type/Integer
                                                   :semantic_type :type/PK}
-                     :model/Field    _            {:table_id tid :name "parent_id"
+                     :model/Field    _            {:table_id tid :name "parent_id" :display_name "parent_id"
                                                    :database_type "INTEGER" :base_type :type/Integer
                                                    :semantic_type :type/FK
                                                    :fk_target_field_id pk-id}]
@@ -254,9 +255,9 @@
             "every readable table in the schema is present as a node")))
     (testing "schema plus extra table-ids: all schema tables PLUS the external tables"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _        {:db_id db-id :name "p1" :schema "public"}
-                     :model/Table _        {:db_id db-id :name "p2" :schema "public"}
-                     :model/Table {x :id}  {:db_id db-id :name "x"  :schema "other"}]
+                     :model/Table _        {:db_id db-id :name "p1" :display_name "p1" :schema "public"}
+                     :model/Table _        {:db_id db-id :name "p2" :display_name "p2" :schema "public"}
+                     :model/Table {x :id}  {:db_id db-id :name "x" :display_name "x"  :schema "other"}]
         (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id
                                                :schema "public"
@@ -268,18 +269,18 @@
   (mt/with-premium-features #{:schema-viewer}
     (testing "database-only request loads every readable table in the database"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
-                     :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
-                     :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
+                     :model/Table _ {:db_id db-id :name "nil_schema" :display_name "nil_schema"   :schema nil}
+                     :model/Table _ {:db_id db-id :name "empty_schema" :display_name "empty_schema" :schema ""}
+                     :model/Table _ {:db_id db-id :name "other_schema" :display_name "other_schema" :schema "other"}]
         (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id)
               node-names (set (map :name (:nodes response)))]
           (is (= #{"nil_schema" "empty_schema" "other_schema"} node-names)))))
     (testing "blank schema request matches nil and empty-string schemas only"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table _ {:db_id db-id :name "nil_schema"   :schema nil}
-                     :model/Table _ {:db_id db-id :name "empty_schema" :schema ""}
-                     :model/Table _ {:db_id db-id :name "other_schema" :schema "other"}]
+                     :model/Table _ {:db_id db-id :name "nil_schema" :display_name "nil_schema"   :schema nil}
+                     :model/Table _ {:db_id db-id :name "empty_schema" :display_name "empty_schema" :schema ""}
+                     :model/Table _ {:db_id db-id :name "other_schema" :display_name "other_schema" :schema "other"}]
         (let [response   (mt/user-http-request :rasta :get 200 "ee/erd"
                                                :database-id db-id
                                                :schema "")
@@ -290,9 +291,10 @@
   (mt/with-premium-features #{:schema-viewer}
     (testing "table-ids from another database are ignored"
       (mt/with-temp [:model/Database {db-a-id :id} {}
-                     :model/Table _ {:db_id db-a-id :name "local" :schema "PUBLIC"}
+                     :model/Table _ {:db_id db-a-id :name "local" :display_name "local" :schema "PUBLIC"}
                      :model/Database {db-b-id :id} {}
-                     :model/Table {other-table-id :id} {:db_id db-b-id :name "other" :schema "PUBLIC"}]
+                     :model/Table {other-table-id :id} {:db_id db-b-id :name "other"
+                                                        :display_name "other" :schema "PUBLIC"}]
         (let [response (mt/user-http-request :rasta :get 200 "ee/erd"
                                              :database-id db-a-id
                                              :table-ids other-table-id)]
@@ -303,23 +305,25 @@
   (mt/with-premium-features #{:schema-viewer}
     (testing "all tables (incl. hidden/technical/cruft) are surfaced; all field visibility types are included"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {visible-table-id :id} {:db_id db-id :name "visible" :schema "PUBLIC"}
-                     :model/Field _ {:table_id visible-table-id :name "visible_id"
+                     :model/Table {visible-table-id :id} {:db_id db-id :name "visible"
+                                                          :display_name "visible" :schema "PUBLIC"}
+                     :model/Field _ {:table_id visible-table-id :name "visible_id" :display_name "visible_id"
                                      :database_type "INTEGER" :base_type :type/Integer}
-                     :model/Field _ {:table_id visible-table-id :name "secret"
+                     :model/Field _ {:table_id visible-table-id :name "secret" :display_name "secret"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :visibility_type "sensitive"}
-                     :model/Field _ {:table_id visible-table-id :name "hidden_field"
+                     :model/Field _ {:table_id visible-table-id :name "hidden_field" :display_name "hidden_field"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :visibility_type "hidden"}
-                     :model/Field _ {:table_id visible-table-id :name "retired_field"
+                     :model/Field _ {:table_id visible-table-id :name "retired_field" :display_name "retired_field"
                                      :database_type "INTEGER" :base_type :type/Integer
                                      :visibility_type "retired"}
-                     :model/Table _ {:db_id db-id :name "hidden_table" :schema "PUBLIC"
+                     :model/Table _ {:db_id db-id :name "hidden_table" :display_name "hidden_table" :schema "PUBLIC"
                                      :visibility_type "hidden"}
-                     :model/Table _ {:db_id db-id :name "technical_table" :schema "PUBLIC"
+                     :model/Table _ {:db_id db-id :name "technical_table"
+                                     :display_name "technical_table" :schema "PUBLIC"
                                      :visibility_type "technical"}
-                     :model/Table _ {:db_id db-id :name "cruft_table" :schema "PUBLIC"
+                     :model/Table _ {:db_id db-id :name "cruft_table" :display_name "cruft_table" :schema "PUBLIC"
                                      :visibility_type "cruft"}]
         (let [response       (mt/user-http-request :rasta :get 200 "ee/erd"
                                                    :database-id db-id
@@ -339,22 +343,29 @@
   (mt/with-premium-features #{:schema-viewer}
     (testing "FK targets in hidden tables resolve into nodes and edges; FKs to sensitive fields resolve too"
       (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target" :schema "PUBLIC"
+                     :model/Table {hidden-target-table-id :id} {:db_id db-id :name "hidden_target"
+                                                                :display_name "hidden_target" :schema "PUBLIC"
                                                                 :visibility_type "hidden"}
                      :model/Field {hidden-target-field-id :id} {:table_id hidden-target-table-id :name "id"
+                                                                :display_name "id"
                                                                 :database_type "INTEGER" :base_type :type/Integer
                                                                 :semantic_type :type/PK}
-                     :model/Table {visible-target-table-id :id} {:db_id db-id :name "visible_target" :schema "PUBLIC"}
+                     :model/Table {visible-target-table-id :id} {:db_id db-id :name "visible_target"
+                                                                 :display_name "visible_target" :schema "PUBLIC"}
                      :model/Field {sensitive-target-field-id :id} {:table_id visible-target-table-id :name "secret_id"
+                                                                   :display_name "secret_id"
                                                                    :database_type "INTEGER" :base_type :type/Integer
                                                                    :semantic_type :type/PK
                                                                    :visibility_type "sensitive"}
-                     :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "PUBLIC"}
+                     :model/Table {source-table-id :id} {:db_id db-id :name "source"
+                                                         :display_name "source" :schema "PUBLIC"}
                      :model/Field {hidden-table-fk-id :id} {:table_id source-table-id :name "hidden_target_id"
+                                                            :display_name "hidden_target_id"
                                                             :database_type "INTEGER" :base_type :type/Integer
                                                             :semantic_type :type/FK
                                                             :fk_target_field_id hidden-target-field-id}
                      :model/Field {sensitive-field-fk-id :id} {:table_id source-table-id :name "sensitive_target_id"
+                                                               :display_name "sensitive_target_id"
                                                                :database_type "INTEGER" :base_type :type/Integer
                                                                :semantic_type :type/FK
                                                                :fk_target_field_id sensitive-target-field-id}]
@@ -388,14 +399,17 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:type collection/library-data-collection-type}
                        :model/PermissionsGroup {gid :id} {}
                        :model/Database {db-id :id} {}
-                       :model/Table {target-table-id :id} {:db_id db-id :name "target" :schema "other"
+                       :model/Table {target-table-id :id} {:db_id db-id :name "target"
+                                                           :display_name "target" :schema "other"
                                                            :is_published true :collection_id coll-id}
-                       :model/Field {target-pk-id :id} {:table_id target-table-id :name "id"
+                       :model/Field {target-pk-id :id} {:table_id target-table-id :name "id" :display_name "id"
                                                         :database_type "INTEGER" :base_type :type/Integer
                                                         :semantic_type :type/PK}
-                       :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "public"
+                       :model/Table {source-table-id :id} {:db_id db-id :name "source"
+                                                           :display_name "source" :schema "public"
                                                            :is_published true :collection_id coll-id}
                        :model/Field {source-fk-id :id} {:table_id source-table-id :name "target_id"
+                                                        :display_name "target_id"
                                                         :database_type "INTEGER" :base_type :type/Integer
                                                         :semantic_type :type/FK
                                                         :fk_target_field_id target-pk-id}]
@@ -479,8 +493,9 @@
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/PermissionsGroup {gid :id} {}
                        :model/Database {db-id :id} {}
-                       :model/Table {table-id :id} {:db_id db-id :name "metadata_only" :schema "PUBLIC"}
-                       :model/Field _ {:table_id table-id :name "id"
+                       :model/Table {table-id :id} {:db_id db-id :name "metadata_only"
+                                                    :display_name "metadata_only" :schema "PUBLIC"}
+                       :model/Field _ {:table_id table-id :name "id" :display_name "id"
                                        :database_type "INTEGER" :base_type :type/Integer
                                        :semantic_type :type/PK}]
           (perms-group-membership/add-user-to-group! (mt/user->id :rasta) gid)

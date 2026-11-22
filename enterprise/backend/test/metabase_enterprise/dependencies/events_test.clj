@@ -101,7 +101,7 @@
 (deftest card-metadata-dependents-see-test
   (testing "a card's result metadata change marks its dependents only when it changes what they see"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :venues)}
+      (mt/with-temp [:model/Card {source-id :id} (mt/card-with-metadata {:dataset_query (table-query :venues)})
                      :model/Card {card-id :id}   {:dataset_query (card-query source-id)}]
         (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                        :to_entity_type   :card :to_entity_id   source-id})

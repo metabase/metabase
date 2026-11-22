@@ -5242,7 +5242,7 @@
 (deftest dashboard-query-metadata-with-archived-and-deleted-source-card-test
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
-      [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
+      [:model/Card          {card-id-1 :id}    (mt/card-with-metadata {:dataset_query (mt/mbql-query products)})
        :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
                                                                 :database (mt/id)
                                                                 :query    {:source-table (str "card__" card-id-1)}}}

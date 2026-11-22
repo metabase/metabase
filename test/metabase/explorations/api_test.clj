@@ -984,7 +984,8 @@
                                {:exploration_id expl-id :name "drill" :position 1
                                 :completed_at   (t/offset-date-time)}))]
           (t2/update! :model/ExplorationThread :id root-tid {:completed_at (t/offset-date-time)})
-          (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid))
+          (mt/with-dynamic-fn-redefs [explorations.queues/start-thread! (fn [_thread-id])]
+            (mt/user-http-request u :post 200 (format "exploration/thread/%d/restart" root-tid)))
           (is (nil? (t2/select-one-fn :completed_at :model/ExplorationThread :id root-tid))
               "the named (root) thread was reset")
           (is (some? (t2/select-one-fn :completed_at :model/ExplorationThread :id (:id drill)))

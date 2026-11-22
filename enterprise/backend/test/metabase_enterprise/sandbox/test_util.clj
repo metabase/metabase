@@ -3,8 +3,10 @@
   (:require
    [malli.core :as mc]
    [mb.hawk.parallel]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.permissions.data-permissions :as data-perms]
+   [metabase.queries.models.card :as card]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.data :as data]
@@ -34,8 +36,14 @@
     (f)
     (let [do-with-card (fn [f]
                          (if query
-                           (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
-                             (f card-id))
+                           (mt/with-model-cleanup [:model/Card]
+                             (let [[{card-id :id}] (card/create-cards! [{:creator_id             (test.users/user->id :rasta)
+                                                                         :database_id            (data/id)
+                                                                         :dataset_query          (lib/query (mt/metadata-provider) query)
+                                                                         :display                :table
+                                                                         :name                   (str "Sandbox " (name table-kw))
+                                                                         :visualization_settings {}}])]
+                               (f card-id)))
                            (f nil)))]
       (do-with-card
        (fn [card-id]

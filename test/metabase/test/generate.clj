@@ -349,6 +349,9 @@
     (= ent-type :field)
     (update :name unique-name)
 
+    (= ent-type :field)
+    (as-> field (assoc field :display_name (:name field)))
+
     ;; Native Query Snippet names need to be unique. This enforces it, and appends junk to names if needed.
     (= ent-type :native-query-snippet)
     (update :name unique-name)

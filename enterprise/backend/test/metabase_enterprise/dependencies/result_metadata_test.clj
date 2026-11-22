@@ -149,7 +149,7 @@
 (deftest fingerprints-come-only-from-stored-metadata-test
   (testing "re-deriving a card keeps the stored fingerprints and adds none for a column the stored metadata lacks"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
+      (mt/with-temp [:model/Card {card-id :id} (mt/card-with-metadata {:dataset_query (table-query :venues)})]
         (let [marker {:global {:distinct-count 7}}
               stored (->> (t2/select-one-fn :result_metadata :model/Card :id card-id)
                           (remove #(= "PRICE" (:name %)))
@@ -165,7 +165,8 @@
 (deftest native-parent-test
   (testing "a card depending on a changed model directly is re-derived even when it also depends on a native card"
     (with-dependencies-feature
-      (mt/with-temp [:model/Card {model-id :id}  {:type :model :dataset_query (table-query :orders)}
+      (mt/with-temp [:model/Card {model-id :id}  (mt/card-with-metadata {:type          :model
+                                                                         :dataset_query (table-query :orders)})
                      :model/Card {native-id :id} {:dataset_query   (native-card-query model-id)
                                                   :result_metadata (t2/select-one-fn :result_metadata :model/Card
                                                                                      :id model-id)}]

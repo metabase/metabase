@@ -18,10 +18,11 @@
 
 (deftest card-result-metadata-does-not-run-the-card-schema-upgrade-test
   (testing "reading result metadata for a legacy metric costs one query"
-    (mt/with-temp [:model/Card {card-id :id} {:type          :metric
-                                              :database_id   (mt/id)
-                                              :table_id      (mt/id :venues)
-                                              :dataset_query (metric-query)}]
+    (mt/with-temp [:model/Card {card-id :id} (mt/card-with-metadata
+                                              {:type          :metric
+                                               :database_id   (mt/id)
+                                               :table_id      (mt/id :venues)
+                                               :dataset_query (metric-query)})]
       ;; Put the metric back in the un-curated state the upgrade to 24 looks for. A raw UPDATE, because
       ;; before-insert forces `:card_schema` to current and `with-temp` would silently ignore it.
       (t2/query-one {:update :report_card

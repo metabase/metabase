@@ -1677,7 +1677,7 @@
             [[:model/Card {:type :question :dataset_query query} "question"]
              [:model/Card {:type :model :dataset_query query} "model"]
              [:model/Card {:type :metric :dataset_query (lib/aggregate query (lib/count))} "metric"]
-             [:model/Table {:db_id (mt/id)} "table"]
+             [:model/Table {:db_id (mt/id) :display_name "Recent item"} "table"]
              [:model/Dashboard {} "dashboard"]
              [:model/Collection {} "collection"]
              [:model/Document {:document {:type "doc" :content []}} "document"]]]
