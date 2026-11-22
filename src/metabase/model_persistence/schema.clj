@@ -13,15 +13,18 @@
 (mr/def ::persisted-info
   "A PersistedInfo as selected from the app DB: every column of `:persisted_info`."
   [:merge
-   ::persisted-info.update
+   ::persisted-info.create
    [:map {:closed true}
-    [:id              ms/PositiveInt]]])
+    [:id          ms/PositiveInt]
+    [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
+    [:card_id     {:optional true} [:maybe ::lib.schema.id/card]]]])
 
-(mr/def ::persisted-info.update
-  "What an update (or insert) of a PersistedInfo accepts: every column of `:persisted_info` except `id`, all optional."
+(mr/def ::persisted-info.create
+  "What a caller gives to create a PersistedInfo: its Database, its Card and any other column of `:persisted_info`
+  except `id`."
   [:map {:closed true}
-   [:database_id     {:optional true} [:maybe ::lib.schema.id/database]]
-   [:card_id         {:optional true} [:maybe ::lib.schema.id/card]]
+   [:database_id     ::lib.schema.id/database]
+   [:card_id         ::lib.schema.id/card]
    [:question_slug   {:optional true} [:maybe :string]]
    [:table_name      {:optional true} [:maybe :string]]
    [:definition      {:optional true} [:maybe ::persisted-info.definition]]

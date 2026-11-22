@@ -208,7 +208,8 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/Field id)
-  (dimension/delete-dimensions-for-field! id)
+  (when-let [dimension (warehouse-schema-rest.db/dimension-for-field id)]
+    (dimension/delete-dimensions! [(:id dimension)]))
   api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -273,7 +274,7 @@
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (field-values/clear-field-values-for-field! (api/write-check (warehouse-schema-rest.db/field id)))
+  (field-values/delete-field-values-for-fields! [(u/the-id (api/write-check (warehouse-schema-rest.db/field id)))])
   {:status :success})
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------

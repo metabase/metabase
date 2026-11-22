@@ -225,10 +225,11 @@
    error   :- [:maybe :string]]
   (model-persistence.db/end-persisted-info-refresh! id active? state error))
 
-(mu/defn delete-persisted-info!
-  "Delete the PersistedInfo with `id`."
-  [id :- ms/PositiveInt]
-  (model-persistence.db/delete-persisted-info! id))
+(mu/defn delete-persisted-infos!
+  "Delete the PersistedInfos with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (when (seq ids)
+    (model-persistence.db/delete-persisted-infos! (vec ids))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

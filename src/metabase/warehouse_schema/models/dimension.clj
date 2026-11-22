@@ -85,11 +85,11 @@
       (u/prog1 (vec (warehouse-schema.db/insert-dimensions! rows))
         (events/publish-event! :event/dimension-create (events/create-event <>))))))
 
-(mu/defn update-dimensions! :- [:sequential [:map [:id ::lib.schema.id/dimension]]]
+(mu/defn update-dimensions! :- [:sequential ::warehouse-schema.schema/dimension.update]
   "Apply each of `rows`, the id of a Dimension and the columns to change, and return the rows of the Dimensions that
   exist, refusing a new human-readable Field outside the Database of the Dimension's Field: one read and one statement
   per distinct set of changes."
-  [rows :- [:sequential ::warehouse-schema.schema/dimension.update-row]]
+  [rows :- [:sequential ::warehouse-schema.schema/dimension.update]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
@@ -106,36 +106,14 @@
         (events/publish-event! :event/dimension-update (events/update-event stored rows))
         rows))))
 
-(defn- delete-dimension-rows!
-  "Delete the Dimensions `dimensions`, as they were read, in one statement, and publish their deletes."
-  [dimensions]
-  (when (seq dimensions)
-    (t2/with-transaction [_conn]
-      (events/publish-event! :event/dimension-delete (events/delete-event (vec dimensions)))
-      (warehouse-schema.db/delete-dimensions! (mapv :id dimensions)))))
-
 (mu/defn delete-dimensions!
-  "Delete the Dimensions with `ids`."
+  "Delete the Dimensions with `ids`, read once for the delete event published right before the statement."
   [ids :- [:sequential ::lib.schema.id/dimension]]
   (when (seq ids)
-    (delete-dimension-rows! (warehouse-schema.db/dimensions-by-ids ids))))
-
-(mu/defn delete-dimensions-for-field!
-  "Delete the Dimensions of the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (delete-dimension-rows! (warehouse-schema.db/dimensions-of-field field-id)))
-
-(mu/defn delete-dimensions-of-type-for-field!
-  "Delete the `dimension-type` Dimensions of the Field with `field-id`."
-  [field-id       :- ::lib.schema.id/field
-   dimension-type :- ::warehouse-schema.schema/dimension.type]
-  (delete-dimension-rows! (warehouse-schema.db/dimensions-of-field field-id dimension-type)))
-
-(mu/defn delete-dimensions-reading-fields!
-  "Delete the Dimensions whose human-readable values come from the Fields with `field-ids`."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (when (seq field-ids)
-    (delete-dimension-rows! (warehouse-schema.db/dimensions-reading-fields (vec field-ids)))))
+    (t2/with-transaction [_conn]
+      (when-let [dimensions (not-empty (warehouse-schema.db/dimensions-by-ids ids))]
+        (events/publish-event! :event/dimension-delete (events/delete-event (vec dimensions)))
+        (warehouse-schema.db/delete-dimensions! (mapv :id dimensions))))))
 
 (mu/defn rename-dimensions-for-fields!
   "Name the Dimension of each Field in `field-id->name` after it, in one statement."

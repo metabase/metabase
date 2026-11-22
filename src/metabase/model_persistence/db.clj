@@ -138,19 +138,13 @@
 
 (mu/defn insert-persisted-info!
   "Insert the PersistedInfo `row` and return the inserted instance."
-  [row :- ::model-persistence.schema/persisted-info.update]
+  [row :- ::model-persistence.schema/persisted-info.create]
   (t2/insert-returning-instance! :model/PersistedInfo row))
 
 (mu/defn insert-persisted-infos!
   "Insert the PersistedInfo `rows`, returning the number inserted."
-  [rows :- [:sequential ::model-persistence.schema/persisted-info.update]]
+  [rows :- [:sequential ::model-persistence.schema/persisted-info.create]]
   (t2/insert! :model/PersistedInfo rows))
-
-(mu/defn update-persisted-info!
-  "Apply `changes` to the PersistedInfo with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- ::model-persistence.schema/persisted-info.update]
-  (t2/update! :model/PersistedInfo :id id changes))
 
 (mu/defn begin-persisted-info-refresh!
   "Mark the PersistedInfo with `id` as refreshing `definition` (with `query-hash`), starting now, returning the number
@@ -219,10 +213,10 @@
           :state state,
           :state_change_at :%now}}))
 
-(mu/defn delete-persisted-info!
-  "Delete the PersistedInfo with `id`, returning the number deleted."
-  [id :- ms/PositiveInt]
-  (t2/delete! :model/PersistedInfo :id id))
+(mu/defn delete-persisted-infos!
+  "Delete the PersistedInfos with `ids`, returning the number deleted."
+  [ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/PersistedInfo :id [:in ids]))
 
 (mu/defn unpersisted-models-for-database
   "The model Cards of the Database with `database-id` that have no PersistedInfo."

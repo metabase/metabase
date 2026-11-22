@@ -25,6 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.audit :as warehouse-schema.audit]
@@ -40,7 +41,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.before-update :as t2.before-update]))
 
-;;; --------------------------------------------------- Definition ---------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
@@ -485,33 +486,6 @@
   [table]
   (warehouse-schema.db/database (:db_id table)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- import-owner-ids
-  "A transform fn importing owner emails as User ids, keeping the local user ids that older exports copied, so that
-  re-importing such files on the same instance keeps the right owner."
-  [store _entities values opts]
-  (mapv (fn [v id] (if (int? v) v id))
-        values
-        (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
-
-(defn- storage-paths
-  "The storage path of each of the Table `entities`, in the directory of its Database and schema."
-  [entities _ctx]
-  (mapv (fn [{:keys [db_id schema name]}]
-          (conj (serialization/storage-path-prefixes [db_id schema name])
-                {:label name :key name}))
-        entities))
-
-(defn- import-dependencies
-  "The Collection and Transform each of the Table `entities` depends on, if any."
-  [entities]
-  (mapv (fn [{:keys [collection_id transform_id]}]
-          (cond-> []
-            collection_id (conj [:model/Collection collection_id])
-            transform_id  (conj [:model/Transform transform_id])))
-        entities))
-
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-allowed-contents
@@ -583,16 +557,15 @@
 
 (defn- table-update-event
   "The `:event/table-update` event of the update of each of `rows`, the id of a Table and its changes, from its `stored`
-  row, `{id row}`, with `context`, leaving out the rows that change nothing."
-  [stored rows context]
+  row, `{id row}`, with the `:context` of `opts`, leaving out the rows that change nothing."
+  [stored rows opts]
   (events/update-event stored
                        rows
-                       {:objects (into {}
-                                       (keep (fn [{:keys [id] :as row}]
-                                               (when-let [previous (stored id)]
-                                                 [id (updated-table previous (dissoc row :id))])))
-                                       rows)
-                        :context context}))
+                       (assoc opts :objects (into {}
+                                                  (keep (fn [{:keys [id] :as row}]
+                                                          (when-let [previous (stored id)]
+                                                            [id (updated-table previous (dissoc row :id))])))
+                                                  rows))))
 
 (defn- update-tables-by-change!
   "Apply each of `rows`, the id of a Table and the columns to change, with one statement per distinct set of changes,
@@ -604,9 +577,9 @@
 
 (defn- apply-table-updates!
   "Apply each of `rows`, the id of a Table and the columns to change, to the `stored` Tables, `{id row}`, and the
-  changes that follow them, and publish their events with `context`, returning the number of Tables updated: a new
-  field order sets the positions of the Table's Fields."
-  [stored rows context]
+  changes that follow them, and publish their events with the `:context` of `opts`, returning the number of Tables
+  updated: a new field order sets the positions of the Table's Fields."
+  [stored rows opts]
   (if (empty? rows)
     0
     (t2/with-transaction [_conn]
@@ -620,7 +593,7 @@
                           (contains? stored id)
                           (not= (some-> field_order keyword) (:field_order (stored id))))]
            {:id id :field_order (some-> field_order keyword)}))
-        (events/publish-event! :event/table-update (table-update-event stored rows context))))))
+        (events/publish-event! :event/table-update (table-update-event stored rows opts))))))
 
 (def ^:private write-batch-size
   "The most rows one statement of a bulk write of Tables carries, so that a write of the Tables of a large Database stays
@@ -635,17 +608,26 @@
     (cond-> (or stored {})
       (seq missing) (merge (u/index-by :id (warehouse-schema.db/tables missing))))))
 
-(mu/defn update-tables! :- [:sequential [:map [:id ::lib.schema.id/table]]]
+(mr/def ::write-opts
+  "The options of an update of Tables: `:tables`, the Tables the caller already read, as the rows before it, so that it
+  reads none; `:context` and `:writer`, that of a Collection archive the Tables follow, for the events."
+  [:maybe [:map {:closed true}
+           [:tables  {:optional true} [:sequential ::warehouse-schema.schema/table]]
+           [:writer  {:optional true} [:enum :import]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(mu/defn update-tables! :- [:sequential ::warehouse-schema.schema/table.update]
   "Apply each of `rows`, the id of a Table and the columns to change, and return them; a Collection that cannot hold
   Tables throws, and a new field order sets the positions of its Fields. The stored rows are read once, unless the
   caller gives them as `:tables`; `:context` goes into the events."
-  ([rows :- [:sequential ::warehouse-schema.schema/table.update-row]]
+  ([rows :- [:sequential ::warehouse-schema.schema/table.update]]
    (update-tables! rows nil))
-  ([rows                     :- [:sequential ::warehouse-schema.schema/table.update-row]
-    {:keys [tables context]} :- ::warehouse-schema.schema/table.write-opts]
-   (let [stored (u/index-by :id tables)]
+  ([rows                      :- [:sequential ::warehouse-schema.schema/table.update]
+    {:keys [tables] :as opts} :- ::write-opts]
+   (let [stored (u/index-by :id tables)
+         opts   (dissoc opts :tables)]
      (doseq [batch (partition-all write-batch-size rows)]
-       (apply-table-updates! (stored-tables batch stored) batch context)))
+       (apply-table-updates! (stored-tables batch stored) batch opts)))
    (vec rows)))
 
 (mu/defn change-case!
@@ -668,12 +650,6 @@
   [database-id :- ::lib.schema.id/database]
   (warehouse-schema.db/table-ids-of-database database-id))
 
-(mu/defn set-display-name!
-  "Set the display name of the Table with `table-id`."
-  [table-id     :- ::lib.schema.id/table
-   display-name :- :string]
-  (update-tables! [{:id table-id :display_name display-name}]))
-
 (mu/defn delete-tables!
   "Delete the Tables with `ids`, their Fields, nested ones first, and the implicit Actions that write to them."
   [ids :- [:sequential ::lib.schema.id/table]]
@@ -692,10 +668,37 @@
   (warehouse-schema.db/increment-table-view-counts! count->ids))
 
 (defmethod collection/archive-in-collections! :model/Table
-  [_model collection-ids context]
+  [_model collection-ids opts]
   (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
     (update-tables! (mapv (fn [id] {:id id :collection_id nil :is_published false}) (distinct table-ids))
-                    {:context context})))
+                    opts)))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- import-owner-ids
+  "A transform fn importing owner emails as User ids, keeping the local user ids that older exports copied, so that
+  re-importing such files on the same instance keeps the right owner."
+  [store _entities values opts]
+  (mapv (fn [v id] (if (int? v) v id))
+        values
+        (serialization/column-ids store :model/User (map #(when-not (int? %) %) values) opts)))
+
+(defn- storage-paths
+  "The storage path of each of the Table `entities`, in the directory of its Database and schema."
+  [entities _ctx]
+  (mapv (fn [{:keys [db_id schema name]}]
+          (conj (serialization/storage-path-prefixes [db_id schema name])
+                {:label name :key name}))
+        entities))
+
+(defn- import-dependencies
+  "The Collection and Transform each of the Table `entities` depends on, if any."
+  [entities]
+  (mapv (fn [{:keys [collection_id transform_id]}]
+          (cond-> []
+            collection_id (conj [:model/Collection collection_id])
+            transform_id  (conj [:model/Transform transform_id])))
+        entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

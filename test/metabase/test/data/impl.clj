@@ -1,6 +1,7 @@
 (ns metabase.test.data.impl
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.classloader.core :as classloader]
    [metabase.driver :as driver]
@@ -220,7 +221,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:or ::lib.schema.metadata/database ::warehouses.schema/database ::warehouses.schema/database.update]]
+  [database :- [:or ::lib.schema.metadata/database ::warehouses.schema/database (mut/dissoc ::warehouses.schema/database.update :id)]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table

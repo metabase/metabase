@@ -242,10 +242,10 @@
           (testing "creating and deleting a field marks its table's direct dependents"
             (let [field-id (atom nil)]
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
-                     (marks! world #(reset! field-id (first (field/create-fields! [{:table_id      (mt/id :venues)
-                                                                                    :name          "marks"
-                                                                                    :base_type     :type/Text
-                                                                                    :database_type "TEXT"}]))))))
+                     (marks! world #(reset! field-id (:id (first (field/create-fields! [{:table_id      (mt/id :venues)
+                                                                                         :name          "marks"
+                                                                                         :base_type     :type/Text
+                                                                                         :database_type "TEXT"}])))))))
               (is (= (marked {:analysis venues-dependents :result-metadata venues-dependents})
                      (marks! world #(field/delete-fields! [@field-id]))))))
           (testing "table user settings mark its table's direct dependents"

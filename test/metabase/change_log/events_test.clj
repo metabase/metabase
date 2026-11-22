@@ -52,10 +52,10 @@
                      :model/Table    t  {:db_id (:id db)}]
         (testing "an insert, an update and a delete each log the row's table, id and action"
           (let [id   (atom nil)
-                rows (logged-by #(do (reset! id (first (field/create-fields! [{:table_id      (:id t)
-                                                                               :name          "f"
-                                                                               :base_type     :type/Text
-                                                                               :database_type "TEXT"}])))
+                rows (logged-by #(do (reset! id (:id (first (field/create-fields! [{:table_id      (:id t)
+                                                                                    :name          "f"
+                                                                                    :base_type     :type/Text
+                                                                                    :database_type "TEXT"}]))))
                                      (field/update-fields! [{:id @id :name "g"}])
                                      (field/delete-fields! [@id])))]
             (is (= [["metabase_field" @id "insert"]

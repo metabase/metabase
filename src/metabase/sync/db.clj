@@ -3,6 +3,7 @@
   values users set alone."
   (:require
    [clojure.set :as set]
+   [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -479,7 +480,7 @@
                [:= :t.active true]
                [:= :t.visibility_type nil]]})
 
-(mu/defn fk-target-changes :- [:maybe [:tuple ::lib.schema.id/field ::warehouse-schema.schema/field.update]]
+(mu/defn fk-target-changes :- [:maybe [:tuple ::lib.schema.id/field (mut/dissoc ::warehouse-schema.schema/field.update :id)]]
   "The id of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with `db-id` and the
   changes that point it at the Field at `[pk-table-schema pk-table-name pk-column-name]`, or nil when either is
   missing, it already points there, or a user set its target."

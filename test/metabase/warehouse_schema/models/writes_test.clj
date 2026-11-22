@@ -8,6 +8,7 @@
    [metabase.warehouse-schema.models.dimension :as dimension]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [methodical.core :as methodical]
@@ -34,7 +35,7 @@
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}]
     (let [ids (volatile! nil)]
-      [(call-count! #(vreset! ids (field/create-fields! (field-rows table-id n))))
+      [(call-count! #(vreset! ids (mapv :id (field/create-fields! (field-rows table-id n)))))
        (call-count! #(field/update-fields! (mapv (fn [id] {:id id :display_name "Same"}) @ids)))
        (call-count! #(field/update-fields! (mapv (fn [id] {:id id :active false}) @ids)))
        (call-count! #(field/delete-fields! @ids))])))
@@ -64,7 +65,7 @@
   [n]
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}]
-    (let [field-ids  (field/create-fields! (field-rows table-id (inc n)))
+    (let [field-ids  (mapv :id (field/create-fields! (field-rows table-id (inc n))))
           target-id  (last field-ids)
           dimensions (volatile! nil)]
       [(call-count! #(vreset! dimensions (dimension/create-dimensions!
@@ -83,16 +84,16 @@
   [n]
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [tables          (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
-          field-ids       (mapcat #(field/create-fields! (field-rows (:id %) 1)) tables)
+          field-ids       (mapcat #(mapv :id (field/create-fields! (field-rows (:id %) 1))) tables)
           field-settings  (volatile! nil)
           table-settings  (volatile! nil)]
       [(call-count! #(vreset! field-settings (field-user-settings/create-field-user-settings!
                                               (mapv (fn [id] {:field_id id :description "d"}) field-ids))))
-       (call-count! #(field-user-settings/update-field-user-settings-rows!
+       (call-count! #(field-user-settings/update-field-user-settings!
                       (mapv (fn [{:keys [id]}] {:id id :description "e"}) @field-settings)))
        (call-count! #(vreset! table-settings (table-user-settings/create-table-user-settings!
                                               (mapv (fn [{:keys [id]}] {:table_id id :visibility_type :hidden}) tables))))
-       (call-count! #(table-user-settings/update-table-user-settings-rows!
+       (call-count! #(table-user-settings/update-table-user-settings!
                       (mapv (fn [{:keys [id]}] {:id id :visibility_type nil}) @table-settings)))])))
 
 (deftest settings-writes-call-count-test
@@ -104,7 +105,7 @@
   (testing "deactivating Fields clears the foreign keys to them and the remappings that read them"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
-      (let [[target-id source-id remapped-id] (field/create-fields! (field-rows table-id 3))]
+      (let [[target-id source-id remapped-id] (mapv :id (field/create-fields! (field-rows table-id 3)))]
         (field/update-fields! [{:id source-id :semantic_type :type/FK :fk_target_field_id target-id}])
         (dimension/create-dimensions! [{:field_id remapped-id :type :external :name "D"
                                         :human_readable_field_id target-id}])
@@ -116,9 +117,9 @@
   (testing "deleting a Field deletes the Fields nested under it"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
-      (let [[parent-id] (field/create-fields! (field-rows table-id 1))
-            [child-id]  (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "C" :parent_id parent-id)])
-            [leaf-id]   (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "L" :parent_id child-id)])]
+      (let [[parent-id] (mapv :id (field/create-fields! (field-rows table-id 1)))
+            [child-id]  (mapv :id (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "C" :parent_id parent-id)]))
+            [leaf-id]   (mapv :id (field/create-fields! [(assoc (first (field-rows table-id 1)) :name "L" :parent_id child-id)]))]
         (field/delete-fields! [parent-id])
         (is (empty? (t2/select :model/Field :id [:in [parent-id child-id leaf-id]])))))))
 
@@ -128,7 +129,7 @@
   [n]
   (mt/with-temp [:model/Database {db-id :id} {}]
     (let [tables    (table/create-tables! (vec (for [i (range n)] {:db_id db-id :name (str "T" i) :active true})))
-          field-ids (into [] (mapcat #(field/create-fields! (field-rows (:id %) 1))) tables)]
+          field-ids (into [] (mapcat #(mapv :id (field/create-fields! (field-rows (:id %) 1)))) tables)]
       (try
         [(call-count! #(table/update-tables! (mapv (fn [{:keys [id]}] {:id id :schema "S"}) tables)))
          (call-count! #(table/change-case! (mapv :id tables) :lower [:name]))
@@ -156,7 +157,7 @@
   (testing "a bulk write publishes one event per topic, with a change for each row it changes"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table    {table-id :id} {:db_id db-id}]
-      (let [ids (field/create-fields! (field-rows table-id 3))]
+      (let [ids (mapv :id (field/create-fields! (field-rows table-id 3)))]
         (reset! published [])
         (field/update-fields! (mapv (fn [id] {:id id :description "D"}) ids))
         (is (=? [[:event/field-update {:changes [{:object {:description "D"} :previous-object {:description nil}}
@@ -178,3 +179,38 @@
           (field/delete-fields! ids)
           (is (= [:event/field-delete] (map first @published)))
           (is (= (set ids) (set (map (comp :id :previous-object) (:changes (second (first @published))))))))))))
+
+(deftest bulk-creates-keep-defaults-of-left-out-columns-test
+  (testing "a bulk create of rows with different columns keeps the default of each column a row leaves out"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Table    {other-table-id :id} {:db_id db-id}
+                   :model/Field    {field-id :id} {:table_id table-id}
+                   :model/Field    {other-field-id :id} {:table_id table-id}]
+      (mt/with-model-cleanup [:model/Table :model/Field :model/FieldValues :model/FieldUserSettings :model/TableUserSettings]
+        (testing "Tables"
+          (let [[a b] (table/create-tables! [{:db_id db-id :name "Defaults A" :active true}
+                                             {:db_id db-id :name "Defaults B" :active true :is_upload true}])]
+            (is (= [false true] (mapv #(t2/select-one-fn :is_upload :model/Table :id (:id %)) [a b])))))
+        (testing "Fields"
+          (let [[a b] (field/create-fields! [{:table_id table-id :name "A" :base_type :type/Integer :database_type "INTEGER"}
+                                             {:table_id      table-id
+                                              :name          "B"
+                                              :base_type     :type/Integer
+                                              :database_type "INTEGER"
+                                              :position      3}])]
+            (is (= [0 3] (mapv #(t2/select-one-fn :position :model/Field :id (:id %)) [a b])))))
+        (testing "FieldValues"
+          (let [[a b] (field-values/create-field-values! [{:field_id field-id :values [1]}
+                                                          {:field_id other-field-id :values [2] :type :full}])]
+            (is (= [:full :full] (mapv #(t2/select-one-fn :type :model/FieldValues :id (:id %)) [a b])))))
+        (testing "FieldUserSettings"
+          (field-user-settings/create-field-user-settings! [{:field_id field-id :display_name "A"}
+                                                            {:field_id other-field-id :description "B"}])
+          (is (= [false true]
+                 (mapv #(t2/select-one-fn :description_set :model/FieldUserSettings :field_id %) [field-id other-field-id]))))
+        (testing "TableUserSettings"
+          (table-user-settings/create-table-user-settings! [{:table_id table-id :display_name "A"}
+                                                            {:table_id other-table-id :caveats "B" :caveats_set true}])
+          (is (= [false true]
+                 (mapv #(t2/select-one-fn :caveats_set :model/TableUserSettings :table_id %) [table-id other-table-id]))))))))

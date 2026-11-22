@@ -188,14 +188,14 @@
     (is (= {:values [[1] [2] [3] [4] [5]]}
            (distinct-field-values (mt/id :reviews :rating))))))
 
-(deftest clear-field-values-for-field!-test
+(deftest delete-field-values-for-fields!-test
   (mt/with-temp [:model/Database    {database-id :id} {}
                  :model/Table       {table-id :id} {:db_id database-id}
                  :model/Field       {field-id :id} {:table_id table-id}
                  :model/FieldValues _              {:field_id field-id :values "[1, 2, 3]"}]
     (is (= [1 2 3]
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
-    (field-values/clear-field-values-for-field! field-id)
+    (field-values/delete-field-values-for-fields! [field-id])
     (is (= nil
            (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))))
 
@@ -494,8 +494,8 @@
 
 (deftest field-values-schema-test
   (testing "the FieldValues schema takes human-readable values only as a list of strings or nils"
-    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values {"1" "A", "2" "B"}})))
-    (is (mr/validate ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" nil "c"]}))))
+    (is (not (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values {"1" "A", "2" "B"}})))
+    (is (mr/validate ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" nil "c"]}))))
 
 (deftest human-readable-values-cover-values-schema-test
   (let [bad {:values [1 2 3], :human_readable_values ["a" "b"]}]
@@ -506,10 +506,10 @@
       (is (thrown-with-msg? ExceptionInfo #"must be specified for all field values"
                             (lib/normalize ::warehouse-schema.schema/external-field-values bad {:throw? true}))))
     (testing "a body with only one of the columns passes"
-      (is (= {:values [1 2 3]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:values [1 2 3]} {:throw? true})))
-      (is (= {:human_readable_values ["a" "b"]}
-             (lib/normalize ::warehouse-schema.schema/field-values.update {:human_readable_values ["a" "b"]}
+      (is (= {:id 1, :values [1 2 3]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :values [1 2 3]} {:throw? true})))
+      (is (= {:id 1, :human_readable_values ["a" "b"]}
+             (lib/normalize ::warehouse-schema.schema/field-values.update {:id 1, :human_readable_values ["a" "b"]}
                             {:throw? true}))))))
 
 (deftest human-readable-values-cover-values-test

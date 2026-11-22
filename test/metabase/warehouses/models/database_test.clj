@@ -125,6 +125,14 @@
           (is (= nil
                  (trigger-for-db db-id))))))))
 
+(deftest create-databases-keeps-defaults-of-left-out-columns-test
+  (testing "a bulk create of rows with different columns keeps the default of each column a row leaves out"
+    (mt/with-model-cleanup [:model/Database]
+      (let [[a b] (database/create-databases! [{:name "Defaults A" :engine :h2 :details {}}
+                                               {:name "Defaults B" :engine :h2 :details {} :auto_run_queries false}])]
+        (is (= [true false]
+               (mapv #(t2/select-one-fn :auto_run_queries :model/Database :id (:id %)) [a b])))))))
+
 (deftest delete-database-deletes-query-actions-test
   (testing "deleting a Database deletes the query Actions that run against it, including the ones without a model"
     (mt/with-temp [:model/Database    {db-id :id}     {}
