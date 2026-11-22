@@ -243,11 +243,6 @@
                                [:= :action.archived_directly false]
                                [:or [:= :action.model_id nil] [:= :model.archived false]]]})))
 
-(mu/defn delete-actions-in-collections!
-  "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/delete! :model/Action :collection_id [:in collection-ids]))
-
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]

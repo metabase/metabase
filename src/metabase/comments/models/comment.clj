@@ -242,13 +242,7 @@
   [row :- ::comments.schema/comment.create]
   (t2/with-transaction [_conn]
     (u/prog1 (comments.db/insert-comment! row)
-      (events/publish-lifecycle! [(events/created :event/comment-create [<>])]))))
-
-(defn- publish-update!
-  "Publish the update event of the Comment `previous`, as the stored row `object` leaves it, when it differs."
-  [previous object]
-  (when (and previous (not= (into {} previous) (into {} object)))
-    (events/publish-lifecycle! [(events/updated :event/comment-update [previous] [object])])))
+      (events/publish-event! :event/comment-create (events/create-event [<>])))))
 
 (mu/defn update-comment! :- :int
   "Apply `changes` to the Comment with `id`, returning the number updated, publishing its update event."
@@ -258,7 +252,8 @@
     (let [previous (comments.db/comment-by-id id)]
       (u/prog1 (comments.db/update-comment! id changes)
         (when previous
-          (publish-update! previous (events/updated-row previous changes)))))))
+          (events/publish-event! :event/comment-update
+                                 (events/update-event {id previous} [(assoc changes :id id)])))))))
 
 (mu/defn soft-delete-comment! :- :int
   "Mark the Comment with `id` deleted now, returning the number updated, publishing its update event."
@@ -267,7 +262,9 @@
     (let [previous (comments.db/comment-by-id id)]
       (u/prog1 (comments.db/soft-delete-comment! id)
         (when previous
-          (publish-update! previous (comments.db/comment-by-id id)))))))
+          (events/publish-event! :event/comment-update
+                                 (events/update-event {id previous} [{:id id}]
+                                                      {:objects {id (comments.db/comment-by-id id)}})))))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

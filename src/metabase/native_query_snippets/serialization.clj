@@ -111,15 +111,16 @@
         snippets))
 
 (defn with-free-names
-  "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name. `entity-id-of` gives
-  the entity id of the snippet a row writes. Rows without a name are left alone."
-  [rows entity-id-of]
+  "The snippet `rows` each renamed with ` (copy)` suffixes until no other snippet holds its name. `stored`, a map from id
+  to the stored snippet of an update, gives the entity id of the snippet a row writes, which is that of the row itself
+  for an insert, `stored` being nil. Rows without a name are left alone."
+  [rows stored]
   (let [taken (when-let [names (seq (distinct (keep :name rows)))]
                 (into {} (map (juxt :name :entity_id)) (native-query-snippets.db/snippet-names-and-entity-ids (vec names))))]
     (first
      (reduce (fn [[rows taken] row]
                (if-let [snippet-name (:name row)]
-                 (let [entity-id (entity-id-of row)
+                 (let [entity-id (if stored (:entity_id (get stored (:id row))) (:entity_id row))
                        free?     #(let [owner (get taken %)] (or (nil? owner) (= owner entity-id)))
                        n         (first (filter free? (iterate #(str % " (copy)") snippet-name)))]
                    [(conj rows (assoc row :name n)) (assoc taken n entity-id)])

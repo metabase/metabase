@@ -438,7 +438,7 @@
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-create (:id document)))))
        (testing :event/document-update
-         (document/update-document! (:id document) {:name "Updated Document"})
+         (document/update-documents! [{:id (:id document) :name "Updated Document"}])
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:previous {:name "Test Document"}
@@ -447,7 +447,7 @@
                  :model "Document"}
                 (mt/latest-audit-log-entry :document-update (:id document)))))
        (testing :event/document-delete
-         (document/delete-document! (:id document))
+         (document/delete-documents! [(:id document)])
          (is (= {:model_id (:id document)
                  :user_id (mt/user->id :rasta)
                  :details {:name "Updated Document"

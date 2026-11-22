@@ -76,3 +76,9 @@
                                           :template_tags]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::write-opts
+  "The options of a write function of NativeQuerySnippets: who writes and the context of its events."
+  [:maybe [:map {:closed true}
+           [:writer {:optional true} [:enum :import]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

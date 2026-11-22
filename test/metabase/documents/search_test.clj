@@ -176,8 +176,8 @@
         (testing "found by an original body term before the edit"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "initial" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))
-        (document/update-document! doc-id
-                                   {:document (documents.test-util/text->prose-mirror-ast "revised projections and forecasts")})
+        (document/update-documents! [{:id       doc-id
+                                      :document (documents.test-util/text->prose-mirror-ast "revised projections and forecasts")}])
         (testing "found by a term that appears only in the revised body"
           (let [results (mt/user-http-request :crowberto :get 200 "search" :q "forecasts" :models "document")]
             (is (contains? (set (map :id (:data results))) doc-id))))

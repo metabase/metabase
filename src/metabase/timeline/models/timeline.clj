@@ -121,13 +121,8 @@
     (t2/with-transaction [_conn]
       (check-collections rows)
       (let [timelines (vec (timeline.db/insert-timelines! rows))]
-        (events/publish-lifecycle! [(events/created :event/timeline-create timelines)])
+        (events/publish-event! :event/timeline-create (events/create-event timelines))
         timelines))))
-
-(mu/defn create-timeline! :- (ms/InstanceOf :model/Timeline)
-  "Insert the Timeline `row` and return the inserted instance, as [[create-timelines!]] does."
-  [row :- ::timeline.schema/timeline.create]
-  (first (create-timelines! [row])))
 
 (defn- with-archived-columns
   "`rows`, updates of Timelines, each that changes `:archived` with the `archived_directly` it gives, so that the
@@ -143,9 +138,9 @@
                                    (not (:archived (get flags (:collection_id (merge (get stored id) row))))))))))
           rows)))
 
-(defn- carried-events!
+(defn- carry-to-events!
   "Set the archived flag of the TimelineEvents of the Timelines that `rows`, updates with their `stored` Timelines,
-  archive or restore on their own, one statement for each direction."
+  archive or restore on their own, one write for each direction."
   [rows stored]
   (let [changing (filter (fn [{:keys [id archived]}]
                            (and (some? archived) (not= (boolean archived) (boolean (:archived (get stored id))))))
@@ -155,30 +150,19 @@
     (doseq [[archive? group] (group-by (comp boolean :archived) changing)
             :let             [ids (into [] (comp (filter direct?) (map :id)) group)]
             :when            (seq ids)]
-      (timeline-event/set-timeline-events-archived! ids archive? {:archived-with [:model/Timeline (first ids)]}))))
-
-(defn- update-event
-  "The update event of the Timelines that the changes in `rows`, each an id and columns, change, `stored` holding their
-  rows as they were."
-  [stored rows]
-  (let [pairs (into []
-                    (keep (fn [row]
-                            (when-let [previous (get stored (:id row))]
-                              (let [object (events/updated-row previous (dissoc row :id))]
-                                (when (not= (into {} previous) (into {} object))
-                                  [previous object])))))
-                    rows)]
-    (events/updated :event/timeline-update (mapv first pairs) (mapv second pairs))))
+      (timeline-event/update-timeline-events!
+       (mapv (fn [{:keys [id]}] {:id id :archived archive?})
+             (timeline.db/events-of-timelines-by-archived ids (not archive?)))
+       {:context {:archived-with [:model/Timeline (first ids)]}}))))
 
 (mu/defn update-timelines! :- [:sequential ::timeline.schema/timeline]
   "Apply the changes in each of `rows`, the id of a Timeline and the columns to change, with one statement per distinct
-  set of changes, in one transaction, publishing their update event with `context`. A move into a Collection that
-  cannot hold a Timeline throws, archiving a Timeline archives its events and restoring it restores them. Returns
-  `rows`."
+  set of changes, publishing their update event with the `:context` of `opts`. A move into a Collection that cannot
+  hold a Timeline throws, archiving a Timeline archives its events and restoring it restores them. Returns `rows`."
   ([rows :- [:sequential ::timeline.schema/timeline]]
    (update-timelines! rows nil))
-  ([rows    :- [:sequential ::timeline.schema/timeline]
-    context :- [:maybe :metabase.events.schema/context]]
+  ([rows :- [:sequential ::timeline.schema/timeline]
+    opts :- ::timeline.schema/write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -189,82 +173,40 @@
          (doseq [[changes group] (group-by #(dissoc % :id) rows*)]
            (when (seq changes)
              (timeline.db/update-timelines! (mapv :id group) changes)))
-         (carried-events! rows* stored)
-         (events/publish-lifecycle! [(update-event stored rows*)] {:context context})
+         (carry-to-events! rows* stored)
+         (events/publish-event! :event/timeline-update (events/update-event stored rows* (select-keys opts [:context])))
          (vec rows))))))
 
-(mu/defn update-timeline!
-  "Apply `changes` to the Timeline with `id`, as [[update-timelines!]] does."
-  [id      :- ms/PositiveInt
-   changes :- ::timeline.schema/timeline.update]
-  (update-timelines! [(assoc changes :id id)])
-  nil)
-
-(defn- delete-timeline-rows!
-  "Delete the Timelines `rows` with `delete!`, publishing their delete event."
-  [rows delete!]
-  (when (seq rows)
-    (t2/with-transaction [_conn]
-      (let [event (events/deleted :event/timeline-delete :model/Timeline rows)]
-        (delete!)
-        (events/publish-lifecycle! [event])))))
-
 (mu/defn delete-timelines!
-  "Delete the Timelines with `ids` and their events, in one statement, publishing their delete event."
+  "Delete the Timelines with `ids` and their events, in one statement, publishing their delete event right before it."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
-    (let [rows (vec (vals (timeline.db/timelines-by-id ids)))]
-      (delete-timeline-rows! rows #(timeline.db/delete-timelines! (mapv :id rows))))))
-
-(mu/defn delete-timeline!
-  "Delete the Timeline with `id`."
-  [id :- ms/PositiveInt]
-  (delete-timelines! [id]))
-
-(defn- carried-update-event
-  "The update event of the Timelines `rows`, which an archive or restore of their Collection carries, as `archived`."
-  [rows archived]
-  (update-event (m/index-by :id rows)
-                (mapv (fn [row] {:id (:id row) :archived archived :archived_directly false}) rows)))
-
-(mu/defn archive-timelines-in-collections!
-  "Archive the Timelines in the Collections with `collection-ids`, which an archive of their Collection carries, in one
-  statement, publishing their update event. They are not archived on their own."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (when (seq collection-ids)
     (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (timeline.db/unarchived-timelines-in-collections collection-ids))]
-        (timeline.db/update-timelines! (mapv :id rows) {:archived true :archived_directly false})
-        (events/publish-lifecycle! [(carried-update-event rows true)])))))
+      (events/publish-event! :event/timeline-delete (events/delete-event (vec (vals (timeline.db/timelines-by-id ids)))))
+      (timeline.db/delete-timelines! ids))))
 
-(mu/defn restore-timelines-in-collections!
-  "Restore the Timelines in the Collections with `collection-ids` that an archive of their Collection carried, in one
-  statement, publishing their update event."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (when (seq collection-ids)
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (timeline.db/restorable-timelines-in-collections collection-ids))]
-        (timeline.db/update-timelines! (mapv :id rows) {:archived false :archived_directly false})
-        (events/publish-lifecycle! [(carried-update-event rows false)])))))
-
-(mu/defn delete-timelines-in-collections!
-  "Delete the Timelines in the Collections with `collection-ids`, in one statement, publishing their delete event."
-  [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (when (seq collection-ids)
-    (delete-timeline-rows! (timeline.db/timelines-in-collections collection-ids)
-                           #(timeline.db/delete-timelines-in-collections! collection-ids))))
+(defn- carried-rows
+  "The updates that set `archived` on `timelines`, which the archive or restore of their Collection carries."
+  [timelines archived]
+  (mapv (fn [{:keys [id]}] {:id id :archived archived :archived_directly false}) timelines))
 
 (defmethod collection/archive-in-collections! :model/Timeline
-  [_model collection-ids _context]
-  (archive-timelines-in-collections! (vec collection-ids)))
+  [_model collection-ids context]
+  (update-timelines! (carried-rows (timeline.db/unarchived-timelines-in-collections (vec collection-ids)) true)
+                     {:context context}))
 
 (defmethod collection/restore-in-collections! :model/Timeline
-  [_model collection-ids _context]
-  (restore-timelines-in-collections! (vec collection-ids)))
+  [_model collection-ids context]
+  (update-timelines! (carried-rows (timeline.db/restorable-timelines-in-collections (vec collection-ids)) false)
+                     {:context context}))
 
 (defmethod collection/delete-in-collections! :model/Timeline
   [_model collection-ids _context]
-  (delete-timelines-in-collections! (vec collection-ids)))
+  (when (seq collection-ids)
+    (t2/with-transaction [_conn]
+      (events/publish-event! :event/timeline-delete
+                             (events/delete-event (timeline.db/timelines-in-collections (vec collection-ids))))
+      (timeline.db/delete-timelines-in-collections! (vec collection-ids)))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

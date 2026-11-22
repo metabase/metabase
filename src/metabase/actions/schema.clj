@@ -394,3 +394,10 @@
     [:select-keys ::implicit-action [:kind :table_id]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
+
+(mr/def ::write-opts
+  "The options of a write function of Actions: `:writer :cascade` for the write that the archive or restore of a
+  Collection carries, which skips the checks of a user's write, and the context of its events."
+  [:maybe [:map {:closed true}
+           [:writer {:optional true} [:enum :cascade]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

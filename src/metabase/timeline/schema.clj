@@ -105,3 +105,8 @@
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:timestamp {:optional true} [:maybe ::models.schema/external-date]]]]])
+
+(mr/def ::write-opts
+  "The options of a write function of Timelines or their events: the context of its events."
+  [:maybe [:map {:closed true}
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

@@ -104,9 +104,8 @@
           (when-let [{driver :engine, db-id :id} @db]
             (tx/destroy-db! driver dataset-definition)
             (when-let [database (t2/select-one :model/Database :id db-id)]
-              (let [event (events/deleted :event/database-delete :model/Database [database])]
-                (t2/delete! :model/Database :id db-id)
-                (events/publish-lifecycle! [event])))))))))
+              (events/publish-event! :event/database-delete (events/delete-event [database]))
+              (t2/delete! :model/Database :id db-id))))))))
 
 (defmacro with-actions-test-data
   "Sets the current dataset to a freshly-loaded copy of [[defs/test-data]] that only includes the `categories` table

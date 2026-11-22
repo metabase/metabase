@@ -49,7 +49,7 @@
                                    :document_id document-id
                                    :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (document/update-document! document-id {:collection_id new-collection-id})
+      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
       ;; Verify that associated cards were updated to match the new collection
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card1-id))))
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id card2-id)))))))
@@ -64,7 +64,7 @@
                                   :document_id document-id
                                   :collection_id collection-id}]
       ;; Move document to no collection (nil)
-      (document/update-document! document-id {:collection_id nil})
+      (document/update-documents! [{:id document-id :collection_id nil}])
       ;; Verify that the card's collection_id was updated to nil
       (is (nil? (:collection_id (t2/select-one :model/Card :id card-id)))))))
 
@@ -88,7 +88,7 @@
        :model/Card {regular-card-id :id} {:name "Regular Card"
                                           :collection_id old-collection-id}]
       ;; Update the document's collection_id
-      (document/update-document! document-id {:collection_id new-collection-id})
+      (document/update-documents! [{:id document-id :collection_id new-collection-id}])
       ;; Verify only the correct card was updated
       (is (= new-collection-id (:collection_id (t2/select-one :model/Card :id in-document-card-id))))
       ;; Verify other cards were NOT updated
@@ -110,14 +110,14 @@
           (testing "moving document to personal collection moves associated cards"
             (mt/with-current-user user-id
               ;; As the personal collection owner, update should succeed
-              (document/update-document! document-id {:collection_id personal-coll-id})
+              (document/update-documents! [{:id document-id :collection_id personal-coll-id}])
               ;; Verify both document and card moved to personal collection
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= personal-coll-id (:collection_id (t2/select-one :model/Card :id card-id))))))
           (testing "moving document from personal collection works"
             (mt/with-current-user user-id
               ;; Move back to regular collection
-              (document/update-document! document-id {:collection_id regular-collection-id})
+              (document/update-documents! [{:id document-id :collection_id regular-collection-id}])
               ;; Verify both document and card moved back
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Document :id document-id))))
               (is (= regular-collection-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))))
@@ -195,10 +195,11 @@
                  :model/Document   document          {}]
     (testing "moving a Document that is not archived into an archived Collection is a 400"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (document/update-document! (:id document) {:collection_id archived-id}))))
+                            (document/update-documents! [{:id (:id document) :collection_id archived-id}]))))
     (testing "a Document that stays where it is, or goes to the root, passes"
       (is (= 1 (t2/update! :model/Document :id (:id document) {:name "Renamed"})))
-      (is (nil? (document/update-document! (:id document) {:collection_id nil}))))))
+      (is (= [{:id (:id document) :collection_id nil}]
+             (document/update-documents! [{:id (:id document) :collection_id nil}]))))))
 
 (deftest document-schema-test
   (testing "the Document schema takes a non-blank name of at most 254 characters"
@@ -214,9 +215,9 @@
     (mt/with-temp [:model/Collection {snippets-id :id} {:namespace "snippets"}
                    :model/Document {doc-id :id} {}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (document/create-document! {:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id})))
+                            (document/create-documents! [{:name "Document" :creator_id (mt/user->id :rasta) :content_type "application/json+vnd.prose-mirror" :document {:type "doc" :content []} :collection_id snippets-id}])))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"namespace"
-                            (document/update-document! doc-id {:collection_id snippets-id}))))))
+                            (document/update-documents! [{:id doc-id :collection_id snippets-id}]))))))
 
 (deftest public-uuid-prefix-is-derived-test
   (testing "the public UUID prefix follows the public UUID and is not written alone"
@@ -237,7 +238,7 @@
       (t2/update! :model/Card :id card-id {:collection_id card-coll-id})
       (t2/update! :model/Document :id doc-id {:name "Renamed"})
       (is (= card-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
-      (document/update-document! doc-id {:collection_id new-coll-id})
+      (document/update-documents! [{:id doc-id :collection_id new-coll-id}])
       (is (= new-coll-id (t2/select-one-fn :collection_id :model/Card :id card-id))))))
 
 (deftest hydrate-document-creator-test
@@ -728,7 +729,7 @@
       (let [events-published (atom [])]
         (with-redefs [events/publish-event! (fn [topic event]
                                               (swap! events-published conj [topic event]))]
-          (document/update-document! doc-id {:name "Updated Name"}))
+          (document/update-documents! [{:id doc-id :name "Updated Name"}]))
         (is (=? [[:event/document-update {:changes [{:object          {:id doc-id :name "Updated Name"}
                                                      :previous-object {:id doc-id :name "Test Document"}}]}]]
                 (filterv (comp #{:event/document-update} first) @events-published)))))))
