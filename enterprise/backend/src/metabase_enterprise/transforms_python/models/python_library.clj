@@ -80,13 +80,13 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-python-libraries!
+(mu/defn create-python-libraries! :- [:sequential ::transforms-python.schema/python-library]
   "Insert the PythonLibrary `rows`, publishing their create event, and return the inserted libraries."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential ::transforms-python.schema/python-library.create]]
   (if (seq rows)
     (t2/with-transaction [_conn]
       (let [libraries (transforms-python.db/insert-python-libraries! rows)]
-        (events/publish-lifecycle! [(events/created :event/python-library-create libraries)])
+        (events/publish-event! :event/python-library-create (events/create-event libraries))
         libraries))
     []))
 
@@ -94,49 +94,39 @@
   "The PythonLibrary `stored` as the update `changes` leaves it, with what the update hook sets."
   [stored changes]
   (let [differing (into {} (filter (fn [[k v]] (not= v (get stored k)))) changes)]
-    (cond-> (events/updated-row stored changes)
+    (cond-> (merge stored changes)
       (seq (dissoc differing :updated_at :is_default)) (assoc :is_default false)
       (:path changes)                                 (update :path normalize-path))))
 
-(mu/defn update-python-libraries!
-  "Apply the changes in `changes-by-id`, a map from the id of a PythonLibrary to its changes, with one statement per
-  distinct change set, publishing their update event."
-  [changes-by-id :- [:map-of ms/PositiveInt :map]]
-  (when (seq changes-by-id)
+(mu/defn update-python-libraries! :- [:sequential ::transforms-python.schema/python-library.update-row]
+  "Apply the changes in each of `rows`, the id of a PythonLibrary and the columns to change, with one statement per
+  distinct change set, publishing their update event. Returns `rows`."
+  [rows :- [:sequential ::transforms-python.schema/python-library.update-row]]
+  (when (seq rows)
     (t2/with-transaction [_conn]
-      (let [stored (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (vec (keys changes-by-id))))]
-        (doseq [[changes pairs] (group-by val changes-by-id)
+      (let [stored (into {} (map (juxt :id identity)) (transforms-python.db/python-libraries-by-ids (mapv :id rows)))]
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)
                 :when           (seq changes)]
-          (transforms-python.db/update-python-libraries! (mapv key pairs) changes))
-        (let [pairs (into []
-                          (keep (fn [[id changes]]
-                                  (when-let [previous (stored id)]
-                                    (let [object (updated-library previous changes)]
-                                      (when (not= (into {} previous) (into {} object))
-                                        [previous object])))))
-                          changes-by-id)]
-          (events/publish-lifecycle! [(events/updated :event/python-library-update
-                                                      (mapv first pairs)
-                                                      (mapv second pairs))])))))
-  nil)
+          (transforms-python.db/update-python-libraries! (mapv :id group) changes))
+        (events/publish-event! :event/python-library-update
+                               (events/update-event stored
+                                                    rows
+                                                    {:objects (into {}
+                                                                    (keep (fn [{:keys [id] :as row}]
+                                                                            (when-let [previous (stored id)]
+                                                                              [id (updated-library previous (dissoc row :id))])))
+                                                                    rows)})))))
+  (vec rows))
 
 (mu/defn delete-python-libraries!
   "Delete the PythonLibraries with `ids`, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (let [event (events/deleted :event/python-library-delete
-                                  :model/PythonLibrary
-                                  (transforms-python.db/python-libraries-by-ids (vec ids)))]
-        (transforms-python.db/delete-python-libraries! (vec ids))
-        (events/publish-lifecycle! [event]))))
+      (events/publish-event! :event/python-library-delete
+                             (events/delete-event (transforms-python.db/python-libraries-by-ids (vec ids))))
+      (transforms-python.db/delete-python-libraries! (vec ids))))
   nil)
-
-(defn- update-imported-python-libraries!
-  "Update the PythonLibraries of an import with `rows`, each its id and changed columns, returning `rows`."
-  [rows]
-  (update-python-libraries! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
-  rows)
 
 (mu/defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
@@ -146,10 +136,8 @@
     (mdb/with-conflict-retry
       (t2/with-transaction [_conn]
         (if-let [existing (transforms-python.db/python-library-by-path normalized-path)]
-          (let [changes {:path normalized-path :source source}]
-            (transforms-python.db/update-python-libraries! [(:id existing)] changes)
-            (u/prog1 (transforms-python.db/python-library (:id existing))
-              (events/publish-lifecycle! [(events/updated :event/python-library-update [existing] [<>])])))
+          (do (update-python-libraries! [{:id (:id existing) :path normalized-path :source source}])
+              (transforms-python.db/python-library (:id existing)))
           (first (create-python-libraries!
                   [{:path normalized-path :source source :entity_id builtin-entity-id :is_default (str/blank? source)}])))))))
 
@@ -163,7 +151,7 @@
    :copy          [:path :source :entity_id]
    :skip          [:is_default]
    :insert!       create-python-libraries!
-   :update!       update-imported-python-libraries!
+   :update!       update-python-libraries!
    :delete!       delete-python-libraries!
    :storage-paths storage-paths})
 

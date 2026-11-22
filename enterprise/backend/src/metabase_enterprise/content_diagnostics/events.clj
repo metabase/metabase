@@ -28,16 +28,16 @@
       (and (= :model/Collection model) archived?)        [:collection row]
       (and (entity-types model) (or (nil? object) archived?)) [(entity-types model) (:id row)])))
 
-(defn- owner
-  "The one owner of every event of a batch that invalidates findings, nil for the others and without the feature."
+(defn- invalidates?
+  "Whether the `event` invalidates findings, which it does only with the feature."
   [event]
-  (when (and (invalidation event) (premium-features/has-feature? :content-diagnostics))
-    ::findings))
+  (boolean (and (invalidation event) (premium-features/has-feature? :content-diagnostics))))
 
-(defn- invalidate-batch!
+(defn- invalidate!
   "Invalidate in one statement the active findings of the entities that `events` archive or delete, and of the archived
-  collections with the subtrees of those archived directly, logging the error of that statement, which fails the write on Postgres, where an error aborts the transaction."
-  [events _all-events]
+  collections with the subtrees of those archived directly, logging the error of that statement, which fails the write
+  on Postgres, where an error aborts the transaction."
+  [events]
   (let [invalidations  (keep invalidation events)
         collections    (keep (fn [[k row]] (when (= :collection k) row)) invalidations)
         collection-ids (into (set (map :id collections))
@@ -56,5 +56,5 @@
 
 (methodical/defmethod events/publish-event! ::invalidate
   [topic event]
-  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
-    (invalidate-batch! events events)))
+  (when-let [events (not-empty (filterv invalidates? (events/row-events topic event)))]
+    (invalidate! events)))

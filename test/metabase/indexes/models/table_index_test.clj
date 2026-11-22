@@ -194,7 +194,7 @@
                                                        :status       :delete-pending
                                                        :structured   {:kind :btree :name "deleted_idx"
                                                                       :columns [{:name "c"}]}}]
-      (transform/update-transforms! {transform-id {:target (assoc (:target transform) :name (mt/random-name))}})
+      (transform/update-transforms! [{:id transform-id :target (assoc (:target transform) :name (mt/random-name))}])
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id create-id)))
       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id succeeded-id)))
       (is (= :delete-pending (t2/select-one-fn :status :model/TableIndex :id deleted-id))))))

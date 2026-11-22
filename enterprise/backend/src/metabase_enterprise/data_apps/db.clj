@@ -83,13 +83,13 @@
 
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} :map]]
+  [rows :- [:sequential {:min 1} ::data-apps.schema/data-app.row.create]]
   (t2/insert-returning-instances! :model/DataApp rows))
 
 (mu/defn update-data-apps! :- :nil
   "Apply `changes` to the DataApps with `data-app-ids`."
   [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes      :- :map]
+   changes      :- ::data-apps.schema/data-app.row.update]
   (t2/update! :model/DataApp :id [:in [:auto/param data-app-ids]] changes)
   nil)
 

@@ -38,10 +38,10 @@
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Measure (assoc body :definition definition))
-    (-> (measure/create-measure! {:creator_id  api/*current-user-id*
-                                  :name        name
-                                  :description description
-                                  :definition  definition})
+    (-> (first (measure/create-measures! [{:creator_id  api/*current-user-id*
+                                           :name        name
+                                           :description description
+                                           :definition  definition}]))
         (t2/hydrate :creator))))
 
 (api.macros/defendpoint :post "/" :- ::measure
@@ -102,7 +102,7 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (measure/update-measure! id changes {:revision-message revision_message}))
+      (measure/update-measures! [(assoc changes :id id)] {:context {:revision-message revision_message}}))
     (hydrated-measure id false)))
 
 (api.macros/defendpoint :put "/:id" :- ::measure

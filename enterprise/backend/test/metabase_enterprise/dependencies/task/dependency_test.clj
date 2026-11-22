@@ -992,7 +992,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (transform.model/update-transforms! {transform-id {:source (update source :body str "\n")}})
+             (transform.model/update-transforms! [{:id transform-id :source (update source :body str "\n")}])
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -1001,7 +1001,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (transform.model/update-transforms! {transform-id {:target (assoc target :name "test_table2")}})
+             (transform.model/update-transforms! [{:id transform-id :target (assoc target :name "test_table2")}])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -1024,7 +1024,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "keeping target"
-             (transform.model/update-transforms! {transform-id {:source (assoc source :query (lib/native-query mp "select * from orders limit 10"))}})
+             (transform.model/update-transforms! [{:id transform-id :source (assoc source :query (lib/native-query mp "select * from orders limit 10"))}])
              (assert-pending :transform transform-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (=? [{:from_entity_type :table
@@ -1033,7 +1033,7 @@
                        :to_entity_id transform-id}]
                      (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))
            (testing "changing target update"
-             (transform.model/update-transforms! {transform-id {:target (assoc target :name "test_table2")}})
+             (transform.model/update-transforms! [{:id transform-id :target (assoc target :name "test_table2")}])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty?
                   (t2/select :model/Dependency :to_entity_id transform-id :to_entity_type :transform))))))))))
@@ -1055,9 +1055,9 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
          (testing "updating segment definition recalculates dependencies"
-           (segment/update-segment! segment-id {:definition (let [mp (mt/metadata-provider)]
-                                                              (-> (lib/query mp (lib.metadata/table mp products-id))
-                                                                  (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))})
+           (segment/update-segments! [{:id segment-id :definition (let [mp (mt/metadata-provider)]
+                                                                    (-> (lib/query mp (lib.metadata/table mp products-id))
+                                                                        (lib/filter (lib/= (lib.metadata/field mp category-field-id) "Widget"))))}])
            (assert-pending :segment segment-id)
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{{:from_entity_type :segment
@@ -1115,8 +1115,8 @@
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
            (testing "updating measure definition recalculates dependencies"
-             (measure/update-measure! measure-id {:definition (-> (lib/query mp orders)
-                                                                  (lib/aggregate (lib/sum subtotal)))})
+             (measure/update-measures! [{:id measure-id :definition (-> (lib/query mp orders)
+                                                                        (lib/aggregate (lib/sum subtotal)))}])
              (assert-pending :measure measure-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{{:from_entity_type :measure
@@ -1353,7 +1353,7 @@
            (collection/delete-collections! [(:resource_collection_id app)])
            (deps.test/synchronously-run-dependency-job!)
            (is (empty? (data-app-deps (:id app))))
-           (data-app/update-data-apps! {(:id app) {:resource_collection_id (:id collection)}})
+           (data-app/update-data-apps! [{:id (:id app) :resource_collection_id (:id collection)}])
            (assert-pending :data-app (:id app))
            (deps.test/synchronously-run-dependency-job!)
            (is (= #{[:card (:id card)]} (data-app-deps (:id app))))))))))

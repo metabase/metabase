@@ -67,8 +67,8 @@
     (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                            (data-app/update-data-apps! {id {:resource_collection_id taken-id}}))))
-    (data-app/update-data-apps! {id {:resource_collection_id other-id}})
+                            (data-app/update-data-apps! [{:id id :resource_collection_id taken-id}]))))
+    (data-app/update-data-apps! [{:id id :resource_collection_id other-id}])
     (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
@@ -206,8 +206,8 @@
         (is (= (create! 2) (create! 6))))
       (testing "updating data apps"
         (let [ids @created]
-          (is (= (events.tu/statement-count! (fn [] (data-app/update-data-apps! (zipmap (take 2 ids) (repeat {:description "same"})))))
-                 (events.tu/statement-count! (fn [] (data-app/update-data-apps! (zipmap (take 6 (drop 2 ids)) (repeat {:description "same"})))))))))
+          (is (= (events.tu/statement-count! (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 2 ids)))))
+                 (events.tu/statement-count! (fn [] (data-app/update-data-apps! (mapv (fn [id] (assoc {:description "same"} :id id)) (take 6 (drop 2 ids))))))))))
       (testing "deleting data apps that have no collection"
         (let [rows    (fn [n] (mapv #(assoc % :entity_id (u/generate-nano-id)) (app-rows n)))
               insert! (fn [n] (mapv :id (t2/insert-returning-instances! :model/DataApp (rows n))))

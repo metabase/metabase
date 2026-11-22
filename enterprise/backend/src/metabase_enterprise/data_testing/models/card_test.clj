@@ -92,50 +92,28 @@
 (mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
   "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
   validate each row."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential ::data-testing.schema/card-test.create-row]]
   (data-testing.models/create-saved-tests! :model/CardTest rows))
 
-(mu/defn create-card-test! :- ::data-testing.schema/card-test
-  "Insert the CardTest `card-test` returning the inserted test."
-  [card-test :- [:merge ::data-testing.schema/card-test.create data-testing.models/saved-test-row]]
-  (first (create-card-tests! [card-test])))
+(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update-row]
+  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms
+  of the model normalize and validate, publishing their update event."
+  ([rows :- [:sequential ::data-testing.schema/card-test.update-row]]
+   (update-card-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/card-test.update-row]
+    opts :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
 
-(mu/defn update-card-tests! :- :nil
-  "Apply the changes in `changes-by-id`, a map from the id of a CardTest to its changes, which the column
-  transforms of the model normalize and validate, publishing their update event with `context`."
-  ([changes-by-id :- [:map-of ms/PositiveInt :map]]
-   (update-card-tests! changes-by-id nil))
-  ([changes-by-id :- [:map-of ms/PositiveInt :map]
-    context       :- [:maybe :metabase.events.schema/context]]
-   (data-testing.models/update-saved-tests! :model/CardTest changes-by-id context)))
-
-(mu/defn update-card-test! :- :nil
-  "Apply `changes` to the CardTest with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::data-testing.schema/card-test.update]
-  (update-card-tests! {id changes}))
-
-(mu/defn delete-card-test! :- :nil
-  "Delete the CardTest with `id`."
-  [id :- ms/PositiveInt]
-  (data-testing.models/delete-saved-tests! :card :model/CardTest [id]))
+(mu/defn delete-card-tests-by-id! :- :nil
+  "Delete the CardTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
 
 (defenterprise delete-card-tests!
   "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
   :feature :none
   [card-ids]
   (data-testing.models/delete-saved-tests-of-subjects! :card :model/CardTest :card_id (vec card-ids)))
-
-(defn- update-imported-card-tests!
-  "Update the CardTests of an import with `rows`, each its id and changed columns, returning `rows`."
-  [rows]
-  (update-card-tests! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
-  rows)
-
-(defn- delete-card-tests-by-id!
-  "Delete the CardTests with `ids`."
-  [ids]
-  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
 
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
@@ -181,7 +159,7 @@
 
 (defn- revert-card-test!
   [id _user-id snapshot]
-  (update-card-tests! {id (select-keys snapshot revision-columns)} {:reverting? true}))
+  (update-card-tests! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))
 
 (defn- check-revert
   "Returns `snapshot`, with `:now` nil when it has none, after refusing it as an edit to the same state would be
@@ -203,7 +181,7 @@
 (defmethod serialization/spec :model/CardTest [_]
   {:schema              ::data-testing.schema/external-card-test
    :insert!             create-card-tests!
-   :update!             update-imported-card-tests!
+   :update!             update-card-tests!
    :delete!             delete-card-tests-by-id!
    :copy                [:entity_id :name :description :inputs :expectations]
    :transform           {:card_id    (serialization/fk-transform :model/Card)

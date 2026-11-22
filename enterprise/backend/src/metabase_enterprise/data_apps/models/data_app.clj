@@ -246,7 +246,7 @@
   "Insert the DataApp `rows`, which the hooks of the model normalize and validate, and return the inserted apps. A row
   with a resource collection needs one that can be it; one without gets a collection of its own, named after its slug.
   Throws a 400 when two rows share a collection."
-  [rows :- [:sequential :map]]
+  [rows :- [:sequential ::data-apps.schema/data-app.row.create]]
   (if (seq rows)
     (let [given (keep :resource_collection_id rows)]
       (when-not (apply distinct? (or (seq given) [nil]))
@@ -265,47 +265,61 @@
               apps           (data-apps.db/insert-data-apps!
                               (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
                                     rows))]
-          (events/publish-lifecycle! [(events/created :event/data-app-create apps)])
+          (events/publish-event! :event/data-app-create (events/create-event apps))
           apps)))
     []))
 
 (defn- updated-data-app
   "The DataApp `stored` as the update `changes` leaves it, normalized as the update hook does."
   [stored changes]
-  (events/updated-row stored (prepare ::data-apps.schema/data-app.update changes)))
+  (merge stored (prepare ::data-apps.schema/data-app.update changes)))
 
-(mu/defn update-data-apps! :- :nil
-  "Apply the changes in `changes-by-id`, a map from the id of a DataApp to its changes, which the hooks of the model
+(defn- without-held-bundles
+  "`rows`, the update rows of an import, without the bundle that the stored app of the row already holds."
+  [rows stored]
+  (mapv (fn [{:keys [id bundle] :as row}]
+          (cond-> row
+            (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle)))
+        rows))
+
+(mu/defn update-data-apps! :- [:sequential ::data-apps.schema/data-app.update-row]
+  "Apply the changes in each of `rows`, the id of a DataApp and the columns to change, which the hooks of the model
   normalize and validate, in one transaction, with one statement per distinct change set, publishing their update
-  event. Throws unless a new resource collection can be one."
-  [changes-by-id :- [:map-of ms/PositiveInt :map]]
-  (when (seq changes-by-id)
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (data-apps.db/data-apps-by-ids (vec (keys changes-by-id))))]
-        (check-resource-collections!
-         (into {}
-               (keep (fn [[id changes]]
-                       (when-let [collection-id (:resource_collection_id changes)]
-                         (let [app (stored id)]
-                           (when (and app (nil? (:resource_collection_id app)))
-                             [collection-id id])))))
-               changes-by-id))
-        (doseq [[changes pairs] (group-by val changes-by-id)
-                :when           (seq changes)]
-          (data-apps.db/update-data-apps! (mapv key pairs) changes))
-        (let [pairs (into []
-                          (keep (fn [[id changes]]
-                                  (when-let [previous (stored id)]
-                                    (let [object (updated-data-app previous changes)]
-                                      (when (not= (into {} previous) (into {} object))
-                                        [previous object])))))
-                          changes-by-id)]
-          (events/publish-lifecycle! [(events/updated :event/data-app-update (mapv first pairs) (mapv second pairs))])))))
-  nil)
+  event. Throws unless a new resource collection can be one. An import does not write a bundle that the stored app
+  already holds. Returns `rows`."
+  ([rows :- [:sequential ::data-apps.schema/data-app.update-row]]
+   (update-data-apps! rows nil))
+  ([rows :- [:sequential ::data-apps.schema/data-app.update-row]
+    opts :- ::data-apps.schema/write-opts]
+   (when (seq rows)
+     (t2/with-transaction [_conn]
+       (let [stored  (u/index-by :id (data-apps.db/data-apps-by-ids (mapv :id rows)))
+             changed (cond-> rows
+                       (= :import (:writer opts)) (without-held-bundles stored))]
+         (check-resource-collections!
+          (into {}
+                (keep (fn [{:keys [id resource_collection_id]}]
+                        (when resource_collection_id
+                          (let [app (stored id)]
+                            (when (and app (nil? (:resource_collection_id app)))
+                              [resource_collection_id id])))))
+                changed))
+         (doseq [[changes group] (group-by #(dissoc % :id) changed)
+                 :when           (seq changes)]
+           (data-apps.db/update-data-apps! (mapv :id group) changes))
+         (events/publish-event! :event/data-app-update
+                                (events/update-event stored
+                                                     changed
+                                                     {:objects (into {}
+                                                                     (keep (fn [{:keys [id] :as row}]
+                                                                             (when-let [previous (stored id)]
+                                                                               [id (updated-data-app previous (dissoc row :id))])))
+                                                                     changed)})))))
+   (vec rows)))
 
 (mu/defn delete-data-apps! :- :nil
-  "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, in one batch of
-  events, publishing their delete event. The collection's own hooks delete what it holds."
+  "Delete the DataApps with `data-app-ids`, each after its resource collection with the grants on it, publishing their
+  delete event. The collection's own hooks delete what it holds."
   [data-app-ids :- [:sequential ms/PositiveInt]]
   (when (seq data-app-ids)
     (t2/with-transaction [_conn]
@@ -313,23 +327,9 @@
             collection-ids (into [] (keep :resource_collection_id) apps)]
         (when (seq collection-ids)
           (collection/delete-collections! collection-ids))
-        (let [event (events/deleted :event/data-app-delete :model/DataApp apps)]
-          (data-apps.db/delete-data-apps! (vec data-app-ids))
-          (events/publish-lifecycle! [event])))))
+        (events/publish-event! :event/data-app-delete (events/delete-event apps))
+        (data-apps.db/delete-data-apps! (vec data-app-ids)))))
   nil)
-
-(defn- update-imported-data-apps!
-  "Update the DataApps of an import with `rows`, each its id and changed columns, returning `rows`. A bundle the stored
-  app already holds is not written again."
-  [rows]
-  (let [stored (u/index-by :id (when (seq rows) (data-apps.db/data-apps-by-ids (mapv :id rows))))]
-    (update-data-apps!
-     (into {}
-           (map (fn [{:keys [id bundle] :as row}]
-                  [id (cond-> (dissoc row :id)
-                        (some-> ^bytes bundle bytes-hash (= (:bundle_hash (stored id)))) (dissoc :bundle))]))
-           rows))
-    rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
@@ -348,7 +348,7 @@
                                                   :export export-bundles
                                                   :import import-bundles}}
    :insert!             create-data-apps!
-   :update!             update-imported-data-apps!
+   :update!             #(update-data-apps! % {:writer :import})
    :delete!             delete-data-apps!
    :storage-paths       storage-paths
    :resource-paths      resource-paths

@@ -204,15 +204,15 @@
           (is (= (marked {:dependency      [:measure]
                           :analysis        [:card-d :card-e]
                           :result-metadata [:card-d :card-e]})
-                 (marks! world #(measure/update-measure! (id-of world :measure) {:definition (lib/aggregate (deps.test/table-query :orders)
-                                                                                                            (lib/count))
-                                                                                 :name       "Renamed measure"})))))
+                 (marks! world #(measure/update-measures! [{:id (id-of world :measure) :definition (lib/aggregate (deps.test/table-query :orders)
+                                                                                                                  (lib/count))
+                                                            :name       "Renamed measure"}])))))
         (testing "a segment definition change marks its own dependency and analysis and its direct dependents"
           (is (= (marked {:dependency      [:segment]
                           :analysis        [:card-g :segment]
                           :result-metadata [:card-g]})
-                 (marks! world #(segment/update-segment! (id-of world :segment) {:definition (lib/filter (deps.test/table-query :checkins)
-                                                                                                         (lib/= 2 2))})))))
+                 (marks! world #(segment/update-segments! [{:id (id-of world :segment) :definition (lib/filter (deps.test/table-query :checkins)
+                                                                                                               (lib/= 2 2))}])))))
         (testing "deleting a snippet marks every transitive dependent's dependency and analysis"
           (is (= (marked {:dependency [:card-native :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
@@ -352,11 +352,11 @@
       (fn [world]
         (testing "a transform source change marks its own dependency and analysis"
           (is (= (marked {:dependency [:transform] :analysis [:transform]})
-                 (marks! world #(transform.model/update-transforms! {(id-of world :transform) {:source {:type  :query
-                                                                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}})))))
+                 (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :source {:type  :query
+                                                                                                            :query (lib/native-query (mt/metadata-provider) "SELECT 2")}}])))))
         (testing "a transform rename marks nothing"
           (is (= (marked {:triggers? false})
-                 (marks! world #(transform.model/update-transforms! {(id-of world :transform) {:name "Renamed"}})))))
+                 (marks! world #(transform.model/update-transforms! [{:id (id-of world :transform) :name "Renamed"}])))))
         (mt/with-temp [:model/Action      {action-id :id} {:type :query :name "Marks action"}
                        :model/QueryAction _               {:action_id     action-id
                                                            :database_id   (mt/id)

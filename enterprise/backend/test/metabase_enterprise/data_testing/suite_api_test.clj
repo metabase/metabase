@@ -171,17 +171,17 @@
 
 (defn- put-members-concurrently!
   "PUT `first-members` and then `second-members` to `path`, as crowberto. The first request's transaction stays open
-  until the second request has waited a second inside `update-test-suite!`. Returns the status and error message of
+  until the second request has waited a second inside `update-test-suites!`. Returns the status and error message of
   both responses, and whether the second request was still waiting when the first was released."
   [path first-members second-members]
-  (let [original       (mt/original-fn #'test-suite/update-test-suite!)
+  (let [original       (mt/original-fn #'test-suite/update-test-suites!)
         calls          (atom 0)
         first-wrote    (promise)
         second-entered (promise)
         release        (promise)
         put!           #(let [{:keys [status body]} (mt/user-http-request-full-response :crowberto :put path {:members %})]
                           {:status status :message (:message body)})]
-    (mt/with-dynamic-fn-redefs [test-suite/update-test-suite!
+    (mt/with-dynamic-fn-redefs [test-suite/update-test-suites!
                                 (fn [& args]
                                   (if (= 1 (swap! calls inc))
                                     (t2/with-transaction [_conn]

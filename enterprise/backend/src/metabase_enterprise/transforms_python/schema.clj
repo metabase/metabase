@@ -31,6 +31,21 @@
    [:entity_id  {:optional true} [:maybe :string]]
    [:is_default {:optional true} [:maybe :boolean]]])
 
+(mr/def ::python-library.create
+  "What creating a PythonLibrary takes: its path and source, and the entity id and default flag of a built-in one."
+  [:map {:closed true}
+   [:path       :string]
+   [:source     [:string {:decode/normalize lib.schema.common/normalize-string-key}]]
+   [:entity_id  {:optional true} [:maybe :string]]
+   [:is_default {:optional true} [:maybe :boolean]]])
+
+(mr/def ::python-library.update-row
+  "One row of an update of PythonLibraries: the `:id` of a library and the columns to change."
+  [:merge
+   ::python-library.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::external-python-library
   "A PythonLibrary as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib.schema.id/external-registry}

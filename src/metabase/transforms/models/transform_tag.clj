@@ -118,61 +118,72 @@
           (transforms.db/tag-names-to-ids)
           (map-indexed vector rows)))
 
-(defn- insert-tags!
-  "Insert the TransformTag `rows` in one transaction, publishing their create event, returning the inserted instances."
-  [rows]
-  (if (seq rows)
-    (t2/with-transaction [_conn]
-      (let [tags (transforms.db/insert-tags! rows)]
-        (events/publish-lifecycle! [(events/created :event/transform-tag-create tags)])
-        tags))
-    []))
-
 (defn- updated-tag
   "The TransformTag `stored` as the update `changes` leaves it: a built-in tag that changes becomes a custom one that keeps
   its name, as the update hook makes it."
   [stored changes]
-  (let [object (events/updated-row stored changes)]
+  (let [object (merge stored changes)]
     (if (or (nil? (:built_in_type stored))
             (empty? (dissoc (into {} (filter (fn [[k v]] (not= v (get stored k)))) changes) :updated_at)))
       object
       (-> (merge object (translate-name stored) {:built_in_type nil} changes)
           (update :name str)))))
 
-(defn- update-tags!
-  "Apply the changes of each TransformTag in `changes-by-id` in one transaction, with one statement per distinct change
-  set, publishing their update event."
-  [changes-by-id]
-  (when (seq changes-by-id)
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (transforms.db/tags-by-ids (vec (keys changes-by-id))))]
-        (doseq [[changes pairs] (group-by val changes-by-id)
-                :when           (seq changes)]
-          (transforms.db/update-tags! (mapv key pairs) changes))
-        (let [pairs (into []
-                          (keep (fn [[id changes]]
-                                  (when-let [previous (stored id)]
-                                    (let [object (updated-tag previous changes)]
-                                      (when (not= (into {} previous) (into {} object))
-                                        [previous object])))))
-                          changes-by-id)]
-          (events/publish-lifecycle! [(events/updated :event/transform-tag-update
-                                                      (mapv first pairs)
-                                                      (mapv second pairs))]))))))
+(defn- without-built-in-names
+  "`rows`, the update rows of an import, without the name of those of a built-in tag in `stored`."
+  [rows stored]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
+            (dissoc :name)))
+        rows))
 
 (mu/defn create-transform-tags! :- [:sequential ::transforms.schema/transform-tag]
-  "Insert the TransformTag `rows` and return the inserted tags. Throws a 400 when a name is already taken."
-  [rows :- [:sequential ::transforms.schema/transform-tag.create]]
-  (check-names-free rows)
-  (insert-tags! rows))
+  "Insert the TransformTag `rows` in one transaction, publishing their create event, and return the inserted tags.
+  Throws a 400 when a name is already taken; an import makes each name another tag holds unique instead."
+  ([rows :- [:sequential ::transforms.schema/transform-tag.create]]
+   (create-transform-tags! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform-tag.create]
+    opts :- ::transforms.schema/write-opts]
+   (let [rows (if (= :import (:writer opts))
+                (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids))
+                (do (check-names-free rows) rows))]
+     (if (seq rows)
+       (t2/with-transaction [_conn]
+         (let [tags (transforms.db/insert-tags! rows)]
+           (events/publish-event! :event/transform-tag-create (events/create-event tags))
+           tags))
+       []))))
 
-(mu/defn update-transform-tag! :- :nil
-  "Apply `changes` to the TransformTag with `tag-id`. Throws a 400 when its new name is already taken."
-  [tag-id  :- ::lib.schema.id/transform-tag
-   changes :- ::transforms.schema/transform-tag.update]
-  (check-names-free [(assoc changes :id tag-id)])
-  (update-tags! {tag-id changes})
-  nil)
+(mu/defn update-transform-tags! :- [:sequential ::transforms.schema/transform-tag.update-row]
+  "Apply the changes in each of `rows`, the id of a TransformTag and the columns to change, in one transaction, with
+  one statement per distinct change set, publishing their update event. Throws a 400 when a new name is already taken;
+  an import keeps the name of a built-in tag and makes each other name another tag holds unique instead. Returns
+  `rows`."
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update-row]]
+   (update-transform-tags! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform-tag.update-row]
+    opts :- ::transforms.schema/write-opts]
+   (when (seq rows)
+     (t2/with-transaction [_conn]
+       (let [stored  (u/index-by :id (transforms.db/tags-by-ids (mapv :id rows)))
+             changed (if (= :import (:writer opts))
+                       (transforms.serialization/rename-taken-tag-names (without-built-in-names rows stored)
+                                                                        (transforms.db/tag-names-to-ids))
+                       (do (check-names-free rows) rows))]
+         (doseq [[changes group] (group-by #(dissoc % :id) changed)
+                 :when           (seq changes)]
+           (transforms.db/update-tags! (mapv :id group) changes))
+         (events/publish-event! :event/transform-tag-update
+                                (events/update-event stored
+                                                     changed
+                                                     {:objects (into {}
+                                                                     (keep (fn [{:keys [id] :as row}]
+                                                                             (when-let [previous (stored id)]
+                                                                               [id (updated-tag previous (dissoc row :id))])))
+                                                                     changed)
+                                                      :context (:context opts)})))))
+   (vec rows)))
 
 (mu/defn delete-transform-tags! :- :nil
   "Delete the TransformTags with `tag-ids`, which removes them from their Transforms and TransformJobs, publishing their
@@ -180,31 +191,10 @@
   [tag-ids :- [:sequential ::lib.schema.id/transform-tag]]
   (when (seq tag-ids)
     (t2/with-transaction [_conn]
-      (let [event (events/deleted :event/transform-tag-delete
-                                  :model/TransformTag
-                                  (transforms.db/tags-by-ids (vec tag-ids)))]
-        (transforms.db/delete-tags! (vec tag-ids))
-        (events/publish-lifecycle! [event]))))
+      (events/publish-event! :event/transform-tag-delete
+                             (events/delete-event (transforms.db/tags-by-ids (vec tag-ids))))
+      (transforms.db/delete-tags! (vec tag-ids))))
   nil)
-
-(defn- insert-imported-tags!
-  "Insert the TransformTag `rows` of an import, each name another tag holds made unique."
-  [rows]
-  (insert-tags! (transforms.serialization/rename-taken-tag-names rows (transforms.db/tag-names-to-ids))))
-
-(defn- update-imported-tags!
-  "Update the TransformTags of an import with `rows`, each its id and changed columns, returning `rows`. A built-in tag
-  keeps its name and every other name another tag holds is made unique."
-  [rows]
-  (let [stored  (into {} (map (juxt :id identity)) (when (seq rows) (transforms.db/tags-by-ids (mapv :id rows))))
-        kept    (mapv (fn [{:keys [id] :as row}]
-                        (cond-> row
-                          (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
-                          (dissoc :name)))
-                      rows)
-        renamed (transforms.serialization/rename-taken-tag-names kept (transforms.db/tag-names-to-ids))]
-    (update-tags! (into {} (map (fn [row] [(:id row) (dissoc row :id)])) renamed))
-    rows))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 
@@ -215,8 +205,8 @@
   {:schema        ::transforms.schema/external-transform-tag
    :copy          [:entity_id :built_in_type]
    :transform     {:name transforms.serialization/string-transform}
-   :insert!       insert-imported-tags!
-   :update!       update-imported-tags!
+   :insert!       #(create-transform-tags! % {:writer :import})
+   :update!       #(update-transform-tags! % {:writer :import})
    :delete!       delete-transform-tags!
    :storage-paths transforms.serialization/transform-tag-storage-paths})
 

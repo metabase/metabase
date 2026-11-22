@@ -62,9 +62,9 @@
    _query-params
    {:keys [members] :as body} :- CreateTestSuiteRequest]
   (api/create-check :model/TestSuite body)
-  (suite-response (test-suite/create-test-suite! (assoc body
-                                                        :creator_id api/*current-user-id*
-                                                        :members    (data-testing.suite/member-rows members #{})))))
+  (suite-response (:id (first (test-suite/create-test-suites! [(assoc body
+                                                                      :creator_id api/*current-user-id*
+                                                                      :members    (data-testing.suite/member-rows members #{}))])))))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/test-suite.response
   "Update a test suite. `members`, when given, replaces every member, in the order given. Each member names a test by
@@ -76,13 +76,12 @@
    _query-params
    body :- UpdateTestSuiteRequest]
   (api/update-check (api/read-check (data-testing.db/test-suite id)) body)
-  (test-suite/update-test-suite!
-   id
-   (cond-> body
-     (contains? body :members)
-     (assoc :members (data-testing.suite/member-rows
-                      (:members body)
-                      (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id]))))))
+  (test-suite/update-test-suites!
+   [(cond-> (assoc body :id id)
+      (contains? body :members)
+      (assoc :members (data-testing.suite/member-rows
+                       (:members body)
+                       (into #{} (map data-testing.suite/member-ref) (data-testing.db/suite-members [id])))))])
   (suite-response id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -90,7 +89,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check (data-testing.db/test-suite id))
-  (test-suite/delete-test-suite! id)
+  (test-suite/delete-test-suites! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/test-suite-run.result

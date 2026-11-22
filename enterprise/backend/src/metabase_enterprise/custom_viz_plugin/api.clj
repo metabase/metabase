@@ -185,14 +185,15 @@
         display-name (or (:name manifest) identifier)
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
-        plugin       (custom-viz-plugin/create-custom-viz-plugin! {:display_name     display-name
-                                                                   :identifier       identifier
-                                                                   :status           :active
-                                                                   :enabled          true
-                                                                   :dev_bundle_url   dev_bundle_url
-                                                                   :icon             icon
-                                                                   :manifest         manifest
-                                                                   :metabase_version version-str})]
+        plugin       (first (custom-viz-plugin/create-custom-viz-plugins!
+                             [{:display_name     display-name
+                               :identifier       identifier
+                               :status           :active
+                               :enabled          true
+                               :dev_bundle_url   dev_bundle_url
+                               :icon             icon
+                               :manifest         manifest
+                               :metabase_version version-str}]))]
     (custom-viz-plugin/set-or-clear-dev-bundle! (:id plugin) dev_bundle_url)
     (plugin->response plugin)))
 
@@ -223,7 +224,7 @@
   "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [plugin (api/write-check (custom-viz-plugin.db/non-blob-plugin id))]
-    (custom-viz-plugin/delete-custom-viz-plugin! id)
+    (custom-viz-plugin/delete-custom-viz-plugins! [id])
     (cache/purge-plugin-cache! plugin)
     nil))
 
@@ -236,7 +237,7 @@
   (let [_       (api/write-check (custom-viz-plugin.db/non-blob-plugin id))
         updates (select-keys body [:enabled])]
     (when (seq updates)
-      (custom-viz-plugin/update-custom-viz-plugin! id updates))
+      (custom-viz-plugin/update-custom-viz-plugins! [(assoc updates :id id)]))
     (let [result (custom-viz-plugin.db/non-blob-plugin id)]
       (plugin->response result))))
 
@@ -393,11 +394,11 @@
           manifest     (or (cache/fetch-dev-manifest dev-url)
                            (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
           version-str  (get-in manifest [:metabase :version])]
-      (custom-viz-plugin/update-custom-viz-plugin! id
-                                                   {:display_name     (or (:name manifest) (:identifier plugin))
-                                                    :icon             (:icon manifest)
-                                                    :manifest         manifest
-                                                    :metabase_version version-str})
+      (custom-viz-plugin/update-custom-viz-plugins! [{:id               id
+                                                      :display_name     (or (:name manifest) (:identifier plugin))
+                                                      :icon             (:icon manifest)
+                                                      :manifest         manifest
+                                                      :metabase_version version-str}])
       (let [result (custom-viz-plugin.db/non-blob-plugin id)]
         (plugin->response result)))))
 

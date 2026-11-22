@@ -93,7 +93,7 @@
     (t2/with-transaction [_conn]
       (let [jobs (transforms.db/insert-jobs! rows)]
         (sync-triggers! jobs)
-        (events/publish-lifecycle! [(events/created :event/transform-job-create jobs)])
+        (events/publish-event! :event/transform-job-create (events/create-event jobs))
         jobs))
     []))
 
@@ -101,7 +101,7 @@
   "The TransformJob `stored` as the update `changes` leaves it: a built-in job becomes a custom one that keeps its
   name and description, as the update hook makes it."
   [stored changes]
-  (let [object (events/updated-row stored changes)]
+  (let [object (merge stored changes)]
     (if (nil? (:built_in_type stored))
       object
       (-> (merge object
@@ -111,57 +111,60 @@
           (update :name str)
           (update :description str)))))
 
-(defn- update-event
-  "The update event of the jobs `stored` that apply `changes-by-id`, without those the changes leave as they are."
-  [stored changes-by-id]
-  (let [pairs (into []
-                    (keep (fn [[id changes]]
-                            (when-let [previous (stored id)]
-                              (let [object (updated-job previous changes)]
-                                (when (not= (into {} previous) (into {} object))
-                                  [previous object])))))
-                    changes-by-id)]
-    (events/updated :event/transform-job-update (mapv first pairs) (mapv second pairs))))
+(defn- event-context
+  "The context of the events of a write with `opts`."
+  [{:keys [writer context]}]
+  (cond-> context
+    (= :revert writer) (assoc :reverting? true)))
 
-(mu/defn update-transform-jobs! :- :nil
-  "Apply the changes in `changes-by-id`, a map from the id of a TransformJob to its changes, with one statement per
-  distinct change set, then make the Quartz trigger of each job match its row, publishing their update event."
-  [changes-by-id :- [:map-of ms/PositiveInt ::transforms.schema/transform-job.update]]
-  (when (seq changes-by-id)
-    (t2/with-transaction [_conn]
-      (let [stored (u/index-by :id (transforms.db/jobs-by-ids (vec (keys changes-by-id))))]
-        (doseq [[changes pairs] (group-by val changes-by-id)
-                :when           (seq changes)]
-          (transforms.db/update-jobs! (mapv key pairs) changes))
-        (sync-triggers! (transforms.db/jobs-by-ids (vec (keys changes-by-id))))
-        (events/publish-lifecycle! [(update-event stored changes-by-id)]))))
-  nil)
+(defn- without-built-in-names
+  "`rows`, the update rows of an import, without the name and description of those of a built-in job in `stored`."
+  [rows stored]
+  (mapv (fn [{:keys [id] :as row}]
+          (cond-> row
+            (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
+            (dissoc :name :description)))
+        rows))
+
+(mu/defn update-transform-jobs! :- [:sequential ::transforms.schema/transform-job.update-row]
+  "Apply the changes in each of `rows`, the id of a TransformJob and the columns to change, with one statement per
+  distinct change set, then make the Quartz trigger of each job match its row, publishing their update event. An import
+  leaves the name and description of a built-in job as they are. Returns `rows`."
+  ([rows :- [:sequential ::transforms.schema/transform-job.update-row]]
+   (update-transform-jobs! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform-job.update-row]
+    opts :- ::transforms.schema/write-opts]
+   (when (seq rows)
+     (t2/with-transaction [_conn]
+       (let [ids     (mapv :id rows)
+             stored  (u/index-by :id (transforms.db/jobs-by-ids ids))
+             changed (cond-> rows
+                       (= :import (:writer opts)) (without-built-in-names stored))]
+         (doseq [[changes group] (group-by #(dissoc % :id) changed)
+                 :when           (seq changes)]
+           (transforms.db/update-jobs! (mapv :id group) changes))
+         (sync-triggers! (transforms.db/jobs-by-ids ids))
+         (events/publish-event! :event/transform-job-update
+                                (events/update-event stored
+                                                     changed
+                                                     {:objects (into {}
+                                                                     (keep (fn [{:keys [id] :as row}]
+                                                                             (when-let [previous (stored id)]
+                                                                               [id (updated-job previous (dissoc row :id))])))
+                                                                     changed)
+                                                      :context (event-context opts)})))))
+   (vec rows)))
 
 (mu/defn delete-transform-jobs! :- :nil
   "Delete the Quartz jobs and then the TransformJobs with `job-ids`, publishing their delete event."
   [job-ids :- [:sequential ms/PositiveInt]]
   (when (seq job-ids)
     (t2/with-transaction [_conn]
-      (let [jobs (transforms.db/jobs-by-ids (vec job-ids))
-            event (events/deleted :event/transform-job-delete :model/TransformJob jobs)]
+      (let [jobs (transforms.db/jobs-by-ids (vec job-ids))]
         (run! transforms.schedule/delete-job! job-ids)
-        (transforms.db/delete-jobs! (vec job-ids))
-        (events/publish-lifecycle! [event]))))
+        (events/publish-event! :event/transform-job-delete (events/delete-event jobs))
+        (transforms.db/delete-jobs! (vec job-ids)))))
   nil)
-
-(defn- update-imported-jobs!
-  "Update the TransformJobs of an import with `rows`, each its id and changed columns, returning `rows`. A built-in job
-  keeps its name and description."
-  [rows]
-  (let [stored (into {} (map (juxt :id identity)) (when (seq rows) (transforms.db/jobs-by-ids (mapv :id rows))))]
-    (update-transform-jobs!
-     (into {}
-           (map (fn [{:keys [id] :as row}]
-                  [id (cond-> (dissoc row :id)
-                        (and (some? (:built_in_type (stored id))) (not (contains? row :built_in_type)))
-                        (dissoc :name :description))]))
-           rows))
-    rows))
 
 (mu/defn- flip-active! :- :nil
   "Run `flip!`, one of the db functions that mark a job active or inactive, for the job with `job-id`, and make its Quartz
@@ -172,10 +175,10 @@
     (when-let [previous (transforms.db/job job-id)]
       (when (pos? (flip! job-id))
         (sync-triggers! [(assoc previous :active (not (:active previous)))])
-        (events/publish-lifecycle!
-         [(events/updated :event/transform-job-update
-                          [previous]
-                          [(updated-job previous {:active (not (:active previous))})])]))))
+        (events/publish-event! :event/transform-job-update
+                               (events/update-event {job-id previous}
+                                                    [{:id job-id :active (not (:active previous))}]
+                                                    {:objects {job-id (updated-job previous {:active (not (:active previous))})}})))))
   nil)
 
 (mu/defn- active-flip-lock-name :- :keyword
@@ -338,7 +341,7 @@
                          :description transforms.serialization/string-transform}
    :children            {:job_tags :model/TransformJobTransformTag}
    :insert!             create-transform-jobs!
-   :update!             update-imported-jobs!
+   :update!             #(update-transform-jobs! % {:writer :import})
    :delete!             delete-transform-jobs!
    :storage-paths       transforms.serialization/transform-job-storage-paths
    :import-dependencies transforms.serialization/transform-job-import-dependencies})

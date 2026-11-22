@@ -73,6 +73,13 @@
    [:archived    {:optional true} [:maybe :boolean]]
    [:entity_id   {:optional true} [:maybe :string]]])
 
+(mr/def ::write-opts
+  "The options of the update of Measures: who writes when it matters, and the context of the events."
+  [:maybe
+   [:map {:closed true}
+    [:writer  {:optional true} [:enum :revert]]
+    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
 (mr/def ::measure.row
   "A Measure id and the columns to change, as an update of several Measures takes it."
   [:merge

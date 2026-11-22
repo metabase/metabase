@@ -207,7 +207,7 @@
   a create request."
   [:or
    ::transforms.schema/transform
-   ::transforms.schema/transform.create])
+   ::transforms.schema/transform.request])
 
 (mu/defn- transform-readable? :- :boolean
   "Whether the current user can read `instance`, with its source looked up in `models-cache` when given."
@@ -513,13 +513,13 @@
 (mu/defn create-transforms! :- [:sequential ::transforms.schema/transform]
   "Insert the Transform `rows` in one transaction, publishing their create event, and return the inserted transforms.
   Throws unless the Collection of each can hold Transforms and its target Database can hold the tables of a transform."
-  [rows :- [:sequential ::transforms.schema/transform.update]]
+  [rows :- [:sequential ::transforms.schema/transform.create]]
   (if (seq rows)
     (do (check-collections! (map :collection_id rows))
         (check-target-databases! (map (comp :target_db_id derived-columns) rows))
         (t2/with-transaction [_conn]
           (let [transforms (transforms.db/insert-transforms! rows)]
-            (events/publish-lifecycle! [(events/created :event/transform-create transforms)])
+            (events/publish-event! :event/transform-create (events/create-event transforms))
             transforms)))
     []))
 
@@ -542,7 +542,7 @@
   "The Transform `stored` as the update `changes` leaves it, with the columns that the hooks derive from them."
   [stored changes]
   (let [merged (merge stored changes)]
-    (cond-> (events/updated-row stored changes)
+    (cond-> (merge stored changes)
       (contains? changes :source)
       (assoc :source (transform-source-out (:source changes)))
 
@@ -557,35 +557,37 @@
         (and (definition-columns-changed? stored changes) old-field-id (not= old-field-id new-field-id)))
       (assoc :last_checkpoint_value nil))))
 
-(mu/defn update-transforms! :- :nil
-  "Apply the changes in `changes-by-id`, a map from the id of a Transform to its changes, in one transaction, with one
-  statement per distinct change set, publishing their update event with `context`. Before each statement, throws unless
-  the new Collection and target Database can hold Transforms and the new definition of a query transform causes no
-  cycle, marks the index requests of a changed definition for revalidation, and fills the Field ids of a merge unique key
-  once its target table exists."
-  ([changes-by-id :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.update]]
-   (update-transforms! changes-by-id nil))
-  ([changes-by-id :- [:map-of ::lib.schema.id/transform ::transforms.schema/transform.update]
-    context       :- [:maybe :metabase.events.schema/context]]
-   (when (seq changes-by-id)
+(defn- event-context
+  "The context of the events of a write with `opts`."
+  [{:keys [writer context]}]
+  (cond-> context
+    (= :revert writer) (assoc :reverting? true)))
+
+(mu/defn update-transforms! :- [:sequential ::transforms.schema/transform.update-row]
+  "Apply the changes in each of `rows`, the id of a Transform and the columns to change, in one transaction, with one
+  statement per distinct change set, publishing their update event. Before each statement, throws unless the new
+  Collection and target Database can hold Transforms and the new definition of a query transform causes no cycle,
+  marks the index requests of a changed definition for revalidation, and fills the Field ids of a merge unique key once
+  its target table exists. Returns `rows`."
+  ([rows :- [:sequential ::transforms.schema/transform.update-row]]
+   (update-transforms! rows nil))
+  ([rows :- [:sequential ::transforms.schema/transform.update-row]
+    opts :- ::transforms.schema/write-opts]
+   (when (seq rows)
      (t2/with-transaction [_conn]
-       (let [stored    (u/index-by :id (transforms.db/transforms (vec (keys changes-by-id))))
-             requested (into {} (filter (comp stored key)) changes-by-id)
+       (let [stored    (u/index-by :id (transforms.db/transforms (mapv :id rows)))
+             requested (into {} (comp (filter (comp stored :id)) (map (juxt :id #(dissoc % :id)))) rows)
              resolved  (with-resolved-merge-keys requested stored)]
          (doseq [[changes ids] (update-vals (group-by resolved (keys requested)) vec)
                  :when         (seq changes)]
            (check-update-group! ids stored requested changes)
            (transforms.db/update-transforms! ids changes))
-         (let [pairs (into []
-                           (keep (fn [id]
-                                   (let [previous (stored id)
-                                         object   (updated-transform previous (resolved id))]
-                                     (when (not= (into {} previous) (into {} object))
-                                       [previous object]))))
-                           (keys requested))]
-           (events/publish-lifecycle! [(events/updated :event/transform-update (mapv first pairs) (mapv second pairs))]
-                                      {:context context})))))
-   nil))
+         (events/publish-event! :event/transform-update
+                                (events/update-event stored
+                                                     (mapv (fn [id] (assoc (resolved id) :id id)) (keys requested))
+                                                     {:objects (into {} (map (fn [id] [id (updated-transform (stored id) (resolved id))])) (keys requested))
+                                                      :context (event-context opts)})))))
+   (vec rows)))
 
 (mu/defn delete-transforms! :- :nil
   "Delete the Transforms with `transform-ids`, and their tests, in one transaction, publishing their delete event."
@@ -594,14 +596,14 @@
     (t2/with-transaction [_conn]
       (let [transforms (vec (transforms.db/transforms (vec transform-ids)))]
         (delete-transform-tests! (vec transform-ids))
-        (let [event (events/deleted :event/transform-delete :model/Transform transforms)]
-          (transforms.db/delete-transforms! (vec transform-ids))
-          (events/publish-lifecycle! [event])))))
+        (events/publish-event! :event/transform-delete (events/delete-event transforms))
+        (transforms.db/delete-transforms! (vec transform-ids)))))
   nil)
 
 (defmethod transforms-base.u/record-run-changes! :model/Transform
   [_model transform-id changes]
-  (update-transforms! {transform-id changes}))
+  (update-transforms! [(assoc changes :id transform-id)])
+  nil)
 
 (mu/defn set-table-dependencies! :- :int
   "Store `dependencies-json` as the cached table dependencies of the Transform with `transform-id`, a cache no rule
@@ -619,22 +621,6 @@
   [:name :description :collection_id :owner_email :owner_user_id :source :source_database_id :source_type
    :target :target_db_id])
 
-(defn- revert-transform!
-  "Return the Transform with `id` to the state of `snapshot`, a revision, as any other update of it."
-  [id _user-id snapshot]
-  (update-transforms! {id (select-keys snapshot revision-columns)} {:reverting? true}))
-
-(defn- update-replaced-transform!
-  "Apply `changes`, a write of a source replacement, to the Transform with `id`, as any other update of it."
-  [id changes]
-  (update-transforms! {id changes}))
-
-(defn- update-imported-transforms!
-  "Update the Transforms of an import with `rows`, each its id and changed columns, returning `rows`."
-  [rows]
-  (update-transforms! (into {} (map (fn [{:keys [id] :as row}] [id (dissoc row :id)])) rows))
-  rows)
-
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 
 (defmethod app-db-copy/spec :model/Transform [_model]
@@ -651,7 +637,7 @@
                          :source             transforms.serialization/source-transform
                          :target             transforms.serialization/target-transform}
    :insert!             create-transforms!
-   :update!             update-imported-transforms!
+   :update!             #(update-transforms! % {:writer :import})
    :delete!             delete-transforms!
    :children            {:tags    :model/TransformTransformTag
                          :indexes :model/TableIndex}
@@ -667,7 +653,8 @@
   {:track     revision-columns
    :skip      [:creator_id :entity_id :last_checkpoint_value :table_dependencies :target_table_id]
    :authorize :snapshot
-   :revert!   revert-transform!})
+   :revert!   (fn [id _user-id snapshot]
+                (update-transforms! [(assoc (select-keys snapshot revision-columns) :id id)] {:writer :revert}))})
 
 (defmethod audit/spec :model/Transform [_model]
   {:track          [:name :description :target]
@@ -712,7 +699,7 @@
 (defmethod replacement/spec :model/Transform [_model]
   {:upgrade-field-refs transforms.replacement/upgrade-field-refs
    :swap-source        transforms.replacement/swap-source
-   :update!            update-replaced-transform!})
+   :update!            (fn [id changes] (update-transforms! [(assoc changes :id id)]))})
 
 (defmethod collection-items/spec :model/Transform [_model]
   {"transform" {:items transforms.db/collection-transform-items}})

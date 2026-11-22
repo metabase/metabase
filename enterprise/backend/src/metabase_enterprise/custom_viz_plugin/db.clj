@@ -58,7 +58,7 @@
 
 (mu/defn insert-plugins!
   "Insert the `plugins` and return the new instances."
-  [plugins :- [:sequential {:min 1} ::custom-viz-plugin.schema/custom-viz-plugin.update]]
+  [plugins :- [:sequential {:min 1} ::custom-viz-plugin.schema/custom-viz-plugin.create]]
   (t2/insert-returning-instances! :model/CustomVizPlugin plugins))
 
 (mu/defn update-plugins!

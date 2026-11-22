@@ -20,25 +20,25 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Segment {id :id} {}]
       (testing "without a definition: the read of the previous row, the select of the hook and the update"
-        (is (= 3 (events.tu/statement-count! #(segment/update-segment! id {:name "Renamed"})))))
+        (is (= 3 (events.tu/statement-count! #(segment/update-segments! [{:id id :name "Renamed"}])))))
       (testing "with a definition"
         (let [mp         (mt/metadata-provider)
-              update!    (fn [n] #(segment/update-segment! id {:definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                                       (lib/> (lib.metadata/field mp (mt/id :orders :total)) n))}))]
-          (segment/update-segment! id {:definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                               (lib/> (lib.metadata/field mp (mt/id :orders :total)) 1))})
+              update!    (fn [n] #(segment/update-segments! [{:id id :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                                             (lib/> (lib.metadata/field mp (mt/id :orders :total)) n))}]))]
+          (segment/update-segments! [{:id id :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                     (lib/> (lib.metadata/field mp (mt/id :orders :total)) 1))}])
           (is (= 8 (events.tu/statement-count! (update! 5)))))))))
 
 (deftest measure-write-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Measure {id :id} {}]
       (testing "an update without a definition"
-        (is (= 3 (events.tu/statement-count! #(measure/update-measure! id {:name "Renamed"})))))
+        (is (= 3 (events.tu/statement-count! #(measure/update-measures! [{:id id :name "Renamed"}])))))
       (testing "an update with a definition"
         (let [mp      (mt/metadata-provider)
-              update! #(measure/update-measure! id {:definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                               (lib/sum (lib.metadata/field mp (mt/id :orders :total))))})]
-          (measure/update-measure! id {:definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))})
+              update! #(measure/update-measures! [{:id id :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                                                     (lib/sum (lib.metadata/field mp (mt/id :orders :total))))}])]
+          (measure/update-measures! [{:id id :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))}])
           (is (= 9 (events.tu/statement-count! update!)))))
       (testing "setting the dimensions"
         (is (= 3 (events.tu/statement-count! #(measure/set-measure-dimensions! id [] []))))))))
@@ -48,7 +48,7 @@
     (mt/with-temp [:model/Transform {transform-id :id} {}
                    :model/TransformJob {job-id :id} {}]
       (testing "a transform update"
-        (is (= 3 (events.tu/statement-count! #(transform/update-transforms! {transform-id {:name "Renamed"}})))))
+        (is (= 3 (events.tu/statement-count! #(transform/update-transforms! [{:id transform-id :name "Renamed"}])))))
       (testing "deactivating and activating a job"
         (is (= 3 (events.tu/statement-count! #(transform-job/deactivate-job! job-id))))
         (is (= 3 (events.tu/statement-count! #(transform-job/activate-job! job-id))))))))

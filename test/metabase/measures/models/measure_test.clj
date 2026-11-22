@@ -28,9 +28,9 @@
     (is (thrown-with-msg?
          Exception
          #"does not exist"
-         (measure/create-measure! {:name       "Bad Measure"
-                                   :creator_id (mt/user->id :rasta)
-                                   :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])})))
+         (first (measure/create-measures! [{:name       "Bad Measure"
+                                            :creator_id (mt/user->id :rasta)
+                                            :definition (measure-definition [:measure {:lib/uuid (str (random-uuid))} Integer/MAX_VALUE])}]))))
     (is (not (t2/exists? :model/Measure :name "Bad Measure")))))
 
 (deftest insert-measure-referencing-measure-test
@@ -58,7 +58,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (measure/update-measure! measure-id {:definition (measure-definition-referencing 99999)})))))
+           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing 99999)}])))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :creator_id (mt/user->id :rasta)
@@ -66,7 +66,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (measure/update-measure! measure-id {:definition (measure-definition-referencing measure-id)})))))
+           (measure/update-measures! [{:id measure-id :definition (measure-definition-referencing measure-id)}])))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :creator_id (mt/user->id :rasta)
@@ -77,7 +77,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (measure/update-measure! measure-1-id {:definition (measure-definition-referencing measure-2-id)}))))))
+           (measure/update-measures! [{:id measure-1-id :definition (measure-definition-referencing measure-2-id)}]))))))
 
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
@@ -343,8 +343,8 @@
 (deftest update-measures-runs-fixed-statements-test
   (letfn [(archiving [n]
             (let [measures (doall (for [i (range n)]
-                                    (measure/create-measure! {:name (str "archived " i) :creator_id (mt/user->id :rasta)
-                                                              :definition (measure-definition (lib/count))})))
+                                    (first (measure/create-measures! [{:name (str "archived " i) :creator_id (mt/user->id :rasta)
+                                                                       :definition (measure-definition (lib/count))}]))))
                   ids      (mapv :id measures)]
               (try
                 (t2/with-call-count [call-count]
@@ -358,7 +358,7 @@
   (mt/with-temp [:model/Measure {id :id} {:name "Reverted" :creator_id (mt/user->id :rasta)
                                           :definition (measure-definition (lib/count))}]
     (let [snapshot (select-keys (t2/select-one :model/Measure :id id) [:name :description :definition :archived :table_id])]
-      (measure/update-measure! id {:name "Changed"})
+      (measure/update-measures! [{:id id :name "Changed"}])
       (is (= "Changed" (t2/select-one-fn :name :model/Measure :id id)))
       (#'measure/revert-measure! id (mt/user->id :rasta) snapshot)
       (is (= "Reverted" (t2/select-one-fn :name :model/Measure :id id))))))

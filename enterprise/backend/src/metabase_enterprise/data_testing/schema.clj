@@ -231,12 +231,15 @@
   (conj definition [:now {:optional true} [:maybe ::now]]))
 
 (defn- test-create
-  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`."
-  [subject-key subject-id-schema]
-  [:merge
-   [:map {:closed true}
-    [subject-key subject-id-schema]]
-   (with-now definition subject-key ::now)])
+  "What a client sends to create a test: the id of its subject under `subject-key`, of schema `subject-id-schema`, and
+  its `now` of schema `now-schema`."
+  ([subject-key subject-id-schema]
+   (test-create subject-key subject-id-schema ::now))
+  ([subject-key subject-id-schema now-schema]
+   [:merge
+    [:map {:closed true}
+     [subject-key subject-id-schema]]
+    (with-now definition subject-key now-schema)]))
 
 (defn- saved-test
   "A saved test: the id of its subject under `subject-key`, of schema `subject-id-schema`, the subject itself when
@@ -259,15 +262,17 @@
 
 (defn- test-update
   "What a client sends to update a test: any of its fields, with the id of its subject under `subject-key`, of schema
-  `subject-id-schema`. Omitted fields are left unchanged."
-  [subject-key subject-id-schema]
-  (with-now [:map {:closed true}
-             [subject-key   {:optional true} subject-id-schema]
-             [:name         {:optional true} ::lib.schema.common/non-blank-string]
-             [:description  {:optional true} [:maybe :string]]
-             [:inputs       {:optional true} ::inputs]
-             [:expectations {:optional true} ::expectations]]
-    subject-key ::now))
+  `subject-id-schema`, and its `now` of schema `now-schema`. Omitted fields are left unchanged."
+  ([subject-key subject-id-schema]
+   (test-update subject-key subject-id-schema ::now))
+  ([subject-key subject-id-schema now-schema]
+   (with-now [:map {:closed true}
+              [subject-key   {:optional true} subject-id-schema]
+              [:name         {:optional true} ::lib.schema.common/non-blank-string]
+              [:description  {:optional true} [:maybe :string]]
+              [:inputs       {:optional true} ::inputs]
+              [:expectations {:optional true} ::expectations]]
+     subject-key now-schema)))
 
 (mr/def ::transform-test.create
   "What a client sends to create a transform test."
@@ -304,6 +309,96 @@
 (mr/def ::segment-test.update
   "What a client sends to update a segment test. Omitted fields are left unchanged."
   (test-update :segment_id ::lib.schema.id/segment))
+
+(mr/def ::write-opts
+  "The options of the write functions of tests, suites and members: who writes when it matters, and the context of the
+  events."
+  [:maybe
+   [:map {:closed true}
+    [:writer  {:optional true} [:enum :revert]]
+    [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(def ^:private row-now
+  "The `now` of a row a write takes, as an import reads it, before the column transform normalizes it: a moment or its
+  text."
+  [:fn {:error/message "must be a moment or the text of one"}
+   #(or (string? %) (instance? java.time.temporal.TemporalAccessor %))])
+
+(defn- test-create-row
+  "What a write creates a test with: what a client sends, with its `now` as the row gives it, and the creator and
+  entity id of the row."
+  [subject-key subject-id-schema]
+  [:merge
+   (test-create subject-key subject-id-schema row-now)
+   [:map {:closed true}
+    [:creator_id ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
+
+(defn- test-changes
+  "What a write changes in a test: what a client updates, with its `now` as the row gives it, and the creator and
+  entity id of the row."
+  [subject-key subject-id-schema]
+  [:merge
+   (test-update subject-key subject-id-schema row-now)
+   [:map {:closed true}
+    [:creator_id {:optional true} ::lib.schema.id/user]
+    [:entity_id  {:optional true} [:maybe :string]]]])
+
+(defn- test-update-row
+  "One row of an update of tests: the `:id` of a test and the columns to change."
+  [changes-schema]
+  [:merge
+   changes-schema
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::transform-test.create-row
+  "What creating a transform test takes."
+  (test-create-row :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test.changes
+  "The columns an update of a transform test changes."
+  (test-changes :transform_id ::lib.schema.id/transform))
+
+(mr/def ::transform-test.update-row
+  "One row of an update of transform tests: the `:id` of a test and the columns to change."
+  (test-update-row ::transform-test.changes))
+
+(mr/def ::card-test.create-row
+  "What creating a card test takes."
+  (test-create-row :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test.changes
+  "The columns an update of a card test changes."
+  (test-changes :card_id ::lib.schema.id/card))
+
+(mr/def ::card-test.update-row
+  "One row of an update of card tests: the `:id` of a test and the columns to change."
+  (test-update-row ::card-test.changes))
+
+(mr/def ::segment-test.create-row
+  "What creating a segment test takes."
+  (test-create-row :segment_id ::lib.schema.id/segment))
+
+(mr/def ::segment-test.changes
+  "The columns an update of a segment test changes."
+  (test-changes :segment_id ::lib.schema.id/segment))
+
+(mr/def ::segment-test.update-row
+  "One row of an update of segment tests: the `:id` of a test and the columns to change."
+  (test-update-row ::segment-test.changes))
+
+(mr/def ::saved-test.create-row
+  "What creating a saved test of any subject type takes."
+  [:or ::transform-test.create-row ::card-test.create-row ::segment-test.create-row])
+
+(mr/def ::saved-test.update-row
+  "One row of an update of saved tests of any subject type."
+  [:or ::transform-test.update-row ::card-test.update-row ::segment-test.update-row])
+
+(mr/def ::saved-test.changes
+  "The columns an update of a saved test of any subject type changes."
+  [:or ::transform-test.changes ::card-test.changes ::segment-test.changes])
 
 (mr/def ::saved-test
   "A saved test of any subject type."
@@ -402,13 +497,27 @@
    [:test_type      ::test-type]
    [:test_entity_id :string]])
 
-(mr/def ::test-suite.create
-  "What creating a test suite takes: its name, description, creator, and members, in the order the suite runs them."
+(mr/def ::test-suite.row.create
+  "A test suite as it is stored, without its members: its name, description, creator and the entity id of an import."
   [:map {:closed true}
    [:name        ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]
    [:creator_id  ::lib.schema.id/user]
-   [:members     [:sequential ::test-suite-member.create]]])
+   [:entity_id   {:optional true} [:maybe :string]]])
+
+(mr/def ::test-suite.create
+  "What creating a test suite takes: its stored columns, and the members, in the order the suite runs them, when it has
+  any."
+  [:merge
+   ::test-suite.row.create
+   [:map {:closed true}
+    [:members {:optional true} [:sequential ::test-suite-member.create]]]])
+
+(mr/def ::test-suite.row.update
+  "The stored columns an update of a test suite changes."
+  [:map {:closed true}
+   [:name        {:optional true} :string]
+   [:description {:optional true} [:maybe :string]]])
 
 (mr/def ::test-suite.update
   "What an update of a test suite takes. Omitted keys are left unchanged; `:members` replaces every member."
@@ -416,6 +525,36 @@
    [:name        {:optional true} ::lib.schema.common/non-blank-string]
    [:description {:optional true} [:maybe :string]]
    [:members     {:optional true} [:sequential ::test-suite-member.create]]])
+
+(mr/def ::test-suite.update-row
+  "One row of an update of test suites: the `:id` of a suite and the columns to change."
+  [:merge
+   ::test-suite.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::test-suite-member.row.create
+  "A member of a test suite as it is stored: its suite, its test, by type and entity id, and its position."
+  [:map {:closed true}
+   [:suite_id       ms/PositiveInt]
+   [:test_type      ::test-type]
+   [:test_entity_id :string]
+   [:position       :int]])
+
+(mr/def ::test-suite-member.update
+  "The columns an update of a member of a test suite changes."
+  [:map {:closed true}
+   [:suite_id       {:optional true} ms/PositiveInt]
+   [:test_type      {:optional true} [:or ::test-type :keyword]]
+   [:test_entity_id {:optional true} :string]
+   [:position       {:optional true} :int]])
+
+(mr/def ::test-suite-member.update-row
+  "One row of an update of members of test suites: the `:id` of a member and the columns to change."
+  [:merge
+   ::test-suite-member.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::test-suite
   "A saved test suite, without its members."

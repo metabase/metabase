@@ -117,14 +117,14 @@
       (testing "a created job is scheduled"
         (is (= "0 0 0 * * ? *" (trigger-schedule))))
       (testing "a schedule change moves the trigger"
-        (transform-job/update-transform-jobs! {job-id {:schedule "0 0 1 * * ? *"}})
+        (transform-job/update-transform-jobs! [{:id job-id :schedule "0 0 1 * * ? *"}])
         (is (= "0 0 1 * * ? *" (trigger-schedule))))
       (testing "deactivating removes the trigger, and activating restores it"
-        (transform-job/update-transform-jobs! {job-id {:active false}})
+        (transform-job/update-transform-jobs! [{:id job-id :active false}])
         (is (nil? (trigger-schedule)))
-        (transform-job/update-transform-jobs! {job-id {:schedule "0 0 2 * * ? *"}})
+        (transform-job/update-transform-jobs! [{:id job-id :schedule "0 0 2 * * ? *"}])
         (is (nil? (trigger-schedule)))
-        (transform-job/update-transform-jobs! {job-id {:active true}})
+        (transform-job/update-transform-jobs! [{:id job-id :active true}])
         (is (= "0 0 2 * * ? *" (trigger-schedule))))
       (testing "deleting the job removes the trigger"
         (transform-job/delete-transform-jobs! [job-id])
@@ -156,8 +156,8 @@
           (is (= (create! 2) (create! 6))))
         (testing "updating jobs"
           (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (zipmap (take 2 ids) (repeat {:schedule "0 0 1 * * ? *"})))))
-                   (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (zipmap (take 6 (drop 2 ids)) (repeat {:schedule "0 0 1 * * ? *"})))))))))
+            (is (= (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (mapv (fn [id] (assoc {:schedule "0 0 1 * * ? *"} :id id)) (take 2 ids)))))
+                   (events.tu/statement-count! (fn [] (transform-job/update-transform-jobs! (mapv (fn [id] (assoc {:schedule "0 0 1 * * ? *"} :id id)) (take 6 (drop 2 ids))))))))))
         (testing "deleting jobs"
           (let [ids @created]
             (is (= (events.tu/statement-count! (fn [] (transform-job/delete-transform-jobs! (take 2 ids))))

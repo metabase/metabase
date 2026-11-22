@@ -76,7 +76,7 @@
    {:keys [segment_id inputs expectations] :as body} :- ::data-testing.schema/segment-test.create]
   (api/create-check :model/SegmentTest body)
   (validate-test! segment_id inputs expectations)
-  (data-testing.models.segment-test/create-segment-test! (assoc body :creator_id api/*current-user-id*)))
+  (first (data-testing.models.segment-test/create-segment-tests! [(assoc body :creator_id api/*current-user-id*)])))
 
 (api.macros/defendpoint :put "/:id" :- ::data-testing.schema/segment-test
   "Update a segment test. The update is refused when it leaves the test on an archived segment."
@@ -88,7 +88,7 @@
     (api/update-check segment-test body)
     (refusing #(data-testing.models.segment-test/check-edit (merge segment-test body) (vec (keys body))))
     (when (seq body)
-      (data-testing.models.segment-test/update-segment-test! id body)))
+      (data-testing.models.segment-test/update-segment-tests! [(assoc body :id id)])))
   (data-testing.db/segment-test id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
@@ -96,7 +96,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/write-check :model/SegmentTest id)
-  (data-testing.models.segment-test/delete-segment-test! id)
+  (data-testing.models.segment-test/delete-segment-tests-by-id! [id])
   nil)
 
 (api.macros/defendpoint :post "/:id/run" :- ::data-testing.schema/run-result

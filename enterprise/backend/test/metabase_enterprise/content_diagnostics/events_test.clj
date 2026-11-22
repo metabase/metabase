@@ -8,7 +8,11 @@
    [metabase-enterprise.content-diagnostics.db :as cd.db]
    [metabase-enterprise.content-diagnostics.models.finding :as finding]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.models.dashboard :as dashboard]
+   [metabase.documents.models.document :as document]
+   [metabase.queries.models.card :as card]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform :as transform]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -67,24 +71,24 @@
       (testing "card archive invalidates; a non-archive update does not"
         (mt/with-temp [:model/Card card {}]
           (let [f (mk-finding! :card (:id card))]
-            (t2/update! :model/Card :id (:id card) {:name "renamed"})
+            (card/update-cards! [{:id (:id card) :name "renamed"}])
             (is (not (invalidated? f)) "still active after a non-archive update")
-            (t2/update! :model/Card :id (:id card) {:archived true})
+            (card/update-cards! [{:id (:id card) :archived true}])
             (is (invalidated? f) "invalidated once archived"))))
       (testing "dashboard archive invalidates"
         (mt/with-temp [:model/Dashboard {id :id} {}]
           (let [f (mk-finding! :dashboard id)]
-            (t2/update! :model/Dashboard :id id {:archived true})
+            (dashboard/update-dashboards! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "document archive invalidates"
         (mt/with-temp [:model/Document {id :id} {}]
           (let [f (mk-finding! :document id)]
-            (t2/update! :model/Document :id id {:archived true})
+            (document/update-documents! [{:id id :archived true}])
             (is (invalidated? f)))))
       (testing "transform hard delete invalidates"
         (mt/with-temp [:model/Transform {id :id} {}]
           (let [f (mk-finding! :transform id)]
-            (t2/delete! :model/Transform :id id)
+            (transform/delete-transforms! [id])
             (is (invalidated? f))))))))
 
 (deftest collection-archive-invalidates-subtree-test
@@ -118,12 +122,12 @@
                                                                              (fn [where] (swap! updates inc) (f where)))]
                 (collection/update-collections! [{:id coll-id :archived true}]))
               (is (every? invalidated? findings))
-              (is (= 1 @updates)))))))))
+              (is (= 2 @updates) "one statement for the collection event and one for the cards it carries"))))))))
 
 (deftest archive-is-noop-without-feature-test
   (mt/with-premium-features #{}
     (mt/with-model-cleanup [:model/ContentDiagnosticsFinding]
       (mt/with-temp [:model/Dashboard {id :id} {}]
         (let [f (mk-finding! :dashboard id)]
-          (t2/update! :model/Dashboard :id id {:archived true})
+          (dashboard/update-dashboards! [{:id id :archived true}])
           (is (not (invalidated? f)) "no invalidation when :content-diagnostics is not enabled"))))))

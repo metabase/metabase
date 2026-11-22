@@ -20,10 +20,10 @@
   [{:keys [name description definition], :as body}]
   (let [definition (lib-be/normalize-query definition)]
     (api/create-check :model/Segment (assoc body :definition definition))
-    (-> (segment/create-segment! {:creator_id  api/*current-user-id*
-                                  :name        name
-                                  :description description
-                                  :definition  definition})
+    (-> (first (segment/create-segments! [{:creator_id  api/*current-user-id*
+                                           :name        name
+                                           :description description
+                                           :definition  definition}]))
         (t2/hydrate :creator))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -77,10 +77,9 @@
                      new-body)]
     (api/update-check existing new-body)
     (when changes
-      (segment/update-segment! id
-                               (cond-> changes
-                                 (:definition changes) (update :definition lib-be/normalize-query))
-                               {:revision-message revision_message}))
+      (segment/update-segments! [(cond-> (assoc changes :id id)
+                                   (:definition changes) (update :definition lib-be/normalize-query))]
+                                {:context {:revision-message revision_message}}))
     (hydrated-segment id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

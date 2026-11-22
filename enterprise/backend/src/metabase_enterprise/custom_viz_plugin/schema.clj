@@ -47,6 +47,13 @@
    [:metabase_version {:optional true} [:maybe :string]]
    [:dev_bundle_url   {:optional true} [:maybe :string]]])
 
+(mr/def ::custom-viz-plugin.update-row
+  "One row of an update of CustomVizPlugins: the `:id` of a plugin and the columns to change."
+  [:merge
+   ::custom-viz-plugin.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::custom-viz-plugin.create
   "What creating a CustomVizPlugin takes: its identifier and the columns its bundle or dev server gives it."
   [:map {:closed true}

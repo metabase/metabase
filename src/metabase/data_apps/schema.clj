@@ -140,6 +140,45 @@
     [:name        ::name]
     [:bundle_path ::bundle-path]]])
 
+(mr/def ::data-app.row.update
+  "The columns a write changes in a DataApp, as a caller gives them, before the hooks of the model normalize and
+  validate them."
+  [:map {:closed true}
+   [:entity_id              {:optional true} [:maybe :string]]
+   [:slug                   {:optional true} :string]
+   [:name                   {:optional true} :string]
+   [:allowed_hosts          {:optional true} [:maybe [:sequential :string]]]
+   [:bundle_path            {:optional true} :string]
+   [:bundle                 {:optional true} [:maybe [:or bytes? :string]]]
+   [:enabled                {:optional true} [:maybe :boolean]]
+   [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
+   [:description            {:optional true} [:maybe :string]]
+   [:version                {:optional true} [:maybe :int]]
+   [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
+
+(mr/def ::data-app.row.create
+  "What a write creates a DataApp with, as a caller gives it, before the hooks of the model normalize and validate it."
+  [:merge
+   ::data-app.row.update
+   [:map
+    [:slug        :string]
+    [:name        :string]
+    [:bundle_path :string]]])
+
+(mr/def ::data-app.update-row
+  "One row of an update of DataApps: the `:id` of a DataApp and the columns to change."
+  [:merge
+   ::data-app.row.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
+(mr/def ::write-opts
+  "The options of the update of DataApps: who writes when it matters."
+  [:maybe
+   [:map {:closed true}
+    [:writer {:optional true} [:enum :import]]]])
+
 (mr/def ::query-stage-spec
   "A stage of a Lib test query spec with only what a data app's question may hold, as the card hooks check it: a table
   source, and no joins or custom expressions."

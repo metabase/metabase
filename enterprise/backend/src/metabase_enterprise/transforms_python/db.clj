@@ -48,13 +48,13 @@
 
 (mu/defn insert-python-libraries!
   "Insert the PythonLibrary `rows` and return the inserted instances."
-  [rows :- [:sequential {:min 1} :map]]
+  [rows :- [:sequential {:min 1} ::transforms-python.schema/python-library.create]]
   (t2/insert-returning-instances! :model/PythonLibrary rows))
 
 (mu/defn update-python-libraries!
   "Apply `changes` to the PythonLibraries with `library-ids`."
   [library-ids :- [:sequential {:min 1} ms/PositiveInt]
-   changes     :- :map]
+   changes     :- ::transforms-python.schema/python-library.update]
   (t2/update! :model/PythonLibrary :id [:in [:auto/param library-ids]] changes)
   nil)
 

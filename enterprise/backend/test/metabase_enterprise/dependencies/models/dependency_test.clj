@@ -209,7 +209,7 @@
             (mt/with-temp [:model/Transform transform]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :transform :entity_id (:id transform))))
               (computed! :transform (:id transform))
-              (transform.model/update-transforms! {(:id transform) {:source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}})
+              (transform.model/update-transforms! [{:id (:id transform) :source {:type :query :query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :products)))}}])
               (is (pending? :transform (:id transform)))))
           (testing "snippets"
             (mt/with-temp [:model/NativeQuerySnippet snippet]

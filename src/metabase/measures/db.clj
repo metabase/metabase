@@ -68,7 +68,7 @@
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
-   dimensions         :- [:maybe sequential?]
+   dimensions         :- [:maybe [:sequential ::measures.schema/measure.dimension]]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
   (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
 
