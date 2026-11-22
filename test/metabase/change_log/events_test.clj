@@ -106,7 +106,7 @@
                          :model/Card  card  {}]
             (let [insert! #(let [row (t2/insert-returning-instance! [:model/PulseCard :include_csv]
                                                                     {:pulse_id (:id pulse), :card_id (:id card), :position 0})]
-                             (events/publish-lifecycle! [(events/created :event/pulse-card-create [row])]))]
+                             (events/publish-event! :event/pulse-card-create (events/create-event [row])))]
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"row key missing" (insert!)))
               (testing "and in production it still inserts, and warns instead of logging"
                 (with-redefs [config/is-prod? true]
@@ -493,10 +493,10 @@
                      :model/Field             fk      {:table_id (:id other-t)}]
         (t2/update! :metabase_field :id (:id fk) {:fk_target_field_id (:id f)})
         (testing "a delete logs the rows ON DELETE CASCADE deletes, at any depth, and those ON DELETE SET NULL updates"
-          (let [logged (set (logged-by #(let [event (events/deleted :event/database-delete :model/Database
-                                                                    [(t2/select-one :model/Database :id (:id db))])]
-                                          (t2/delete! :model/Database :id (:id db))
-                                          (events/publish-lifecycle! [event]))))]
+          (let [logged (set (logged-by #(do (events/publish-event! :event/database-delete
+                                                                   (events/delete-event
+                                                                    [(t2/select-one :model/Database :id (:id db))]))
+                                            (t2/delete! :model/Database :id (:id db)))))]
             (is (contains? logged ["metabase_database" (:id db) "delete"]))
             (is (contains? logged ["metabase_table" (:id t) "delete"]))
             (is (contains? logged ["metabase_field" (:id f) "delete"]))

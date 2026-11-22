@@ -7,6 +7,7 @@
    [metabase.search.core :as search]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
+   [metabase.util.events :as u.events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -85,9 +86,7 @@
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."
   [deleted]
   (let [instances  (mapv #(t2/instance (:model %) (:previous-object %)) deleted)
-        dependents (if (some :captures deleted)
-                     (apply merge-with into (keep #(get-in % [:captures :search]) deleted))
-                     (apply merge-with into (keep capture-dependents (vals (group-by :model deleted)))))
+        dependents (apply merge-with into (keep capture-dependents (vals (group-by :model deleted))))
         steps      (cond-> []
                      (search/feeds-documents? instances)
                      (conj (fn [] (search/bulk-update! instances)))
@@ -122,10 +121,9 @@
       (when (seq deleted)
         (handle-deleted! deleted)))))
 
-(events/register-capture! :search capture-dependents)
 (events/derive! :metabase/lifecycle-event ::search)
 
 (methodical/defmethod events/publish-event! ::search
   [topic event]
-  (when-let [events (not-empty (filterv wanted? (events/row-events topic event)))]
+  (when-let [events (not-empty (filterv wanted? (u.events/row-events topic event)))]
     (handle! events events)))

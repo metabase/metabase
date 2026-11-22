@@ -63,7 +63,7 @@
 
 (methodical/defmethod events/publish-event! ::revisions
   [topic event]
-  (when-let [infos (not-empty (into [] (comp (filter recorded?) (map revision-info)) (events/row-events topic event)))]
+  (when-let [infos (not-empty (into [] (comp (filter recorded?) (map revision-info)) (u.events/row-events topic event)))]
     (let [rows (revision-rows infos)]
       (when (and (seq rows)
                  (try

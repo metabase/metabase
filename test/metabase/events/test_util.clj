@@ -3,15 +3,7 @@
   (:require
    [metabase.events.core :as events]
    [metabase.events.impl :as events.impl]
-   [metabase.events.publish :as events.publish]
    [toucan2.core]))
-
-(defn unregister!
-  "Remove the capture and statement capture registered under `consumer-key`."
-  [consumer-key]
-  (doseq [registry [#'events.publish/capturers #'events.publish/statement-capturers]]
-    (swap! @registry dissoc consumer-key))
-  nil)
 
 (defn do-without-delivery!
   "Call `thunk` with the events of its writes not delivered, so that a count of its statements leaves out the

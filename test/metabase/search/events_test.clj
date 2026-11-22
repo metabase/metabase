@@ -71,25 +71,22 @@
   [model topic id changes]
   (let [previous (t2/select-one model :id id)]
     (t2/update! model :id id changes)
-    (events/publish-lifecycle! [(events/updated topic [previous] [(events/updated-row previous changes)])])))
+    (events/publish-event! topic (events/update-event {id previous} [(assoc changes :id id)]))))
 
 (defn- delete-reviews-by-hand!
   "Deletes the ModerationReviews with `ids` with one plain statement, publishing their delete event as a write function
   does."
   [ids]
-  (let [rows  (t2/select :model/ModerationReview :id [:in ids])
-        event (events/deleted :event/moderation-review-delete :model/ModerationReview rows)]
-    (t2/delete! :model/ModerationReview :id [:in ids])
-    (events/publish-lifecycle! [event])))
+  (events/publish-event! :event/moderation-review-delete
+                         (events/delete-event (t2/select :model/ModerationReview :id [:in ids])))
+  (t2/delete! :model/ModerationReview :id [:in ids]))
 
 (defn- delete-cards-by-hand!
   "Deletes the Cards with `ids` with one plain statement, publishing their delete event as a write function does, so that
   the rows the database cascades to are left for the search capture."
   [ids]
-  (let [rows  (t2/select :model/Card :id [:in ids])
-        event (events/deleted :event/card-delete :model/Card rows)]
-    (t2/delete! :model/Card :id [:in ids])
-    (events/publish-lifecycle! [event])))
+  (events/publish-event! :event/card-delete (events/delete-event (t2/select :model/Card :id [:in ids])))
+  (t2/delete! :model/Card :id [:in ids]))
 
 ;;; Capture wiring
 

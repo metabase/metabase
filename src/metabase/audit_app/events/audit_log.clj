@@ -6,6 +6,7 @@
    [metabase.audit-app.spec :as audit.spec]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
+   [metabase.util.events :as u.events]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -249,7 +250,7 @@
 
 (methodical/defmethod events/publish-event! ::lifecycle
   [topic event]
-  (when-let [events (not-empty (filterv (fn [{:keys [model]}] (audit.spec/spec model)) (events/row-events topic event)))]
+  (when-let [events (not-empty (filterv (fn [{:keys [model]}] (audit.spec/spec model)) (u.events/row-events topic event)))]
     (record-lifecycle-events! events)))
 
 (def ^:private object-columns

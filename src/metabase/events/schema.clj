@@ -155,13 +155,10 @@
 
 (mr/def ::lifecycle.change
   "The change of one row in a lifecycle event: the row after the write as `:object`, absent for a delete, the row
-  before it as `:previous-object`, absent for a create, the columns an update set as `:changed`, and, for a delete,
-  what the captures of its DELETE statement read before it ran as `:captures`, by consumer key."
+  before it as `:previous-object`, absent for a create."
   [:map {:closed true}
    [:object {:optional true} [:map]]
-   [:previous-object {:optional true} [:map]]
-   [:changed {:optional true} [:set :keyword]]
-   [:captures {:optional true} [:map-of :keyword [:or :map [:fn coll?]]]]])
+   [:previous-object {:optional true} [:map]]])
 
 (mr/def ::context
   "What the writes of one action say of themselves: `:revision-message`, the message of the Revisions they make;

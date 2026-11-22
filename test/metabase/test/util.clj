@@ -656,9 +656,8 @@
   [model id topic]
   (let [pk (first (t2/primary-keys model))]
     (when-let [row (t2/select-one model pk id)]
-      (let [event (events/deleted topic model [row])]
-        (t2/delete! model pk id)
-        (events/publish-lifecycle! [event])))))
+      (events/publish-event! topic (events/delete-event [row]))
+      (t2/delete! model pk id))))
 
 (methodical/add-aux-method-with-unique-key!
  #'t2.with-temp/do-with-temp* :around :default
@@ -666,7 +665,7 @@
    (if-let [{:keys [create delete]} (get with-temp-lifecycle-topics (t2/resolve-model model))]
      (next-method model explicit-attributes
                   (fn [temp-object]
-                    (events/publish-lifecycle! [(events/created create [temp-object])])
+                    (events/publish-event! create (events/create-event [temp-object]))
                     (try
                       (f temp-object)
                       (finally

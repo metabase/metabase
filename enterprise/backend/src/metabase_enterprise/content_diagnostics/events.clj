@@ -56,5 +56,5 @@
 
 (methodical/defmethod events/publish-event! ::invalidate
   [topic event]
-  (when-let [events (not-empty (filterv invalidates? (events/row-events topic event)))]
+  (when-let [events (not-empty (filterv invalidates? (u.events/row-events topic event)))]
     (invalidate! events)))

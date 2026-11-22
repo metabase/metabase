@@ -359,7 +359,7 @@
 
 (methodical/defmethod events/publish-event! ::dependencies
   [topic event]
-  (when-let [events (not-empty (filterv jobs-read? (events/row-events topic event)))]
+  (when-let [events (not-empty (filterv jobs-read? (u.events/row-events topic event)))]
     (mark-events! events)))
 
 (events/derive! ::transform-run :metabase/event)

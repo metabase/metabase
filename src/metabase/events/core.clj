@@ -17,20 +17,10 @@
   isa?
   underive!]
  [metabase.events.publish
-  Events
   create-event
-  created
-  delete-changes
   delete-event
-  deleted
-  publish-lifecycle!
-  register-capture!
-  register-statement-capture!
-  row-events
   touch-event
-  update-event
-  updated
-  updated-row]
+  update-event]
  [metabase.events.impl
   Topic
   event-schema

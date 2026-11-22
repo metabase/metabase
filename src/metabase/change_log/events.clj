@@ -8,7 +8,8 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.events :as u.events]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -37,20 +38,18 @@
   [events _all]
   (when (premium-features/enable-change-log?)
     (let [deleted  (filter #(= :delete (:operation %)) events)
-          cascaded (when (and (seq deleted) (not-any? :captures deleted))
+          cascaded (when (seq deleted)
                      (mapcat (fn [[model group]]
                                (capture-cascade model (fn [columns]
-                                                        (mapv #(select-keys (:previous-object %) (cons :id columns)) group))))
+                                                        (mapv #(select-keys (:previous-object %)
+                                                                            (into (vec (t2/primary-keys model)) columns))
+                                                              group))))
                              (group-by :model deleted)))]
-      (change-log.log/log! (concat (mapcat (fn [event]
-                                             (concat (own-changes event) (get-in event [:captures :change-log])))
-                                           events)
-                                   cascaded)))))
+      (change-log.log/log! (concat (mapcat own-changes events) cascaded)))))
 
-(events/register-statement-capture! :change-log capture-cascade)
 (events/derive! :metabase/lifecycle-event ::change-log)
 
 (methodical/defmethod events/publish-event! ::change-log
   [topic event]
-  (when-let [events (not-empty (filterv (constantly true) (events/row-events topic event)))]
+  (when-let [events (not-empty (filterv (constantly true) (u.events/row-events topic event)))]
     (log-events! events events)))
