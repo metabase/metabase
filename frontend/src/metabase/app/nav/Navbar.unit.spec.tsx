@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import {
   createMockAppState,
+  createMockDashboardState,
   createMockEmbedOptions,
   createMockEmbedState,
   createMockState,
@@ -19,6 +20,7 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
@@ -27,12 +29,13 @@ import {
   OPEN_NAVBAR,
   isNavbarOpenForPathname,
 } from "metabase/redux/app";
-import type { State } from "metabase/redux/store";
+import type { DashboardState, State } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
-import type { User } from "metabase-types/api";
+import type { Collection, User } from "metabase-types/api";
 import {
   createMockCollection,
+  createMockDashboard,
   createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -45,6 +48,9 @@ type SetupOpts = {
   pathname?: string;
   user?: User | null;
   embedOptions?: Record<string, string | boolean>;
+  collections?: Collection[];
+  trashCollection?: Collection;
+  dashboardState?: DashboardState;
 };
 
 async function setup({
@@ -53,8 +59,11 @@ async function setup({
   route = pathname,
   user = createMockUser(),
   embedOptions = {},
+  collections = [],
+  trashCollection,
+  dashboardState,
 }: SetupOpts = {}) {
-  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionsEndpoints({ collections, trashCollection });
   setupDatabasesEndpoints([createMockDatabase()]);
   setupSearchEndpoints([]);
   setupCollectionItemsEndpoint({
@@ -77,6 +86,7 @@ async function setup({
       options: createMockEmbedOptions(embedOptions),
     }),
     currentUser: user,
+    ...(dashboardState ? { dashboard: dashboardState } : {}),
   });
 
   const { store } = renderWithProviders(
@@ -190,6 +200,72 @@ describe("nav > containers > Navbar > Core App", () => {
     });
     dispatchLocationChange({ store, pathname: "/collection/6" });
     await expectNavbarClosed();
+  });
+
+  describe("trash highlight on a dashboard", () => {
+    const DASHBOARD_ID = 42;
+    const dashboardCollection = createMockCollection({
+      id: 2,
+      name: "Dashboard collection",
+    });
+    const trashCollection = createMockCollection({
+      id: 20000000,
+      name: "Trash",
+      type: "trash",
+    });
+
+    async function setupDashboardPage({ archived }: { archived: boolean }) {
+      const dashboard = createMockDashboard({
+        id: DASHBOARD_ID,
+        collection_id: Number(dashboardCollection.id),
+        archived,
+      });
+      const store = await setup({
+        route: "/dashboard/:slug",
+        pathname: `/dashboard/${DASHBOARD_ID}`,
+        collections: [dashboardCollection],
+        trashCollection,
+        dashboardState: createMockDashboardState({
+          dashboardId: DASHBOARD_ID,
+          dashboards: {
+            [DASHBOARD_ID]: { ...dashboard, dashcards: [] },
+          },
+        }),
+      });
+      // The navbar collapses on dashboard routes, so open it to see the tree.
+      act(() => {
+        store.dispatch({ type: OPEN_NAVBAR });
+      });
+      return store;
+    }
+
+    const getTrashItem = () => screen.getByRole("treeitem", { name: /Trash/ });
+    const getDashboardCollectionItem = () =>
+      screen.getByRole("treeitem", { name: /Dashboard collection/ });
+
+    it("should highlight the dashboard's collection when the dashboard in the store is not archived", async () => {
+      await setupDashboardPage({ archived: false });
+
+      await waitFor(() => {
+        expect(getDashboardCollectionItem()).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+      });
+      expect(getTrashItem()).toHaveAttribute("aria-selected", "false");
+    });
+
+    it("should highlight the trash when the dashboard in the store is archived", async () => {
+      await setupDashboardPage({ archived: true });
+
+      await waitFor(() => {
+        expect(getTrashItem()).toHaveAttribute("aria-selected", "true");
+      });
+      expect(getDashboardCollectionItem()).toHaveAttribute(
+        "aria-selected",
+        "false",
+      );
+    });
   });
 
   describe("embedded", () => {

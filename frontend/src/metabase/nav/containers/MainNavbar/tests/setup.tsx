@@ -30,6 +30,7 @@ import * as iframeUtils from "metabase/utils/iframe";
 import type {
   Bookmark,
   Card,
+  Collection,
   Dashboard,
   DashboardId,
   ModelResult,
@@ -73,6 +74,8 @@ export type SetupOpts = {
   hasEmbeddingFeature?: boolean;
   applicationName?: string;
   activeUsersCount?: number;
+  trashCollection?: Collection;
+  extraCollections?: Collection[];
 };
 
 export const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -114,6 +117,8 @@ export async function setup({
   hasWhitelabelToken,
   hasEmbeddingFeature,
   applicationName = "Metabase",
+  trashCollection,
+  extraCollections = [],
 }: SetupOpts = {}) {
   if (isEmbeddingIframe) {
     jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
@@ -163,10 +168,16 @@ export async function setup({
   setupCollectionsEndpoints({
     collections,
     rootCollection: OUR_ANALYTICS,
+    trashCollection,
     currentUserId: user?.id,
   });
   setupCollectionByIdEndpoint({
-    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION, NESTED_COLLECTION],
+    collections: [
+      PERSONAL_COLLECTION_BASE,
+      TEST_COLLECTION,
+      NESTED_COLLECTION,
+      ...extraCollections,
+    ],
   });
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints(models);
