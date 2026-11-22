@@ -38,6 +38,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -260,7 +261,12 @@
   (run! #(collection/check-collection-for :model/Document %)
         (into #{} (map (fn [{:keys [collection_id archived]}] {:collection_id collection_id :archived (boolean archived)})) rows)))
 
-(mu/defn create-documents! :- [:sequential :map]
+(mr/def ::write-opts
+  "The options of a write function of Documents: the context of its events."
+  [:maybe [:map {:closed true}
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(mu/defn create-documents! :- [:sequential (ms/InstanceOf :model/Document)]
   "Insert the Document `rows` and return the inserted instances in the order of the rows, publishing their create event.
   Each Collection must be able to hold a Document."
   [rows :- [:sequential ::documents.schema/document.create]]
@@ -311,14 +317,14 @@
     (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids)
                                 {:context (or context {:archived-with [:model/Document (first ids)]})})))
 
-(mu/defn update-documents! :- [:sequential ::documents.schema/document.update-row]
+(mu/defn update-documents! :- [:sequential ::documents.schema/document.update]
   "Apply the columns of each of `rows` to the Document with its `:id`, and return `rows`, publishing their update event
   with the `:context` of `opts`. A Document moved to another Collection moves its cards along and the new Collection must be able to
   hold it, and a change of `archived` gives its `archived_directly`. The rows with the same columns are one statement."
-  ([rows :- [:sequential ::documents.schema/document.update-row]]
+  ([rows :- [:sequential ::documents.schema/document.update]]
    (update-documents! rows nil))
-  ([rows :- [:sequential ::documents.schema/document.update-row]
-    opts :- ::documents.schema/write-opts]
+  ([rows :- [:sequential ::documents.schema/document.update]
+    opts :- ::write-opts]
    (let [stored (m/index-by :id (documents.db/documents (mapv :id rows)))
          rows   (filterv #(contains? stored (:id %)) rows)]
      (if (empty? rows)
@@ -344,7 +350,7 @@
            (doseq [[changes group] (group-by #(dissoc % :id) rows)]
              (documents.db/update-documents! (mapv :id group) changes))
            (set-cards-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
-           (events/publish-event! :event/document-update (events/update-event stored rows (select-keys opts [:context])))
+           (events/publish-event! :event/document-update (events/update-event stored rows opts))
            rows))))))
 
 (mu/defn delete-documents! :- :nil
@@ -657,18 +663,18 @@
       (when previous
         (events/publish-event! :event/document-update
                                (events/update-event {id previous} [(assoc snapshot :id id)]
-                                                    {:context (events/context {:writer :revert})})))
+                                                    {:writer :revert})))
       updated)))
 
 (defmethod collection/archive-in-collections! :model/Document
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-documents! (mapv (fn [id] {:id id :archived true}) ids) {:context context})))
+    (update-documents! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Document
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-documents! (mapv (fn [id] {:id id :archived false}) ids) {:context context})))
+    (update-documents! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 ;;; ---------- Specs ---------------------------------------------------------------------------------------------
 

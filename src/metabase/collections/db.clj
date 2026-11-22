@@ -262,14 +262,14 @@
   [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])
 
 (mu/defn insert-collections!
-  "Insert the Collection `rows`, which have the same columns, with one statement and return the new instances."
-  [rows :- [:sequential (mut/select-keys ::collections.schema/collection.update collection-write-keys)]]
-  (t2/insert-returning-instances! :model/Collection rows))
+  "Insert the Collection `rows`, with one statement for each set of columns they have, and return the new instances, in the order of `rows`."
+  [rows :- [:sequential (mut/select-keys ::collections.schema/collection collection-write-keys)]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Collection %) rows))
 
 (mu/defn update-collections!
   "Apply `changes` to the Collections with `collection-ids`, returning the number updated."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
-   changes        :- (mut/select-keys ::collections.schema/collection.update collection-write-keys)]
+   changes        :- (mut/select-keys ::collections.schema/collection collection-write-keys)]
   (t2/update! :model/Collection :id [:in collection-ids] changes))
 
 (mu/defn delete-collections!

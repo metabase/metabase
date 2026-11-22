@@ -60,5 +60,5 @@
 
 (deftest ^:parallel ordering-type-schema-test
   (testing "BookmarkOrdering type is bookmarkable model"
-    (is (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "dashboard"}))
-    (is (not (mr/validate ::bookmarks.schema/bookmark-ordering.update {:type "table"})))))
+    (is (mr/validate ::bookmarks.schema/bookmark-ordering {:id 1 :type "dashboard"}))
+    (is (not (mr/validate ::bookmarks.schema/bookmark-ordering {:id 1 :type "table"})))))

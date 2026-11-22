@@ -83,32 +83,40 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-glossary-entry! :- ::glossary.schema/glossary
-  "Insert the glossary entry `row` and return it."
-  [row :- ::glossary.schema/glossary.create]
-  (t2/with-transaction [_conn]
-    (u/prog1 (glossary.db/insert-glossary-entry! row)
-      (events/publish-event! :event/glossary-create (events/create-event [<>])))))
+(mu/defn create-glossaries! :- [:sequential (ms/InstanceOf :model/Glossary)]
+  "Insert the Glossary `rows` and return the inserted instances, in the order of `rows`, publishing their create
+  event."
+  [rows :- [:sequential ::glossary.schema/glossary.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (u/prog1 (glossary.db/insert-glossaries! rows)
+        (events/publish-event! :event/glossary-create (events/create-event <>))))))
 
-(mu/defn update-glossary-entry! :- [:maybe ::glossary.schema/glossary]
-  "Apply `changes` to the glossary entry with `id` and return the updated entry, or nil when no entry has `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::glossary.schema/glossary.update]
-  (t2/with-transaction [_conn]
-    (when-let [previous (glossary.db/glossary-entry id)]
-      (glossary.db/update-glossary-entry! id changes)
-      (u/prog1 (glossary.db/glossary-entry id)
+(mu/defn update-glossaries! :- [:sequential ::glossary.schema/glossary.update]
+  "Apply the columns of each of `rows` to the Glossary entry with its `:id`, with one statement for each set of changes,
+  publishing their update event, and return those of `rows` whose entry exists."
+  [rows :- [:sequential ::glossary.schema/glossary.update]]
+  (let [stored (glossary.db/glossaries-by-id (mapv :id rows))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (if (empty? rows)
+      rows
+      (t2/with-transaction [_conn]
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (glossary.db/update-glossaries! (mapv :id group) changes))
         (events/publish-event! :event/glossary-update
-                               (events/update-event {id previous} [(assoc changes :id id)] {:objects {id <>}}))))))
+                               (events/update-event stored rows {:objects (glossary.db/glossaries-by-id (mapv :id rows))}))
+        rows))))
 
-(mu/defn delete-glossary-entry! :- [:maybe ::glossary.schema/glossary]
-  "Delete the glossary entry with `id`, returning the deleted entry, or nil when no entry has `id`."
-  [id :- ms/PositiveInt]
-  (t2/with-transaction [_conn]
-    (when-let [entry (glossary.db/glossary-entry id)]
-      (events/publish-event! :event/glossary-delete (events/delete-event [entry]))
-      (glossary.db/delete-glossary-entry! id)
-      entry)))
+(mu/defn delete-glossaries! :- :nil
+  "Delete the Glossary entries with `ids`, publishing their delete event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (let [stored (vals (glossary.db/glossaries-by-id ids))]
+    (when (seq stored)
+      (t2/with-transaction [_conn]
+        (events/publish-event! :event/glossary-delete (events/delete-event (vec stored)))
+        (glossary.db/delete-glossaries! (mapv :id stored)))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

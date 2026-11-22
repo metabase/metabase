@@ -1028,19 +1028,19 @@
   (pulse.db/shift-pulse-positions! collection-id positions direction))
 
 (defmethod collection/archive-in-collections! :model/Pulse
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-pulses! ids {:archived true} {:context context})))
+    (update-pulses! ids {:archived true} opts)))
 
 (defmethod collection/restore-in-collections! :model/Pulse
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-pulses! ids {:archived false} {:context context})))
+    (update-pulses! ids {:archived false} opts)))
 
 (defmethod collection/delete-in-collections! :model/Pulse
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
-    (delete-pulses! ids {:context context})))
+    (delete-pulses! ids opts)))
 
 (defmethod channel.models/delete-for-channels! :model/PulseChannel
   [_model channel-ids opts]

@@ -237,34 +237,41 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-comment! :- (ms/InstanceOf :model/Comment)
-  "Insert the Comment `row` and return the inserted instance, publishing its create event."
-  [row :- ::comments.schema/comment.create]
-  (t2/with-transaction [_conn]
-    (u/prog1 (comments.db/insert-comment! row)
-      (events/publish-event! :event/comment-create (events/create-event [<>])))))
+(mu/defn create-comments! :- [:sequential (ms/InstanceOf :model/Comment)]
+  "Insert the Comment `rows` and return the inserted instances, in the order of `rows`, publishing their create event."
+  [rows :- [:sequential ::comments.schema/comment.create]]
+  (if (empty? rows)
+    []
+    (t2/with-transaction [_conn]
+      (u/prog1 (comments.db/insert-comments! rows)
+        (events/publish-event! :event/comment-create (events/create-event <>))))))
 
-(mu/defn update-comment! :- :int
-  "Apply `changes` to the Comment with `id`, returning the number updated, publishing its update event."
-  [id      :- ms/PositiveInt
-   changes :- ::comments.schema/comment.update]
-  (t2/with-transaction [_conn]
-    (let [previous (comments.db/comment-by-id id)]
-      (u/prog1 (comments.db/update-comment! id changes)
-        (when previous
-          (events/publish-event! :event/comment-update
-                                 (events/update-event {id previous} [(assoc changes :id id)])))))))
+(mu/defn update-comments! :- [:sequential ::comments.schema/comment.update]
+  "Apply the columns of each of `rows` to the Comment with its `:id`, with one statement for each set of changes,
+  publishing their update event, and return those of `rows` whose Comment exists."
+  [rows :- [:sequential ::comments.schema/comment.update]]
+  (let [stored (comments.db/comments-by-id (mapv :id rows))
+        rows   (filterv #(contains? stored (:id %)) rows)]
+    (if (empty? rows)
+      rows
+      (t2/with-transaction [_conn]
+        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+          (comments.db/update-comments! (mapv :id group) changes))
+        (events/publish-event! :event/comment-update (events/update-event stored rows))
+        rows))))
 
-(mu/defn soft-delete-comment! :- :int
-  "Mark the Comment with `id` deleted now, returning the number updated, publishing its update event."
-  [id :- ms/PositiveInt]
-  (t2/with-transaction [_conn]
-    (let [previous (comments.db/comment-by-id id)]
-      (u/prog1 (comments.db/soft-delete-comment! id)
-        (when previous
-          (events/publish-event! :event/comment-update
-                                 (events/update-event {id previous} [{:id id}]
-                                                      {:objects {id (comments.db/comment-by-id id)}})))))))
+(mu/defn soft-delete-comments! :- :nil
+  "Mark the Comments with `ids` deleted now, publishing their update event."
+  [ids :- [:sequential ms/PositiveInt]]
+  (let [stored (comments.db/comments-by-id ids)]
+    (when (seq stored)
+      (t2/with-transaction [_conn]
+        (comments.db/soft-delete-comments! (vec (keys stored)))
+        (events/publish-event! :event/comment-update
+                               (events/update-event stored
+                                                    (mapv (fn [id] {:id id}) (keys stored))
+                                                    {:objects (comments.db/comments-by-id (vec (keys stored)))})))))
+  nil)
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

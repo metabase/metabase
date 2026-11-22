@@ -63,17 +63,17 @@
         (is (= "cake" (t2/select-one-fn :icon :model/TimelineEvent :id id)))
         (t2/delete! :model/TimelineEvent :id id)))
     (testing "the event schema refuses an icon outside the allowed set"
-      (is (mr/validate ::timeline.schema/timeline-event.update {:icon "cake"}))
-      (is (not (mr/validate ::timeline.schema/timeline-event.update {:icon "nope"})))
-      (is (not (mr/validate ::timeline.schema/timeline-event.update {:icon nil}))))))
+      (is (mr/validate ::timeline.schema/timeline-event.update {:id 1 :icon "cake"}))
+      (is (not (mr/validate ::timeline.schema/timeline-event.update {:id 1 :icon "nope"})))
+      (is (not (mr/validate ::timeline.schema/timeline-event.update {:id 1 :icon nil}))))))
 
 (deftest column-rules-test
   (mt/with-temp [:model/Timeline      {timeline-id :id} {}
                  :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
     (testing "the event schema refuses a blank name, a non-boolean time_matters and a nil timestamp"
-      (is (not (mr/validate ::timeline.schema/timeline-event.update {:name " "})))
-      (is (not (mr/validate ::timeline.schema/timeline-event.update {:time_matters nil})))
-      (is (not (mr/validate ::timeline.schema/timeline-event.update {:timestamp nil}))))
+      (is (not (mr/validate ::timeline.schema/timeline-event.update {:id 1 :name " "})))
+      (is (not (mr/validate ::timeline.schema/timeline-event.update {:id 1 :time_matters nil})))
+      (is (not (mr/validate ::timeline.schema/timeline-event.update {:id 1 :timestamp nil}))))
     (testing "a timezone the request check would refuse is stored, as an import of an old event carries it"
       (mt/with-temp [:model/TimelineEvent {odd-id :id} (event-row timeline-id {:timezone "Nowhere/Land"})]
         (is (= "Nowhere/Land" (t2/select-one-fn :timezone :model/TimelineEvent :id odd-id)))
@@ -128,3 +128,15 @@
                      (event-row timeline-id {:name (str "event " i)})))
                   (call-count)))))]
     (is (= (creating 2) (creating 6)))))
+
+(deftest create-timeline-events-with-different-columns-test
+  (mt/with-temp [:model/Timeline {timeline-id :id} {}]
+    (mt/with-model-cleanup [:model/TimelineEvent]
+      (let [creator-id (mt/user->id :rasta)
+            timestamp  (java.time.OffsetDateTime/now)
+            events     (timeline-event/create-timeline-events! [{:timeline_id timeline-id :name "Plain" :timestamp timestamp
+                                                                 :creator_id creator-id :time_matters false :timezone "UTC"}
+                                                                {:timeline_id timeline-id :name "Archived" :timestamp timestamp
+                                                                 :creator_id creator-id :time_matters false :timezone "UTC" :archived true}])]
+        (is (= ["Plain" "Archived"] (map :name events)))
+        (is (= [false true] (map #(t2/select-one-fn :archived :model/TimelineEvent :id (:id %)) events)))))))

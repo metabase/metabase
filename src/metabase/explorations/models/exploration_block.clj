@@ -18,6 +18,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -106,10 +107,10 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-blocks!
-  "Insert one ExplorationBlock map or a sequence of them."
-  [blocks :- [:or ::explorations.schema/exploration-block.create [:sequential ::explorations.schema/exploration-block.create]]]
-  (explorations.db/insert-blocks! blocks))
+(mu/defn create-blocks! :- [:sequential (ms/InstanceOf :model/ExplorationBlock)]
+  "Insert the ExplorationBlock `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-block.create]]
+  (explorations.db/insert-blocks! rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

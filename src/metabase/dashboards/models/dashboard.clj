@@ -690,19 +690,19 @@
   (remove-dashcards! (mapv :id (dashboards.db/dashcards-of-actions action-ids))))
 
 (defmethod collection/archive-in-collections! :model/Dashboard
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-dashboards! (mapv (fn [id] {:id id :archived true}) ids) {:context context})))
+    (update-dashboards! (mapv (fn [id] {:id id :archived true}) ids) opts)))
 
 (defmethod collection/restore-in-collections! :model/Dashboard
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-dashboards! (mapv (fn [id] {:id id :archived false}) ids) {:context context})))
+    (update-dashboards! (mapv (fn [id] {:id id :archived false}) ids) opts)))
 
 (defmethod collection/delete-in-collections! :model/Dashboard
-  [model collection-ids context]
+  [model collection-ids opts]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
-    (delete-dashboards! ids {:context context})))
+    (delete-dashboards! ids opts)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

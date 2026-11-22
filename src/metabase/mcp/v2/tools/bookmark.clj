@@ -88,8 +88,8 @@
         bookmark-model (get-in type->spec [type :bookmark-model])
         user-id        api/*current-user-id*]
     (if bookmarked
-      (bookmarks/create-bookmark! bookmark-model (:id row) user-id)
-      (bookmarks/delete-bookmark! bookmark-model (:id row) user-id))
+      (bookmarks/create-bookmarks! [{:type bookmark-model :item_id (:id row) :user_id user-id}])
+      (bookmarks/delete-bookmarks! [{:type bookmark-model :item_id (:id row) :user_id user-id}]))
     (common/success-content
      (v2.write/readback token-scopes [metabot.scope/agent-content-read]
                         {:type type :id (:id row) :name (:name row) :bookmarked bookmarked}

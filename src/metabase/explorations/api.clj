@@ -642,10 +642,10 @@
                 ;; `:transactional :require` queue, so it publishes only once this whole transaction,
                 ;; including the dependent block/timeline rows below, commits atomically.
                 ;; The plan listener therefore can never observe (or plan) a half-built thread.
-                thread      (exploration-thread/create-thread! {:exploration_id (:id exploration)
-                                                                :prompt         prompt
-                                                                :position       0
-                                                                :started_at     (t/offset-date-time)})
+                thread      (first (exploration-thread/create-threads! [{:exploration_id (:id exploration)
+                                                                         :prompt         prompt
+                                                                         :position       0
+                                                                         :started_at     (t/offset-date-time)}]))
                 tid         (:id thread)]
             (insert-blocks! tid blocks)
             (insert-thread-timelines! tid timeline_ids)
@@ -724,24 +724,24 @@
           timeline-ids  (explorations.db/thread-timeline-ids src-thread-id)
           next-position (inc (or (explorations.db/last-thread-position id) 0))]
       (t2/with-transaction [_]
-        (let [thread (exploration-thread/create-thread!
-                      (merge {:exploration_id id
-                              :name           (explore-further-thread-name card-name
-                                                                           enriched-filters
-                                                                           top-level-follow-up?)
-                              :position       next-position
-                              ;; drill lineage — lets the sidebar nest this thread
-                              ;; under the one owning the drilled page
-                              :source_page_id page_id}
-                             (drill-thread-stamp exploration cards)))
+        (let [thread (first (exploration-thread/create-threads!
+                             [(merge {:exploration_id id
+                                      :name           (explore-further-thread-name card-name
+                                                                                   enriched-filters
+                                                                                   top-level-follow-up?)
+                                      :position       next-position
+                                      ;; drill lineage — lets the sidebar nest this thread
+                                      ;; under the one owning the drilled page
+                                      :source_page_id page_id}
+                                     (drill-thread-stamp exploration cards))]))
               tid    (:id thread)]
-          (block/create-blocks! {:exploration_thread_id tid
-                                 :metrics               metrics'
-                                 :dimensions            (stringify-dim-types (:dimensions block))
-                                 :position              0})
+          (block/create-blocks! [{:exploration_thread_id tid
+                                  :metrics               metrics'
+                                  :dimensions            (stringify-dim-types (:dimensions block))
+                                  :position              0}])
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.
-          (exploration-thread/update-thread! tid {:started_at (t/offset-date-time)})
+          (exploration-thread/update-threads! [{:id tid :started_at (t/offset-date-time)}])
           (explorations.queues/start-thread! tid)
           (let [persisted (explorations.db/exploration id)]
             (hydrate-exploration persisted)))))))
@@ -944,7 +944,7 @@
    {:keys [starred]} :- [:map {:closed true} [:starred :boolean]]]
   (let [page (get-exploration-page-or-404 id)]
     (api/write-check page)
-    (exploration-page/update-page! id {:starred starred}))
+    (exploration-page/update-pages! [{:id id :starred starred}]))
   nil)
 
 (api.macros/defendpoint :put "/pages/hidden" :- :nil
@@ -959,7 +959,7 @@
     (doseq [id page_ids]
       (api/write-check (api/check-404 (get id->page id)))))
   (when (seq page_ids)
-    (exploration-page/update-pages! page_ids {:hidden hidden}))
+    (exploration-page/update-pages! (mapv (fn [id] {:id id :hidden hidden}) page_ids)))
   nil)
 
 (defn- summary-document-or-404

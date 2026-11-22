@@ -15,25 +15,10 @@
   [:merge
    ::native-query-snippet.update
    [:map {:closed true}
-    [:id            ::lib.schema.id/native-query-snippet]
+    [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]
     [:creator       {:optional true} [:maybe :metabase.users.schema/user]]
     [:can_write     {:optional true} [:maybe :boolean]]
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection]]]])
-
-(mr/def ::native-query-snippet.update
-  "What an update (or insert) of a NativeQuerySnippet accepts: every column of `:native_query_snippet` except `id`, all optional."
-  [:map {:closed true}
-   [:name          {:optional true} [:maybe :string]]
-   [:description   {:optional true} [:maybe :string]]
-   [:content       {:optional true} [:maybe :string]]
-   [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:archived      {:optional true} [:maybe :boolean]]
-   [:archived_directly {:optional true} [:maybe :boolean]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:entity_id     {:optional true} [:maybe :string]]
-   [:template_tags {:optional true} [:maybe ::lib.schema.template-tag/template-tag-map]]])
 
 (mr/def ::template-tags.given
   "The `:template_tags` a caller gives with a snippet, which its write completes with those of its content: those of a
@@ -53,20 +38,16 @@
    [:entity_id         {:optional true} [:maybe :string]]
    [:template_tags     {:optional true} ::template-tags.given]])
 
-(mr/def ::native-query-snippet.changes
-  "The columns an update of a NativeQuerySnippet changes, its template tags as given."
+(mr/def ::native-query-snippet.update
+  "A NativeQuerySnippet by its `id` with the columns to change, its template tags as given."
   [:merge
-   ::native-query-snippet.update
+   ::native-query-snippet.create
    [:map {:closed true}
-    [:template_tags {:optional true} ::template-tags.given]]])
-
-(mr/def ::native-query-snippet.row
-  "A NativeQuerySnippet id and the columns to change, as an update of several snippets takes it."
-  [:merge
-   ::native-query-snippet.update
-   [:map {:closed true}
-    [:id            ::lib.schema.id/native-query-snippet]
-    [:template_tags {:optional true} ::template-tags.given]]])
+    [:id         ::lib.schema.id/native-query-snippet]
+    [:name       {:optional true} :string]
+    [:content    {:optional true} [:maybe :string]]
+    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
 
 (mr/def ::external-native-query-snippet
   "A NativeQuerySnippet as serialization writes it, with portable references in place of ids."
@@ -76,9 +57,3 @@
                                           :template_tags]]
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]]]])
-
-(mr/def ::write-opts
-  "The options of a write function of NativeQuerySnippets: who writes and the context of its events."
-  [:maybe [:map {:closed true}
-           [:writer {:optional true} [:enum :import]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])

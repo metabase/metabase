@@ -6,6 +6,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -30,6 +31,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -1792,7 +1794,7 @@
   allowed. Personal Collections and TCs have lots of restrictions -- you can't archive them, for example, nor can you
   transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
-   collection-updates        :- ::collections.schema/collection.update]
+   collection-updates        :- (mut/dissoc ::collections.schema/collection.update :id)]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (let [ctype        (if (:personal_owner_id collection-before-updates)
@@ -2254,32 +2256,32 @@
 
 (defmulti archive-in-collections!
   "Archives the rows of `model` in the Collections with `collection-ids` along with them, which a model that follows its
-  Collection implements with its own write function, giving it `context` for its events."
-  {:arglists '([model collection-ids context])}
-  (fn [model _collection-ids _context] model))
+  Collection implements with its own write function, giving it `opts` for its write function."
+  {:arglists '([model collection-ids opts])}
+  (fn [model _collection-ids _opts] model))
 
 (defmulti restore-in-collections!
   "Restores the rows of `model` in the Collections with `collection-ids` that were archived along with them, which a
   model that follows its Collection implements with its own write function."
-  {:arglists '([model collection-ids context])}
-  (fn [model _collection-ids _context] model))
+  {:arglists '([model collection-ids opts])}
+  (fn [model _collection-ids _opts] model))
 
 (defmulti delete-in-collections!
   "Deletes the rows of `model` in the Collections with `collection-ids`, which a model that follows its Collection
   implements with its own write function."
-  {:arglists '([model collection-ids context])}
-  (fn [model _collection-ids _context] model))
+  {:arglists '([model collection-ids opts])}
+  (fn [model _collection-ids _opts] model))
 
 (defn- not-a-follower
   "Throws that `model` does not follow its Collection in the way asked."
   [model]
   (throw (ex-info (format "%s does not follow its Collection in this way" model) {:model model})))
 
-(defmethod archive-in-collections! :default [model _collection-ids _context] (not-a-follower model))
+(defmethod archive-in-collections! :default [model _collection-ids _opts] (not-a-follower model))
 
-(defmethod restore-in-collections! :default [model _collection-ids _context] (not-a-follower model))
+(defmethod restore-in-collections! :default [model _collection-ids _opts] (not-a-follower model))
 
-(defmethod delete-in-collections! :default [model _collection-ids _context] (not-a-follower model))
+(defmethod delete-in-collections! :default [model _collection-ids _opts] (not-a-follower model))
 
 (defmulti shift-positions-in-collection!
   "Adds one to, or subtracts one from, the `collection_position` of the rows of `model` in the Collection with
@@ -2396,11 +2398,11 @@
       :model/Pulse     (collections.db/pulse-ids-in-collections ids))))
 
 (defn- each-follower!
-  "Calls `multi` for each of `models`, in order, with `collection-ids` and `context`, after loading the model."
-  [multi models collection-ids context]
+  "Calls `multi` for each of `models`, in order, with `collection-ids` and `opts`, after loading the model."
+  [multi models collection-ids opts]
   (doseq [model models]
     (t2/resolve-model model)
-    (multi model collection-ids context)))
+    (multi model collection-ids opts)))
 
 (def ^:private archive-followers
   "The models that archive with their Collection, in the order they follow it: Cards before the Dashboards and Documents
@@ -2425,24 +2427,24 @@
 (defn- unpublish-tables!
   "Unpublishes the Tables in the Collections with `collection-ids`, in their user settings too, and the Tables that
   depend on them."
-  [collection-ids context]
+  [collection-ids opts]
   (when-let [table-ids (not-empty (collections.db/published-table-ids-in-collections collection-ids))]
-    (each-follower! archive-in-collections! unpublish-followers (vec collection-ids) context)
+    (each-follower! archive-in-collections! unpublish-followers (vec collection-ids) opts)
     (unpublish-downstream-fk-tables! table-ids)))
 
 (defn- archive-followers!
   "Archives what is in the Collections with `collection-ids` along with them, each kind with one call, and unpublishes
   the Tables of their library Data collections."
-  [collection-ids context]
-  (each-follower! archive-in-collections! archive-followers (vec collection-ids) context)
+  [collection-ids opts]
+  (each-follower! archive-in-collections! archive-followers (vec collection-ids) opts)
   (when-let [library-data-ids (not-empty (collections.db/collection-ids-of-type (vec collection-ids) library-data-collection-type))]
-    (unpublish-tables! library-data-ids context)))
+    (unpublish-tables! library-data-ids opts)))
 
 (defn- restore-followers!
   "Restores what was archived along with the Collections with `collection-ids` and is in them, each kind with one call,
   those that hold others before them."
-  [collection-ids context]
-  (each-follower! restore-in-collections! restore-followers (vec collection-ids) context))
+  [collection-ids opts]
+  (each-follower! restore-in-collections! restore-followers (vec collection-ids) opts))
 
 (defn- delete-followers!
   "Deletes what is in the Collections with `collection-ids`, each kind with one call, after unpublishing their Tables."
@@ -2535,16 +2537,10 @@
                       {:status-code 400
                        :entity_id   (:entity_id row)})))))
 
-(defn- insert-in-order!
-  "Inserts `rows` with one statement for each set of columns they have, and returns the new Collections in the order of
-  `rows`."
-  [rows]
-  (let [indexed (map-indexed vector rows)]
-    (->> (vals (group-by (comp set keys second) indexed))
-         (mapcat (fn [group]
-                   (map vector (map first group) (collections.db/insert-collections! (mapv second group)))))
-         (sort-by first)
-         (mapv second))))
+(mr/def ::write-opts
+  "The options of a write function of Collections: who writes."
+  [:maybe [:map {:closed true}
+           [:writer {:optional true} [:enum :import]]]])
 
 (mu/defn create-collections! :- [:sequential (ms/InstanceOf :model/Collection)]
   "Creates a Collection from each of `rows` and returns the new Collections in order, after checking that each can be
@@ -2554,7 +2550,7 @@
   ([rows :- [:sequential ::collections.schema/collection.create]]
    (create-collections! rows nil))
   ([rows :- [:sequential ::collections.schema/collection.create]
-    opts :- ::collections.schema/write-opts]
+    opts :- ::write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -2567,9 +2563,9 @@
          (run! #(check-ancestors-exist % ancestors) located)
          (check-single-library-rows rows)
          (check-owners-not-api-keys rows)
-         (u/prog1 (insert-in-order! (mapv #(before-insert-row % ancestors) rows))
+         (u/prog1 (collections.db/insert-collections! (mapv #(before-insert-row % ancestors) rows))
            (copy-parent-permissions! <>)
-           (events/publish-event! :event/collection-create (events/create-event <>))))))))
+           (events/publish-event! :event/collection-create (events/create-event <> opts))))))))
 
 (defn- same-value?
   "Whether `a` and `b` are the same value of the column `k`, a keyword and its name being the same."
@@ -2753,7 +2749,7 @@
       (collections.db/update-collections! (mapv :id descendants) changes)
       (publish-carried-updates! descendants changes carrier-id))
     (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below)
-                        {:archived-with [:model/Collection carrier-id]})))
+                        {:context {:archived-with [:model/Collection carrier-id]}})))
 
 (defn- restore-subtrees!
   "Restores the Collections under the update `entries`, which restore their Collection, that the archive of their
@@ -2770,27 +2766,28 @@
         (collections.db/update-collections! (mapv :id below) changes)
         (publish-carried-updates! below changes carrier-id)))
     (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below)
-                        {:archived-with [:model/Collection carrier-id]})))
+                        {:context {:archived-with [:model/Collection carrier-id]}})))
 
 (defn- publish-update!
   "Publish the update event of the Collections of `entries`, update entries, as the `columns` written for each leave
-  them."
-  [entries columns]
+  them, by the writer of `opts`."
+  [entries columns opts]
   (events/publish-event! :event/collection-update
                          (events/update-event (into {} (map (juxt (comp :id :before) :before)) entries)
                                               (mapv (fn [{:keys [before]} cols] (assoc cols :id (:id before)))
-                                                    entries columns))))
+                                                    entries columns)
+                                              opts)))
 
-(mu/defn update-collections! :- [:sequential ::collections.schema/collection.update-row]
+(mu/defn update-collections! :- [:sequential ::collections.schema/collection.update]
   "Applies the columns of each of `updates` to the Collection with its `:id` and returns those of Collections that
   exist, after checking that each change can be made. A Collection moved takes the Collections under it along, one
   archived on its own takes them and what is in them, and one restored brings back what its archive took down; the
   statements do not grow with the number of Collections or what is in them. An import, `:writer :import` in `opts`,
   keeps the names of the system Collections and does not bring back an archived transforms folder."
-  ([updates :- [:sequential ::collections.schema/collection.update-row]]
+  ([updates :- [:sequential ::collections.schema/collection.update]]
    (update-collections! updates nil))
-  ([updates :- [:sequential ::collections.schema/collection.update-row]
-    opts    :- ::collections.schema/write-opts]
+  ([updates :- [:sequential ::collections.schema/collection.update]
+    opts    :- ::write-opts]
    (if (empty? updates)
      []
      (t2/with-transaction [_conn]
@@ -2834,7 +2831,7 @@
              (move-descendants! moved by-id)
              (doseq [{:keys [before]} moved]
                (events/publish-event! :event/collection-touch {:collection-id (:id before) :user-id api/*current-user-id*})))
-           (publish-update! entries columns))
+           (publish-update! entries columns opts))
          updates)))))
 
 (defn- check-deletable

@@ -16,18 +16,7 @@
   "A Glossary as selected from the app DB: every column of `:glossary`."
   [:merge
    ::glossary.update
-   [:map {:closed true}
-    [:id         ms/PositiveInt]]])
-
-(mr/def ::glossary.update
-  "What an update (or insert) of a Glossary accepts: every column of `:glossary` except `id`, all optional."
-  [:map {:closed true}
-   [:entity_id  {:optional true} [:maybe ms/NonBlankString]]
-   [:term       {:optional true} ::glossary.term]
-   [:definition {:optional true} ::glossary.definition]
-   [:created_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
-   [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]])
+   [:map {:closed true}]])
 
 (mr/def ::glossary.create
   "What creating a Glossary takes: its term, its definition and its creator."
@@ -35,6 +24,19 @@
    [:term       ::glossary.term]
    [:definition ::glossary.definition]
    [:creator_id ::lib.schema.id/user]])
+
+(mr/def ::glossary.update
+  "A Glossary by its `id` with the columns to change: those of `::glossary.create`, and the columns the product sets."
+  [:merge
+   ::glossary.create
+   [:map {:closed true}
+    [:id         ms/PositiveInt]
+    [:term       {:optional true} ::glossary.term]
+    [:definition {:optional true} ::glossary.definition]
+    [:creator_id {:optional true} [:maybe ::lib.schema.id/user]]
+    [:entity_id  {:optional true} [:maybe ms/NonBlankString]]
+    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
 
 (mr/def ::external-glossary
   "A Glossary as serialization writes it, with portable references in place of ids."

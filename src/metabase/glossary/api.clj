@@ -33,7 +33,7 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/create-check :model/Glossary body)
-  (t2/hydrate (glossary/create-glossary-entry! (assoc body :creator_id api/*current-user-id*)) :creator))
+  (t2/hydrate (first (glossary/create-glossaries! [(assoc body :creator_id api/*current-user-id*)])) :creator))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -47,11 +47,12 @@
             [:term ::glossary.schema/glossary.term]
             [:definition ::glossary.schema/glossary.definition]]]
   (api/update-check (api/check-404 (glossary.db/glossary-entry id)) body)
-  (t2/hydrate (api/check-404 (glossary/update-glossary-entry! id body)) :creator))
+  (glossary/update-glossaries! [(assoc body :id id)])
+  (t2/hydrate (glossary.db/glossary-entry id) :creator))
 
 (api.macros/defendpoint :delete "/:id" :- ::api/generic-204-no-content
   "Delete a glossary entry."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check (glossary.db/glossary-entry id))
-  (api/check-404 (glossary/delete-glossary-entry! id))
+  (glossary/delete-glossaries! [id])
   api/generic-204-no-content)

@@ -238,8 +238,8 @@
         mbql   (lib/query mp (lib.metadata/table mp (mt/id :categories)))
         native (lib/native-query mp "UPDATE categories SET name = 'x' WHERE id = 1")]
     (testing "the QueryAction schema takes a native query on a database and refuses an MBQL one"
-      (is (mr/validate ::actions.schema/query-action.update {:dataset_query native}))
-      (is (not (mr/validate ::actions.schema/query-action.update {:dataset_query mbql}))))
+      (is (mr/validate ::actions.schema/query-action.update {:action_id 1 :dataset_query native}))
+      (is (not (mr/validate ::actions.schema/query-action.update {:action_id 1 :dataset_query mbql}))))
     (testing "the Action create request schema needs a native query for a query action"
       (is (not (mr/validate ::actions.schema/action.create-request
                             {:type :query, :name "Checked", :dataset_query mbql})))
@@ -294,8 +294,8 @@
 
 (deftest implicit-action-kind-test
   (testing "the ImplicitAction schema takes a row create, update or delete"
-    (is (not (mr/validate ::actions.schema/implicit-action.update {:kind :row/upsert})))
-    (is (mr/validate ::actions.schema/implicit-action.update {:kind :row/create}))))
+    (is (not (mr/validate ::actions.schema/implicit-action.update {:action_id 1 :kind :row/upsert})))
+    (is (mr/validate ::actions.schema/implicit-action.update {:action_id 1 :kind :row/create}))))
 
 (deftest actions-written-together-test
   (testing "several actions inserted or updated in one statement are checked each"
@@ -828,3 +828,15 @@
           (testing "an import that wrote the details on their own touches the action"
             (action/update-actions! [{:id action-id}] {:writer :import})
             (is (= [:event/action-create :event/action-update :event/action-update] @published))))))))
+
+(deftest create-actions-with-different-columns-test
+  (mt/with-actions-enabled
+    (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query categories)}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [native  (mt/native-query {:query "update categories set name = 'x' where id = 1"})
+              actions (action/create-actions!
+                       (mapv #(lib/normalize ::actions.schema/action.for-insert %)
+                             [{:type :query :name "plain" :model_id model-id :dataset_query native}
+                              {:type :query :name "described" :model_id model-id :dataset_query native :description "d"}]))]
+          (is (= ["plain" "described"] (map :name actions)))
+          (is (= [false false] (map #(t2/select-one-fn :archived :model/Action :id (:id %)) actions))))))))

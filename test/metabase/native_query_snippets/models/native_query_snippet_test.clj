@@ -237,3 +237,11 @@
                         [{:name "taken name" :content "1 = 1" :entity_id "other-entity-id-00000" :creator_id (mt/user->id :rasta)}]
                         {:writer :import})]
         (is (= "taken name (copy)" (:name imported)))))))
+
+(deftest create-snippets-with-different-columns-test
+  (mt/with-model-cleanup [:model/NativeQuerySnippet]
+    (let [creator-id (mt/user->id :rasta)
+          snippets   (native-query-snippet/create-snippets! [{:name "plain" :content "1" :creator_id creator-id}
+                                                             {:name "archived" :content "2" :creator_id creator-id :archived true}])]
+      (is (= ["plain" "archived"] (map :name snippets)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/NativeQuerySnippet :id (:id %)) snippets))))))

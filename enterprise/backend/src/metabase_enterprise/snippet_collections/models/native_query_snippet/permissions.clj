@@ -23,7 +23,7 @@
   nil: a nonexistent Snippet must fail loudly here rather than silently fall back to root-collection permissions."
   [snippet       :- [:or
                      ::snippets.schema/native-query-snippet
-                     ::snippets.schema/native-query-snippet.update]
+                     [:select-keys ::snippets.schema/native-query-snippet [:collection_id]]]
    read-or-write :- [:enum :read :write]]
   (contains? (permitted-collection-ids [(:collection_id snippet)] read-or-write) (:collection_id snippet)))
 

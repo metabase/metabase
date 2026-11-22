@@ -1,6 +1,5 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
@@ -23,6 +22,7 @@
    [metabase.serialization.core :as serialization]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -212,6 +212,12 @@
       (native-query-snippets.db/snippet-ids-by-names (vec names))
       {})))
 
+(mr/def ::write-opts
+  "The options of a write function of NativeQuerySnippets: who writes and the context of its events."
+  [:maybe [:map {:closed true}
+           [:writer {:optional true} [:enum :import]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
 (mu/defn create-snippets! :- [:sequential (ms/InstanceOf :model/NativeQuerySnippet)]
   "Insert the NativeQuerySnippet `rows` and return the inserted instances, each with the template tags of its content,
   in one transaction, publishing their create event. A snippet in a Collection that cannot hold it, or in an archived
@@ -220,7 +226,7 @@
   ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
    (create-snippets! rows nil))
   ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]
-    opts :- ::native-query-snippets.schema/write-opts]
+    opts :- ::write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -228,9 +234,8 @@
                     (= :import (:writer opts)) (native-query-snippets.serialization/with-free-names nil))]
          (check-collections rows)
          (let [ids      (name->id rows)
-               snippets (vec (native-query-snippets.db/insert-snippets!
-                              (mapv #(assoc % :template_tags (snippet-template-tags % ids)) rows)))]
-           (events/publish-event! :event/snippet-create (events/create-event snippets))
+               snippets (native-query-snippets.db/insert-snippets! (mapv #(assoc % :template_tags (snippet-template-tags % ids)) rows))]
+           (events/publish-event! :event/snippet-create (events/create-event snippets opts))
            snippets))))))
 
 (defn- with-archived-directly
@@ -260,16 +265,16 @@
                 (and tags (not= tags (:template_tags (get stored (:id row))))) (assoc :template_tags tags))))
           rows merged)))
 
-(mu/defn update-snippets! :- [:sequential ::native-query-snippets.schema/native-query-snippet.row]
+(mu/defn update-snippets! :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]
   "Apply the changes in each of `rows`, the id of a NativeQuerySnippet and the columns to change, with one statement
   per distinct set of changes, in one transaction, publishing their update event with the `:context` of `opts`. Each
   snippet gets the template tags of its content, and a move into a Collection that cannot hold it throws. An import,
   `:writer :import` in `opts`, renames each with ` (copy)` suffixes until no other snippet holds its name. Returns
   `rows`."
-  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.row]]
+  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]]
    (update-snippets! rows nil))
-  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.row]
-    opts :- ::native-query-snippets.schema/write-opts]
+  ([rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.update]
+    opts :- ::write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -282,7 +287,7 @@
          (doseq [[changes group] (group-by #(dissoc % :id) rows*)]
            (when (seq changes)
              (native-query-snippets.db/update-snippets! (mapv :id group) changes)))
-         (events/publish-event! :event/snippet-update (events/update-event stored rows* (select-keys opts [:context])))
+         (events/publish-event! :event/snippet-update (events/update-event stored rows* opts))
          (vec rows))))))
 
 (mu/defn delete-snippets!
@@ -300,17 +305,17 @@
   (mapv (fn [{:keys [id]}] {:id id :archived archived :archived_directly false}) snippets))
 
 (defmethod collection/archive-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids context]
+  [_model collection-ids opts]
   (update-snippets! (carried-rows (native-query-snippets.db/unarchived-snippets-in-collections (vec collection-ids)) true)
-                    {:context context}))
+                    opts))
 
 (defmethod collection/restore-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids context]
+  [_model collection-ids opts]
   (update-snippets! (carried-rows (native-query-snippets.db/restorable-snippets-in-collections (vec collection-ids)) false)
-                    {:context context}))
+                    opts))
 
 (defmethod collection/delete-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids _context]
+  [_model collection-ids _opts]
   (when (seq collection-ids)
     (t2/with-transaction [_conn]
       (events/publish-event! :event/snippet-delete

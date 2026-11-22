@@ -20,23 +20,7 @@
   [:merge
    ::timeline.update
    [:map {:closed true}
-    [:id            ms/PositiveInt]
     [:collection    {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]]])
-
-(mr/def ::timeline.update
-  "What an update (or insert) of a Timeline accepts: every column of `:timeline` except `id`, all optional."
-  [:map {:closed true}
-   [:name          {:optional true} ::name]
-   [:description   {:optional true} [:maybe :string]]
-   [:icon          {:optional true} ::icon]
-   [:collection_id {:optional true} [:maybe ::lib.schema.id/collection]]
-   [:archived      {:optional true} [:maybe :boolean]]
-   [:archived_directly {:optional true} [:maybe :boolean]]
-   [:creator_id    {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at    {:optional true} [:maybe ms/TemporalInstant]]
-   [:default       {:optional true} [:maybe :boolean]]
-   [:entity_id     {:optional true} [:maybe :string]]])
 
 (mr/def ::timeline.create
   "What a caller gives to create a Timeline."
@@ -51,28 +35,21 @@
    [:default           {:optional true} [:maybe :boolean]]
    [:entity_id         {:optional true} [:maybe :string]]])
 
+(mr/def ::timeline.update
+  "A Timeline by its `id` with the columns to change: those of `::timeline.create`, and the columns the product sets."
+  [:merge
+   ::timeline.create
+   [:map {:closed true}
+    [:id         ms/PositiveInt]
+    [:name       {:optional true} ::name]
+    [:created_at {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at {:optional true} [:maybe ms/TemporalInstant]]]])
+
 (mr/def ::timeline-event
   "A TimelineEvent as selected from the app DB: every column of `:timeline_event`."
   [:merge
    ::timeline-event.update
-   [:map {:closed true}
-    [:id           ms/PositiveInt]]])
-
-(mr/def ::timeline-event.update
-  "What an update (or insert) of a TimelineEvent accepts: every column of `:timeline_event` except `id`, all optional."
-  [:map {:closed true}
-   [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
-   [:name         {:optional true} ::name]
-   [:description  {:optional true} [:maybe :string]]
-   [:timestamp    {:optional true} ms/TemporalInstant]
-   [:time_matters {:optional true} ::time-matters]
-   [:timezone     {:optional true} [:maybe :string]]
-   [:icon         {:optional true} ::icon]
-   [:archived     {:optional true} [:maybe :boolean]]
-   [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
-   [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]
-   [:entity_id    {:optional true} [:maybe :string]]])
+   [:map {:closed true}]])
 
 (mr/def ::timeline-event.create
   "What a caller gives to create a TimelineEvent."
@@ -87,6 +64,19 @@
    [:archived     {:optional true} [:maybe :boolean]]
    [:creator_id   {:optional true} [:maybe ::lib.schema.id/user]]
    [:entity_id    {:optional true} [:maybe :string]]])
+
+(mr/def ::timeline-event.update
+  "A TimelineEvent by its `id` with the columns to change: those of `::timeline-event.create`, and the columns the
+  product sets."
+  [:merge
+   ::timeline-event.create
+   [:map {:closed true}
+    [:id           ms/PositiveInt]
+    [:timeline_id  {:optional true} ms/PositiveInt]
+    [:name         {:optional true} ::name]
+    [:timestamp    {:optional true} ms/TemporalInstant]
+    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
+    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]]])
 
 (mr/def ::external-timeline
   "A Timeline as serialization writes it, with portable references in place of ids."

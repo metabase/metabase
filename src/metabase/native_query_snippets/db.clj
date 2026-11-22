@@ -2,6 +2,7 @@
   "Application database queries for the native query snippets module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -40,7 +41,7 @@
 (mu/defn insert-snippets!
   "Insert the NativeQuerySnippet `rows` and return the inserted instances."
   [rows :- [:sequential ::native-query-snippets.schema/native-query-snippet.create]]
-  (t2/insert-returning-instances! :model/NativeQuerySnippet rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/NativeQuerySnippet %) rows))
 
 (mu/defn snippets-by-id
   "A map of id to NativeQuerySnippet for the snippets with `ids`."
@@ -50,7 +51,7 @@
 (mu/defn update-snippets!
   "Apply `changes` to the NativeQuerySnippets with `ids`, returning the number updated."
   [ids     :- [:sequential ::lib.schema.id/native-query-snippet]
-   changes :- ::native-query-snippets.schema/native-query-snippet.changes]
+   changes :- (mut/dissoc ::native-query-snippets.schema/native-query-snippet.update :id)]
   (t2/update! :model/NativeQuerySnippet :id [:in ids] changes))
 
 (mu/defn delete-snippets!

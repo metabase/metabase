@@ -2,7 +2,6 @@
   "A page within a block: the bundle of queries that appear together on one page
    (currently, those that share a card, dimension, and query_type)."
   (:require
-   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
@@ -31,22 +30,18 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-page! :- ms/PositiveInt
-  "Insert the ExplorationPage `page` and return its id."
-  [page :- ::explorations.schema/exploration-page.create]
-  (explorations.db/insert-page! page))
+(mu/defn create-pages! :- [:sequential (ms/InstanceOf :model/ExplorationPage)]
+  "Insert the ExplorationPage `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-page.create]]
+  (explorations.db/insert-pages! rows))
 
-(mu/defn update-page!
-  "Apply `changes` to the ExplorationPage with `page-id`."
-  [page-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::explorations.schema/exploration-page.update [:starred])]
-  (explorations.db/update-page! page-id changes))
-
-(mu/defn update-pages!
-  "Apply `changes` to the ExplorationPages with `page-ids`."
-  [page-ids :- [:sequential ms/PositiveInt]
-   changes  :- (mut/select-keys ::explorations.schema/exploration-page.update [:hidden])]
-  (explorations.db/update-pages! page-ids changes))
+(mu/defn update-pages! :- [:sequential ::explorations.schema/exploration-page.update]
+  "Apply the columns of each of `rows` to the ExplorationPage with its `:id`, with one statement for each set of
+  changes, and return `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-page.update]]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (explorations.db/update-pages! (mapv :id group) changes))
+  rows)
 
 (mu/defn delete-pages!
   "Delete the ExplorationPages with `page-ids`."

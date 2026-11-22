@@ -9,7 +9,6 @@
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.schema :as explorations.schema]
-   [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
@@ -97,13 +96,13 @@
 
 (mu/defn insert-explorations!
   "Insert the Explorations `rows` and return the new instances."
-  [rows :- [:sequential ::explorations.schema/exploration.update]]
-  (t2/insert-returning-instances! :model/Exploration rows))
+  [rows :- [:sequential ::explorations.schema/exploration.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Exploration %) rows))
 
 (mu/defn update-explorations!
   "Apply `changes` to the Explorations with `exploration-ids`, returning the number updated."
   [exploration-ids :- [:sequential ms/PositiveInt]
-   changes         :- (mut/select-keys ::explorations.schema/exploration.update [:name :description :archived :archived_directly :collection_id :collection_position])]
+   changes         :- (mut/select-keys ::explorations.schema/exploration [:name :description :archived :archived_directly :collection_id :collection_position])]
   (t2/update! :model/Exploration :id [:in exploration-ids] changes))
 
 (mu/defn delete-explorations!
@@ -201,16 +200,16 @@
              :where  [:= :id thread-id]
              :for    [:update]}))
 
-(mu/defn insert-thread!
-  "Insert `thread` and return the new instance."
-  [thread :- ::explorations.schema/exploration-thread.update]
-  (first (t2/insert-returning-instances! :model/ExplorationThread thread)))
+(mu/defn insert-threads!
+  "Insert the ExplorationThread `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationThread %) rows))
 
-(mu/defn update-thread!
-  "Apply `changes` to the ExplorationThread with `thread-id`."
-  [thread-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::explorations.schema/exploration-thread.update [:started_at :analysis_started_at :completed_at :query_plan_transcript])]
-  (t2/update! :model/ExplorationThread :id thread-id changes))
+(mu/defn update-threads!
+  "Apply `changes` to the ExplorationThreads with `thread-ids`."
+  [thread-ids :- [:sequential ms/PositiveInt]
+   changes    :- (mut/select-keys ::explorations.schema/exploration-thread [:started_at :analysis_started_at :completed_at :query_plan_transcript])]
+  (t2/update! :model/ExplorationThread :id [:in thread-ids] changes))
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of
@@ -313,17 +312,9 @@
   (t2/select-pks-vec :model/ExplorationBlock :exploration_thread_id thread-id))
 
 (mu/defn insert-blocks!
-  "Insert one ExplorationBlock map or a sequence of them."
-  [blocks :- (let [row [:map {:closed true}
-                        [:id                    {:optional true} ms/PositiveInt]
-                        [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-                        [:metrics               {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.metric]]]
-                        [:dimensions            {:optional true} [:maybe [:sequential ::explorations.schema/exploration-block.dimension]]]
-                        [:position              {:optional true} [:maybe :int]]
-                        [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-                        [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]]]
-               [:or row [:sequential row]])]
-  (t2/insert! :model/ExplorationBlock blocks))
+  "Insert the ExplorationBlock `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-block.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationBlock %) rows))
 
 ;;; -------------------------------------------------- Pages --------------------------------------------------
 
@@ -384,21 +375,15 @@
              :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
              :where  [:in :b.exploration_thread_id thread-ids]}))
 
-(mu/defn insert-page!
-  "Insert `page` and return its ID."
-  [page :- ::explorations.schema/exploration-page.update]
-  (t2/insert-returning-pk! :model/ExplorationPage page))
-
-(mu/defn update-page!
-  "Apply `changes` to the ExplorationPage with `page-id`."
-  [page-id :- ms/PositiveInt
-   changes :- (mut/select-keys ::explorations.schema/exploration-page.update [:starred])]
-  (t2/update! :model/ExplorationPage :id page-id changes))
+(mu/defn insert-pages!
+  "Insert the ExplorationPage `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-page.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationPage %) rows))
 
 (mu/defn update-pages!
   "Apply `changes` to the ExplorationPages with `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]
-   changes  :- (mut/select-keys ::explorations.schema/exploration-page.update [:hidden])]
+   changes  :- (mut/select-keys ::explorations.schema/exploration-page [:starred :hidden])]
   (t2/update! :model/ExplorationPage :id [:in page-ids] changes))
 
 (mu/defn delete-pages!
@@ -510,20 +495,19 @@
   (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
 
 (mu/defn insert-queries!
-  "Insert the ExplorationQuery `rows`."
-  [rows :- [:sequential
-            ::explorations.schema/exploration-query.update]]
-  (t2/insert! :model/ExplorationQuery rows))
+  "Insert the ExplorationQuery `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-query.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationQuery %) rows))
 
-(mu/defn update-query!
-  "Apply `changes` to the ExplorationQuery with `query-id`."
-  [query-id :- ms/PositiveInt
-   changes  :- [:and
-                (mut/select-keys ::explorations.schema/exploration-query.update
-                                 [:dataset_query :name :data_access_token :resolved_source_ids
-                                  :status :started_at :finished_at])
-                ::explorations.schema/exploration-query.update.stamped-together]]
-  (t2/update! :model/ExplorationQuery :id query-id changes))
+(mu/defn update-queries!
+  "Apply `changes` to the ExplorationQueries with `query-ids`, returning the number updated."
+  [query-ids :- [:sequential ms/PositiveInt]
+   changes   :- [:and
+                 (mut/select-keys ::explorations.schema/exploration-query
+                                  [:dataset_query :name :data_access_token :resolved_source_ids
+                                   :status :started_at :finished_at])
+                 ::explorations.schema/exploration-query.update.stamped-together]]
+  (t2/update! :model/ExplorationQuery :id [:in query-ids] changes))
 
 (mu/defn fail-pending-query!
   "Mark the pending ExplorationQuery with `query-id` as errored with `message` at `finished-at`, returning the number
@@ -589,19 +573,10 @@
              {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
               :where [:in :exploration_query_result.exploration_query_id query-ids]}))
 
-(mu/defn insert-query-result!
-  "Insert `query-result`."
-  [query-result :- [:map {:closed true}
-                    [:id                                {:optional true} ms/PositiveInt]
-                    [:exploration_query_id               {:optional true} [:maybe ms/PositiveInt]]
-                    [:stored_result_id                   {:optional true} [:maybe ms/PositiveInt]]
-                    [:created_at                         {:optional true} [:maybe ms/TemporalInstant]]
-                    [:interestingness_score               {:optional true} [:maybe number?]]
-                    [:contextual_interestingness_score    {:optional true} [:maybe number?]]
-                    [:chart_stats                         {:optional true} [:maybe ::chart.types/chart-stats]]
-                    [:metric_description                  {:optional true} [:maybe :string]]
-                    [:chart_description                   {:optional true} [:maybe :string]]]]
-  (t2/insert! :model/ExplorationQueryResult query-result))
+(mu/defn insert-query-results!
+  "Insert the ExplorationQueryResult `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-query-result.create]]
+  (t2/insert-returning-instances! :model/ExplorationQueryResult rows))
 
 ;;; ---------------------------------------------- Stored results ----------------------------------------------
 
@@ -682,16 +657,9 @@
              :order-by  [[:ett.position :asc] [:te.timestamp :asc]]}))
 
 (mu/defn insert-thread-timelines!
-  "Insert the ExplorationThreadTimeline `rows`."
-  [rows :- [:sequential
-            [:map {:closed true}
-             [:id                    {:optional true} ms/PositiveInt]
-             [:exploration_thread_id {:optional true} [:maybe ms/PositiveInt]]
-             [:timeline_id           {:optional true} [:maybe ms/PositiveInt]]
-             [:position              {:optional true} [:maybe :int]]
-             [:created_at            {:optional true} [:maybe ms/TemporalInstant]]
-             [:updated_at            {:optional true} [:maybe ms/TemporalInstant]]]]]
-  (t2/insert! :model/ExplorationThreadTimeline rows))
+  "Insert the ExplorationThreadTimeline `rows` and return the new instances."
+  [rows :- [:sequential ::explorations.schema/exploration-thread-timeline.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/ExplorationThreadTimeline %) rows))
 
 ;;; ------------------------------------------------ Documents ------------------------------------------------
 

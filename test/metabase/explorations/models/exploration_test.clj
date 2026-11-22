@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.explorations.models.exploration :as exploration]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -199,3 +200,11 @@
     (let [hydrated (t2/hydrate (t2/select-one :model/Exploration :id (:id e)) :threads)]
       (is (= 2 (count (:threads hydrated))))
       (is (= [0 1] (mapv :position (:threads hydrated)))))))
+
+(deftest create-explorations-with-different-columns-test
+  (mt/with-model-cleanup [:model/Exploration]
+    (let [creator-id   (mt/user->id :rasta)
+          explorations (exploration/create-explorations! [{:name "Plain" :creator_id creator-id}
+                                                          {:name "Archived" :creator_id creator-id :archived true}])]
+      (is (= ["Plain" "Archived"] (map :name explorations)))
+      (is (= [false true] (map #(t2/select-one-fn :archived :model/Exploration :id (:id %)) explorations))))))

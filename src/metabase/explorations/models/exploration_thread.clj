@@ -1,6 +1,5 @@
 (ns metabase.explorations.models.exploration-thread
   (:require
-   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.explorations.db :as explorations.db]
    [metabase.explorations.models.exploration :as exploration]
@@ -55,16 +54,18 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-thread! :- :map
-  "Insert the ExplorationThread `thread` and return it."
-  [thread :- ::explorations.schema/exploration-thread.create]
-  (explorations.db/insert-thread! thread))
+(mu/defn create-threads! :- [:sequential (ms/InstanceOf :model/ExplorationThread)]
+  "Insert the ExplorationThread `rows` and return the new instances, in the order of `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-thread.create]]
+  (explorations.db/insert-threads! rows))
 
-(mu/defn update-thread!
-  "Apply `changes` to the ExplorationThread with `thread-id`."
-  [thread-id :- ms/PositiveInt
-   changes   :- (mut/select-keys ::explorations.schema/exploration-thread.update [:started_at :analysis_started_at :completed_at :query_plan_transcript])]
-  (explorations.db/update-thread! thread-id changes))
+(mu/defn update-threads! :- [:sequential ::explorations.schema/exploration-thread.update]
+  "Apply the columns of each of `rows` to the ExplorationThread with its `:id`, with one statement for each set of
+  changes, and return `rows`."
+  [rows :- [:sequential ::explorations.schema/exploration-thread.update]]
+  (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+    (explorations.db/update-threads! (mapv :id group) changes))
+  rows)
 
 (mu/defn cancel-thread!
   "Mark the uncompleted ExplorationThread with `thread-id` canceled and completed at `now`, returning the number of

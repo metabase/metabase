@@ -478,10 +478,10 @@
    (mt/with-current-user (mt/user->id :rasta)
      (mt/with-temp [:model/Document {doc-id :id} {}]
        (mt/with-model-cleanup [:model/Comment]
-         (let [comment (comment/create-comment! {:target_type "document"
-                                                 :target_id   doc-id
-                                                 :creator_id  (mt/user->id :rasta)
-                                                 :content     {:type "doc", :content []}})]
+         (let [comment (first (comment/create-comments! [{:target_type "document"
+                                                          :target_id   doc-id
+                                                          :creator_id  (mt/user->id :rasta)
+                                                          :content     {:type "doc", :content []}}]))]
            (testing :event/comment-create
              (is (= {:model_id (:id comment)
                      :user_id (mt/user->id :rasta)
@@ -493,7 +493,7 @@
                      :model "Comment"}
                     (mt/latest-audit-log-entry :comment-create (:id comment)))))
            (testing :event/comment-update
-             (comment/update-comment! (:id comment) {:content {:type "doc", :content [{:type "paragraph"}]}})
+             (comment/update-comments! [{:id (:id comment) :content {:type "doc", :content [{:type "paragraph"}]}}])
              (is (=? {:model_id (:id comment)
                       :user_id (mt/user->id :rasta)
                       :details {}
@@ -501,7 +501,7 @@
                       :model "Comment"}
                      (mt/latest-audit-log-entry :comment-update (:id comment)))))
            (testing :event/comment-delete
-             (comment/soft-delete-comment! (:id comment))
+             (comment/soft-delete-comments! [(:id comment)])
              (is (= {:model_id (:id comment)
                      :user_id (mt/user->id :rasta)
                      :details {:previous {}
@@ -554,7 +554,7 @@
 
 (deftest glossary-events-test
   (mt/with-current-user (mt/user->id :rasta)
-    (let [glossary (glossary/create-glossary-entry! {:term "Test Term" :definition "Definition" :creator_id (mt/user->id :rasta)})
+    (let [glossary (first (glossary/create-glossaries! [{:term "Test Term" :definition "Definition" :creator_id (mt/user->id :rasta)}]))
           id       (:id glossary)]
       (try
         (testing :event/glossary-create
@@ -565,7 +565,7 @@
                   :model "Glossary"}
                  (mt/latest-audit-log-entry :glossary-create id))))
         (testing :event/glossary-update
-          (glossary/update-glossary-entry! id {:term "Updated Term"})
+          (glossary/update-glossaries! [{:id id :term "Updated Term"}])
           (is (= {:model_id id
                   :user_id (mt/user->id :rasta)
                   :details {:previous {:term "Test Term"}
@@ -574,7 +574,7 @@
                   :model "Glossary"}
                  (mt/latest-audit-log-entry :glossary-update id))))
         (testing :event/glossary-delete
-          (glossary/delete-glossary-entry! id)
+          (glossary/delete-glossaries! [id])
           (is (= {:model_id id
                   :user_id (mt/user->id :rasta)
                   :details {:term "Updated Term"}
