@@ -28,13 +28,14 @@
                      :model/Card  {oq :id} {:name "curationfixture official" :collection_id off}
                      :model/Card  {pq :id} {:name "curationfixture plain"}
                      :model/Table {pt :id} {:db_id db :name "curationfixture published" :active true
-                                            :is_published true :data_layer :final}
+                                            :data_layer :final}
+                     :model/TableUserSettings _ {:table_id pt :is_published true}
                      :model/Table {at :id} {:db_id db :name "curationfixture authoritative" :active true
                                             :data_authority :authoritative}
                      :model/Table {xt :id} {:db_id db :name "curationfixture plaintable" :active true}
                      ;; final-layer table that is NOT published: neither source nor index marks it curated
                      :model/Table {ult :id} {:db_id db :name "curationfixture unpublishedlib" :active true
-                                             :is_published false :data_layer :final}]
+                                             :data_layer :final}]
         (moderation/create-review! {:moderated_item_id   vq
                                     :moderated_item_type "card"
                                     :moderator_id        (mt/user->id :crowberto)
@@ -69,9 +70,11 @@
                      :model/Dashboard {od :id} {:name "parityfixture official dashboard" :collection_id off}
                      :model/Dashboard {pd :id} {:name "parityfixture plain dashboard"}
                      :model/Table {pt :id} {:db_id db :name "parityfixture published" :active true
-                                            :is_published true :data_layer :final}
+                                            :data_layer :final}
+                     :model/TableUserSettings _ {:table_id pt :is_published true}
                      :model/Table {st :id} {:db_id db :name "parityfixture staged" :active true
-                                            :is_published true :data_layer :internal}
+                                            :data_layer :internal}
+                     :model/TableUserSettings _ {:table_id st :is_published true}
                      :model/Table {at :id} {:db_id db :name "parityfixture authoritative" :active true
                                             :data_authority :authoritative}
                      :model/Table {ht :id} {:db_id db :name "parityfixture hidden" :active true

@@ -452,7 +452,7 @@
   (let [root (collection.root/hydrated-root-collection :transforms)]
     (-> (t2/select [:model/TransformTest :id :name :transform_id] :id [:in ids])
         (t2/hydrate [:transform [:collection :effective_ancestors]])
-        (->> (mapv (fn [row] (update row :transform #(some-> % (collection.root/hydrate-root-collection root)))))))))
+        (->> (mapv (fn [row] (update row :transform #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn synced-test-suite-items :- [:sequential ::data-testing.schema/test-suite.synced-item]
   "The TestSuites with `ids`, as remote sync lists them."
@@ -465,7 +465,7 @@
   (let [root (collection.root/hydrated-root-collection)]
     (-> (t2/select [:model/CardTest :id :name :card_id] :id [:in ids])
         (t2/hydrate [:card [:collection :effective_ancestors]])
-        (->> (mapv (fn [row] (update row :card #(some-> % (collection.root/hydrate-root-collection root)))))))))
+        (->> (mapv (fn [row] (update row :card #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn synced-segment-test-items :- [:sequential ::data-testing.schema/segment-test]
   "The SegmentTests with `ids`, with their Segment, its Table, and the Table's Collection and ancestors, as remote sync
@@ -478,4 +478,4 @@
                      (update row :segment
                              (fn [segment]
                                (some-> segment
-                                       (update :table #(some-> % (collection.root/hydrate-root-collection root))))))))))))
+                                       (update :table #(some-> % (update :collection (fn [collection] (or collection root))))))))))))))

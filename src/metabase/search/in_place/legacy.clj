@@ -442,8 +442,8 @@
    [:table.schema :table_schema]
    [:table.name :table_name]
    [:table.description :table_description]
-   [:table.collection_id :collection_id]
-   [[:case [:and [:= :table.collection_id nil] [:= :table.is_published true]]
+   [:table_settings.collection_id :collection_id]
+   [[:case [:and [:= :table_settings.collection_id nil] [:= :table_settings.is_published true]]
      "Our analytics"
      :else
      :collection.name] :collection_name]
@@ -618,19 +618,26 @@
 (defmethod search-query-for-model "measure"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :measure.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :measure.table_id])))
 
 (defmethod search-query-for-model "segment"
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
-      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])))
+      (sql.helpers/left-join [(t2/table-name :model/Table) :table] [:= :segment.table_id :table.id])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :segment.table_id])))
 
 (defmethod search-query-for-model "table"
   [model {:keys [table-db-id], :as search-ctx}]
   (-> (base-query-for-model model search-ctx)
       (add-table-db-id-clause table-db-id)
       (add-table-where-clauses model search-ctx)
-      (sql.helpers/left-join [:collection :collection] [:and :table.is_published [:= :table.collection_id :collection.id]])
+      (sql.helpers/left-join [(t2/table-name :model/TableUserSettings) :table_settings]
+                             [:= :table_settings.table_id :table.id])
+      (sql.helpers/left-join [:collection :collection]
+                             [:and :table_settings.is_published [:= :table_settings.collection_id :collection.id]])
       (sql.helpers/left-join :metabase_database [:= :table.db_id :metabase_database.id])))
 
 (defn- extract-and-hoist-ctes

@@ -468,18 +468,22 @@
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (t2/select-pks-set :model/Table :collection_id [:in collection-ids] :is_published true))
+  (t2/select-fn-set :table_id [:model/TableUserSettings :table_id]
+                    :collection_id [:in collection-ids]
+                    :is_published true))
+
+(mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
+  "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select-fn->fn :table_id :collection_id [:model/TableUserSettings :table_id :collection_id]
+                    :table_id [:in table-ids]
+                    :is_published true))
 
 (mu/defn unpublish-tables-in-collections!
-  "Unpublish the Tables in the Collections with `collection-ids`, in `metabase_table` and in their user settings,
-  returning the number updated."
+  "Unpublish the Tables in the Collections with `collection-ids`, returning the number updated."
   [collection-ids :- [:or [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]
-  (let [table-ids (published-table-ids-in-collections collection-ids)]
-    (when (seq table-ids)
-      (t2/update! :model/TableUserSettings :table_id [:in table-ids]
-                  {:collection_id nil, :is_published false}))
-    (t2/update! :model/Table {:collection_id [:in collection-ids]}
-                {:collection_id nil, :is_published false})))
+  (t2/update! :model/TableUserSettings {:collection_id [:in collection-ids]}
+              {:collection_id nil, :is_published false}))
 
 (mu/defn dashboard-ids-with-cards
   "The `:dashboard_id` rows of the Dashboards among `dashboard-ids` holding an unarchived dashboard question."
@@ -510,12 +514,13 @@
 (defn published-table-collection-ids-in
   "The distinct `:collection_id`s of the published, unarchived Tables in the Collections with `collection-ids`."
   [collection-ids]
-  (t2/query {:select-distinct [:collection_id]
-             :from            [(t2/table-name :model/Table)]
+  (t2/query {:select-distinct [:s.collection_id]
+             :from            [[(t2/table-name :model/TableUserSettings) :s]]
+             :join            [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
              :where           [:and
-                               [:= :is_published true]
-                               [:= :archived_at nil]
-                               [:in :collection_id collection-ids]]}))
+                               [:= :s.is_published true]
+                               [:= :t.archived_at nil]
+                               [:in :s.collection_id collection-ids]]}))
 
 (defn transform-collection-ids-in
   "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with

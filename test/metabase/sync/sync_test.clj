@@ -231,8 +231,7 @@
           :display_name        "Movie"
           :initial_sync_status "complete"
           :fields              [(field:movie-id) (field:movie-studio) (field:movie-title)]
-          :description         nil
-          :collection_id       false}))
+          :description         nil}))
 
 (defn- expected-studio-table []
   (merge (table-defaults)
@@ -241,8 +240,7 @@
           :display_name        "Studio"
           :initial_sync_status "complete"
           :fields              [(field:studio-name) (field:studio-studio)]
-          :description         ""
-          :collection_id       false}))
+          :description         ""}))
 
 (deftest sync-database-test
   (doseq [supports-schemas? [true false]]

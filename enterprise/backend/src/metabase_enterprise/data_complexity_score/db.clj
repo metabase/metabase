@@ -62,9 +62,14 @@
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
-             :active true
-             :db_id  [:not= audit-database-id]))
+  (t2/select [:model/Table :t.id :t.name :t.visibility_type :t.db_id :t.data_layer :t.data_authority
+              [:s.collection_id :collection_id]
+              [[:coalesce :s.is_published false] :is_published]]
+             {:from      [[(t2/table-name :model/Table) :t]]
+              :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+              :where     [:and
+                          [:= :t.active true]
+                          [:not= :t.db_id audit-database-id]]}))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."

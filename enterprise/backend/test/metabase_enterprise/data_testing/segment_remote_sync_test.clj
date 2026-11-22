@@ -33,9 +33,7 @@
   [f]
   (mt/with-temp [:model/Collection        coll           {:name "Synced" :is_remote_synced true :location "/"}
                  :model/Table             synced         {:db_id         (mt/id)
-                                                          :name          "synced_table"
-                                                          :is_published  true
-                                                          :collection_id (:id coll)}
+                                                          :name          "synced_table"}
                  :model/Field             synced-field   {:table_id (:id synced) :name "id" :base_type :type/Integer}
                  :model/TableUserSettings _              {:table_id      (:id synced)
                                                           :is_published  true

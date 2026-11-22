@@ -32,14 +32,12 @@ const publishedTable = createMockTable({
   id: PUBLISHED_TABLE_ID,
   db_id: 1,
   display_name: "Orders",
-  is_published: true,
   collection: createMockCollection({ id: 10, type: "library-data" }),
 });
 const unpublishedTable = createMockTable({
   id: UNPUBLISHED_TABLE_ID,
   db_id: 1,
   display_name: "Products",
-  is_published: false,
 });
 const libraryMetric = createMockCard({
   id: 20,

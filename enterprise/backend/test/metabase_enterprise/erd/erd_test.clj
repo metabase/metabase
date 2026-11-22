@@ -386,13 +386,13 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:type collection/library-data-collection-type}
                        :model/PermissionsGroup {gid :id} {}
                        :model/Database {db-id :id} {}
-                       :model/Table {target-table-id :id} {:db_id db-id :name "target" :schema "other"
-                                                           :is_published true :collection_id coll-id}
+                       :model/Table {target-table-id :id} {:db_id db-id :name "target" :schema "other"}
+                       :model/TableUserSettings _ {:table_id target-table-id :is_published true :collection_id coll-id}
                        :model/Field {target-pk-id :id} {:table_id target-table-id :name "id"
                                                         :database_type "INTEGER" :base_type :type/Integer
                                                         :semantic_type :type/PK}
-                       :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "public"
-                                                           :is_published true :collection_id coll-id}
+                       :model/Table {source-table-id :id} {:db_id db-id :name "source" :schema "public"}
+                       :model/TableUserSettings _ {:table_id source-table-id :is_published true :collection_id coll-id}
                        :model/Field {source-fk-id :id} {:table_id source-table-id :name "target_id"
                                                         :database_type "INTEGER" :base_type :type/Integer
                                                         :semantic_type :type/FK

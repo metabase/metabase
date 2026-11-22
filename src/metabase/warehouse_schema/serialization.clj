@@ -126,6 +126,7 @@
   (load-legacy-fields! items)
   (doseq [{{:keys [table_id] :as settings} :instance :keys [entity]} items]
     (warehouse-schema.db/update-table! table_id (without-derived-half
-                                                 (select-keys settings (user-settings/user-set-table-columns settings))))
+                                                 (user-settings/table-row-columns
+                                                  (select-keys settings (user-settings/user-set-table-columns settings)))))
     (when (:field_order entity)
       (table/update-field-positions! (warehouse-schema.db/table table_id)))))

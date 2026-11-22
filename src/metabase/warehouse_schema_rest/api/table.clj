@@ -103,7 +103,7 @@
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
        [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
-  (let [hydrations (cond-> [:db]
+  (let [hydrations (cond-> [:db :collection]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
     (as-> (warehouse-schema-rest.db/matching-tables
            {:term                       term

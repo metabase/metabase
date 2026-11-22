@@ -1267,12 +1267,11 @@
       (mt/with-temp [:model/Database {db-id :id} {}
                      :model/Table {table-1-id :id} {:db_id db-id
                                                     :name "table_1"
-                                                    :active true
-                                                    :is_published true}
+                                                    :active true}
+                     :model/TableUserSettings _ {:table_id table-1-id :is_published true}
                      :model/Table {table-2-id :id} {:db_id db-id
                                                     :name "table_2"
-                                                    :active true
-                                                    :is_published false}]
+                                                    :active true}]
         (testing "both tables returned without filter"
           (is (= #{table-1-id table-2-id}
                  (->> (mt/user-http-request :crowberto :get 200 "table")
@@ -1387,22 +1386,24 @@
 (deftest bulk-update-tables-collection-id-persists-test
   (testing "PUT /api/table with an ids vector moves every listed published table to collection_id"
     (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
-                   :model/Table      {t1 :id}      {:db_id (mt/id) :is_published true}
-                   :model/Table      {t2 :id}      {:db_id (mt/id) :is_published true}]
+                   :model/Table      {t1 :id}      {:db_id (mt/id)}
+                   :model/TableUserSettings _      {:table_id t1 :is_published true}
+                   :model/Table      {t2 :id}      {:db_id (mt/id)}
+                   :model/TableUserSettings _      {:table_id t2 :is_published true}]
       (mt/user-http-request :crowberto :put 200 "table"
                             {:ids [t1 t2] :collection_id coll-id})
       (is (= [coll-id coll-id]
-             (map #(user-table-fn :collection_id %) [t1 t2])))
+             (map #(t2/select-one-fn :collection_id :model/TableUserSettings :table_id %) [t1 t2])))
       (testing "and leaves is_published as it was, as PUT /api/table/:id does"
         (is (= [true true]
-               (map #(user-table-fn :is_published %) [t1 t2])))))))
+               (map #(t2/select-one-fn :is_published :model/TableUserSettings :table_id %) [t1 t2])))))))
 
 (deftest update-unpublished-table-collection-id-test
   (testing "PUT /api/table/:id with collection_id refuses an unpublished table"
     (mt/with-temp [:model/Collection {coll-id :id} {:type collections/library-data-collection-type}
                    :model/Table      {table-id :id} {:db_id (mt/id)}]
       (mt/user-http-request :crowberto :put 400 (format "table/%d" table-id) {:collection_id coll-id})
-      (is (nil? (user-table-fn :collection_id table-id))))))
+      (is (nil? (t2/select-one-fn :collection_id :model/TableUserSettings :table_id table-id))))))
 
 (deftest update-table-data-source-metabase-transform-test
   (testing "PUT /api/table/:id does not accept metabase-transform as data_source"
@@ -1422,7 +1423,7 @@
         (mt/user-http-request user :put status "table"
                               {:ids [t1 t2] :collection_id coll-id})
         (is (= [nil nil]
-               (map #(user-table-fn :collection_id %) [t1 t2])))))))
+               (map #(t2/select-one-fn :collection_id :model/TableUserSettings :table_id %) [t1 t2])))))))
 
 (deftest bulk-update-tables-field-order-persists-test
   (testing "PUT /api/table with an ids vector sets field_order on every listed table"

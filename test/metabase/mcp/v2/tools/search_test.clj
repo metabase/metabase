@@ -510,9 +510,8 @@
                                                       :data_layer :final}
                        :model/Table {inside-id :id}  {:db_id         (mt/id)
                                                       :name          "mcpboost inside"
-                                                      :active        true
-                                                      :is_published  true
-                                                      :collection_id (:id data)}]
+                                                      :active        true}
+                       :model/TableUserSettings _ {:table_id inside-id :is_published true :collection_id (:id data)}]
           (mt/with-current-user (mt/user->id :crowberto)
             (let [content (tools.search/search-tool {:term_queries ["mcpboost"] :type ["table"]}
                                                     {:token-scopes #{"agent:content:read"}})]

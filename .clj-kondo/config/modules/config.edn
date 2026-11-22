@@ -251,6 +251,7 @@
                     :model/QueryExecution
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform
                     :model/TransformRun
                     :model/User}}
@@ -399,7 +400,10 @@
   audit-app
   {:team "UX West"
    :module-exports #{audit-app.view-log}
-   :api  #{metabase.audit-app.core metabase.audit-app.impl metabase.audit-app.init}
+   :api  #{metabase.audit-app.core
+           metabase.audit-app.impl
+           metabase.audit-app.init
+           metabase.audit-app.spec}
    :uses #{api
            app-db
            events
@@ -729,7 +733,10 @@
            queries
            request
            util}
-   :model-imports #{:model/Card :model/Collection :model/Table}}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Table
+                    :model/TableUserSettings}}
 
   comments
   {:team "UX West"
@@ -948,7 +955,8 @@
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   database-routing
   {:team "UX West"
@@ -1725,6 +1733,7 @@
                     :model/QueryTable
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform
                     :model/User}}
 
@@ -2721,6 +2730,7 @@
                     :model/Revision
                     :model/Segment
                     :model/Table
+                    :model/TableUserSettings
                     :model/Transform
                     :model/User}}
 
@@ -3731,7 +3741,8 @@
                     :model/Dimension
                     :model/Field
                     :model/FieldValues
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   warehouses.secrets
   {:team "UX West"
@@ -4147,6 +4158,7 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Table
+                    :model/TableUserSettings
                     :model/User}
    :model-exports #{:model/DataApp}}
 
@@ -4166,6 +4178,7 @@
                     :model/Dimension
                     :model/Field
                     :model/Table
+                    :model/TableUserSettings
                     :model/User}}
 
   enterprise/data-testing
@@ -4350,7 +4363,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/lint
   {:team       "Verification"
@@ -4472,7 +4486,8 @@
                     :model/Measure
                     :model/Metabot
                     :model/ModerationReview
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/mfa
   {:team "Security"
@@ -4705,7 +4720,8 @@
                     :model/Measure
                     :model/OsiAiContext
                     :model/Segment
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/search.semantic
   {:team "Metabot"
@@ -4744,7 +4760,8 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
-                    :model/Table}}
+                    :model/Table
+                    :model/TableUserSettings}}
 
   enterprise/security-center
   {:team "Gadget"

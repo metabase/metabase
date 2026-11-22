@@ -659,7 +659,8 @@
                     :permissions))]
         (testing "user with collection permission on published table should still have can_create_queries false"
           (mt/with-temp [:model/Collection {collection-id :id} {}
-                         :model/Table      _table              {:db_id         (mt/id)
+                         :model/Table      {table-id :id}      {:db_id (mt/id)}
+                         :model/TableUserSettings _            {:table_id      table-id
                                                                 :is_published  true
                                                                 :collection_id collection-id}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection-id)

@@ -5524,3 +5524,44 @@
         (migrate! :down 64)
         (is (= {only-table unlinked, new-table linked, old-table nil, plain nil}
                (t2/select-pk->fn :transform_id :metabase_table :id [:in [only-table new-table old-table plain]])))))))
+
+(deftest drop-table-collection-id-and-is-published-test
+  (impl/test-migrations ["t5r8wm" "m6d9fx"] [migrate!]
+    (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "Published Tables DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+          collection-id (t2/insert-returning-pk! :collection {:name      "Data"
+                                                              :slug      "data"
+                                                              :location  "/"
+                                                              :entity_id (u/generate-nano-id)})
+          table!        (fn [values]
+                          (t2/insert-returning-pk! :metabase_table (merge {:active     true
+                                                                           :db_id      db-id
+                                                                           :name       (mt/random-name)
+                                                                           :created_at :%now
+                                                                           :updated_at :%now}
+                                                                          values)))
+          settings!     (fn [table-id values]
+                          (t2/insert! :metabase_table_user_settings (merge {:table_id   table-id
+                                                                            :created_at :%now
+                                                                            :updated_at :%now}
+                                                                           values)))
+          published     (table! {:is_published true, :collection_id collection-id})
+          unpublished   (table! {})
+          plain         (table! {})]
+      (settings! published {:is_published true, :collection_id collection-id})
+      (settings! unpublished {:is_published false})
+      (migrate!)
+      (testing "columns are gone"
+        (is (not-any? #{:is_published :collection_id} (keys (t2/select-one :metabase_table :id published)))))
+      (testing "settings keep publication"
+        (is (= {published [true collection-id], unpublished [false nil]}
+               (t2/select-fn->fn :table_id (juxt :is_published :collection_id) :metabase_table_user_settings
+                                 :table_id [:in [published unpublished plain]]))))
+      (testing "rollback restores columns from settings"
+        (migrate! :down 64)
+        (is (= {published [true collection-id], unpublished [false nil], plain [false nil]}
+               (t2/select-pk->fn (juxt :is_published :collection_id) :metabase_table
+                                 :id [:in [published unpublished plain]])))))))

@@ -71,9 +71,7 @@ export type Table = {
   view_count: number;
   transform?: Transform | null;
 
-  collection_id: CollectionId | null;
-  is_published: boolean;
-  collection?: Collection;
+  collection?: Collection | null;
   can_write?: boolean;
 };
 

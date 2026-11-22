@@ -1651,18 +1651,18 @@
           (ts/with-db source-db
             (reset! db1s    (ts/create! :model/Database :name "my-db"))
             (reset! coll1s  (ts/create! :model/Collection :name "Publishing Collection"))
-            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)
-                                        :is_published true :collection_id (:id @coll1s)))
-            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)
-                                        :is_published false))
+            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)))
+            (ts/create! :model/TableUserSettings :table_id (:id @table1s)
+                        :is_published true :collection_id (:id @coll1s))
+            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)))
             (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
         (testing "serialized form has collection entity_id, not DB id"
-          (let [pub-table (->> @serialized
-                               (filter #(and (-> % :serdes/meta last :model (= "Table"))
-                                             (= (:name %) "published_table")))
-                               first)]
-            (is (true? (:is_published pub-table)))
-            (is (= (:entity_id @coll1s) (:collection_id pub-table)))))
+          (let [pub-settings (->> @serialized
+                                  (filter #(and (-> % :serdes/meta last :model (= "TableUserSettings"))
+                                                (= (last (:table_id %)) "published_table")))
+                                  first)]
+            (is (true? (:is_published pub-settings)))
+            (is (= (:entity_id @coll1s) (:collection_id pub-settings)))))
         (testing "deserializing restores collection_id correctly"
           (ts/with-db dest-db
             ;; Load the serialized content
@@ -1673,11 +1673,10 @@
             (reset! table1d (t2/select-one :model/Table :name "published_table" :db_id (:id @db1d)))
             (reset! table2d (t2/select-one :model/Table :name "unpublished_table" :db_id (:id @db1d)))
             (testing "published table has correct is_published and collection_id"
-              (is (true? (:is_published @table1d)))
-              (is (= (:id @coll1d) (:collection_id @table1d))))
-            (testing "unpublished table has is_published=false and no collection"
-              (is (false? (:is_published @table2d)))
-              (is (nil? (:collection_id @table2d))))))))))
+              (is (=? {:is_published true :collection_id (:id @coll1d)}
+                      (t2/select-one :model/TableUserSettings :table_id (:id @table1d)))))
+            (testing "unpublished table has no published settings and no collection"
+              (is (nil? (t2/select-one :model/TableUserSettings :table_id (:id @table2d)))))))))))
 
 (deftest included-timeline-with-missing-collection-fails-import-test
   (testing "a question cannot import before its included timeline's dependencies, even if the timeline exists locally"
@@ -2547,12 +2546,14 @@
           (ts/with-db source-db
             (let [db   (ts/create! :model/Database :name "shared-db")
                   coll (ts/create! :model/Collection :name "My Collection")
-                  _    (ts/create! :model/Table
-                                   :name "published_table"
-                                   :db_id (:id db)
+                  table (ts/create! :model/Table
+                                    :name "published_table"
+                                    :db_id (:id db)
+                                    :description "A published table")
+                  _    (ts/create! :model/TableUserSettings
+                                   :table_id (:id table)
                                    :is_published true
-                                   :collection_id (:id coll)
-                                   :description "A published table")]
+                                   :collection_id (:id coll))]
               (reset! coll-eid (:entity_id coll))
               (reset! serialized
                       (into [] (serdes.extract/extract
@@ -2574,12 +2575,12 @@
                     imported-coll  (t2/select-one :model/Collection :entity_id @coll-eid)]
                 (testing "table exists with correct properties"
                   (is (some? imported-table))
-                  (is (= "A published table" (:description imported-table)))
-                  (is (true? (:is_published imported-table))))
+                  (is (= "A published table" (:description imported-table))))
                 (testing "table is linked to correct database"
                   (is (= (:id target-db) (:db_id imported-table))))
-                (testing "table is linked to imported collection"
-                  (is (= (:id imported-coll) (:collection_id imported-table))))))))))))
+                (testing "table is published in imported collection"
+                  (is (=? {:is_published true :collection_id (:id imported-coll)}
+                          (t2/select-one :model/TableUserSettings :table_id (:id imported-table)))))))))))))
 
 (deftest import-published-table-without-database-creates-stub-database-test
   (testing "Importing a published table creates a stub database when the database doesn't exist on target"
@@ -2589,9 +2590,11 @@
           (ts/with-db source-db
             (let [db   (ts/create! :model/Database :name "source-only-db")
                   coll (ts/create! :model/Collection :name "My Collection")
-                  _    (ts/create! :model/Table
-                                   :name "published_table"
-                                   :db_id (:id db)
+                  table (ts/create! :model/Table
+                                    :name "published_table"
+                                    :db_id (:id db))
+                  _    (ts/create! :model/TableUserSettings
+                                   :table_id (:id table)
                                    :is_published true
                                    :collection_id (:id coll))]
               (reset! serialized
@@ -2608,9 +2611,10 @@
                        :is_stub true}
                       stub))
               (testing "the published table is imported into the stub database"
-                (is (=? {:db_id        (:id stub)
-                         :is_published true}
-                        (t2/select-one :model/Table :name "published_table")))))))))))
+                (let [table (t2/select-one :model/Table :name "published_table")]
+                  (is (=? {:db_id (:id stub)}
+                          table))
+                  (is (true? (t2/select-one-fn :is_published :model/TableUserSettings :table_id (:id table)))))))))))))
 
 (deftest database-is-stub-is-not-serialized-test
   (testing "`is_stub` is neither exported nor imported, so an import never turns a real database into a stub"

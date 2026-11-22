@@ -691,16 +691,28 @@
              (mt/latest-audit-log-entry :user-reactivated user-id))))))
 
 (deftest table-publication-is-recorded-test
-  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+  (mt/with-temp [:model/Table             table {:name "My Cool Table"}
+                 :model/TableUserSettings _     {:table_id (:id table) :display_name "My Cool Table"}]
     (mt/with-current-user (mt/user->id :rasta)
       (doseq [[published? topic] [[true :table-publish] [false :table-unpublish]]]
-        (t2/update! :model/Table :id (:id table) {:is_published published?})
+        (t2/update! :model/TableUserSettings :table_id (:id table) {:is_published published?})
         (is (=? {:topic    topic
                  :user_id  (mt/user->id :rasta)
                  :model    "Table"
                  :model_id (:id table)
                  :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
                 (mt/latest-audit-log-entry topic (:id table))))))))
+
+(deftest table-publication-by-new-settings-is-recorded-test
+  (mt/with-temp [:model/Table table {:name "My Cool Table"}]
+    (mt/with-current-user (mt/user->id :rasta)
+      (t2/insert! :model/TableUserSettings {:table_id (:id table) :is_published true})
+      (is (=? {:topic    :table-publish
+               :user_id  (mt/user->id :rasta)
+               :model    "Table"
+               :model_id (:id table)
+               :details  {:name "My Cool Table", :id (:id table), :db_id (:db_id table)}}
+              (mt/latest-audit-log-entry :table-publish (:id table)))))))
 
 (deftest public-links-are-recorded-test
   (mt/with-temp [:model/Card      {card-id :id}      {}

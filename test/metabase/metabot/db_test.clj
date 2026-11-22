@@ -1,7 +1,6 @@
 (ns metabase.metabot.db-test
   (:require
    [clojure.test :refer :all]
-   [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
@@ -12,7 +11,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouse-schema.models.table-user-settings :as table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -22,9 +20,6 @@
     (let [table-id (mt/id :orders)
           row      (first (metabot.db/table-schema-rows [table-id]))]
       (is (some? row))
-      (testing "the columns the permission path reads are present"
-        (is (contains? row :is_published))
-        (is (contains? row :collection_id)))
       (testing "and the narrowed row agrees with the full row, for both predicates and both users"
         (doseq [user [:crowberto :rasta]]
           (mt/with-test-user user
@@ -32,14 +27,6 @@
                 (str "can-query? disagrees for " user))
             (is (= (mi/can-read? (t2/hydrate (t2/select-one :model/Table :id table-id) :can_read)) (mi/can-read? (t2/hydrate row :can_read)))
                 (str "can-read? disagrees for " user))))))))
-
-(deftest table-schema-rows-read-published-state-test
-  (testing "Rows carry a table's published state, which is stored with the user's table settings"
-    (collections.tu/with-library [{data :data}]
-      (mt/with-temp [:model/Table {table-id :id :as table} {:db_id (mt/id), :name "metabot published", :active true}]
-        (table-user-settings/upsert-table-user-settings! table {:is_published true :collection_id (:id data)})
-        (is (=? [{:id table-id, :is_published true, :collection_id (:id data)}]
-                (metabot.db/table-schema-rows [table-id])))))))
 
 (deftest card-source-info-classifies-legacy-metrics-test
   (testing "Reading stored metric sources preserves stage structure without upgrading curated dimensions"

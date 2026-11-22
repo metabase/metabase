@@ -6,6 +6,7 @@
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -90,7 +91,12 @@
                      owner-user-id           (conj [:= :owner_user_id   owner-user-id])
                      owner-email             (conj [:= :owner_email     owner-email])
                      orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only?         (conj [:= :is_published true])
+                     published-only?         (conj [:exists ^:allow-subquery
+                                                    {:select [1]
+                                                     :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                                     :where  [:and
+                                                              [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                              [:= :s.is_published true]]}])
                      check-unused?
                      (conj [:not-exists ^:allow-subquery {:select [:*]
                                                           :from   [[:dependency :d]]

@@ -122,9 +122,7 @@
     (remote-sync.tu/with-remote-sync [url :read-write]
       (mt/with-temp [:model/Collection        synced  {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Table             table   {:db_id         (mt/id)
-                                                       :name          "synced_table"
-                                                       :is_published  true
-                                                       :collection_id (:id synced)}
+                                                       :name          "synced_table"}
                      :model/Field             field   {:table_id (:id table) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _       {:table_id (:id table) :is_published true :collection_id (:id synced)}
                      :model/FieldUserSettings fs      {:field_id (:id field) :description "Synced"}
@@ -150,9 +148,7 @@
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
                        :model/Table             table     {:db_id         (mt/id)
-                                                           :name          "synced_table"
-                                                           :is_published  true
-                                                           :collection_id (:id synced)}
+                                                           :name          "synced_table"}
                        :model/Field             field     {:table_id (:id table) :name "user_id" :base_type :type/Integer}
                        :model/Field             target    {:table_id (:id table) :name "user_name" :base_type :type/Text}
                        :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
@@ -197,9 +193,7 @@
       (mt/with-model-cleanup [:model/RemoteSyncTask]
         (mt/with-temp [:model/Collection        synced    {:name "Synced" :is_remote_synced true :location "/"}
                        :model/Table             table     {:db_id         (mt/id)
-                                                           :name          "synced_table"
-                                                           :is_published  true
-                                                           :collection_id (:id synced)}
+                                                           :name          "synced_table"}
                        :model/Field             field     {:table_id (:id table) :name "id" :base_type :type/Integer}
                        :model/TableUserSettings _         {:table_id (:id table) :is_published true :collection_id (:id synced)}
                        :model/Dimension         dimension {:field_id (:id field) :name "Remapped id" :type :internal}]
@@ -214,18 +208,15 @@
 (deftest dimension-of-unsynced-table-test
   (remote-sync.tu/with-repository [url]
     (remote-sync.tu/with-remote-sync [url :read-write]
-      (mt/with-temp [:model/Collection        synced      {:name "Synced" :is_remote_synced true :location "/"}
+      (mt/with-temp [:model/Collection        _synced     {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Collection        unsynced    {:name "Unsynced" :location "/"}
                      :model/Table             unpublished {:db_id (mt/id) :name "unpublished_table"}
                      :model/Table             elsewhere   {:db_id         (mt/id)
-                                                           :name          "elsewhere_table"
-                                                           :is_published  true
-                                                           :collection_id (:id unsynced)}
+                                                           :name          "elsewhere_table"}
                      :model/Field             field-1     {:table_id (:id unpublished) :name "id" :base_type :type/Integer}
                      :model/Field             field-2     {:table_id (:id elsewhere) :name "id" :base_type :type/Integer}
                      :model/TableUserSettings _           {:table_id      (:id unpublished)
-                                                           :is_published  false
-                                                           :collection_id (:id synced)}
+                                                           :is_published  false}
                      :model/TableUserSettings _           {:table_id      (:id elsewhere)
                                                            :is_published  true
                                                            :collection_id (:id unsynced)}

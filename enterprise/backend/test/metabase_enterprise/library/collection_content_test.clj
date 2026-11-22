@@ -32,8 +32,8 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection allow-tables {:name "Test Base Library" :type collection/library-data-collection-type}]
       (testing "Can only add allowed content types"
-        (mt/with-temp [:model/Table table {:collection_id (:id allow-tables)
-                                           :is_published  true}]
+        (mt/with-temp [:model/Table table {}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id allow-tables)}]
           (is (some? table)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-tables)}))))
@@ -104,7 +104,7 @@
       (testing "Rejects published tables"
         (mt/with-temp [:model/Table table {}]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add tables or regular collections to the 'Dashboards' collection"
-                                (t2/update! :model/Table :id (:id table) {:collection_id (:id dashboards) :is_published true})))))
+                                (t2/insert! :model/TableUserSettings {:table_id (:id table) :collection_id (:id dashboards) :is_published true})))))
       (testing "Stays a locked Library section"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot update properties on a semantic layer collection"
                               (t2/update! :model/Collection :id (:id dashboards) {:name "Old dashboards"})))))))
@@ -113,18 +113,19 @@
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection library-data {:name "Library Data" :type collection/library-data-collection-type}
                    :model/Collection regular      {:name "Regular Collection" :type nil}
-                   :model/Table      table        {:collection_id (:id library-data)
-                                                   :is_published  true}]
+                   :model/Table      table        {}
+                   :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id library-data)}
+                   :model/Table      unpublished  {}]
       (testing "Cannot insert a published table into a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/insert! :model/Table (merge (mt/with-temp-defaults :model/Table)
-                                                              {:collection_id (:id regular)
-                                                               :is_published  true})))))
+                              (t2/insert! :model/TableUserSettings {:table_id      (:id unpublished)
+                                                                    :collection_id (:id regular)
+                                                                    :is_published  true}))))
       (testing "Cannot move a published table to a regular collection"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables can only be added to"
-                              (t2/update! :model/Table :id (:id table) {:collection_id (:id regular)}))))
+                              (t2/update! :model/TableUserSettings :table_id (:id table) {:collection_id (:id regular)}))))
       (testing "Can move a table out to no collection"
-        (is (some? (t2/update! :model/Table :id (:id table) {:collection_id nil})))))))
+        (is (some? (t2/update! :model/TableUserSettings :table_id (:id table) {:collection_id nil})))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
@@ -143,14 +144,14 @@
     (mt/as-admin
       (mt/with-temp [:model/Collection archive-me {:name   "To be archived"
                                                    :type   collection/library-data-collection-type}
-                     :model/Table      table      {:collection_id (:id archive-me)
-                                                   :is_published  true}]
+                     :model/Table      table      {}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id archive-me)}]
         (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains"
           (is (=? {:is_published  false
                    :collection_id nil
-                   :id            (:id table)}
-                  (t2/select-one :model/Table :id (:id table))))
+                   :table_id      (:id table)}
+                  (t2/select-one :model/TableUserSettings :table_id (:id table))))
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me))))))))
 
 (deftest unpublish-tables-in-archived-collection-recursively-test
@@ -158,29 +159,26 @@
     (mt/as-admin
       (mt/with-temp [:model/Collection archive-me {:name          "To be archived"
                                                    :type          collection/library-data-collection-type}
-                     :model/Table      table1     {:collection_id (:id archive-me)
-                                                   :is_published  true
-                                                   :name          "Grandparent_Table"}
+                     :model/Table      table1     {:name          "Grandparent_Table"}
+                     :model/TableUserSettings _ {:table_id (:id table1) :is_published true :collection_id (:id archive-me)}
                      :model/Collection parent     {:name          "Middle collection"
                                                    :type          collection/library-data-collection-type
                                                    :location      (str "/" (:id archive-me) "/")}
-                     :model/Table      table2     {:collection_id (:id parent)
-                                                   :is_published  true
-                                                   :name          "Parent_Table"}
+                     :model/Table      table2     {:name          "Parent_Table"}
+                     :model/TableUserSettings _ {:table_id (:id table2) :is_published true :collection_id (:id parent)}
                      :model/Collection child      {:name          "Innermost collection"
                                                    :type          collection/library-data-collection-type
                                                    :location      (str "/" (:id archive-me) "/" (:id parent) "/")}
-                     :model/Table      table3     {:collection_id (:id child)
-                                                   :is_published  true
-                                                   :name          "Child_Table"}]
+                     :model/Table      table3     {:name          "Child_Table"}
+                     :model/TableUserSettings _ {:table_id (:id table3) :is_published true :collection_id (:id child)}]
         (t2/update! :model/Collection :id (:id archive-me) {:archived true})
         (testing "archiving a Library/Data subcollection unpublishes all the tables it contains **recursively**"
           (is (t2/select-one-fn :archived :model/Collection :id (:id archive-me)))
           (doseq [table [table1 table2 table3]]
             (is (=? {:is_published  false
                      :collection_id nil
-                     :id            (:id table)}
-                    (t2/select-one :model/Table :id (:id table))))))))))
+                     :table_id      (:id table)}
+                    (t2/select-one :model/TableUserSettings :table_id (:id table))))))))))
 
 (deftest archive-metrics-subcollection-goes-to-trash-test
   (mt/with-premium-features #{:library}

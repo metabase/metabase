@@ -475,14 +475,20 @@
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
-(mu/defn table-publication-columns :- [:map-of ::lib.schema.id/table :map]
-  "The `:is_published` and `:collection_id` of the Tables with `table-ids`, by id."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (if (seq table-ids)
-    (t2/select-pk->fn #(select-keys % [:is_published :collection_id])
-                      [:model/Table :id :is_published :collection_id]
-                      :id [:in table-ids])
-    {}))
+(mu/defn collections-by-published-table-id
+  "A map of Table ID to the Collection it is published into, the root Collection for one published into none, for
+  the published Tables among `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (let [published (if (seq table-ids)
+                    (t2/select-fn->fn :table_id :collection_id
+                                      [:model/TableUserSettings :table_id :collection_id]
+                                      :table_id [:in table-ids]
+                                      :is_published true)
+                    {})
+        by-id     (when-let [collection-ids (not-empty (into #{} (keep val) published))]
+                    (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
+        root      (delay (collection.root/hydrated-root-collection))]
+    (update-vals published #(if % (get by-id %) @root))))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
@@ -643,7 +649,7 @@
     (-> (t2/select [:model/FieldUserSettings :id :field_id :display_name] :id [:in ids])
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [settings]
-                     (update-in settings [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+                     (update-in settings [:field :table] #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn synced-dimension-items :- [:sequential ::warehouse-schema.schema/dimension]
   "The Dimensions with `ids`, with their Field, its Table, and that Table's Collection and ancestors, as remote sync
@@ -653,7 +659,7 @@
     (-> (t2/select [:model/Dimension :id :field_id :name] :id [:in ids])
         (t2/hydrate [:field [:table [:collection :effective_ancestors]]])
         (->> (mapv (fn [dimension]
-                     (update-in dimension [:field :table] #(some-> % (collection.root/hydrate-root-collection root)))))))))
+                     (update-in dimension [:field :table] #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn dependency-table-items :- :map
   "The query of the Tables the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those the
@@ -682,22 +688,23 @@
               [:t.id :table_id]
               [:t.display_name :name]
               :t.description
-              :t.collection_id
+              :s.collection_id
               [:t.db_id :database_id]
               [[:!= :t.archived_at nil] :archived]
               [(h2x/literal "table") :model]]
      :from   [[(t2/table-name :model/Table) :t]]
+     :join   [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
      :where  [:and
-              [:= :t.is_published true]
+              [:= :s.is_published true]
               (collections.listing/poison-when-pinned-clause pinned-state)
-              (collections.listing/visible-items-clause :t.collection_id archived? {:root-namespace nil})
+              (collections.listing/visible-items-clause :s.collection_id archived? {:root-namespace nil})
               (perms/visible-tables-filter-clause
                :t.id
                (api/current-user-info)
                {:perms/view-data      :unrestricted
                 :perms/create-queries :query-builder}
                {:active-only? false, :include-published-via-collection? true})
-              [:= :t.collection_id (:id collection)]
+              [:= :s.collection_id (:id collection)]
               (if archived?
                 [:!= :t.archived_at nil]
                 [:= :t.archived_at nil])]}))

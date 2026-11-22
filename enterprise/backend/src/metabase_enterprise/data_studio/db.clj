@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
@@ -71,14 +72,21 @@
                      {:where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
                                  [:or selector-expr (case extra-mode
-                                                      :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
+                                                      :unpublished [:and
+                                                                    [:in :id extra-table-ids]
+                                                                    [:not-exists ^:allow-subquery
+                                                                     {:select [1]
+                                                                      :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                                                      :where  [:and
+                                                                               [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                                               [:= :s.is_published true]]}]]
                                                       :any         [:in :id extra-table-ids])]
                                  selector-expr))}))
 
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true))
+  (t2/select-fn-set :table_id [:model/TableUserSettings :table_id] :table_id [:in table-ids] :is_published true))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -127,34 +135,55 @@
 (mu/defn published-table-collection-ids :- [:map-of ::lib.schema.id/table [:maybe ::lib.schema.id/collection]]
   "The Collection id of each published Table among `table-ids`, as `{table-id collection-id}`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-pk->fn :collection_id [:model/Table :id :collection_id] :id [:in table-ids] :is_published true))
+  (t2/select-fn->fn :table_id :collection_id [:model/TableUserSettings :table_id :collection_id]
+                    :table_id [:in table-ids]
+                    :is_published true))
+
+(mu/defn published-table-clause :- [:fn vector?]
+  "A clause holding when the Table aliased `table-alias` has published settings, aliased `published_settings`, that
+  match `settings-clause`."
+  [table-alias     :- :keyword
+   settings-clause :- [:fn vector?]]
+  [:exists ^:allow-subquery {:select [1]
+                             :from   [[(t2/table-name :model/TableUserSettings) :published_settings]]
+                             :where  [:and
+                                      [:= :published_settings.table_id (u/qualified-key table-alias :id)]
+                                      [:= :published_settings.is_published true]
+                                      settings-clause]}])
 
 (mu/defn published-table-visible-to-user?
   "Whether the Table with `table-id` is published in a Collection the User with `user-id` can read."
   [table-id   :- ::lib.schema.id/table
    user-id    :- ::lib.schema.id/user
    superuser? :- :boolean]
-  (t2/exists? :model/Table
+  (t2/exists? :model/TableUserSettings
               {:where [:and
-                       [:= :id table-id]
+                       [:= :table_id table-id]
                        [:= :is_published true]
-                       (perms/visible-collections-filter-clause :metabase_table.collection_id {:user-id          user-id
-                                                                                               :is-superuser?    superuser?
-                                                                                               :is-data-analyst? false} {:root-namespace nil})]}))
+                       (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/TableUserSettings) :collection_id)
+                                                                {:user-id          user-id
+                                                                 :is-superuser?    superuser?
+                                                                 :is-data-analyst? false}
+                                                                {:root-namespace nil})]}))
 
 (mu/defn any-published-table-visible?
   "Whether the current user can read the Collection of any published Table."
   []
-  (t2/exists? :model/Table
+  (t2/exists? :model/TableUserSettings
               {:where [:and
                        [:= :is_published true]
-                       (perms/visible-collections-filter-clause :metabase_table.collection_id (api/current-user-info) {:root-namespace nil})]}))
+                       (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/TableUserSettings) :collection_id)
+                                                                (api/current-user-info)
+                                                                {:root-namespace nil})]}))
 
 (mu/defn published-table-visible-in-database?
   "Whether the current user can read the Collection of any published Table in the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table
-              {:where [:and
-                       [:= :db_id database-id]
-                       [:= :is_published true]
-                       (perms/visible-collections-filter-clause :metabase_table.collection_id (api/current-user-info) {:root-namespace nil})]}))
+  (t2/exists? :model/TableUserSettings
+              {:join  [[(t2/table-name :model/Table) :t] [:= :t.id (u/qualified-key (t2/table-name :model/TableUserSettings) :table_id)]]
+               :where [:and
+                       [:= :t.db_id database-id]
+                       [:= (u/qualified-key (t2/table-name :model/TableUserSettings) :is_published) true]
+                       (perms/visible-collections-filter-clause (u/qualified-key (t2/table-name :model/TableUserSettings) :collection_id)
+                                                                (api/current-user-info)
+                                                                {:root-namespace nil})]}))

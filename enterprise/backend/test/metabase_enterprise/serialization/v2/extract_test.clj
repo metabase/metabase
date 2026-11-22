@@ -605,13 +605,12 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database    {db-id    :id} {:name "DB"}
                        :model/Collection  {coll-id  :id} {:name "Library" :type "library-data"}
-                       :model/Table       {table-id :id} {:name "T" :db_id db-id
-                                                          :is_published true
-                                                          :collection_id coll-id}
+                       :model/Table       {table-id :id} {:name "T" :db_id db-id}
                        :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
-                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
+                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"
+                                                   :is_published true :collection_id coll-id}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
         (let [entities        (into [] (extract/extract {:targets       [[:model/Collection coll-id]]
                                                          :no-data-model true}))
@@ -629,17 +628,14 @@
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database   {db-id :id}   {:name "My Database"}
                          :model/Collection {coll-id :id} {:name "Export Collection"}
-                         :model/Table      _             {:name          "Published Table"
-                                                          :db_id         db-id
-                                                          :is_published  true
-                                                          :collection_id coll-id}
+                         :model/Table      {published :id} {:name          "Published Table"
+                                                            :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id published :is_published true :collection_id coll-id}
                          :model/Table      _             {:name          "Unpublished Table"
-                                                          :db_id         db-id
-                                                          :is_published  false}
-                         :model/Table      _             {:name          "Other Table"
-                                                          :db_id         db-id
-                                                          :is_published  true
-                                                          :collection_id nil}]
+                                                          :db_id         db-id}
+                         :model/Table      {other :id}   {:name          "Other Table"
+                                                          :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id other :is_published true}]
         (let [opts        {:targets       [[:model/Collection coll-id]]
                            :no-data-model true
                            :no-settings   true}
@@ -670,9 +666,8 @@
       (ts/with-temp-dpc [:model/Database   {db-id :id}          {:name "My Database"}
                          :model/Collection {coll-id :id}        {:name "Export Collection"}
                          :model/Table      {table-id :id}       {:name          "Published Table"
-                                                                 :db_id         db-id
-                                                                 :is_published  true
-                                                                 :collection_id coll-id}
+                                                                 :db_id         db-id}
+                         :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id coll-id}
                          :model/Field      {field1-id :id}      {:name      "Field One"
                                                                  :table_id  table-id
                                                                  :base_type :type/Integer}
@@ -683,8 +678,7 @@
                                                                  :definition (filter-definition db-id table-id field1-id)}
                          ;; Create another table with fields that should NOT be exported
                          :model/Table      {other-table-id :id} {:name          "Other Table"
-                                                                 :db_id         db-id
-                                                                 :is_published  false}
+                                                                 :db_id         db-id}
                          :model/Field      _                    {:name      "Other Field"
                                                                  :table_id  other-table-id
                                                                  :base_type :type/Integer}]

@@ -12,9 +12,10 @@
   (mt/with-premium-features #{:library}
     (testing "GET /api/collection/:id/items"
       (mt/with-temp [:model/Collection collection                         {:type          "library-data"}
-                     :model/Table      {table-id :id :as table}           {:collection_id (u/the-id collection)
-                                                                           :is_published  true}
-                     :model/Table      {root-table-id :id :as root-table} {:is_published  true}]
+                     :model/Table      {table-id :id :as table}           {}
+                     :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id (u/the-id collection)}
+                     :model/Table      {root-table-id :id :as root-table} {}
+                     :model/TableUserSettings _ {:table_id root-table-id :is_published true}]
         (testing "table items appear in collection items"
           (let [items (:data (mt/user-http-request :crowberto :get 200
                                                    (str "collection/" (u/the-id collection) "/items")))]
@@ -53,8 +54,8 @@
     (testing "GET /api/collection/:id/items - published tables require view-data plus query access"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/Collection collection {:type "library-data"}
-                       :model/Table      {table-id :id :as table} {:collection_id (u/the-id collection)
-                                                                   :is_published  true}
+                       :model/Table      {table-id :id :as table} {}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id (u/the-id collection)}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (t2/delete! :model/DataPermissions :db_id (mt/id))
@@ -92,8 +93,8 @@
     (testing "GET /api/collection/:id/items - without collection read permission, user should NOT see published table"
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/Collection collection {:type "library-data"}
-                       :model/Table      table {:collection_id (u/the-id collection)
-                                                :is_published  true}
+                       :model/Table      table {}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id collection)}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (t2/delete! :model/DataPermissions :db_id (mt/id))
@@ -104,8 +105,8 @@
             (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection) "/items"))))))
     (testing "GET /api/collection/root/items - published tables in root still require view-data"
       (mt/with-no-data-perms-for-all-users!
-        (mt/with-temp [:model/Table {table-id :id :as table} {:collection_id nil
-                                                              :is_published  true}
+        (mt/with-temp [:model/Table {table-id :id :as table} {}
+                       :model/TableUserSettings _ {:table_id table-id :is_published true}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (t2/delete! :model/DataPermissions :db_id (mt/id))
@@ -142,9 +143,9 @@
     (mt/with-premium-features #{:library}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-temp [:model/Collection collection {:type "library-data"}
-                       :model/Table      table     {:collection_id (u/the-id collection)
-                                                    :is_published  true}
-                       :model/Table      _         {:is_published false}
+                       :model/Table      table     {}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id collection)}
+                       :model/Table      _         {}
                        :model/PermissionsGroup {group-id :id} {}]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
@@ -179,8 +180,8 @@
                      (mt/user-http-request :rasta :get 200 metadata-url :models "card")))))))
       (testing "GET /api/collection/root/items/metadata applies the same filter to published tables in the root"
         (mt/with-no-data-perms-for-all-users!
-          (mt/with-temp [:model/Table table {:collection_id nil
-                                             :is_published  true}
+          (mt/with-temp [:model/Table table {}
+                         :model/TableUserSettings _ {:table_id (:id table) :is_published true}
                          :model/PermissionsGroup {group-id :id} {}]
             (perms/add-user-to-group! (mt/user->id :rasta) group-id)
             (let [fetch (fn []
@@ -198,8 +199,8 @@
   (mt/with-premium-features #{:library :advanced-permissions}
     (testing "GET /api/collection/:id/items - table items have `can_write` from the table metadata permission"
       (mt/with-temp [:model/Collection collection {:type "library-data"}
-                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
-                                                       :is_published  true}]
+                     :model/Table      {table-id :id} {}
+                     :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id (u/the-id collection)}]
         (let [table-item (fn [user]
                            (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id collection) "/items"))
                                 :data

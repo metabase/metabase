@@ -13,6 +13,11 @@ summary: Breaking changes to the Metabase API, listed by release.
   `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
   `404 Not Found`. Request and response bodies are unchanged.
 
+- Tables no longer have `collection_id` and `is_published` in the responses of the endpoints that return them, such
+  as `GET /api/table`, `GET /api/table/:id`, `GET /api/table/:id/query_metadata` and
+  `GET /api/database/:id/schema/:schema`. A published table has the collection it is published into as `collection`,
+  and a table that isn't published has `collection: null`. Search results and collection items keep both fields.
+
 - Tables no longer have `transform_id` in the responses of the endpoints that return them, such as `GET /api/table`
   and `GET /api/table/:id`. The transform that writes to a table is the hydrated `transform` of the table, and a
   transform names its table as `target_table_id`.

@@ -49,9 +49,9 @@
 (mu/defn published-table-count-in-collections
   "The number of published Tables in the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/count :model/Table {:where [:and
-                                  [:= :is_published true]
-                                  [:in :collection_id collection-ids]]}))
+  (t2/count :model/TableUserSettings {:where [:and
+                                              [:= :is_published true]
+                                              [:in :collection_id collection-ids]]}))
 
 (mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."

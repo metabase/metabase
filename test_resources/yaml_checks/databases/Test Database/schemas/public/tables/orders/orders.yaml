@@ -14,12 +14,10 @@ points_of_interest: null
 caveats: null
 serdes/meta:
 - model: Table
-collection_id: null
 data_authority: unconfigured
 data_layer: internal
 data_source: null
 database_require_filter: null
-is_published: false
 is_writable: true
 owner_email: null
 owner_user_id: null

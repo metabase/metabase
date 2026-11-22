@@ -404,7 +404,8 @@
   (search.tu/with-temp-index-table
     (testing "measures and segments on a published Library table inherit its library boost and curated status"
       (collections.tu/with-library [{data :data}]
-        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl" :is_published true :collection_id (:id data)}
+        (mt/with-temp [:model/Table   lib-tbl   {:name "lib_tbl"}
+                       :model/TableUserSettings _ {:table_id (:id lib-tbl) :is_published true :collection_id (:id data)}
                        :model/Table   plain-tbl {:name "plain_tbl"}
                        :model/Measure _ {:name "foo measure lib"   :definition (table-measure-definition (:id lib-tbl))}
                        :model/Measure _ {:name "foo measure plain" :definition (table-measure-definition (:id plain-tbl))}

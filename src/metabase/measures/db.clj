@@ -76,7 +76,7 @@
   (let [root (collection.root/hydrated-root-collection)]
     (-> (t2/select [:model/Measure :id :name :table_id] :id [:in ids])
         (t2/hydrate [:table [:collection :effective_ancestors]])
-        (->> (mapv (fn [row] (update row :table #(some-> % (collection.root/hydrate-root-collection root)))))))))
+        (->> (mapv (fn [row] (update row :table #(some-> % (update :collection (fn [collection] (or collection root)))))))))))
 
 (mu/defn dependency-measure-items :- :map
   "The query of the Measures the dependencies lists hold for `opts`, as `entity_id`, `name` and `location`: those of the

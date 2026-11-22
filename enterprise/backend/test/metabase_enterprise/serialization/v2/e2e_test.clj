@@ -2016,7 +2016,8 @@
                                    :creator_id   (:id creator)
                                    :name         "Elsewhere is tested"
                                    :expectations segment-test-expectations)
-              _        (t2/update! :model/Table :id (:table_id segment) {:is_published true :collection_id (:id library)})
+              _        (ts/create! :model/TableUserSettings
+                                   :table_id (:table_id segment) :is_published true :collection_id (:id library))
               exported (fn [opts model k]
                          (into #{}
                                (comp (filter #(= model (-> % :serdes/meta last :model)))

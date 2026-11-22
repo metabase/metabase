@@ -8,6 +8,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -270,8 +271,12 @@
     (t2/select :model/Table
                {:where    (cond-> [:and
                                    [:= :active true]
-                                   [:= :is_published true]
-                                   [:in :collection_id collection-ids]]
+                                   [:exists ^:allow-subquery {:select [1]
+                                                              :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                                              :where  [:and
+                                                                       [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                                       [:= :s.is_published true]
+                                                                       [:in :s.collection_id collection-ids]]}]]
                             (seq table-ids) (conj [:in :id table-ids]))
                 :order-by [[:name :asc] [:id :asc]]})
     []))

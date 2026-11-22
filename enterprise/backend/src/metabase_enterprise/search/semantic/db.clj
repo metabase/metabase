@@ -28,11 +28,14 @@
   "Reducible ID, published flag, data layer, and data authority of the active Tables that are published or
   authoritative."
   []
-  (t2/reducible-select [:model/Table :id :is_published :data_layer :data_authority]
-                       {:where [:and
-                                [:= :active true]
-                                [:or [:= :is_published true]
-                                 [:= :data_authority "authoritative"]]]}))
+  (t2/reducible-select [:model/Table :t.id :t.data_layer :t.data_authority
+                        [[:coalesce :s.is_published false] :is_published]]
+                       {:from      [[(t2/table-name :model/Table) :t]]
+                        :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                        :where     [:and
+                                    [:= :t.active true]
+                                    [:or [:= :s.is_published true]
+                                     [:= :t.data_authority "authoritative"]]]}))
 
 (mu/defn official-collection-ids
   "The IDs of the official Collections."

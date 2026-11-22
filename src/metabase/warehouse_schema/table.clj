@@ -234,9 +234,8 @@
                                      (mi/readable candidate-tables))
                             can-query? (#(t2/hydrate % :can_query))
                             can-query? (filter mi/can-query?))
-         hydration-keys   (cond-> []
+         hydration-keys   (cond-> [:collection]
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
-     (if (seq hydration-keys)
-       (apply t2/hydrate filtered-tables hydration-keys)
-       filtered-tables))))
+     (map #(update % :collection nil-if-unreadable)
+          (apply t2/hydrate filtered-tables hydration-keys)))))

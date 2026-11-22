@@ -1,6 +1,8 @@
 (ns metabase.warehouse-schema.models.table-user-settings
   (:require
    [metabase.app-db.copy-spec :as app-db-copy]
+   [metabase.audit-app.spec :as audit]
+   [metabase.collections.models.collection :as collection]
    [metabase.dependencies.core :as dependencies]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -8,7 +10,9 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.serialization.core :as serialization]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.audit :as warehouse-schema.audit]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.table :as table]
@@ -41,14 +45,16 @@
 (doto :model/TableUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?)
-  (derive :hook/events))
+  (derive :hook/events)
+  (derive :search/indexed))
 
 ;;; ----------------------------------------------------- Hooks ------------------------------------------------------
 
 (defn- complete-pairs
   "Fill in the other half of the two-column choices in `settings`: `visibility_type`/`data_layer`, derived from a
-  changing half or else kept from `table`, and `is_published`/`collection_id`."
-  [settings table]
+  changing half or else kept from `table`, and `is_published`/`collection_id`, kept from `row`, the settings as
+  written."
+  [settings table row]
   (let [changing? (fn [k] (not= (some-> (get settings k) keyword)
                                 (some-> (get table k) keyword)))]
     (cond-> settings
@@ -63,7 +69,7 @@
                                 (:visibility_type table)))
 
       (and (contains? settings :collection_id) (not (contains? settings :is_published)))
-      (assoc :is_published (boolean (:is_published table))))))
+      (assoc :is_published (boolean (:is_published row))))))
 
 (defn- with-set-flags
   "Set the `_set` flag of every flagged column in `effective`, unless `explicit` sets the flag itself."
@@ -80,14 +86,24 @@
   [explicit]
   (boolean (some #(contains? explicit %) [:visibility_type :data_layer :collection_id])))
 
+(defn- check-publication
+  "Throws a 400 when `settings` put a Table in a Collection without publishing it, or in one that takes no Tables."
+  [{:keys [is_published collection_id]}]
+  (when (and (not is_published) (some? collection_id))
+    (throw (ex-info (tru "Only a published Table can be in a Collection.") {:status-code 400})))
+  (collection/check-allowed-content :table collection_id))
+
 (defn- completed-settings
   "`settings` merged with `explicit`, its two-column pairs completed from its Table, with its flags set."
   [settings explicit]
   (let [completed (cond-> explicit
                     (pair-columns-written? explicit)
-                    (complete-pairs (warehouse-schema.db/table (:table_id settings))))]
-    (-> (merge settings completed)
-        (with-set-flags completed explicit))))
+                    (complete-pairs (warehouse-schema.db/table (:table_id settings)) settings))
+        settings  (-> (merge settings completed)
+                      (with-set-flags completed explicit))]
+    (when (some #(contains? completed %) user-settings/settings-only-table-columns)
+      (check-publication settings))
+    settings))
 
 (defn- delete-when-empty!
   "Delete `settings` when it holds no user value and no true flag, returning it either way."
@@ -119,19 +135,20 @@
   "Record the user-settable Table columns present in `settings` as the user values of `table`, in its settings and its
   row; a nil for a column without a set flag unsets it."
   [{:keys [id]} :- ::warehouse-schema.schema/table
-   settings     :- ::warehouse-schema.schema/table.update]
+   settings     :- ::warehouse-schema.schema/table-user-settings.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (seq settings)
       (t2/with-transaction [_]
         (warehouse-schema.db/update-or-insert-table-user-settings!
          id (fn [existing] (cond-> settings existing (with-set-flags settings settings))))
-        (warehouse-schema.db/update-table! id settings)))))
+        (when-let [changes (not-empty (user-settings/table-row-columns settings))]
+          (warehouse-schema.db/update-table! id changes))))))
 
 (mu/defn upsert-table-user-settings-for-tables!
   "[[upsert-table-user-settings!]] for every Table in `table-ids`, with one statement per kind for the settings and one for
   the rows."
   [table-ids :- [:set ::lib.schema.id/table]
-   settings  :- ::warehouse-schema.schema/table.update]
+   settings  :- ::warehouse-schema.schema/table-user-settings.update]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-table-columns)]
     (when (and (seq settings) (seq table-ids))
       (events/with-batched-events
@@ -141,7 +158,8 @@
           (when (seq existing)
             (warehouse-schema.db/update-table-user-settings-for-tables!
              existing (with-set-flags settings settings settings))))
-        (warehouse-schema.db/update-tables! table-ids settings)))))
+        (when-let [changes (not-empty (user-settings/table-row-columns settings))]
+          (warehouse-schema.db/update-tables! table-ids changes))))))
 
 (defn- valid-field-order?
   "Field ordering is valid if all the fields from a given table are present and only from that table."
@@ -187,6 +205,21 @@
 
 (defmethod app-db-copy/spec :model/TableUserSettings [_model]
   {:skip? false})
+
+(defmethod audit/spec :model/TableUserSettings [_model]
+  {:track          [:table_id]
+   :track-redacted [:caveats :caveats_set :collection_id :data_authority :data_layer :data_layer_set :data_source
+                    :data_source_set :description :description_set :display_name :entity_type :field_order
+                    :is_published :owner_email :owner_user_id :points_of_interest :points_of_interest_set
+                    :show_in_getting_started :visibility_type :visibility_type_set]
+   :skip           []
+   :topics         {}
+   :subject        (fn [{:keys [object previous-object]}]
+                     [:model/Table (:table_id (or object previous-object))])
+   :moments        [{:topic :table-publish, :when warehouse-schema.audit/published?
+                     :details warehouse-schema.audit/moment-details}
+                    {:topic :table-unpublish, :when warehouse-schema.audit/unpublished?
+                     :details warehouse-schema.audit/moment-details}]})
 
 (defmethod serialization/spec :model/TableUserSettings [_]
   {:schema              ::warehouse-schema.schema/external-table-user-settings

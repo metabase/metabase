@@ -515,25 +515,6 @@
                             (t2/update! :model/Table :id table-id {:db_id db-2})))
       (is (= db-1 (t2/select-one-fn :db_id :model/Table :id table-id))))))
 
-(deftest only-published-tables-sit-in-collections-test
-  (mt/with-temp [:model/Collection {coll-id :id} {}]
-    (testing "inserting an unpublished Table into a Collection is refused"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                            (t2/insert! :model/Table {:db_id (mt/id) :name "unpublished" :collection_id coll-id}))))
-    (mt/with-temp [:model/Table {table-id :id} {}]
-      (testing "putting an unpublished Table into a Collection is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                              (t2/update! :model/Table :id table-id {:collection_id coll-id}))))
-      (testing "publishing a Table into a Collection is accepted"
-        (t2/update! :model/Table :id table-id {:is_published true :collection_id coll-id})
-        (is (= [true coll-id] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id)))))
-      (testing "unpublishing a Table while it stays in its Collection is refused"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Only a published Table can be in a Collection"
-                              (t2/update! :model/Table :id table-id {:is_published false}))))
-      (testing "a published Table without a Collection is accepted"
-        (t2/update! :model/Table :id table-id {:collection_id nil})
-        (is (= [true nil] ((juxt :is_published :collection_id) (t2/select-one :model/Table :id table-id))))))))
-
 (deftest field-order-change-repositions-fields-test
   (testing "Changing field_order repositions the Table's Fields, whoever writes it"
     (mt/with-temp [:model/Table {table-id :id} {:field_order :database}
@@ -542,44 +523,34 @@
       (t2/update! :model/Table :id table-id {:field_order :alphabetical})
       (is (= {f-a 0, f-b 1} (t2/select-pk->fn :position :model/Field :table_id table-id))))))
 
-(deftest is-published-and-collection-id-test
-  (testing "is_published defaults to false"
-    (mt/with-temp [:model/Table {table-id :id} {}]
-      (is (false? (t2/select-one-fn :is_published :model/Table :id table-id)))))
-  (testing "can create a table with is_published=true and collection_id"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table {table-id :id} {:is_published true :collection_id coll-id}]
-      (let [table (t2/select-one :model/Table :id table-id)]
-        (is (true? (:is_published table)))
-        (is (= coll-id (:collection_id table))))))
-  (testing "collection_id FK constraint prevents referencing non-existent collection"
-    (is (thrown?
-         Exception
-         (mt/with-temp [:model/Table _ {:is_published true :collection_id Integer/MAX_VALUE}]))))
-  (testing "deleting a collection unpublishes the tables in it"
-    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table {table-1-id :id} {:is_published true :collection_id coll-id}
-                   :model/Table {table-2-id :id} {:is_published true :collection_id coll-id}]
-      (t2/delete! :model/Collection :id coll-id)
-      (is (= #{[false nil]} (t2/select-fn-set (juxt :is_published :collection_id) :model/Table
-                                              :id [:in [table-1-id table-2-id]]))))))
-
 (deftest collection-hydration-test
-  (testing "hydrating :collection on a table"
+  (testing "hydrating :collection on published table"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"}
-                   :model/Table table {:is_published true :collection_id coll-id}]
+                   :model/Table {table-id :id :as table} {}
+                   :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id coll-id}]
       (let [hydrated (t2/hydrate table :collection)]
         (is (= coll-id (-> hydrated :collection :id)))
         (is (= "Test Collection" (-> hydrated :collection :name))))))
-  (testing "hydrating :collection on a table with no collection_id returns nil"
-    (mt/with-temp [:model/Table table {}]
+  (testing "hydrating :collection on table published with nil collection_id returns root collection"
+    (mt/with-temp [:model/Table {table-id :id :as table} {}
+                   :model/TableUserSettings _ {:table_id table-id :is_published true :collection_id nil}]
       (let [hydrated (t2/hydrate table :collection)]
-        (is (nil? (:collection hydrated))))))
+        (is (= "root" (-> hydrated :collection :id))))))
+  (testing "hydrating :collection on unpublished table returns nil"
+    (mt/with-temp [:model/Table table-1 {}
+                   :model/Table {table-2-id :id :as table-2} {}
+                   :model/TableUserSettings _ {:table_id table-2-id :display_name "Unpublished"}]
+      (doseq [table [table-1 table-2]]
+        (let [hydrated (t2/hydrate table :collection)]
+          (is (contains? hydrated :collection))
+          (is (nil? (:collection hydrated)))))))
   (testing "batched hydration works for multiple tables"
     (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1"}
                    :model/Collection {coll2-id :id} {:name "Collection 2"}
-                   :model/Table table1 {:is_published true :collection_id coll1-id}
-                   :model/Table table2 {:is_published true :collection_id coll2-id}
+                   :model/Table {table1-id :id :as table1} {}
+                   :model/TableUserSettings _ {:table_id table1-id :is_published true :collection_id coll1-id}
+                   :model/Table {table2-id :id :as table2} {}
+                   :model/TableUserSettings _ {:table_id table2-id :is_published true :collection_id coll2-id}
                    :model/Table table3 {}]
       (let [hydrated (t2/hydrate [table1 table2 table3] :collection)]
         (is (= coll1-id (-> hydrated first :collection :id)))

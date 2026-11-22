@@ -102,9 +102,8 @@
                     :permissions))]
         (testing "user with collection permission on published table should have can_create_queries true"
           (mt/with-temp [:model/Collection collection {:type          "library-data"}
-                         :model/Table      _table     {:db_id         (mt/id)
-                                                       :is_published  true
-                                                       :collection_id (:id collection)}]
+                         :model/Table      table      {:db_id         (mt/id)}
+                         :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (:id collection)}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection))
             (mt/with-no-data-perms-for-all-users!
               (is (partial= {:can_create_queries        true

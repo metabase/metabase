@@ -1254,7 +1254,9 @@
 (deftest collection-items-available-models-library-test
   (testing "GET /api/collection/:id/items"
     (mt/with-temp [:model/Collection collection {:type "library-data"}
-                   :model/Table      _          {:collection_id (u/the-id collection)
+                   :model/Table      {table-id :id} {}
+                   :model/TableUserSettings _   {:table_id      table-id
+                                                 :collection_id (u/the-id collection)
                                                  :is_published  true}]
       (letfn [(fetch []
                 (mt/user-http-request :crowberto :get 200
@@ -1275,7 +1277,9 @@
   (testing "GET /api/collection/:id/items includes whether the current user can write each published table"
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection collection    {:type "library-data"}
-                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
+                     :model/Table      {table-id :id} {}
+                     :model/TableUserSettings _       {:table_id      table-id
+                                                       :collection_id (u/the-id collection)
                                                        :is_published  true}]
         (is (=? [{:id table-id, :model "table", :can_write true}]
                 (:data (mt/user-http-request :crowberto :get 200
@@ -4140,9 +4144,10 @@
                      :model/Card {card-id :id} {:collection_id coll-id :name "Test Card"}
                      :model/Collection {data-coll-id :id} {:name "Data Collection"
                                                            :type collection/library-data-collection-type}
-                     :model/Table {table-id :id} {:collection_id data-coll-id
-                                                  :is_published  true
-                                                  :name          "Published Table"}]
+                     :model/Table {table-id :id} {:name "Published Table"}
+                     :model/TableUserSettings _ {:table_id      table-id
+                                                 :collection_id data-coll-id
+                                                 :is_published  true}]
         (let [items (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" coll-id "/items")))
               data-items (:data (mt/user-http-request :crowberto :get 200
@@ -4155,9 +4160,10 @@
                 "Published table should NOT be in collection items in OSS"))))))
   (testing "In OSS (without :library feature), published tables should NOT appear in root collection items"
     (mt/with-premium-features #{}
-      (mt/with-temp [:model/Table {table-id :id} {:collection_id nil
-                                                  :is_published  true
-                                                  :name          "Root Published Table"}]
+      (mt/with-temp [:model/Table {table-id :id} {:name "Root Published Table"}
+                     :model/TableUserSettings _ {:table_id      table-id
+                                                 :collection_id nil
+                                                 :is_published  true}]
         (let [items (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))]
           (is (not (some #(and (= "table" (:model %)) (= table-id (:id %))) items))
               "Published table should NOT be in root collection items in OSS"))))))

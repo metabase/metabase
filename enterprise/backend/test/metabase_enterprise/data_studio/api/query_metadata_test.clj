@@ -13,7 +13,8 @@
       (testing "Published tables in collections should be accessible with collection read permission (no data permissions)"
         (mt/with-temp [:model/Collection coll     {:type "library-data"}
                        :model/Database db         {}
-                       :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id (u/the-id coll)}
+                       :model/Table    table      {:db_id (u/the-id db)}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id coll)}
                        :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
                        :model/Field    _field-2   {:table_id (u/the-id table) :name "name" :base_type :type/Text}
                        :model/PermissionsGroup {group-id :id} {}
@@ -26,7 +27,8 @@
               (is (= 2 (count (:fields response))))))))
       (testing "Published tables in root collection should be accessible with root collection read permission"
         (mt/with-temp [:model/Database db         {}
-                       :model/Table    table      {:db_id (u/the-id db) :is_published true :collection_id nil}
+                       :model/Table    table      {:db_id (u/the-id db)}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true}
                        :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
                        :model/PermissionsGroup {group-id :id} {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
@@ -36,7 +38,7 @@
               (is (= (u/the-id table) (:id response)))))))
       (testing "Unpublished tables require data permissions"
         (mt/with-temp [:model/Database db         {}
-                       :model/Table    table      {:db_id (u/the-id db) :is_published false}
+                       :model/Table    table      {:db_id (u/the-id db)}
                        :model/Field    _field-1   {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
                        :model/PermissionsGroup {group-id :id} {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
@@ -58,7 +60,8 @@
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                      :model/Database db {}
-                     :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
+                     :model/Table table {:db_id (u/the-id db)}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id table-coll)}
                      :model/Field _field {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
                      :model/Collection card-coll {}
                      :model/Card card {:collection_id (u/the-id card-coll)
@@ -84,7 +87,8 @@
     (mt/with-premium-features #{:library}
       (mt/with-temp [:model/Collection table-coll {:type "library-data"}
                      :model/Database db {}
-                     :model/Table table {:db_id (u/the-id db) :is_published true :collection_id (u/the-id table-coll)}
+                     :model/Table table {:db_id (u/the-id db)}
+                     :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id table-coll)}
                      :model/Field _field {:table_id (u/the-id table) :name "id" :base_type :type/Integer :semantic_type :type/PK}
                      :model/Collection card-coll {}
                      :model/Card card {:collection_id (u/the-id card-coll)
@@ -112,7 +116,8 @@
     (testing "Should include published tables accessible via collection permissions"
       (mt/with-premium-features #{:library}
         (mt/with-temp [:model/Collection table-coll {:type "library-data"}
-                       :model/Table table {:is_published true :collection_id (u/the-id table-coll)}
+                       :model/Table table {}
+                       :model/TableUserSettings _ {:table_id (:id table) :is_published true :collection_id (u/the-id table-coll)}
                        :model/PermissionsGroup custom-group {}
                        :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
                                                             :group_id (u/the-id custom-group)}]

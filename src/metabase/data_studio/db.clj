@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -89,17 +90,26 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids]))
 
+(def ^:private selection-columns
+  "The id, database, name, schema, and published flag of a Table."
+  [:model/Table :id :db_id :name :display_name :schema
+   [[:exists ^:allow-subquery {:select [1]
+                               :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                               :where  [:and
+                                        [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                        [:= :s.is_published true]]}]
+    :is_published]])
+
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published]
-             {:where (table-selectors-where selectors), :limit limit}))
+  (t2/select selection-columns {:where (table-selectors-where selectors), :limit limit}))
 
 (mu/defn selection-columns-for-tables
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids]))
+  (t2/select selection-columns :id [:in table-ids]))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."

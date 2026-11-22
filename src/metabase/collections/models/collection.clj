@@ -381,16 +381,24 @@
               ids)
       (some nil? collection-ids) (conj nil))))
 
+(defn remote-sync-writable-table-ids
+  "The ids of those of `tables` whose metadata remote sync leaves writable: every one unless the instance is
+  read-only, and then those that aren't published into a synced Collection."
+  [tables]
+  (let [table-ids (into #{} (map :id) tables)]
+    (if (and (remote-sync/read-only?) (seq table-ids))
+      (let [published (collections.db/published-table-collection-ids table-ids)
+            writable  (remote-sync-writable-collection-ids (vals published))]
+        (into #{}
+              (filter #(or (not (contains? published %))
+                           (contains? writable (get published %))))
+              table-ids))
+      table-ids)))
+
 (defn remote-sync-writable-table?
-  "Whether remote sync leaves the metadata of `table` writable: any Table unless the instance is read-only, and then
-  one that isn't published into a synced Collection."
-  [{:keys [is_published collection_id] :as table}]
-  (or (not (remote-sync/read-only?))
-      (do
-        (api/check-500 (contains? table :is_published) "No :is_published is set for a Table.")
-        (api/check-500 (contains? table :collection_id) "No :collection_id is set for a Table.")
-        (or (not is_published)
-            (contains? (remote-sync-writable-collection-ids [collection_id]) collection_id)))))
+  "Whether remote sync leaves the metadata of `table` writable, see [[remote-sync-writable-table-ids]]."
+  [table]
+  (contains? (remote-sync-writable-table-ids [table]) (:id table)))
 
 (defn writable-table-ids
   "The ids of those of `tables` whose content the current user can write: every Table for a superuser, those a data
@@ -409,7 +417,7 @@
 
                     :else
                     [])]
-    (into #{} (comp (filter remote-sync-writable-table?) (map :id)) permitted)))
+    (remote-sync-writable-table-ids permitted)))
 
 (defn hydrate-table-content-can-read
   "Each of `rows`, a model's rows with nil ones kept, with `:can_read` in its metadata: whether the current user reads

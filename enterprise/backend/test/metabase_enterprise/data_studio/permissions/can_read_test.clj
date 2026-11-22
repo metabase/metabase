@@ -8,6 +8,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -36,7 +37,9 @@
                 (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
                 (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
                 (when table-is-published?
-                  (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id}))
+                  (schema.table-user-settings/upsert-table-user-settings!
+                   (t2/select-one :model/Table :id (mt/id :venues))
+                   {:is_published true :collection_id collection-id}))
                 (if collection-readable?
                   (perms/grant-collection-read-permissions! group-id collection-id)
                   (do

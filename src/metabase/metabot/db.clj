@@ -507,10 +507,8 @@
   existence answer here runs ahead of every permission check, and lets the id argument
   enumerate table ids across databases the caller cannot otherwise see.
 
-  Selects the whole row rather than the two columns this fn returns: `mi/can-read?` for a Table
-  is polymorphic over the instance, and its published-collection branch reads `:is_published`
-  and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
-  user whose access comes through that path."
+  Selects the whole row rather than the two columns this fn returns, so `mi/can-read?` for a Table
+  answers for the row as stored."
   [table-id]
   (when-let [table (t2/select-one :model/Table :id table-id :active true)]
     (when (mi/can-read? (t2/hydrate table :can_read))
@@ -527,18 +525,21 @@
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids]))
 
 (mu/defn table-schema-rows
-  "Return the ID, name, schema, and database ID of each table in `table-ids`.
-
-  Rows also include `:is_published` and `:collection_id`, which `can-read?` and `can-query?` need to check access
-  through a collection, present even when nil."
+  "Return the ID, name, schema, and database ID of each table in `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]))
+  (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids]))
 
 (mu/defn table-curation-rows
   "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
   `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :active :visibility_type :is_published :data_layer :data_authority]
+  (t2/select [:model/Table :id :db_id :active :visibility_type :data_layer :data_authority
+              [[:exists ^:allow-subquery {:select [1]
+                                          :from   [[(t2/table-name :model/TableUserSettings) :s]]
+                                          :where  [:and
+                                                   [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
+                                                   [:= :s.is_published true]]}]
+               :is_published]]
              :id [:in table-ids]))
 
 (mu/defn visible-table-summaries
