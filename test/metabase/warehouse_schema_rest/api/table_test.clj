@@ -429,12 +429,12 @@
 
 (deftest query-metadata-transform-hydration-test
   (testing "GET /api/table/:id/query_metadata hydrates the source :transform based on transforms availability (GDGT-2523)"
-    (mt/with-temp [:model/Transform transform {:name   "My transform"
-                                               :source {:type  :query
-                                                        :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
-                                               :target {:type "table" :database (mt/id) :name "my_transform_table"}}
-                   :model/Table     {table-id :id} {:db_id        (mt/id)
-                                                    :transform_id (:id transform)}]
+    (mt/with-temp [:model/Table     {table-id :id} {:db_id (mt/id)}
+                   :model/Transform transform {:name            "My transform"
+                                               :source          {:type  :query
+                                                                 :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
+                                               :target          {:type "table" :database (mt/id) :name "my_transform_table"}
+                                               :target_table_id table-id}]
       (testing "self-hosted (not hosted) without :transforms-basic still hydrates the source transform"
         (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
           (mt/with-premium-features #{}

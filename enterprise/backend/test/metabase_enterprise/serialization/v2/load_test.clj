@@ -2999,7 +2999,7 @@
           (ts/with-db source-db
             (t2/delete! :model/TransformTag)
             (let [db        (ts/create! :model/Database :name "my-db")
-                  transform (ts/create! :model/Transform
+                  _         (ts/create! :model/Transform
                                         :name "Hello Transform"
                                         :source {:type :query
                                                  :query (lib/native-query (lib-be/application-database-metadata-provider (:id db))
@@ -3011,8 +3011,7 @@
               (ts/create! :model/Table
                           :name "hello_transforms_world"
                           :db_id (:id db)
-                          :schema "public"
-                          :transform_id (:id transform))
+                          :schema "public")
               (reset! serialized (into [] (serdes.extract/extract {:include-h2? true})))))
           (ts/with-db dest-db
             (t2/delete! :model/TransformTag)
@@ -3020,8 +3019,7 @@
             (let [transform (t2/select-one :model/Transform :name "Hello Transform")
                   table     (t2/select-one :model/Table :name "hello_transforms_world")]
               (is (some? transform))
-              (is (some? table))
-              (is (= (:id transform) (:transform_id table))))))))))
+              (is (some? table)))))))))
 
 (deftest dashboard-minimal-required-properties-test
   (testing "Dashboard deserialized with only: serdes/meta, entity_id, name, creator_id"

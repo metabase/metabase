@@ -271,7 +271,7 @@
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
-               :owner_user_id :owner_email :transform_id]
+               :owner_user_id :owner_email]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source

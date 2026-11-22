@@ -1078,7 +1078,6 @@
    [:owner-user-id           {:optional true} [:maybe ::lib.schema.id/user]]
    [:collection-id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is-published            {:optional true} [:maybe :boolean]]
-   [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform-target        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::database

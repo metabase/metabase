@@ -923,7 +923,7 @@
 
    Performs:
    - Sync target table to AppDB
-   - Set `transform_id` on the target table
+   - Set `target_table_id` on the transform
    - Publish Metabase events (unless `:publish-events?` is false)
 
    This is called after the core execution completes. Callers that use
@@ -940,10 +940,9 @@
         ;; Sync the canonical target the run recorded at its start, not the workspace copy mapped back through the
         ;; remap row: a schema change may have deleted that row since the run recorded it.
         table (sync-target! (canonical-sync-target db-id transform) database)]
-    ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
+    ;; Sync target table and set target_table_id on transform
     (when table
-      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)})
-      (transforms-base.db/update-table! (:id table) {:transform_id (:id transform)}))
+      (transforms-base.db/update-transform! (:id transform) {:target_table_id (:id table)}))
     ;; ANALYZE the target before the run is observable, so dependents don't plan on stale stats.
     ;; Best-effort: a stats failure shouldn't fail an otherwise-successful run.
     (try
@@ -963,7 +962,7 @@
     nil))
 
 (mu/defn output-table :- [:maybe :metabase.warehouse-schema.schema/table]
-  "Return the output table created by a transform, looked up via `transform_id`."
+  "Return the output table created by a transform, looked up via its stored `target_table_id`."
   [transform :- ::transforms-base.schema/transform]
   (transforms-base.db/table-for-transform (:id transform)))
 

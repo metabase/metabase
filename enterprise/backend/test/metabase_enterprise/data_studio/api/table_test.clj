@@ -35,11 +35,9 @@
 (deftest table-metadata-survives-deleted-transform-test
   (testing "a table whose creating transform has since been deleted (metabase#69904)"
     (mt/with-premium-features #{:transforms-basic :hosting}
-      (mt/with-temp [:model/Transform transform {}
-                     :model/Table     {table-id :id} {:transform_id (:id transform)}]
+      (mt/with-temp [:model/Table     {table-id :id} {}
+                     :model/Transform transform {:target_table_id table-id}]
         (t2/delete! :model/Transform :id (:id transform))
-        (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
-          (is (nil? (user-table-fn :transform_id table-id))))
         (testing "GET /api/table/:id does not crash"
           (is (=? {:id table-id} (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))
         (testing "GET /api/table (list, which hydrates :transform when transforms are enabled) does not crash"

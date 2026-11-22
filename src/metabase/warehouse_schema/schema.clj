@@ -282,7 +282,6 @@
    [:owner_user_id           {:optional true} [:maybe ::lib.schema.id/user-or-older-export-id]]
    [:collection_id           {:optional true} [:maybe ::lib.schema.id/collection]]
    [:is_published            {:optional true} [:maybe :boolean]]
-   [:transform_id            {:optional true} [:maybe ::lib.schema.id/transform]]
    [:transform_target        {:optional true} [:maybe :boolean]]])
 
 (mr/def ::external-dimension
@@ -348,7 +347,7 @@
                            :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                            :database_require_filter :is_writable
                            :data_authority :data_source :owner_email :is_published :data_layer :db_id
-                           :collection_id :transform_id :owner_user_id]]
+                           :collection_id :owner_user_id]]
     [:map {:closed true}
      [:serdes/meta    {:optional true} ::models.schema/external-meta]
      [:archived_at    {:optional true} [:maybe ::models.schema/external-date]]

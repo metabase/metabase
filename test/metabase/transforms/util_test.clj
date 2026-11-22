@@ -467,8 +467,8 @@
             "target-table must find a Table row with schema=nil — otherwise schemas-less drivers (MySQL) would silently miss their targets")
         (is (= "some_nil_schema_table" (:name found)))))))
 
-(deftest execute-sets-transform-id-on-target-table-test
-  (testing "Executing a query transform sets transform_id on the target table"
+(deftest execute-sets-target-table-id-on-transform-test
+  (testing "Executing a query transform sets target_table_id on the transform"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms-basic}
         (let [target {:type "table" :schema nil :name "test_output_table"}]
@@ -482,7 +482,7 @@
             ;; Mock execute-base! to return success without actually running a query,
             ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
             ;; and sync-target! to skip driver calls but still return the target table
-            ;; so complete-execution! can set transform_id on it. execute-base! is a multimethod,
+            ;; so complete-execution! can set target_table_id from it. execute-base! is a multimethod,
             ;; so it needs with-redefs (with-dynamic-fn-redefs refuses to proxy multimethods);
             ;; the plain fns go through with-dynamic-fn-redefs to keep them thread-local.
             (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
@@ -492,21 +492,23 @@
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
-                (is (= transform-id
-                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+                (is (= table-id
+                       (t2/select-one-fn :target_table_id :model/Transform :id transform-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
     (mt/with-premium-features #{:transforms-basic}
       (let [target {:type "table" :schema nil :name "hydration_test_table"}]
-        (mt/with-temp [:model/Transform {transform-id :id} {:target target :name "Test Hydration Transform"}
-                       :model/Table table {:transform_id transform-id}]
+        (mt/with-temp [:model/Table table {}
+                       :model/Transform {transform-id :id} {:target          target
+                                                            :name            "Test Hydration Transform"
+                                                            :target_table_id (:id table)}]
           (let [hydrated (t2/hydrate table :transform)]
             (is (some? (:transform hydrated)))
             (is (= transform-id (-> hydrated :transform :id))))))))
-  (testing "hydrating :transform returns nil when transform_id is nil"
+  (testing "hydrating :transform returns nil when no transform targets the table"
     (mt/with-premium-features #{:transforms-basic}
-      (mt/with-temp [:model/Table table {:transform_id nil}]
+      (mt/with-temp [:model/Table table {}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
 

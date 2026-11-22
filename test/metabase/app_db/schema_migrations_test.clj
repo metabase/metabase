@@ -5471,3 +5471,56 @@
           (testing (name table)
             (is (= [true false false]
                    (mapv #(t2/select-one-fn :archived_directly table :id %) ids)))))))))
+
+(deftest drop-table-transform-id-test
+  (impl/test-migrations ["nqeyec" "p7c3vn"] [migrate!]
+    (let [user-id    (t2/insert-returning-pk! :core_user {:first_name  "Test"
+                                                          :last_name   "User"
+                                                          :email       "user@example.com"
+                                                          :entity_id   (u/generate-nano-id)
+                                                          :password    "superstrong"
+                                                          :date_joined :%now})
+          db-id      (t2/insert-returning-pk! :metabase_database {:name       "Transform Targets DB"
+                                                                  :engine     "h2"
+                                                                  :created_at :%now
+                                                                  :updated_at :%now
+                                                                  :details    "{}"})
+          transform! (fn []
+                       (t2/insert-returning-pk! :transform {:name        (mt/random-name)
+                                                            :source      "{}"
+                                                            :target      "{}"
+                                                            :source_type "native"
+                                                            :creator_id  user-id
+                                                            :entity_id   (u/generate-nano-id)
+                                                            :created_at  :%now
+                                                            :updated_at  :%now}))
+          table!     (fn [transform-id]
+                       (t2/insert-returning-pk! :metabase_table {:active       true
+                                                                 :db_id        db-id
+                                                                 :name         (mt/random-name)
+                                                                 :transform_id transform-id
+                                                                 :created_at   :%now
+                                                                 :updated_at   :%now}))
+          target     (fn [transform-id]
+                       (t2/select-one-fn :target_table_id :transform :id transform-id))
+          unlinked   (transform!)
+          linked     (transform!)
+          no-table   (transform!)
+          old-table  (table! linked)
+          new-table  (table! linked)
+          only-table (table! unlinked)
+          plain      (table! nil)]
+      (t2/update! :transform :id linked {:target_table_id new-table})
+      (migrate!)
+      (testing "transform without target table takes the table that named it"
+        (is (= only-table (target unlinked))))
+      (testing "transform with target table keeps it"
+        (is (= new-table (target linked))))
+      (testing "transform named by no table stays without target table"
+        (is (nil? (target no-table))))
+      (testing "column is gone"
+        (is (not (contains? (t2/select-one :metabase_table :id only-table) :transform_id))))
+      (testing "rollback restores column from target tables"
+        (migrate! :down 64)
+        (is (= {only-table unlinked, new-table linked, old-table nil, plain nil}
+               (t2/select-pk->fn :transform_id :metabase_table :id [:in [only-table new-table old-table plain]])))))))

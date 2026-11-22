@@ -579,10 +579,12 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Card :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
 
-(mu/defn transforms-by-id
-  "A map of ID to Transform for `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
+(mu/defn transforms-by-target-table-id
+  "A map of Table ID to the Transform whose target is that Table, for `table-ids`."
+  [table-ids :- [:set ::lib.schema.id/table]]
+  (t2/select-fn->fn :target_table_id identity :model/Transform
+                    :target_table_id [:in table-ids]
+                    {:order-by [[:id :asc]]}))
 
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus the user's own

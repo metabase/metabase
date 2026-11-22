@@ -23,4 +23,3 @@ is_published: false
 is_writable: true
 owner_email: null
 owner_user_id: null
-transform_id: null

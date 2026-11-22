@@ -66,19 +66,20 @@
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn table-for-transform
-  "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
-  that hasn't been saved yet, in which case there is no owned Table either."
+  "The target Table of the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
+  that hasn't been saved yet, in which case there is no target Table either."
   [transform-id :- [:maybe ::lib.schema.id/transform]]
   (when transform-id
-    (t2/select-one :model/Table :transform_id transform-id)))
+    (when-let [table-id (t2/select-one-fn :target_table_id [:model/Transform :target_table_id]
+                                          :id [:auto/param transform-id])]
+      (t2/select-one :model/Table :id [:auto/param table-id]))))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
   [table-id :- ::lib.schema.id/table
    changes  :- [:map {:closed true}
-                [:schema       {:optional true} [:maybe :string]]
-                [:active       {:optional true} [:maybe :boolean]]
-                [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
+                [:schema {:optional true} [:maybe :string]]
+                [:active {:optional true} [:maybe :boolean]]]]
   (t2/update! :model/Table :id table-id changes))
 
 (mu/defn mark-table-index-failed!

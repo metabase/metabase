@@ -13,6 +13,10 @@ summary: Breaking changes to the Metabase API, listed by release.
   `POST /api/ee/security-center/test-notification` take the same `/advisories` prefix. The old paths return
   `404 Not Found`. Request and response bodies are unchanged.
 
+- Tables no longer have `transform_id` in the responses of the endpoints that return them, such as `GET /api/table`
+  and `GET /api/table/:id`. The transform that writes to a table is the hydrated `transform` of the table, and a
+  transform names its table as `target_table_id`.
+
 - `POST /api/database` and `PUT /api/database/:id` no longer accept `provider_name`. Metabase derives it from the
   engine and the host, and ignores a value in the request.
 

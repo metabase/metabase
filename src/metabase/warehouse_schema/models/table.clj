@@ -435,14 +435,9 @@
   [_model k tables]
   (mi/instances-with-hydrated-data
    tables k
-   #(let [transform-ids (->> tables (keep :transform_id) distinct)
-          id->transform (when (seq transform-ids)
-                          (warehouse-schema.db/transforms-by-id transform-ids))]
-      (into {}
-            (keep (fn [{:keys [id transform_id]}]
-                    (when transform_id
-                      [id (get id->transform transform_id)])))
-            tables))
+   #(if-let [table-ids (not-empty (into #{} (keep :id) tables))]
+      (warehouse-schema.db/transforms-by-target-table-id table-ids)
+      {})
    :id
    {:default nil}))
 
@@ -533,12 +528,11 @@
         entities))
 
 (defn- import-dependencies
-  "The Collection and Transform each of the Table `entities` depends on, if any."
+  "The Collection each of the Table `entities` depends on, if any."
   [entities]
-  (mapv (fn [{:keys [collection_id transform_id]}]
+  (mapv (fn [{:keys [collection_id]}]
           (cond-> []
-            collection_id (conj [:model/Collection collection_id])
-            transform_id  (conj [:model/Transform transform_id])))
+            collection_id (conj [:model/Collection collection_id])))
         entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
@@ -557,7 +551,7 @@
   {:track [:name :description :entity_type :active :db_id :display_name :visibility_type :schema :points_of_interest
            :caveats :show_in_getting_started :field_order :is_upload :database_require_filter :estimated_row_count
            :deactivated_at :archived_at :is_writable :data_authority :data_source :data_layer :owner_email
-           :owner_user_id :collection_id :is_published :transform_id :transform_target]
+           :owner_user_id :collection_id :is_published :transform_target]
    :skip  [:initial_sync_status :view_count :is_defective_duplicate :unique_table_helper]})
 
 (defmethod serialization/spec :model/Table [_]
@@ -573,8 +567,7 @@
                          :deactivated_at serialization/date-transform
                          :db_id          serialization/database-transform
                          :collection_id  (serialization/fk-transform :model/Collection)
-                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)
-                         :transform_id   (serialization/fk-transform :model/Transform)}
+                         :owner_user_id  (assoc serialization/user-transform :import import-owner-ids)}
    :defaults            {:is_published            false
                          :is_upload               false
                          :show_in_getting_started false}
@@ -588,7 +581,7 @@
                     :database_require_filter :deactivated_at :description :display_name :entity_type
                     :estimated_row_count :field_order :initial_sync_status :is_defective_duplicate :is_published
                     :is_upload :is_writable :owner_email :owner_user_id :points_of_interest :schema
-                    :show_in_getting_started :transform_id :transform_target :unique_table_helper
+                    :show_in_getting_started :transform_target :unique_table_helper
                     :visibility_type]
    :skip           [:view_count]
    :topics         {}
