@@ -19,6 +19,7 @@
    [metabase.segments.schema]
    [metabase.transforms.schema]
    [metabase.util :as u]
+   [metabase.util.events :as u.events]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -218,13 +219,14 @@
   which no write of their own rows may have changed."
   [rows]
   (when (seq rows)
-    (events/publish-lifecycle! [(events/created :event/revision-create
-                                                (into []
-                                                      (comp (map #(select-keys % [:model :model_id]))
-                                                            (distinct)
-                                                            (map #(t2/instance :model/Revision %)))
-                                                      rows))]
-                               {:user-id (some :user_id rows)})))
+    (events/publish-event! :event/revision-create
+                           {:changes (u.events/create-changes
+                                      (into []
+                                            (comp (map #(select-keys % [:model :model_id]))
+                                                  (distinct)
+                                                  (map #(t2/instance :model/Revision %)))
+                                            rows))
+                            :user-id (some :user_id rows)})))
 
 (t2/deftransforms :model/Revision
   {:object mi/transform-json})

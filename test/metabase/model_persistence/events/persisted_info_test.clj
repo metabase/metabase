@@ -28,9 +28,9 @@
       (mt/with-temp [:model/Database db {:settings {:persist-models-enabled true}}]
         (mt/with-model-cleanup [:model/Card]
           (let [card-id (mt/with-current-user (mt/user->id :crowberto)
-                          (:id (first (#'card/create-cards* [(assoc (mt/with-temp-defaults :model/Card)
-                                                                    :database_id (u/the-id db)
-                                                                    :type        :model)]))))]
+                          (:id (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+                                                                  :database_id (u/the-id db)
+                                                                  :type        :model)]))))]
             (is (= "creating" (:state (t2/select-one :model/PersistedInfo :card_id card-id))))))))))
 
 (deftest updating-model-does-not-persist-it-test

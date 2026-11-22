@@ -46,18 +46,3 @@
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
   (mdb/delete-oldest-rows! :model/AuditLog time-column cutoff batch-size))
-
-(mu/defn parent-ids
-  "The ids that the `parent-key` column of the `model` rows with `ids` holds, by id."
-  [model      :- :keyword
-   parent-key :- :keyword
-   ids        :- [:sequential ms/PositiveInt]]
-  (if (seq ids)
-    (into {} (t2/select-fn-vec (juxt :id parent-key) [model :id parent-key] :id [:in ids]))
-    {}))
-
-(mu/defn rows
-  "The rows of `model` with `ids`."
-  [model :- :keyword
-   ids   :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/select model :id [:in ids]))

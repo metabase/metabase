@@ -718,7 +718,7 @@
   deletes it with `delete-cards!`."
   [model explicit-attributes f]
   (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
-        temp-card  (first (#'card/create-cards* [attributes]))]
+        temp-card  (first (card/create-cards! [attributes]))]
     (try
       (testing "\nwith temporary :model/Card\n"
         (f temp-card))
@@ -838,7 +838,7 @@
                  (try
                    (f dashboard)
                    (finally
-                     (dashboard/delete-dashboard! id))))))
+                     (dashboard/delete-dashboards! [id]))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/Pulse
   "Files a temporary dashboard subscription in the Collection of its Dashboard, as `create-pulse!` does."

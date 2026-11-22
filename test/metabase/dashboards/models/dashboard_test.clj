@@ -176,7 +176,7 @@
        (fn [{:keys [dash-id pulse-id]}]
          (when archived?
            (t2/update! :model/Dashboard :id dash-id {:archived true}))
-         (dashboard/delete-dashboard! dash-id)
+         (dashboard/delete-dashboards! [dash-id])
          (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
@@ -206,9 +206,9 @@
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
-      (dashboard/update-dashboard! dashboard-id {:parameters [(merge default-parameter
-                                                                     {:values_source_type    :card
-                                                                      :values_source_config {:card_id card-id}})]})
+      (dashboard/update-dashboards! [{:id dashboard-id :parameters [(merge default-parameter
+                                                                           {:values_source_type    :card
+                                                                            :values_source_config {:card_id card-id}})]}])
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -222,7 +222,7 @@
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
       ;; same setup as earlier test, we know the ParameterCard exists right now
-      (dashboard/delete-dashboard! dashboard-id)
+      (dashboard/delete-dashboards! [dashboard-id])
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
@@ -235,7 +235,7 @@
                                                                       :values_source_type    "card"
                                                                       :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/sync-parameter-cards! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (dashboard/update-dashboard! dashboard-id {:name "new name"})))))
+        (dashboard/update-dashboards! [{:id dashboard-id :name "new name"}])))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -293,7 +293,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-               (dashboard/create-dashboard! {:creator_id (mt/user->id :rasta), :collection_id collection-id, :name dashboard-name})))
+               (first (dashboard/create-dashboards! [{:creator_id (mt/user->id :rasta), :collection_id collection-id, :name dashboard-name}]))))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
@@ -301,7 +301,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (dashboard/update-dashboard! card-id {:collection_id collection-id})))))))
+             (dashboard/update-dashboards! [{:id card-id :collection_id collection-id}])))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -549,10 +549,10 @@
                    :model/Collection plain    {}
                    :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (dashboard/create-dashboard! {:name "Dash" :creator_id (mt/user->id :rasta)
-                                                          :collection_id (u/the-id snippets)})))
+                            (first (dashboard/create-dashboards! [{:name "Dash" :creator_id (mt/user->id :rasta)
+                                                                   :collection_id (u/the-id snippets)}]))))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (dashboard/update-dashboard! (u/the-id dash) {:collection_id (u/the-id snippets)})))
+                            (dashboard/update-dashboards! [{:id (u/the-id dash) :collection_id (u/the-id snippets)}])))
       (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
 
 (deftest move-dashboard-moves-dashboard-questions-test
@@ -561,9 +561,9 @@
                    :model/Collection target {}
                    :model/Dashboard  dash   {:collection_id (u/the-id source)}
                    :model/Card       card   {:dashboard_id (u/the-id dash) :collection_id (u/the-id source)}]
-      (dashboard/update-dashboard! (u/the-id dash) {:collection_id (u/the-id target)})
+      (dashboard/update-dashboards! [{:id (u/the-id dash) :collection_id (u/the-id target)}])
       (is (= (u/the-id target) (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))))
-      (dashboard/update-dashboard! (u/the-id dash) {:collection_id nil})
+      (dashboard/update-dashboards! [{:id (u/the-id dash) :collection_id nil}])
       (is (nil? (t2/select-one-fn :collection_id :model/Card :id (u/the-id card)))))))
 
 (deftest ^:parallel dashboard-columns-schema-test

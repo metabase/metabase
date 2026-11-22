@@ -35,7 +35,7 @@
 
 (def ^:private create-rows
   "The write function [[insert-rows]] creates the rows of each model with."
-  {:model/Card        #(#'card/create-cards* %)
+  {:model/Card        #(card/create-cards! %)
    :model/Document    document/create-documents!
    :model/Exploration exploration/create-explorations!
    :model/Action      action/create-actions!})
@@ -56,9 +56,9 @@
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."
   [collection]
-  (first (#'card/create-cards* [(assoc (mt/with-temp-defaults :model/Card)
-                                       :collection_id (:id collection)
-                                       :type :model)])))
+  (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+                                     :collection_id (:id collection)
+                                     :type :model)])))
 
 (defn- in-collection
   "A `collection-attrs` function for [[insert-rows]] that puts the rows in the collection, on top of `attrs`."

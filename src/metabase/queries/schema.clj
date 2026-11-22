@@ -234,6 +234,24 @@
   "What a caller gives to create Cards: the columns of `::card.update`."
   ::card.update)
 
+(mr/def ::write-opts
+  "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
+  and `:context`, the context of the events."
+  [:maybe [:map {:closed true}
+           [:writer  {:optional true} [:enum :import :replacement :revert]]
+           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
+
+(mr/def ::card.write
+  "What the write functions of Cards take: the columns of a Card, whatever the request schemas and the SerDes spec have
+  checked, for the write functions check no shape and the hooks of the model check what the database needs."
+  [:map-of :keyword [:fn {:error/message "a column value"} (constantly true)]])
+
+(mr/def ::card.write-row
+  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, as `::card.write`."
+  [:and
+   ::card.write
+   [:map [:id ::lib.schema.id/card]]])
+
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."
   [:merge

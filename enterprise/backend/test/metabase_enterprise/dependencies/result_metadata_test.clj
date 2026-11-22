@@ -398,12 +398,12 @@
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
-          (let [card-id (:id (first (#'queries.card/create-cards* [{:name                   "Dependent"
-                                                                    :display                :table
-                                                                    :visualization_settings {}
-                                                                    :creator_id             (mt/user->id :rasta)
-                                                                    :database_id            (mt/id)
-                                                                    :dataset_query          (card-query source-id)}])))]
+          (let [card-id (:id (first (queries.card/create-cards! [{:name                   "Dependent"
+                                                                  :display                :table
+                                                                  :visualization_settings {}
+                                                                  :creator_id             (mt/user->id :rasta)
+                                                                  :database_id            (mt/id)
+                                                                  :dataset_query          (card-query source-id)}])))]
             (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
             (mt/with-premium-features #{:dependencies}
               (deps.result-metadata/update-result-metadata! 1000))
@@ -419,12 +419,12 @@
           (run-jobs!)
           (is (not (pending? source-id)))
           (Thread/sleep 5)
-          (#'queries.card/create-cards* [{:name                   "Dependent"
-                                          :display                :table
-                                          :visualization_settings {}
-                                          :creator_id             (mt/user->id :rasta)
-                                          :database_id            (mt/id)
-                                          :dataset_query          (card-query source-id)}])
+          (queries.card/create-cards! [{:name                   "Dependent"
+                                        :display                :table
+                                        :visualization_settings {}
+                                        :creator_id             (mt/user->id :rasta)
+                                        :database_id            (mt/id)
+                                        :dataset_query          (card-query source-id)}])
           (deps.test/synchronously-run-dependency-job!)
           (is (not (pending? source-id))))))))
 
@@ -435,12 +435,12 @@
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/Card {source-id :id} {:dataset_query (table-query :orders)}]
           (run-jobs!)
-          (let [card-id (:id (first (#'queries.card/create-cards* [{:name                   "Dependent"
-                                                                    :display                :table
-                                                                    :visualization_settings {}
-                                                                    :creator_id             (mt/user->id :rasta)
-                                                                    :database_id            (mt/id)
-                                                                    :dataset_query          (card-query source-id)}])))]
+          (let [card-id (:id (first (queries.card/create-cards! [{:name                   "Dependent"
+                                                                  :display                :table
+                                                                  :visualization_settings {}
+                                                                  :creator_id             (mt/user->id :rasta)
+                                                                  :database_id            (mt/id)
+                                                                  :dataset_query          (card-query source-id)}])))]
             (queries.card/update-cards! [(assoc {:dataset_query (add-grand-total (table-query :orders))} :id source-id)])
             (deps.result-metadata/update-result-metadata! 1000)
             (queries.card/update-cards! [(assoc {:name "Renamed"} :id card-id)])

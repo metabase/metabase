@@ -1,11 +1,10 @@
 (ns metabase.revisions.events
-  "Handlers of the lifecycle events that record a Revision of what a user changes: the events of the writes of one
-  batch are grouped by the entity they belong to, and the Revision of each entity is written once, from the entity as
-  it then is, so one operation on a Dashboard and its dashcards and tabs is one Revision. Nothing is recorded without
-  a user."
+  "Handler of the lifecycle events that record a Revision of what a user changes: the update or the create event of an
+  entity that has Revisions, which the function that writes the entity and its parts publishes as its last step, so that
+  one operation on a Dashboard and its dashcards and tabs is one Revision. The events of the parts make none, and nothing
+  is recorded without a user."
   (:require
    [metabase.events.core :as events]
-   [metabase.revisions.db :as revisions.db]
    [metabase.revisions.models.revision :as revision]
    [metabase.revisions.spec :as revisions.spec]
    [metabase.util.events :as u.events]
@@ -14,138 +13,58 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- user-edit?
-  "Whether the lifecycle `event` is a write that a Revision should say a user made: not one that the archive or restore
-  of another entity carried to its row, nor an update that changes nothing that the revision spec of the model
-  tracks."
-  [{:keys [context object previous-object] :as event}]
-  (and (nil? (:archived-with context))
-       (or (not (and object previous-object))
-           (revision/changed? (u.events/model-of event) previous-object object))))
+(defn- touch?
+  "Whether the update `event` changes none of the columns of its row, as the event of the owner of parts that a write
+  changed."
+  [{:keys [object previous-object]}]
+  (= (into {} object) (into {} previous-object)))
 
-(defn- parent-ref
-  "The `[parent-model parent-id]` of the row that the `event` writes, nil for a model whose rows have Revisions of
-  their own."
-  [{:keys [object previous-object] :as event}]
-  (when-let [{:keys [model key]} (revisions.spec/parent (u.events/model-of event))]
-    [model (get (or object previous-object) key)]))
-
-(defn- own-entity
-  "The `[model id]` of the row that the `event` writes when its model has Revisions of its own and the event calls for
-  one, else nil."
-  [{:keys [operation object context] :as event}]
+(defn- recorded?
+  "Whether the row event `event` calls for a Revision: a create or an update of an entity that has Revisions of its own,
+  by a user, that is not a revert or carried by the archive or restore of another entity, and that changes what its spec
+  tracks or only touches it."
+  [{:keys [operation context object previous-object user-id] :as event}]
   (let [model (u.events/model-of event)
         spec  (revisions.spec/spec model)]
-    (when (and spec
-               (not (:parent spec))
-               (#{:create :update} operation)
-               (not (:reverting? context))
-               (user-edit? event))
-      [model (:id object)])))
-
-(defn- part-write?
-  "Whether the `event` writes a row that belongs to the Revision of a parent, and calls for one."
-  [{:keys [context] :as event}]
-  (and (some? (parent-ref event))
-       (not (:reverting? context))
-       (user-edit? event)))
-
-(defn- parent-links
-  "The `[model id]` of the parent of each of `refs`, the `[model id]` of rows that belong to the Revision of a parent
-  of their own, loaded together: one query for the rows of each model, however many levels there are above them."
-  [refs]
-  (loop [pending (into #{} (filter #(revisions.spec/parent (first %))) refs)
-         links   {}]
-    (if (empty? pending)
-      links
-      (let [found (into {}
-                        (mapcat (fn [[model refs*]]
-                                  (let [{parent-model :model, k :key} (revisions.spec/parent model)]
-                                    (for [[id parent-id] (revisions.db/parent-ids model k (map second refs*))]
-                                      [[model id] [parent-model parent-id]]))))
-                        (group-by first pending))]
-        (recur (into #{}
-                     (comp (map val)
-                           (filter #(revisions.spec/parent (first %)))
-                           (remove #(contains? (merge links found) %)))
-                     found)
-               (merge links found))))))
-
-(defn- entity-of
-  "A fn of a lifecycle event returning the `[model id]` of the entity whose Revision it calls for, nil when it calls
-  for none, the parents that the events of one batch name being `links`, see [[parent-links]]."
-  [links]
-  (fn [event]
-    (or (own-entity event)
-        (when (part-write? event)
-          (loop [ref (parent-ref event)]
-            (cond
-              (nil? (revisions.spec/parent (first ref))) ref
-              (contains? links ref)                      (recur (get links ref))
-              :else                                      nil))))))
-
-(defn- without-children
-  "`row` of `model` with no child rows, so that nothing loads them."
-  [model row]
-  (reduce (fn [row {hydration-key :as}] (assoc row hydration-key []))
-          row
-          (vals (revisions.spec/children model))))
+    (boolean
+     (and user-id
+          spec
+          (not (:parent spec))
+          (#{:create :update} operation)
+          (not (:reverting? context))
+          (nil? (:archived-with context))
+          (or (= :create operation)
+              (touch? event)
+              (revision/changed? model previous-object object))))))
 
 (defn- revision-info
-  "What the Revision of the entity `[model id]` says of the `events` of its writes, with its row from `loaded`, the
-  rows of the entities the events do not carry, by `[model id]`, or nil when no user made them or the row is gone."
-  [[model id] events loaded]
-  (let [own     (first (filter #(and (= model (:model %)) (= :create (:operation %))) events))
-        user-id (some :user-id events)]
-    (when user-id
-      (when-let [object (some-> (or (some #(when (= model (:model %)) (:object %)) events)
-                                    (get loaded [model id]))
-                                (cond-> (and own (every? #(= model (:model %)) events))
-                                  (->> (without-children model))))]
-        {:entity       model
-         :id           id
-         :object       object
-         :user-id      user-id
-         :is-creation? (boolean own)
-         :message      (some #(get-in % [:context :revision-message]) events)}))))
-
-(defn- carried?
-  "Whether the `events` of the entity `[model id]` carry its row."
-  [[model _id] events]
-  (some #(and (= model (:model %)) (:object %)) events))
+  "What the Revision of the entity that the row event `event` is about says."
+  [{:keys [operation object user-id context] :as event}]
+  {:entity       (u.events/model-of event)
+   :id           (:id object)
+   :object       object
+   :user-id      user-id
+   :is-creation? (= :create operation)
+   :message      (:revision-message context)})
 
 (defn- revision-rows
-  "The Revision rows of the entities of `by-entity`, a map from `[model id]` to the events of its writes, as they are
-  now, loading the rows the events do not carry and taking the snapshots of each model together."
-  [by-entity]
-  (let [loaded (into {}
-                     (mapcat (fn [[model refs]]
-                               (for [row (revisions.db/entities-by-ids model (vec (distinct (map second refs))))]
-                                 [[model (:id row)] row])))
-                     (group-by first (keep (fn [[ref events]] (when-not (carried? ref events) ref)) by-entity)))
-        infos  (keep (fn [[ref events]] (revision-info ref events loaded)) by-entity)]
-    (into []
-          (mapcat (fn [[model infos]]
-                    (try
-                      (revision/revision-rows model (vec infos))
-                      (catch Throwable e
-                        (log/warnf "Failed to record the revisions of %d %s: %s" (count infos) model (ex-message e))
-                        []))))
-          (group-by :entity infos))))
+  "The Revision rows of the entities of `infos`, the snapshots of each model taken together."
+  [infos]
+  (into []
+        (mapcat (fn [[model infos]]
+                  (try
+                    (revision/revision-rows model (vec infos))
+                    (catch Throwable e
+                      (log/warnf "Failed to record the revisions of %d %s: %s" (count infos) model (ex-message e))
+                      []))))
+        (group-by :entity infos)))
 
-(defn- owner
-  "The one owner of the events of a batch that call for a Revision, nil for the others, without reading the app DB."
-  [event]
-  (when (or (own-entity event) (part-write? event))
-    ::revisions))
+(events/derive! :metabase/lifecycle-event ::revisions)
 
-(defn- push!
-  "Write, in one statement, the Revision of each entity that `events` change, as it is now."
-  [events _all-events]
-  (when (some :user-id events)
-    (let [entity    (entity-of (parent-links (into #{} (keep parent-ref) events)))
-          by-entity (dissoc (group-by entity events) nil)
-          rows      (revision-rows by-entity)]
+(methodical/defmethod events/publish-event! ::revisions
+  [topic event]
+  (when-let [infos (not-empty (into [] (comp (filter recorded?) (map revision-info)) (events/row-events topic event)))]
+    (let [rows (revision-rows infos)]
       (when (and (seq rows)
                  (try
                    (revision/create-revisions! rows)
@@ -157,10 +76,3 @@
           (revision/publish-created! rows)
           (catch Throwable e
             (log/warnf "Failed to publish the creation of %d revisions: %s" (count rows) (ex-message e))))))))
-
-(events/derive! :metabase/lifecycle-event ::revisions)
-
-(methodical/defmethod events/publish-event! ::revisions
-  [topic event]
-  (when-let [events (not-empty (filterv owner (events/row-events topic event)))]
-    (push! events events)))

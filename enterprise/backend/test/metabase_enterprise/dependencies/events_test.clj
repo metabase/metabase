@@ -242,19 +242,18 @@
                                                            [{:dashboard_id dashboard-id :card_id card-id
                                                              :row 0 :col 0 :size_x 4 :size_y 4}])))))))
             (testing "pointing a dashboard card at another card"
-              (is (changes? #(dashboard-card/update-dashboard-card-rows! [{:id @dashcard :card_id other-id}]))))
+              (is (changes? #(dashboard-card/update-dashboard-cards! [{:id @dashcard :card_id other-id}]))))
             (testing "adding a series"
-              (is (changes? #(dashboard-card/update-dashboard-cards-series! {@dashcard [card-id]}))))
+              (is (changes? #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard [card-id]})))))
             (testing "removing a series"
-              (is (changes? #(dashboard-card/update-dashboard-cards-series! {@dashcard []}))))
+              (is (changes? #(dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) {@dashcard []})))))
             (testing "adding and removing a tab"
               (let [tab-id (atom nil)]
-                (is (changes? #(reset! tab-id (first (dashboard-tab/create-dashboard-tabs!
-                                                      [{:dashboard_id dashboard-id :name "Tab"
-                                                        :position 0}])))))
-                (is (changes? #(dashboard-tab/do-update-tabs! dashboard-id
-                                                              (t2/select :model/DashboardTab :id @tab-id)
-                                                              [])))))
+                (is (changes? #(reset! tab-id (first (map :id (dashboard-tab/create-dashboard-tabs! [{:dashboard_id dashboard-id :name "Tab"
+                                                                                                      :position 0}]))))))
+                (is (changes? #(dashboard-tab/replace-dashboard-tabs! dashboard-id
+                                                                      (t2/select :model/DashboardTab :id @tab-id)
+                                                                      [])))))
             (testing "removing a dashboard card"
               (is (changes? #(dashboard-card/delete-dashboard-cards! [@dashcard]))))
             (testing "nothing else"

@@ -1,5 +1,6 @@
 (ns metabase.content-verification.models.moderation-review
   (:require
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.content-verification.db :as content-verification.db]
@@ -82,7 +83,7 @@
 (mu/defn create-moderation-review! :- ::content-verification.schema/moderation-review
   "Create a new ModerationReview from `row` as the most recent of its item: the item's other reviews lose the mark, and
   those beyond the newest [[max-moderation-reviews]] are deleted, in one transaction, publishing the events of the three
-  writes together as the last step."
+  writes."
   [row :- ::content-verification.schema/moderation-review.create]
   (t2/with-transaction [_conn]
     (let [{:keys [id moderated_item_id moderated_item_type] :as review}
@@ -92,16 +93,14 @@
           _        (when (seq unmarked)
                      (content-verification.db/unmark-moderation-reviews! (mapv :id unmarked)))
           beyond   (vec (content-verification.db/moderation-reviews-beyond-newest
-                         moderated_item_id moderated_item_type max-moderation-reviews))
-          deleted  (events/deleted :event/moderation-review-delete :model/ModerationReview beyond)]
+                         moderated_item_id moderated_item_type max-moderation-reviews))]
+      (events/publish-event! :event/moderation-review-create (events/create-event [review]))
+      (events/publish-event! :event/moderation-review-update
+                             (events/update-event (m/index-by :id unmarked)
+                                                  (mapv (fn [review] {:id (:id review) :most_recent false}) unmarked)))
+      (events/publish-event! :event/moderation-review-delete (events/delete-event beyond))
       (when (seq beyond)
         (content-verification.db/delete-moderation-reviews! (mapv :id beyond)))
-      (events/publish-lifecycle!
-       [(events/created :event/moderation-review-create [review])
-        (events/updated :event/moderation-review-update
-                        unmarked
-                        (mapv #(events/updated-row % {:most_recent false}) unmarked))
-        deleted])
       review)))
 
 (mu/defn delete-reviews-of-deleted-cards! :- :int

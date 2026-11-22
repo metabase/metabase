@@ -109,7 +109,7 @@
 (deftest dashboard-create-event-test
   (testing :dashboard-create
     (mt/with-test-user :rasta
-      (let [dashboard (dashboard/create-dashboard! {:name "My Cool Dashboard" :creator_id (mt/user->id :rasta)})]
+      (let [dashboard (first (dashboard/create-dashboards! [{:name "My Cool Dashboard" :creator_id (mt/user->id :rasta)}]))]
         (try
           (is (partial=
                {:topic    :dashboard-create
@@ -119,13 +119,13 @@
                 :details  {:name "My Cool Dashboard", :description nil}}
                (mt/latest-audit-log-entry "dashboard-create" (:id dashboard))))
           (finally
-            (dashboard/delete-dashboard! (:id dashboard))))))))
+            (dashboard/delete-dashboards! [(:id dashboard)])))))))
 
 (deftest dashboard-delete-event-test
   (testing :dashboard-delete
     (mt/with-test-user :rasta
       (mt/with-temp [:model/Dashboard dashboard {:name "My Cool Dashboard"}]
-        (dashboard/delete-dashboard! (:id dashboard))
+        (dashboard/delete-dashboards! [(:id dashboard)])
         (is (partial=
              {:topic    :dashboard-delete
               :user_id  (mt/user->id :rasta)
@@ -291,7 +291,6 @@
                 :model_id    (:id segment)
                 :details     {:name             (:name segment)
                               :description      (:description segment)
-                              :revision-message "deleted"
                               :database_id      (mt/id)
                               :table_id         (mt/id :checkins)}}
                (mt/latest-audit-log-entry "segment-delete" (:id segment))))))))
@@ -720,7 +719,7 @@
   [model id changes]
   (case model
     :model/Card      (card/update-cards! [(assoc changes :id id)])
-    :model/Dashboard (dashboard/update-dashboard! id changes)))
+    :model/Dashboard (dashboard/update-dashboards! [(assoc changes :id id)])))
 
 (deftest public-links-are-recorded-test
   (mt/with-temp [:model/Card      {card-id :id}      {}

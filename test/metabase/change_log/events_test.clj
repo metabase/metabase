@@ -132,7 +132,7 @@
         (mt/with-temp [:model/Database _ {}]
           (let [card    (atom nil)
                 updated (atom nil)
-                rows    (logged-by #(do (reset! card (first (#'card/create-cards*
+                rows    (logged-by #(do (reset! card (first (card/create-cards!
                                                              [(-> (mt/with-temp-defaults :model/Card)
                                                                   (dissoc :entity_id))])))
                                         (card/update-cards! [{:id (:id @card) :name "renamed"}])
@@ -564,7 +564,7 @@
                                                  :dashboard_card_id (:id dc)}]
         (testing "deleting a dashboard tab logs the subscription card deleted with its dashboard card"
           (is (= [["pulse_card" (:id pc) "delete"]]
-                 (logged-by #(dashboard-tab/do-update-tabs! (:id dash) [tab] []))))
+                 (logged-by #(dashboard-tab/replace-dashboard-tabs! (:id dash) [tab] []))))
           (is (nil? (t2/select-one :model/PulseCard :id (:id pc)))))))))
 
 (defn- call-counts!

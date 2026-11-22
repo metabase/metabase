@@ -26,6 +26,15 @@
 (mr/def ::dashboard.name
   ms/NonBlankString)
 
+(mr/def ::write-opts
+  "The options of the write functions of a Dashboard and of its parts: `:writer`, who writes when it matters (a revert,
+  a SerDes import or a replacement, the user's own write by default; `:context`, the context of the events; `:owner-event?`, false when
+  the caller publishes the event of the Dashboard itself, as the last step of its own writes."
+  [:maybe [:map {:closed true}
+           [:writer       {:optional true} [:enum :import :replacement :revert]]
+           [:context      {:optional true} [:maybe :metabase.events.schema/context]]
+           [:owner-event? {:optional true} :boolean]]])
+
 (mr/def ::dashboard.width
   [:enum "fixed" "full"])
 
@@ -199,6 +208,13 @@
    [:card_id          {:optional true} [:maybe ::lib.schema.id/card]]
    [:position         {:optional true} ::dashboard-card-series.position]])
 
+(mr/def ::dashboard-card-series.update-row
+  "A row of a bulk update of DashboardCardSeries: the id of the series and the columns to change."
+  [:merge
+   ::dashboard-card-series.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
+
 (mr/def ::dashboard-card-series.create
   "What creating a DashboardCardSeries takes: its DashboardCard, its Card and its position."
   [:map {:closed true}
@@ -222,6 +238,13 @@
    [:entity_id    {:optional true} [:maybe :string]]
    [:created_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at   {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def ::dashboard-tab.update-row
+  "A row of a bulk update of DashboardTabs: the id of the tab and the columns to change."
+  [:merge
+   ::dashboard-tab.update
+   [:map {:closed true}
+    [:id ms/PositiveInt]]])
 
 (mr/def ::external-dashboard
   "A Dashboard as serialization writes it, with portable references in place of ids."
