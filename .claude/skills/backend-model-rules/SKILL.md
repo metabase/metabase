@@ -334,6 +334,12 @@ required by its module's `init.clj`.
   `(metabase.events.test-util/statement-count! thunk)`, which turns consumers off so the number does not depend on
   test order. Take one discarded measurement first so one-time cache reads do not count. A function that fails has an
   N+1: fix the function, never the test.
+- What the count test is about: growth with rows for the SAME requested change (rows in mixed stored state, a check
+  or a read per row). A caller that asks for a different value per row (tab positions on a reorder, a layout per
+  dashcard) gets one statement per distinct value, and that is accepted: give the rows of a test the same change.
+  Permission checks are never per row: a write path over many rows uses the bulk permission functions, with the same
+  refusals. The cost of lib and the query processor is not expected to be constant and is not stubbed: give the rows
+  queries over the same data sources (same database, tables, source card) so the metadata loaded does not vary.
 - **Never pin a statement count to a number.** `(is (= 12 (call-count)))` breaks on every harmless change, differs by
   edition and app DB, and proves nothing about growth. Only the comparison matters: one discarded warm-up call, then
   the same count at two sizes. This holds for every call-count test, of a write function, an endpoint or a consumer.
