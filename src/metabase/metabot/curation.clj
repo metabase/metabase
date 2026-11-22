@@ -103,8 +103,8 @@
   returns it, so it isn't curated.
   root_collection_type is intentionally omitted: the table search spec joins the collection only for
   published tables, and for a published table is_published already decides curation, so the root type never
-  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id, and lets
-  curated? coerce is_published consistently (only true/1 count)."
+  changes a table's verdict. Omitting it avoids re-deriving from a possibly-stale collection_id; is_published is
+  coerced to a boolean here, so a Table without settings counts as unpublished."
   [ids]
   (let [{:keys [library?]} (feature-gates)
         rows          (metabot.db/table-curation-rows ids)
@@ -116,7 +116,7 @@
                      (not (contains? destinations db_id))
                      (not= db_id audit-app/audit-db-id))]
       [id {:model          "table"
-           :is_published   (and library? is_published)
+           :is_published   (boolean (and library? is_published))
            :data_layer     data_layer
            :data_authority data_authority}])))
 

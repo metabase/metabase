@@ -521,3 +521,45 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request analyst-id :post 403 "ee/data-studio/table/unpublish-tables"
                                        {:table_ids [table-id]}))))))))
+
+(deftest publish-tables-by-database-ids-test
+  (mt/with-premium-features #{:library}
+    (testing "POST /api/ee/data-studio/table/publish-tables with database_ids"
+      (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}         {}
+                     :model/Database   {other-db-id :id}   {}
+                     :model/Table      {orders-id :id}     {:db_id db-id :name "orders" :schema "sales"}
+                     :model/Table      {products-id :id}   {:db_id db-id :name "products" :schema "catalog"}
+                     :model/Table      {other-id :id}      {:db_id other-db-id :name "orders" :schema "sales"}]
+        (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                              {:database_ids  [db-id]
+                               :collection_id collection-id})
+        (testing "publishes every Table of selected database"
+          (is (= [{:collection_id collection-id :is_published true}
+                  {:collection_id collection-id :is_published true}]
+                 (mapv publication [orders-id products-id]))))
+        (testing "leaves Table of other database unpublished"
+          (is (= {:collection_id nil :is_published false}
+                 (publication other-id))))))))
+
+(deftest publish-tables-by-schema-ids-test
+  (mt/with-premium-features #{:library}
+    (testing "POST /api/ee/data-studio/table/publish-tables with schema_ids"
+      (mt/with-temp [:model/Collection {collection-id :id} {:type collection/library-data-collection-type}
+                     :model/Database   {db-id :id}         {}
+                     :model/Database   {other-db-id :id}   {}
+                     :model/Table      {orders-id :id}     {:db_id db-id :name "orders" :schema "sales"}
+                     :model/Table      {people-id :id}     {:db_id db-id :name "people" :schema "sales"}
+                     :model/Table      {products-id :id}   {:db_id db-id :name "products" :schema "catalog"}
+                     :model/Table      {other-id :id}      {:db_id other-db-id :name "orders" :schema "sales"}]
+        (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                              {:schema_ids    [(str db-id ":sales")]
+                               :collection_id collection-id})
+        (testing "publishes every Table of selected schema"
+          (is (= [{:collection_id collection-id :is_published true}
+                  {:collection_id collection-id :is_published true}]
+                 (mapv publication [orders-id people-id]))))
+        (testing "leaves Tables of other schema and of same schema in other database unpublished"
+          (is (= [{:collection_id nil :is_published false}
+                  {:collection_id nil :is_published false}]
+                 (mapv publication [products-id other-id]))))))))

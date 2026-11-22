@@ -8,7 +8,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -269,16 +268,15 @@
    table-ids      :- [:maybe [:set ::lib.schema.id/table]]]
   (if (seq collection-ids)
     (t2/select :model/Table
-               {:where    (cond-> [:and
-                                   [:= :active true]
-                                   [:exists ^:allow-subquery {:select [1]
-                                                              :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                                              :where  [:and
-                                                                       [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                                       [:= :s.is_published true]
-                                                                       [:in :s.collection_id collection-ids]]}]]
-                            (seq table-ids) (conj [:in :id table-ids]))
-                :order-by [[:name :asc] [:id :asc]]})
+               {:select    [:t.*]
+                :from      [[(t2/table-name :model/Table) :t]]
+                :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+                :where     (cond-> [:and
+                                    [:= :t.active true]
+                                    [:= :s.is_published true]
+                                    [:in :s.collection_id collection-ids]]
+                             (seq table-ids) (conj [:in :t.id table-ids]))
+                :order-by  [[:t.name :asc] [:t.id :asc]]})
     []))
 
 (mu/defn measure-definition

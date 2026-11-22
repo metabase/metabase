@@ -129,6 +129,12 @@
    [:published_downstream_tables [:sequential ::bulk-table-info]]
    [:unpublished_upstream_tables [:sequential ::bulk-table-info]]])
 
+(defn- bulk-table-info
+  "`table`, a row of selection columns, as a `::bulk-table-info`: its published flag, nil when not set, becomes a
+  boolean."
+  [table]
+  (update table :is_published boolean))
+
 (defn- writable-tables
   "`tables`, or a 403 unless the current user can change the metadata of every one of them."
   [tables]
@@ -189,9 +195,9 @@
                             (data-studio.db/selection-columns-for-tables upstream-ids))
         downstream-tables (when (seq downstream-ids)
                             (data-studio.db/selection-columns-for-tables downstream-ids))]
-    {:selected_table              selected-table
-     :published_downstream_tables (filterv :is_published downstream-tables)
-     :unpublished_upstream_tables (filterv (complement :is_published) upstream-tables)}))
+    {:selected_table              (some-> selected-table bulk-table-info)
+     :published_downstream_tables (into [] (comp (filter :is_published) (map bulk-table-info)) downstream-tables)
+     :unpublished_upstream_tables (into [] (comp (remove :is_published) (map bulk-table-info)) upstream-tables)}))
 
 (defn- sync-schema-async!
   [table user-id]

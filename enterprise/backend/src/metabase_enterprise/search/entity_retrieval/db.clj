@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -25,16 +24,14 @@
   narrowed to just `id`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    id             :- [:maybe ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :description]
-             {:where [:and
-                      [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                                 :where  [:and
-                                                          [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                          [:= :s.is_published true]
-                                                          [:in :s.collection_id collection-ids]]}]
-                      [:= :active true]
-                      (when id [:= :id id])]}))
+  (t2/select [:model/Table :t.id :t.name :t.display_name :t.description]
+             {:from      [[(t2/table-name :model/Table) :t]]
+              :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+              :where     [:and
+                          [:= :s.is_published true]
+                          [:in :s.collection_id collection-ids]
+                          [:= :t.active true]
+                          (when id [:= :t.id id])]}))
 
 (mu/defn library-measures-of-tables
   "The ID, name, and description of the unarchived Measures on the Tables with `table-ids`, optionally narrowed to

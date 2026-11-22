@@ -18,15 +18,22 @@
    [:table-ids    {:optional true} [:maybe [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]]
    [:schema-ids   {:optional true} [:maybe [:or [:set :string] [:sequential :string]]]]])
 
+(defn- table-column
+  "The key of `column` qualified with the app-DB table name of `:model/Table`, such as `:metabase_table.id`."
+  [column]
+  (u/qualified-key (t2/table-name :model/Table) column))
+
 (defn- table-selectors-expr
   "Matches the Tables selected by `database-ids`, `table-ids`, and `schema-ids` (each `\"<db-id>:<schema>\"`)."
   [{:keys [database-ids table-ids schema-ids]}]
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
+                        [:and
+                         [:= (table-column :db_id) (parse-long schema-db-id)]
+                         [:= (table-column :schema) schema-name]]))]
     (cond-> [:or false]
-      (seq database-ids) (conj [:in :db_id (sort database-ids)])
-      (seq table-ids)    (conj [:in :id    (sort table-ids)])
+      (seq database-ids) (conj [:in (table-column :db_id) (sort database-ids)])
+      (seq table-ids)    (conj [:in (table-column :id)    (sort table-ids)])
       (seq schema-ids)   (conj (into [:or] (map schema-expr) (sort schema-ids))))))
 
 (defn- table-selectors-subquery
@@ -49,7 +56,7 @@
                           [:not [:exists (-> table-ids
                                              (assoc :select [1])
                                              (update :where (fn [where]
-                                                              [:and where [:= :id output-table-id]])))]]
+                                                              [:and where [:= (table-column :id) output-table-id]])))]]
                           [:not [:in output-table-id tables]])]
     (t2/reducible-query {:select [[output-table-id :table_id]]
                          :from   [[(t2/table-name :model/Dimension) :dim]]
@@ -68,20 +75,18 @@
   [selectors        :- TableSelectors
    extra-table-ids  :- [:maybe [:set ::lib.schema.id/table]]
    extra-mode       :- [:enum :unpublished :any]]
-  (t2/select-pks-set :model/Table
-                     {:where (let [selector-expr (table-selectors-expr selectors)]
-                               (if (seq extra-table-ids)
-                                 [:or selector-expr (case extra-mode
-                                                      :unpublished [:and
-                                                                    [:in :id extra-table-ids]
-                                                                    [:not-exists ^:allow-subquery
-                                                                     {:select [1]
-                                                                      :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                                                      :where  [:and
-                                                                               [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                                               [:= :s.is_published true]]}]]
-                                                      :any         [:in :id extra-table-ids])]
-                                 selector-expr))}))
+  (t2/select-fn-set :id [:model/Table :id]
+                    {:left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id (table-column :id)]]
+                     :where     (let [selector-expr (table-selectors-expr selectors)]
+                                  (if (seq extra-table-ids)
+                                    [:or selector-expr (case extra-mode
+                                                         :unpublished [:and
+                                                                       [:in (table-column :id) extra-table-ids]
+                                                                       [:or
+                                                                        [:= :s.is_published nil]
+                                                                        [:= :s.is_published false]]]
+                                                         :any         [:in (table-column :id) extra-table-ids])]
+                                    selector-expr))}))
 
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."

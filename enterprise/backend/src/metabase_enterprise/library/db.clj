@@ -6,7 +6,6 @@
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -19,13 +18,12 @@
   "Whether an unarchived published Table exists in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/exists? :model/Table
-              :archived_at nil
-              {:where [:exists ^:allow-subquery {:select [1]
-                                                 :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                                 :where  [:and
-                                                          [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                          [:= :s.is_published true]
-                                                          [:in :s.collection_id collection-ids]]}]}))
+              {:from      [[(t2/table-name :model/Table) :t]]
+               :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+               :where     [:and
+                           [:= :t.archived_at nil]
+                           [:= :s.is_published true]
+                           [:in :s.collection_id collection-ids]]}))
 
 (mu/defn dashboard-in-collections?
   "Whether an unarchived Dashboard exists in the Collections with `collection-ids`."

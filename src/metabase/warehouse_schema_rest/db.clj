@@ -64,46 +64,49 @@
        [:published-only?            {:optional true} [:maybe :boolean]]
        [:check-unused?              {:optional true} [:maybe :boolean]]
        [:include-transform-targets? {:optional true} [:maybe :boolean]]]]
-  (let [db-type    (app-db/db-type)
-        glob       (fn [escaped]
-                     (-> escaped
-                         (str/replace "*" "%")
-                         (cond-> (not (str/ends-with? term "*")) (str "%"))))
-        ci-pattern (fn [pattern]
-                     (case db-type
-                       (:h2 :postgres) pattern
-                       [::h2x/collate pattern "utf8mb4_unicode_ci"]))
-        like       (fn [field wrap]
-                     [(case db-type (:h2 :postgres) :ilike :like)
-                      field
-                      (h2x/like-pattern term (comp ci-pattern wrap glob))])
-        where      (cond-> [:and (if include-transform-targets?
-                                   [:or [:= :active true] [:= :transform_target true]]
-                                   [:= :active true])]
-                     (not (str/blank? term)) (conj [:or
-                                                    (like :name identity)
-                                                    (like :display_name identity)
-                                                    ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
-                                                    (like :display_name #(str "% " %))])
-                     visibility-type         (conj [:= :visibility_type visibility-type])
-                     data-layer              (conj [:= :data_layer      (name data-layer)])
-                     data-source             (conj [:= :data_source     (name data-source)])
-                     owner-user-id           (conj [:= :owner_user_id   owner-user-id])
-                     owner-email             (conj [:= :owner_email     owner-email])
-                     orphan-only?            (conj [:and [:= :owner_email nil] [:= :owner_user_id nil]])
-                     published-only?         (conj [:exists ^:allow-subquery
-                                                    {:select [1]
-                                                     :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                                     :where  [:and
-                                                              [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                              [:= :s.is_published true]]}])
-                     check-unused?
-                     (conj [:not-exists ^:allow-subquery {:select [:*]
-                                                          :from   [[:dependency :d]]
-                                                          :where  [:and
-                                                                   [:= :d.to_entity_id :metabase_table.id]
-                                                                   [:= :d.to_entity_type "table"]]}]))]
-    (t2/select :model/Table {:where where, :order-by [[:name :asc]]})))
+  (let [table-column (partial u/qualified-key (t2/table-name :model/Table))
+        db-type      (app-db/db-type)
+        glob         (fn [escaped]
+                       (-> escaped
+                           (str/replace "*" "%")
+                           (cond-> (not (str/ends-with? term "*")) (str "%"))))
+        ci-pattern   (fn [pattern]
+                       (case db-type
+                         (:h2 :postgres) pattern
+                         [::h2x/collate pattern "utf8mb4_unicode_ci"]))
+        like         (fn [field wrap]
+                       [(case db-type (:h2 :postgres) :ilike :like)
+                        field
+                        (h2x/like-pattern term (comp ci-pattern wrap glob))])
+        where        (cond-> [:and (if include-transform-targets?
+                                     [:or [:= (table-column :active) true] [:= (table-column :transform_target) true]]
+                                     [:= (table-column :active) true])]
+                       (not (str/blank? term)) (conj [:or
+                                                      (like (table-column :name) identity)
+                                                      (like (table-column :display_name) identity)
+                                                      ;; match word starts after spaces e.g. 'ite' would match 'Order Item'
+                                                      (like (table-column :display_name) #(str "% " %))])
+                       visibility-type         (conj [:= (table-column :visibility_type) visibility-type])
+                       data-layer              (conj [:= (table-column :data_layer)      (name data-layer)])
+                       data-source             (conj [:= (table-column :data_source)     (name data-source)])
+                       owner-user-id           (conj [:= (table-column :owner_user_id)   owner-user-id])
+                       owner-email             (conj [:= (table-column :owner_email)     owner-email])
+                       orphan-only?            (conj [:and
+                                                      [:= (table-column :owner_email) nil]
+                                                      [:= (table-column :owner_user_id) nil]])
+                       published-only?         (conj [:= :s.is_published true])
+                       check-unused?
+                       (conj [:not-exists ^:allow-subquery {:select [:*]
+                                                            :from   [[:dependency :d]]
+                                                            :where  [:and
+                                                                     [:= :d.to_entity_id (table-column :id)]
+                                                                     [:= :d.to_entity_type "table"]]}]))]
+    (t2/select :model/Table
+               (cond-> {:select   [(table-column :*)]
+                        :where    where
+                        :order-by [[(table-column :name) :asc]]}
+                 published-only? (assoc :left-join [[(t2/table-name :model/TableUserSettings) :s]
+                                                    [:= :s.table_id (table-column :id)]])))))
 
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."

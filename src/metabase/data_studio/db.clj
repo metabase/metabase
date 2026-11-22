@@ -16,16 +16,23 @@
    [:schema_ids   {:optional true} [:or [:set :string] [:sequential :string]]]
    [:table_ids    {:optional true} [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]])
 
+(defn- table-column
+  "The key of `column` qualified with the app-DB table name of `:model/Table`, such as `:metabase_table.id`."
+  [column]
+  (u/qualified-key (t2/table-name :model/Table) column))
+
 (defn- table-selectors-where
   "The `:where` clause for the Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`,
   and/or `:table_ids`."
   [{:keys [database_ids table_ids schema_ids]}]
   (let [schema-expr (fn [s]
                       (let [[schema-db-id schema-name] (str/split s #"\:")]
-                        [:and [:= :db_id (parse-long schema-db-id)] [:= :schema schema-name]]))]
+                        [:and
+                         [:= (table-column :db_id) (parse-long schema-db-id)]
+                         [:= (table-column :schema) schema-name]]))]
     (cond-> [:or false]
-      (seq database_ids) (conj [:in :db_id (sort database_ids)])
-      (seq table_ids)    (conj [:in :id    (sort table_ids)])
+      (seq database_ids) (conj [:in (table-column :db_id) (sort database_ids)])
+      (seq table_ids)    (conj [:in (table-column :id)    (sort table_ids)])
       (seq schema_ids)   (conj (into [:or] (map schema-expr) (sort schema_ids))))))
 
 (mu/defn fk-remapped-table-ids-for-tables
@@ -68,7 +75,7 @@
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
                                           :from   [(t2/table-name :model/Table)]
-                                          :where  [:and where [:= :id output-table-id]]}]]]})))
+                                          :where  [:and where [:= (table-column :id) output-table-id]]}]]]})))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -91,25 +98,26 @@
   (t2/select :model/Table :id [:in table-ids]))
 
 (def ^:private selection-columns
-  "The id, database, name, schema, and published flag of a Table."
-  [:model/Table :id :db_id :name :display_name :schema
-   [[:exists ^:allow-subquery {:select [1]
-                               :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                               :where  [:and
-                                        [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                        [:= :s.is_published true]]}]
-    :is_published]])
+  "The select list for the id, database, name, display name, schema, and published flag of a Table, for a query with
+  [[settings-join]], where the flag is nil when the settings do not set it."
+  [:model/Table :id :db_id :name :display_name :schema :s.is_published])
+
+(def ^:private settings-join
+  "The `:left-join` value that joins the TableUserSettings of each Table as `s`."
+  [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id (table-column :id)]])
 
 (mu/defn selection-columns-for-selectors
-  "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
+  "Up to `limit` id, database, name, display name, schema, and published flag (nil when not set) of the Tables picked
+  out by `selectors`."
   [selectors :- TableSelectors
    limit     :- ms/PositiveInt]
-  (t2/select selection-columns {:where (table-selectors-where selectors), :limit limit}))
+  (t2/select selection-columns
+             {:left-join settings-join, :where (table-selectors-where selectors), :limit limit}))
 
 (mu/defn selection-columns-for-tables
-  "The id, database, name, schema, and published flag of the Tables with `table-ids`."
+  "The id, database, name, display name, schema, and published flag (nil when not set) of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select selection-columns :id [:in table-ids]))
+  (t2/select selection-columns {:left-join settings-join, :where [:in (table-column :id) table-ids]}))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."

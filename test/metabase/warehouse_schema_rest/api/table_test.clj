@@ -1291,6 +1291,109 @@
                       (map :id)
                       set))))))))
 
+(defn- listed-tables
+  "The Tables of the Database with `db-id` that `GET /api/table` lists with query `params`."
+  [db-id & params]
+  (filter #(= (:db_id %) db-id)
+          (apply mt/user-http-request :crowberto :get 200 "table" params)))
+
+(defn- listed-table-ids
+  "The ids of the Tables of the Database with `db-id` that `GET /api/table` lists with query `params`."
+  [db-id & params]
+  (into #{} (map :id) (apply listed-tables db-id params)))
+
+(deftest published-only-skips-unpublished-settings-test
+  (testing "GET /api/table?published-only=true skips Table with unpublished settings"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {published :id} {:db_id db-id :name "table_1" :active true}
+                   :model/TableUserSettings _ {:table_id published :is_published true}
+                   :model/Table {unpublished :id} {:db_id db-id :name "table_2" :active true}
+                   :model/TableUserSettings _ {:table_id unpublished :is_published false}]
+      (is (= #{published unpublished} (listed-table-ids db-id)))
+      (is (= #{published} (listed-table-ids db-id :published-only true))))))
+
+(deftest published-only-with-term-filter-test
+  (testing "GET /api/table?published-only=true&term="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {matching :id} {:db_id        db-id
+                                                :name         "ledger_entries"
+                                                :display_name "Ledger Entries"
+                                                :active       true}
+                   :model/TableUserSettings _ {:table_id     matching
+                                               :is_published true
+                                               :display_name "Bookkeeping"}
+                   :model/Table {other-name :id} {:db_id        db-id
+                                                  :name         "invoices"
+                                                  :display_name "Invoices"
+                                                  :active       true}
+                   :model/TableUserSettings _ {:table_id other-name :is_published true}
+                   :model/Table {unpublished :id} {:db_id        db-id
+                                                   :name         "ledger_accounts"
+                                                   :display_name "Ledger Accounts"
+                                                   :active       true}]
+      (testing "term alone matches published and unpublished Tables"
+        (is (= #{matching unpublished} (listed-table-ids db-id :term "ledger"))))
+      (testing "term matches name of published Table, which comes back with its own names"
+        (is (=? [{:id matching :name "ledger_entries" :display_name "Ledger Entries"}]
+                (listed-tables db-id :published-only true :term "ledger_e"))))
+      (testing "term matches display name of published Table"
+        (is (= #{matching} (listed-table-ids db-id :published-only true :term "Ledger")))
+        (is (= #{matching} (listed-table-ids db-id :published-only true :term "Entr"))))
+      (testing "term does not match display name of settings"
+        (is (= #{} (listed-table-ids db-id :published-only true :term "Bookkeeping")))))))
+
+(deftest owner-filters-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/User {user-id :id} {:email "table-owner@example.com"}
+                 :model/User {other-user-id :id} {:email "other-table-owner@example.com"}
+                 :model/Table {by-user :id} {:db_id db-id :name "table_1" :active true :owner_user_id user-id}
+                 :model/Table {by-other-user :id} {:db_id db-id :name "table_2" :active true
+                                                   :owner_user_id other-user-id}
+                 :model/Table {by-email :id} {:db_id db-id :name "table_3" :active true
+                                              :owner_email "table-owner@example.com"}
+                 :model/Table {by-other-email :id} {:db_id db-id :name "table_4" :active true
+                                                    :owner_email "other-table-owner@example.com"}
+                 :model/Table _ {:db_id db-id :name "table_5" :active true}]
+    (testing "GET /api/table?owner-user-id="
+      (is (= #{by-user} (listed-table-ids db-id :owner-user-id user-id)))
+      (is (= #{by-other-user} (listed-table-ids db-id :owner-user-id other-user-id))))
+    (testing "GET /api/table?owner-email="
+      (is (= #{by-email} (listed-table-ids db-id :owner-email "table-owner@example.com")))
+      (is (= #{by-other-email} (listed-table-ids db-id :owner-email "other-table-owner@example.com"))))))
+
+(deftest visibility-type-filter-test
+  (testing "GET /api/table?visibility-type="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {hidden :id} {:db_id db-id :name "table_1" :active true :visibility_type :hidden}
+                   :model/Table {technical :id} {:db_id db-id :name "table_2" :active true
+                                                 :visibility_type :technical}
+                   :model/Table {visible :id} {:db_id db-id :name "table_3" :active true}]
+      (is (= #{hidden technical visible} (listed-table-ids db-id)))
+      (is (= #{hidden} (listed-table-ids db-id :visibility-type "hidden")))
+      (is (= #{technical} (listed-table-ids db-id :visibility-type "technical"))))))
+
+(deftest data-source-filter-test
+  (testing "GET /api/table?data-source="
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {ingested :id} {:db_id db-id :name "table_1" :active true :data_source :ingested}
+                   :model/Table {uploaded :id} {:db_id db-id :name "table_2" :active true :data_source :upload}
+                   :model/Table {unset :id} {:db_id db-id :name "table_3" :active true}]
+      (is (= #{ingested uploaded unset} (listed-table-ids db-id)))
+      (is (= #{ingested} (listed-table-ids db-id :data-source "ingested")))
+      (is (= #{uploaded} (listed-table-ids db-id :data-source "upload"))))))
+
+(deftest include-transform-targets-filter-test
+  (testing "GET /api/table?include-transform-targets=true"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {active :id} {:db_id db-id :name "table_1" :active true}
+                   :model/Table {target :id} {:db_id db-id :name "table_2" :active false :transform_target true}
+                   :model/Table _ {:db_id db-id :name "table_3" :active false}]
+      (testing "inactive transform target is not listed by default"
+        (is (= #{active} (listed-table-ids db-id)))
+        (is (= #{active} (listed-table-ids db-id :include-transform-targets false))))
+      (testing "inactive transform target is listed with option, other inactive Table is not"
+        (is (= #{active target} (listed-table-ids db-id :include-transform-targets true)))))))
+
 (deftest no-fks-for-missing-tables-test
   (testing "Check that we don't return foreign keys for missing/inactive tables"
     (mt/with-temp-test-data

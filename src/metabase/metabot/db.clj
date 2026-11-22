@@ -530,17 +530,13 @@
   (t2/select [:model/Table :id :name :schema :db_id] :id [:in table-ids]))
 
 (mu/defn table-curation-rows
-  "The ID, Database ID, active flag, visibility type, published flag, data layer, and data authority of the Tables with
-  `table-ids`."
+  "The ID, Database ID, active flag, visibility type, data layer, data authority, and published flag (nil when not set)
+  of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :active :visibility_type :data_layer :data_authority
-              [[:exists ^:allow-subquery {:select [1]
-                                          :from   [[(t2/table-name :model/TableUserSettings) :s]]
-                                          :where  [:and
-                                                   [:= :s.table_id (u/qualified-key (t2/table-name :model/Table) :id)]
-                                                   [:= :s.is_published true]]}]
-               :is_published]]
-             :id [:in table-ids]))
+  (t2/select [:model/Table :t.id :t.db_id :t.active :t.visibility_type :t.data_layer :t.data_authority :s.is_published]
+             {:from      [[(t2/table-name :model/Table) :t]]
+              :left-join [[(t2/table-name :model/TableUserSettings) :s] [:= :s.table_id :t.id]]
+              :where     [:in :t.id table-ids]}))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with

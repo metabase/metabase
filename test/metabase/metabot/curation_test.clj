@@ -99,3 +99,19 @@
                  source))
           (is (= (->strs source) (->strs indexed))
               "source-of-truth agrees with the index's precomputed curated column"))))))
+
+(deftest curated-ids-table-publication-test
+  (mt/with-temp [:model/Database {db :id} {}
+                 :model/Table {published :id} {:db_id db :active true :data_layer :final}
+                 :model/TableUserSettings _ {:table_id published :is_published true}
+                 :model/Table {unpublished :id} {:db_id db :active true :data_layer :final}
+                 :model/TableUserSettings _ {:table_id unpublished :is_published false}
+                 :model/Table {no-settings :id} {:db_id db :active true :data_layer :final}]
+    (testing "only Table with published settings is curated"
+      (is (= #{["table" published]}
+             (metabot.curation/curated-ids [["table" published] ["table" unpublished] ["table" no-settings]]))))
+    (testing "signals carry boolean is_published"
+      (is (= {published true, unpublished false, no-settings false}
+             (into {}
+                   (map (fn [[id signals]] [id (:is_published signals)]))
+                   (#'metabot.curation/table-curation-signals [published unpublished no-settings])))))))
