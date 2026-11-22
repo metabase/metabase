@@ -36,9 +36,16 @@
 (defn- log-events!
   [events _all]
   (when (premium-features/enable-change-log?)
-    (change-log.log/log! (mapcat (fn [event]
-                                   (concat (own-changes event) (get-in event [:captures :change-log])))
-                                 events))))
+    (let [deleted  (filter #(= :delete (:operation %)) events)
+          cascaded (when (and (seq deleted) (not-any? :captures deleted))
+                     (mapcat (fn [[model group]]
+                               (capture-cascade model (fn [columns]
+                                                        (mapv #(select-keys (:previous-object %) (cons :id columns)) group))))
+                             (group-by :model deleted)))]
+      (change-log.log/log! (concat (mapcat (fn [event]
+                                             (concat (own-changes event) (get-in event [:captures :change-log])))
+                                           events)
+                                   cascaded)))))
 
 (events/register-statement-capture! :change-log capture-cascade)
 (events/derive! :metabase/lifecycle-event ::change-log)

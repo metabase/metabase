@@ -1081,15 +1081,15 @@
             (events/publish-lifecycle! [event])))))))
 
 (defmethod collection/archive-in-collections! :model/Action
-  [_model collection-ids]
+  [_model collection-ids _context]
   (archive-actions-in-collections! (vec collection-ids)))
 
 (defmethod collection/restore-in-collections! :model/Action
-  [_model collection-ids]
+  [_model collection-ids _context]
   (restore-actions-in-collections! (vec collection-ids)))
 
 (defmethod collection/delete-in-collections! :model/Action
-  [_model collection-ids]
+  [_model collection-ids _context]
   (delete-actions-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

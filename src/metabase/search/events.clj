@@ -85,7 +85,9 @@
   "Hand off the re-derivation of the documents of the `deleted` rows once the transaction commits."
   [deleted]
   (let [instances  (mapv #(t2/instance (:model %) (:previous-object %)) deleted)
-        dependents (apply merge-with into (keep #(get-in % [:captures :search]) deleted))
+        dependents (if (some :captures deleted)
+                     (apply merge-with into (keep #(get-in % [:captures :search]) deleted))
+                     (apply merge-with into (keep capture-dependents (vals (group-by :model deleted)))))
         steps      (cond-> []
                      (search/feeds-documents? instances)
                      (conj (fn [] (search/bulk-update! instances)))

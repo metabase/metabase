@@ -364,15 +364,15 @@
                           rows #(:entity_id (get stored (:id %))))))))
 
 (defmethod collection/archive-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids]
+  [_model collection-ids _context]
   (archive-snippets-in-collections! (vec collection-ids)))
 
 (defmethod collection/restore-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids]
+  [_model collection-ids _context]
   (restore-snippets-in-collections! (vec collection-ids)))
 
 (defmethod collection/delete-in-collections! :model/NativeQuerySnippet
-  [_model collection-ids]
+  [_model collection-ids _context]
   (delete-snippets-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------

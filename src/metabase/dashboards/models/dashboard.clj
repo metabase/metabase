@@ -521,17 +521,17 @@
   (update-dashboards! rows))
 
 (defmethod collection/archive-in-collections! :model/Dashboard
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
     (update-dashboards! (mapv (fn [id] {:id id :archived true}) ids))))
 
 (defmethod collection/restore-in-collections! :model/Dashboard
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
     (update-dashboards! (mapv (fn [id] {:id id :archived false}) ids))))
 
 (defmethod collection/delete-in-collections! :model/Dashboard
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
     (delete-dashboards! ids)))
 

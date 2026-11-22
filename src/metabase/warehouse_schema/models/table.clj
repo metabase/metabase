@@ -704,7 +704,7 @@
   (warehouse-schema.db/increment-table-view-counts! count->ids))
 
 (defmethod collection/archive-in-collections! :model/Table
-  [_model collection-ids]
+  [_model collection-ids _context]
   (when-let [table-ids (not-empty (warehouse-schema.db/published-table-ids-in-collections (vec collection-ids)))]
     (update-tables-with-changes! (set table-ids) {:collection_id nil :is_published false})))
 

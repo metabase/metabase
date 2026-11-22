@@ -989,17 +989,17 @@
   (shift-positions! collection-id position-clause plus-or-minus))
 
 (defmethod collection/archive-in-collections! :model/Pulse
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
     (update-pulses! ids {:archived true})))
 
 (defmethod collection/restore-in-collections! :model/Pulse
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
     (update-pulses! ids {:archived false})))
 
 (defmethod collection/delete-in-collections! :model/Pulse
-  [model collection-ids]
+  [model collection-ids _context]
   (when-let [ids (not-empty (collection/item-ids-in-collections model collection-ids))]
     (delete-pulses! ids)))
 

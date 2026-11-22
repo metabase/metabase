@@ -385,7 +385,7 @@
     (table/update-field-positions! (warehouse-schema.db/table table_id))))
 
 (defmethod collection/archive-in-collections! :model/TableUserSettings
-  [_model collection-ids]
+  [_model collection-ids _context]
   (when-let [ids (not-empty (warehouse-schema.db/table-user-settings-ids-of-published-tables-in-collections (vec collection-ids)))]
     (update-table-user-settings-rows! (mapv (fn [id] {:id id :collection_id nil :is_published false}) ids))))
 

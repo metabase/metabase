@@ -2249,32 +2249,32 @@
 
 (defmulti archive-in-collections!
   "Archives the rows of `model` in the Collections with `collection-ids` along with them, which a model that follows its
-  Collection implements with its own write function."
-  {:arglists '([model collection-ids])}
-  (fn [model _collection-ids] model))
+  Collection implements with its own write function, giving it `context` for its events."
+  {:arglists '([model collection-ids context])}
+  (fn [model _collection-ids _context] model))
 
 (defmulti restore-in-collections!
   "Restores the rows of `model` in the Collections with `collection-ids` that were archived along with them, which a
   model that follows its Collection implements with its own write function."
-  {:arglists '([model collection-ids])}
-  (fn [model _collection-ids] model))
+  {:arglists '([model collection-ids context])}
+  (fn [model _collection-ids _context] model))
 
 (defmulti delete-in-collections!
   "Deletes the rows of `model` in the Collections with `collection-ids`, which a model that follows its Collection
   implements with its own write function."
-  {:arglists '([model collection-ids])}
-  (fn [model _collection-ids] model))
+  {:arglists '([model collection-ids context])}
+  (fn [model _collection-ids _context] model))
 
 (defn- not-a-follower
   "Throws that `model` does not follow its Collection in the way asked."
   [model]
   (throw (ex-info (format "%s does not follow its Collection in this way" model) {:model model})))
 
-(defmethod archive-in-collections! :default [model _collection-ids] (not-a-follower model))
+(defmethod archive-in-collections! :default [model _collection-ids _context] (not-a-follower model))
 
-(defmethod restore-in-collections! :default [model _collection-ids] (not-a-follower model))
+(defmethod restore-in-collections! :default [model _collection-ids _context] (not-a-follower model))
 
-(defmethod delete-in-collections! :default [model _collection-ids] (not-a-follower model))
+(defmethod delete-in-collections! :default [model _collection-ids _context] (not-a-follower model))
 
 (defn item-ids-to-archive
   "The ids of the `model` rows in the Collections with `collection-ids` that archiving them archives along with them."
@@ -2301,11 +2301,11 @@
       :model/Pulse     (collections.db/pulse-ids-in-collections ids))))
 
 (defn- each-follower!
-  "Calls `multi` for each of `models`, in order, with `collection-ids`, after loading the model."
-  [multi models collection-ids]
+  "Calls `multi` for each of `models`, in order, with `collection-ids` and `context`, after loading the model."
+  [multi models collection-ids context]
   (doseq [model models]
     (t2/resolve-model model)
-    (multi model collection-ids)))
+    (multi model collection-ids context)))
 
 (def ^:private archive-followers
   "The models that archive with their Collection, in the order they follow it: Cards before the Dashboards and Documents
@@ -2330,30 +2330,30 @@
 (defn- unpublish-tables!
   "Unpublishes the Tables in the Collections with `collection-ids`, in their user settings too, and the Tables that
   depend on them."
-  [collection-ids]
+  [collection-ids context]
   (when-let [table-ids (not-empty (collections.db/published-table-ids-in-collections collection-ids))]
-    (each-follower! archive-in-collections! unpublish-followers (vec collection-ids))
+    (each-follower! archive-in-collections! unpublish-followers (vec collection-ids) context)
     (unpublish-downstream-fk-tables! table-ids)))
 
 (defn- archive-followers!
   "Archives what is in the Collections with `collection-ids` along with them, each kind with one call, and unpublishes
   the Tables of their library Data collections."
-  [collection-ids]
-  (each-follower! archive-in-collections! archive-followers (vec collection-ids))
+  [collection-ids context]
+  (each-follower! archive-in-collections! archive-followers (vec collection-ids) context)
   (when-let [library-data-ids (not-empty (collections.db/collection-ids-of-type (vec collection-ids) library-data-collection-type))]
-    (unpublish-tables! library-data-ids)))
+    (unpublish-tables! library-data-ids context)))
 
 (defn- restore-followers!
   "Restores what was archived along with the Collections with `collection-ids` and is in them, each kind with one call,
   those that hold others before them."
-  [collection-ids]
-  (each-follower! restore-in-collections! restore-followers (vec collection-ids)))
+  [collection-ids context]
+  (each-follower! restore-in-collections! restore-followers (vec collection-ids) context))
 
 (defn- delete-followers!
   "Deletes what is in the Collections with `collection-ids`, each kind with one call, after unpublishing their Tables."
   [collection-ids]
-  (unpublish-tables! collection-ids)
-  (each-follower! delete-in-collections! delete-followers (vec collection-ids)))
+  (unpublish-tables! collection-ids nil)
+  (each-follower! delete-in-collections! delete-followers (vec collection-ids) nil))
 
 (defn- permission-objects
   "The read and read-write permission paths of the Collections with `collection-ids`."
@@ -2655,7 +2655,8 @@
                   changes      {:archived true, :archive_operation_id operation-id, :archived_directly false}]]
       (collections.db/update-collections! (mapv :id descendants) changes)
       (publish-carried-updates! descendants changes carrier-id))
-    (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below))))
+    (archive-followers! (into (mapv (comp :id :before) roots) (map :id) below)
+                        {:archived-with [:model/Collection carrier-id]})))
 
 (defn- restore-subtrees!
   "Restores the Collections under the update `entries`, which restore their Collection, that the archive of their
@@ -2671,7 +2672,8 @@
       (let [changes {:archived false, :archive_operation_id nil}]
         (collections.db/update-collections! (mapv :id below) changes)
         (publish-carried-updates! below changes carrier-id)))
-    (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below))))
+    (restore-followers! (into (mapv (comp :id :before) entries) (map :id) below)
+                        {:archived-with [:model/Collection carrier-id]})))
 
 (defn- update-event
   "The update event of the Collections of `entries`, update entries, as the `columns` written for each leave them."

@@ -255,15 +255,15 @@
                            #(timeline.db/delete-timelines-in-collections! collection-ids))))
 
 (defmethod collection/archive-in-collections! :model/Timeline
-  [_model collection-ids]
+  [_model collection-ids _context]
   (archive-timelines-in-collections! (vec collection-ids)))
 
 (defmethod collection/restore-in-collections! :model/Timeline
-  [_model collection-ids]
+  [_model collection-ids _context]
   (restore-timelines-in-collections! (vec collection-ids)))
 
 (defmethod collection/delete-in-collections! :model/Timeline
-  [_model collection-ids]
+  [_model collection-ids _context]
   (delete-timelines-in-collections! (vec collection-ids)))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
