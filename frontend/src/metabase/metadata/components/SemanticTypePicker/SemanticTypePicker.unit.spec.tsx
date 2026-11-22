@@ -220,6 +220,19 @@ describe("SemanticTypePicker", () => {
     });
   });
 
+  it("does not offer 'Number' as a semantic type for a number foreign key (metabase#16781)", async () => {
+    setup({ fieldId: NUMBER_FIELD.id, initialValue: TYPE.FK });
+
+    await userEvent.click(
+      screen.getByPlaceholderText("Select a semantic type"),
+    );
+
+    const dropdown = screen.getByRole("listbox");
+    expect(within(dropdown).getByText("Foreign Key")).toBeInTheDocument();
+    expect(within(dropdown).getByText("Quantity")).toBeInTheDocument();
+    expect(dropdown).not.toHaveTextContent("Number");
+  });
+
   it("uses field's effective_type when it is available", async () => {
     const fieldId = getNextId();
 
