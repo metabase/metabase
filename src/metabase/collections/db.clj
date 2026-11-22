@@ -315,6 +315,26 @@
    column :- :keyword]
   (collection-ok-clause alias column [:or [:= :parent.type nil] [:not= :parent.type "trash"]]))
 
+(mu/defn collections-outside-content-rules :- [:sequential :map]
+  "The id, namespace, type and `archived` flag of the Collections among `collection-ids` that are archived, in a
+  namespace outside `allowed-namespaces`, keywords where nil is the default namespace, or of a type among
+  `blocked-types`, strings: the Collections that a check of the content put in them has to look at, in one query."
+  [collection-ids     :- [:sequential ms/PositiveInt]
+   allowed-namespaces :- [:set [:maybe :keyword]]
+   blocked-types      :- [:sequential :string]]
+  (let [named (mapv name (remove nil? allowed-namespaces))]
+    (t2/select [:model/Collection :id :namespace :type :archived]
+               {:where [:and
+                        [:in :id collection-ids]
+                        [:or
+                         [:= :archived true]
+                         [:not (into [:or]
+                                     (cond-> []
+                                       (seq named)                      (conj [:in :namespace named])
+                                       (contains? allowed-namespaces nil) (conj [:= :namespace nil])))]
+                         (when (seq blocked-types)
+                           [:in :type blocked-types])]]})))
+
 ;;; ---------------------------------------------- Collection writes ----------------------------------------------
 
 (def ^:private collection-write-keys

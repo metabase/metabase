@@ -394,15 +394,14 @@
 ;;; ---------- Writes --------------------------------------------------------------------------------------------
 
 (defn- check-documents
-  "Throw a 400 unless every Document with `ids` satisfies these rules:
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Document is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
 
   - its Collection is in a namespace that holds Documents
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Document is"
-  [ids]
-  (when (documents.db/documents-in-violation? ids (collection/allowed-namespaces :model/Document))
-    (throw (ex-info (tru "A Document can only go in a Collection that holds Documents, and only an archived Document in an archived Collection.")
-                    {:status-code 400}))))
+  [rows]
+  (collection/check-collections-for-model! :model/Document rows))
 
 (mr/def ::write-opts
   "The options of a write function of Documents: the context of its events."
@@ -416,8 +415,8 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
+      (check-documents (map #(update % :archived boolean) rows))
       (let [documents (documents.db/insert-documents! rows)]
-        (check-documents (map :id documents))
         (events/publish-event! :event/document-create (events/create-event documents))
         documents))))
 
@@ -458,11 +457,13 @@
        (t2/with-transaction [_conn]
          (let [moved            (filterv #(changed? (get stored %) changes :collection_id) ids)
                archived-changed (filterv #(changed? (get stored %) changes :archived) ids)]
+           (check-documents
+            (for [id moved]
+              {:collection_id (:collection_id changes)
+               :archived      (boolean (if (contains? changes :archived) (:archived changes) (:archived (get stored id))))}))
            (when (seq moved)
              (move-cards! moved (:collection_id changes)))
            (documents.db/update-documents! ids changes)
-           (when (seq moved)
-             (check-documents moved))
            (when (seq archived-changed)
              (set-cards-archived! archived-changed (boolean (:archived changes)) (:context opts)))
            (events/publish-event! :event/document-update

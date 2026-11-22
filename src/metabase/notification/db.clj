@@ -358,19 +358,6 @@
   (u/prog1 (mdb/insert-returning-instances! :model/NotificationHandler handlers)
     (change-log/log-changes! :model/NotificationHandler :insert <>)))
 
-(mu/defn handlers-in-violation? :- :boolean
-  "Whether one of the NotificationHandlers with `handler-ids` has a template of another channel type than its own, in one
-  statement."
-  [handler-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (boolean
-   (seq (t2/query {:select [[1 :violation]]
-                   :from   [[(t2/table-name :model/NotificationHandler) :h]]
-                   :join   [[(t2/table-name :model/ChannelTemplate) :t] [:= :t.id :h.template_id]]
-                   :where  [:and
-                            [:in :h.id [:auto/param handler-ids]]
-                            [:not= :t.channel_type :h.channel_type]]
-                   :limit  1}))))
-
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
   [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]

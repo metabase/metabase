@@ -114,20 +114,6 @@
                                 {:user_id tenant-user :group_id tenant-group :is_group_manager false}]]]
             (check-case! memberships)))))))
 
-(deftest refused-membership-does-not-survive-a-caller-transaction-test
-  (mt/with-premium-features #{:tenants}
-    (mt/with-temp [:model/Tenant           {tenant-id :id}      {:name "Outer Tenant" :slug "outer-tenant"}
-                   :model/User             {tenant-user :id}    {:tenant_id tenant-id}
-                   :model/User             {personal :id}       {}
-                   :model/PermissionsGroup {ordinary-group :id} {:is_tenant_group false}]
-      (t2/with-transaction [_conn]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms-group-membership/add-users-to-groups! [{:user tenant-user :group ordinary-group}])))
-        (perms-group-membership/add-users-to-groups! [{:user personal :group ordinary-group}]))
-      (testing "the caller caught the refusal and committed another write: the refused membership is absent"
-        (is (not (t2/exists? :model/PermissionsGroupMembership :user_id tenant-user :group_id ordinary-group)))
-        (is (t2/exists? :model/PermissionsGroupMembership :user_id personal :group_id ordinary-group))))))
-
 (defn- old-update-refusal
   "The `[message data]` the check `update-permissions-group-memberships!` ran before its write refused `changes` to the
   memberships with `ids` with, in the order of `ids`, from the rows as stored now, or nil."

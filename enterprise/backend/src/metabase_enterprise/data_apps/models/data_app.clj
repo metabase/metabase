@@ -226,33 +226,37 @@
 
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
-(defn- check-collections-unowned!
-  "Throw a 400 unless no other data app has a Collection of `collection-id->app-id`, a map from a Collection id to the id
-  of the data app that gets it as its resource collection, nil for a new app."
+(defn- check-resource-collections
+  "Throw a 400 unless each Collection of `collection-id->app-id`, a map from a Collection id to the id of the data app
+  that gets it as its resource collection, nil for a new app, satisfies these rules:
+
+  - it is in the data-apps namespace
+  - it is a top-level collection
+  - it is not archived, or the sample collection
+  - it is not personal, official, typed or archived by an operation
+  - no other data app has it
+
+  A Collection that does not exist is left to the foreign key of `resource_collection_id`."
   [collection-id->app-id]
   (when (seq collection-id->app-id)
-    (let [owners (reduce (fn [acc {:keys [id resource_collection_id]}]
-                           (update acc resource_collection_id (fnil conj #{}) id))
-                         {}
-                         (data-apps.db/data-apps-with-collections (vec (keys collection-id->app-id))))]
-      (doseq [[collection-id app-id] collection-id->app-id]
+    (let [collection-ids (vec (keys collection-id->app-id))
+          collections    (u/index-by :id (data-apps.db/resource-collections collection-ids))
+          owners         (reduce (fn [acc {:keys [id resource_collection_id]}]
+                                   (update acc resource_collection_id (fnil conj #{}) id))
+                                 {}
+                                 (data-apps.db/data-apps-with-collections collection-ids))]
+      (doseq [[collection-id app-id] collection-id->app-id
+              :let                   [collection (collections collection-id)]]
+        (when-not (or (nil? collection)
+                      (and (= "data-apps" (some-> (:namespace collection) name))
+                           (= "/" (:location collection))
+                           (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                           (not-any? collection [:archived :is_sample])))
+          (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                          {:status-code 400, :collection-id collection-id})))
         (when (seq (disj (get owners collection-id #{}) app-id))
           (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                           {:status-code 400, :collection-id collection-id})))))))
-
-(defn- check-resource-collections
-  "Throw a 400 unless every data app with `ids` satisfies these rules:
-
-  - its resource collection is in the data-apps namespace
-  - its resource collection is a top-level collection
-  - its resource collection is not archived
-  - its resource collection is not personal, official, typed, archived by an operation or the sample collection
-
-  A resource collection that does not exist is left to the foreign key of `resource_collection_id`."
-  [ids]
-  (when (and (seq ids) (data-apps.db/resource-collection-in-violation? (vec ids)))
-    (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
-                    {:status-code 400}))))
 
 (mu/defn create-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows`, which the hooks of the model normalize, and return the inserted apps. A row
@@ -264,7 +268,7 @@
       (when-not (apply distinct? (or (seq given) [nil]))
         (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                         {:status-code 400})))
-      (check-collections-unowned! (zipmap given (repeat nil)))
+      (check-resource-collections (zipmap given (repeat nil)))
       (t2/with-transaction [_conn]
         (let [missing        (filterv (comp nil? :resource_collection_id) rows)
               new-collection (zipmap (map :slug missing)
@@ -277,7 +281,6 @@
               apps           (data-apps.db/insert-data-apps!
                               (mapv #(cond-> % (nil? (:resource_collection_id %)) (assoc :resource_collection_id (new-collection (:slug %))))
                                     rows))]
-          (check-resource-collections (mapv :id apps))
           (events/publish-event! :event/data-app-create (events/create-event apps))
           apps)))
     []))
@@ -312,11 +315,9 @@
             (when (< 1 (count apps))
               (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
                               {:status-code 400, :collection-id collection-id})))
-            (check-collections-unowned! (into {} (map (fn [id] [collection-id id])) apps)))
+            (check-resource-collections (into {} (map (fn [id] [collection-id id])) apps)))
           (when (seq changes)
             (data-apps.db/update-data-apps! ids changes))
-          (when given
-            (check-resource-collections (:apps given)))
           (events/publish-event! :event/data-app-update
                                  (events/update-event stored
                                                       rows

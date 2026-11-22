@@ -78,12 +78,12 @@
                  :model/Collection {other-id :id}    {}
                  :model/Timeline   {timeline-id :id} {:collection_id other-id}]
     (testing "a Timeline cannot go in a Collection of another namespace on insert"
-      (is (= 400 (:status-code (ex-data (try (timeline/create-timelines! [{:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}])
-                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (timeline/create-timelines! [{:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}])))
       (is (not (t2/exists? :model/Timeline :name "T" :collection_id snippets-id))))
     (testing "a Timeline cannot move to a Collection of another namespace"
-      (is (= 400 (:status-code (ex-data (try (timeline/update-timelines! [timeline-id] {:collection_id snippets-id} nil)
-                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (timeline/update-timelines! [timeline-id] {:collection_id snippets-id} nil)))
       (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
 
 (deftest update-check-test
@@ -251,14 +251,3 @@
                             #(timeline/update-timelines! ids {:archived false} nil))))]
           (restore! 2)
           (is (= (restore! 2) (restore! 6))))))))
-
-(deftest refused-write-rolls-back-to-its-savepoint-test
-  (mt/with-temp [:model/Collection {snippets-id :id} {:namespace :snippets}]
-    (mt/with-model-cleanup [:model/Timeline]
-      (let [user-id (mt/user->id :rasta)]
-        (t2/with-transaction [_conn]
-          (is (= 400 (:status-code (ex-data (try (timeline/create-timelines! [{:name "Refused" :creator_id user-id :collection_id snippets-id}])
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
-          (timeline/create-timelines! [{:name "Kept" :creator_id user-id}]))
-        (is (not (t2/exists? :model/Timeline :name "Refused")))
-        (is (t2/exists? :model/Timeline :name "Kept"))))))

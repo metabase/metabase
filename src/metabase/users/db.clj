@@ -130,16 +130,6 @@
    user-ids :- [:set {:min 1} ::lib.schema.id/user]]
   (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id :user_id [:in user-ids]))
 
-(mu/defn active-admin-exists? :- :boolean
-  "Whether an active superuser is a member of the PermissionsGroup with `admin-group-id`, in one statement."
-  [admin-group-id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroupMembership
-              {:join  [[:core_user :u] [:= :u.id :permissions_group_membership.user_id]]
-               :where [:and
-                       [:= :permissions_group_membership.group_id [:auto/param admin-group-id]]
-                       [:= :u.is_active true]
-                       [:= :u.is_superuser true]]}))
-
 (mu/defn user-group-ids
   "The ids of the PermissionsGroups the User with `user-id` belongs to."
   [user-id :- ::lib.schema.id/user]
@@ -180,16 +170,18 @@
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`, one statement for each set of the changes that differ from the stored
-  rows, so that Users already holding one of the values do not make Toucan update row by row, returning the number
-  updated."
+  rows, read with every column as Toucan compares them, so that Users already holding one of the values do not make
+  Toucan update row by row, returning the number updated."
   [user-ids :- [:sequential ::lib.schema.id/user]
    changes  :- ::users.schema/user.update]
-  (let [stored (u/index-by :id (t2/select :model/User :id [:in [:auto/param (vec (distinct user-ids))]]))]
-    (transduce (map (fn [[changes ids]]
-                      (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
-               +
-               0
-               (mi/group-ids-by-changes stored (map #(assoc changes :id %) user-ids)))))
+  (if (empty? user-ids)
+    0
+    (let [stored (u/index-by :id (t2/select [:model/User :*] :id [:in [:auto/param (vec (distinct user-ids))]]))]
+      (transduce (map (fn [[changes ids]]
+                        (t2/update! :model/User :id [:in [:auto/param ids]] changes)))
+                 +
+                 0
+                 (mi/group-ids-by-changes stored (map #(assoc changes :id %) user-ids))))))
 
 (mu/defn user-ids-of-type
   "The ids among `user-ids` of the Users of `user-type`."

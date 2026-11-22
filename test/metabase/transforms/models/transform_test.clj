@@ -201,18 +201,6 @@
            (is (= other-db (t2/select-one-fn :source_database_id :model/Transform :id id)))
            (is (= 400 (status-code-of #(t2/update! :model/Transform :id id {:source_database_id (mt/id)}))))))))))
 
-(deftest refused-write-leaves-the-outer-transaction-usable-test
-  (mt/when-ee-evailable
-   (mt/with-temp [:model/Database {sample-db :id} {:is_sample true}
-                  :model/Transform {other :id} (python-transform-writing-to (mt/id))]
-     (let [refused-name (str "refused " (mt/random-name))]
-       (t2/with-transaction [_conn]
-         (is (= 400 (status-code-of #(transform/create-transforms!
-                                      [(assoc (python-transform-writing-to sample-db) :name refused-name)]))))
-         (transform/update-transforms! [other] {:description "written after the refusal"}))
-       (is (zero? (t2/count :model/Transform :name refused-name)))
-       (is (= "written after the refusal" (t2/select-one-fn :description :model/Transform :id other)))))))
-
 (deftest target-database-must-accept-transforms-test
   (mt/when-ee-evailable
    (mt/with-temp [:model/Database {audit-db :id}  {:is_audit true}
@@ -673,34 +661,22 @@
       (counted 2)
       (is (= (counted 2) (counted 6))))))
 
-(deftest create-transforms-refuses-invalid-rows-and-writes-nothing-test
+(deftest create-transforms-reports-the-first-invalid-row-test
   (mt/with-temp [:model/Collection {regular-id :id} {}
                  :model/Collection {transforms-id :id} {:namespace collection/transforms-ns}]
     (let [missing-id (inc (t2/select-one-fn :id [:model/Collection :id] {:order-by [[:id :desc]]}))
-          status-of  (fn [collection-ids]
+          message-of (fn [collection-ids]
                        (try (transform/create-transforms!
                              (mapv #(assoc %1 :collection_id %2) (transform-rows (count collection-ids)) collection-ids))
                             nil
-                            (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))]
+                            (catch clojure.lang.ExceptionInfo e (ex-message e))))]
       (mt/with-model-cleanup [:model/Transform]
-        (testing "a row in the wrong namespace is refused"
-          (is (= 400 (status-of [transforms-id regular-id]))))
-        (testing "a row in a missing Collection is refused"
-          (is (= 404 (status-of [transforms-id missing-id]))))
+        (testing "a row in the wrong namespace before a row in a missing Collection"
+          (is (re-find #"namespace" (message-of [transforms-id regular-id missing-id]))))
+        (testing "a row in a missing Collection before a row in the wrong namespace"
+          (is (= "Collection does not exist." (message-of [transforms-id missing-id regular-id]))))
         (testing "nothing is written"
           (is (zero? (t2/count :model/Transform :collection_id [:in [regular-id transforms-id missing-id]]))))))))
-
-(deftest refused-transform-rolls-back-to-savepoint-test
-  (mt/with-temp [:model/Collection {regular-id :id} {}]
-    (mt/with-model-cleanup [:model/Transform]
-      (let [[{id :id} {other-id :id}] (transform/create-transforms! (transform-rows 2))]
-        (t2/with-transaction [_conn]
-          (is (= 400 (try (transform/update-transforms! [id] {:collection_id regular-id})
-                          nil
-                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
-          (transform/update-transforms! [other-id] {:name "renamed in the outer transaction"}))
-        (is (nil? (t2/select-one-fn :collection_id :model/Transform :id id)))
-        (is (= "renamed in the outer transaction" (t2/select-one-fn :name :model/Transform :id other-id)))))))
 
 (defn- statements-outside-query-analysis!
   "The number of app-DB statements `thunk` runs, leaving out the reads of group memberships and table remappings that

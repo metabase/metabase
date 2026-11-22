@@ -5,7 +5,6 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
-   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -127,23 +126,6 @@
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn timelines-in-violation?
-  "Whether one of the Timelines with `ids` is in a Collection outside `allowed-namespaces`, in the library, its Data or
-  its Metrics collection, or in an archived Collection while it is not archived itself."
-  [ids                :- [:sequential ms/PositiveInt]
-   allowed-namespaces :- [:set [:maybe :keyword]]]
-  (t2/exists? :model/Timeline
-              {:where [:and
-                       [:in :timeline.id ids]
-                       [:not [:and
-                              (collections/namespace-ok-clause :timeline :collection_id allowed-namespaces)
-                              (collections/type-not-in-ok-clause :timeline :collection_id
-                                                                 [collections/library-collection-type
-                                                                  collections/library-data-collection-type
-                                                                  collections/library-metrics-collection-type])
-                              [:or [:= :timeline.archived true]
-                               (collections/not-archived-ok-clause :timeline :collection_id)]]]]}))
 
 (mu/defn insert-timeline-events!
   "Insert the TimelineEvent `rows` and return the inserted instances."

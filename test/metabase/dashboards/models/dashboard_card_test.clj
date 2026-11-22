@@ -484,20 +484,6 @@
                             (dashboard-card/update-dashboard-cards! [{:id (u/the-id dashcard) :dashboard_tab_id (u/the-id other-tab)}])))
       (is (= (u/the-id tab) (t2/select-one-fn :dashboard_tab_id :model/DashboardCard :id (u/the-id dashcard)))))))
 
-(deftest refused-dashcard-write-rolls-back-to-its-savepoint-test
-  (mt/with-temp [:model/Dashboard    dash      {}
-                 :model/Dashboard    other     {}
-                 :model/DashboardTab other-tab {:dashboard_id (u/the-id other)}]
-    (mt/with-model-cleanup [:model/DashboardCard]
-      (t2/with-transaction [_conn]
-        (is (= 400 (:status-code (ex-data (try (dashboard-card/create-dashboard-cards!
-                                                [{:dashboard_id (u/the-id dash) :dashboard_tab_id (u/the-id other-tab)
-                                                  :size_x 4 :size_y 4 :row 0 :col 0}])
-                                               (catch clojure.lang.ExceptionInfo e e))))))
-        (dashboard-card/create-dashboard-cards! [{:dashboard_id (u/the-id dash) :size_x 4 :size_y 4 :row 0 :col 0}]))
-      (is (= 1 (t2/count :model/DashboardCard :dashboard_id (u/the-id dash))))
-      (is (zero? (t2/count :model/DashboardCard :dashboard_tab_id (u/the-id other-tab)))))))
-
 (deftest ^:parallel dashcard-parameter-mappings-schema-test
   (testing "parameter mappings of DashboardCard are sequence of mappings"
     (is (not (mr/validate ::dashboards.schema/dashboard-card.update

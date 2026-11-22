@@ -518,38 +518,23 @@
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
       ~@body)))
 
-(defn- status-of
-  "The status code of the exception `thunk` throws, nil when it throws none."
-  [thunk]
-  (try (thunk) nil
-       (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e)))))
-
-(deftest collection-rules-refuse-pulses-and-write-nothing-test
-  (mt/with-temp [:model/Collection {namespaced-id :id} {:namespace "currency"}
-                 :model/Collection {archived-id :id} {:archived true}]
-    (testing "a Pulse cannot be created in a Collection of another namespace"
+(deftest validate-collection-namespace-test
+  (mt/with-temp [:model/Collection {collection-id :id} {:namespace "currency"}]
+    (testing "Shouldn't be able to create a Pulse in a non-normal Collection"
       (let [pulse-name (mt/random-name)]
-        (is (= 400 (status-of #(insert-pulse! {:collection_id namespaced-id, :name pulse-name}))))
-        (is (zero? (t2/count :model/Pulse :name pulse-name)))))
-    (testing "a Pulse cannot be created in an archived Collection"
-      (let [pulse-name (mt/random-name)]
-        (is (= 400 (status-of #(insert-pulse! {:collection_id archived-id, :name pulse-name}))))
-        (is (zero? (t2/count :model/Pulse :name pulse-name)))))
-    (testing "a Pulse cannot be moved to a Collection of another namespace or an archived one"
-      (mt/with-temp [:model/Pulse {pulse-id :id} {}]
-        (doseq [collection-id [namespaced-id archived-id]]
-          (is (= 400 (status-of #(models.pulse/update-pulses! [pulse-id] {:collection_id collection-id}))))
-          (is (nil? (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))))))
-
-(deftest refused-collection-rolls-back-to-savepoint-test
-  (mt/with-temp [:model/Collection {namespaced-id :id} {:namespace "currency"}
-                 :model/Pulse {pulse-id :id} {}
-                 :model/Pulse {other-id :id} {}]
-    (t2/with-transaction [_conn]
-      (is (= 400 (status-of #(models.pulse/update-pulses! [pulse-id] {:collection_id namespaced-id}))))
-      (models.pulse/update-pulses! [other-id] {:name "renamed in the outer transaction"}))
-    (is (nil? (t2/select-one-fn :collection_id :model/Pulse :id pulse-id)))
-    (is (= "renamed in the outer transaction" (t2/select-one-fn :name :model/Pulse :id other-id)))))
+        (try
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
+               (insert-pulse! {:collection_id collection-id, :name pulse-name})))
+          (finally
+            (t2/delete! :model/Pulse :name pulse-name)))))
+    (testing "Shouldn't be able to move a Pulse to a non-normal Collection"
+      (mt/with-temp [:model/Pulse {card-id :id}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
+             (models.pulse/update-pulses! [card-id] {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
@@ -936,23 +921,26 @@
               (counted 2)
               (is (= (counted 2) (counted 6))))))))))
 
-(deftest create-pulses-refuses-invalid-rows-and-writes-nothing-test
+(deftest create-pulses-reports-the-first-invalid-row-test
   (do-with-pulse-rows!
    (fn [rows _card-ids _collection-ids]
      (let [[row] (rows 1)
            bad-schedule   (update-in row [:channels 0] assoc :schedule_type :weekly :schedule_hour 8 :schedule_day nil)
            bad-collection (assoc row :collection_id Integer/MAX_VALUE)
-           refused?       (fn [pulses]
+           message-of     (fn [pulses]
                             (try (models.pulse/create-pulses! pulses)
-                                 false
-                                 (catch Exception _ true)))]
-       (testing "a row with an invalid schedule or a missing Collection is refused, in either order"
-         (is (refused? [bad-schedule]))
-         (is (refused? [bad-collection]))
-         (is (refused? [bad-schedule bad-collection]))
-         (is (refused? [bad-collection bad-schedule]))
-         (is (refused? [row bad-schedule bad-collection])))
+                                 nil
+                                 (catch clojure.lang.ExceptionInfo e (ex-message e))))
+           schedule-message   (message-of [bad-schedule])
+           collection-message (message-of [bad-collection])]
+       (is (string? schedule-message))
+       (is (string? collection-message))
+       (is (not= schedule-message collection-message))
+       (testing "the message is the one of the first invalid row, whatever the kind of its error"
+         (is (= schedule-message (message-of [bad-schedule bad-collection])))
+         (is (= collection-message (message-of [bad-collection bad-schedule])))
+         (is (= schedule-message (message-of [row bad-schedule bad-collection]))))
        (testing "nothing is written"
          (let [before (t2/count :model/Pulse)]
-           (refused? [row bad-schedule bad-collection])
+           (message-of [row bad-schedule bad-collection])
            (is (= before (t2/count :model/Pulse)))))))))

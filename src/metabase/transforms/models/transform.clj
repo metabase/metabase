@@ -396,25 +396,38 @@
   [_transform-ids]
   nil)
 
-(defn- check-allowed-content!
-  "Throws unless each Collection with `collection-ids` can hold the content of Transforms, all read in one query and
-  checked in the order of their first appearance; a missing one is a 404."
+(defn- check-collections
+  "Throw unless each Collection with `collection-ids` satisfies these rules, all read in one query and checked in the
+  order of their first appearance (a missing one is a 404):
+
+  - it is in the transforms namespace
+  - it can hold the content of Transforms (not a Library or data-app Collection that refuses it)"
   [collection-ids]
-  (when-let [ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
-    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks ids))]
-      (doseq [id ids]
-        (collection/check-allowed-content :model/Transform (or (collections id) (collection/content-parent id)))))))
+  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (let [collections (u/index-by :id (transforms.db/collections-for-content-checks collection-ids))]
+      (doseq [collection-id collection-ids
+              :let [collection (or (collections collection-id) (collection/content-parent collection-id))]]
+        (collection/check-collection-namespace :model/Transform collection)
+        (collection/check-allowed-content :model/Transform collection)))))
 
-(defn- check-transforms
-  "Throw a 400 unless every Transform with `ids` satisfies these rules:
+(defn- check-target-databases
+  "Throw a 400 unless each Database with `database-ids`, one that exists, satisfies these rules:
 
-  - its Collection, when it has one, is in the transforms namespace
-  - its target Database, when it has one, is not the sample Database, an audit Database or a destination of database
-    routing"
-  [ids]
-  (when (transforms.db/transforms-in-violation? ids)
-    (throw (ex-info (tru "A transform must be in a collection of the transforms namespace and write to a database that is not the sample database, an audit database or a destination of database routing.")
-                    {:status-code 400}))))
+  - it is not the sample Database
+  - it is not an audit Database
+  - it is not a destination of database routing"
+  [database-ids]
+  (let [database-ids (into [] (comp (remove nil?) (distinct)) database-ids)
+        id->database (u/index-by :id (when (seq database-ids) (transforms.db/databases-by-ids database-ids)))]
+    (doseq [database-id database-ids
+            :let        [database (id->database database-id)]
+            :when       database]
+      (when (:is_sample database)
+        (throw (ex-info (tru "Cannot run transforms on the sample database.") {:status-code 400})))
+      (when (:is_audit database)
+        (throw (ex-info (tru "Cannot run transforms on audit databases.") {:status-code 400})))
+      (when (:router_database_id database)
+        (throw (ex-info (tru "Cannot run transforms on a destination database of database routing.") {:status-code 400}))))))
 
 (defn- check-cycles!
   "Throws a 400 for the first of the query transforms among `transforms` that has become part of a cycle of transforms
@@ -501,10 +514,10 @@
   Throws unless the Collection of each can hold Transforms and its target Database can hold the tables of a transform."
   [rows :- [:sequential ::transforms.schema/transform.create]]
   (if (seq rows)
-    (do (check-allowed-content! (map :collection_id rows))
+    (do (check-collections (map :collection_id rows))
+        (check-target-databases (map (comp :target_db_id derived-columns) rows))
         (t2/with-transaction [_conn]
           (let [transforms (transforms.db/insert-transforms! (mapv #(dissoc % :tag_ids) rows))]
-            (check-transforms (mapv :id transforms))
             (doseq [[transform {:keys [tag_ids]}] (map vector transforms rows)
                     :when                         (seq tag_ids)]
               (replace-tags! (:id transform) tag_ids))
@@ -515,14 +528,15 @@
 (defn- check-update!
   "Run the checks of an update that gives the Transforms with `ids`, whose stored rows are in `stored`, the `changes`,
   `resolved` being the changes of each id with the Field ids of its merge unique key, before it is written: the new
-  Collection can hold the content of Transforms, the new definition of a query transform causes no cycle, and the index
+  Collection and the target Database can hold Transforms, the new definition of a query transform causes no cycle, and the index
   requests of a changed definition are marked for revalidation."
   [ids stored changes resolved]
   (when (and (contains? changes :collection_id)
              (some #(not= (:collection_id (stored %)) (:collection_id changes)) ids))
-    (check-allowed-content! [(:collection_id changes)]))
+    (check-collections [(:collection_id changes)]))
   (when-let [changed (not-empty (filterv #(definition-columns-changed? (stored %) changes) ids))]
     (let [definitions (mapv #(let [merged (merge (stored %) (resolved %))] (merge merged (derived-columns merged))) changed)]
+      (check-target-databases (map :target_db_id definitions))
       (check-cycles! definitions)
       (table-index/mark-for-revalidation! changed))))
 
@@ -552,9 +566,6 @@
   (let [resolved (with-resolved-merge-keys (zipmap ids (repeat changes)) stored)]
     (check-update! ids stored changes resolved)
     (transforms.db/update-transforms! stored resolved)
-    (when (or (contains? changes :collection_id)
-              (some #(definition-columns-changed? (stored %) changes) ids))
-      (check-transforms ids))
     resolved))
 
 (defn- column-update-event

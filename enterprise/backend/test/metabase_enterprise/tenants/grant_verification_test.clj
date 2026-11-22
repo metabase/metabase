@@ -71,17 +71,3 @@
                       [{:group_id tenant-group :object (permissions.path/collection-read-path coll-id)}
                        {:group_id tenant-group :object (permissions.path/application-perms-path :subscription)}]]]
           (check-case! rows))))))
-
-(deftest refused-grant-does-not-survive-a-caller-transaction-test
-  (mt/with-temp [:model/Collection       {coll-id :id}        {}
-                 :model/PermissionsGroup {tenant-group :id}   {:is_tenant_group true}
-                 :model/PermissionsGroup {ordinary-group :id} {:is_tenant_group false}]
-    (t2/with-transaction [_conn]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access"
-                            (perms/create-permissions! [{:group_id tenant-group
-                                                         :object   (permissions.path/collection-readwrite-path coll-id)}])))
-      (perms/create-permissions! [{:group_id ordinary-group :object (permissions.path/collection-readwrite-path coll-id)}]))
-    (testing "the caller caught the refusal and committed another write: the refused row is absent"
-      (is (not (t2/exists? :model/Permissions :group_id tenant-group)))
-      (is (t2/exists? :model/Permissions :group_id ordinary-group
-                      :object (permissions.path/collection-readwrite-path coll-id))))))

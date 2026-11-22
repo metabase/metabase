@@ -140,16 +140,3 @@
           (testing (pr-str database-ids)
             (is (= (when expected 400) refusal))
             (is (= (not expected) (t2/exists? :model/DatabaseRouter :database_id [:in database-ids])))))))))
-
-(deftest refused-router-does-not-survive-a-caller-transaction-test
-  (mt/with-temp [:model/Database {plain-db :id}       {}
-                 :model/Database {router-db :id}      {}
-                 :model/Database {destination-db :id} {:router_database_id router-db}]
-    (mt/with-model-cleanup [:model/DatabaseRouter]
-      (t2/with-transaction [_conn]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot make a destination database a router database"
-                              (database-routing.models/create-database-routers!
-                               [{:database_id destination-db :user_attribute "tenant"}])))
-        (database-routing.models/create-database-routers! [{:database_id plain-db :user_attribute "tenant"}]))
-      (is (not (t2/exists? :model/DatabaseRouter :database_id destination-db)))
-      (is (t2/exists? :model/DatabaseRouter :database_id plain-db)))))

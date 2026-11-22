@@ -240,6 +240,23 @@
              {:where [:and [:= :db_id database-id] [:= :table_id nil]
                       [:in :group_id group-ids] [:in :perm_type perm-types]]}))
 
+(mu/defn database-level-values-of-groups :- [:sequential [:map {:closed true}
+                                                          [:group_id   ms/PositiveInt]
+                                                          [:db_id      ::lib.schema.id/database]
+                                                          [:perm_type  :keyword]
+                                                          [:perm_value :keyword]]]
+  "The group, Database, type and value of the database-level DataPermissions of `perm-types` that the groups with
+  `group-ids` hold on the Databases with `database-ids`."
+  [group-ids    :- [:sequential {:min 1} ms/PositiveInt]
+   database-ids :- [:sequential {:min 1} ::lib.schema.id/database]
+   perm-types   :- [:sequential {:min 1} :string]]
+  (t2/select [:model/DataPermissions :group_id :db_id :perm_type :perm_value]
+             {:where [:and
+                      [:in :group_id [:auto/param (vec (distinct group-ids))]]
+                      [:in :db_id [:auto/param (vec (distinct database-ids))]]
+                      [:= :table_id nil]
+                      [:in :perm_type [:auto/param (vec perm-types)]]]}))
+
 (mu/defn distinct-table-level-permission-values
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
   `perm-types` for `group-ids` on the Database with `database-id`."
@@ -301,35 +318,6 @@
                                                                 :where  [:and
                                                                          [:= :audit_db.is_audit true]
                                                                          [:= :audit_db.id :data_permissions.db_id]]}]]]}))
-
-(defn- stored-native-access-clause
-  "The HoneySQL condition under which the group and Database of the `data_permissions` row in the outer query hold
-  stored database-level native query access."
-  []
-  [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                             :from   [[:data_permissions :native]]
-                             :where  [:and
-                                      [:= :native.group_id :data_permissions.group_id]
-                                      [:= :native.db_id :data_permissions.db_id]
-                                      [:= :native.table_id nil]
-                                      [:= :native.perm_type [:auto/param "perms/create-queries"]]
-                                      [:= :native.perm_value [:auto/param "query-builder-and-native"]]]}])
-
-(mu/defn transforms-without-native-access? :- :boolean
-  "Whether one of the `[group-id database-id]` `pairs` holds the transforms permission, as stored, without stored
-  database-level native query access on that Database, in one statement."
-  [pairs :- [:sequential {:min 1} [:tuple ms/PositiveInt ::lib.schema.id/database]]]
-  (t2/exists? :model/DataPermissions
-              {:where [:and
-                       [:= :perm_type [:auto/param "perms/transforms"]]
-                       [:= :perm_value [:auto/param "yes"]]
-                       (into [:or]
-                             (map (fn [[group-id database-id]]
-                                    [:and
-                                     [:= :data_permissions.group_id [:auto/param group-id]]
-                                     [:= :data_permissions.db_id [:auto/param database-id]]]))
-                             (distinct pairs))
-                       [:not (stored-native-access-clause)]]}))
 
 (mu/defn insert-data-permissions!
   "Insert the DataPermissions `rows`."
@@ -648,11 +636,6 @@
   []
   (t2/select-pks-set :model/PermissionsGroup :is_tenant_group true))
 
-(mu/defn tenant-groups-exist? :- :boolean
-  "Whether one of the PermissionsGroups with `group-ids` is a tenant group, in one statement."
-  [group-ids :- [:set {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/PermissionsGroup :id [:in [:auto/param (vec group-ids)]] :is_tenant_group true))
-
 (mu/defn group-tenant-flags
   "A map of group ID to `:is_tenant_group` for `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
@@ -722,43 +705,6 @@
                                 [:group_id         ms/PositiveInt]
                                 [:is_group_manager :boolean]]]]
   (mdb/insert-returning-instances! :model/PermissionsGroupMembership memberships))
-
-(defn- group-manager-violation-clause
-  "The HoneySQL condition under which a PermissionsGroupMembership joined to its User as `:u` makes a tenant user or an
-  admin a group manager."
-  []
-  [:and
-   [:= :permissions_group_membership.is_group_manager true]
-   [:or [:not= :u.tenant_id nil] [:= :u.is_superuser true]]])
-
-(defn- tenancy-violation-clause
-  "The HoneySQL condition under which a PermissionsGroupMembership joined to its User as `:u` and its group as `:g` puts
-  a tenant user in a group that is not a tenant group, or a user outside every tenant in a tenant group."
-  []
-  [:or
-   [:and [:= :u.tenant_id nil] [:= :g.is_tenant_group true]]
-   [:and [:not= :u.tenant_id nil] [:or [:= :g.is_tenant_group nil] [:= :g.is_tenant_group false]]]])
-
-(mu/defn group-memberships-in-violation? :- :boolean
-  "Whether one of the PermissionsGroupMemberships with `ids` makes a tenant user or an admin a group manager, or puts a
-  User in a group of the other tenancy, as stored, in one statement."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/PermissionsGroupMembership
-              {:join  [[:core_user :u]         [:= :u.id :permissions_group_membership.user_id]
-                       [:permissions_group :g] [:= :g.id :permissions_group_membership.group_id]]
-               :where [:and
-                       [:in :permissions_group_membership.id [:auto/param (vec (distinct ids))]]
-                       [:or (group-manager-violation-clause) (tenancy-violation-clause)]]}))
-
-(mu/defn group-manager-memberships-in-violation? :- :boolean
-  "Whether one of the PermissionsGroupMemberships with `ids` makes a tenant user or an admin a group manager, as stored,
-  in one statement."
-  [ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/PermissionsGroupMembership
-              {:join  [[:core_user :u] [:= :u.id :permissions_group_membership.user_id]]
-               :where [:and
-                       [:in :permissions_group_membership.id [:auto/param (vec (distinct ids))]]
-                       (group-manager-violation-clause)]}))
 
 (mu/defn other-active-member-count
   "The number of active superusers other than those with `user-ids` in the PermissionsGroup with `group-id`."

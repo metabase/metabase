@@ -461,13 +461,17 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-fk-targets
-  "Throw a 400 unless every Field with `ids` satisfies these rules:
+  "Throw a 400 unless every one of `fields` satisfies this rule, the Databases of all of them read in two queries:
 
-  - its foreign key target, if it has one, is a Field of the Database of its Table"
-  [ids]
-  (when (warehouse-schema.db/fk-target-in-violation? ids)
-    (let [message (tru "Target field must belong to the same database")]
-      (throw (ex-info message {:status-code 400, :errors {:fk_target_field_id message}})))))
+  - its foreign key target, a Field that exists, is a Field of the Database of its Table"
+  [fields]
+  (when (seq fields)
+    (let [target-database-ids (warehouse-schema.db/field-database-ids (into #{} (map :fk_target_field_id) fields))
+          table-database-ids  (warehouse-schema.db/table-database-ids (into #{} (map :table_id) fields))]
+      (doseq [{:keys [table_id fk_target_field_id]} fields]
+        (when-some [target-database-id (target-database-ids fk_target_field_id)]
+          (api/checkp (= target-database-id (table-database-ids table_id))
+                      :fk_target_field_id (tru "Target field must belong to the same database")))))))
 
 (mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
   "Insert the Field `rows` and return the inserted instances, refusing a foreign key target outside the Database of a
@@ -476,9 +480,8 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
+      (check-fk-targets (filter :fk_target_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-fields! rows))
-        (when (some :fk_target_field_id rows)
-          (check-fk-targets (mapv :id <>)))
         (events/publish-event! :event/field-create (events/create-event <>))))))
 
 (defmulti clear-for-deactivated-fields!
@@ -623,13 +626,14 @@
                             (contains? stored id)
                             (not= (get row k) (get-in stored [id k]))))
             merged   (fn [row] (merge (get stored (:id row)) row))
+            _        (check-fk-targets (for [row rows
+                                             :when (and (:fk_target_field_id row) (changes? row :fk_target_field_id))]
+                                         (merged row)))
             changes  (deactivated! {} (into [] (comp (filter #(false? (:active %))) (map :id)) rows))
             _        (dimension/rename-dimensions-for-fields!
                       (into {} (keep #(when (and (:display_name %) (changes? % :display_name)) [(:id %) (:display_name %)])) rows))
             changes  (json-unfolding-changed! changes (into [] (comp (filter #(changes? % :json_unfolding)) (map merged)) rows))]
         (u/prog1 (update-fields-by-change! stored rows fresh?)
-          (when-let [ids (not-empty (into [] (comp (filter :fk_target_field_id) (map :id)) rows))]
-            (check-fk-targets ids))
           (publish-field-updates! (reduce (fn [changes {:keys [id] :as row}]
                                             (if-let [previous (stored id)]
                                               (with-change changes previous (dissoc row :id))

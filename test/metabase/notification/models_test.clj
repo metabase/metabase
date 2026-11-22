@@ -593,23 +593,26 @@
            (is (= (counted handler change 1) (counted handler change 3)))
            (is (= (counted handler change 2) (counted handler change 6)))))))))
 
-(deftest create-notifications-refuses-invalid-rows-and-writes-nothing-test
+(deftest create-notifications-reports-the-first-invalid-row-test
   (do-with-notification-rows!
    (fn [rows _card-id _channel-id]
      (let [[first-row second-row] (rows 2)
            bad-subscription (assoc first-row :subscriptions [{:type :notification-subscription/cron :cron_schedule "not a cron"}])
            bad-template     (update-in second-row [:handlers 0] #(-> % (dissoc :template) (assoc :template_id Integer/MAX_VALUE)))
-           refused?         (fn [rows]
+           message-of       (fn [rows]
                               (try (models.notification/create-notifications! rows)
-                                   false
-                                   (catch Exception _ true)))]
-       (testing "a row with an invalid subscription or a missing template is refused, in either order"
-         (is (refused? [bad-subscription]))
-         (is (refused? [bad-template]))
-         (is (refused? [bad-subscription bad-template]))
-         (is (refused? [bad-template bad-subscription]))
-         (is (refused? [second-row bad-template bad-subscription])))
+                                   nil
+                                   (catch clojure.lang.ExceptionInfo e (ex-message e))))
+           subscription-message (message-of [bad-subscription])
+           template-message     (message-of [bad-template])]
+       (is (string? subscription-message))
+       (is (string? template-message))
+       (is (not= subscription-message template-message))
+       (testing "the message is the one of the first invalid row, whatever the kind of its error"
+         (is (= subscription-message (message-of [bad-subscription bad-template])))
+         (is (= template-message (message-of [bad-template bad-subscription])))
+         (is (= template-message (message-of [second-row bad-template bad-subscription]))))
        (testing "nothing is written"
          (let [before (t2/count :model/Notification)]
-           (refused? [first-row bad-template bad-subscription])
+           (message-of [first-row bad-template bad-subscription])
            (is (= before (t2/count :model/Notification)))))))))

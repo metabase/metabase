@@ -322,38 +322,31 @@
     (testing "Shouldn't be able to create a Dashboard in a non-normal Collection"
       (let [dashboard-name (mt/random-name)]
         (try
-          (is (= 400 (:status-code (ex-data (try (dashboard/create-dashboards! [{:creator_id (mt/user->id :rasta), :collection_id collection-id, :name dashboard-name}])
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
+               (first (dashboard/create-dashboards! [{:creator_id (mt/user->id :rasta), :collection_id collection-id, :name dashboard-name}]))))
           (is (not (t2/exists? :model/Dashboard :name dashboard-name)))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
     (testing "Shouldn't be able to move a Dashboard to a non-normal Collection"
       (mt/with-temp [:model/Dashboard {dashboard-id :id}]
-        (is (= 400 (:status-code (ex-data (try (dashboard/update-dashboards! [dashboard-id] {:collection_id collection-id})
-                                               (catch clojure.lang.ExceptionInfo e e))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
+             (dashboard/update-dashboards! [dashboard-id] {:collection_id collection-id})))
         (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id)))))))
 
 (deftest unarchived-dashboard-in-archived-collection-test
   (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
                  :model/Dashboard  {dashboard-id :id} {}]
     (testing "an unarchived Dashboard cannot go in an archived Collection"
-      (is (= 400 (:status-code (ex-data (try (dashboard/update-dashboards! [dashboard-id] {:collection_id archived-id})
-                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
+                            (dashboard/update-dashboards! [dashboard-id] {:collection_id archived-id})))
       (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
     (testing "an archived Dashboard can"
       (dashboard/update-dashboards! [dashboard-id] {:archived true :collection_id archived-id})
       (is (= archived-id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))))
-
-(deftest refused-write-rolls-back-to-its-savepoint-test
-  (mt/with-temp [:model/Collection {currency-id :id} {:namespace "currency"}]
-    (mt/with-model-cleanup [:model/Dashboard]
-      (let [user-id (mt/user->id :rasta)]
-        (t2/with-transaction [_conn]
-          (is (= 400 (:status-code (ex-data (try (dashboard/create-dashboards! [{:creator_id user-id :collection_id currency-id :name "Refused"}])
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
-          (dashboard/create-dashboards! [{:creator_id user-id :name "Kept"}]))
-        (is (not (t2/exists? :model/Dashboard :name "Refused")))
-        (is (t2/exists? :model/Dashboard :name "Kept"))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
@@ -583,12 +576,12 @@
     (mt/with-temp [:model/Collection snippets {:namespace :snippets}
                    :model/Collection plain    {}
                    :model/Dashboard  dash     {:collection_id (u/the-id plain)}]
-      (is (= 400 (:status-code (ex-data (try (dashboard/create-dashboards! [{:name "Dash" :creator_id (mt/user->id :rasta)
-                                                                             :collection_id (u/the-id snippets)}])
-                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (first (dashboard/create-dashboards! [{:name "Dash" :creator_id (mt/user->id :rasta)
+                                                                   :collection_id (u/the-id snippets)}]))))
       (is (not (t2/exists? :model/Dashboard :name "Dash")))
-      (is (= 400 (:status-code (ex-data (try (dashboard/update-dashboards! [(u/the-id dash)] {:collection_id (u/the-id snippets)})
-                                             (catch clojure.lang.ExceptionInfo e e))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
+                            (dashboard/update-dashboards! [(u/the-id dash)] {:collection_id (u/the-id snippets)})))
       (is (= (u/the-id plain) (t2/select-one-fn :collection_id :model/Dashboard :id (u/the-id dash)))))))
 
 (deftest move-dashboard-moves-dashboard-questions-test

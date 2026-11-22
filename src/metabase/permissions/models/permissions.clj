@@ -415,29 +415,25 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- check-tenant-group-grants
-  "Throw a 400 unless every one of the Permissions `rows` just written satisfies these rules, with the message of the
+  "Throws a 400 unless every one of `rows` satisfies these rules, with the groups read once and the message of the
   first that breaks one:
 
   - a tenant group holds no write access to a Collection
   - a tenant group holds no application permission other than subscriptions"
   [rows]
   (when-let [refusable (seq (filter (comp tenant-group-grant-error :object) rows))]
-    (when (permissions.db/tenant-groups-exist? (into #{} (map :group_id) refusable))
-      (let [group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) refusable))]
-        (doseq [{:keys [group_id object]} refusable]
-          (when (get group-id->tenant? group_id)
-            (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))
-      (throw (ex-info (tru "Tenant groups cannot have write access to any collections, or application permissions other than subscriptions.")
-                      {:status-code 400})))))
+    (let [group-id->tenant? (permissions.db/group-tenant-flags (into #{} (map :group_id) refusable))]
+      (doseq [{:keys [group_id object]} refusable]
+        (when (get group-id->tenant? group_id)
+          (throw (ex-info (tenant-group-grant-error object) {:status-code 400 :group-id group_id :object object})))))))
 
 (mu/defn create-permissions!
   "Insert the Permissions `rows`. A row for the Admin group, or one granting a tenant group what tenant groups cannot
-  hold, is a 400 and writes nothing."
+  hold, is a 400."
   [rows :- [:sequential ::permissions.schema/permissions.create]]
+  (check-tenant-group-grants rows)
   (run! assert-not-admin-group rows)
-  (t2/with-transaction [_conn]
-    (u/prog1 (permissions.db/insert-permissions! rows)
-      (check-tenant-group-grants rows))))
+  (permissions.db/insert-permissions! rows))
 
 (mu/defn delete-permissions! :- :nil
   "Delete the Permissions rows with `ids`; a row of the Admin group among them is a 400 and deletes nothing."

@@ -26,15 +26,10 @@
    names              :- [:sequential :string]]
   (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
 
-(mu/defn routers-of-destinations-exist? :- :boolean
-  "Whether one of the DatabaseRouters with `router-ids` routes a Database that is a routing destination, in one
-  statement."
-  [router-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/DatabaseRouter
-              {:join  [[:metabase_database :d] [:= :d.id :db_router.database_id]]
-               :where [:and
-                       [:in :db_router.id [:auto/param (vec (distinct router-ids))]]
-                       [:not= :d.router_database_id nil]]}))
+(mu/defn destination-database-exists?
+  "Whether one of the Databases with `database-ids` is a routing destination."
+  [database-ids :- [:sequential {:min 1} ::lib.schema.id/database]]
+  (t2/exists? :model/Database :id [:in [:auto/param (vec (distinct database-ids))]] :router_database_id [:not= nil]))
 
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."

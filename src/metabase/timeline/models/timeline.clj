@@ -13,7 +13,6 @@
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.timeline.schema :as timeline.schema]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -89,25 +88,24 @@
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 
 (defn- check-timelines
-  "Throw a 400 unless every Timeline with `ids` satisfies these rules:
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Timeline is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
 
   - its Collection is in a namespace that holds Timelines
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Timeline is"
-  [ids]
-  (when (timeline.db/timelines-in-violation? ids (collection/allowed-namespaces :model/Timeline))
-    (throw (ex-info (tru "A Timeline can only go in a Collection that holds Timelines, and only an archived Timeline in an archived Collection.")
-                    {:status-code 400}))))
+  [rows]
+  (check-timelines (map #(update % :archived boolean) rows)))
 
 (mu/defn create-timelines! :- [:sequential (ms/InstanceOf :model/Timeline)]
   "Insert the Timeline `rows` and return the inserted instances, in one transaction, publishing their create event. A
-  Timeline in a Collection that cannot hold it, or in an archived Collection unless it is archived, throws a 400."
+  Timeline in a Collection that cannot hold it, or in an archived Collection unless it is archived, throws."
   [rows :- [:sequential ::timeline.schema/timeline.create]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
+      (check-timelines (map #(update % :archived boolean) rows))
       (let [timelines (timeline.db/insert-timelines! rows)]
-        (check-timelines (map :id timelines))
         (events/publish-event! :event/timeline-create (events/create-event timelines))
         timelines))))
 
@@ -139,9 +137,9 @@
         ids    (filterv stored ids)]
     (when (and (seq ids) (seq changes))
       (t2/with-transaction [_conn]
+        (when (contains? changes :collection_id)
+          (check-timelines (map #(update (merge (get stored %) changes) :archived boolean) ids)))
         (timeline.db/update-timelines! ids changes)
-        (when (or (contains? changes :collection_id) (contains? changes :archived))
-          (check-timelines ids))
         (let [updated (timeline.db/timelines-by-id ids)
               rows    (mapv #(cond-> (assoc changes :id %)
                                (contains? changes :archived)

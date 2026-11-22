@@ -146,6 +146,13 @@
     (throw (ex-info (str fail-to-remove-last-admin-msg)
                     {:status-code 400}))))
 
+(defn throw-if-last-admins!
+  "Throw an Exception if there are no admins left besides the Users with `user-ids`, which are about to be archived or
+  have their admin status removed, in one query."
+  [user-ids]
+  (when (seq user-ids)
+    (check-admins-remain (set user-ids))))
+
 (defn- check-group-manager-member
   "Throws a 400 when `membership` makes `member`, its User, a tenant user or an admin a group manager."
   [{:keys [user_id is_group_manager]} member]
@@ -173,8 +180,12 @@
                        :status-code          400})))))
 
 (defn- check-members
-  "Throws a 400 when one of `memberships` makes a tenant user or an admin a group manager or puts a User in a group of
-  the other tenancy, with the Users and groups of all of them read once."
+  "Throws a 400 unless every one of `memberships` satisfies these rules, with the Users and groups of all of them read
+  once and the message of the first that breaks one:
+
+  - a tenant user is not a group manager
+  - an admin is not a group manager
+  - a tenant user is in a tenant group, and a user outside every tenant in a group that is not one"
   [memberships]
   (when (seq memberships)
     (let [members           (u/index-by :id (permissions.db/member-flags (into #{} (map :user_id) memberships)))
@@ -183,18 +194,6 @@
               :let       [member (get members (:user_id membership))]]
         (check-group-manager-member membership member)
         (check-tenancy-matches membership member group-id->tenant?)))))
-
-(defn- check-new-memberships
-  "Throw a 400 when one of the new PermissionsGroupMemberships `created` breaks a rule about its User and group, as
-  stored, with the message and data of the first of them that breaks one:
-  - a tenant user is a group manager
-  - an admin is a group manager
-  - a tenant user is in a group that is not a tenant group, or a user outside every tenant is in a tenant group"
-  [created]
-  (when (permissions.db/group-memberships-in-violation? (mapv :id created))
-    (check-members created)
-    (throw (ex-info (tru "A group membership cannot make a tenant user or an admin a group manager, or put a user in a group of the other tenancy.")
-                    {:status-code 400}))))
 
 (mr/def ::write-opts
   [:map {:closed true}
@@ -279,8 +278,8 @@
          (t2/with-transaction [_conn]
            (check-magic-group-members-unchanged (map :group_id memberships))
            (check-can-add-to-data-analyst-group (map :group_id memberships))
+           (check-members memberships)
            (let [created (permissions.db/insert-group-memberships! (vec memberships))]
-             (check-new-memberships created)
              (events/publish-event! :event/group-membership-create (events/create-event created opts))
              (set-member-flags! (cond->> created
                                   (not *update-user-when-added-to-admin-group?*)
@@ -303,35 +302,25 @@
                           opts))
    nil))
 
-(defn- check-group-managers
-  "Throw a 400 unless every PermissionsGroupMembership with `ids` satisfies these rules as stored, with the message of
-  the first of `ids` that breaks one:
-
-  - a tenant user is not a group manager
-  - an admin is not a group manager"
-  [ids]
-  (when (permissions.db/group-manager-memberships-in-violation? ids)
-    (let [memberships (u/index-by :id (permissions.db/group-memberships-by-ids ids))
-          members     (u/index-by :id (permissions.db/member-flags (into #{} (map (comp :user_id memberships)) ids)))]
-      (doseq [id ids
-              :let [membership (memberships id)]]
-        (check-group-manager-member membership (get members (:user_id membership)))))
-    (throw (ex-info (tru "A tenant user or an admin cannot be a group manager.") {:status-code 400}))))
-
 (mu/defn update-permissions-group-memberships! :- :nil
-  "Apply `changes` to the PermissionsGroupMemberships with `ids`, publishing the event of the write; moving a membership
-  to another user or group, and making a tenant user or an admin a group manager, are 400s."
+  "Apply `changes` to the PermissionsGroupMemberships with `ids`, publishing the event of the write; making a tenant
+  user or an admin a group manager is a 400. The refusal of the first refused membership in the order of `ids` is the
+  one thrown."
   [ids     :- [:sequential ms/PositiveInt]
    changes :- ::permissions.schema/permissions-group-membership.update]
   (t2/with-transaction [_conn]
-    (let [stored (if (seq ids) (u/index-by :id (permissions.db/group-memberships-by-ids ids)) {})
-          ids    (into [] (comp (distinct) (filter stored)) ids)]
-      (doseq [id ids]
-        (t2.before-update/before-update :model/PermissionsGroupMembership (merge (stored id) changes)))
+    (let [stored  (if (seq ids) (u/index-by :id (permissions.db/group-memberships-by-ids ids)) {})
+          ids     (into [] (comp (distinct) (filter stored)) ids)
+          members (if (and (:is_group_manager changes) (seq ids))
+                    (u/index-by :id (permissions.db/member-flags (into #{} (map (comp :user_id stored)) ids)))
+                    {})]
+      (doseq [id ids
+              :let [before (stored id)]]
+        (when (:is_group_manager changes)
+          (check-group-manager-member (merge before changes) (get members (:user_id before))))
+        (t2.before-update/before-update :model/PermissionsGroupMembership (merge before changes)))
       (when (seq ids)
         (permissions.db/update-group-memberships! ids changes)
-        (when (:is_group_manager changes)
-          (check-group-managers ids))
         (events/publish-event! :event/group-membership-update
                                (events/update-event stored (mapv #(assoc changes :id %) ids))))))
   nil)

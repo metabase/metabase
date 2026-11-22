@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.explorations.schema :as explorations.schema]
@@ -37,16 +36,6 @@
      false
      :else true]
     [:inline false]))
-
-(mu/defn explorations-in-violation? :- :boolean
-  "Whether one of the Explorations with `ids` is not archived and is in an archived Collection."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/exists? :model/Exploration
-              {:where [:and
-                       [:in :id ids]
-                       [:not [:or
-                              [:= :exploration.archived true]
-                              (collections/not-archived-ok-clause :exploration :collection_id)]]]}))
 
 (mu/defn next-thread-position-clause :- :any
   "The expression for the position after the last ExplorationThread of the Exploration with `exploration-id`, read

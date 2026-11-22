@@ -83,21 +83,30 @@
        (not (database-native? row))))
 
 (defn- check-transforms-need-native
-  "Throw a 400 unless the DataPermissions `rows` just written leave these rules holding, as stored, for each group and
-  Database they grant the transforms permission on or give database-level query access without native queries on:
+  "Throws a 400 unless every one of `rows` satisfies these rules, with the stored rows of their groups and Databases
+  read once:
 
-  - a group with the transforms permission on a Database has stored database-level native query access on it
+  - a row granting the transforms permission finds stored database-level native query access on its Database
+  - a database-level create-queries row without native access finds no stored transforms permission on its Database
 
-  Table-level create-queries rows are left to the writers, which revoke the transforms permission with them."
+  Table-level create-queries rows are left to the writers, which revoke the transforms permission with them, so a bulk
+  write does not read once per Table."
   [rows]
-  (when-let [pairs (not-empty (into []
-                                    (comp (filter (some-fn transforms-granted? database-create-queries-without-native?))
-                                          (map (juxt :group_id :db_id))
-                                          (distinct))
-                                    rows))]
-    (when (permissions.db/transforms-without-native-access? pairs)
-      (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
-                      {:status-code 400})))))
+  (when-let [checked (seq (filter (some-fn transforms-granted? database-create-queries-without-native?) rows))]
+    (let [stored (into #{}
+                       (map (juxt :group_id :db_id :perm_type :perm_value))
+                       (permissions.db/database-level-values-of-groups (mapv :group_id checked)
+                                                                       (mapv :db_id checked)
+                                                                       ["perms/create-queries" "perms/transforms"]))
+          held?  (fn [{:keys [group_id db_id]} perm-type perm-value]
+                   (contains? stored [group_id db_id perm-type perm-value]))]
+      (doseq [row checked]
+        (when (or (and (transforms-granted? row)
+                       (not (held? row :perms/create-queries :query-builder-and-native)))
+                  (and (database-create-queries-without-native? row)
+                       (held? row :perms/transforms :yes)))
+          (throw (ex-info (tru "Transforms permission requires \"Query builder and native\" data access for the database.")
+                          {:status-code 400})))))))
 
 ;; Memoized per application DB. Destination status is immutable after creation, so the cache can't go stale.
 
@@ -134,16 +143,17 @@
 
 (mu/defn create-data-permissions!
   "Insert the DataPermissions `rows` in batches that stay under the database limit on the parameters of a prepared
-  statement. A row on a destination Database, or one leaving its group with the transforms permission but no native
-  query access on the Database, is a 400 and writes nothing."
+  statement, the transforms rows last so that the create-queries rows they are checked against are stored. A row on a
+  destination Database, or one leaving its group with the transforms permission but no native query access on the
+  Database, is a 400."
   [rows :- [:sequential ::permissions.schema/data-permissions.create]]
   (let [{transforms true, others false} (group-by #(= :perms/transforms (keyword (:perm_type %))) rows)]
     (t2/with-transaction [_conn]
       (doseq [rows  [others transforms]
               batch (partition-all permission-batch-size rows)]
+        (check-transforms-need-native batch)
         (assert-no-destination-db-permissions! batch)
-        (permissions.db/insert-data-permissions! batch))
-      (check-transforms-need-native rows))))
+        (permissions.db/insert-data-permissions! batch)))))
 
 (mu/defn delete-data-permissions!
   "Delete the DataPermissions with `ids`, in batches that stay under the database limit on the parameters of a

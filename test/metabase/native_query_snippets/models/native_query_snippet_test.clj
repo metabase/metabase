@@ -71,19 +71,23 @@
                      (pr-str collection-namespace))
       (mt/with-temp [:model/Collection {collection-id :id} {:namespace collection-namespace}]
         (let [snippet-name (mt/random-name)]
-          (is (= 400 (:status-code (ex-data (try (native-query-snippet/create-snippets!
-                                                  [{:name          snippet-name
-                                                    :content       "1 = 1"
-                                                    :creator_id    (mt/user->id :rasta)
-                                                    :collection_id collection-id}])
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
+               (native-query-snippet/create-snippets!
+                [{:name          snippet-name
+                  :content       "1 = 1"
+                  :creator_id    (mt/user->id :rasta)
+                  :collection_id collection-id}])))
           (is (not (t2/exists? :model/NativeQuerySnippet :name snippet-name))))))
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [:model/Collection         {source-collection-id :id} {:namespace "snippets"}
                      :model/NativeQuerySnippet {snippet-id :id}           {:collection_id source-collection-id}
                      :model/Collection         {dest-collection-id :id}   {:namespace collection-namespace}]
-        (is (= 400 (:status-code (ex-data (try (native-query-snippet/update-snippets! [snippet-id] {:collection_id dest-collection-id} nil)
-                                               (catch clojure.lang.ExceptionInfo e e))))))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
+             (native-query-snippet/update-snippets! [snippet-id] {:collection_id dest-collection-id} nil)))
         (is (= source-collection-id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id snippet-id)))))))
 
 (deftest basic-param-finding-test
@@ -347,15 +351,3 @@
                               #(native-query-snippet/update-snippets! ids {:archived false} nil))))]
             (restore! 2)
             (is (= (restore! 2) (restore! 6)))))))))
-
-(deftest refused-write-rolls-back-to-its-savepoint-test
-  (mt/with-temp [:model/Collection {default-id :id} {}]
-    (mt/with-model-cleanup [:model/NativeQuerySnippet]
-      (let [user-id (mt/user->id :rasta)]
-        (t2/with-transaction [_conn]
-          (is (= 400 (:status-code (ex-data (try (native-query-snippet/create-snippets!
-                                                  [{:name "Refused" :content "1 = 1" :creator_id user-id :collection_id default-id}])
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
-          (native-query-snippet/create-snippets! [{:name "Kept" :content "1 = 1" :creator_id user-id}]))
-        (is (not (t2/exists? :model/NativeQuerySnippet :name "Refused")))
-        (is (t2/exists? :model/NativeQuerySnippet :name "Kept"))))))

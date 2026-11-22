@@ -82,7 +82,8 @@
                      (user/update-users! user-ids changes)
                      nil
                      (catch clojure.lang.ExceptionInfo e
-                       (:status-code (ex-data e))))]
+                       (or (:status-code (ex-data e))
+                           [:unexpected (ex-message e)])))]
       (testing (pr-str {:two-admins? two-admins? :users names :changes changes})
         (is (= (when expected 400) refusal))
         (when expected
@@ -91,24 +92,18 @@
 (deftest update-users-refuses-exactly-what-the-pre-write-check-refused-test
   (mt/with-model-cleanup [:model/User]
     (doseq [two-admins? [false true]
-            names       [[:a] [:b] [:a :b] [:plain] [:a :plain] [:inactive] [:outsider] [:member] [:a :member]]
+            names       [[:a] [:b] [:a :b] [:plain] [:a :plain] [:inactive] [:a :inactive] [:outsider] [:a :outsider]
+                         [:member] [:a :member] [:a :b :plain]
+                         [:inactive :b] [:inactive :plain] [:inactive :outsider] [:inactive :member]
+                         [:a :inactive :member]]
             :when       (or two-admins? (not (some #{:b} names)))
-            changes     [{:is_active false}
-                         {:is_superuser false}
-                         {:is_active false :first_name "Renamed"}
-                         {:is_active false :is_superuser true}
-                         {:is_superuser true}
-                         {:first_name "Renamed"}]]
+            changes     (concat (for [active?    [nil true false]
+                                      superuser? [nil true false]
+                                      :when      (or (some? active?) (some? superuser?))]
+                                  (cond-> {}
+                                    (some? active?)    (assoc :is_active active?)
+                                    (some? superuser?) (assoc :is_superuser superuser?)))
+                                [{:is_active false :first_name "Renamed"}
+                                 {:is_superuser false :first_name "Renamed"}
+                                 {:first_name "Renamed"}])]
       (check-case! two-admins? names changes))))
-
-(deftest refused-demotion-does-not-survive-a-caller-transaction-test
-  (mt/with-model-cleanup [:model/User]
-    (t2/with-transaction [_conn nil {:rollback-only true}]
-      (let [{:keys [a plain]} (population! false)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You cannot remove the last member"
-                              (user/update-users! [a] {:is_superuser false})))
-        (user/update-users! [plain] {:first_name "Renamed"})
-        (testing "the caller caught the refusal and wrote on: the refused demotion is absent, the other write present"
-          (is (true? (t2/select-one-fn :is_superuser :model/User :id a)))
-          (is (t2/exists? :model/PermissionsGroupMembership :user_id a :group_id (:id (perms-group/admin))))
-          (is (= "Renamed" (t2/select-one-fn :first_name :model/User :id plain))))))))

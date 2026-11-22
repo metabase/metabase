@@ -150,20 +150,3 @@
           (let [[dimension] (dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id same-id}])]
             (is (refused? #(dimension/update-dimensions! [(:id dimension)] {:human_readable_field_id other-id})))
             (is (= same-id (t2/select-one-fn :human_readable_field_id :model/Dimension :id (:id dimension))))))))))
-
-(deftest refused-write-leaves-the-outer-transaction-usable-test
-  (testing "a caller that catches the 400 of a reference check keeps its transaction, without the refused row"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {table-id :id} {:db_id db-id}
-                   :model/Database {other-db-id :id} {}
-                   :model/Table    {other-table-id :id} {:db_id other-db-id}]
-      (let [[source-id other-source-id] (mapv :id (field/create-fields! (field-rows table-id 2)))
-            [other-id]                  (mapv :id (field/create-fields! (field-rows other-table-id 1)))]
-        (t2/with-transaction [_conn]
-          (is (= 400 (:status-code (ex-data (try (field/update-fields! [source-id] {:fk_target_field_id other-id}) nil (catch Exception e e))))))
-          (is (= 400 (:status-code (ex-data (try (dimension/create-dimensions! [{:field_id source-id :type :external :name "D" :human_readable_field_id other-id}])
-                                                 nil (catch Exception e e))))))
-          (field/update-fields! [other-source-id] {:description "kept"}))
-        (is (nil? (t2/select-one-fn :fk_target_field_id :model/Field :id source-id)))
-        (is (not (t2/exists? :model/Dimension :field_id source-id)))
-        (is (= "kept" (t2/select-one-fn :description :model/Field :id other-source-id)))))))

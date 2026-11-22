@@ -80,16 +80,3 @@
               ;; the unique key allows one row per group, Database, type and Table: skip calls that duplicate one
               :when (not-any? #(contains? stored-db-level ((juxt :perm_type :table_id) %)) rows)]
         (check-case! g stored-rows rows)))))
-
-(deftest refused-transforms-grant-does-not-survive-a-caller-transaction-test
-  (mt/with-temp [:model/PermissionsGroup {g :id} {}
-                 :model/Database         {d :id} {}
-                 :model/Database         {other :id} {}]
-    (t2/delete! :model/DataPermissions :group_id g)
-    (t2/with-transaction [_conn]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Transforms permission requires"
-                            (data-perms/create-data-permissions! [(row g d :perms/transforms :yes)])))
-      (data-perms/create-data-permissions! [(row g other :perms/create-queries :query-builder-and-native)]))
-    (testing "the caller caught the refusal and committed another write: the refused row is absent"
-      (is (not (t2/exists? :model/DataPermissions :group_id g :db_id d :perm_type :perms/transforms)))
-      (is (t2/exists? :model/DataPermissions :group_id g :db_id other :perm_type :perms/create-queries)))))

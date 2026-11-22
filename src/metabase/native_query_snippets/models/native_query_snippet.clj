@@ -193,14 +193,13 @@
 ;;; ----------------------------------------------------- Writes -----------------------------------------------------
 
 (defn- check-snippets
-  "Throw a 400 unless every NativeQuerySnippet with `ids` satisfies these rules:
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Snippet is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
 
   - its Collection is in the snippets namespace
   - its Collection is not archived, unless the snippet is"
-  [ids]
-  (when (native-query-snippets.db/snippets-in-violation? ids (collection/allowed-namespaces :model/NativeQuerySnippet))
-    (throw (ex-info (tru "A snippet can only go in a Collection of the snippets namespace, and only an archived snippet in an archived Collection.")
-                    {:status-code 400}))))
+  [rows]
+  (collection/check-collections-for-model! :model/NativeQuerySnippet rows))
 
 (defn- name->id
   "A map of the name of each snippet that the content of one of `snippets` refers to, to its id, read in one query."
@@ -230,9 +229,9 @@
      (t2/with-transaction [_conn]
        (let [rows (cond-> rows
                     (= :import (:writer opts)) (native-query-snippets.serialization/with-free-names nil))]
+         (check-snippets (map #(update % :archived boolean) rows))
          (let [ids      (name->id rows)
                snippets (native-query-snippets.db/insert-snippets! (mapv #(assoc % :template_tags (snippet-template-tags % ids)) rows))]
-           (check-snippets (map :id snippets))
            (events/publish-event! :event/snippet-create (events/create-event snippets opts))
            snippets))))))
 
@@ -261,9 +260,9 @@
     (when (seq ids)
       (t2/with-transaction [_conn]
         (let [changes (with-template-tags changes (get stored (first ids)))]
+          (when (contains? changes :collection_id)
+            (check-snippets (map #(update (merge (get stored %) changes) :archived boolean) ids)))
           (native-query-snippets.db/update-snippets! ids changes)
-          (when (or (contains? changes :collection_id) (contains? changes :archived))
-            (check-snippets ids))
           (let [updated (native-query-snippets.db/snippets-by-id ids)
                 rows    (mapv #(cond-> (assoc changes :id %)
                                  (contains? changes :archived)

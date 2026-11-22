@@ -1014,33 +1014,6 @@
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id))
 
-(mu/defn transforms-in-violation? :- :boolean
-  "Whether one of the Transforms with `transform-ids` is in a Collection outside the transforms namespace, or writes to
-  a Database that is the sample or an audit Database or a destination of database routing, in one statement."
-  [transform-ids :- [:sequential {:min 1} ::lib.schema.id/transform]]
-  (boolean
-   (seq (t2/query {:select [[1 :violation]]
-                   :from   [[:transform :t]]
-                   :where  [:and
-                            [:in :t.id [:auto/param transform-ids]]
-                            [:or
-                             [:exists ^:allow-subquery {:select [1]
-                                                        :from   [[:collection :c]]
-                                                        :where  [:and
-                                                                 [:= :c.id :t.collection_id]
-                                                                 [:or
-                                                                  [:= :c.namespace nil]
-                                                                  [:not= :c.namespace "transforms"]]]}]
-                             [:exists ^:allow-subquery {:select [1]
-                                                        :from   [[:metabase_database :d]]
-                                                        :where  [:and
-                                                                 [:= :d.id :t.target_db_id]
-                                                                 [:or
-                                                                  [:= :d.is_sample true]
-                                                                  [:= :d.is_audit true]
-                                                                  [:not= :d.router_database_id nil]]]}]]]
-                   :limit  1}))))
-
 (mu/defn collections-for-content-checks :- [:sequential :map]
   "The ID, namespace, type and `archived` flag of the Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]

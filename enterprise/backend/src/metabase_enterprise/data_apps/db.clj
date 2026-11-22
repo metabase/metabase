@@ -4,13 +4,11 @@
   (:require
    [clojure.set :as set]
    [metabase.app-db.core :as app-db]
-   [metabase.collections.core :as collections]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -83,43 +81,6 @@
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential {:min 1} ms/PositiveInt]]
   (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
-
-(mu/defn- plain-top-level-collection-ok-clause :- [:fn vector?]
-  "The condition that is true for a row of the table aliased `alias` whose Collection in `column`, if any, is a top-level
-  Collection that is neither personal, official, typed, archived by an operation nor the sample."
-  [alias  :- :keyword
-   column :- :keyword]
-  (let [reference (u/qualified-key alias column)]
-    [:or
-     [:= reference nil]
-     [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                :from   [[(t2/table-name :model/Collection) :parent]]
-                                :where  [:and
-                                         [:= :parent.id reference]
-                                         [:= :parent.location "/"]
-                                         [:= :parent.personal_owner_id nil]
-                                         [:= :parent.authority_level nil]
-                                         [:= :parent.type nil]
-                                         [:= :parent.archive_operation_id nil]
-                                         [:or [:= :parent.is_sample nil] [:= :parent.is_sample false]]]}]]))
-
-(mu/defn resource-collection-ok-clause :- [:fn vector?]
-  "The condition that is true for a DataApp, aliased `alias`, whose resource collection in `column`, if any, is one an
-  app can have: a top-level, plain, unarchived Collection of the data-apps namespace."
-  [alias  :- :keyword
-   column :- :keyword]
-  [:and
-   (collections/namespace-ok-clause alias column #{:data-apps})
-   (collections/not-archived-ok-clause alias column)
-   (plain-top-level-collection-ok-clause alias column)])
-
-(mu/defn resource-collection-in-violation? :- :boolean
-  "Whether one of the DataApps with `data-app-ids` has a resource collection an app cannot have."
-  [data-app-ids :- [:sequential {:min 1} ms/PositiveInt]]
-  (t2/exists? :model/DataApp
-              {:where [:and
-                       [:in :data_app.id [:auto/param data-app-ids]]
-                       [:not (resource-collection-ok-clause :data_app :resource_collection_id)]]}))
 
 (mu/defn insert-data-apps! :- [:sequential ::data-apps.schema/data-app]
   "Insert the DataApp `rows` and return the inserted instances."

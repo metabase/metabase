@@ -2060,6 +2060,27 @@
     (check-collection-namespace model parent)
     (check-collection-not-archived archived parent)))
 
+(def ^:private blocked-content-types
+  "The `:type` of the Collections that hold no ordinary content, which a check of the content put in a Collection looks
+  at: the library, its Data and its Metrics."
+  [library-collection-type library-data-collection-type library-metrics-collection-type])
+
+(defn check-collections-for-model!
+  "Throws, for the first of `rows`, each holding `:collection_id` and `:archived`, whose Collection cannot hold a `model`,
+  as [[check-collection-for]] does: in one query for the Collections that are archived, in a namespace `model` does not
+  go in, or the library, its Data or its Metrics, and only those are checked, in the order of `rows`."
+  [model rows]
+  (let [ids      (into [] (comp (keep :collection_id) (distinct)) rows)
+        problems (when (seq ids)
+                   (u/index-by :id (collections.db/collections-outside-content-rules
+                                    ids (allowed-namespaces model) blocked-content-types)))]
+    (doseq [{:keys [collection_id archived]} rows
+            :let                             [parent (get problems collection_id)]
+            :when                            parent]
+      (check-allowed-content model parent)
+      (check-collection-namespace model parent)
+      (check-collection-not-archived archived parent))))
+
 (defn annotate-collections
   "Annotate collections with `:below` and `:here` keys to indicate which types are in their subtree and which types are
   in the collection at that level.

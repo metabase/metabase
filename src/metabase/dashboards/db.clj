@@ -6,7 +6,6 @@
    [malli.util :as mut]
    [medley.core :as m]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
@@ -104,23 +103,6 @@
   (if (seq dashboard-ids)
     (t2/select :model/Dashboard :id [:in dashboard-ids])
     []))
-
-(mu/defn dashboards-in-violation? :- :boolean
-  "Whether one of the Dashboards with `ids` is in a Collection outside `allowed-namespaces`, in the library, its Data or
-  its Metrics collection, or in an archived Collection while it is not archived itself."
-  [ids                :- [:sequential ::lib.schema.id/dashboard]
-   allowed-namespaces :- [:set [:maybe :keyword]]]
-  (t2/exists? :model/Dashboard
-              {:where [:and
-                       [:in :report_dashboard.id ids]
-                       [:not [:and
-                              (collections/namespace-ok-clause :report_dashboard :collection_id allowed-namespaces)
-                              (collections/type-not-in-ok-clause :report_dashboard :collection_id
-                                                                 [collections/library-collection-type
-                                                                  collections/library-data-collection-type
-                                                                  collections/library-metrics-collection-type])
-                              [:or [:= :report_dashboard.archived true]
-                               (collections/not-archived-ok-clause :report_dashboard :collection_id)]]]]}))
 
 (mu/defn insert-dashboards!
   "Insert the Dashboard `rows` and return the inserted instances, in the order of the rows."
@@ -563,38 +545,19 @@
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
 
-(mu/defn dashcards-in-violation? :- :boolean
-  "Whether one of the DashboardCards with `ids` has a tab that belongs to another Dashboard, or a Card that belongs to a
-  Document."
-  [ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/exists? :model/DashboardCard
-              {:where [:and
-                       [:in :report_dashboardcard.id ids]
-                       [:or
-                        [:and
-                         [:not= :report_dashboardcard.dashboard_tab_id nil]
-                         [:not [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                                          :from   [:dashboard_tab]
-                                                          :where  [:and
-                                                                   [:= :dashboard_tab.id :report_dashboardcard.dashboard_tab_id]
-                                                                   [:= :dashboard_tab.dashboard_id :report_dashboardcard.dashboard_id]]}]]]
-                        [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                                   :from   [:report_card]
-                                                   :where  [:and
-                                                            [:= :report_card.id :report_dashboardcard.card_id]
-                                                            [:not= :report_card.document_id nil]]}]]]}))
-
-(mu/defn dashcards-of-document-cards? :- :boolean
-  "Whether one of the DashboardCards with `ids` has a Card that belongs to a Document."
-  [ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/exists? :model/DashboardCard
-              {:where [:and
-                       [:in :report_dashboardcard.id ids]
-                       [:exists ^:allow-subquery {:select [[[:inline 1] :one]]
-                                                  :from   [:report_card]
-                                                  :where  [:and
-                                                           [:= :report_card.id :report_dashboardcard.card_id]
-                                                           [:not= :report_card.document_id nil]]}]]}))
+(mu/defn dashcard-reference-problems :- [:map {:closed true}
+                                         [:document-card-ids [:sequential ms/PositiveInt]]
+                                         [:tab-dashboard-ids [:map-of ms/PositiveInt ms/PositiveInt]]]
+  "What the checks of the DashboardCards that are about to be written read: the ids among `card-ids` of Cards that belong
+  to a Document, and a map from each of `tab-ids` to the Dashboard it belongs to, each read once, nil for none."
+  [tab-ids  :- [:maybe [:sequential ms/PositiveInt]]
+   card-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  {:document-card-ids (if (seq card-ids)
+                        (t2/select-pks-vec :model/Card :id [:in card-ids] :document_id [:<> nil])
+                        [])
+   :tab-dashboard-ids (if (seq tab-ids)
+                        (t2/select-pk->fn :dashboard_id :model/DashboardTab :id [:in tab-ids])
+                        {})})
 
 (mu/defn dashboard-tabs-by-ids
   "The DashboardTabs with `tab-ids`."

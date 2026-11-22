@@ -15,7 +15,7 @@
    [metabase.revisions.core :as revisions]
    [metabase.search.spec :as search]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -126,12 +126,15 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- check-explorations
-  "Throw a 400 unless every Exploration with `ids` satisfies these rules:
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state an Exploration is about to have,
+  satisfies these rules, with one read of the Collections:
 
-  - it is archived, or its Collection is not archived"
-  [ids]
-  (when (explorations.db/explorations-in-violation? ids)
-    (throw (ex-info (tru "An Exploration cannot be put unarchived in an archived Collection.") {:status-code 400}))))
+  - its Collection is not archived, unless the Exploration is"
+  [rows]
+  (let [archived-ids (collection/archived-collection-ids (map :collection_id rows))]
+    (doseq [{:keys [archived collection_id]} rows]
+      (collection/check-collection-not-archived
+       archived (when collection_id {:archived (contains? archived-ids collection_id)})))))
 
 (mr/def ::write-opts
   "The options of a write function of Explorations: the context of its events."
@@ -145,8 +148,8 @@
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
+      (check-explorations rows)
       (let [explorations (explorations.db/insert-explorations! rows)]
-        (check-explorations (mapv :id explorations))
         (events/publish-event! :event/exploration-create (events/create-event explorations))
         explorations))))
 
@@ -180,10 +183,12 @@
        (t2/with-transaction [_conn]
          (let [moved            (filterv #(changed? (get stored %) changes :collection_id) ids)
                archived-changed (filterv #(changed? (get stored %) changes :archived) ids)]
+           (check-explorations
+            (for [id moved]
+              {:collection_id (:collection_id changes)
+               :archived      (if (contains? changes :archived) (:archived changes) (:archived (get stored id)))}))
            (when (seq changes)
              (explorations.db/update-explorations! ids changes))
-           (when (seq moved)
-             (check-explorations moved))
            (when (seq archived-changed)
              (set-summary-documents-archived! archived-changed (boolean (:archived changes)) opts))
            (events/publish-event! :event/exploration-update

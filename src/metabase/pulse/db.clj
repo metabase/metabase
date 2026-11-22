@@ -4,7 +4,6 @@
   (:require
    [metabase.app-db.core :as app-db]
    [metabase.change-log.core :as change-log]
-   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
@@ -244,25 +243,10 @@
   [pulses :- [:sequential {:min 1} ::pulse.schema/pulse.update]]
   (app-db/insert-returning-instances! :model/Pulse pulses))
 
-(mu/defn pulses-in-violation? :- :boolean
-  "Whether one of the Pulses with `pulse-ids` is in a Collection that cannot hold a Pulse, in one statement: one outside
-  the namespaces of a Pulse, one of a Library type other than the Dashboards one, or an archived one that holds a
-  Pulse that is not archived."
-  [pulse-ids :- [:sequential {:min 1} ::lib.schema.id/pulse]]
-  (boolean
-   (seq (t2/query {:select [[1 :violation]]
-                   :from   [[(t2/table-name :model/Pulse) :p]]
-                   :where  [:and
-                            [:in :p.id [:auto/param pulse-ids]]
-                            [:not [:and
-                                   (collections/namespace-ok-clause :p :collection_id (collection/allowed-namespaces :model/Pulse))
-                                   (collections/type-not-in-ok-clause :p :collection_id [collection/library-collection-type
-                                                                                         collection/library-data-collection-type
-                                                                                         collection/library-metrics-collection-type])
-                                   [:or
-                                    [:= :p.archived true]
-                                    (collections/not-archived-ok-clause :p :collection_id)]]]]
-                   :limit  1}))))
+(mu/defn collections-for-content-checks
+  "The ID, namespace, type and `archived` flag of each of the Collections with `collection-ids`."
+  [collection-ids :- [:sequential {:min 1} ::lib.schema.id/collection]]
+  (t2/select [:model/Collection :id :namespace :type :archived] :id [:in collection-ids]))
 
 (mu/defn dashboard-collection-clause
   "The HoneySQL expression for the Collection of the Dashboard with `dashboard-id`, which the Pulse that subscribes to

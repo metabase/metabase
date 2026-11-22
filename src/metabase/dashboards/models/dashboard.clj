@@ -54,7 +54,6 @@
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.spec :as xrays]
@@ -299,15 +298,14 @@
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- check-dashboards
-  "Throw a 400 unless every Dashboard with `ids` satisfies these rules:
+  "Throw a 400 unless each of `rows`, holding the `:collection_id` and `:archived` state a Dashboard is about to have,
+  satisfies these rules, checked for the first row that breaks one, with one read of the Collections:
 
   - its Collection is in a namespace that holds Dashboards
   - its Collection is not the library, its Data or its Metrics collection
   - its Collection is not archived, unless the Dashboard is"
-  [ids]
-  (when (dashboards.db/dashboards-in-violation? ids (collection/allowed-namespaces :model/Dashboard))
-    (throw (ex-info (tru "A Dashboard can only go in a Collection that holds Dashboards, and only an archived Dashboard in an archived Collection.")
-                    {:status-code 400}))))
+  [rows]
+  (collection/check-collections-for-model! :model/Dashboard rows))
 
 (def ^:private TabPart
   [:map {:closed true}
@@ -366,8 +364,8 @@
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
+       (check-dashboards (into [] (map #(update % :archived boolean)) rows))
        (let [dashboards (dashboards.db/insert-dashboards! (mapv #(dissoc % :tabs :dashcards) rows))]
-         (check-dashboards (map :id dashboards))
          (parameter-card/sync-parameter-cards!
           "dashboard"
           (mapv (fn [dashboard] [(:id dashboard) (or (:parameters dashboard) [])]) dashboards))
@@ -423,13 +421,15 @@
   (let [moved           (filterv #(changed? (get stored (:id %)) % :collection_id) rows)
         reparameterised (filterv #(changed? (get stored (:id %)) % :parameters) rows)
         archived        (filterv #(changed? (get stored (:id %)) % :archived) rows)]
+    (check-dashboards
+     (for [row moved]
+       {:collection_id (:collection_id row)
+        :archived      (boolean (if (contains? row :archived) (:archived row) (:archived (get stored (:id row)))))}))
     (move-questions! moved)
     (when (seq reparameterised)
       (parameter-card/sync-parameter-cards!
        "dashboard" (mapv (juxt :id :parameters) reparameterised)))
     (dashboards.db/update-dashboards-by-changes! stored rows)
-    (when (seq moved)
-      (check-dashboards (map :id moved)))
     (set-questions-archived! archived)
     (if-let [ids (not-empty (into [] (comp (remove #(contains? % :archived_directly)) (map :id)) archived))]
       (let [fresh (m/index-by :id (dashboards.db/dashboards ids))]

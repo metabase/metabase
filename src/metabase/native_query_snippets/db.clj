@@ -4,7 +4,6 @@
   (:require
    [malli.util :as mut]
    [metabase.app-db.core :as app-db]
-   [metabase.collections.core :as collections]
    [metabase.collections.listing :as collections.listing]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -101,19 +100,6 @@
   "Delete the NativeQuerySnippets in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/delete! :model/NativeQuerySnippet :collection_id [:in collection-ids]))
-
-(mu/defn snippets-in-violation?
-  "Whether one of the NativeQuerySnippets with `ids` is in a Collection outside `allowed-namespaces`, or in an archived
-  Collection while it is not archived itself."
-  [ids                :- [:sequential ::lib.schema.id/native-query-snippet]
-   allowed-namespaces :- [:set [:maybe :keyword]]]
-  (t2/exists? :model/NativeQuerySnippet
-              {:where [:and
-                       [:in :native_query_snippet.id ids]
-                       [:not [:and
-                              (collections/namespace-ok-clause :native_query_snippet :collection_id allowed-namespaces)
-                              [:or [:= :native_query_snippet.archived true]
-                               (collections/not-archived-ok-clause :native_query_snippet :collection_id)]]]]}))
 
 (mu/defn snippet-ids-by-names :- [:map-of :string pos-int?]
   "The ids of the NativeQuerySnippets named one of `snippet-names`, by name."

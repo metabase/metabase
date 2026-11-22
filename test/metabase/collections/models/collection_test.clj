@@ -2056,12 +2056,10 @@
                                  ["a metric" #(mt/with-model-cleanup [:model/Card]
                                                 (card/create-cards! [(merge {:creator_id (mt/user->id :rasta) :database_id (mt/id) :dataset_query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))) :display :table :name (mt/random-name) :visualization_settings {}} {:type :metric :collection_id collection-id})]))]]]
           (testing label
-            (if (= label "a dashboard")
-              (is (= 400 (:status-code (ex-data (try (insert!) (catch clojure.lang.ExceptionInfo e e))))))
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!))))))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions" (insert!)))))
         (testing "a dashboard moved in"
-          (is (= 400 (:status-code (ex-data (try (dashboard/update-dashboards! [dashboard-id] {:collection_id collection-id})
-                                                 (catch clojure.lang.ExceptionInfo e e))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can hold only questions and implicit actions"
+                                (dashboard/update-dashboards! [dashboard-id] {:collection_id collection-id})))
           (is (nil? (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))))
         (testing "a bookmark is not content"
           (mt/with-temp [:model/CollectionBookmark _ {:collection_id collection-id :user_id (mt/user->id :crowberto)}]

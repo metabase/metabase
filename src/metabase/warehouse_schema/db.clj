@@ -338,33 +338,6 @@
                      :where  [:in :f.id (vec field-ids)]}))
     {}))
 
-(mu/defn fk-target-in-violation?
-  "Whether, among the Fields with `field-ids`, one has a foreign key target that is not a Field of the Database of its
-  Table: one statement."
-  [field-ids :- [:sequential ::lib.schema.id/field]]
-  (boolean
-   (seq (t2/query {:select [[1 :violation]]
-                   :from   [[(t2/table-name :model/Field) :f]]
-                   :join   [[(t2/table-name :model/Table) :ft] [:= :ft.id :f.table_id]
-                            [(t2/table-name :model/Field) :tf] [:= :tf.id :f.fk_target_field_id]
-                            [(t2/table-name :model/Table) :tt] [:= :tt.id :tf.table_id]]
-                   :where  [:and [:in :f.id (vec field-ids)] [:<> :tt.db_id :ft.db_id]]
-                   :limit  1}))))
-
-(mu/defn human-readable-field-in-violation?
-  "Whether, among the Dimensions with `dimension-ids`, one has a human-readable Field that is not a Field of the Database
-  of its own Field: one statement."
-  [dimension-ids :- [:sequential ::lib.schema.id/dimension]]
-  (boolean
-   (seq (t2/query {:select [[1 :violation]]
-                   :from   [[(t2/table-name :model/Dimension) :d]]
-                   :join   [[(t2/table-name :model/Field) :f] [:= :f.id :d.field_id]
-                            [(t2/table-name :model/Table) :ft] [:= :ft.id :f.table_id]
-                            [(t2/table-name :model/Field) :hf] [:= :hf.id :d.human_readable_field_id]
-                            [(t2/table-name :model/Table) :ht] [:= :ht.id :hf.table_id]]
-                   :where  [:and [:in :d.id (vec dimension-ids)] [:<> :ht.db_id :ft.db_id]]
-                   :limit  1}))))
-
 (mu/defn set-fields-active!
   "Set the active flag of the Fields with `field-ids`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]

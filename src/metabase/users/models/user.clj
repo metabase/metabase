@@ -472,28 +472,15 @@
   [:map {:closed true}
    [:context {:optional true} :metabase.events.schema/context]])
 
-(defn- publish-users-update!
-  "Publish the update event of the write of `changes` to the Users whose stored rows are `users`, with `opts`."
-  [users changes opts]
-  (events/publish-event! :event/user-update
-                         (events/update-event (u/index-by :id users)
-                                              (mapv #(assoc changes :id (:id %)) users)
-                                              (assoc opts :objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users)))))
-
 (defn- write-users!
   "Apply `changes` to the Users whose stored rows are `users`, publishing the update event with `opts` and returning
   the number updated."
   [users changes opts]
   (u/prog1 (users.db/update-users! (mapv :id users) changes)
-    (publish-users-update! users changes opts)))
-
-(defn- check-admins-remain
-  "Throw a 400 unless these rules hold as stored:
-
-  - an active superuser is a member of the Administrators group"
-  []
-  (when-not (users.db/active-admin-exists? (:id (perms/admin-group)))
-    (throw (ex-info (str perms/fail-to-remove-last-admin-msg) {:status-code 400}))))
+    (events/publish-event! :event/user-update
+                           (events/update-event (u/index-by :id users)
+                                                (mapv #(assoc changes :id (:id %)) users)
+                                                (assoc opts :objects (into {} (map (fn [user] [(:id user) (user-after user changes)])) users))))))
 
 (defn- set-admin-memberships!
   "Add the Users with `user-ids` to Administrators when `superuser?`, else remove them, leaving their `is_superuser`
@@ -563,10 +550,9 @@
          :else
          (let [user-ids  (into #{} (map :id) users)
                admin-ids (users.db/group-member-ids (:id (perms/admin-group)) user-ids)]
-           (u/prog1 (users.db/update-users! (mapv :id users) changes)
-             (when (and (or deactivates? (false? superuser?)) (seq admin-ids))
-               (check-admins-remain))
-             (publish-users-update! users changes opts)
+           (when (or deactivates? (false? superuser?))
+             (perms-group-membership/throw-if-last-admins! admin-ids))
+           (u/prog1 (write-users! users changes opts)
              (when (some? superuser?)
                (set-admin-memberships! user-ids admin-ids superuser? opts))
              (when deactivates?

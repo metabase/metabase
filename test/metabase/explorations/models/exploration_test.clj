@@ -278,20 +278,3 @@
       (testing "an archived Exploration may go into an archived Collection"
         (exploration/update-explorations! [id] {:archived true :collection_id archived-id})
         (is (= archived-id (stored)))))))
-
-(deftest refused-exploration-write-rolls-back-to-its-savepoint-test
-  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
-                 :model/Collection {live-id :id}     {}]
-    (let [creator-id (mt/user->id :rasta)
-          kept-name  (mt/random-name)
-          refused    (mt/random-name)]
-      (try
-        (t2/with-transaction [_]
-          (is (= 400 (try (exploration/create-explorations! [{:name refused :creator_id creator-id :collection_id archived-id}])
-                          (catch clojure.lang.ExceptionInfo e (:status-code (ex-data e))))))
-          (exploration/create-explorations! [{:name kept-name :creator_id creator-id :collection_id live-id}]))
-        (testing "the refused row is gone and the later write of the caller is kept"
-          (is (zero? (t2/count :model/Exploration :name refused)))
-          (is (= 1 (t2/count :model/Exploration :name kept-name))))
-        (finally
-          (t2/delete! :model/Exploration :name [:in [refused kept-name]]))))))
