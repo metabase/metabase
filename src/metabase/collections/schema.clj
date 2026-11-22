@@ -197,3 +197,8 @@
     [:map {:closed true}
      [:serdes/meta {:optional true} ::models.schema/external-meta]
      [:parent_id {:optional true} [:maybe ::lib.schema.id/collection]]]]])
+
+(mr/def ::write-opts
+  "The options of a write function of Collections: who writes."
+  [:maybe [:map {:closed true}
+           [:writer {:optional true} [:enum :import]]]])

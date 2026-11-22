@@ -215,7 +215,7 @@
             (mt/with-temp [:model/NativeQuerySnippet snippet]
               (is (not (t2/exists? :model/DependencyStatus :entity_type :snippet :entity_id (:id snippet))))
               (computed! :snippet (:id snippet))
-              (snippet/update-snippet! (:id snippet) {:content "new content"})
+              (snippet/update-snippets! [{:id (:id snippet) :content "new content"}])
               (is (pending? :snippet (:id snippet))))))))))
 
 (deftest dependency-status-absent-until-backfill-on-card-create-test

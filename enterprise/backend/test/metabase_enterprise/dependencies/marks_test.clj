@@ -198,7 +198,7 @@
                 analysis"
           (is (= (marked {:dependency [:card-native :snippet-inner :snippet-outer]
                           :analysis   [:card-native :snippet-outer]})
-                 (marks! world #(snippet/update-snippet! (id-of world :snippet-inner) {:content "ORDERS"})))))
+                 (marks! world #(snippet/update-snippets! [{:id (id-of world :snippet-inner) :content "ORDERS"}])))))
         (testing "a measure definition change marks its own dependency and every transitive dependent's result
                 metadata and analysis"
           (is (= (marked {:dependency      [:measure]

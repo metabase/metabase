@@ -31,7 +31,7 @@
   "Create an Exploration as `crowberto`, which records its creation revision."
   [attrs]
   (mt/with-current-user (mt/user->id :crowberto)
-    (:id (exploration/create-exploration! (assoc attrs :creator_id (mt/user->id :crowberto))))))
+    (:id (first (exploration/create-explorations! [(assoc attrs :creator_id (mt/user->id :crowberto))])))))
 
 (defn- do-with-exploration!
   "Call `f` with the id of a new Exploration with `attrs`, deleting it and its revisions afterwards."
@@ -58,7 +58,7 @@
    {:name "starter" :description "desc"}
    (fn [expl-id]
      (mt/with-current-user (mt/user->id :rasta)
-       (exploration/update-exploration! expl-id {:name "renamed"}))
+       (exploration/update-explorations! [{:id expl-id :name "renamed"}]))
      (revision/settle-revisions! [["Exploration" expl-id]])
      (let [revs (t2/select :model/Revision :model "Exploration" :model_id expl-id
                            {:order-by [[:id :asc]]})]
@@ -77,7 +77,7 @@
      {:name "stable"}
      (fn [expl-id]
        (mt/with-current-user (mt/user->id :crowberto)
-         (exploration/update-exploration! expl-id {:name "stable"}))
+         (exploration/update-explorations! [{:id expl-id :name "stable"}]))
        (is (= 1 (t2/count :model/Revision :model "Exploration" :model_id expl-id)))))))
 
 (deftest revert-round-trip-test
@@ -88,7 +88,7 @@
                                           :model "Exploration" :model_id expl-id
                                           {:order-by [[:id :asc]]})]
        (mt/with-current-user (mt/user->id :crowberto)
-         (exploration/update-exploration! expl-id {:name "renamed" :description "later"}))
+         (exploration/update-explorations! [{:id expl-id :name "renamed" :description "later"}]))
        (revision/revert! {:entity      :model/Exploration
                           :id          expl-id
                           :revision-id first-rev-id

@@ -739,11 +739,10 @@
                      (database/delete-database! (:id temp-database)))))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :model/Collection
-  "Creates a temporary Collection as `create-collections!` does, without checking its attributes against the schema of a
-  write, and deletes it with `delete-collections!`."
+  "Creates a temporary Collection with `create-collections!` and deletes it with `delete-collections!`."
   [model explicit-attributes f]
   (let [attributes (merge {} (t2.with-temp/with-temp-defaults model) explicit-attributes)
-        temp       (first (#'collection/create-collections* [attributes]))]
+        temp       (first (collection/create-collections! [attributes]))]
     (try
       (testing "\nwith temporary :model/Collection\n"
         (f temp))
@@ -806,7 +805,7 @@
                                            (f temp-user))))
 
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/NativeQuerySnippet
-  "Gives a temporary NativeQuerySnippet the template tags of its content, as `create-snippet!` does, unless the
+  "Gives a temporary NativeQuerySnippet the template tags of its content, as `create-snippets!` does, unless the
   attributes name them."
   [model explicit-attributes f]
   (if (contains? explicit-attributes :template_tags)

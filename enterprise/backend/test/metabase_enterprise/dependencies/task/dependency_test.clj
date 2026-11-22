@@ -614,7 +614,7 @@
                                                                                  "{{snippet: birds outer}}")}]
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :venues)} (table-dependency-ids :card card-id)))
-        (snippet/update-snippet! inner-id {:content "CHECKINS"})
+        (snippet/update-snippets! [{:id inner-id :content "CHECKINS"}])
         (backfill-all-existing-entities!)
         (is (= #{(mt/id :checkins)} (table-dependency-ids :card card-id)))))))
 
@@ -628,7 +628,7 @@
                      :model/Card {card-id :id} {:dataset_query (lib/native-query (mt/metadata-provider)
                                                                                  "{{snippet: window outer}}")}]
         (backfill-all-existing-entities!)
-        (snippet/update-snippet! outer-id {:content "SELECT * FROM {{snippet: window inner}}"})
+        (snippet/update-snippets! [{:id outer-id :content "SELECT * FROM {{snippet: window inner}}"}])
         (deps.test/record-analysis-finding-processed! :card card-id)
         (backfill-dependencies-single-trigger!)
         (is (deps.test/analysis-finding-pending? :card card-id))))))
@@ -803,7 +803,7 @@
                                                               {:type "smartLink"
                                                                :attrs {:entityId products-id
                                                                        :model "table"}}]}]}}]
-             (document/update-document! document-id updated-doc)
+             (document/update-documents! [(assoc updated-doc :id document-id)])
              (deps.test/synchronously-run-dependency-job!)
              (is (=? #{{:from_entity_type :document
                         :from_entity_id document-id
@@ -815,7 +815,7 @@
                         :to_entity_id products-id}}
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-             (document/delete-document! document-id)
+             (document/delete-documents! [document-id])
              (deps.test/synchronously-run-dependency-job!)
              (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document))))))))))
 
@@ -897,7 +897,7 @@
          (assert-pending :snippet snippet-id)
          (deps.test/synchronously-run-dependency-job!)
          (is (not (pending? :snippet snippet-id)))
-         (snippet/update-snippet! snippet-id {:content "SELECT 2"})
+         (snippet/update-snippets! [{:id snippet-id :content "SELECT 2"}])
          (assert-pending :snippet snippet-id))))))
 
 (deftest ^:synchronized native-transform-create-sets-dependencies-test

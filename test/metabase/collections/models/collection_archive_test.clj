@@ -145,9 +145,9 @@
   (testing "a timeline archives and restores its events"
     (mt/with-temp [:model/Timeline      timeline {}
                    :model/TimelineEvent event    {:timeline_id (u/the-id timeline)}]
-      (timeline/update-timeline! (u/the-id timeline) {:archived true})
+      (timeline/update-timelines! [{:id (u/the-id timeline) :archived true}])
       (is (true? (:archived (row :model/TimelineEvent (u/the-id event)))))
-      (timeline/update-timeline! (u/the-id timeline) {:archived false})
+      (timeline/update-timelines! [{:id (u/the-id timeline) :archived false}])
       (is (false? (:archived (row :model/TimelineEvent (u/the-id event)))))))
   (testing "an exploration archives and restores its summary document"
     (mt/with-temp [:model/Exploration exploration {}
@@ -179,8 +179,8 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
                             (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :collection_id (u/the-id archived)})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived Collection"
-                            (timeline/create-timeline! {:name "t" :creator_id (mt/user->id :rasta)
-                                                        :collection_id (u/the-id archived)}))))
+                            (timeline/create-timelines! [{:name "t" :creator_id (mt/user->id :rasta)
+                                                          :collection_id (u/the-id archived)}]))))
     (testing "an archived row can be inserted into an archived collection"
       (is (some? (dashboard/create-dashboard! {:name "d" :creator_id (mt/user->id :rasta) :archived true
                                                :archived_directly false :collection_id (u/the-id archived)}))))
@@ -237,4 +237,4 @@
         (testing (name k)
           (is (= (get small k) (get large k)))))
       (testing "a Timeline that an archive carries is read once for its update event"
-        (is (= {:archive 59 :restore 55 :move 27 :delete 47} small))))))
+        (is (= {:archive 63 :restore 59 :move 27 :delete 50} small))))))

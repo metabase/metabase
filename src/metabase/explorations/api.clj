@@ -77,14 +77,14 @@
   "Insert the auto-created Summary document for a newly created exploration. Explore-further
   must not call this — there is one Summary per exploration."
   [exploration-id coll-id]
-  (document/create-document!
-   {:name            summary-document-name
-    :document        {:type "doc" :content []}
-    :content_type    documents/prose-mirror-content-type
-    :creator_id      api/*current-user-id*
-    :collection_id   coll-id
-    :exploration_id  exploration-id
-    :is_placeholder  true}))
+  (first (document/create-documents!
+          [{:name            summary-document-name
+            :document        {:type "doc" :content []}
+            :content_type    documents/prose-mirror-content-type
+            :creator_id      api/*current-user-id*
+            :collection_id   coll-id
+            :exploration_id  exploration-id
+            :is_placeholder  true}])))
 
 (defn- blocks-by-thread-id
   "The persisted blocks (`ExplorationBlock`) for `thread-ids`, in authoring order, grouped by
@@ -633,10 +633,10 @@
       (api/read-check (get id->timeline timeline-id))))
   (let [persisted
         (t2/with-transaction [_]
-          (let [exploration (expl.model/create-exploration! {:name          name
-                                                             :description   description
-                                                             :collection_id collection_id
-                                                             :creator_id    api/*current-user-id*})
+          (let [exploration (first (expl.model/create-explorations! [{:name          name
+                                                                      :description   description
+                                                                      :collection_id collection_id
+                                                                      :creator_id    api/*current-user-id*}]))
                 ;; `started_at` marks the thread as started (past the draft phase). Planning itself
                 ;; is kicked off by the `start-thread!` enqueue below — its plan message rides a
                 ;; `:transactional :require` queue, so it publishes only once this whole transaction,
@@ -802,9 +802,9 @@
     (check-destination-collection-perms! existing updates')
     (t2/with-transaction [_conn]
       (when (seq updates')
-        (expl.model/update-exploration! id updates')
         (when (contains? updates' :collection_id)
-          (cascade-collection-id-to-documents! id (:collection_id updates')))))
+          (cascade-collection-id-to-documents! id (:collection_id updates')))
+        (expl.model/update-explorations! [(assoc updates' :id id)])))
     (let [updated (explorations.db/exploration id)]
       (hydrate-exploration updated))))
 
@@ -816,7 +816,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (get-exploration-or-404 id)]
     (api/write-check existing)
-    (expl.model/delete-exploration! id))
+    (expl.model/delete-explorations! [id]))
   nil)
 
 (defn- get-exploration-page-or-404

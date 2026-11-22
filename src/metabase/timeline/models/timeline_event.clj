@@ -174,76 +174,35 @@
     []
     (t2/with-transaction [_conn]
       (let [timeline-events (vec (timeline.db/insert-timeline-events! (with-timeline-icons rows)))]
-        (events/publish-lifecycle! [(events/created :event/timeline-event-create timeline-events)])
+        (events/publish-event! :event/timeline-event-create (events/create-event timeline-events))
         timeline-events))))
-
-(mu/defn create-timeline-event! :- (ms/InstanceOf :model/TimelineEvent)
-  "Insert the TimelineEvent `row` and return the inserted instance, as [[create-timeline-events!]] does."
-  [row :- ::timeline.schema/timeline-event.create]
-  (first (create-timeline-events! [row])))
-
-(defn- update-event
-  "The update event of the TimelineEvents that the changes in `rows`, each an id and columns, change, `stored` holding
-  their rows as they were."
-  [stored rows]
-  (let [pairs (into []
-                    (keep (fn [row]
-                            (when-let [previous (get stored (:id row))]
-                              (let [object (events/updated-row previous (dissoc row :id))]
-                                (when (not= (into {} previous) (into {} object))
-                                  [previous object])))))
-                    rows)]
-    (events/updated :event/timeline-event-update (mapv first pairs) (mapv second pairs))))
 
 (mu/defn update-timeline-events! :- [:sequential ::timeline.schema/timeline-event]
   "Apply the changes in each of `rows`, the id of a TimelineEvent and the columns to change, with one statement per
-  distinct set of changes, in one transaction, publishing their update event. Returns `rows`."
-  [rows :- [:sequential ::timeline.schema/timeline-event]]
-  (if (empty? rows)
-    []
-    (t2/with-transaction [_conn]
-      (let [stored (timeline.db/timeline-events-by-id (mapv :id rows))]
-        (doseq [[changes group] (group-by #(dissoc % :id) rows)]
-          (when (seq changes)
-            (timeline.db/update-timeline-events! (mapv :id group) changes)))
-        (events/publish-lifecycle! [(update-event stored rows)])
-        (vec rows)))))
-
-(mu/defn update-timeline-event!
-  "Apply `changes` to the TimelineEvent with `id`."
-  [id      :- ms/PositiveInt
-   changes :- ::timeline.schema/timeline-event.update]
-  (update-timeline-events! [(assoc changes :id id)])
-  nil)
-
-(mu/defn set-timeline-events-archived!
-  "Set the archived flag of the TimelineEvents of the Timelines with `timeline-ids`, in one statement, publishing their
-  update event with `context`."
-  [timeline-ids :- [:sequential ms/PositiveInt]
-   archived     :- :boolean
-   context      :- [:maybe :metabase.events.schema/context]]
-  (when (seq timeline-ids)
-    (t2/with-transaction [_conn]
-      (when-let [rows (not-empty (timeline.db/events-of-timelines-by-archived timeline-ids (not archived)))]
-        (timeline.db/update-timeline-events! (mapv :id rows) {:archived archived})
-        (events/publish-lifecycle!
-         [(update-event (m/index-by :id rows) (mapv (fn [row] {:id (:id row) :archived archived}) rows))]
-         {:context context})))))
+  distinct set of changes, in one transaction, publishing their update event with the `:context` of `opts`. Returns
+  `rows`."
+  ([rows :- [:sequential ::timeline.schema/timeline-event]]
+   (update-timeline-events! rows nil))
+  ([rows :- [:sequential ::timeline.schema/timeline-event]
+    opts :- ::timeline.schema/write-opts]
+   (if (empty? rows)
+     []
+     (t2/with-transaction [_conn]
+       (let [stored (timeline.db/timeline-events-by-id (mapv :id rows))]
+         (doseq [[changes group] (group-by #(dissoc % :id) rows)]
+           (when (seq changes)
+             (timeline.db/update-timeline-events! (mapv :id group) changes)))
+         (events/publish-event! :event/timeline-event-update (events/update-event stored rows (select-keys opts [:context])))
+         (vec rows))))))
 
 (mu/defn delete-timeline-events!
   "Delete the TimelineEvents with `ids`, in one statement, publishing their delete event."
   [ids :- [:sequential ms/PositiveInt]]
   (when (seq ids)
     (t2/with-transaction [_conn]
-      (let [rows  (vec (vals (timeline.db/timeline-events-by-id ids)))
-            event (events/deleted :event/timeline-event-delete :model/TimelineEvent rows)]
-        (timeline.db/delete-timeline-events! ids)
-        (events/publish-lifecycle! [event])))))
-
-(mu/defn delete-timeline-event!
-  "Delete the TimelineEvent with `id`."
-  [id :- ms/PositiveInt]
-  (delete-timeline-events! [id]))
+      (events/publish-event! :event/timeline-event-delete
+                             (events/delete-event (vec (vals (timeline.db/timeline-events-by-id ids)))))
+      (timeline.db/delete-timeline-events! ids))))
 
 ;;; ------------------------------------------------------ Specs -------------------------------------------------------
 

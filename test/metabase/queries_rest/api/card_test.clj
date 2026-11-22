@@ -5567,7 +5567,7 @@
                                                           :content "WHERE category = 'Electronics'"}
                    :model/NativeQuerySnippet _snippet-2 {:name    "snippet-2"
                                                          :content "AND price > 100 {{snippet: snippet-1}}"}]
-      (snippet/update-snippet! (:id snippet-1) {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
+      (snippet/update-snippets! [{:id (:id snippet-1) :content "WHERE category = 'Electronics' {{snippet: snippet-2}}"}])
       ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
       ;; This should fail even though the card doesn't exist yet
       (is (= "Cannot save card with cycles."

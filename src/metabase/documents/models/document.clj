@@ -269,13 +269,8 @@
     (t2/with-transaction [_conn]
       (check-collections! rows)
       (let [documents (documents.db/insert-documents! rows)]
-        (events/publish-lifecycle! [(events/created :event/document-create documents)])
+        (events/publish-event! :event/document-create (events/create-event documents))
         documents))))
-
-(mu/defn create-document! :- :map
-  "Insert the Document `row` and return the inserted instance, as [[create-documents!]] does."
-  [row :- ::documents.schema/document.create]
-  (first (create-documents! [row])))
 
 (defn- changed?
   "Whether `row`, the columns to write, changes the column `k` of `stored`."
@@ -305,8 +300,8 @@
 
 (defn- set-cards-archived!
   "Archives the cards of the Documents of `rows`, update rows that change `archived`, which the Document archives, and
-  restores those that its archive took down."
-  [rows]
+  restores those that its archive took down, their events carrying `context` or else the archive of the Document."
+  [rows context]
   (doseq [[archived? group] (group-by (comp boolean :archived) rows)
           :let [ids      (mapv :id group)
                 card-ids (if archived?
@@ -314,29 +309,16 @@
                            (documents.db/card-ids-restored-with-documents ids))]
           :when (seq card-ids)]
     (queries.card/update-cards! (mapv (fn [id] {:id id :archived archived?}) card-ids)
-                                {:archived-with [:model/Document (first ids)]})))
-
-(defn- update-event
-  "The update event of the Documents that the changes in `rows`, each an id and columns, change, `stored` holding their
-  rows as they were."
-  [stored rows]
-  (let [pairs (into []
-                    (keep (fn [row]
-                            (let [previous (get stored (:id row))
-                                  object   (events/updated-row previous (dissoc row :id))]
-                              (when (not= (into {} previous) (into {} object))
-                                [previous object]))))
-                    rows)]
-    (events/updated :event/document-update (mapv first pairs) (mapv second pairs))))
+                                (or context {:archived-with [:model/Document (first ids)]}))))
 
 (mu/defn update-documents! :- [:sequential ::documents.schema/document.update-row]
   "Apply the columns of each of `rows` to the Document with its `:id`, and return `rows`, publishing their update event
-  with `context`. A Document moved to another Collection moves its cards along and the new Collection must be able to
+  with the `:context` of `opts`. A Document moved to another Collection moves its cards along and the new Collection must be able to
   hold it, and a change of `archived` gives its `archived_directly`. The rows with the same columns are one statement."
   ([rows :- [:sequential ::documents.schema/document.update-row]]
    (update-documents! rows nil))
-  ([rows    :- [:sequential ::documents.schema/document.update-row]
-    context :- [:maybe :metabase.events.schema/context]]
+  ([rows :- [:sequential ::documents.schema/document.update-row]
+    opts :- ::documents.schema/write-opts]
    (let [stored (m/index-by :id (documents.db/documents (mapv :id rows)))
          rows   (filterv #(contains? stored (:id %)) rows)]
      (if (empty? rows)
@@ -361,32 +343,18 @@
            (move-cards! moved)
            (doseq [[changes group] (group-by #(dissoc % :id) rows)]
              (documents.db/update-documents! (mapv :id group) changes))
-           (set-cards-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows))
-           (events/publish-lifecycle! [(update-event stored rows)] {:context context})
+           (set-cards-archived! (filterv #(changed? (get stored (:id %)) % :archived) rows) (:context opts))
+           (events/publish-event! :event/document-update (events/update-event stored rows (select-keys opts [:context])))
            rows))))))
-
-(mu/defn update-document! :- :nil
-  "Apply `changes` to the Document with `document-id`, as [[update-documents!]] does."
-  [document-id :- ms/PositiveInt
-   changes     :- ::documents.schema/document.update]
-  (update-documents! [(assoc changes :id document-id)])
-  nil)
 
 (mu/defn delete-documents! :- :nil
   "Delete the Documents with `document-ids`, publishing their delete event."
   [document-ids :- [:sequential ms/PositiveInt]]
   (when (seq document-ids)
     (t2/with-transaction [_conn]
-      (let [rows  (documents.db/documents (vec document-ids))
-            event (events/deleted :event/document-delete :model/Document rows)]
-        (documents.db/delete-documents! document-ids)
-        (events/publish-lifecycle! [event]))))
+      (events/publish-event! :event/document-delete (events/delete-event (documents.db/documents (vec document-ids))))
+      (documents.db/delete-documents! document-ids)))
   nil)
-
-(mu/defn delete-document! :- :nil
-  "Delete the Document with `document-id`."
-  [document-id :- ms/PositiveInt]
-  (delete-documents! [document-id]))
 
 (def CardCreateSchema
   "Schema for a card created inline with a document (the `cards` map on create/update). The
@@ -560,12 +528,12 @@
                            (when collection_position
                              (api/maybe-reconcile-collection-position! {:collection_id collection_id
                                                                         :collection_position collection_position}))
-                           (let [document-id (:id (create-document! {:name name
-                                                                     :collection_id collection_id
-                                                                     :collection_position collection_position
-                                                                     :document document
-                                                                     :content_type prose-mirror/prose-mirror-content-type
-                                                                     :creator_id api/*current-user-id*}))
+                           (let [document-id (:id (first (create-documents! [{:name name
+                                                                              :collection_id collection_id
+                                                                              :collection_position collection_position
+                                                                              :document document
+                                                                              :content_type prose-mirror/prose-mirror-content-type
+                                                                              :creator_id api/*current-user-id*}])))
                                  cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
                                                                                           :collection_id collection_id
                                                                                           :document document
@@ -573,11 +541,11 @@
                                                                (when-not (empty? cards)
                                                                  (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
                              (when (seq cards-to-update-in-ast)
-                               (update-document! document-id
-                                                 (update-cards-in-ast
-                                                  {:document document
-                                                   :content_type prose-mirror/prose-mirror-content-type}
-                                                  cards-to-update-in-ast)))
+                               (update-documents! [(assoc (update-cards-in-ast
+                                                           {:document document
+                                                            :content_type prose-mirror/prose-mirror-content-type}
+                                                           cards-to-update-in-ast)
+                                                          :id document-id)]))
                              ;; `get-document`, so `:event/document-read` fires: the creator has to find the
                              ;; document they just made in their recents, and that row is written only by this
                              ;; event's handler. Creating is arguably not viewing — but the view count and
@@ -631,18 +599,17 @@
             pairings (draft-stored-result-pairings document
                                                    (:content_type existing-document)
                                                    draft-card-id-map)]
-        (update-document! document-id
-                          (cond-> document-updates
-                            document (merge (update-cards-in-ast
-                                             {:document document
-                                              :content_type (:content_type existing-document)}
-                                             card-id-map))
-                            name (assoc :name name)
-                            (contains? body :collection_id) (assoc :collection_id collection_id)
-                            ;; First body save clears the auto-created Summary placeholder flag.
-                            (and (:is_placeholder existing-document)
-                                 (contains? body :document))
-                            (assoc :is_placeholder false)))
+        (update-documents! [(cond-> (assoc document-updates :id document-id)
+                              document (merge (update-cards-in-ast
+                                               {:document document
+                                                :content_type (:content_type existing-document)}
+                                               card-id-map))
+                              name (assoc :name name)
+                              (contains? body :collection_id) (assoc :collection_id collection_id)
+                              ;; First body save clears the auto-created Summary placeholder flag.
+                              (and (:is_placeholder existing-document)
+                                   (contains? body :document))
+                              (assoc :is_placeholder false))])
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings))))
     (hydrate-document document-id)))
@@ -662,9 +629,8 @@
     (let [previous (documents.db/document id)
           updated  (documents.db/set-document-last-viewed-at! id time)]
       (when previous
-        (let [object (events/updated-row previous {:last_viewed_at time})]
-          (when (not= (into {} previous) (into {} object))
-            (events/publish-lifecycle! [(events/updated :event/document-update [previous] [object])]))))
+        (events/publish-event! :event/document-update
+                               (events/update-event {id previous} [{:id id :last_viewed_at time}])))
       updated)))
 
 (mu/defn shift-positions! :- :int
@@ -691,21 +657,20 @@
           changes  (revisions/columns-to-revert :model/Document id snapshot)
           updated  (documents.db/update-document-columns! id changes)]
       (when previous
-        (let [object (events/updated-row previous changes)]
-          (when (not= (into {} previous) (into {} object))
-            (events/publish-lifecycle! [(events/updated :event/document-update [previous] [object])]
-                                       {:context {:reverting? true}}))))
+        (events/publish-event! :event/document-update
+                               (events/update-event {id previous} [(assoc changes :id id)]
+                                                    {:context {:reverting? true}})))
       updated)))
 
 (defmethod collection/archive-in-collections! :model/Document
-  [model collection-ids _context]
+  [model collection-ids context]
   (when-let [ids (not-empty (collection/item-ids-to-archive model collection-ids))]
-    (update-documents! (mapv (fn [id] {:id id :archived true}) ids))))
+    (update-documents! (mapv (fn [id] {:id id :archived true}) ids) {:context context})))
 
 (defmethod collection/restore-in-collections! :model/Document
-  [model collection-ids _context]
+  [model collection-ids context]
   (when-let [ids (not-empty (collection/item-ids-to-restore model collection-ids))]
-    (update-documents! (mapv (fn [id] {:id id :archived false}) ids))))
+    (update-documents! (mapv (fn [id] {:id id :archived false}) ids) {:context context})))
 
 ;;; ---------- Specs ---------------------------------------------------------------------------------------------
 

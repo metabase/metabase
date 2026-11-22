@@ -77,10 +77,10 @@
                  :model/Timeline   {timeline-id :id} {:collection_id other-id}]
     (testing "a Timeline cannot go in a Collection of another namespace on insert"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (timeline/create-timeline! {:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}))))
+                            (timeline/create-timelines! [{:name "T" :creator_id (mt/user->id :rasta) :collection_id snippets-id}]))))
     (testing "a Timeline cannot move to a Collection of another namespace"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can only go in Collections"
-                            (timeline/update-timeline! timeline-id {:collection_id snippets-id})))
+                            (timeline/update-timelines! [{:id timeline-id :collection_id snippets-id}])))
       (is (= other-id (t2/select-one-fn :collection_id :model/Timeline :id timeline-id))))))
 
 (deftest update-check-test
@@ -132,7 +132,7 @@
 (deftest archiving-timeline-archives-its-events-test
   (mt/with-temp [:model/Timeline      {timeline-id :id} {}
                  :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
-    (timeline/update-timeline! timeline-id {:archived true})
+    (timeline/update-timelines! [{:id timeline-id :archived true}])
     (is (true? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))
-    (timeline/update-timeline! timeline-id {:archived false})
+    (timeline/update-timelines! [{:id timeline-id :archived false}])
     (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))))

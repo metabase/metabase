@@ -64,7 +64,7 @@
       (let [updated-document {:name "Updated Document"
                               :document {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Updated content"}]}]}}]
         (mt/with-current-user (mt/user->id :rasta)
-          (document/update-document! doc-id updated-document))
+          (document/update-documents! [(assoc updated-document :id doc-id)]))
         (let [revision (t2/select-one :model/Revision :model "Document" :model_id doc-id :user_id (mt/user->id :rasta))]
           (is revision "Revision should be created for update")
           (is (= "Document" (:model revision)))
@@ -204,7 +204,7 @@
                 (is revision)
                 (is (:is_creation revision))))
             (testing "Update event triggers revision creation"
-              (document/update-document! doc-id {:name "Updated Event Document"})
+              (document/update-documents! [{:id doc-id :name "Updated Event Document"}])
               (let [revisions (t2/select :model/Revision :model "Document" :model_id doc-id {:order-by [[:id :desc]]})]
                 (is (= 2 (count revisions)))
                 (let [latest-revision (first revisions)]

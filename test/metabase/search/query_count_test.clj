@@ -69,7 +69,7 @@
   "Per search model, a function of the collection to put rows in, the names of the rows to make and the extra
   attributes of those rows. A factory that cannot use the attributes names that argument `_row-attrs`."
   {"collection"     (fn [c names row-attrs]
-                      (#'collection/create-collections*
+                      (collection/create-collections!
                        (vec (for [n names]
                               (merge (mt/with-temp-defaults :model/Collection)
                                      {:location (collection/children-location c)}

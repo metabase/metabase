@@ -59,7 +59,7 @@
 (deftest icon-test
   (mt/with-temp [:model/Timeline {timeline-id :id} {:icon "cake"}]
     (testing "an event without an icon gets the icon of its Timeline"
-      (let [id (:id (timeline-event/create-timeline-event! (event-row timeline-id {})))]
+      (let [id (:id (first (timeline-event/create-timeline-events! [(event-row timeline-id {})])))]
         (is (= "cake" (t2/select-one-fn :icon :model/TimelineEvent :id id)))
         (t2/delete! :model/TimelineEvent :id id)))
     (testing "the event schema refuses an icon outside the allowed set"
