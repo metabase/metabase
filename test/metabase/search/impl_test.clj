@@ -106,6 +106,7 @@
                           (binding [config/*request-id* (random-uuid)]
                             (t2/with-call-count [call-count]
                               (let [results (search.impl/search {:search-string               search-string
+                                                                 :search-engine               :search.engine/in-place
                                                                  :archived?                   false
                                                                  :models                      search.config/all-models
                                                                  :current-user-id             (mt/user->id :crowberto)
