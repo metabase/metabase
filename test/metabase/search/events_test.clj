@@ -1,6 +1,7 @@
 (ns ^:synchronized metabase.search.events-test
   "Pins the wiring of [[metabase.search.events]]: the writes of a batch enqueue re-derivation messages, and a delete
   captures what it leaves unpurgeable before it runs."
+  {:clj-kondo/config '{:hooks {:analyze-call {metabase.search.test-util/with-temp-created-cards hooks.toucan2.tools.with-temp/with-temp}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -348,7 +349,7 @@
 (deftest purge-one-on-delete-test
   (testing "deleting an indexed card purges its index row (appdb engine)"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Card {id :id} {:name "Temp Purge Card"}]
+      (search.tu/with-temp-created-cards [:model/Card {id :id} {:name "Temp Purge Card"}]
         (is (= 1 (indexed-count "card" id)))
         (delete-cards-by-hand! [id])
         (is (= 0 (indexed-count "card" id)))))))
@@ -356,9 +357,9 @@
 (deftest purge-bulk-on-delete-test
   (testing "bulk deletion purges every affected row (cards first, then their now-empty collection)"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Temp Bulk Collection"}
-                     :model/Card       {c1 :id}      {:name "Bulk Card 1", :collection_id coll-id}
-                     :model/Card       {c2 :id}      {:name "Bulk Card 2", :collection_id coll-id}]
+      (search.tu/with-temp-created-cards [:model/Collection {coll-id :id} {:name "Temp Bulk Collection"}
+                                          :model/Card       {c1 :id}      {:name "Bulk Card 1", :collection_id coll-id}
+                                          :model/Card       {c2 :id}      {:name "Bulk Card 2", :collection_id coll-id}]
         (is (= 2 (indexed-count "card" c1 c2)))
         (is (= 1 (indexed-count "collection" coll-id)))
         ;; cards must go first: a collection with contents refuses deletion.
@@ -399,9 +400,9 @@
 (deftest purge-cards-on-database-delete-test
   (testing "deleting a database purges the cards it deletes in bulk, and the actions that cascade with them"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id}     {}
-                     :model/Card     {card-id :id}   {:name "Db Delete Model", :type :model, :database_id db-id}
-                     :model/Action   {action-id :id} {:name "Db Delete Action", :model_id card-id, :type :query}]
+      (search.tu/with-temp-created-cards [:model/Database {db-id :id}     {}
+                                          :model/Card     {card-id :id}   {:name "Db Delete Model", :type :model, :database_id db-id}
+                                          :model/Action   {action-id :id} {:name "Db Delete Action", :model_id card-id, :type :query}]
         (is (= 1 (indexed-count "dataset" card-id)))
         (is (= 1 (indexed-count "action" action-id)))
         (database/delete-databases! [db-id])
@@ -424,9 +425,9 @@
     (search.tu/with-appdb-search-if-available-without-fallback
       ;; A value var, not a function: with-dynamic-fn-redefs has nothing to intercept.
       (with-redefs [queries.card/tombstone-chunk-size 1]
-        (mt/with-temp [:model/Database {db-id :id}    {}
-                       :model/Card     {fail-card :id} {:name "Db Chunk Failure Model", :type :model, :database_id db-id}
-                       :model/Card     {ok-card :id}   {:name "Db Chunk Survivor Model", :type :model, :database_id db-id}]
+        (search.tu/with-temp-created-cards [:model/Database {db-id :id}    {}
+                                            :model/Card     {fail-card :id} {:name "Db Chunk Failure Model", :type :model, :database_id db-id}
+                                            :model/Card     {ok-card :id}   {:name "Db Chunk Survivor Model", :type :model, :database_id db-id}]
           (is (= 1 (indexed-count "dataset" fail-card)))
           (is (= 1 (indexed-count "dataset" ok-card)))
           (let [real-delete! (mt/original-fn #'search/delete!)]
@@ -454,9 +455,9 @@
 (deftest database-delete-keeps-a-card-that-moved-away-test
   (testing "a card that moves to another database during the delete survives it, and keeps its search documents"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (mt/with-temp [:model/Database {db-id :id}    {}
-                     :model/Database {other-id :id} {}
-                     :model/Card     {card-id :id}  {:name "Db Delete Moved Model", :type :model, :database_id db-id}]
+      (search.tu/with-temp-created-cards [:model/Database {db-id :id}    {}
+                                          :model/Database {other-id :id} {}
+                                          :model/Card     {card-id :id}  {:name "Db Delete Moved Model", :type :model, :database_id db-id}]
         (is (= 1 (indexed-count "dataset" card-id)))
         (let [add-cascading-documents (mt/original-fn #'search/add-cascading-documents)]
           ;; A raw update, standing in for a concurrent move that lands between the scan and the delete.
@@ -802,13 +803,10 @@
 (deftest batch-enqueues-one-ingestion-test
   (testing "the rows of one write hand one ingestion call to the index"
     (search.tu/with-appdb-search-if-available-without-fallback
-      (let [ids (atom [])
-            calls (capture-enqueues!
-                   #(reset! ids (mapv :id (queries.card/create-cards! (vec (repeatedly 3 (fn [] (mt/with-temp-defaults :model/Card))))))))]
-        (try
-          (is (= 1 (count calls)))
-          (finally
-            (delete-cards-by-hand! @ids)))))))
+      (mt/with-model-cleanup [:model/Card]
+        (let [calls (capture-enqueues!
+                     #(queries.card/create-cards! (vec (repeatedly 3 (fn [] (search.tu/card-row {}))))))]
+          (is (= 1 (count calls))))))))
 
 (defn- indexed-editor [search-model id]
   (t2/select-one-fn :last_editor_id (search.index/active-table) :model search-model :model_id (str id)))

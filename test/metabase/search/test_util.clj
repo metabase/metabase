@@ -1,7 +1,10 @@
 (ns metabase.search.test-util
   (:require
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.permissions.util :as perms-util]
+   [metabase.queries.models.card :as card]
    [metabase.request.core :as request] ;; For now, this is specialized to the appdb engine, but we should be able to generalize it to all engines.
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
@@ -19,6 +22,41 @@
   [& body]
   `(binding [search.ingestion/*force-sync* true]
      ~@body))
+
+(defn card-row
+  "The `with-temp` defaults of a Card with `attrs`, and a native query on its Database, which `create-cards!` takes."
+  [attrs]
+  (let [mp (if-let [db-id (:database_id attrs)]
+             (lib-be/application-database-metadata-provider db-id)
+             (mt/metadata-provider))]
+    (merge (mt/with-temp-defaults :model/Card)
+           {:dataset_query (lib/native-query mp "SELECT 1")}
+           attrs)))
+
+(defn create-card!
+  "Creates a Card from `(card-row attrs)` with `create-cards!`, as a write does."
+  [attrs]
+  (first (card/create-cards! [(card-row attrs)])))
+
+(defn- temp-created-cards-form!
+  [bindings body cleanup?]
+  (if-let [[[model sym attrs] & more] (seq (partition 3 bindings))]
+    (let [rest-bindings (vec (mapcat identity more))]
+      (if (= :model/Card model)
+        (let [inner `(let [~sym (create-card! ~attrs)]
+                       ~(temp-created-cards-form! rest-bindings body false))]
+          (if cleanup?
+            `(mt/with-model-cleanup [:model/Card] ~inner)
+            inner))
+        `(mt/with-temp [~model ~sym ~attrs]
+           ~(temp-created-cards-form! rest-bindings body cleanup?))))
+    `(do ~@body)))
+
+(defmacro with-temp-created-cards
+  "Like `mt/with-temp` with `[model binding attributes ...]` bindings, but creates each `:model/Card` with
+  `create-cards!`, so that it is indexed, and cleans the Cards up with `mt/with-model-cleanup`."
+  [bindings & body]
+  (temp-created-cards-form! bindings body true))
 
 (defn do-with-labelled-cards
   "Create a temporary card for each entry of `docs`, a map from a label (`:A` to `:H`) to card attributes.

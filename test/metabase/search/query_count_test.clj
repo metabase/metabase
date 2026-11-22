@@ -48,7 +48,7 @@
    (fn [collection names row-attrs]
      ((create-rows model)
       (vec (for [n names]
-             (merge (dissoc (mt/with-temp-defaults model) :created_at :updated_at)
+             (merge (dissoc (if (= :model/Card model) (search.tu/card-row {}) (mt/with-temp-defaults model)) :created_at :updated_at)
                     (collection-attrs collection)
                     row-attrs
                     {:name n})))))))
@@ -56,7 +56,7 @@
 (defn- insert-model!
   "Inserts a model (a Card of type `:model`) in `collection`, for the rows that belong to one, and returns it."
   [collection]
-  (first (card/create-cards! [(assoc (mt/with-temp-defaults :model/Card)
+  (first (card/create-cards! [(assoc (search.tu/card-row {})
                                      :collection_id (:id collection)
                                      :type :model)])))
 
