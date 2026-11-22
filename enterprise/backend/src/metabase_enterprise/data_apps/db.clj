@@ -226,25 +226,17 @@
     (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil])
     #{}))
 
-(mu/defn metric-cards
-  "The non-archived metric Cards with `card-ids`, in name then id order."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (if (seq card-ids)
-    (t2/select :model/Card {:where    [:and
-                                       [:= :type "metric"]
-                                       [:= :archived false]
-                                       [:in :id card-ids]]
-                            :order-by [[:name :asc] [:id :asc]]})
-    []))
-
 (mu/defn metric-cards-in-collections
-  "The non-archived metric Cards in `collection-ids`, in name then id order."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
+  "The non-archived metric Cards in `collection-ids`, only those with `card-ids` when it has any, in name then id
+  order."
+  [collection-ids :- [:set ::lib.schema.id/collection]
+   card-ids       :- [:maybe [:set ::lib.schema.id/card]]]
   (if (seq collection-ids)
-    (t2/select :model/Card {:where    [:and
-                                       [:= :type "metric"]
-                                       [:= :archived false]
-                                       [:in :collection_id collection-ids]]
+    (t2/select :model/Card {:where    (cond-> [:and
+                                               [:= :type "metric"]
+                                               [:= :archived false]
+                                               [:in :collection_id collection-ids]]
+                                        (seq card-ids) (conj [:in :id card-ids]))
                             :order-by [[:name :asc] [:id :asc]]})
     []))
 
@@ -270,14 +262,17 @@
   (t2/select-one-fn :table_id :model/Field :id field-id))
 
 (mu/defn published-tables-in-collections
-  "The active, published Tables in `collection-ids`, in name then id order."
-  [collection-ids :- [:set ::lib.schema.id/collection]]
+  "The active, published Tables in `collection-ids`, only those with `table-ids` when it has any, in name then id
+  order."
+  [collection-ids :- [:set ::lib.schema.id/collection]
+   table-ids      :- [:maybe [:set ::lib.schema.id/table]]]
   (if (seq collection-ids)
     (t2/select :model/Table
-               {:where    [:and
-                           [:= :active true]
-                           [:= :is_published true]
-                           [:in :collection_id collection-ids]]
+               {:where    (cond-> [:and
+                                   [:= :active true]
+                                   [:= :is_published true]
+                                   [:in :collection_id collection-ids]]
+                            (seq table-ids) (conj [:in :id table-ids]))
                 :order-by [[:name :asc] [:id :asc]]})
     []))
 

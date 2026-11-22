@@ -423,7 +423,7 @@
 
 (deftest generate-schema-test
   (mt/with-premium-features #{:data-apps}
-    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+    (data-apps.tu/with-published-tables! [(mt/id :venues) (mt/id :checkins)]
       (testing "a non-superuser cannot generate an app's files"
         (mt/user-http-request :rasta :get 403 "ee/apps/generate/schema"))
       (let [[{:keys [path contents]} :as files] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
@@ -440,35 +440,44 @@
           (is (re-find #"\n    venues[,\n]" contents)))
         (testing "and no actions"
           (is (not (str/includes? contents "actions")))))
-      (testing "`table-ids` replaces the published tables"
+      (testing "`table-ids` narrows the published tables, and selects no table outside the Library"
         (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
                                                          :table-ids (mt/id :checkins)
                                                          :table-ids (mt/id :users))]
           (is (str/includes? contents "export const checkins = {"))
-          (is (str/includes? contents "export const users = {"))
+          (is (not (str/includes? contents "export const users = {")))
           (is (not (str/includes? contents "export const venues = {"))))))))
 
 (deftest generate-schema-metric-ids-test
   (mt/with-premium-features #{:data-apps}
     (data-apps.tu/do-with-sources!
-     (fn [{library-metric-id :metric-id}]
+     (fn [{venues-metric-id :metric-id}]
        (let [mp            (mt/metadata-provider)
-             checkins      (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+             checkins      (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :checkins))) (lib/count))
+             metrics-id    (:collection_id (t2/select-one [:model/Card :collection_id] :id venues-metric-id))
              schema-metric (fn [contents metric-id]
                              (re-find (re-pattern (str "type: \"metric\",\n  id: " metric-id ",\n")) contents))]
-         (mt/with-temp [:model/Card {metric-id :id} {:name          "Checkin count"
-                                                     :type          :metric
-                                                     :database_id   (mt/id)
-                                                     :dataset_query (lib/aggregate checkins (lib/count))}]
+         (mt/with-temp [:model/Card {checkins-metric-id :id} {:name          "Checkin count"
+                                                              :type          :metric
+                                                              :collection_id metrics-id
+                                                              :database_id   (mt/id)
+                                                              :dataset_query checkins}
+                        :model/Card {outside-metric-id :id}  {:name          "Outside checkin count"
+                                                              :type          :metric
+                                                              :database_id   (mt/id)
+                                                              :dataset_query checkins}]
            (testing "without `metric-ids` the schema holds the Library's metrics"
              (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema")]
-               (is (schema-metric contents library-metric-id))
-               (is (not (schema-metric contents metric-id)))))
-           (testing "`metric-ids` replaces them with any metric, with the tables it is backed by"
+               (is (schema-metric contents venues-metric-id))
+               (is (schema-metric contents checkins-metric-id))
+               (is (not (schema-metric contents outside-metric-id)))))
+           (testing "`metric-ids` narrows them, with the tables they are backed by, and selects no metric outside the Library"
              (let [[{:keys [contents]}] (mt/user-http-request :crowberto :get 200 "ee/apps/generate/schema"
-                                                              :metric-ids metric-id)]
-               (is (schema-metric contents metric-id))
-               (is (not (schema-metric contents library-metric-id)))
+                                                              :metric-ids checkins-metric-id
+                                                              :metric-ids outside-metric-id)]
+               (is (schema-metric contents checkins-metric-id))
+               (is (not (schema-metric contents venues-metric-id)))
+               (is (not (schema-metric contents outside-metric-id)))
                (is (str/includes? contents "export const checkins = {"))))))))))
 
 (deftest generate-queries-test

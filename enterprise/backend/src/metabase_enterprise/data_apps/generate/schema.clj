@@ -29,23 +29,21 @@
    [:metrics [:sequential :map]]])
 
 (def Selection
-  "The tables and metrics to fetch by id; a nil set selects the Library's published tables or its metrics."
+  "The ids that narrow the Library's published tables and its metrics; a nil or empty set keeps them all."
   [:map {:closed true}
    [:table-ids  {:optional true} [:maybe [:set :int]]]
    [:metric-ids {:optional true} [:maybe [:set :int]]]])
 
 (defn fetch-items
-  "Fetches the tables and metrics of a [[Selection]], plus the tables the metrics are backed by."
+  "Fetches the Library's metrics and published tables, narrowed by a [[Selection]], and the tables the metrics are
+  backed by."
   ([selection]
    (fetch-items schemas.source/app-db-source selection))
   ([source {:keys [table-ids metric-ids]}]
    (let [{:keys [data-collection-ids metric-collection-ids]} (schemas.source/library-scope source)
-         metric-ids (or metric-ids
-                        (into #{} (map :id) (schemas.source/library-metrics source metric-collection-ids)))
-         metrics    (schemas.source/metrics source metric-ids)
-         table-ids  (set/union (or table-ids
-                                   (into #{} (map :id) (schemas.source/library-tables source data-collection-ids)))
-                               (into #{} (mapcat :mappedTableIds) metrics))]
+         metrics   (schemas.source/metrics source metric-collection-ids metric-ids)
+         table-ids (set/union (into #{} (map :id) (schemas.source/library-tables source data-collection-ids table-ids))
+                              (into #{} (mapcat :mappedTableIds) metrics))]
      {:tables  (vec (schemas.source/tables source table-ids))
       :metrics (vec metrics)})))
 

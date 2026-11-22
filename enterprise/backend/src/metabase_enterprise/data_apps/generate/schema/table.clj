@@ -50,9 +50,10 @@
   (without-unavailable-tables (data-apps.db/active-tables table-ids)))
 
 (defn select-library-tables
-  "Returns the published tables in the library collections with `collection-ids`."
-  [collection-ids]
-  (->> (data-apps.db/published-tables-in-collections collection-ids)
+  "Returns the published tables in the library collections with `collection-ids`, only those with `table-ids` when it
+  has any."
+  [collection-ids table-ids]
+  (->> (data-apps.db/published-tables-in-collections collection-ids table-ids)
        (without-unavailable-tables)))
 
 (defn segment-schema

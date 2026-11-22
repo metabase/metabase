@@ -244,9 +244,8 @@
   nil)
 
 (api.macros/defendpoint :get "/generate/schema" :- GeneratedFiles
-  "The `src/metabase.schema.ts` file of a data app: the tables with `table-ids`, or the Library's published tables
-  without it, with their fields, segments and measures, and the metrics with `metric-ids`, or the Library's metrics
-  without it. Superusers only."
+  "The `src/metabase.schema.ts` file of a data app: the Library's published tables, with their fields, segments and
+  measures, and its metrics, narrowed to the ones with `table-ids` and `metric-ids` when given. Superusers only."
   [_route-params
    {:keys [table-ids metric-ids]} :- [:map {:closed true}
                                       [:table-ids  {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
