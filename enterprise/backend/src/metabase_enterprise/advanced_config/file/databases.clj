@@ -126,7 +126,7 @@
     (init-sample-database! database)
 
     :else
-    (let [database (lib/normalize ::warehouses.schema/database.update database)]
+    (let [database (lib/normalize ::warehouses.schema/database.create database)]
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       ;; Stubs are placeholders with no usable details, so we skip the connection test.
       (when-not (:is_stub database)

@@ -3325,7 +3325,7 @@
     (mt/with-full-data-perms-for-all-users!
       (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
         ;; make sure we have a clean start
-        (field-values/clear-field-values-for-field! (mt/id :categories :name))
+        (field-values/delete-field-values-for-fields! [(mt/id :categories :name)])
         (testing "Show me names of categories"
           (is (= {:values          [["African"] ["American"] ["Artisan"]]
                   :has_more_values false}
@@ -3486,7 +3486,7 @@
                                      :dashboardcard_id (:id dashcard)
                                      :position 0}]
       ;; make sure we have a clean start
-      (field-values/clear-field-values-for-field! (mt/id :categories :name))
+      (field-values/delete-field-values-for-fields! [(mt/id :categories :name)])
       (testing "Can get field values for parameters tied to series #58328"
         (is (= {:values          [["Doohickey"] ["Gadget"] ["Gizmo"]]
                 :has_more_values false}

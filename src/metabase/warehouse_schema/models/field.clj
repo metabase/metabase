@@ -20,6 +20,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.app-db-copy :as warehouse-schema.app-db-copy]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
@@ -450,21 +451,16 @@
   (cond-> row
     (not (contains? row :display_name)) (assoc :display_name (humanization/name->human-readable-name (:name row)))))
 
-(defn- create-field-instances!
+(mu/defn create-fields! :- [:sequential ::warehouse-schema.schema/field]
   "Insert the Field `rows` and return the inserted instances, refusing a foreign key target outside the Database of a
   Field's Table."
-  [rows]
+  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
       (check-fk-targets (filter :fk_target_field_id rows))
       (u/prog1 (vec (warehouse-schema.db/insert-fields! (mapv with-display-name rows)))
         (events/publish-event! :event/field-create (events/create-event <>))))))
-
-(mu/defn create-fields! :- [:sequential ::lib.schema.id/field]
-  "Insert the Field `rows` and return their ids, refusing a foreign key target outside the Database of a Field's Table."
-  [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (mapv :id (create-field-instances! rows)))
 
 (defmulti clear-for-deactivated-fields!
   "Clear what the rows of `model` hold that points at the deactivated Fields with `field-ids`, which a model whose
@@ -525,7 +521,7 @@
     changes
     (do (clear-user-settings-fk-targets! field-ids)
         (u/prog1 (clear-fk-targets! changes field-ids)
-          (dimension/delete-dimensions-reading-fields! field-ids)))))
+          (dimension/delete-dimensions! (mapv :id (warehouse-schema.db/dimensions-reading-fields (vec field-ids))))))))
 
 (defn- json-unfolding-changed!
   "Set the nested Fields of each of the JSON `fields` active when it now unfolds, and inactive when it no longer does,
@@ -592,15 +588,21 @@
                                               changes
                                               rows)))))))))
 
-(mu/defn update-fields! :- [:sequential [:map [:id ::lib.schema.id/field]]]
+(mr/def ::write-opts
+  "The options of an update of Fields: `:fields`, the Fields the caller already read, as the rows before it, so that it
+  reads none."
+  [:maybe [:map {:closed true}
+           [:fields {:optional true} [:sequential ::warehouse-schema.schema/field]]]])
+
+(mu/defn update-fields! :- [:sequential ::warehouse-schema.schema/field.update]
   "Apply each of `rows`, the id of a Field and the columns to change, and return them. Deactivating a Field clears
   the foreign keys to it and the remappings that read it, a new display name renames its Dimension, and a change of
   `json_unfolding` sets its nested Fields active or inactive. The stored rows are read once, unless the caller gives
   them as `:fields`."
-  ([rows :- [:sequential ::warehouse-schema.schema/field.update-row]]
+  ([rows :- [:sequential ::warehouse-schema.schema/field.update]]
    (update-fields! rows nil))
-  ([rows             :- [:sequential ::warehouse-schema.schema/field.update-row]
-    {:keys [fields]} :- ::warehouse-schema.schema/field.write-opts]
+  ([rows             :- [:sequential ::warehouse-schema.schema/field.update]
+    {:keys [fields]} :- ::write-opts]
    (let [stored (u/index-by :id fields)]
      (doseq [batch (partition-all write-batch-size rows)]
        (apply-field-updates! (stored-fields batch stored) batch)))
@@ -650,12 +652,6 @@
   "Set the `custom_position` of each Field in `field-id->position`, in one statement."
   [field-id->position :- [:map-of ::lib.schema.id/field :int]]
   (set-position-column! :custom_position field-id->position))
-
-(mu/defn set-display-name!
-  "Set the display name of the Field with `field-id`, renaming its Dimension when it changes."
-  [field-id     :- ::lib.schema.id/field
-   display-name :- :string]
-  (update-fields! [{:id field-id :display_name display-name}]))
 
 (defn- delete-field-levels!
   "Delete the Fields in `levels`, a sequence of sets of ids each holding the children of the one before, the deepest
@@ -750,7 +746,7 @@
                    :preview_display            true}
    :entity-ref    warehouse-schema.serialization/field-entity-ref
    :storage-paths warehouse-schema.serialization/field-storage-paths
-   :insert!       create-field-instances!
+   :insert!       create-fields!
    :update!       update-fields!
    :delete!       delete-fields!
    :rows-by-refs  serialization/field-rows-by-refs})

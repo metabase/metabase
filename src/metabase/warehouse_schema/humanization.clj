@@ -25,30 +25,30 @@
   ([strategy s]
    (u.humanization/name->human-readable-name strategy s)))
 
-(defn- re-humanize-names!
-  "Update the display name of every row of `entities-reducible` that the current strategy humanizes differently,
-  unless `custom?` of it."
-  [model entities-reducible set-display-name! custom?]
-  (run! (fn [{id :id, internal-name :name, display-name :display_name :as row}]
-          (let [new-strategy-display-name (name->human-readable-name internal-name)]
-            (when (and (not= display-name new-strategy-display-name)
-                       (not (custom? row)))
-              (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
-                         (name model) internal-name display-name new-strategy-display-name)
-              (set-display-name! id new-strategy-display-name))))
-        (entities-reducible)))
+(defn- re-humanized
+  "Batches of the `{:id :display_name}` changes that re-humanize the rows of `model` in `rows`, a reducible of their
+  ids, names and display names, leaving out a row whose display name is user-set or not `old-strategy`'s
+  humanization of its name."
+  [model old-strategy rows]
+  (eduction (comp (keep (fn [{id :id, internal-name :name, display-name :display_name, user-display-name :user_display_name}]
+                          (let [new-display-name (name->human-readable-name internal-name)]
+                            (when (and (not= display-name new-display-name)
+                                       (nil? user-display-name)
+                                       (= (name->human-readable-name old-strategy internal-name) display-name))
+                              (log/infof "Updating display name for %s '%s': '%s' -> '%s'"
+                                         (name model) internal-name display-name new-display-name)
+                              {:id id :display_name new-display-name}))))
+                  (partition-all 1000))
+            rows))
 
-(mu/defn re-humanize-table-and-field-names!
-  "Re-humanize every Table and Field display name that is neither user-set nor different from `old-strategy`'s
-  humanization, writing them by `set-table-display-name!` and `set-field-display-name!`, fns of an id and a name."
-  [old-strategy            :- :keyword
-   set-table-display-name! :- fn?
-   set-field-display-name! :- fn?]
-  (letfn [(custom? [{internal-name :name, display-name :display_name
-                     user-display-name :user_display_name}]
-            (or (some? user-display-name)
-                (not= (name->human-readable-name old-strategy internal-name) display-name)))]
-    (re-humanize-names! :model/Table warehouse-schema.db/table-names-reducible
-                        set-table-display-name! custom?)
-    (re-humanize-names! :model/Field warehouse-schema.db/field-names-reducible
-                        set-field-display-name! custom?)))
+(mu/defn re-humanized-tables
+  "Batches of the `{:id :display_name}` changes that re-humanize every Table display name that is neither user-set nor
+  different from `old-strategy`'s humanization."
+  [old-strategy :- :keyword]
+  (re-humanized :model/Table old-strategy (warehouse-schema.db/table-names-reducible)))
+
+(mu/defn re-humanized-fields
+  "Batches of the `{:id :display_name}` changes that re-humanize every Field display name that is neither user-set nor
+  different from `old-strategy`'s humanization."
+  [old-strategy :- :keyword]
+  (re-humanized :model/Field old-strategy (warehouse-schema.db/field-names-reducible)))

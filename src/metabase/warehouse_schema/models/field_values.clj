@@ -357,7 +357,7 @@
 
 ;;; ------------------------------------------------------ CRUD ------------------------------------------------------
 
-(declare clear-field-values-for-field! delete-field-values! find-or-create-full-field-values! touch-field-values!
+(declare delete-field-values! delete-field-values-for-fields! find-or-create-full-field-values! touch-field-values!
          update-field-values!)
 
 (defn limit-values
@@ -475,7 +475,7 @@
   - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
 
   Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
-  deleted as a side effect of `clear-field-values-for-field!` when the capped value set is empty."
+  deleted as a side effect of `delete-field-values-for-fields!` when the capped value set is empty."
   [field existing-fv raw-values]
   (let [field-name      (or (:name field) (:id field))
         row-cap-hit?    (>= (count raw-values) *distinct-limit*)
@@ -485,7 +485,7 @@
     (cond
       (empty? values)
       (do
-        (clear-field-values-for-field! field)
+        (delete-field-values-for-fields! [(u/the-id field)])
         ::fv-deleted)
 
       ;; if FieldValues object doesn't exist create one
@@ -532,7 +532,7 @@
         (persist-field-values! field existing-fv (seq (map first rows)))
         ::fv-fetch-failed))
     (do
-      (clear-field-values-for-field! field)
+      (delete-field-values-for-fields! [(u/the-id field)])
       ::fv-deleted)))
 
 (def ^:private in-flight-fetches
@@ -731,11 +731,11 @@
     (= (some-> (:type row) keyword) (:type stored)) (dissoc :type)
     (= (:hash_key row) (:hash_key stored))         (dissoc :hash_key)))
 
-(mu/defn update-field-values! :- [:sequential [:map [:id ms/PositiveInt]]]
+(mu/defn update-field-values! :- [:sequential ::warehouse-schema.schema/field-values.update]
   "Apply each of `rows`, the id of a FieldValues and the columns to change, and return the rows of the FieldValues that
   exist, deleting the advanced FieldValues of the Fields whose full values change: one read, one delete and one
   statement per distinct set of changes."
-  [rows :- [:sequential ::warehouse-schema.schema/field-values.update-row]]
+  [rows :- [:sequential ::warehouse-schema.schema/field-values.update]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
@@ -841,11 +841,6 @@
   [field-or-id]
   (t2/with-transaction [_conn]
     (clear-advanced-field-values-for-fields! [(u/the-id field-or-id)])))
-
-(defn clear-field-values-for-field!
-  "Delete every FieldValues of `field-or-id`, the advanced ones included."
-  [field-or-id]
-  (delete-field-values-for-fields! [(u/the-id field-or-id)]))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`."

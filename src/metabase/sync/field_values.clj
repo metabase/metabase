@@ -23,7 +23,7 @@
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
-    (field-values/clear-field-values-for-field! field)
+    (field-values/delete-field-values-for-fields! [(u/the-id field)])
     ::field-values/fv-deleted))
 
 (defn- result->delta [result]

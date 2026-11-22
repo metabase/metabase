@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
@@ -208,7 +209,7 @@
 (mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
-   :- [:or :metabase.warehouse-schema.schema/table :metabase.warehouse-schema.schema/table.update]]
+   :- [:or :metabase.warehouse-schema.schema/table (mut/dissoc :metabase.warehouse-schema.schema/table.update :id)]]
   (if (str/blank? schema)
     name
     (str schema "." name)))

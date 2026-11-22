@@ -71,15 +71,17 @@
                                                             [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]
     [:transforms_permissions      {:optional true} [:maybe [:enum :write :none]]]]])
 
-(mr/def ::database.update
-  "What an update (or insert) of a Database accepts: every column of `:metabase_database` except `id`, all optional."
+(mr/def ::database.create
+  "What a caller gives to create a Database: its name and engine, any other column of `:metabase_database`, and an
+  `id` only for a Database whose id is fixed."
   [:map {:closed true}
+   [:id                          {:optional true} ::lib.schema.id/database]
    [:created_at                  {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                  {:optional true} [:maybe ms/TemporalInstant]]
-   [:name                        {:optional true} [:maybe :string]]
+   [:name                        :string]
    [:description                 {:optional true} [:maybe :string]]
    [:details                     {:optional true} [:maybe ::database.details]]
-   [:engine                      {:optional true} [:maybe ::lib.schema.common/keyword]]
+   [:engine                      ::lib.schema.common/keyword]
    [:is_sample                   {:optional true} [:maybe :boolean]]
    [:is_full_sync                {:optional true} [:maybe :boolean]]
    [:points_of_interest          {:optional true} [:maybe :string]]
@@ -108,31 +110,14 @@
    [:admin_details               {:optional true} [:maybe ::database.admin-details]]
    [:is_stub                     {:optional true} [:maybe :boolean]]])
 
-(mr/def ::database.create
-  "What a caller gives to create a Database: its name and engine, any other column of `:metabase_database`, and an
-  `id` only for a Database whose id is fixed."
+(mr/def ::database.update
+  "What an update of a Database takes: its `id` and the columns to change, any column of `:metabase_database`."
   [:merge
-   ::database.update
+   ::database.create
    [:map {:closed true}
-    [:id     {:optional true} ::lib.schema.id/database]
-    [:name   :string]
-    [:engine ::lib.schema.common/keyword]]])
-
-(mr/def ::database.update-row
-  "The id of a Database and the columns a bulk update changes in it."
-  [:merge
-   ::database.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/database]]])
-
-(mr/def ::database.write-opts
-  "The options of a write of Databases: `:writer` `:import` for a SerDes import, which refuses H2 and hosted SQLite and
-  sanitizes connection details; `:databases`, for an update, the Databases the caller already read, as the rows
-  before it, so that it reads none; `:context` for the events."
-  [:maybe [:map {:closed true}
-           [:writer    {:optional true} [:enum :import]]
-           [:databases {:optional true} [:sequential :map]]
-           [:context   {:optional true} [:maybe :metabase.events.schema/context]]]])
+    [:id     ::lib.schema.id/database]
+    [:name   {:optional true} [:maybe :string]]
+    [:engine {:optional true} [:maybe ::lib.schema.common/keyword]]]])
 
 (mr/def ::database-or-metadata
   "A Database as an app DB row or as Lib metadata."

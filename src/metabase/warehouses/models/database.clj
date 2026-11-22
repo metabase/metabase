@@ -31,6 +31,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.app-db-copy :as warehouses.app-db-copy]
    [metabase.warehouses.db :as warehouses.db]
@@ -46,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-;;; --------------------------------------------------- Definition ---------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Database [_model] :metabase_database)
 
@@ -754,14 +755,22 @@
           enabled)))
 
 (defn- publish-database-updates!
-  "Publish the `:event/database-update` event of `changes`, `{id {:previous-object :object}}`, with `context`, leaving
-  out the changes that change nothing."
-  [changes context]
+  "Publish the `:event/database-update` event of `changes`, `{id {:previous-object :object}}`, with the `:context` and
+  `:writer` of `opts`, leaving out the changes that change nothing."
+  [changes opts]
   (events/publish-event! :event/database-update
                          (events/update-event (update-vals changes :previous-object)
                                               (mapv #(hash-map :id %) (keys changes))
-                                              {:objects (update-vals changes :object)
-                                               :context context})))
+                                              (assoc opts :objects (update-vals changes :object)))))
+
+(mr/def ::write-opts
+  "The options of a write of Databases: `:writer` `:import` for a SerDes import, which refuses H2 and hosted SQLite and
+  sanitizes connection details; `:databases`, for an update, the Databases the caller already read, as the rows
+  before it, so that it reads none; `:context` for the events."
+  [:maybe [:map {:closed true}
+           [:writer    {:optional true} [:enum :import]]
+           [:databases {:optional true} [:sequential ::warehouses.schema/database]]
+           [:context   {:optional true} [:maybe :metabase.events.schema/context]]]])
 
 (mu/defn create-databases! :- [:sequential ::warehouses.schema/database]
   "Insert the Database `rows` and return the inserted instances: their client secrets stored as Secrets, uploads
@@ -769,8 +778,8 @@
   and their sync triggers scheduled. An import refuses H2 and hosted SQLite and sanitizes the connection details."
   ([rows :- [:sequential ::warehouses.schema/database.create]]
    (create-databases! rows nil))
-  ([rows                     :- [:sequential ::warehouses.schema/database.create]
-    {:keys [writer context]} :- ::warehouses.schema/database.write-opts]
+  ([rows                      :- [:sequential ::warehouses.schema/database.create]
+    {:keys [writer] :as opts} :- ::write-opts]
    (if (empty? rows)
      []
      (t2/with-transaction [_conn]
@@ -787,8 +796,8 @@
            ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
            ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
            (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) <>)
-           (events/publish-event! :event/database-create (events/create-event <> context))
-           (publish-database-updates! disabled context)))))))
+           (events/publish-event! :event/database-create (events/create-event <> opts))
+           (publish-database-updates! disabled opts)))))))
 
 (def ^:private trigger-columns
   "The columns whose change can move the sync triggers of a Database, as written or as its before-update derives the
@@ -837,10 +846,10 @@
   Secrets, enabling uploads disables them on every other Database, and the sync triggers of the Databases whose
   schedules can have moved are rescheduled, those rows read again, once, for the triggers and the events. An import
   refuses H2 and hosted SQLite and sanitizes the connection details."
-  ([rows :- [:sequential ::warehouses.schema/database.update-row]]
+  ([rows :- [:sequential ::warehouses.schema/database.update]]
    (update-databases! rows nil))
-  ([rows                               :- [:sequential ::warehouses.schema/database.update-row]
-    {:keys [writer databases context]} :- ::warehouses.schema/database.write-opts]
+  ([rows                                :- [:sequential ::warehouses.schema/database.update]
+    {:keys [writer databases] :as opts} :- ::write-opts]
    (when (seq rows)
      (t2/with-transaction [_conn]
        (let [stored   (stored-databases rows (u/index-by :id databases))
@@ -875,7 +884,7 @@
            ;; This does nothing when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
            ;; scheduler is not up yet; [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]] self-heals.
            (run! (comp check-and-schedule-tasks-for-db! t2.realize/realize) (vals reread))
-           (publish-database-updates! changes context)))))
+           (publish-database-updates! changes opts)))))
    (vec rows)))
 
 (mu/defn disable-uploads! :- :int

@@ -95,7 +95,7 @@
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:schema "PUBLIC"}
             (is (marks? source-id #(table/update-tables! [{:id (mt/id :venues) :schema "OTHER"}]))))
           (mt/with-temp [:model/TableUserSettings {settings-id :id} {:table_id (mt/id :venues)}]
-            (is (not (marks? source-id #(table-user-settings/update-table-user-settings-rows!
+            (is (not (marks? source-id #(table-user-settings/update-table-user-settings!
                                          [{:id settings-id :caveats "Careful"}]))))))))))
 
 (deftest card-metadata-dependents-see-test
@@ -277,13 +277,13 @@
               (is (changes? #(field/update-fields! [{:id field-id :display_name "Cost"}]))))
             (mt/with-temp-vals-in-db :model/Field field-id {:display_name "Price"}
               (mt/with-temp [:model/FieldUserSettings {settings-id :id} {:field_id field-id :display_name "Cost"}]
-                (is (changes? #(field-user-settings/update-field-user-settings-rows!
+                (is (changes? #(field-user-settings/update-field-user-settings!
                                 [{:id settings-id :display_name "Price"}])))))
             (mt/with-temp-vals-in-db :model/Table table-id {:display_name "Venues"}
               (let [settings-id (atom nil)]
                 (is (changes? #(reset! settings-id (:id (first (table-user-settings/create-table-user-settings!
                                                                 [{:table_id table-id :display_name "Places"}]))))))
-                (is (changes? #(table-user-settings/update-table-user-settings-rows!
+                (is (changes? #(table-user-settings/update-table-user-settings!
                                 [{:id @settings-id :display_name "Spots"}])))
                 (is (changes? #(table-user-settings/delete-table-user-settings! [table-id])))))
             (let [dimension-id (atom nil)]

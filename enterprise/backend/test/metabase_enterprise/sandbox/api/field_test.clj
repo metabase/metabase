@@ -66,7 +66,7 @@
                           :has_more_values false}
                          (fetch-values :rasta :price))))
                 (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
-                  (field-values/clear-field-values-for-field! (mt/id :venues :name))
+                  (field-values/delete-field-values-for-fields! [(mt/id :venues :name)])
                   ;; fetch Field values with an admin
                   (testing "Admin should see all Field values"
                     (is (= {:field_id        (mt/id :venues :name)

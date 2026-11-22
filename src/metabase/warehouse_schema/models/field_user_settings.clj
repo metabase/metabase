@@ -1,5 +1,6 @@
 (ns metabase.warehouse-schema.models.field-user-settings
   (:require
+   [malli.util :as mut]
    [metabase.app-db.copy-spec :as app-db-copy]
    [metabase.change-log.core :as change-log]
    [metabase.dependencies.core :as dependencies]
@@ -157,11 +158,11 @@
                                   (do (warehouse-schema.db/unset-user-settings-fk-target! id)
                                       (with-updated writes stored (constantly fk-target-unset)))
                                   writes)]
-                     (dimension/delete-dimensions-of-type-for-field! id :external)
+                     (dimension/delete-dimensions! (mapv :id (warehouse-schema.db/dimensions-of-field id :external)))
                      (delete-empty! writes [id]))
                    writes)]
       (when-not (internal-remapping-allowed? base_type (:semantic_type settings))
-        (dimension/delete-dimensions-of-type-for-field! id :internal))
+        (dimension/delete-dimensions! (mapv :id (warehouse-schema.db/dimensions-of-field id :internal))))
       writes)))
 
 (defn- mirror-onto-fields!
@@ -177,7 +178,7 @@
 (mu/defn create-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings]
   "Insert the FieldUserSettings `rows`, write the columns they say a user set onto their Fields, and return the
   inserted instances; a row that holds no user value is deleted again."
-  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.create]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
@@ -187,11 +188,11 @@
         (publish-writes! writes)
         inserted))))
 
-(mu/defn update-field-user-settings-rows! :- [:sequential [:map [:id pos-int?]]]
+(mu/defn update-field-user-settings! :- [:sequential ::warehouse-schema.schema/field-user-settings.update]
   "Apply each of `rows`, the id of a FieldUserSettings and the columns to change, write the columns the updated
   settings say a user set onto their Fields, and return the rows of the settings that exist: one read and one
   statement per distinct set of changes."
-  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update-row]]
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
@@ -212,7 +213,7 @@
   "Record the user-settable Field columns present in `settings` as the user values of `field`, in its settings and its
   row; a nil for a column without a set flag unsets it."
   [{:keys [id] :as field} :- ::warehouse-schema.schema/field
-   settings               :- ::warehouse-schema.schema/field.update]
+   settings               :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (let [settings (u/select-keys-when settings :present user-settings/user-settable-field-columns)]
     (when (seq settings)
       (t2/with-transaction [_conn]
@@ -337,7 +338,7 @@
                    :field_id           serialization/field-transform}
    :storage-paths warehouse-schema.serialization/field-user-settings-storage-paths
    :insert!       create-field-user-settings!
-   :update!       update-field-user-settings-rows!
+   :update!       update-field-user-settings!
    :delete!       delete-field-user-settings-rows!
    :rows-by-refs  serialization/field-user-settings-rows-by-refs})
 

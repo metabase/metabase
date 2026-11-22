@@ -68,50 +68,50 @@
    new-field-metadatas :- [:maybe [:sequential i/TableMetadataField]]
    parent-id           :- common/ParentID]
   (when (seq new-field-metadatas)
-    (field/create-fields!
-     (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
-                   database-is-generated database-is-nullable database-default pk?
-                   database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
-            field-name :name :as field} (sort-by :database-position new-field-metadatas)
-           :let [semantic-type (common/semantic-type field)
-                 has-field-values (when (sync-util/can-be-list? base-type semantic-type)
-                                    :auto-list)]]
-       (do
-         (when (and effective-type
-                    base-type
-                    (not= effective-type base-type)
-                    (nil? coercion-strategy))
-           (log/warn (u/format-color 'red
-                                     (str
-                                      "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
-                                      " Using base-type: `%s`")
-                                     field-name
-                                     effective-type
-                                     base-type)))
-         {:table_id                   (u/the-id table)
-          :name                       field-name
-          :display_name               (warehouse-schema.humanization/name->human-readable-name field-name)
-          :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
-          :base_type                  base-type
-          ;; todo test this?
-          :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
-          :coercion_strategy          (when effective-type coercion-strategy)
-          :semantic_type              semantic-type
-          :parent_id                  parent-id
-          :nfc_path                   nfc-path
-          :description                field-comment
-          :position                   database-position
-          :database_position          database-position
-          :json_unfolding             (or json-unfolding false)
-          :database_is_auto_increment (or database-is-auto-increment false)
-          :database_is_generated      database-is-generated
-          :database_is_nullable       database-is-nullable
-          :database_is_pk             pk?
-          :database_default           database-default
-          :database_required          (or database-required false)
-          :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
-          :has_field_values           has-field-values
-          :visibility_type            (or visibility-type :normal)})))))
+    (mapv :id (field/create-fields!
+               (for [{:keys [base-type coercion-strategy database-is-auto-increment database-partitioned database-position
+                             database-is-generated database-is-nullable database-default pk?
+                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
+                      field-name :name :as field} (sort-by :database-position new-field-metadatas)
+                     :let [semantic-type (common/semantic-type field)
+                           has-field-values (when (sync-util/can-be-list? base-type semantic-type)
+                                              :auto-list)]]
+                 (do
+                   (when (and effective-type
+                              base-type
+                              (not= effective-type base-type)
+                              (nil? coercion-strategy))
+                     (log/warn (u/format-color 'red
+                                               (str
+                                                "WARNING: Field `%s`: effective type `%s` provided but no coercion strategy provided."
+                                                " Using base-type: `%s`")
+                                               field-name
+                                               effective-type
+                                               base-type)))
+                   {:table_id                   (u/the-id table)
+                    :name                       field-name
+                    :display_name               (warehouse-schema.humanization/name->human-readable-name field-name)
+                    :database_type              (or database-type "NULL") ; placeholder for Fields w/ no type info (e.g. Mongo) & all NULL
+                    :base_type                  base-type
+                    ;; todo test this?
+                    :effective_type             (if (and effective-type coercion-strategy) effective-type base-type)
+                    :coercion_strategy          (when effective-type coercion-strategy)
+                    :semantic_type              semantic-type
+                    :parent_id                  parent-id
+                    :nfc_path                   nfc-path
+                    :description                field-comment
+                    :position                   database-position
+                    :database_position          database-position
+                    :json_unfolding             (or json-unfolding false)
+                    :database_is_auto_increment (or database-is-auto-increment false)
+                    :database_is_generated      database-is-generated
+                    :database_is_nullable       database-is-nullable
+                    :database_is_pk             pk?
+                    :database_default           database-default
+                    :database_required          (or database-required false)
+                    :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
+                    :has_field_values           has-field-values
+                    :visibility_type            (or visibility-type :normal)}))))))
 
 (mu/defn- create-or-reactivate-fields! :- [:maybe [:sequential i/FieldInstance]]
   "Create (or reactivate) Metabase Field object(s) for any Fields in `new-field-metadatas`. Does *NOT* recursively

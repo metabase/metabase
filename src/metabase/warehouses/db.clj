@@ -2,8 +2,10 @@
   "Application database queries for the warehouses module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [malli.util :as mut]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -50,21 +52,16 @@
   []
   (t2/select :model/Database :uploads_enabled true))
 
-(mu/defn insert-databases!
-  "Insert the Database `rows` and return the inserted instances."
+(mu/defn insert-databases! :- [:sequential ::warehouses.schema/database]
+  "Insert the Database `rows` with one statement per distinct set of columns, so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouses.schema/database.create]]
-  (t2/insert-returning-instances! :model/Database rows))
-
-(mu/defn update-database!
-  "Apply `changes` to the Database with `database-id`, returning the number updated."
-  [database-id :- ::lib.schema.id/database
-   changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Database %) rows))
 
 (mu/defn update-databases!
   "Apply the same `changes` to the Databases with `database-ids`, returning the number updated."
   [database-ids :- [:set ::lib.schema.id/database]
-   changes      :- ::warehouses.schema/database.update]
+   changes      :- (mut/dissoc ::warehouses.schema/database.update :id)]
   (t2/update! :model/Database :id [:in database-ids] changes))
 
 (mu/defn delete-databases!

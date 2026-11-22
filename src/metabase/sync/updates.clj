@@ -2,6 +2,7 @@
   "The updates sync makes to Tables and Fields beyond their metadata: the columns no user set, and the status of the
   initial sync of each Table."
   (:require
+   [malli.util :as mut]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.db :as sync.db]
    [metabase.sync.util :as sync-util]
@@ -43,7 +44,7 @@
 (mu/defn update-field-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `field`, the Field or its id, the `changes` to columns no user set, returning the number updated."
   [field   :- [:or ::lib.schema.id/field (ms/InstanceOf :model/Field)]
-   changes :- ::warehouse-schema.schema/field.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-field-columns
                                        (sync.db/field-user-settings (u/the-id field))))]
     (if (seq changes)
@@ -53,7 +54,7 @@
 (mu/defn update-fields-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to each of `pairs`, a Field instance sync holds and its changes, the changes to columns no user set, in one
   bulk update, the settings of the Fields read once, returning the number of Fields updated."
-  [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Field) ::warehouse-schema.schema/field.update]]]
+  [pairs :- [:sequential [:tuple (ms/InstanceOf :model/Field) (mut/dissoc ::warehouse-schema.schema/field.update :id)]]]
   (let [settings (u/index-by :field_id (sync.db/field-user-settings-for-fields (mapv (comp :id first) pairs)))
         rows     (into []
                        (keep (fn [[field changes]]
@@ -67,7 +68,7 @@
 (mu/defn update-table-unless-user-set! :- ms/IntGreaterThanOrEqualToZero
   "Apply to `table`, the Table or its id, the `changes` to columns no user set, returning the number updated."
   [table   :- [:or ::lib.schema.id/table (ms/InstanceOf :model/Table)]
-   changes :- ::warehouse-schema.schema/table.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
   (let [changes (apply dissoc changes (warehouse-schema.user-settings/user-set-table-columns
                                        (sync.db/table-user-settings (u/the-id table))))]
     (if (seq changes)

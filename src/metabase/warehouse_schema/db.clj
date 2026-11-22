@@ -137,9 +137,10 @@
                     {:from [[(t2/table-name :model/Field) :f]]}))
 
 (mu/defn insert-fields!
-  "Insert the Field `rows` and return the inserted instances."
+  "Insert the Field `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/field.create]]
-  (t2/insert-returning-instances! :model/Field rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Field %) rows))
 
 (mu/defn fields-targeting
   "The Fields whose foreign key targets one of the Fields with `field-ids`."
@@ -168,15 +169,15 @@
   (t2/update! :model/Field :id [:in field-ids] (into {} (map (fn [column] [column [kase column]])) columns)))
 
 (mu/defn update-field!
-  "Apply `changes` to the ::warehouse-schema.schema/field with `field-id`, returning the number updated."
+  "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
-   changes  :- ::warehouse-schema.schema/field.update]
+   changes  :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (t2/update! :model/Field :id field-id changes))
 
 (mu/defn update-fields!
   "Apply `changes` to the Fields with `field-ids`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
-   changes   :- ::warehouse-schema.schema/field.update]
+   changes   :- (mut/dissoc ::warehouse-schema.schema/field.update :id)]
   (t2/update! :model/Field :id [:in field-ids] changes))
 
 (mu/defn delete-fields!
@@ -387,14 +388,15 @@
   (t2/select :model/FieldUserSettings :id [:in ids]))
 
 (mu/defn insert-field-user-settings-returning-instances!
-  "Insert the FieldUserSettings `rows` and return the inserted instances."
-  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.update]]
-  (t2/insert-returning-instances! :model/FieldUserSettings rows))
+  "Insert the FieldUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
+  [rows :- [:sequential ::warehouse-schema.schema/field-user-settings.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/FieldUserSettings %) rows))
 
 (mu/defn update-field-user-settings-by-ids!
   "Apply `changes` to the FieldUserSettings with `ids`, returning the number updated."
   [ids     :- [:sequential pos-int?]
-   changes :- ::warehouse-schema.schema/field-user-settings.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/field-user-settings.update :id)]
   (t2/update! :model/FieldUserSettings :id [:in ids] changes))
 
 ;;; -------------------------------------------- TableUserSettings --------------------------------------------
@@ -428,14 +430,15 @@
   (t2/select :model/TableUserSettings :id [:in ids]))
 
 (mu/defn insert-table-user-settings-returning-instances!
-  "Insert the TableUserSettings `rows` and return the inserted instances."
-  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.update]]
-  (t2/insert-returning-instances! :model/TableUserSettings rows))
+  "Insert the TableUserSettings `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
+  [rows :- [:sequential ::warehouse-schema.schema/table-user-settings.create]]
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/TableUserSettings %) rows))
 
 (mu/defn update-table-user-settings-by-ids!
   "Apply `changes` to the TableUserSettings with `ids`, returning the number updated."
   [ids     :- [:sequential pos-int?]
-   changes :- ::warehouse-schema.schema/table-user-settings.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/table-user-settings.update :id)]
   (t2/update! :model/TableUserSettings :id [:in ids] changes))
 
 (mu/defn delete-table-user-settings-by-ids!
@@ -550,12 +553,10 @@
   (t2/select :model/Dimension :id [:in ids]))
 
 (mu/defn dimensions-of-field
-  "The Dimensions of the Field with `field-id`, of `dimension-type` when it is given."
-  ([field-id :- ::lib.schema.id/field]
-   (t2/select :model/Dimension :field_id [:auto/param field-id]))
-  ([field-id       :- ::lib.schema.id/field
-    dimension-type :- ::warehouse-schema.schema/dimension.type]
-   (t2/select :model/Dimension :field_id [:auto/param field-id] :type dimension-type)))
+  "The `dimension-type` Dimensions of the Field with `field-id`."
+  [field-id       :- ::lib.schema.id/field
+   dimension-type :- ::warehouse-schema.schema/dimension.type]
+  (t2/select :model/Dimension :field_id [:auto/param field-id] :type dimension-type))
 
 (mu/defn dimensions-reading-fields
   "The Dimensions whose human-readable values come from the Fields with `field-ids`."
@@ -563,14 +564,15 @@
   (t2/select :model/Dimension :human_readable_field_id [:in field-ids]))
 
 (mu/defn insert-dimensions!
-  "Insert the Dimension `rows` and return the inserted instances."
+  "Insert the Dimension `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/dimension.create]]
-  (t2/insert-returning-instances! :model/Dimension rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Dimension %) rows))
 
 (mu/defn update-dimensions!
   "Apply `changes` to the Dimensions with `ids`, returning the number updated."
   [ids     :- [:sequential ::lib.schema.id/dimension]
-   changes :- ::warehouse-schema.schema/dimension.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/dimension.update :id)]
   (t2/update! :model/Dimension :id [:in ids] changes))
 
 (mu/defn delete-dimensions!
@@ -596,14 +598,15 @@
   (t2/select :model/FieldValues :id [:in ids]))
 
 (mu/defn insert-field-values!
-  "Insert the FieldValues `rows` and return the inserted instances."
+  "Insert the FieldValues `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/field-values.create]]
-  (t2/insert-returning-instances! :model/FieldValues rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/FieldValues %) rows))
 
 (mu/defn update-field-values!
   "Apply `changes` to the FieldValues with `ids`, returning the number updated."
   [ids     :- [:sequential ms/PositiveInt]
-   changes :- ::warehouse-schema.schema/field-values.update]
+   changes :- (mut/dissoc ::warehouse-schema.schema/field-values.update :id)]
   (t2/update! :model/FieldValues :id [:in ids] changes))
 
 (mu/defn find-or-insert-full-field-values!
@@ -748,9 +751,10 @@
   (t2/select-one :model/Table :id table-id))
 
 (mu/defn insert-tables!
-  "Insert the Table `rows` and return the inserted instances."
+  "Insert the Table `rows`, one statement per distinct set of columns so that a column a row leaves out keeps
+  its default, and return the inserted instances in the order of `rows`."
   [rows :- [:sequential ::warehouse-schema.schema/table.create]]
-  (t2/insert-returning-instances! :model/Table rows))
+  (u/map-by-key-set #(t2/insert-returning-instances! :model/Table %) rows))
 
 (mu/defn table-ids-of-database :- [:set ::lib.schema.id/table]
   "The ids of the Tables of the Database with `database-id`."
@@ -773,7 +777,7 @@
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]
-   changes   :- ::warehouse-schema.schema/table.update]
+   changes   :- (mut/dissoc ::warehouse-schema.schema/table.update :id)]
   (t2/update! :model/Table :id [:in table-ids] changes))
 
 (mu/defn tables
