@@ -476,6 +476,41 @@ describe("summary formula generator", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("generates a formula with Enter once AI permissions load", async () => {
+    const permissions = defer<UserMetabotPermissionsResponse>();
+    const { getLastQuery } = await setup({
+      permissionsResponse: permissions.promise,
+    });
+
+    await userEvent.type(getInput("values"), "revenue per customer");
+    expect(await screen.findByLabelText("Loading…")).toBeInTheDocument();
+
+    permissions.resolve(createMockUserMetabotPermissions());
+    expect(await findGenerateOption("revenue per customer")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(getLastQuery().values).toEqual(["Average total"]),
+    );
+  });
+
+  it("doesn't offer to generate a formula for text starting with = after spaces", async () => {
+    await setup();
+
+    await userEvent.type(getInput("values"), "  =revenue");
+
+    expect(
+      await screen.findByText("No matching metrics or columns"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /Generate/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("doesn't offer to generate a formula without permission to use AI", async () => {
     await setup({ hasNlqAccess: false });
 

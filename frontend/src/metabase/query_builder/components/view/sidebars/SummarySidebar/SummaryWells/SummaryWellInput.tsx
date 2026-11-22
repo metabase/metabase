@@ -75,7 +75,6 @@ export function SummaryWellInput({
   const [generateState, setGenerateState] = useState<GenerateFormulaState>({
     status: "idle",
   });
-  const [isGenerateShown, setIsGenerateShown] = useState(false);
   const isGenerating = generateState.status === "loading";
   const texts = getFieldTexts(wellId, hasItems);
 
@@ -90,20 +89,22 @@ export function SummaryWellInput({
     [sections, searchText],
   );
 
-  const comboboxRef = useLatest(combobox);
-  useEffect(() => {
-    if (searchText.length > 0) {
-      comboboxRef.current.selectFirstOption();
-    }
-  }, [comboboxRef, matchingSections, searchText, isGenerateShown]);
-
   const prompt = searchText.trim();
   const canGenerate =
     formulaGenerator != null &&
     formulaInput != null &&
     matchingSections.length === 0 &&
     prompt.length > 0 &&
-    !searchText.startsWith("=");
+    !prompt.startsWith("=");
+  const isGenerateOptionShown =
+    canGenerate && formulaGenerator.access === "available";
+
+  const comboboxRef = useLatest(combobox);
+  useEffect(() => {
+    if (searchText.length > 0) {
+      comboboxRef.current.selectFirstOption();
+    }
+  }, [comboboxRef, matchingSections, searchText, isGenerateOptionShown]);
 
   const handleGenerate = async () => {
     if (!formulaGenerator || isGenerating) {
@@ -255,7 +256,6 @@ export function SummaryWellInput({
               state={generateState}
               access={formulaGenerator.access}
               fallback={<Combobox.Empty>{texts.noMatches}</Combobox.Empty>}
-              onShow={() => setIsGenerateShown(true)}
             />
           ) : (
             matchingSections.length === 0 && (

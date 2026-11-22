@@ -1,5 +1,4 @@
-import { type ReactNode, useEffect } from "react";
-import { useLatest } from "react-use";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Box, Combobox, Icon, Kbd, Loader, Text } from "metabase/ui";
@@ -21,7 +20,6 @@ type GenerateFormulaOptionProps = {
   state: GenerateFormulaState;
   access: SummaryFormulaAccess;
   fallback: ReactNode;
-  onShow: () => void;
 };
 
 /** Offers to write a formula for `prompt` with AI, or shows `fallback` when the user can't use AI. */
@@ -31,16 +29,7 @@ export function GenerateFormulaOption({
   state,
   access,
   fallback,
-  onShow,
 }: GenerateFormulaOptionProps) {
-  const isAvailable = access === "available";
-  const onShowRef = useLatest(onShow);
-  useEffect(() => {
-    if (isAvailable) {
-      onShowRef.current();
-    }
-  }, [isAvailable, onShowRef]);
-
   if (access === "loading") {
     return (
       <Combobox.Empty>
@@ -48,7 +37,7 @@ export function GenerateFormulaOption({
       </Combobox.Empty>
     );
   }
-  if (!isAvailable) {
+  if (access !== "available") {
     return fallback;
   }
 
