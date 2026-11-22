@@ -46,4 +46,5 @@
 
 (deftest renaming-dashboards-syncs-subscriptions-in-fixed-statements-test
   (testing "the subscription sync makes the same number of statements for 2 and for 6 renamed Dashboards"
+    (sync-statement-count! 1)
     (is (= (sync-statement-count! 2) (sync-statement-count! 6)))))

@@ -39,12 +39,19 @@
             (is (= {originated true participated false unrelated false} (by-id mi/can-write?))))
           (mt/with-current-user (mt/user->id :crowberto)
             (is (= {originated false participated false unrelated false} (by-id mi/can-write?)))))
-        (testing "a list is read in one query"
-          (mt/with-current-user rasta-id
-            (let [rows (conversations)]
-              (t2/with-call-count [call-count]
-                (t2/hydrate rows :can_read)
-                (is (= 1 (call-count)))))))))))
+        (testing "a list is read in the same number of queries for any number of conversations"
+          (mt/with-temp [:model/MetabotConversation {fourth :id} {:user_id lucky-id}
+                         :model/MetabotConversation {fifth :id}  {:user_id lucky-id}
+                         :model/MetabotConversation {sixth :id}  {:user_id rasta-id}]
+            (mt/with-current-user rasta-id
+              (let [counted (fn [ids]
+                              (let [rows (t2/select :model/MetabotConversation :id [:in ids])]
+                                (t2/with-call-count [call-count]
+                                  (t2/hydrate rows :can_read)
+                                  (call-count))))]
+                (counted [originated])
+                (is (= (counted [originated participated])
+                       (counted [originated participated unrelated fourth fifth sixth])))))))))))
 
 (deftest delete-by-ids-statement-count-does-not-grow-with-rows-test
   (let [make! (fn [n]
@@ -52,7 +59,8 @@
                                      (let [id (str (random-uuid))]
                                        (metabot-conversation/create-metabot-conversations! [{:id id :user_id (mt/user->id :rasta)}])
                                        id)))))
-        small (make! 2)
-        large (make! 6)]
-    (is (= (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! small))
-           (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! large))))))
+        counted (fn [n]
+                  (let [ids (make! n)]
+                    (events.tu/statement-count! #(metabot-conversation/delete-metabot-conversations! ids))))]
+    (counted 1)
+    (is (= (counted 2) (counted 6)))))

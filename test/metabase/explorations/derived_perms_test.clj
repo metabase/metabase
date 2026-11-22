@@ -316,10 +316,11 @@
                         (t2/with-call-count [call-count]
                           (derived-perms/thread-ids-with-visible-derived-data [thread])
                           (call-count)))))
+          _       (measure 1)
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 2 small))
-          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+      (is (= small large)
+          (format "resolution must not grow with charts (2 charts: %d queries, 25 charts: %d)" small large)))))
 
 (deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
   (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])

@@ -45,4 +45,5 @@
 
 (deftest delete-pulse-channel-recipients-for-users-statement-count-test
   (testing "deleting the recipients of Users makes the same number of statements for 2 and for 6 of them"
+    (delete-recipients-statement-count! 1)
     (is (= (delete-recipients-statement-count! 2) (delete-recipients-statement-count! 6)))))

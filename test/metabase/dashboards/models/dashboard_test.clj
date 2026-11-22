@@ -651,8 +651,9 @@
                                      (for [i (range n)]
                                        {:name (str "Dashboard " i) :creator_id (mt/user->id :rasta) :collection_id collection-id :parameters parameters})))
                              (call-count)))]
+          (statements 1)
           (is (= (statements 2) (statements 6)))
-          (is (= 8 (t2/count :model/ParameterCard :card_id card-id))))))))
+          (is (= 9 (t2/count :model/ParameterCard :card_id card-id))))))))
 
 (deftest update-dashboards-statement-count-test
   (testing "Archiving Dashboards takes the same number of statements for any number of them"
@@ -664,6 +665,7 @@
                              (t2/with-call-count [call-count]
                                (dashboard/update-dashboards! (for [{:keys [id]} dashboards] (assoc changes :id id)))
                                (call-count))))]
+          (statements 1 {:archived true})
           (testing "archiving"
             (is (= (statements 2 {:archived true}) (statements 6 {:archived true})))))))))
 
@@ -687,6 +689,7 @@
                          (t2/with-call-count [call-count]
                            (dashboard/delete-dashboards! (mapv :id dashboards))
                            (call-count))))]
+      (statements 1)
       (is (= (statements 2) (statements 6))))))
 
 (deftest create-dashboards-with-parts-test

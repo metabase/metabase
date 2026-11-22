@@ -226,8 +226,10 @@
                 (finally
                   (native-query-snippet/delete-snippets! ids)))))]
     (testing "creating snippets runs one statement count whatever their number"
+      (creating 1)
       (is (= (creating 2) (creating 6))))
     (testing "archiving snippets runs one statement count whatever their number"
+      (archiving 1)
       (is (= (archiving 2) (archiving 6))))))
 
 (deftest import-renames-taken-names-test

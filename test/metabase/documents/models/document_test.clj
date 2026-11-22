@@ -833,13 +833,17 @@
                                (call-count))))
               updater    (fn [changes] (fn [documents] (document/update-documents! (for [{:keys [id]} documents] (assoc changes :id id)))))]
           (testing "creating"
+            (create 1)
             (is (= (t2/with-call-count [call-count] (create 2) (call-count))
                    (t2/with-call-count [call-count] (create 6) (call-count)))))
           (testing "moving"
+            (statements 1 (updater {:collection_id to-id}))
             (is (= (statements 2 (updater {:collection_id to-id})) (statements 6 (updater {:collection_id to-id})))))
           (testing "archiving"
+            (statements 1 (updater {:archived true}))
             (is (= (statements 2 (updater {:archived true})) (statements 6 (updater {:archived true})))))
           (testing "deleting"
+            (statements 1 #(document/delete-documents! (mapv :id %)))
             (is (= (statements 2 #(document/delete-documents! (mapv :id %)))
                    (statements 6 #(document/delete-documents! (mapv :id %)))))))))))
 

@@ -352,6 +352,7 @@
                   (call-count))
                 (finally
                   (measure/delete-measures! ids)))))]
+    (archiving 1)
     (is (= (archiving 2) (archiving 6)))))
 
 (deftest revert-goes-through-update-test

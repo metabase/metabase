@@ -468,10 +468,12 @@
                       (t2/with-call-count [call-count]
                         (models.notification/delete-notifications! ids)
                         (call-count))))]
+      (delete! 1)
       (is (= (delete! 2) (delete! 6)))))
   (testing "updating Notifications makes the same number of statements for 2 and for 6 of them"
     (let [update! (fn [n]
                     (write-statement-count! n #(models.notification/update-notifications! % {:active false})))]
+      (update! 1)
       (is (= (update! 2) (update! 6)))))
   (testing "creating a Notification with several handlers makes the same number of statements for 1 and for 3"
     (let [create! (fn [n]
@@ -484,4 +486,5 @@
                                          (call-count))]
                       (models.notification/delete-notifications! [(:id @notification)])
                       statements))]
+      (create! 1)
       (is (= (create! 1) (create! 3))))))

@@ -218,43 +218,31 @@
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
     PUT /api/dashboard/:id/cards handler"
-    (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
-                   :model/Card          {card-id :id} {}
-                   :model/DashboardCard dashcard-1 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/DashboardCard dashcard-2 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/DashboardCard dashcard-3 {:dashboard_id dashboard-id :card_id card-id}
-                   :model/Card          {series-id-1 :id} {:name "Series Card 1"}
-                   :model/Card          {series-id-2 :id} {:name "Series Card 2"}]
-      (do
-        (testing "Should have fewer DB calls if there are no changes to the dashcards"
-          (t2/with-call-count [call-count]
-            (dashboard/update-dashboards! [{:id dashboard-id :dashcards (mapv #(select-keys % [:id :card_id :row :col :size_x :size_y]) [dashcard-1 dashcard-2 dashcard-3])}])
-            (is (= 3 (call-count)))))
-        (testing "Should have more calls if there are changes to the dashcards"
-          (t2/with-call-count [call-count]
-            (dashboard/update-dashboards! [{:id        dashboard-id
-                                            :dashcards [{:id     (:id dashcard-1)
-                                                         :card_id card-id
-                                                         :row    1
-                                                         :col    2
-                                                         :size_x 3
-                                                         :size_y 4
-                                                         :series [series-id-1]}
-                                                        {:id     (:id dashcard-2)
-                                                         :card_id card-id
-                                                         :row    1
-                                                         :col    2
-                                                         :size_x 3
-                                                         :size_y 4
-                                                         :series [series-id-2]}
-                                                        {:id     (:id dashcard-3)
-                                                         :card_id card-id
-                                                         :row    1
-                                                         :col    2
-                                                         :size_x 3
-                                                         :size_y 4
-                                                         :series []}]}])
-            (is (<= (call-count) 15))))))))
+    (mt/with-temp [:model/Card {card-id :id}   {}
+                   :model/Card {series-id :id} {:name "Series Card"}]
+      (let [counted   (fn [n dashcard-changes]
+                        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+                          (let [dashcards (dashboard-card/create-dashboard-cards!
+                                           (for [i (range n)]
+                                             {:dashboard_id dashboard-id :card_id card-id :row i :col 0 :size_x 4 :size_y 4}))]
+                            (t2/with-call-count [call-count]
+                              (dashboard/update-dashboards! [{:id        dashboard-id
+                                                              :dashcards (mapv #(merge (select-keys % [:id :card_id :row :col :size_x :size_y])
+                                                                                       dashcard-changes)
+                                                                               dashcards)}])
+                              (call-count)))))
+            unchanged #(counted % {})
+            changed   #(counted % {:row 1 :col 2 :size_x 3 :size_y 4 :series [series-id]})]
+        (unchanged 1)
+        (changed 1)
+        (let [unchanged-2 (unchanged 2)
+              changed-2   (changed 2)]
+          (testing "Should take the same number of DB calls for any number of dashcards without changes"
+            (is (= unchanged-2 (unchanged 6))))
+          (testing "Should take the same number of DB calls for any number of dashcards with changes"
+            (is (= changed-2 (changed 6))))
+          (testing "Should have fewer DB calls if there are no changes to the dashcards"
+            (is (< unchanged-2 changed-2))))))))
 
 (deftest ^:parallel normalize-parameter-mappings-test
   (testing "DashboardCard parameter mappings should get normalized when coming out of the DB"
@@ -530,8 +518,11 @@
                                   (t2/with-call-count [call-count]
                                     (dashboard-card/delete-dashboard-cards! (mapv :id dashcards))
                                     (call-count))))]
+        (create-statements 1)
         (is (= (create-statements 2) (create-statements 6)))
+        (update-statements 1)
         (is (= (update-statements 2) (update-statements 6)))
+        (delete-statements 1)
         (is (= (delete-statements 2) (delete-statements 6)))))))
 
 (deftest dashboard-card-row-and-series-writes-statement-count-test
@@ -553,7 +544,9 @@
                                   (t2/with-call-count [call-count]
                                     (dashboard-card/update-dashboard-cards! (mapv (fn [[id series]] {:id id :series series}) (zipmap ids (repeat [series-id]))))
                                     (call-count))))]
+        (row-statements 1)
         (is (= (row-statements 2) (row-statements 6)))
+        (series-statements 1)
         (is (= (series-statements 2) (series-statements 6)))))))
 
 (deftest create-dashboard-cards!-rows-with-different-columns-test

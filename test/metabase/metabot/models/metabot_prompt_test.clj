@@ -33,12 +33,17 @@
                     (events.tu/statement-count! (fn [] (swap! created into (map :id (metabot-prompt/create-metabot-prompts! (rows n)))))))]
       (try
         (testing "creating prompts"
+          (create! 1)
           (is (= (create! 2) (create! 6))))
         (testing "updating and deleting prompts"
-          (let [ids @created]
-            (is (= (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) (take 2 ids)))))
-                   (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) (take 6 (drop 2 ids))))))))
-            (is (= (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! (take 2 ids))))
-                   (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! (take 6 (drop 2 ids)))))))))
+          (let [[warm small large] (map vec [(take 1 @created) (take 2 (drop 1 @created)) (drop 3 @created)])
+                update!            (fn [ids]
+                                     (events.tu/statement-count! (fn [] (metabot-prompt/update-metabot-prompts! (mapv (fn [id] {:id id :prompt "same"}) ids)))))
+                delete!            (fn [ids]
+                                     (events.tu/statement-count! (fn [] (metabot-prompt/delete-metabot-prompts! ids))))]
+            (update! warm)
+            (is (= (update! small) (update! large)))
+            (delete! warm)
+            (is (= (delete! small) (delete! large)))))
         (finally
           (t2/delete! :model/MetabotPrompt :metabot_id metabot-id))))))

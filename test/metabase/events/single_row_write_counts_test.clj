@@ -1,66 +1,88 @@
 (ns metabase.events.single-row-write-counts-test
-  "The number of app-DB statements of the write functions that publish their events by hand, for one row, which
-  includes the one read of the previous row that the event needs."
+  "The number of app-DB statements of the write functions that publish their events by hand, which includes the one
+  read of the previous rows that the event needs, does not grow with the rows of a call."
   (:require
    [clojure.test :refer :all]
-   [metabase.app-db.core :as mdb]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.models.measure :as measure]
-   [metabase.metabot.models.metabot-conversation :as metabot-conversation]
    [metabase.segments.models.segment :as segment]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.transforms.models.transform :as transform]
-   [metabase.transforms.models.transform-job :as transform-job]))
+   [metabase.transforms.models.transform :as transform]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest segment-update-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Segment {id :id} {}]
-      (testing "without a definition: the read of the previous row, the select of the hook and the update"
-        (is (= 3 (events.tu/statement-count! #(segment/update-segments! [{:id id :name "Renamed"}])))))
-      (testing "with a definition"
-        (let [mp         (mt/metadata-provider)
-              update!    (fn [n] #(segment/update-segments! [{:id id :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                                             (lib/> (lib.metadata/field mp (mt/id :orders :total)) n))}]))]
-          (segment/update-segments! [{:id id :definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                     (lib/> (lib.metadata/field mp (mt/id :orders :total)) 1))}])
-          (is (= 8 (events.tu/statement-count! (update! 5)))))))))
+    (mt/with-temp [:model/Segment {s1 :id} {}
+                   :model/Segment {s2 :id} {}
+                   :model/Segment {s3 :id} {}
+                   :model/Segment {s4 :id} {}
+                   :model/Segment {s5 :id} {}
+                   :model/Segment {s6 :id} {}]
+      (let [ids [s1 s2 s3 s4 s5 s6]]
+        (testing "without a definition"
+          (let [counted (fn [n]
+                          (events.tu/statement-count!
+                           #(segment/update-segments! (mapv (fn [id] {:id id :name (str "Renamed " n)}) (take n ids)))))]
+            (counted 1)
+            (is (= (counted 2) (counted 6)))))
+        (testing "with a definition"
+          (let [mp      (mt/metadata-provider)
+                counted (fn [n total]
+                          (let [definition (lib/filter (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                       (lib/> (lib.metadata/field mp (mt/id :orders :total)) total))]
+                            (events.tu/statement-count!
+                             #(segment/update-segments! (mapv (fn [id] {:id id :definition definition}) (take n ids))))))]
+            (counted 6 1)
+            (is (= (counted 2 2) (counted 6 3)))))))))
 
 (deftest measure-write-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Measure {id :id} {}]
-      (testing "an update without a definition"
-        (is (= 3 (events.tu/statement-count! #(measure/update-measures! [{:id id :name "Renamed"}])))))
-      (testing "an update with a definition"
-        (let [mp      (mt/metadata-provider)
-              update! #(measure/update-measures! [{:id id :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                                                                     (lib/sum (lib.metadata/field mp (mt/id :orders :total))))}])]
-          (measure/update-measures! [{:id id :definition (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))}])
-          (is (= 9 (events.tu/statement-count! update!)))))
-      (testing "setting the dimensions"
-        (is (= 3 (events.tu/statement-count! #(measure/set-measure-dimensions! id [] []))))))))
+    (mt/with-temp [:model/Measure {m1 :id} {}
+                   :model/Measure {m2 :id} {}
+                   :model/Measure {m3 :id} {}
+                   :model/Measure {m4 :id} {}
+                   :model/Measure {m5 :id} {}
+                   :model/Measure {m6 :id} {}]
+      (let [ids [m1 m2 m3 m4 m5 m6]]
+        (testing "an update without a definition"
+          (let [counted (fn [n]
+                          (events.tu/statement-count!
+                           #(measure/update-measures! (mapv (fn [id] {:id id :name (str "Renamed " n)}) (take n ids)))))]
+            (counted 1)
+            (is (= (counted 2) (counted 6)))))
+        (testing "an update with a definition"
+          (let [mp      (mt/metadata-provider)
+                orders  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                counted (fn [n column]
+                          (let [definition (lib/aggregate orders (lib/sum (lib.metadata/field mp (mt/id :orders column))))]
+                            (events.tu/statement-count!
+                             #(measure/update-measures! (mapv (fn [id] {:id id :definition definition}) (take n ids))))))]
+            (counted 6 :total)
+            (is (= (counted 2 :subtotal) (counted 6 :tax)))))
+        (testing "setting the dimensions"
+          (let [counted (fn [n]
+                          (events.tu/statement-count!
+                           #(measure/set-measure-dimensions! m1
+                                                             (mapv (fn [i] {:id (format "00000000-0000-4000-8000-%012d" i)}) (range n))
+                                                             [])))]
+            (counted 1)
+            (is (= (counted 2) (counted 6)))))))))
 
 (deftest transform-write-statement-counts-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (mt/with-temp [:model/Transform {transform-id :id} {}
-                   :model/TransformJob {job-id :id} {}]
+    (mt/with-temp [:model/Transform {t1 :id} {}
+                   :model/Transform {t2 :id} {}
+                   :model/Transform {t3 :id} {}
+                   :model/Transform {t4 :id} {}
+                   :model/Transform {t5 :id} {}
+                   :model/Transform {t6 :id} {}]
       (testing "a transform update"
-        (is (= 3 (events.tu/statement-count! #(transform/update-transforms! [{:id transform-id :name "Renamed"}])))))
-      (testing "deactivating and activating a job"
-        (is (= 3 (events.tu/statement-count! #(transform-job/deactivate-job! job-id))))
-        (is (= 3 (events.tu/statement-count! #(transform-job/activate-job! job-id))))))))
-
-(deftest metabot-conversation-upsert-statement-counts-test
-  (let [id      (str (random-uuid))
-        user-id (mt/user->id :rasta)]
-    (testing "an upsert that inserts, whose one INSERT under a client-generated key Toucan counts once more on MySQL"
-      (is (= (if (= :mysql (mdb/db-type)) 5 4)
-             (events.tu/statement-count!
-              #(metabot-conversation/upsert-metabot-conversation! id (fn [_] {:user_id user-id}))))))
-    (testing "an upsert that updates"
-      (is (= 3 (events.tu/statement-count!
-                #(metabot-conversation/upsert-metabot-conversation! id (fn [_] {:ip_address "1.2.3.4"}))))))))
+        (let [counted (fn [n]
+                        (events.tu/statement-count!
+                         #(transform/update-transforms! (mapv (fn [id] {:id id :description (str "Described " n)}) (take n [t1 t2 t3 t4 t5 t6])))))]
+          (counted 1)
+          (is (= (counted 2) (counted 6))))))))

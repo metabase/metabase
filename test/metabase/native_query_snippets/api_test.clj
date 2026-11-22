@@ -62,10 +62,10 @@
                   (mt/user-http-request :rasta :get 200 (snippet-url))
                   (call-count)))]
         (insert-snippets! 2)
-        (let [calls-with-2  (warm-call-count!)
-              _             (insert-snippets! 8)
-              calls-with-10 (warm-call-count!)]
-          (is (<= calls-with-10 (+ calls-with-2 3))))))))
+        (let [calls-with-2 (warm-call-count!)
+              _            (insert-snippets! 4)
+              calls-with-6 (warm-call-count!)]
+          (is (= calls-with-2 calls-with-6)))))))
 
 (deftest read-snippet-api-test
   (mt/with-full-data-perms-for-all-users!

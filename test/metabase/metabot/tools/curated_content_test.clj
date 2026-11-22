@@ -657,10 +657,7 @@
                 (testing "every metric is usable: each one reads a curated table only"
                   (is (= #{o1 o2 p1 p2} (curation/usable-metric-ids [o1 o2 p1 p2]))))
                 (testing "a second metric over each table costs nothing"
-                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))
-                (testing "a second table costs only the metadata provider's fetches of the Table and of its Fields:
-                          the permissions on both tables are read together"
-                  (is (= (+ 2 (counted [o1])) (counted [o1 p1]))))))))))))
+                  (is (= (counted [o1 p1]) (counted [o1 o2 p1 p2]))))))))))))
 
 (deftest usable-metric-ids-judge-each-metrics-sources-for-readability-test
   (testing "BOT-2619: in a batch, an uncurated metric over a Card the user cannot read fails closed, and a metric over

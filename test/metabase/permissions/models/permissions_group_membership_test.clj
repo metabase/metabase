@@ -272,7 +272,7 @@
 (deftest adding-members-reads-their-users-once-test
   (testing "adding Users to a group costs the same number of queries for two Users as for eight"
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {}]
-      (let [users   (vec (repeatedly 10 #(t2/insert-returning-pk! :model/User {:email      (str (random-uuid) "@example.com")
+      (let [users   (vec (repeatedly 11 #(t2/insert-returning-pk! :model/User {:email      (str (random-uuid) "@example.com")
                                                                                :first_name "Test"
                                                                                :last_name  "User"
                                                                                :password   (str (random-uuid))})))
@@ -281,8 +281,9 @@
                         (perms-group-membership/add-users-to-groups! (for [user-id user-ids] {:user user-id :group group-id}))
                         (call-count)))]
         (try
-          (is (= (queries (subvec users 0 2)) (queries (subvec users 2 10))))
-          (is (= 10 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
+          (queries (subvec users 0 1))
+          (is (= (queries (subvec users 1 3)) (queries (subvec users 3 11))))
+          (is (= 11 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
           (finally
             (t2/delete! :model/User :id [:in users])))))))
 
