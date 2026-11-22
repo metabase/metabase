@@ -62,21 +62,23 @@
 
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
-(defn- check-not-destinations
-  "Throws a 400 when one of the Databases with `database-ids` is a destination, since a destination cannot be a router."
-  [database-ids]
-  (when (and (seq database-ids) (database-routing.db/destination-database-exists? database-ids))
+(defn- check-routers
+  "Throw a 400 unless every DatabaseRouter with `ids` satisfies these rules:
+
+  - its Database is not a routing destination"
+  [ids]
+  (when (database-routing.db/routers-of-destinations-exist? ids)
     (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400}))))
 
 (mu/defn create-database-routers! :- [:sequential ::database-routing.schema/database-router]
   "Insert the DatabaseRouter `rows` and return them in order, publishing the event of the write; a destination Database
-  is a 400."
+  is a 400 and writes nothing."
   [rows :- [:sequential ::database-routing.schema/database-router.create]]
-  (check-not-destinations (mapv :database_id rows))
   (if (empty? rows)
     []
     (t2/with-transaction [_conn]
       (u/prog1 (database-routing.db/insert-routers! rows)
+        (check-routers (mapv :id <>))
         (events/publish-event! :event/database-router-create (events/create-event <>))))))
 
 (mu/defn update-database-routers! :- [:sequential ms/PositiveInt]

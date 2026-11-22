@@ -116,3 +116,40 @@
     (is (= [router-id]
            (database-routing.models/update-database-routers! [router-id Integer/MAX_VALUE] {:user_attribute "region"})))
     (is (= "region" (t2/select-one-fn :user_attribute :model/DatabaseRouter :id router-id)))))
+
+(defn- old-router-refusal?
+  "Whether the check `create-database-routers!` ran before its insert refused `rows`: one of their Databases is a
+  routing destination."
+  [rows]
+  (t2/exists? :model/Database :id [:in (map :database_id rows)] :router_database_id [:not= nil]))
+
+(deftest create-database-routers-refuses-exactly-what-the-pre-write-check-refused-test
+  (mt/with-temp [:model/Database {plain-db :id}       {}
+                 :model/Database {other-db :id}       {}
+                 :model/Database {router-db :id}      {}
+                 :model/Database {destination-db :id} {:router_database_id router-db}]
+    (doseq [database-ids [[plain-db] [destination-db] [plain-db other-db] [plain-db destination-db] [destination-db plain-db]]]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [rows     (mapv #(hash-map :database_id % :user_attribute "tenant") database-ids)
+              expected (old-router-refusal? rows)
+              refusal  (try
+                         (database-routing.models/create-database-routers! rows)
+                         nil
+                         (catch clojure.lang.ExceptionInfo e
+                           (:status-code (ex-data e))))]
+          (testing (pr-str database-ids)
+            (is (= (when expected 400) refusal))
+            (is (= (not expected) (t2/exists? :model/DatabaseRouter :database_id [:in database-ids])))))))))
+
+(deftest refused-router-does-not-survive-a-caller-transaction-test
+  (mt/with-temp [:model/Database {plain-db :id}       {}
+                 :model/Database {router-db :id}      {}
+                 :model/Database {destination-db :id} {:router_database_id router-db}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (t2/with-transaction [_conn]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot make a destination database a router database"
+                              (database-routing.models/create-database-routers!
+                               [{:database_id destination-db :user_attribute "tenant"}])))
+        (database-routing.models/create-database-routers! [{:database_id plain-db :user_attribute "tenant"}]))
+      (is (not (t2/exists? :model/DatabaseRouter :database_id destination-db)))
+      (is (t2/exists? :model/DatabaseRouter :database_id plain-db)))))
