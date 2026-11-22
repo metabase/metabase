@@ -52,7 +52,7 @@ never becomes a query per row.
      (`channel.db/update-channels-with-names!`), never with SQL string functions, so it is identical on every app DB.
      Drop a key as unchanged only against the row as STORED: where after-select rewrites columns (Card's schema
      upgrade), the row the function holds is not the stored one, and the columns written in lockstep stay.
-  In dev and test `mi/install-uniform-update-guard!` throws when the rows of one update end with different changes,
+  In dev and test a guard in `metabase.models.interface` throws when the rows of one update end with different changes,
   before any UPDATE runs. Test a write function with rows that differ in stored state, not only uniform rows.
 - No `after-insert` and no `after-update` hook: Toucan reads the written rows back for a model that has one, and a
   model publishes nothing from a hook; what such a hook did belongs to the write function.
