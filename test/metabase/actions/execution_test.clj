@@ -80,7 +80,7 @@
                                         "a second, sensitive primary key"                  two-pk-id}]
           (testing description
             (let [action-id            (:id (first (action/create-actions! [{:type :implicit :name description :kind :row/update
-                                                               :table_id table-id}])))
+                                                                             :table_id table-id}])))
                   build-implicit-query #'actions.execution/build-implicit-query]
               (is (=? {:row-parameters {}}
                       (build-implicit-query (action/select-action :id action-id) :model.row/update {"id" 1}))))))))))
@@ -262,8 +262,8 @@
             (let [action (action/select-action :id action-id)
                   since  (mt/latest-query-execution-id)]
               (let [attempts (atom 0)]
-                (mt/with-dynamic-fn-redefs [query-execution/create-query-execution!
-                                            (fn [_row]
+                (mt/with-dynamic-fn-redefs [query-execution/create-query-executions!
+                                            (fn [_rows]
                                               (swap! attempts inc)
                                               (throw (ex-info "app db is down" {})))]
                   (is (= {:rows-affected 1}

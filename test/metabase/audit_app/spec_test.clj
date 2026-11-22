@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.audit-app.spec :as audit.spec]
    [metabase.config.core :as config]
-   [metabase.events.core :as events]
    [metabase.models.resolution :as models.resolution]
    [metabase.models.spec-test-util :as spec-test-util]
    [metabase.test.fixtures :as fixtures]

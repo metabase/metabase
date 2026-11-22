@@ -9,8 +9,8 @@
 
 (deftest ^:parallel series-position-schema-test
   (testing "DashboardCardSeries has position that is not negative"
-    (is (not (mr/validate ::dashboards.schema/dashboard-card-series.update {:position -1})))
-    (is (mr/validate ::dashboards.schema/dashboard-card-series.update {:position 0}))))
+    (is (not (mr/validate ::dashboards.schema/dashboard-card-series.update {:id 1 :position -1})))
+    (is (mr/validate ::dashboards.schema/dashboard-card-series.update {:id 1 :position 0}))))
 
 (deftest series-dashcard-is-frozen-test
   (testing "DashboardCardSeries stays on its DashboardCard"

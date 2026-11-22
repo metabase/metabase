@@ -218,16 +218,16 @@
                                                           :collection_id (:id metabot-coll)
                                                           :use_verified_content false}]
           ;; Mark some content as verified
-          (moderation-review/create-moderation-review! {:moderated_item_id (:id verified-model)
-                                                        :moderated_item_type "card"
-                                                        :moderator_id (mt/user->id :crowberto)
-                                                        :status "verified"
-                                                        :text "This is verified"})
-          (moderation-review/create-moderation-review! {:moderated_item_id (:id verified-metric)
-                                                        :moderated_item_type "card"
-                                                        :moderator_id (mt/user->id :crowberto)
-                                                        :status "verified"
-                                                        :text "This is verified"})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id (:id verified-model)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id (mt/user->id :crowberto)
+                                                          :status "verified"
+                                                          :text "This is verified"}])
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id (:id verified-metric)
+                                                          :moderated_item_type "card"
+                                                          :moderator_id (mt/user->id :crowberto)
+                                                          :status "verified"
+                                                          :text "This is verified"}])
           (testing "metabot with use_verified_content=true sees only verified content"
             (let [result (mt/with-test-user :crowberto
                            (metabot.tools.util/get-metrics-and-models (:id verified-metabot)))

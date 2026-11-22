@@ -622,7 +622,7 @@
                                   (api/check-400
                                    (not (:archived card-updates)))
                                   {:archived false}))
-            row          (cond-> (queries.card/update-row id card-updates)
+            row          (cond-> (queries.card/update-card-row id card-updates)
                            (and metadata (not query))
                            (assoc :verified-result-metadata? true))
             card         (t2/with-transaction [_conn]

@@ -942,7 +942,9 @@
                :description     nil}
               create-resp))
       (is (t2/exists? :model/Card :id (:id create-resp)))
-      (t2/delete! :model/Card :id (:id create-resp))))
+      (t2/delete! :model/Card :id (:id create-resp)))))
+
+(deftest create-question-optional-fields-test
   (testing "Creates a question with optional fields"
     (mt/with-model-cleanup [:model/Collection]
       (let [{coll-id :id} (first (collection/create-collections! [{:location "/" :name "Agent Question Collection"}]))
@@ -961,7 +963,9 @@
                  :collection_path "Our analytics / Agent Question Collection"
                  :description     "A test question"}
                 create-resp))
-        (t2/delete! :model/Card :id (:id create-resp)))))
+        (t2/delete! :model/Card :id (:id create-resp))))))
+
+(deftest create-question-without-run-permissions-test
   (testing "Returns 403 when caller cannot run the proposed query"
     ;; Mirrors retro's data-perms-bypass repro: collection write does not imply the right
     ;; to save a card whose query references data the user cannot run.
@@ -976,18 +980,20 @@
               (mt/user-http-request :rasta :post 403 "agent/v1/question"
                                     {:name          "Should Not Save"
                                      :query         (:query construct-resp)
-                                     :collection_id writable-id})))))))
+                                     :collection_id writable-id}))))))))
+
+(deftest create-question-without-collection-write-permissions-test
   (testing "Returns 403 when caller cannot write to target collection"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-model-cleanup [:model/Collection]
-        (let [{locked-id :id} (first (collection/create-collections! [{:location "/" :name "Locked For Create-Q"}]))]
+        (let [{locked-id :id} (first (collection/create-collections! [{:location "/" :name "Locked For Create-Q"}]))
+              construct-resp  (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                                                    {:query (orders-query :limit 10)})]
           ;; rasta has data perms by default in test setup, but no write on `locked-id`.
-          (let [construct-resp (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
-                                                     {:query (orders-query :limit 10)})]
-            (mt/user-http-request :rasta :post 403 "agent/v1/question"
-                                  {:name          "Should Not Save"
-                                   :query         (:query construct-resp)
-                                   :collection_id locked-id})))))))
+          (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                {:name          "Should Not Save"
+                                 :query         (:query construct-resp)
+                                 :collection_id locked-id}))))))
 
 (deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
   (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"

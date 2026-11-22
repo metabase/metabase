@@ -399,8 +399,8 @@
                                :moderated_item_id   card-id
                                :moderator_id        (mt/user->id :crowberto)
                                :status              "verified"}
-              {mr-id :id}     (moderation-review/create-moderation-review! review-row)
-              _               (moderation-review/create-moderation-review! review-row)]
+              {mr-id :id}     (first (moderation-review/create-moderation-reviews! [review-row]))
+              _               (moderation-review/create-moderation-reviews! [review-row])]
           (is (= 1 (indexed-count "card" card-id)))
           (delete-reviews-by-hand! [mr-id])
           (is (= 1 (indexed-count "card" card-id))))))))
@@ -762,7 +762,7 @@
           (search.ingestion/bulk-ingest! [["indexed-entity" [:= mi-id :this.model_index_id]]])
           (is (= 2 (indexed)))
           ;; model_index_value.model_index_id carries ON DELETE CASCADE, so the values go with no toucan statement.
-          (model-index/delete-model-index! mi-id)
+          (model-index/delete-model-indexes! [mi-id])
           (is (zero? (t2/count :model/ModelIndexValue :model_index_id mi-id)))
           (is (zero? (indexed))))))))
 

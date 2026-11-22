@@ -607,7 +607,7 @@
                                                                     :type       :category
                                                                     :values_source_type    :card
                                                                     :values_source_config {:card_id source-card-id}}]}]
-      (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+      (mt/with-dynamic-fn-redefs [parameter-card/sync-parameter-cards! (fn [& _] (throw (ex-info "Should not be called" {})))]
         (t2/update! :model/Card :id card-id-1 {:name "new name"})))))
 
 (deftest cleanup-parameter-on-card-changes-test

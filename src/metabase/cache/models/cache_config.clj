@@ -2,7 +2,6 @@
   "A model representing cache configuration."
   (:require
    [java-time.api :as t]
-   [malli.util :as mut]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.copy-spec :as app-db-copy]
@@ -21,7 +20,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-;;; -------------------------------------------------- Definition --------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (def ^:private available-sort-columns
   "Valid columns for sorting cache configs."
@@ -139,7 +138,7 @@
   [cache-config _changes]
   (mi/can-write? cache-config))
 
-;;; -------------------------------------------------- Hydration ---------------------------------------------------
+;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (def ^:private entity-model->caching-model
   "The CacheConfig `model` that targets an entity of each model whose cache policy can be set."
@@ -171,8 +170,6 @@
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :can_set_cache_policy]
   [_model k models]
   (hydrate-can-set-cache-policy k models))
-
-;;; ----------------------------------------------------- API ------------------------------------------------------
 
 (defn- caching-change
   "The details of the change of a cache config from `prev` to `new`, which the audit log records."
@@ -248,12 +245,12 @@
 (defn save-cache-config!
   "Store the cache configuration `config` in the app DB, replacing the one for the same target, and return its id. A
   concurrent first save of the same target makes one of them retry as an update."
-  [_user-id {:keys [model model_id] :as config}]
+  [{:keys [model model_id] :as config}]
   (let [save! (fn []
                 (t2/with-transaction [_conn]
                   (let [data    (config->row config)
                         current (cache.db/lock-cache-config model model_id)
-                        context {:details (caching-change current data)}]
+                        opts    {:context {:details (caching-change current data)}}]
                     (if current
                       (let [changes (into {} (remove (fn [[k v]] (= v (get current k)))) data)]
                         (when (seq changes)
@@ -261,21 +258,21 @@
                           (events/publish-event! :event/cache-config-update
                                                  (events/update-event {(:id current) current}
                                                                       [(assoc changes :id (:id current))]
-                                                                      {:context context})))
+                                                                      opts)))
                         (:id current))
                       (let [row (cache.db/insert-cache-config! data)]
-                        (events/publish-event! :event/cache-config-create (events/create-event [row] context))
+                        (events/publish-event! :event/cache-config-create (events/create-event [row] opts))
                         (:id row))))))]
     (mdb/with-conflict-retry (save!))))
 
 (defn delete-cache-configs!
   "Delete the cache configurations of the `model` entities with `model-ids`, recording each for the audit log."
-  [_user-id model model-ids]
+  [model model-ids]
   (t2/with-transaction [_conn]
     (doseq [item (cache.db/cache-configs-for model model-ids)]
       (events/publish-event! :event/cache-config-delete
                              (events/delete-event [item]
-                                                  {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}))
+                                                  {:context {:details (caching-change (select-keys item [:strategy :config :model :model_id]) nil)}}))
       (cache.db/delete-cache-configs! model [(:model_id item)]))))
 
 (defn delete-target-configs!
@@ -291,11 +288,14 @@
   [_model databases]
   (delete-target-configs! "database" (mapv :id databases)))
 
-(mu/defn update-cache-config!
-  "Apply `changes` to the cache configuration with `cache-config-id`."
-  [cache-config-id :- ms/PositiveInt
-   changes         :- (mut/select-keys ::cache.schema/cache-config.update [:next_run_at :invalidated_at])]
-  (cache.db/update-cache-config! cache-config-id changes))
+(mu/defn update-cache-configs!
+  "Apply the `:next_run_at` and `:invalidated_at` of each of `rows`, each holding the `:id` of its CacheConfig."
+  [rows :- [:sequential [:map {:closed true}
+                         [:id             ms/PositiveInt]
+                         [:next_run_at    {:optional true} ::cache.schema/temporal]
+                         [:invalidated_at {:optional true} ::cache.schema/temporal]]]]
+  (doseq [{:keys [id] :as row} rows]
+    (cache.db/update-cache-config! id (dissoc row :id))))
 
 (defmulti invalidate-cached-results!
   "Set `cache_invalidated_at` of the rows of `model` with `ids` to `invalidated-at`, returning the number updated. The

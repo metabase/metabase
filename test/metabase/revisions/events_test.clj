@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.write :as dashboards.write]
-   [metabase.events.core :as events]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -94,7 +93,7 @@
                    :model/Card      {card-id :id}      {}
                    :model/Card      {series-id :id}    {}]
       (let [revisions #(count (revisions-of "Dashboard" dashboard-id))
-            tab       (fn [name] (select-keys (t2/select-one :model/DashboardTab :dashboard_id dashboard-id) [:id :name :position]))
+            tab       #(select-keys (t2/select-one :model/DashboardTab :dashboard_id dashboard-id) [:id :name :position])
             dashcards #(mapv (fn [dashcard] (assoc (select-keys dashcard [:id :card_id :row :col :size_x :size_y])
                                                    :series (mapv :card_id (t2/select :model/DashboardCardSeries
                                                                                      :dashboardcard_id (:id dashcard)))))
@@ -106,7 +105,7 @@
                             (is (= (inc before) (revisions))))))]
         (records! "adding a tab" {:tabs [{:id -1 :name "First" :position 0}]})
         (is (=? {:tabs [{:name "First"}]} (last-object "Dashboard" dashboard-id)))
-        (records! "renaming a tab" {:tabs [(assoc (tab "First") :name "Renamed")]})
+        (records! "renaming a tab" {:tabs [(assoc (tab) :name "Renamed")]})
         (is (=? {:tabs [{:name "Renamed"}]} (last-object "Dashboard" dashboard-id)))
         (records! "adding a dashcard" {:dashcards [{:id -1 :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}]})
         (records! "repositioning a dashcard" {:dashcards (mapv #(assoc % :size_x 3) (dashcards))})

@@ -41,10 +41,11 @@
 
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
-(mu/defn create-stored-result-use!
-  "Record that the Card or Exploration of `row` uses the StoredResult of `row`."
-  [row :- ::queries.schema/stored-result-use.create]
-  (queries.db/insert-stored-result-use! row))
+(mu/defn create-stored-result-uses! :- [:sequential ms/PositiveInt]
+  "Record that the Card or Exploration of each of `rows` uses the StoredResult of that row, and return the ids of the
+  new rows, in order."
+  [rows :- [:sequential ::queries.schema/stored-result-use.create]]
+  (queries.db/insert-stored-result-uses! rows))
 
 (mu/defn carry-pairings-for-document!
   "Copy `(card_id, stored_result_id)` pairings onto newly created Cards for a document save.
@@ -63,9 +64,9 @@
           reachable      (if (seq doc-card-ids)
                            (queries.db/stored-result-ids-used-by-cards doc-card-ids sr-ids)
                            #{})]
-      (doseq [[new-card-id sr-id] distinct-pairs
-              :when (contains? reachable sr-id)]
-        (create-stored-result-use! {:stored_result_id sr-id :card_id new-card-id})))))
+      (create-stored-result-uses! (for [[new-card-id sr-id] distinct-pairs
+                                        :when               (contains? reachable sr-id)]
+                                    {:stored_result_id sr-id :card_id new-card-id})))))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

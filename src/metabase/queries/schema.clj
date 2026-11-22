@@ -178,8 +178,9 @@
   ms/NonBlankString)
 
 (mr/def ::card.update
-  "What an update (or insert) of a Card accepts: every column of `:report_card` except `id`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
+  "What an update of a Card takes: its `:id` and every other column of `:report_card`, all optional, plus `:verified-result-metadata?` consumed by the model's hooks."
   [:map {:closed true}
+   [:id                                        ::lib.schema.id/card]
    [:created_at                                {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at                                {:optional true} [:maybe [:or ms/TemporalInstant [:= :updated_at]]]]
    [:name                                      {:optional true} [:maybe ::card.name]]
@@ -233,13 +234,6 @@
    [:map {:closed true}
     [:id {:optional true} ::lib.schema.id/card]]])
 
-(mr/def ::write-opts
-  "The options of the write functions of Cards: `:writer`, who writes when it matters, the user's own write by default,
-  and `:context`, the context of the events."
-  [:maybe [:map {:closed true}
-           [:writer  {:optional true} [:enum :cascade :import :replacement :revert :sync]]
-           [:context {:optional true} [:maybe :metabase.events.schema/context]]]])
-
 (mr/def ::card.revision
   "A Card as a Revision stores it: its tracked columns. A snapshot recorded before Metabase 50 holds `:dataset` in place of
   the `:type`, and any Card may hold an empty or a legacy query."
@@ -253,13 +247,6 @@
    [:name :description :display :type :dataset_query :visualization_settings :parameters :parameter_mappings :cache_ttl
     :result_metadata :card_schema :collection_id :dashboard_id :database_id :table_id :query_type :source_card_id
     :archived :archived_directly :dataset_query_metrics_v2_migration_backup]])
-
-(mr/def ::card.update-row
-  "A row of a bulk update of Cards: the `:id` of the Card and the columns to change, those of `::card.update`."
-  [:merge
-   ::card.update
-   [:map {:closed true}
-    [:id ::lib.schema.id/card]]])
 
 (mr/def ::parameter-card
   "A ParameterCard as selected from the app DB: every column of `:parameter_card`."

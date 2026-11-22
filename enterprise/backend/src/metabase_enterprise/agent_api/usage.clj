@@ -38,15 +38,15 @@
           pii (select-keys (analytics/pii-fields-from {:user-agent user-agent
                                                        :ip-address ip-address})
                            [:ip_address])]
-      (agent-api-call-log/create-agent-api-call-log!
-       (merge {:user_id       user-id
-               :tenant_id     tenant-id
-               :client_name   (agent-api.usage/detect-client user-agent)
-               :operation     (some-> operation (u/truncate operation-max-length))
-               :status        status
-               :duration_ms   duration-ms
-               :error_message (when (analytics.settings/analytics-pii-retention-enabled)
-                                (some-> error-message (u/truncate error-message-max-length)))}
-              pii)))
+      (agent-api-call-log/create-agent-api-call-logs!
+       [(merge {:user_id       user-id
+                :tenant_id     tenant-id
+                :client_name   (agent-api.usage/detect-client user-agent)
+                :operation     (some-> operation (u/truncate operation-max-length))
+                :status        status
+                :duration_ms   duration-ms
+                :error_message (when (analytics.settings/analytics-pii-retention-enabled)
+                                 (some-> error-message (u/truncate error-message-max-length)))}
+               pii)]))
     (catch Throwable e
       (log/warn e "Failed to record Agent API call"))))

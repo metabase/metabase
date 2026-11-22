@@ -332,13 +332,13 @@
   [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token resolved-source-ids stats score ctx]}]
   (try
     (t2/with-transaction [_conn]
-      (let [sr-id (stored-result/create-stored-result! {:result_data         bytes
-                                                        :creator_id          creator-id
-                                                        :database_id         db-id
-                                                        :dataset_query       (:dataset_query row)
-                                                        :row_count           row-count
-                                                        :data_access_token   token
-                                                        :resolved_source_ids resolved-source-ids})]
+      (let [sr-id (first (stored-result/create-stored-results! [{:result_data         bytes
+                                                                 :creator_id          creator-id
+                                                                 :database_id         db-id
+                                                                 :dataset_query       (:dataset_query row)
+                                                                 :row_count           row-count
+                                                                 :data_access_token   token
+                                                                 :resolved_source_ids resolved-source-ids}]))]
         (exploration-query-result/create-query-result!
          {:exploration_query_id             (:id row)
           :stored_result_id                 sr-id
@@ -348,8 +348,8 @@
           :metric_description               (:metric-description ctx)
           :chart_description                (:chart-description ctx)})
         ;; Record the (exploration -> stored_result) reference for lifecycle/GC tracking.
-        (stored-result-use/create-stored-result-use! {:stored_result_id sr-id
-                                                      :exploration_id   (exploration-id row)})
+        (stored-result-use/create-stored-result-uses! [{:stored_result_id sr-id
+                                                        :exploration_id   (exploration-id row)}])
         (exploration-query/update-query! (:id row) {:status      "done"
                                                     :started_at  started
                                                     :finished_at (OffsetDateTime/now)})))

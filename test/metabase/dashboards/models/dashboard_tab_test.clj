@@ -107,8 +107,8 @@
   (testing "DashboardTab has name and position that is not negative"
     (doseq [bad [{:name " "} {:position -1}]]
       (testing (pr-str bad)
-        (is (not (mr/validate ::dashboards.schema/dashboard-tab.update bad)))))
-    (is (mr/validate ::dashboards.schema/dashboard-tab.update {:name "Tab" :position 0}))))
+        (is (not (mr/validate ::dashboards.schema/dashboard-tab.update (assoc bad :id 1))))))
+    (is (mr/validate ::dashboards.schema/dashboard-tab.update {:id 1 :name "Tab" :position 0}))))
 
 (deftest dashtab-dashboard-is-frozen-test
   (testing "DashboardTab stays in its Dashboard"

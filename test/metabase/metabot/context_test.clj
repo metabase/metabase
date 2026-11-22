@@ -187,10 +187,10 @@
         (mt/with-model-cleanup [:model/Table]
           (let [[{table-id :id}] (table/create-tables! [{:db_id (mt/id) :name "recent_table" :active true}])]
             (doseq [[id type] [[vq1 "card"] [vq2 "card"] [vm1 "card"] [vm2 "card"] [vd "dashboard"]]]
-              (moderation-review/create-moderation-review! {:moderated_item_id   id
-                                                            :moderated_item_type type
-                                                            :moderator_id        (mt/user->id :crowberto)
-                                                            :status              "verified"}))
+              (moderation-review/create-moderation-reviews! [{:moderated_item_id   id
+                                                              :moderated_item_type type
+                                                              :moderator_id        (mt/user->id :crowberto)
+                                                              :status              "verified"}]))
             ;; Insert verified items first (oldest), then table, then unverified (newest). Without
             ;; filtering, `(take 5 …)` captures the 3 unverified + the table + 1 verified.
             ;; Recents in newest-first order: ud, um, uq, table, vd, vm2, vm1, vq2, vq1.
@@ -258,14 +258,14 @@
                        :model/Metabot metabot {:name "test metabot"
                                                :use_verified_content true}]
           ;; First verify, then un-verify. create-review! marks older rows as most_recent=false.
-          (moderation-review/create-moderation-review! {:moderated_item_id   card-id
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :crowberto)
-                                                        :status              "verified"})
-          (moderation-review/create-moderation-review! {:moderated_item_id   card-id
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :crowberto)
-                                                        :status              nil})
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   card-id
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              "verified"}])
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   card-id
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              nil}])
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
           (let [items (-> (context/create-context {} {:metabot metabot})
                           :user_recently_viewed)

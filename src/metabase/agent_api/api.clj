@@ -859,7 +859,7 @@
       (api/create-check :model/Card card)
       (create-card-response
        (t2/with-transaction [_conn]
-         (let [[created] (queries.card/create-cards! [(assoc card :creator_id api/*current-user-id*)])]
+         (let [[created] (queries.card/create-cards! [(queries.card/new-card-row card api/*current-user-id*)])]
            (queries.card/place-new-dashboard-questions! [created] [card])
            created))))))
 
@@ -920,7 +920,7 @@
        (select-keys card-before-update [:collection_id :collection_position])
        (select-keys card-updates [:collection_id :collection_position]))
       (queries.card/place-updated-dashboard-question! card-before-update card-updates false)
-      (queries.card/update-cards! [(queries.card/update-row id card-updates)]))
+      (queries.card/update-cards! [(queries.card/update-card-row id card-updates)]))
     (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request

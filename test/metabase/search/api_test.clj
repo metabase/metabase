@@ -696,10 +696,10 @@
         ;; moderation-review.most_recent, so we creates multiple moderation review here to make sure
         ;; test result return the most recent status and don't duplicate the result
         (doseq [status ["verified" nil "verified"]]
-          (moderation-review/create-moderation-review! {:moderated_item_id   card-id
-                                                        :moderated_item_type "card"
-                                                        :moderator_id        (mt/user->id :crowberto)
-                                                        :status              status}))
+          (moderation-review/create-moderation-reviews! [{:moderated_item_id   card-id
+                                                          :moderated_item_type "card"
+                                                          :moderator_id        (mt/user->id :crowberto)
+                                                          :status              status}]))
         (is (=? [{:id               card-id
                   :model            "card"
                   :moderated_status "verified"}]
@@ -955,11 +955,10 @@
                                               :name (mt/random-name)
                                               :type          :model
                                               :dataset_query query}])
-                model-index (model-index/create-model-index!
-                             (mt/$ids {:model-id   (:id model)
-                                       :pk-ref     $municipality.id
-                                       :value-ref  $municipality.name
-                                       :creator-id (mt/user->id :rasta)}))
+                model-index (first (model-index/create-model-indexes! [(mt/$ids {:model-id   (:id model)
+                                                                                 :pk-ref     $municipality.id
+                                                                                 :value-ref  $municipality.name
+                                                                                 :creator-id (mt/user->id :rasta)})]))
                 relevant    (comp (filter (comp #{(:id model)} :model_id))
                                   (filter (comp #{"indexed-entity"} :model)))
                 search!     (fn [search-term]
@@ -998,16 +997,14 @@
                                                                                              :type          :model
                                                                                              :dataset_query query
                                                                                              :collection_id (u/id collection)}])
-                model-index-1 (model-index/create-model-index!
-                               (mt/$ids {:model-id   (:id root-model)
-                                         :pk-ref     $municipality.id
-                                         :value-ref  $municipality.name
-                                         :creator-id (mt/user->id :rasta)}))
-                model-index-2 (model-index/create-model-index!
-                               (mt/$ids {:model-id   (:id sub-collection-model)
-                                         :pk-ref     $municipality.id
-                                         :value-ref  $municipality.name
-                                         :creator-id (mt/user->id :rasta)}))
+                model-index-1 (first (model-index/create-model-indexes! [(mt/$ids {:model-id   (:id root-model)
+                                                                                   :pk-ref     $municipality.id
+                                                                                   :value-ref  $municipality.name
+                                                                                   :creator-id (mt/user->id :rasta)})]))
+                model-index-2 (first (model-index/create-model-indexes! [(mt/$ids {:model-id   (:id sub-collection-model)
+                                                                                   :pk-ref     $municipality.id
+                                                                                   :value-ref  $municipality.name
+                                                                                   :creator-id (mt/user->id :rasta)})]))
                 relevant-1    (comp (filter (comp #{(:id root-model)} :model_id))
                                     (filter (comp #{"indexed-entity"} :model)))
                 relevant-2    (comp (filter (comp #{(:id sub-collection-model)} :model_id))

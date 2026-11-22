@@ -50,10 +50,10 @@
 (use-fixtures :each (fn [thunk] (mt/with-additional-premium-features curation-features (thunk))))
 
 (defn- verify-card! [card-id]
-  (moderation-review/create-moderation-review! {:moderated_item_id   card-id
-                                                :moderated_item_type "card"
-                                                :moderator_id        (mt/user->id :crowberto)
-                                                :status              "verified"}))
+  (moderation-review/create-moderation-reviews! [{:moderated_item_id   card-id
+                                                  :moderated_item_type "card"
+                                                  :moderator_id        (mt/user->id :crowberto)
+                                                  :status              "verified"}]))
 
 (defn- orders-query []
   (let [mp (mt/metadata-provider)]

@@ -163,11 +163,10 @@
                 "ensure the card_id cannot be changed 4. ensure the dashboard_id cannot be changed")
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id} {}
-                   :model/DashboardCard {dashcard-id :id
-                                         :as dashboard-card} {:dashboard_id       dashboard-id
-                                                              :card_id            card-id
-                                                              :parameter_mappings [{:parameter_id "x"
-                                                                                    :target       [:dimension [:template-tag "x"]]}]}
+                   :model/DashboardCard {dashcard-id :id} {:dashboard_id       dashboard-id
+                                                           :card_id            card-id
+                                                           :parameter_mappings [{:parameter_id "x"
+                                                                                 :target       [:dimension [:template-tag "x"]]}]}
                    :model/Card          {card-id-1 :id}   {:name "Test Card 1"}
                    :model/Card          {card-id-2 :id}   {:name "Test Card 2"}]
       (testing "unmodified dashcard"
@@ -556,3 +555,17 @@
                                     (call-count))))]
         (is (= (row-statements 2) (row-statements 6)))
         (is (= (series-statements 2) (series-statements 6)))))))
+
+(deftest create-dashboard-cards!-rows-with-different-columns-test
+  (testing "DashboardCards given different sets of columns are all stored with the columns they give"
+    (mt/with-temp [:model/Dashboard    {dashboard-id :id} {}
+                   :model/DashboardTab {tab-id :id}       {:dashboard_id dashboard-id}
+                   :model/Card         {card-id :id}      {}]
+      (mt/with-model-cleanup [:model/DashboardCard]
+        (let [layout        {:dashboard_id dashboard-id :card_id card-id :row 0 :col 0 :size_x 4 :size_y 4}
+              [tabbed bare] (dashboard-card/create-dashboard-cards! [(assoc layout :dashboard_tab_id tab-id)
+                                                                     layout])]
+          (is (=? {:dashboard_tab_id tab-id}
+                  (t2/select-one :model/DashboardCard :id (:id tabbed))))
+          (is (=? {:dashboard_tab_id nil}
+                  (t2/select-one :model/DashboardCard :id (:id bare)))))))))

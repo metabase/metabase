@@ -19,7 +19,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
-;;; ------------------------------------------------------ Setup -----------------------------------------------------
+;;; -------------------------------------------------- Model setup ---------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/DashboardTab [_model] :dashboard_tab)
 
@@ -103,7 +103,7 @@
 (mu/defn update-dashboard-tabs! :- [:sequential :map]
   "Apply the columns of each of `rows`, each holding the `:id` of its DashboardTab, and return the rows of the tabs
   that exist."
-  [rows :- [:sequential ::dashboards.schema/dashboard-tab.update-row]]
+  [rows :- [:sequential ::dashboards.schema/dashboard-tab.update]]
   (let [stored (m/index-by :id (if (seq rows) (dashboards.db/dashboard-tabs-by-ids (mapv :id rows)) []))
         rows   (filterv #(contains? stored (:id %)) rows)]
     (doseq [[changes group] (group-by #(dissoc % :id) rows)]

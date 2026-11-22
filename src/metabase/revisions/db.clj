@@ -174,11 +174,6 @@
   [rows :- [:sequential ::revisions.schema/revision.create]]
   (t2/insert! :model/Revision rows))
 
-(mu/defn insert-revision-returning!
-  "Insert the Revision `row` and return the inserted instance."
-  [row :- ::revisions.schema/revision.create]
-  (t2/insert-returning-instance! :model/Revision row))
-
 (mu/defn latest-editors-reducible
   "A reducible of the model id, editing User, and timestamp of the most recent Revisions of the `db-model` rows with
   `ids`."
@@ -216,10 +211,3 @@
   [model-name :- :string
    model-ids  :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Revision :model model-name :model_id [:in model-ids]))
-
-(mu/defn delete-revisions-for-entity!
-  "Delete the Revisions of the row of the model named `model-name` (e.g. \"Card\") with `model-id`, returning the number
-  deleted."
-  [model-name :- :string
-   model-id   :- ms/PositiveInt]
-  (t2/delete! :model/Revision :model model-name :model_id model-id))
