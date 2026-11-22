@@ -39,7 +39,7 @@
                            (not query)
                            (f nil)
 
-                           (= :native (:type query))
+                           (lib/native-only-query? (lib/query (mt/metadata-provider) query))
                            (mt/with-temp [:model/Card {card-id :id} {:dataset_query query}]
                              (f card-id))
 
