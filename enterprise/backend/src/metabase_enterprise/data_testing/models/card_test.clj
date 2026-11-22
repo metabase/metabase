@@ -87,34 +87,6 @@
   (and (mi/can-write? instance)
        (can-save-test? (:card_id changes (:card_id instance)))))
 
-;;; ---------------------------------------------------- Writes ----------------------------------------------------
-
-(mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
-  "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
-  validate each row."
-  [rows :- [:sequential ::data-testing.schema/card-test.create]]
-  (data-testing.models/create-saved-tests! :model/CardTest rows))
-
-(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update]
-  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms
-  of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
-   (update-card-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/card-test.update]
-    opts :- ::data-testing.schema/write-opts]
-   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
-
-(mu/defn delete-card-tests-by-id! :- :nil
-  "Delete the CardTests with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
-
-(defenterprise delete-card-tests!
-  "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
-  :feature :none
-  [card-ids]
-  (data-testing.models/delete-saved-tests-of-subjects! :card :model/CardTest :card_id (vec card-ids)))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-card :- [:maybe :map]
@@ -151,6 +123,34 @@
    ;; A suite records a typed refusal of the subject as the member's refusal.
    :subject    #(testable-card (:card_id %))
    :can-run?   can-run?})
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-card-tests! :- [:sequential ::data-testing.schema/card-test]
+  "Insert the CardTests `rows`, returning the inserted tests. The column transforms of the model normalize and
+  validate each row."
+  [rows :- [:sequential ::data-testing.schema/card-test.create]]
+  (data-testing.models/create-saved-tests! :model/CardTest rows))
+
+(mu/defn update-card-tests! :- [:sequential ::data-testing.schema/card-test.update]
+  "Apply the changes in each of `rows`, the id of a CardTest and the columns to change, which the column transforms
+  of the model normalize and validate, publishing their update event."
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]]
+   (update-card-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/card-test.update]
+    opts :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/CardTest rows opts)))
+
+(mu/defn delete-card-tests-by-id! :- :nil
+  "Delete the CardTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :card :model/CardTest ids))
+
+(defenterprise delete-card-tests!
+  "Deletes the tests of the cards with `card-ids` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [card-ids]
+  (data-testing.models/delete-saved-tests-of-subjects! :card :model/CardTest :card_id (vec card-ids)))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

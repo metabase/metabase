@@ -76,24 +76,6 @@
     (nil? collection-id) (->> (map collection.root/hydrate-root-collection))
     events? (timeline-event/include-events options)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- import-dependencies
-  "The Collection each of the Timeline `entities` depends on, if any."
-  [entities]
-  (mapv (fn [{:keys [collection_id]}]
-          (when collection_id
-            [[:model/Collection collection_id]]))
-        entities))
-
-(defn- export-dependencies
-  "The Collection each of the `timelines` depends on, if any."
-  [timelines]
-  (mapv (fn [{:keys [collection_id]}]
-          (when collection_id
-            #{[:model/Collection collection_id]}))
-        timelines))
-
 ;;; ------------------------------------------------------ Writes ------------------------------------------------------
 
 (defn- check-collections
@@ -205,6 +187,24 @@
       (events/publish-event! :event/timeline-delete
                              (events/delete-event (timeline.db/timelines-in-collections (vec collection-ids))))
       (timeline.db/delete-timelines-in-collections! (vec collection-ids)))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- import-dependencies
+  "The Collection each of the Timeline `entities` depends on, if any."
+  [entities]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            [[:model/Collection collection_id]]))
+        entities))
+
+(defn- export-dependencies
+  "The Collection each of the `timelines` depends on, if any."
+  [timelines]
+  (mapv (fn [{:keys [collection_id]}]
+          (when collection_id
+            #{[:model/Collection collection_id]}))
+        timelines))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

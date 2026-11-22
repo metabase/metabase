@@ -31,15 +31,6 @@
       (throw (ex-info (tru "The model of a suggested prompt follows the type of its Card; change the Card instead.") {:status-code 400})))
     prompt))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- import-dependencies
-  "The Card each of the MetabotPrompt `entities` depends on."
-  [entities]
-  (mapv (fn [prompt]
-          #{[:model/Card (:card_id prompt)]})
-        entities))
-
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (defn- card-types-of
@@ -84,6 +75,15 @@
     (t2/with-transaction [_conn]
       (metabot.db/delete-prompts! (vec prompt-ids))))
   nil)
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- import-dependencies
+  "The Card each of the MetabotPrompt `entities` depends on."
+  [entities]
+  (mapv (fn [prompt]
+          #{[:model/Card (:card_id prompt)]})
+        entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

@@ -1004,14 +1004,18 @@
                              message)))))))
 
 (deftest create-card-refuses-native-audit-query-test
-  (testing "POST /api/card refuses a native query on the audit database"
-    (mt/with-temp [:model/Database _ {:id audit/audit-db-id, :engine :h2, :details {}}]
-      (is (str/includes? (pr-str (mt/user-http-request :crowberto :post 400 "card"
-                                                       (assoc (card-with-name-and-query)
-                                                              :dataset_query {:database audit/audit-db-id
-                                                                              :type     :native
-                                                                              :native   {:query "SELECT 1"}})))
-                         "You cannot save a native query that targets the audit database.")))))
+  (testing "POST /api/card refuses a native query on the audit database, whether or not the audit database is installed"
+    (let [body     (assoc (card-with-name-and-query)
+                          :dataset_query {:database audit/audit-db-id
+                                          :type     :native
+                                          :native   {:query "SELECT 1"}})
+          refused? (fn []
+                     (str/includes? (pr-str (mt/user-http-request :crowberto :post 400 "card" body))
+                                    "You cannot save a native query that targets the audit database."))]
+      (is (if (t2/exists? :model/Database :id audit/audit-db-id)
+            (refused?)
+            (mt/with-temp [:model/Database _ {:id audit/audit-db-id, :engine :h2, :details {}}]
+              (refused?)))))))
 
 (defn- malformed-native-dataset-query
   "Legacy-envelope native query whose template-tag `:field-id` is not a Field ID (#74615)."

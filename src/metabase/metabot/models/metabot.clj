@@ -42,6 +42,21 @@
    :id
    {:default []}))
 
+;;; ---------------------------------------------------- Writes ------------------------------------------------------
+
+(mr/def ::metabot-change
+  [:map {:closed true}
+   [:id                   ms/PositiveInt]
+   [:use_verified_content {:optional true} [:maybe :boolean]]
+   [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
+
+(mu/defn update-metabots! :- [:sequential ::metabot-change]
+  "Apply the `rows`, each the `:id` of a Metabot and the columns to set, and return the rows that exist."
+  [rows :- [:sequential ::metabot-change]]
+  (filterv (fn [{id :id :as row}]
+             (pos? (metabot.db/update-metabot! id (dissoc row :id))))
+           rows))
+
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 
 (defn- storage-paths
@@ -58,21 +73,6 @@
           (when collection_id
             #{[:model/Collection collection_id]}))
         entities))
-
-;;; ---------------------------------------------------- Writes ------------------------------------------------------
-
-(mr/def ::metabot-change
-  [:map {:closed true}
-   [:id                   ms/PositiveInt]
-   [:use_verified_content {:optional true} [:maybe :boolean]]
-   [:collection_id        {:optional true} [:maybe ::lib.schema.id/collection]]])
-
-(mu/defn update-metabots! :- [:sequential ::metabot-change]
-  "Apply the `rows`, each the `:id` of a Metabot and the columns to set, and return the rows that exist."
-  [rows :- [:sequential ::metabot-change]]
-  (filterv (fn [{id :id :as row}]
-             (pos? (metabot.db/update-metabot! id (dissoc row :id))))
-           rows))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

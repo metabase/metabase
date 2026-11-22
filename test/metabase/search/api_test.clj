@@ -680,8 +680,12 @@
         (mt/with-temp [:model/Dashboard {dash-id :id} {} :model/DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-3 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id} :model/DashboardCard _ {:card_id card-id-5 :dashboard_id dash-id}]
           ;; We do not synchronously update dashboard count
           (search/reindex! {:async? false :in-place? true})
-          (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
-                 (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))))
+          (testing "and the in-place engine, which serves when appdb is not supported, returns no query type"
+            (is (= (sort-by :dashboardcard_count
+                            (cond->> (cleaned-results dashboard-count-results)
+                              (not (search.engine/supported-engine? :search.engine/appdb))
+                              (map #(dissoc % :query_type))))
+                   (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count"))))))))))
 
 (deftest moderated-status-test
   (let [search-term "moderated-status-test"]

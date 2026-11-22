@@ -2,8 +2,8 @@
   "EE implementation of NativeQuerySnippet permissions."
   (:require
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.native-query-snippets.core :as snippets]
-   [metabase.native-query-snippets.schema :as snippets.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]))
@@ -18,14 +18,12 @@
         needed         (case read-or-write :read :read, :write :read-and-write)]
     (into #{} (filter #(perms/collection-permission-at-least? (get permissions %) needed)) collection-ids)))
 
-(mu/defn- has-parent-collection-perms?
-  "Whether the current user has `read-or-write` permissions on `snippet`'s parent collection. `snippet` must not be
-  nil: a nonexistent Snippet must fail loudly here rather than silently fall back to root-collection permissions."
-  [snippet       :- [:or
-                     ::snippets.schema/native-query-snippet
-                     [:select-keys ::snippets.schema/native-query-snippet [:collection_id]]]
+(mu/defn- has-collection-perms?
+  "Whether the current user has `read-or-write` permissions on the snippet Collection with `collection-id`, nil standing
+  for the snippets root."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
    read-or-write :- [:enum :read :write]]
-  (contains? (permitted-collection-ids [(:collection_id snippet)] read-or-write) (:collection_id snippet)))
+  (contains? (permitted-collection-ids [collection-id] read-or-write) collection-id))
 
 (defenterprise permitted-snippet-ids
   "The ids of the `snippets` the current User can read or write, by `read-or-write`: none for a sandboxed User or one
@@ -46,7 +44,7 @@
   (and
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? m :write)))
+   (has-collection-perms? (:collection_id m) :write)))
 
 (defenterprise can-update?
   "Can the current User apply a map of `changes` to a `snippet`?"
@@ -55,6 +53,6 @@
   (and
    (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
-   (has-parent-collection-perms? snippet :write)
+   (has-collection-perms? (:collection_id snippet) :write)
    (or (not (contains? changes :collection_id))
-       (has-parent-collection-perms? changes :write))))
+       (has-collection-perms? (:collection_id changes) :write))))

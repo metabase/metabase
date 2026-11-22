@@ -2338,29 +2338,30 @@
       (is (not (error? (read-uris {:uris [(str "metabase://database/" db-id "/schemas/PUBLIC/tables")]})))))))
 
 (deftest root-collection-resources-test
-  (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}
-                 :model/Card {card-id :id} {:collection_id nil}
-                 :model/Dashboard {dash-id :id} {:collection_id nil}
-                 :model/Document {doc-id :id} {:collection_id nil}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (doseq [[suffix ids] [["" #{["collection" "root"]}]
-                            ["/items" #{["collection" coll-id] ["question" card-id]
-                                        ["dashboard" dash-id] ["document" doc-id]}]
-                            ["/subcollections" #{["collection" coll-id]}]]]
-        (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
-              structured (get-in result [:resources 0 :content :structured-output])]
-          (is (not (error? result)))
-          (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (error? (read-uris {:uris ["metabase://collection/root"]})))
-        (doseq [suffix ["/items" "/subcollections"]]
-          (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
-                         :resources first :content :structured-output :items
-                         (map (juxt :type :id))
-                         set)]
-            (is (contains? ids ["collection" coll-id]))
-            (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))
+  (mt/with-model-cleanup [:model/Collection]
+    (let [[{coll-id :id}] (collection/create-collections! [{:name (mt/random-name) :location "/"}])]
+      (mt/with-temp [:model/Card {card-id :id} {:collection_id nil}
+                     :model/Dashboard {dash-id :id} {:collection_id nil}
+                     :model/Document {doc-id :id} {:collection_id nil}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (doseq [[suffix ids] [["" #{["collection" "root"]}]
+                                ["/items" #{["collection" coll-id] ["question" card-id]
+                                            ["dashboard" dash-id] ["document" doc-id]}]
+                                ["/subcollections" #{["collection" coll-id]}]]]
+            (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                  structured (get-in result [:resources 0 :content :structured-output])]
+              (is (not (error? result)))
+              (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-current-user (mt/user->id :rasta)
+            (is (error? (read-uris {:uris ["metabase://collection/root"]})))
+            (doseq [suffix ["/items" "/subcollections"]]
+              (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                             :resources first :content :structured-output :items
+                             (map (juxt :type :id))
+                             set)]
+                (is (contains? ids ["collection" coll-id]))
+                (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))))
 
 (deftest root-navigation-excludes-other-namespaces-and-trash-test
   (mt/with-temp [:model/Collection {root-id :id} {:name "Default root" :location "/"}

@@ -3,6 +3,7 @@
   includes the one read of the previous row that the event needs."
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.core :as mdb]
    [metabase.events.test-util :as events.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -54,10 +55,12 @@
         (is (= 3 (events.tu/statement-count! #(transform-job/activate-job! job-id))))))))
 
 (deftest metabot-conversation-upsert-statement-counts-test
-  (let [id (str (random-uuid))]
-    (testing "an upsert that inserts"
-      (is (= 4 (events.tu/statement-count!
-                #(metabot-conversation/upsert-metabot-conversation! id (fn [_] {:user_id (mt/user->id :rasta)}))))))
+  (let [id      (str (random-uuid))
+        user-id (mt/user->id :rasta)]
+    (testing "an upsert that inserts, whose one INSERT under a client-generated key Toucan counts once more on MySQL"
+      (is (= (if (= :mysql (mdb/db-type)) 5 4)
+             (events.tu/statement-count!
+              #(metabot-conversation/upsert-metabot-conversation! id (fn [_] {:user_id user-id}))))))
     (testing "an upsert that updates"
       (is (= 3 (events.tu/statement-count!
                 #(metabot-conversation/upsert-metabot-conversation! id (fn [_] {:ip_address "1.2.3.4"}))))))))

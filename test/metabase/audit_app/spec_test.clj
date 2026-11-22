@@ -61,12 +61,15 @@
     :group-create :group-update :group-delete
     :segment-create :segment-update :segment-delete
     :measure-create :measure-update :measure-delete
-    :custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
+    :database-create :database-update :database-delete})
+
+(def ^:private ee-published-topics
+  "The topics among those that the write functions of the models of the enterprise edition publish."
+  #{:custom-viz-plugin-create :custom-viz-plugin-update :custom-viz-plugin-delete
     :transform-test-create :transform-test-update :transform-test-delete
     :card-test-create :card-test-update :card-test-delete
     :segment-test-create :segment-test-update :segment-test-delete
-    :test-suite-create :test-suite-update :test-suite-delete
-    :database-create :database-update :database-delete})
+    :test-suite-create :test-suite-update :test-suite-delete})
 
 (defn- data-topics
   "The topics that the specs of `models` store by data: the names of the events of the models that have no `:topics`,
@@ -112,4 +115,5 @@
 (deftest stored-topics-test
   (is (= (cond-> oss-topics
            config/ee-available? (into ee-topics))
-         (set/union (data-topics (audited-models!)) function-topics published-topics))))
+         (cond-> (set/union (data-topics (audited-models!)) function-topics published-topics)
+           config/ee-available? (into ee-published-topics)))))

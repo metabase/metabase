@@ -224,15 +224,6 @@
                  (dissoc channel :details))
                json-generator))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- storage-paths
-  "The storage path of each of the Channel `entities`, under `channels/` by name."
-  [entities _ctx]
-  (mapv (fn [channel]
-          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
-        entities))
-
 ;;; ------------------------------------------------------- Writes -------------------------------------------------------
 
 (mu/defn create-channels! :- [:sequential ::channel.schema/channel]
@@ -319,6 +310,15 @@
                              (events/delete-event (channel.db/channel-templates-by-ids template-ids)))
       (channel.db/delete-channel-templates! template-ids)))
   nil)
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- storage-paths
+  "The storage path of each of the Channel `entities`, under `channels/` by name."
+  [entities _ctx]
+  (mapv (fn [channel]
+          [{:label "channels"} {:label (:name channel) :key (:name channel)}])
+        entities))
 
 ;;; ------------------------------------------------------- Specs --------------------------------------------------------
 

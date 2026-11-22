@@ -61,9 +61,11 @@
 
 (deftest tag-names-are-unique-test
   (mt/with-temp [:model/TransformTag tag {}]
-    (is (thrown? Exception (t2/insert! :model/TransformTag {:name (:name tag)})))
+    (is (thrown? Exception (t2/with-transaction [_conn]
+                             (t2/insert! :model/TransformTag {:name (:name tag)}))))
     (mt/with-temp [:model/TransformTag other {}]
-      (is (thrown? Exception (t2/update! :model/TransformTag :id (:id other) {:name (:name tag)}))))))
+      (is (thrown? Exception (t2/with-transaction [_conn]
+                               (t2/update! :model/TransformTag :id (:id other) {:name (:name tag)})))))))
 
 (deftest tag-check-test
   (mt/with-temp [:model/TransformTag tag {}]

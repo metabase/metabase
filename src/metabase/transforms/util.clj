@@ -54,8 +54,9 @@
     [:tag_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
 
 (mu/defn ->definition :- ::transforms.schema/transform.definition
-  "What the saved `transform`, or the one a create request carries, computes and where it writes."
-  [transform :- [:or ::transforms.schema/transform ::create-body]]
+  "What the saved `transform`, the one a create request carries, or the snapshot of a Revision computes and where it
+  writes."
+  [transform :- [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]
   (select-keys transform [:name :description :source :target]))
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
@@ -141,7 +142,7 @@
 (mu/defn prefetch-source-models :- ::source-models
   "Bulk-load the source databases and tables referenced by `transforms` into a
   `{:model/Database {id db} :model/Table {id table}}` map"
-  [transforms :- [:sequential [:or ::transforms.schema/transform ::create-body]]]
+  [transforms :- [:sequential [:or ::transforms.schema/transform ::create-body ::transforms.schema/transform.revision]]]
   (let [db-ids    (into #{} (keep #(get-in % [:source :query :database])) transforms)
         table-ids (into #{} (mapcat #(keep :table_id (get-in % [:source :source-tables]))) transforms)]
     {:model/Database (when (seq db-ids)

@@ -74,6 +74,81 @@
         (update :name        str)
         (update :description str))))
 
+;;; ------------------------------------------------- Permissions --------------------------------------------------
+
+(mu/defn- tags-writable? :- :boolean
+  "Whether the current user writes every Transform tagged with one of `tag-ids`."
+  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (every? true? (vals (transform-tag/tag-id->writable (set tag-ids)))))
+
+(mu/defn- job-writable? :- :boolean
+  "Whether the current user writes a job carrying `tag-ids`."
+  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
+  (boolean
+   (or api/*is-superuser?*
+       (and (api/entitled-data-analyst?)
+            (tags-writable? tag-ids)))))
+
+(defmethod mi/can-create? :model/TransformJob
+  [_model instance]
+  (job-writable? (:tag_ids instance)))
+
+(defmethod mi/can-update? :model/TransformJob
+  [job changes]
+  (and (mi/can-write? job)
+       (or (not (contains? changes :tag_ids))
+           (job-writable? (:tag_ids changes)))))
+
+;;; -------------------------------------------------- Hydration ---------------------------------------------------
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_read]
+  [_model k jobs]
+  (let [answer (boolean (api/entitled-data-analyst?))]
+    (mapv #(vary-meta % assoc k answer) jobs)))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_write]
+  [_model k jobs]
+  (let [lookup? (and (not api/*is-superuser?*) (api/entitled-data-analyst?) (seq jobs))
+        by-tag  (when lookup?
+                  (transform-tag/tag-id->writable (into #{} (mapcat :tag_ids) jobs)))]
+    (mapv (fn [job]
+            (assoc job k (boolean (or api/*is-superuser?*
+                                      (and lookup? (every? #(get by-tag % true) (:tag_ids job)))))))
+          jobs)))
+
+(mi/define-batched-hydration-method tag-ids
+  :tag_ids
+  "Hydrate tag IDs for jobs, preserving order defined by position"
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids         (map :id jobs)
+          tag-mappings    (group-by :job_id
+                                    (transforms.db/job-tag-links job-ids))
+          ;; Sort each job's tags by position
+          sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
+      (for [job jobs]
+        (assoc job :tag_ids
+               (mapv :tag_id (get sorted-mappings (:id job) [])))))))
+
+(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
+  [_model _k jobs]
+  (when (seq jobs)
+    (let [job-ids         (into #{} (map :id) jobs)
+          last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
+      (for [job jobs]
+        (assoc job :last_run (get last-executions (:id job)))))))
+
+(mi/define-batched-hydration-method job-tags
+  :job_tags
+  "Fetch tags for job"
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids      (into #{} (map u/the-id) jobs)
+          tag-mappings (group-by :job_id
+                                 (transforms.db/job-tag-links job-ids))]
+      (for [job jobs]
+        (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
+
 ;;; ---------------------------------------------------- Writes ----------------------------------------------------
 
 (mu/defn- sync-triggers! :- :nil
@@ -246,81 +321,6 @@
               :tag_id   tag-id
               :position (get new-positions tag-id)})))))
     nil))
-
-;;; ------------------------------------------------- Permissions --------------------------------------------------
-
-(mu/defn- tags-writable? :- :boolean
-  "Whether the current user writes every Transform tagged with one of `tag-ids`."
-  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
-  (every? true? (vals (transform-tag/tag-id->writable (set tag-ids)))))
-
-(mu/defn- job-writable? :- :boolean
-  "Whether the current user writes a job carrying `tag-ids`."
-  [tag-ids :- [:maybe [:sequential ms/PositiveInt]]]
-  (boolean
-   (or api/*is-superuser?*
-       (and (api/entitled-data-analyst?)
-            (tags-writable? tag-ids)))))
-
-(defmethod mi/can-create? :model/TransformJob
-  [_model instance]
-  (job-writable? (:tag_ids instance)))
-
-(defmethod mi/can-update? :model/TransformJob
-  [job changes]
-  (and (mi/can-write? job)
-       (or (not (contains? changes :tag_ids))
-           (job-writable? (:tag_ids changes)))))
-
-;;; -------------------------------------------------- Hydration ---------------------------------------------------
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_read]
-  [_model k jobs]
-  (let [answer (boolean (api/entitled-data-analyst?))]
-    (mapv #(vary-meta % assoc k answer) jobs)))
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :can_write]
-  [_model k jobs]
-  (let [lookup? (and (not api/*is-superuser?*) (api/entitled-data-analyst?) (seq jobs))
-        by-tag  (when lookup?
-                  (transform-tag/tag-id->writable (into #{} (mapcat :tag_ids) jobs)))]
-    (mapv (fn [job]
-            (assoc job k (boolean (or api/*is-superuser?*
-                                      (and lookup? (every? #(get by-tag % true) (:tag_ids job)))))))
-          jobs)))
-
-(mi/define-batched-hydration-method tag-ids
-  :tag_ids
-  "Hydrate tag IDs for jobs, preserving order defined by position"
-  [jobs]
-  (when (seq jobs)
-    (let [job-ids         (map :id jobs)
-          tag-mappings    (group-by :job_id
-                                    (transforms.db/job-tag-links job-ids))
-          ;; Sort each job's tags by position
-          sorted-mappings (update-vals tag-mappings #(sort-by :position %))]
-      (for [job jobs]
-        (assoc job :tag_ids
-               (mapv :tag_id (get sorted-mappings (:id job) [])))))))
-
-(methodical/defmethod t2/batched-hydrate [:model/TransformJob :last_run]
-  [_model _k jobs]
-  (when (seq jobs)
-    (let [job-ids         (into #{} (map :id) jobs)
-          last-executions (m/index-by :job_id (transforms.job-run/latest-runs job-ids))]
-      (for [job jobs]
-        (assoc job :last_run (get last-executions (:id job)))))))
-
-(mi/define-batched-hydration-method job-tags
-  :job_tags
-  "Fetch tags for job"
-  [jobs]
-  (when (seq jobs)
-    (let [job-ids      (into #{} (map u/the-id) jobs)
-          tag-mappings (group-by :job_id
-                                 (transforms.db/job-tag-links job-ids))]
-      (for [job jobs]
-        (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
 
 ;;; ---------------------------------------------------- Specs -----------------------------------------------------
 

@@ -703,13 +703,13 @@
   (log/info "Syncing target" (pr-str target) "for transform")
   (activate-table-and-mark-computed! database target))
 
-(mu/defn deactivate-table!
+(mu/defn deactivate-table! :- :nil
   "Deactivate table for `target` in `database` in the app db."
   [database :- ::lib.schema.metadata/database
    target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database target)]
-    ;; TODO this should probably be a function in the sync module
-    (table/update-tables! [{:id (:id table) :active false}])))
+    (table/update-tables! [{:id (:id table) :active false}])
+    nil))
 
 (defn- isolated-drop-target
   "Resolve `target` to the physical warehouse table to drop.
@@ -737,7 +737,7 @@
       target
       (assoc target :schema (or (:schema copy) (:db copy)) :name (:name copy)))))
 
-(mu/defn delete-target-table! :- [:maybe :int]
+(mu/defn delete-target-table! :- :nil
   "Drop a transform's output table and deactivate its app-db Table row.
 
   [[isolated-drop-target]] resolves the canonical `:target` to the table to drop. A
@@ -772,7 +772,7 @@
           (log/warnf "Skipping drop of transform target %s for transform %d: database %d not found"
                      (pr-str target) id database-id))))))
 
-(mu/defn delete-target-table-by-id! :- [:maybe :int]
+(mu/defn delete-target-table-by-id! :- :nil
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
   (delete-target-table! (transforms-base.db/transform transform-id)))

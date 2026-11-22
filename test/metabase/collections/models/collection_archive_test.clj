@@ -237,4 +237,4 @@
         (testing (name k)
           (is (= (get small k) (get large k)))))
       (testing "statements of the writes without their consumers"
-        (is (= {:archive 51 :restore 47 :move 6 :delete 35} small))))))
+        (is (= {:archive 52 :restore 48 :move 6 :delete 35} small))))))

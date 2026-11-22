@@ -68,15 +68,6 @@
   [path]
   (transforms-python.db/python-library-by-path (normalize-path path)))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- storage-paths
-  "The storage path of each of the PythonLibrary `entities`, under `python-libraries/` by path."
-  [entities _ctx]
-  (mapv (fn [entity]
-          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
-        entities))
-
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-python-libraries! :- [:sequential ::transforms-python.schema/python-library]
@@ -139,6 +130,15 @@
               (transforms-python.db/python-library (:id existing)))
           (first (create-python-libraries!
                   [{:path normalized-path :source source :entity_id builtin-entity-id :is_default (str/blank? source)}])))))))
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- storage-paths
+  "The storage path of each of the PythonLibrary `entities`, under `python-libraries/` by path."
+  [entities _ctx]
+  (mapv (fn [entity]
+          [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
+        entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

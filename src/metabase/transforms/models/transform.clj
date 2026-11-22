@@ -203,11 +203,12 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (mr/def ::instance
-  "A Transform as the permission checks see it: a stored row, a hydrated one, one with pending changes merged in, or
-  a create request."
+  "A Transform as the permission checks see it: a stored row, a hydrated one, one with pending changes merged in, a
+  create request, or the snapshot of a Revision."
   [:or
    ::transforms.schema/transform
-   ::transforms.u/create-body])
+   ::transforms.u/create-body
+   ::transforms.schema/transform.revision])
 
 (mu/defn- transform-readable? :- :boolean
   "Whether the current user can read `instance`, with its source looked up in `models-cache` when given."

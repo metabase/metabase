@@ -72,15 +72,6 @@
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
 
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defn- storage-paths
-  "The storage path of each of the Glossary `entities`, under `glossary/` by term."
-  [entities _ctx]
-  (mapv (fn [item]
-          [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
-        entities))
-
 ;;; ---------------------------------------------------- Writes ------------------------------------------------------
 
 (mu/defn create-glossaries! :- [:sequential (ms/InstanceOf :model/Glossary)]
@@ -117,6 +108,15 @@
         (events/publish-event! :event/glossary-delete (events/delete-event (vec stored)))
         (glossary.db/delete-glossaries! (mapv :id stored)))))
   nil)
+
+;;; ------------------------------------------------- Serialization --------------------------------------------------
+
+(defn- storage-paths
+  "The storage path of each of the Glossary `entities`, under `glossary/` by term."
+  [entities _ctx]
+  (mapv (fn [item]
+          [{:label "glossary"} {:label (:term item) :key (:entity_id item)}])
+        entities))
 
 ;;; ----------------------------------------------------- Specs ------------------------------------------------------
 

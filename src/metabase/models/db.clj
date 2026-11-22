@@ -19,52 +19,15 @@
   (t2/select-one model pk-column id))
 
 (def ^:private model-row-schema
-  "The literal registry keyword of the row/update schema of each model the generic entity helpers below are called
-  with (a literal keyword, not a `require`, to avoid a dependency cycle with every module that owns one of these
-  models)."
-  {:model/Action                   :metabase.actions.schema/action.for-update
-   :model/Card                     :metabase.queries.schema/card.update
-   :model/Channel                  :metabase.channel.schema/channel.update
-   :model/ChannelTemplate          :metabase.channel.schema/channel-template.update
-   :model/Collection               :metabase.collections.schema/collection.update
-   :model/CustomVizPlugin          :metabase-enterprise.custom-viz-plugin.schema/custom-viz-plugin.update
-   :model/Dashboard                :metabase.dashboards.schema/dashboard.update
-   :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
-   :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
-   :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
-   :model/DataApp                  :metabase.data-apps.schema/data-app.update
-   :model/Database                 :metabase.warehouses.schema/database.update
-   :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
-   :model/Document                 :metabase.documents.schema/document.update
-   :model/EmbeddingTheme           :metabase.embedding.schema/embedding-theme.update
-   :model/Exploration              :metabase.explorations.schema/exploration.update
-   :model/Field                    :metabase.warehouse-schema.schema/field.update
-   :model/FieldUserSettings        :metabase.warehouse-schema.schema/field-user-settings.update
-   :model/FieldValues              :metabase.warehouse-schema.schema/field-values.update
-   :model/Glossary                 :metabase.glossary.schema/glossary.update
-   :model/ImplicitAction           :metabase.actions.schema/implicit-action.update
-   :model/Measure                  :metabase.measures.schema/measure.update
-   :model/Metabot                  :metabase.metabot.schema/metabot.update
-   :model/MetabotPrompt            :metabase.metabot.schema/metabot-prompt.update
-   :model/NativeQuerySnippet       :metabase.native-query-snippets.schema/native-query-snippet.update
+  "The literal registry keyword of the row/update schema of each model of the Notification update spec, the only caller
+  of the generic entity helpers below (a literal keyword, not a `require`, to avoid a dependency cycle with the module
+  that owns these models)."
+  {:model/ChannelTemplate          :metabase.channel.schema/channel-template.update
    :model/Notification             :metabase.notification.schema/notification.update
    :model/NotificationCard         :metabase.notification.schema/notification-card.update
    :model/NotificationHandler      :metabase.notification.schema/notification-handler.update
    :model/NotificationRecipient    :metabase.notification.schema/notification-recipient.update
-   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.update
-   :model/OsiAiContext             :metabase.osi.schema/osi-ai-context.update
-   :model/PythonLibrary            :metabase-enterprise.transforms-python.schema/python-library.update
-   :model/QueryAction              :metabase.actions.schema/query-action.update
-   :model/Segment                  :metabase.segments.schema/segment.update
-   :model/Table                    :metabase.warehouse-schema.schema/table.update
-   :model/TableIndex               :metabase.indexes.schema/table-index.update
-   :model/Timeline                 :metabase.timeline.schema/timeline.update
-   :model/TimelineEvent            :metabase.timeline.schema/timeline-event.update
-   :model/Transform                :metabase.transforms.schema/transform.update
-   :model/TransformJob             :metabase.transforms.schema/transform-job.update
-   :model/TransformJobTransformTag :metabase.transforms.schema/transform-job-transform-tag.update
-   :model/TransformTag             :metabase.transforms.schema/transform-tag.update
-   :model/TransformTransformTag    :metabase.transforms.schema/transform-transform-tag.update})
+   :model/NotificationSubscription :metabase.notification.schema/notification-subscription.update})
 
 (defn- model-schema-key [prefix model]
   (keyword "metabase.models.db" (str prefix "." (name model))))

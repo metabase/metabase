@@ -89,34 +89,6 @@
   (and (mi/can-write? instance)
        (can-save-test? (:segment_id changes (:segment_id instance)))))
 
-;;; ---------------------------------------------------- Writes ----------------------------------------------------
-
-(mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
-  "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
-  validate each row."
-  [rows :- [:sequential ::data-testing.schema/segment-test.create]]
-  (data-testing.models/create-saved-tests! :model/SegmentTest rows))
-
-(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update]
-  "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms
-  of the model normalize and validate, publishing their update event."
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
-   (update-segment-tests! rows nil))
-  ([rows :- [:sequential ::data-testing.schema/segment-test.update]
-    opts :- ::data-testing.schema/write-opts]
-   (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
-
-(mu/defn delete-segment-tests-by-id! :- :nil
-  "Delete the SegmentTests with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
-
-(defenterprise delete-segment-tests!
-  "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
-  :feature :none
-  [segment-ids]
-  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
-
 ;;; -------------------------------------------------- Validation --------------------------------------------------
 
 (mu/defn testable-segment :- [:maybe :map]
@@ -154,6 +126,34 @@
    ;; A suite records a typed refusal of the subject as the member's refusal.
    :subject    #(testable-segment (:segment_id %))
    :can-run?   can-run?})
+
+;;; ---------------------------------------------------- Writes ----------------------------------------------------
+
+(mu/defn create-segment-tests! :- [:sequential ::data-testing.schema/segment-test]
+  "Insert the SegmentTests `rows`, returning the inserted tests. The column transforms of the model normalize and
+  validate each row."
+  [rows :- [:sequential ::data-testing.schema/segment-test.create]]
+  (data-testing.models/create-saved-tests! :model/SegmentTest rows))
+
+(mu/defn update-segment-tests! :- [:sequential ::data-testing.schema/segment-test.update]
+  "Apply the changes in each of `rows`, the id of a SegmentTest and the columns to change, which the column transforms
+  of the model normalize and validate, publishing their update event."
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]]
+   (update-segment-tests! rows nil))
+  ([rows :- [:sequential ::data-testing.schema/segment-test.update]
+    opts :- ::data-testing.schema/write-opts]
+   (data-testing.models/update-saved-tests! :model/SegmentTest rows opts)))
+
+(mu/defn delete-segment-tests-by-id! :- :nil
+  "Delete the SegmentTests with `ids`."
+  [ids :- [:sequential ms/PositiveInt]]
+  (data-testing.models/delete-saved-tests! :segment :model/SegmentTest ids))
+
+(defenterprise delete-segment-tests!
+  "Deletes the tests of the segments with `segment-ids` whatever the token says, since the rows outlive the feature."
+  :feature :none
+  [segment-ids]
+  (data-testing.models/delete-saved-tests-of-subjects! :segment :model/SegmentTest :segment_id (vec segment-ids)))
 
 ;;; -------------------------------------------------- Revisions ---------------------------------------------------
 

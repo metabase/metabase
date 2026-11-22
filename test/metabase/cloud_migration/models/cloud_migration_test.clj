@@ -12,6 +12,7 @@
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
@@ -137,7 +138,7 @@
         collection-count (t2/count :model/Collection)]
     (mt/with-temporary-setting-values [read-only-mode true]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
-                            (t2/insert! :model/User {:email email :first_name "New" :last_name "User"})))
+                            (user/create-users! [{:email email :first_name "New" :last_name "User"}])))
       (is (not (t2/exists? :model/User :email email)))
       (is (= collection-count (t2/count :model/Collection))))))
 
